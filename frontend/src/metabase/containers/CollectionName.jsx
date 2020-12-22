@@ -2,13 +2,13 @@ import React from "react";
 
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 
-const CollectionName = ({ collectionId }) => {
-  if (collectionId === undefined || isNaN(collectionId)) {
+const CollectionName = ({ id }) => {
+  if (id === undefined || isNaN(id)) {
     return null;
-  } else if (collectionId === "root" || collectionId === null) {
+  } else if (id === "root" || id === null) {
     return <span>{ROOT_COLLECTION.name}</span>;
   } else {
-    return <Collection.Name id={collectionId} />;
+    return <Collection.Name id={id} />;
   }
 };
 

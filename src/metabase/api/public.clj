@@ -70,7 +70,8 @@
   (api/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-(defmulti ^:private transform-results
+(defmulti transform-results
+  "Transform results to be suitable for a public endpoint"
   {:arglists '([results])}
   :status)
 
@@ -95,7 +96,9 @@
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
 
-(defn- public-reducedf [orig-reducedf]
+(defn public-reducedf
+  "Reducer function for public data"
+  [orig-reducedf]
   (fn [metadata final-metadata context]
     (orig-reducedf metadata (transform-results final-metadata) context)))
 
@@ -467,6 +470,22 @@
   (api/check-public-sharing-enabled)
   (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
+
+;;; ------------------------------------------------ Chain Filtering -------------------------------------------------
+
+(api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
+  "Fetch filter values for dashboard parameter `param-key`."
+  [uuid param-key :as {:keys [query-params]}]
+  (let [dashboard (dashboard-with-uuid uuid)]
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (dashboard-api/chain-filter dashboard param-key query-params))))
+
+(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:prefix"
+  "Fetch filter values for dashboard parameter `param-key`, with specified `prefix`."
+  [uuid param-key prefix :as {:keys [query-params]}]
+  (let [dashboard (dashboard-with-uuid uuid)]
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (dashboard-api/chain-filter dashboard param-key query-params prefix))))
 
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------

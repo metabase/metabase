@@ -8,10 +8,11 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import EmbedFrame from "../components/EmbedFrame";
+import title from "metabase/hoc/Title";
 
-import type { Card } from "metabase/meta/types/Card";
-import type { Dataset } from "metabase/meta/types/Dataset";
-import type { ParameterValues } from "metabase/meta/types/Parameter";
+import type { Card } from "metabase-types/types/Card";
+import type { Dataset } from "metabase-types/types/Dataset";
+import type { ParameterValues } from "metabase-types/types/Parameter";
 
 import { getParametersBySlug } from "metabase/meta/Parameter";
 import {
@@ -25,6 +26,7 @@ import {
   EmbedApi,
   setPublicQuestionEndpoints,
   setEmbedQuestionEndpoints,
+  maybeUsePivotEndpoint,
 } from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
@@ -65,6 +67,7 @@ const mapDispatchToProps = {
   mapStateToProps,
   mapDispatchToProps,
 )
+@title(({ card }) => card && card.name)
 @ExplicitSize()
 export default class PublicQuestion extends Component {
   props: Props;
@@ -161,7 +164,7 @@ export default class PublicQuestion extends Component {
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(card, parameters, parameterValues);
-        newResult = await PublicApi.cardQuery({
+        newResult = await maybeUsePivotEndpoint(PublicApi.cardQuery, card)({
           uuid,
           parameters: JSON.stringify(datasetQuery.parameters),
         });

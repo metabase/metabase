@@ -8,6 +8,7 @@
 *.xcworkspacedata
 .DS_Store
 .\#*
+.cpcache/
 .eastwood
 .idea/
 .nrepl-port
@@ -35,7 +36,6 @@
 /frontend/test/snapshots/*
 /lein-plugins/*/target
 /local/src
-/local/src
 /locales/metabase-*.pot
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
@@ -45,7 +45,6 @@
 /process.yml
 /reset-password-artifacts
 /resources/frontend_client/app/dist/
-/resources/frontend_client/app/locales
 /resources/frontend_client/app/locales
 /resources/frontend_client/embed.html
 /resources/frontend_client/index.html
@@ -73,3 +72,7 @@ profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
+dev/src/dev/nocommit/
+*~
+
+**/cypress_sample_dataset.json

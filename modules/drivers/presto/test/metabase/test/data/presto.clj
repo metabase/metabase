@@ -61,7 +61,7 @@
 
 (defmethod sql.tx/create-table-sql :presto
   [driver {:keys [database-name]} {:keys [table-name], :as tabledef}]
-  (let [field-definitions (conj (:field-definitions tabledef) {:field-name "id", :base-type  :type/Integer})
+  (let [field-definitions (cons {:field-name "id", :base-type  :type/Integer} (:field-definitions tabledef))
         dummy-values      (map (comp field-base-type->dummy-value :base-type) field-definitions)
         columns           (map :field-name field-definitions)]
     ;; Presto won't let us use the `CREATE TABLE (...)` form, but we can still do it creatively if we select the right
@@ -77,14 +77,14 @@
   (str "DROP TABLE IF EXISTS " (sql.tx/qualify-and-quote driver database-name table-name)))
 
 (defn- insert-sql [driver {:keys [database-name]} {:keys [table-name], :as tabledef} rows]
-  (let [field-definitions (conj (:field-definitions tabledef) {:field-name "id"})
+  (let [field-definitions (cons {:field-name "id"} (:field-definitions tabledef))
         columns           (map (comp keyword :field-name) field-definitions)
         [query & params]  (-> (apply h/columns columns)
                               (h/insert-into (apply hsql/qualify
                                                     (sql.tx/qualified-name-components driver database-name table-name)))
                               (h/values rows)
                               (hsql/format :allow-dashed-names? true, :quoting :ansi))]
-    (log/trace "Inserting Presto rows")
+    (log/tracef "Inserting Presto rows")
     (doseq [row rows]
       (log/trace (str/join ", " (map #(format "^%s %s" (.getName (class %)) (pr-str %)) row))))
     (if (nil? params)
@@ -94,11 +94,11 @@
 (defmethod tx/create-db! :presto
   [driver {:keys [table-definitions database-name] :as dbdef} & {:keys [skip-drop-db?]}]
   (let [details  (tx/dbdef->connection-details driver :db dbdef)
-        execute! (partial #'presto/execute-presto-query-for-sync details)]
+        execute! (partial #'presto/execute-query-for-sync details)]
     (doseq [tabledef table-definitions
             :let     [rows       (:rows tabledef)
                       ;; generate an ID for each row because we don't have auto increments
-                      keyed-rows (map-indexed (fn [i row] (conj row (inc i))) rows)
+                      keyed-rows (map-indexed (fn [i row] (cons (inc i) row)) rows)
                       ;; make 100 rows batches since we have to inline everything
                       batches    (partition 100 100 nil keyed-rows)]]
       (when-not skip-drop-db?
@@ -106,6 +106,15 @@
       (execute! (sql.tx/create-table-sql driver dbdef tabledef))
       (doseq [batch batches]
         (execute! (insert-sql driver dbdef tabledef batch))))))
+
+(defmethod tx/destroy-db! :presto
+  [driver {:keys [database-name table-definitions], :as dbdef}]
+  (let [details  (tx/dbdef->connection-details driver :db dbdef)
+        execute! (partial #'presto/execute-query-for-sync details)]
+    (doseq [{:keys [table-name], :as tabledef} table-definitions]
+      (println (format "[Presto] destroying %s.%s" (pr-str database-name) (pr-str table-name)))
+      (execute! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef))
+      (println "[Presto] [ok]"))))
 
 (defmethod tx/format-name :presto
   [_ s]

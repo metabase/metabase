@@ -18,6 +18,7 @@
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :as ui18n :refer [deferred-tru trs tru]]
+             [regex :as u.regex]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -43,23 +44,71 @@
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
+(def ^:private path-char
+  "Valid character for a name that appears in a permissions path (e.g. a schema name or a Collection name). Character is
+  valid if it is either:
+
+  1. Any character other than a slash
+  2. A forward slash, escaped by a backslash: `\\/`
+  3. A backslash escaped by a backslash: `\\\\`"
+  (u.regex/rx (or #"[^\\/]" #"\\/" #"\\\\")))
+
+(def ^:private valid-object-path-regex
+  "Regex for a valid permissions path. `rx` macro is used to make the big-and-hairy macro somewhat readable."
+  (u.regex/rx "^/"
+              ;; any path starting with /db/ is a DATA PERMISSIONS path
+              (or
+               ;; /db/:id/ -> permissions for the entire DB -- native and all schemas
+               (and #"db/\d+/"
+                    (opt (or
+                          ;; .../native/ -> permissions to create new native queries for the DB
+                          "native/"
+                          ;; .../schema/ -> permissions for all schemas in the DB
+                          (and "schema/"
+                               ;; .../schema/:name/ -> permissions for a specific schema
+                               (opt (and path-char "*/"
+                                         ;; .../schema/:name/table/:id/ -> FULL permissions for a specific table
+                                         (opt (and #"table/\d+/"
+                                                   (opt (or
+                                                         ;; .../read/ -> Perms to fetch the Metadata for Table
+                                                         "read/"
+                                                         ;; .../query/ -> Perms to run any sort of query against Table
+                                                         (and "query/"
+                                                              ;; .../segmented/ -> Permissions to run a query against
+                                                              ;; a Table using GTAP
+                                                              (opt "segmented/"))))))))))))
+               ;; any path starting with /collection/ is a COLLECTION permissions path
+               (and "collection/"
+                    (or
+                     ;; /collection/:id/ -> readwrite perms for a specific Collection
+                     (and #"\d+/"
+                          ;; /collection/:id/read/ -> read perms for a specific Collection
+                          (opt "read/"))
+                     ;; /collection/root/ -> readwrite perms for the Root Collection
+                     (and "root/"
+                          ;; /collection/root/read/ -> read perms for the Root Collection
+                          (opt "read/"))
+                     ;; /collection/namespace/:namespace/root/ -> readwrite perms for 'Root' Collection in non-default
+                     ;; namespace (only really used for EE)
+                     (and "namespace/" path-char "+/root/"
+                          ;; /collection/namespace/:namespace/root/read/ -> read perms for 'Root' Collection in
+                          ;; non-default namespace
+                          (opt "read/")))))
+              "$"))
+
 (def segmented-perm-regex
   "Regex that matches a segmented permission"
-  #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/segmented/$")
+  (re-pattern (str #"^/db/\d+/schema/" path-char "*" #"/table/\d+/query/segmented/$")))
 
-(def ^:private valid-object-path-patterns
-  [#"^/db/(\d+)/$"                                        ; permissions for the entire DB -- native and all schemas
-   #"^/db/(\d+)/native/$"                                 ; permissions to create new native queries for the DB
-   #"^/db/(\d+)/schema/$"                                 ; permissions for all schemas in the DB
-   #"^/db/(\d+)/schema/([^/]*)/$"                         ; permissions for a specific schema
-   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/$"             ; FULL permissions for a specific table
-   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/read/$"        ; Permissions to fetch the Metadata for a specific Table
-   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/query/$"       ; Permissions to run any sort of query against a Table
-   segmented-perm-regex                                   ; Permissions to run a query against a Table using GTAP
-   #"^/collection/(\d+)/$"                                ; readwrite permissions for a collection
-   #"^/collection/(\d+)/read/$"                           ; read permissions for a collection
-   #"^/collection/root/$"                                 ; readwrite permissions for the 'Root' Collection (things with `nil` collection_id)
-   #"^/collection/root/read/$"])                          ; read permissions for the 'Root' Collection
+(defn- escape-path-component
+  "Escape slashes in something that might be passed as a string part of a permissions path (e.g. DB schema name or
+  Collection name).
+
+    (escape-path-component \"a/b\") ;-> \"a\\/b\""
+  [s]
+  (some-> s
+          (str/replace #"\\" "\\\\\\\\")   ; \ -> \\
+          (str/replace #"/" "\\\\/"))) ; / -> \/
 
 (defn valid-object-path?
   "Does `object-path` follow a known, allowed format to an *object*? (The root path, \"/\", is not considered an object;
@@ -67,8 +116,7 @@
   ^Boolean [^String object-path]
   (boolean (when (and (string? object-path)
                       (seq object-path))
-             (some #(re-matches % object-path)
-                   valid-object-path-patterns))))
+             (re-matches valid-object-path-regex object-path))))
 
 (def ObjectPath
   "Schema for a valid permissions path to an object."
@@ -128,8 +176,10 @@
   you don't. Tables, however, have separate read and write perms.)"
   ([database-or-id :- MapOrID]
    (str "/db/" (u/get-id database-or-id) "/"))
+
   ([database-or-id :- MapOrID, schema-name :- (s/maybe s/Str)]
-   (str (object-path database-or-id) "schema/" schema-name "/"))
+   (str (object-path database-or-id) "schema/" (escape-path-component schema-name) "/"))
+
   ([database-or-id :- MapOrID, schema-name :- (s/maybe s/Str), table-or-id :- MapOrID]
    (str (object-path database-or-id schema-name) "table/" (u/get-id table-or-id) "/" )))
 
@@ -147,58 +197,58 @@
 (s/defn collection-readwrite-path :- ObjectPath
   "Return the permissions path for *readwrite* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
-  (str "/collection/"
-       (if (get collection-or-id :metabase.models.collection/is-root?)
-         "root"
-         (u/get-id collection-or-id))
-       "/"))
+  (if-not (get collection-or-id :metabase.models.collection.root/is-root?)
+    (format "/collection/%d/" (u/get-id collection-or-id))
+    (if-let [collection-namespace (:namespace collection-or-id)]
+      (format "/collection/namespace/%s/root/" (escape-path-component (u/qualified-name collection-namespace)))
+      "/collection/root/")))
 
 (s/defn collection-read-path :- ObjectPath
   "Return the permissions path for *read* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (str (collection-readwrite-path collection-or-id) "read/"))
 
-(defn table-read-path
+(s/defn table-read-path :- ObjectPath
   "Return the permissions path required to fetch the Metadata for a Table."
-  (^String [table]
+  ([table]
    (table-read-path (:db_id table) (:schema table) table))
-  (^String [database-or-id schema-name table-or-id]
+
+  ([database-or-id schema-name table-or-id]
    {:post [(valid-object-path? %)]}
    (str (object-path (u/get-id database-or-id) schema-name (u/get-id table-or-id)) "read/")))
 
-(defn table-query-path
+(s/defn table-query-path :- ObjectPath
   "Return the permissions path for *full* query access for a Table. Full query access means you can run any (MBQL) query
   you wish against a given Table, with no GTAP-specified mandatory query alterations."
-  (^String [table]
+  ([table]
    (table-query-path (:db_id table) (:schema table) table))
-  (^String [database-or-id schema-name table-or-id]
-   {:post [(valid-object-path? %)]}
+
+  ([database-or-id schema-name table-or-id]
    (str (object-path (u/get-id database-or-id) schema-name (u/get-id table-or-id)) "query/")))
 
-(defn table-segmented-query-path
+(s/defn table-segmented-query-path :- ObjectPath
   "Return the permissions path for *segmented* query access for a Table. Segmented access means running queries against
   the Table will automatically replace the Table with a GTAP-specified question as the new source of the query,
   obstensibly limiting access to the results."
-  (^String [table]
+  ([table]
    (table-segmented-query-path (:db_id table) (:schema table) table))
-  (^String [database-or-id schema-name table-or-id]
-   {:post [(valid-object-path? %)]}
+
+  ([database-or-id schema-name table-or-id]
    (str (object-path (u/get-id database-or-id) schema-name (u/get-id table-or-id)) "query/segmented/")))
 
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
 (defn is-permissions-for-object?
-  "Does `permissions`-PATH grant *full* access for OBJECT-PATH?"
+  "Does `permissions-path` grant *full* access for `object-path`?"
   [permissions-path object-path]
   (str/starts-with? object-path permissions-path))
 
 (defn is-partial-permissions-for-object?
-  "Does `permissions`-PATH grant access full access for OBJECT-PATH *or* for a descendant of OBJECT-PATH?"
+  "Does `permissions-path` grant access full access for `object-path` *or* for a descendant of `object-path`?"
   [permissions-path object-path]
   (or (is-permissions-for-object? permissions-path object-path)
       (str/starts-with? permissions-path object-path)))
-
 
 (defn is-permissions-set?
   "Is `permissions-set` a valid set of permissions object paths?"
@@ -209,23 +259,18 @@
                      (valid-object-path? path)))
                permissions-set)))
 
-
 (defn set-has-full-permissions?
   "Does `permissions-set` grant *full* access to object with `path`?"
-  {:style/indent 1}
   ^Boolean [permissions-set path]
   (boolean (some #(is-permissions-for-object? % path) permissions-set)))
 
 (defn set-has-partial-permissions?
   "Does `permissions-set` grant access full access to object with `path` *or* to a descendant of it?"
-  {:style/indent 1}
   ^Boolean [permissions-set path]
   (boolean (some #(is-partial-permissions-for-object? % path) permissions-set)))
 
-
 (s/defn set-has-full-permissions-for-set? :- s/Bool
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `object-paths-set`?"
-  {:style/indent 1}
   [permissions-set :- #{UserPath}, object-paths-set :- #{ObjectPath}]
   (every? (partial set-has-full-permissions? permissions-set)
           object-paths-set))
@@ -233,7 +278,6 @@
 (s/defn set-has-partial-permissions-for-set? :- s/Bool
   "Do the permissions paths in `permissions-set` grant *partial* access to all the object paths in `object-paths-set`?
    (`permissions-set` must grant partial access to *every* object in `object-paths-set` set)."
-  {:style/indent 1}
   [permissions-set :- #{UserPath}, object-paths-set :- #{ObjectPath}]
   (every? (partial set-has-partial-permissions? permissions-set)
           object-paths-set))
@@ -242,16 +286,21 @@
   "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`), or for the Root
   Collection if `collection_id` is `nil`."
-  [this          :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
-   read-or-write :- (s/enum :read :write)]
-  ;; based on value of read-or-write determine the approprite function used to calculate the perms path
-  (let [path-fn (case read-or-write
-                  :read  collection-read-path
-                  :write collection-readwrite-path)]
-    ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
-    ;; Collection
-    #{(path-fn (or (:collection_id this)
-                   {:metabase.models.collection/is-root? true}))}))
+  ([this read-or-write]
+   (perms-objects-set-for-parent-collection nil this read-or-write))
+
+  ([collection-namespace :- (s/maybe su/KeywordOrString)
+    this                 :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
+    read-or-write        :- (s/enum :read :write)]
+   ;; based on value of read-or-write determine the approprite function used to calculate the perms path
+   (let [path-fn (case read-or-write
+                   :read  collection-read-path
+                   :write collection-readwrite-path)]
+     ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
+     ;; Collection
+     #{(path-fn (or (:collection_id this)
+                    {:metabase.models.collection.root/is-root? true
+                     :namespace                                collection-namespace}))})))
 
 (def IObjectPermissionsForParentCollection
   "Implementation of `IObjectPermissions` for objects that have a `collection_id`, and thus, a parent Collection.
@@ -275,16 +324,15 @@
 (defn- pre-insert [permissions]
   (u/prog1 permissions
     (assert-valid permissions)
-    (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (:group_id permissions) (:object permissions)))))
+    (log/debug (u/colorize 'green (trs "Granting permissions for group {0}: {1}" (:group_id permissions) (:object permissions))))))
 
 (defn- pre-update [_]
   (throw (Exception. (str (deferred-tru "You cannot update a permissions entry!")
                           (deferred-tru "Delete it and create a new one.")))))
 
 (defn- pre-delete [permissions]
-  (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
+  (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}" (:group_id permissions) (:object permissions))))
   (assert-not-admin-group permissions))
-
 
 (u/strict-extend (class Permissions)
   models/IModel (merge models/IModelDefaults
@@ -298,8 +346,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - there is so much stuff related to the perms graph I think we should really move it into a separate
-;; `metabase.models.permissions-graph.data` namespace or something and move the collections graph from
-;; `metabase.models.collection` to `metabase.models.permissions-graph.collection` (?)
+;; `metabase.models.permissions.graph.data` namespace or something and move the collections graph from
+;; `metabase.models.collection` to `metabase.models.permissions.graph.collection` (?)
 
 (def ^:private TablePermissionsGraph
   (s/named
@@ -506,7 +554,7 @@
   be given some sort of access."
   [collection-or-id :- MapOrID]
   ;; don't apply this check to the Root Collection, because it's never personal
-  (when-not (:metabase.models.collection/is-root? collection-or-id)
+  (when-not (:metabase.models.collection.root/is-root? collection-or-id)
     ;; ok, once we've confirmed this isn't the Root Collection, see if it's in the DB with a personal_owner_id
     (let [collection (if (map? collection-or-id)
                        collection-or-id

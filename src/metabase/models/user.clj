@@ -7,15 +7,15 @@
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.email.messages :as email]
             [metabase.models
              [collection :as collection]
              [permissions :as perms]
              [permissions-group :as group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
              [session :refer [Session]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util
-             [i18n :as i18n :refer [trs]]
+             [i18n :as i18n :refer [deferred-tru trs]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -47,6 +47,8 @@
      user
      {:password_salt salt
       :password      (creds/hash-bcrypt (str salt password))}
+     ;; lower-case the email before saving
+     {:email (u/lower-case-en email)}
      ;; if there's a reset token encrypt that as well
      (when reset_token
        {:reset_token (creds/hash-bcrypt reset_token)})
@@ -96,7 +98,8 @@
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
     reset_token (update :reset_token creds/hash-bcrypt)
-    locale      (update :locale i18n/normalized-locale-string)))
+    locale      (update :locale i18n/normalized-locale-string)
+    email       (update :email u/lower-case-en)))
 
 (defn add-common-name
   "Add a `:common_name` key to `user` by combining their first and last names."
@@ -106,28 +109,6 @@
 
 (defn- post-select [user]
   (add-common-name user))
-
-;; `pre-delete` is more for the benefit of tests than anything else since these days we archive users instead of fully
-;; deleting them. In other words the following code is only ever called by tests
-(defn- pre-delete [{:keys [id]}]
-  (binding [perm-membership/*allow-changing-all-users-group-members* true
-            collection/*allow-deleting-personal-collections*         true]
-    (doseq [[model k] [['Activity                  :user_id]
-                       ['Card                      :creator_id]
-                       ['Card                      :made_public_by_id]
-                       ['Collection                :personal_owner_id]
-                       ['Dashboard                 :creator_id]
-                       ['Dashboard                 :made_public_by_id]
-                       ['Metric                    :creator_id]
-                       ['Pulse                     :creator_id]
-                       ['QueryExecution            :executor_id]
-                       ['Revision                  :user_id]
-                       ['Segment                   :creator_id]
-                       ['Session                   :user_id]
-                       [PermissionsGroupMembership :user_id]
-                       ['PermissionsRevision       :user_id]
-                       ['ViewLog                   :user_id]]]
-      (db/delete! model k id))))
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
@@ -154,7 +135,6 @@
           :post-insert    post-insert
           :pre-update     pre-update
           :post-select    post-select
-          :pre-delete     pre-delete
           :types          (constantly {:login_attributes :json-no-keywordization})}))
 
 (defn group-ids
@@ -182,11 +162,14 @@
   (let [reset-token (set-password-reset-token! (u/get-id new-user))
         ;; the new user join url is just a password reset with an indicator that this is a first time user
         join-url    (str (form-password-reset-url reset-token) "#new")]
-    (email/send-new-user-email! new-user invitor join-url)))
+    (classloader/require 'metabase.email.messages)
+    ((resolve 'metabase.email.messages/send-new-user-email!) new-user invitor join-url)))
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  {su/KeywordOrString s/Any})
+  (su/with-api-error-message
+      {su/KeywordOrString s/Any}
+    (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
@@ -222,7 +205,8 @@
   [new-user :- NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
     ;; send an email to everyone including the site admin if that's set
-    (email/send-user-joined-admin-notification-email! <>, :google-auth? true)))
+    (classloader/require 'metabase.email.messages)
+    ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
 
 (s/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins

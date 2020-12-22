@@ -18,28 +18,28 @@
           (assert (= (:status results) :completed)
             (u/pprint-to-str 'red results))
           (testing "cols"
-            (is (= ["id"
-                    "count"
-                    "timestamp"
-                    "user_last_login"
-                    "user_name"
-                    "venue_category_name"
-                    "venue_latitude"
-                    "venue_longitude"
-                    "venue_name"
-                    "venue_price"]
+            (is (=  ["timestamp"
+                     "venue_name"
+                     "venue_longitude"
+                     "venue_latitude"
+                     "venue_price"
+                     "venue_category_name"
+                     "id"
+                     "count"
+                     "user_name"
+                     "user_last_login"]
                    (->> results :data :cols (map :name)))))
           (testing "rows"
-            (is (= [["931"
-                     1
-                     "2013-01-03T08:00:00Z"
-                     "2014-01-01T08:30:00.000Z"
-                     "Simcha Yan"
-                     "Thai"
-                     "34.094"
-                     "-118.344"
-                     "Kinaree Thai Bistro"
-                     "1"]]
+            (is (=  [["2013-01-03T08:00:00Z"
+                      "Kinaree Thai Bistro"
+                      "-118.344"
+                      "34.094"
+                      "1"
+                      "Thai"
+                      "931"
+                      1
+                      "Simcha Yan"
+                      "2014-01-01T08:30:00.000Z"]]
                    (-> results :data :rows)))))))))
 
 (deftest post-process-select-query-test

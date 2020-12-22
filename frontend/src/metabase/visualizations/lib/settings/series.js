@@ -9,7 +9,7 @@ import { nestedSettings } from "./nested";
 import { getColorsForValues } from "metabase/lib/colors";
 
 import type { SettingDef } from "../settings";
-import type { SingleSeries } from "metabase/meta/types/Visualization";
+import type { SingleSeries } from "metabase-types/types/Visualization";
 
 export function keyForSingleSeries(single: SingleSeries): string {
   // _seriesKey is sometimes set by transformSeries
@@ -129,6 +129,17 @@ export function seriesSetting({
       },
       getHidden: (single, settings, { series }) => series.length < 2,
     },
+    show_series_values: {
+      title: t`Show values for this series`,
+      widget: "toggle",
+      getHidden: (single, seriesSettings, { settings, series }) =>
+        series.length <= 1 || // no need to show series-level control if there's only one series
+        !Object.prototype.hasOwnProperty.call(settings, "graph.show_values") || // don't show it unless this chart has a global setting
+        settings["stackable.stack_type"], // hide series controls if the chart is stacked
+      getDefault: (single, seriesSettings, { settings }) =>
+        settings["graph.show_values"],
+      readDependencies: ["graph.show_values", "stackable.stack_type"],
+    },
   };
 
   function getSettingDefintionsForSingleSeries(series, object, settings) {
@@ -138,6 +149,8 @@ export function seriesSetting({
   return {
     ...nestedSettings(settingId, {
       objectName: "series",
+      getHidden: ([{ card }], settings, extraProps) =>
+        card.display === "waterfall",
       getObjects: (series, settings) => series,
       getObjectKey: keyForSingleSeries,
       getSettingDefintionsForObject: getSettingDefintionsForSingleSeries,

@@ -14,14 +14,13 @@
             [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             [metabase.test.data
-             [datasets :as datasets]
              [env :as tx.env]
              [interface :as tx]]
             [toucan.db :as db]))
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
-;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
+;; Non-"normal" drivers are tested in `timeseries-query-processor-test` and elsewhere
 (def ^:private abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
   #{:druid :googleanalytics})
@@ -46,18 +45,6 @@
   `feature`."
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
-
-(defmacro ^:deprecated expect-with-non-timeseries-dbs
-  "DEPRECATED — Use `deftest` + `test-drivers` + `normal-drivers` instead.
-
-    (deftest my-test
-      (datasets/test-drivers (qp.test/normal-drivers)
-        (is (= ...))))"
-  {:style/indent 0}
-  [expected actual]
-  `(datasets/expect-with-drivers (normal-drivers)
-     ~expected
-     ~actual))
 
 (defn normal-drivers-except
   "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
@@ -155,6 +142,23 @@
   ([table-kw field-kw]
    (field-literal-col (col table-kw field-kw))))
 
+(defn field-literal-col-keep-extra-cols
+  "Return expected `:cols` info for a Field that was referred to as a `:field-literal`. This differs from
+  `field-literal-col` in that it doesn't remove columns like `:description` -- in some cases metadata will come back
+  with these cols, and in some it won't -- I think it has to do with whether the Card had `:source_metadata` saved for
+  it.
+
+    (field-literal-col-keep-extra-cols :venues :price)
+    (field-literal-col-keep-extra-cols (aggregate-col :count))"
+  {:arglists '([col] [table-kw field-kw])}
+  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+   (assoc col
+          :field_ref [:field-literal field-name base-type]
+          :source    :fields))
+
+  ([table-kw field-kw]
+   (field-literal-col-keep-extra-cols (col table-kw field-kw))))
+
 (defn fk-col
   "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
   [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
@@ -220,18 +224,22 @@
 
 (defmethod format-rows-fns :categories
   [_]
+  ;; ID NAME
   [int identity])
 
 (defmethod format-rows-fns :checkins
   [_]
+  ;; ID DATE USER_ID VENUE_ID
   [int identity int int])
 
 (defmethod format-rows-fns :users
   [_]
+  ;; ID NAME LAST_LOGIN
   [int identity identity])
 
 (defmethod format-rows-fns :venues
   [_]
+  ;; ID NAME CATEGORY_ID LATITUDE LONGITUDE PRICE
   [int identity int 4.0 4.0 int])
 
 (defn- format-rows-fn

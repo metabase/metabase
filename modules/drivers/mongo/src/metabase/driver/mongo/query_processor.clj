@@ -7,6 +7,7 @@
             [clojure.tools.logging :as log]
             [flatland.ordered.map :as ordered-map]
             [java-time :as t]
+            [metabase.driver.common :as driver.common]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -131,6 +132,9 @@
   (let [field-name (str \$ (field->name field "."))]
     (cond
       ;; TIMEZONE FIXME — use `java.time` classes
+      (isa? (:special_type field) :type/UNIXTimestampMicroseconds)
+      {$add [(java.util.Date. 0) {$divide [field-name 1000]}]}
+
       (isa? (:special_type field) :type/UNIXTimestampMilliseconds)
       {$add [(java.util.Date. 0) field-name]}
 
@@ -170,6 +174,22 @@
   [[_ field-clause unit]]
   (str (->lvalue field-clause) "~~~" (name unit)))
 
+(defn- day-of-week
+  [column]
+  (mongo-let [day_of_week {$mod [{$add [{$dayOfWeek column}
+                                        (driver.common/start-of-week-offset :mongo)]}
+                                 7]}]
+    {$cond {:if   {$eq [day_of_week 0]}
+            :then 7
+            :else day_of_week}}))
+
+(defn- week
+  [column]
+  {$subtract [column
+              {$multiply [{$subtract [(day-of-week column)
+                                      1]}
+                          (* 24 60 60 1000)]}]})
+
 (defmethod ->initial-rvalue :datetime-field
   [[_ field-clause unit]]
   (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
@@ -189,15 +209,12 @@
           :hour            (stringify "%Y-%m-%dT%H:00:00")
           :hour-of-day     {$hour column}
           :day             (stringify "%Y-%m-%d")
-          :day-of-week     {$dayOfWeek column}
+          :day-of-week     (day-of-week column)
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
-          :week            (stringify "%Y-%m-%d" {$subtract [column
-                                                             {$multiply [{$subtract [{$dayOfWeek column}
-                                                                                     1]}
-                                                                         (* 24 60 60 1000)]}]})
-          :week-of-year    {$add [{$week column}
-                                  1]}
+          :week            (stringify "%Y-%m-%d" (week column))
+          :week-of-year    {"$ceil" {$divide [{$dayOfYear (week column)}
+                                              7.0]}}
           :month           (stringify "%Y-%m")
           :month-of-year   {$month column}
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
@@ -226,7 +243,10 @@
 
 (defmethod ->rvalue :value
   [[_ value {base-type :base_type}]]
-  (if (isa? base-type :type/MongoBSONID)
+  (if (and (isa? base-type :type/MongoBSONID)
+           (some? value))
+    ;; Passing a nil to the ObjectId constructor throws an exception
+    ;; "invalid hexadecimal representation of an ObjectId: []" so, just treat it as nil
     (ObjectId. (str value))
     value))
 

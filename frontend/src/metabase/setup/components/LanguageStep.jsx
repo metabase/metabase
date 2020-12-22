@@ -53,10 +53,10 @@ export default class LanguageStep extends React.Component {
           <p className="text-default">
             {t`This language will be used throughout Metabase and will be the default for new users.`}
           </p>
-          <div className="overflow-hidden mb2">
+          <div className="overflow-hidden mb4">
             <ol
-              className="overflow-scroll bordered rounded"
-              style={{ height: 220 }}
+              className="scroll-y text-dark text-bold bordered rounded px2 py1"
+              style={{ maxHeight: 280 }}
             >
               {_.sortBy(
                 MetabaseSettings.get("available-locales") || [

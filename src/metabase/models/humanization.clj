@@ -25,7 +25,6 @@
     (str/upper-case word)
     (str/capitalize word)))
 
-
 (declare humanization-strategy)
 
 (defmulti ^String name->human-readable-name

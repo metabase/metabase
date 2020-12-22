@@ -20,15 +20,17 @@
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
   base type, database type, special type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
   [table :- i/TableInstance, field-metadata :- i/TableMetadataField, metabase-field :- common/TableMetadataFieldWithID]
-  (let [{old-database-type :database-type
-         old-base-type     :base-type
-         old-field-comment :field-comment
-         old-special-type  :special-type}  metabase-field
-        {new-database-type :database-type
-         new-base-type     :base-type
-         new-field-comment :field-comment} field-metadata
-        new-database-type                  (or new-database-type "NULL")
-        new-special-type                   (common/special-type field-metadata)
+  (let [{old-database-type     :database-type
+         old-base-type         :base-type
+         old-field-comment     :field-comment
+         old-special-type      :special-type
+         old-database-position :database-position}  metabase-field
+        {new-database-type     :database-type
+         new-base-type         :base-type
+         new-field-comment     :field-comment
+         new-database-position :database-position} field-metadata
+        new-database-type                          (or new-database-type "NULL")
+        new-special-type                           (common/special-type field-metadata)
 
         new-db-type?
         (not= old-database-type new-database-type)
@@ -36,13 +38,17 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
+        ;; only sync comment if old value was blank so we don't overwrite user-set values
         new-special-type?
-        (not= old-special-type new-special-type)
+        (and (nil? old-special-type)
+             (not= old-special-type new-special-type))
 
-        ;; only sync comment if old Field description was blank
         new-comment?
         (and (str/blank? old-field-comment)
              (not (str/blank? new-field-comment)))
+
+        new-database-position?
+        (not= old-database-position new-database-position)
 
         ;; calculate combined updates
         updates
@@ -68,7 +74,13 @@
          (when new-comment?
            (log/info (trs "Comment has been added for {0}."
                           (common/field-metadata-name-for-logging table metabase-field)))
-           {:description new-field-comment}))]
+           {:description new-field-comment})
+         (when new-database-position?
+           (log/info (trs "Database position of {0} has changed from ''{1}'' to ''{2}''."
+                          (common/field-metadata-name-for-logging table metabase-field)
+                          old-database-position
+                          new-database-position))
+           {:database_position new-database-position}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
              (db/update! Field (u/get-id metabase-field) updates))

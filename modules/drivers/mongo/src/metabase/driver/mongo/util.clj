@@ -89,11 +89,13 @@
    values for DATABASE, such as plain strings or the usual MB details map."
   [database]
   (cond
-    (integer? database)           (db/select-one [Database :details] :id database)
-    (string? database)            {:dbname database}
-    (:dbname (:details database)) (:details database) ; entire Database obj
-    (:dbname database)            database            ; connection details map only
-    :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
+    (integer? database)             (db/select-one [Database :details] :id database)
+    (string? database)              {:dbname database}
+    (:dbname (:details database))   (:details database) ; entire Database obj
+    (:dbname database)              database            ; connection details map only
+    (:conn-uri database)            database            ; connection URI has all the parameters
+    (:conn-uri (:details database)) (:details database)
+    :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
                                                           (:details database))))))
 
 (defn- srv-conn-str
@@ -103,7 +105,7 @@
   (format "mongodb+srv://%s:%s@%s/%s" user pass host authdb))
 
 (defn- normalize-details [details]
-  (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options use-srv ssl-cert]
+  (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options use-srv ssl-cert conn-uri]
          :or   {port 27017, pass "", ssl false, use-srv false, ssl-cert ""}} details
         ;; ignore empty :user and :pass strings
         user             (when (seq user)
@@ -121,6 +123,7 @@
      :dbname             dbname
      :ssl                ssl
      :additional-options additional-options
+     :conn-uri           conn-uri
      :srv?               use-srv
      :ssl-cert           ssl-cert}))
 
@@ -164,10 +167,18 @@
      :dbname         dbname
      :options        (-> opts .build)}))
 
-(defn- details->mongo-connection-info [{:keys [srv?], :as details}]
-  ((if srv?
-     srv-connection-info
-     normal-connection-info) details))
+(defn- conn-string-info
+  "Connection info for Mongo using a user-provided connection string."
+  [{:keys [conn-uri], :as details}]
+  {:type        :conn-string
+   :conn-string conn-uri})
+
+(defn- details->mongo-connection-info [{:keys [conn-uri srv?], :as details}]
+  (if (str/blank? conn-uri)
+      ((if srv?
+         srv-connection-info
+         normal-connection-info) details)
+      (conn-string-info details)))
 
 (defmulti ^:private connect
   "Connect to MongoDB using Mongo `connection-info`, return a tuple of `[mongo-client db]`, instances of `MongoClient`
@@ -198,6 +209,10 @@
                        (do-connect))]
     [mongo-client (mg/get-db mongo-client dbname)]))
 
+(defmethod connect :conn-string
+  [{:keys [conn-string dbname]}]
+  (let [mongo-client (mg/connect-via-uri conn-string)]
+    [(:conn mongo-client) (:db mongo-client)]))
 
 (defn -with-mongo-connection
   "Run `f` with a new connection (bound to `*mongo-connection*`) to `database`. Don't use this directly; use

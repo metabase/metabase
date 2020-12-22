@@ -7,7 +7,7 @@ import User from "metabase/entities/users";
 
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
-import Text from "metabase/components/Text";
+import Text from "metabase/components/type/Text";
 
 // NOTE: we have to load the list of users because /api/user/:id doesn't return deactivated users
 // but that's ok because it's probably already loaded through the people PeopleListingApp

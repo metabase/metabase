@@ -5,7 +5,7 @@ import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -30,6 +30,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "exploratory-dashboard",
       section: "auto",
       icon: "bolt",
+      buttonType: "token",
       title: t`X-ray`,
       url: () => {
         const filters = query

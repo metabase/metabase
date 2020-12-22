@@ -89,7 +89,8 @@
         (log/error (trs "Cannot cache results: expected byte array, got {0}" (class x)))))))
 
 (defn- save-results-xform [start-time metadata query-hash rf]
-  (let [{:keys [in-chan out-chan]} (impl/serialize-async)]
+  (let [{:keys [in-chan out-chan]} (impl/serialize-async)
+        has-rows?                  (volatile! false)]
     (a/put! in-chan (assoc metadata
                            :cache-version cache-version
                            :last-ran      (t/zoned-date-time)))
@@ -97,18 +98,22 @@
       ([] (rf))
 
       ([result]
-       (a/put! in-chan (if (map? result) (m/dissoc-in result [:data :rows]) {}))
+       (a/put! in-chan (if (map? result)
+                         (m/dissoc-in result [:data :rows])
+                         {}))
        (a/close! in-chan)
        (let [duration-ms (- (System/currentTimeMillis) start-time)]
-         (log/info (trs "Query took {0} to run; miminum for cache eligibility is {1}"
+         (log/info (trs "Query took {0} to run; minimum for cache eligibility is {1}"
                         (u/format-milliseconds duration-ms) (u/format-milliseconds (min-duration-ms))))
-         (when (> duration-ms (min-duration-ms))
+         (when (and @has-rows?
+                    (> duration-ms (min-duration-ms)))
            (cache-results-async! query-hash out-chan)))
        (rf result))
 
       ([acc row]
        ;; Blocking so we don't exceed async's MAX-QUEUE-SIZE when transducing a large result set
        (a/>!! in-chan row)
+       (vreset! has-rows? true)
        (rf acc row)))))
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
@@ -126,7 +131,7 @@
          (rf))
 
         ([acc]
-         ;; if results are in the 'normal format' the use return the final metadata from the cache rather than
+         ;; if results are in the 'normal format' then use the final metadata from the cache rather than
          ;; whatever `acc` is right now since we don't run the entire post-processing pipeline for cached results
          (let [normal-format? (and (map? acc) (seq (get-in acc [:data :cols])))
                acc*           (-> (if normal-format?

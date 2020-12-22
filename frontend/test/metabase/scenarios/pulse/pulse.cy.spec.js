@@ -16,7 +16,7 @@ const MOCK_PULSE_FORM_INPUT = {
 describe("scenarios > pulse", () => {
   before(restore);
   beforeEach(signInAsAdmin);
-  it("should be able get to the new pulse page from the nav bar", () => {
+  it("should be able get to the new pulse page from the navbar", () => {
     cy.visit("/");
 
     cy.get(".Icon-add").click();
@@ -38,6 +38,10 @@ describe("scenarios > pulse", () => {
     cy.contains("Select a question").click();
     cy.contains("Orders, Count").click();
 
+    cy.get('[placeholder="Enter user names or email addresses"]')
+      .type("bobby@example.com")
+      .blur();
+
     // pulse card preview
     cy.contains("18,760");
 
@@ -56,6 +60,7 @@ describe("scenarios > pulse", () => {
   it("should edit existing pulses", () => {
     cy.visit("/pulse/1");
     cy.get('[placeholder="Important metrics"]')
+      .wait(100)
       .clear()
       .type("new pulse title");
 

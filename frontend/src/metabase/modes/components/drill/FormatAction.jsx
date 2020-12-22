@@ -1,10 +1,9 @@
 /* @flow */
-
 import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 // NOTE: cyclical dependency
 // import { showChartSettings } from "metabase/query_builder/actions";
@@ -23,8 +22,10 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   return [
     {
       name: "formatting",
-      section: "formatting",
-      title: t`Formatting`,
+      section: "sort",
+      buttonType: "formatting",
+      icon: "gear",
+      tooltip: t`Column formatting`,
       action: () =>
         showChartSettings({
           widget: {

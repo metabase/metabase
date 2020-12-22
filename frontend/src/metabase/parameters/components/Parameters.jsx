@@ -5,22 +5,21 @@ import { connect } from "react-redux";
 
 import StaticParameterWidget from "./ParameterWidget";
 import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
 import querystring from "querystring";
 import cx from "classnames";
 
-import type { QueryParams } from "metabase/meta/types";
+import type { QueryParams } from "metabase-types/types";
 import type {
   ParameterId,
   Parameter,
   ParameterValues,
   ParameterValueOrArray,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 
-import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 import Dimension from "metabase-lib/lib/Dimension";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -29,13 +28,14 @@ type Props = {
   className?: string,
 
   parameters: Parameter[],
+  dashboard?: DashboardWithCards,
   editingParameter?: ?Parameter,
   parameterValues?: ParameterValues,
 
   isFullscreen?: boolean,
   isNightMode?: boolean,
   hideParameters?: ?string, // comma separated list of slugs
-  isEditing?: false | DashboardWithCards,
+  isEditing?: boolean,
   isQB?: boolean,
   vertical?: boolean,
   commitImmediately?: boolean,
@@ -131,6 +131,10 @@ export default class Parameters extends Component {
     }
   }
 
+  handleSortStart = () => {
+    document.body.classList.add("grabbing");
+  };
+
   handleSortEnd = ({
     oldIndex,
     newIndex,
@@ -138,6 +142,7 @@ export default class Parameters extends Component {
     oldIndex: number,
     newIndex: number,
   }) => {
+    document.body.classList.remove("grabbing");
     const { parameters, setParameterIndex } = this.props;
     if (setParameterIndex) {
       setParameterIndex(parameters[oldIndex].id, newIndex);
@@ -187,6 +192,7 @@ export default class Parameters extends Component {
         )}
         axis="x"
         distance={9}
+        onSortStart={this.handleSortStart}
         onSortEnd={this.handleSortEnd}
       >
         {parameters
@@ -194,14 +200,13 @@ export default class Parameters extends Component {
           .map((parameter, index) => (
             <ParameterWidget
               key={parameter.id}
-              className={cx("relative hover-parent hover--visibility", {
-                mb2: vertical,
-              })}
+              className={cx({ mb2: vertical })}
               isEditing={isEditing}
               isFullscreen={isFullscreen}
               isNightMode={isNightMode}
               parameter={parameter}
               parameters={parameters}
+              dashboard={this.props.dashboard}
               editingParameter={editingParameter}
               setEditingParameter={setEditingParameter}
               index={index}
@@ -219,12 +224,12 @@ export default class Parameters extends Component {
               }
               remove={removeParameter && (() => removeParameter(parameter.id))}
               commitImmediately={commitImmediately}
-            >
-              {/* show drag handle if editing and setParameterIndex provided */}
-              {isEditing && setParameterIndex ? (
-                <SortableParameterHandle />
-              ) : null}
-            </ParameterWidget>
+              dragHandle={
+                isEditing && setParameterIndex ? (
+                  <SortableParameterHandle />
+                ) : null
+              }
+            />
           ))}
       </ParameterWidgetList>
     );
@@ -241,15 +246,7 @@ const StaticParameterWidgetList = ({ children, ...props }) => {
 };
 
 const SortableParameterHandle = SortableHandle(() => (
-  <div
-    className="absolute top bottom left flex layout-centered hover-child cursor-grab"
-    style={{
-      color: color("border"),
-      // width should match the left padding of the ParameterWidget container class so that it's centered
-      width: "1em",
-      marginLeft: "1px",
-    }}
-  >
+  <div className="flex layout-centered cursor-grab text-inherit">
     <Icon name="grabber2" size={12} />
   </div>
 ));
@@ -268,7 +265,8 @@ export function parseQueryParam(
   }
   // [].every is always true, so only check if there are some fields
   if (fields.length > 0) {
-    if (fields.every(f => f.isNumeric())) {
+    // unix dates fields are numeric but query params shouldn't be parsed as numbers
+    if (fields.every(f => f.isNumeric() && !f.isDate())) {
       return parseFloat(value);
     }
     if (fields.every(f => f.isBoolean())) {

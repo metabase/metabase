@@ -9,6 +9,7 @@ import ChartSettingToggle from "metabase/visualizations/components/settings/Char
 import ChartSettingButtonGroup from "metabase/visualizations/components/settings/ChartSettingButtonGroup";
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
+import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
@@ -45,7 +46,6 @@ export type SettingDef = {
   widget?: string | React$Component<any, any, any>,
   writeDependencies?: SettingId[],
   readDependencies?: SettingId[],
-  noReset?: boolean,
 };
 
 export type WidgetDef = {
@@ -55,7 +55,6 @@ export type WidgetDef = {
   hidden: boolean,
   disabled: boolean,
   props: { [key: string]: any },
-  noReset?: boolean,
   // $FlowFixMe
   widget?: React$Component<any, any, any>,
   onChange: (value: any) => void,
@@ -73,6 +72,7 @@ const WIDGETS = {
   buttonGroup: ChartSettingButtonGroup,
   field: ChartSettingFieldPicker,
   fields: ChartSettingFieldsPicker,
+  fieldsPartition: ChartSettingFieldsPartition,
   color: ChartSettingColorPicker,
   colors: ChartSettingColorsPicker,
 };

@@ -1,5 +1,5 @@
 import React from "react";
-
+import cx from "classnames";
 import { formDomOnlyProps } from "metabase/lib/redux";
 
 const FormTextFileWidget = ({ field }) => {
@@ -8,7 +8,7 @@ const FormTextFileWidget = ({ field }) => {
   return (
     <input
       type="file"
-      className="Form-input"
+      className={cx({ "Form-file-input--has-value": value }, "Form-file-input")}
       aria-labelledby={`${field.name}-label`}
       {...otherProps}
       onChange={wrapHandler(field.onChange)}

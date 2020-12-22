@@ -5,8 +5,6 @@
  */
 
 import * as Q from "metabase/lib/query/query";
-import * as Q_DEPRECATED from "metabase/lib/query";
-import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -25,15 +23,12 @@ import type {
   Filter,
   LimitClause,
   OrderBy,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 import type {
   DatasetQuery,
   StructuredDatasetQuery,
-} from "metabase/meta/types/Card";
-import type {
-  TableMetadata,
-  AggregationOperator,
-} from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Card";
+import type { AggregationOperator } from "metabase-types/types/Metadata";
 
 import Dimension, {
   FKDimension,
@@ -44,11 +39,11 @@ import Dimension, {
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import type Segment from "../metadata/Segment";
-import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
+import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import type Database from "../metadata/Database";
 import type Question from "../Question";
-import type { TableId } from "metabase/meta/types/Table";
-import type { Column } from "metabase/meta/types/Dataset";
+import type { TableId } from "metabase-types/types/Table";
+import type { Column } from "metabase-types/types/Dataset";
 
 import AtomicQuery from "./AtomicQuery";
 
@@ -56,10 +51,10 @@ import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 import JoinWrapper from "./structured/Join";
+import OrderByWrapper from "./structured/OrderBy";
 
 import Table from "../metadata/Table";
 import Field from "../metadata/Field";
-import { augmentDatabase } from "metabase/lib/table";
 
 import { TYPE } from "metabase/lib/types";
 
@@ -303,12 +298,12 @@ export default class StructuredQuery extends AtomicQuery {
   table(): Table {
     const sourceQuery = this.sourceQuery();
     if (sourceQuery) {
-      const table = new Table({
+      return new Table({
         name: "",
         display_name: "",
         db: sourceQuery.database(),
         fields: sourceQuery.columns().map(
-          (column, index) =>
+          column =>
             new Field({
               ...column,
               id: ["field-literal", column.name, column.base_type],
@@ -320,27 +315,9 @@ export default class StructuredQuery extends AtomicQuery {
         segments: [],
         metrics: [],
       });
-      // HACK: ugh various parts of the UI still expect this stuff
-      addValidOperatorsToFields(table);
-      augmentDatabase({ tables: [table] });
-      return table;
     } else {
       return this.metadata().table(this.sourceTableId());
     }
-  }
-
-  /**
-   * @deprecated Alias of `table()`. Use only when partially porting old code that uses @type {TableMetadata} object.
-   */
-  tableMetadata(): ?TableMetadata {
-    return this.table();
-  }
-
-  /**
-   * @deprecated Alias of `expressions()`. Use only when partially porting old code that expects a prop called `customFields`.
-   */
-  customFields(): ?TableMetadata {
-    return this.expressions();
   }
 
   /**
@@ -406,7 +383,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   cleanSorts(): StructuredQuery {
-    return this; // TODO
+    return this._cleanClauseList("sorts");
   }
 
   cleanLimit(): StructuredQuery {
@@ -641,7 +618,7 @@ export default class StructuredQuery extends AtomicQuery {
    */
   aggregationFieldOptions(agg: string | AggregationOperator): DimensionOptions {
     const aggregation: AggregationOperator =
-      typeof agg === "string" ? this.table().aggregation(agg) : agg;
+      typeof agg === "string" ? this.table().aggregationOperator(agg) : agg;
     if (aggregation) {
       const fieldOptions = this.fieldOptions(field => {
         return (
@@ -730,6 +707,9 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns An array of MBQL @type {Breakout}s.
    */
   breakouts(): BreakoutWrapper[] {
+    if (this.query() == null) {
+      return [];
+    }
     return Q.getBreakouts(this.query()).map(
       (breakout, index) => new BreakoutWrapper(breakout, index, this),
     );
@@ -746,8 +726,8 @@ export default class StructuredQuery extends AtomicQuery {
       includedBreakout === true
         ? []
         : this.breakouts()
-            .filter(b => !_.isEqual(b, includedBreakout))
-            .map(b => Q_DEPRECATED.getFieldTargetId(b)),
+            .filter(breakout => !_.isEqual(breakout, includedBreakout))
+            .map(breakout => breakout.field().id),
     );
 
     return this.fieldOptions(
@@ -766,7 +746,8 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns whether the current query has a valid breakout
    */
   hasValidBreakout(): boolean {
-    return Q_DEPRECATED.hasValidBreakout(this.query());
+    const breakouts = this.breakouts();
+    return breakouts.length > 0 && breakouts[0].isValid();
   }
 
   /**
@@ -816,9 +797,14 @@ export default class StructuredQuery extends AtomicQuery {
     return [].concat(...queries.map(q => q.filters()));
   }
 
-  filterFieldOptionSections(filter?: ?(Filter | FilterWrapper)) {
+  filterFieldOptionSections(
+    filter?: ?(Filter | FilterWrapper),
+    { includeSegments = true } = {},
+  ) {
     const filterDimensionOptions = this.filterDimensionOptions();
-    const filterSegmentOptions = this.filterSegmentOptions(filter);
+    const filterSegmentOptions = includeSegments
+      ? this.filterSegmentOptions(filter)
+      : [];
     return filterDimensionOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
         name: segment.name,
@@ -936,35 +922,39 @@ export default class StructuredQuery extends AtomicQuery {
 
   // TODO: standardize SORT vs ORDER_BY terminology
 
-  sorts(): OrderBy[] {
-    return Q.getOrderBys(this.query());
+  @memoize
+  sorts(): OrderByWrapper[] {
+    return Q.getOrderBys(this.query()).map(
+      (sort, index) => new OrderByWrapper(sort, index, this),
+    );
   }
-  sortOptions(sort): DimensionOptions {
-    const sortOptions = { count: 0, dimensions: [], fks: [] };
+
+  sortOptions(includedSort): DimensionOptions {
     // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
     if (this.isBareRows()) {
       const usedFields = new Set(
         this.sorts()
-          .filter(b => !_.isEqual(b, sort))
-          .map(b => Q_DEPRECATED.getFieldTargetId(b[1])),
+          .filter(sort => !_.isEqual(sort, includedSort))
+          .map(sort => sort.field().id),
       );
-
       return this.fieldOptions(field => !usedFields.has(field.id));
     } else if (this.hasValidBreakout()) {
+      const sortOptions = { count: 0, dimensions: [], fks: [] };
       for (const breakout of this.breakouts()) {
-        sortOptions.dimensions.push(this.parseFieldReference(breakout));
+        sortOptions.dimensions.push(breakout.dimension());
         sortOptions.count++;
       }
-      for (const [index] of this.aggregations().entries()) {
-        if (Q_DEPRECATED.canSortByAggregateField(this.query(), index)) {
-          sortOptions.dimensions.push(
-            new AggregationDimension(null, [index], this._metadata, this),
-          );
-          sortOptions.count++;
+      if (this.hasBreakouts()) {
+        for (const aggregation of this.aggregations()) {
+          if (aggregation.isSortable()) {
+            sortOptions.dimensions.push(aggregation.aggregationDimension());
+            sortOptions.count++;
+          }
         }
       }
+
+      return new DimensionOptions(sortOptions);
     }
-    return new DimensionOptions(sortOptions);
   }
   canAddSort(): boolean {
     const sorts = this.sorts();
@@ -974,10 +964,10 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
-  addSort(orderBy: OrderBy) {
+  addSort(orderBy: OrderBy | OrderByWrapper) {
     return this._updateQuery(Q.addOrderBy, arguments);
   }
-  updateSort(index: number, orderBy: OrderBy) {
+  updateSort(index: number, orderBy: OrderBy | OrderByWrapper) {
     return this._updateQuery(Q.updateOrderBy, arguments);
   }
   removeSort(index: number) {
@@ -1224,9 +1214,8 @@ export default class StructuredQuery extends AtomicQuery {
 
   @memoize
   aggregationDimensions() {
-    return this.aggregations().map(
-      (aggregation, index) =>
-        new AggregationDimension(null, [index], this._metadata, this),
+    return this.aggregations().map(aggregation =>
+      aggregation.aggregationDimension(),
     );
   }
 

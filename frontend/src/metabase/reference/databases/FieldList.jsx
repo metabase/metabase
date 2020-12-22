@@ -161,23 +161,26 @@ export default class FieldList extends Component {
                     </div>
                   </div>
                   <List>
-                    {Object.values(entities).map(
-                      entity =>
-                        entity &&
-                        entity.id &&
-                        entity.name && (
-                          <li key={entity.id}>
-                            <Field
-                              field={entity}
-                              foreignKeys={foreignKeys}
-                              url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
-                              icon={getIconForField(entity)}
-                              isEditing={isEditing}
-                              formField={fields[entity.id]}
-                            />
-                          </li>
-                        ),
-                    )}
+                    {Object.values(entities)
+                      // respect the column sort order
+                      .sort((a, b) => a.position - b.position)
+                      .map(
+                        entity =>
+                          entity &&
+                          entity.id &&
+                          entity.name && (
+                            <li key={entity.id}>
+                              <Field
+                                field={entity}
+                                foreignKeys={foreignKeys}
+                                url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
+                                icon={getIconForField(entity)}
+                                isEditing={isEditing}
+                                formField={fields[entity.id]}
+                              />
+                            </li>
+                          ),
+                      )}
                   </List>
                 </div>
               </div>

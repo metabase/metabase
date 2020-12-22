@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import _ from "underscore";
-import { chain, assoc, assocIn } from "icepick";
+import { chain, assoc, dissoc, assocIn } from "icepick";
 
 // NOTE: the order of these matters due to circular dependency issues
 import StructuredQuery, {
@@ -34,6 +34,7 @@ import * as Card_DEPRECATED from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
+import { parameterToMBQLFilter } from "metabase/meta/Parameter";
 import {
   aggregate,
   breakout,
@@ -43,22 +44,22 @@ import {
   toUnderlyingRecords,
   drillUnderlyingRecords,
 } from "metabase/modes/lib/actions";
-import { MetabaseApi, CardApi } from "metabase/services";
+import { MetabaseApi, CardApi, maybeUsePivotEndpoint } from "metabase/services";
 import Questions from "metabase/entities/questions";
 
 import type {
   Parameter as ParameterObject,
   ParameterValues,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 import type {
   DatasetQuery,
   Card as CardObject,
   VisualizationSettings,
-} from "metabase/meta/types/Card";
-import type { Dataset } from "metabase/meta/types/Dataset";
-import type { TableId } from "metabase/meta/types/Table";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { ClickObject } from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Card";
+import type { Dataset } from "metabase-types/types/Dataset";
+import type { TableId } from "metabase-types/types/Table";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { ClickObject } from "metabase-types/types/Visualization";
 
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -627,16 +628,6 @@ export default class Question {
     }
   }
 
-  // deprecated
-  tableMetadata(): ?Table {
-    const query = this.query();
-    if (query instanceof StructuredQuery) {
-      return query.table();
-    } else {
-      return null;
-    }
-  }
-
   @memoize
   mode(): ?Mode {
     return Mode.forQuestion(this);
@@ -677,8 +668,10 @@ export default class Question {
     return this._card && this._card.id;
   }
 
-  setId(id: number): Question {
-    return this.setCard(assoc(this.card(), "id", id));
+  markDirty(): Question {
+    return this.setCard(
+      dissoc(assoc(this.card(), "original_card_id", this.id()), "id"),
+    );
   }
 
   description(): ?string {
@@ -715,14 +708,19 @@ export default class Question {
   getUrl({
     originalQuestion,
     clean = true,
-  }: { originalQuestion?: Question, clean?: boolean } = {}): string {
+    query,
+  }: {
+    originalQuestion?: Question,
+    clean?: boolean,
+    query?: { [string]: any },
+  } = {}): string {
     if (
       !this.id() ||
       (originalQuestion && this.isDirtyComparedTo(originalQuestion))
     ) {
-      return Urls.question(null, this._serializeForUrl({ clean }));
+      return Urls.question(null, this._serializeForUrl({ clean }), query);
     } else {
-      return Urls.question(this.id(), "");
+      return Urls.question(this.id(), "", query);
     }
   }
 
@@ -826,7 +824,7 @@ export default class Question {
       };
 
       return [
-        await CardApi.query(queryParams, {
+        await maybeUsePivotEndpoint(CardApi.query, this.card())(queryParams, {
           cancelled: cancelDeferred.promise,
         }),
       ];
@@ -837,7 +835,7 @@ export default class Question {
           parameters,
         };
 
-        return MetabaseApi.dataset(
+        return maybeUsePivotEndpoint(MetabaseApi.dataset, this.card())(
           datasetQueryWithParameters,
           cancelDeferred ? { cancelled: cancelDeferred.promise } : {},
         );
@@ -874,6 +872,10 @@ export default class Question {
     return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
+  setParameters(parameters) {
+    return this.setCard(assoc(this.card(), "parameters", parameters));
+  }
+
   // TODO: Fix incorrect Flow signature
   parameters(): ParameterObject[] {
     return getParametersWithExtras(this.card(), this._parameterValues);
@@ -886,7 +888,7 @@ export default class Question {
 
   // predicate function that dermines if the question is "dirty" compared to the given question
   isDirtyComparedTo(originalQuestion: Question) {
-    if (!this.isSaved() && this.canRun()) {
+    if (!this.isSaved() && this.canRun() && originalQuestion == null) {
       // if it's new, then it's dirty if it is runnable
       return true;
     } else {
@@ -903,6 +905,13 @@ export default class Question {
     }
   }
 
+  isDirtyComparedToWithoutParameters(originalQuestion: Question) {
+    const [a, b] = [this, originalQuestion].map(q =>
+      new Question(q.card(), this.metadata()).setParameters([]),
+    );
+    return a.isDirtyComparedTo(b);
+  }
+
   // Internal methods
   _serializeForUrl({ includeOriginalCardId = true, clean = true } = {}) {
     const query = clean ? this.query().clean() : this.query();
@@ -913,6 +922,9 @@ export default class Question {
       dataset_query: query.datasetQuery(),
       display: this._card.display,
       parameters: this._card.parameters,
+      ...(_.isEmpty(this._parameterValues)
+        ? undefined
+        : { parameterValues: this._parameterValues }), // this is kinda wrong. these values aren't really part of the card, but this is a convenient place to put them
       visualization_settings: this._card.visualization_settings,
       ...(includeOriginalCardId
         ? { original_card_id: this._card.original_card_id }
@@ -920,6 +932,28 @@ export default class Question {
     };
 
     return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
+  }
+
+  convertParametersToFilters() {
+    if (!this.isStructured()) {
+      return this;
+    }
+    return this.parametersList()
+      .reduce(
+        (query, parameter) =>
+          query.filter(parameterToMBQLFilter(parameter, this.metadata())),
+        this.query(),
+      )
+      .question()
+      .setParameters([]);
+  }
+
+  getUrlWithParameters() {
+    const question = this.query().isEditable()
+      ? this.convertParametersToFilters()
+      : this.markDirty(); // forces use of serialized question url
+    const query = this.isNative() ? this._parameterValues : undefined;
+    return question.getUrl({ originalQuestion: this, query });
   }
 }
 

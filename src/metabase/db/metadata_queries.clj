@@ -2,9 +2,11 @@
   "Predefined MBQL queries for getting metadata about an external database."
   (:require [clojure.tools.logging :as log]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
              [util :as u]]
-            [metabase.models.table :refer [Table]]
+            [metabase.driver.util :as driver.u]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor.interface :as qpi]
             [metabase.sync.interface :as si]
             [metabase.util.schema :as su]
@@ -84,30 +86,57 @@
   (-> (field-query field {:aggregation [[:count [:field-id (u/get-id field)]]]})
       first first int))
 
-(defn db-id
-  "Return the database ID of a given entity."
-  [x]
-  (or (:db_id x)
-      (:database_id x)
-      (db/select-one-field :db_id 'Table :id (:table_id x))))
-
-
 (def max-sample-rows
   "The maximum number of values we should return when using `table-rows-sample`. This many is probably fine for
   inferring special types and what-not; we don't want to scan millions of values at any rate."
   10000)
 
-(s/defn table-rows-sample :- (s/maybe si/TableSample)
-  "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
+(def TableRowsSampleOptions
+  "Schema for `table-rows-sample` options"
+  (s/maybe {(s/optional-key :truncation-size) s/Int
+            (s/optional-key :rff)             s/Any}))
+
+(defn- text-field?
+  "Identify text fields which can accept our substring optimization.
+
+  JSON and XML fields are now marked as `:type/Structured` but in the past were marked as `:type/Text` so its not
+  enough to just check the base type."
+  [{:keys [base_type special_type]}]
+  (and (= base_type :type/Text)
+       (not (isa? special_type :type/Structured))))
+
+(defn- table-rows-sample-query
+  "Returns the mbql query to query a table for sample rows"
+  [table fields {:keys [truncation-size] :as _opts}]
+  (let [driver             (-> table table/database driver.u/database->driver)
+        text-fields        (filter text-field? fields)
+        field->expressions (when (and truncation-size (driver/supports? driver :expressions))
+                             (into {} (for [field text-fields]
+                                        [field [(str (gensym "substring"))
+                                                [:substring [:field-id (u/get-id field)] 1 truncation-size]]])))]
+    {:database   (:db_id table)
+     :type       :query
+     :query      {:source-table (u/get-id table)
+                  :expressions  (into {} (vals field->expressions))
+                  :fields       (vec (for [field fields]
+                                       (if-let [[expression-name _] (get field->expressions field)]
+                                         [:expression expression-name]
+                                         [:field-id (u/get-id field)])))
+                  :limit        max-sample-rows}
+     :middleware {:format-rows?           false
+                  :skip-results-metadata? true}}))
+
+(s/defn table-rows-sample
+  "Run a basic MBQL query to fetch a sample of rows of FIELDS belonging to a TABLE.
+
+  Options: a map of
+  `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
+  `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
+  function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
   {:style/indent 1}
-  [table :- si/TableInstance, fields :- [si/FieldInstance]]
-  (let [results ((resolve 'metabase.query-processor/process-query)
-                 {:database   (:db_id table)
-                  :type       :query
-                  :query      {:source-table (u/get-id table)
-                               :fields       (vec (for [field fields]
-                                                    [:field-id (u/get-id field)]))
-                               :limit        max-sample-rows}
-                  :middleware {:format-rows?           false
-                               :skip-results-metadata? true}})]
-    (get-in results [:data :rows])))
+  ([table :- si/TableInstance, fields :- [si/FieldInstance], rff]
+   (table-rows-sample table fields rff nil))
+  ([table :- si/TableInstance, fields :- [si/FieldInstance], rff, opts :- TableRowsSampleOptions]
+   (let [query   (table-rows-sample-query table fields opts)
+         qp      (resolve 'metabase.query-processor/process-query)]
+     (qp query {:rff rff}))))

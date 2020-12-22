@@ -199,8 +199,8 @@ export default class GridLayout extends Component {
     };
   }
 
-  renderChild(child) {
-    const l = this.getLayoutForItem(child.key);
+  renderItem = item => {
+    const l = this.getLayoutForItem(this.props.itemKey(item));
     const style = this.getStyleForLayout(l);
     return (
       <GridItem
@@ -214,11 +214,11 @@ export default class GridLayout extends Component {
         onResize={this.onResize}
         onResizeStop={this.onResizeStop}
         minSize={this.getMinSizeForLayout(l)}
-      >
-        {child}
-      </GridItem>
+        itemRenderer={this.props.itemRenderer}
+        item={item}
+      />
     );
-  }
+  };
 
   renderPlaceholder() {
     if (this.state.placeholderLayout) {
@@ -282,7 +282,7 @@ export default class GridLayout extends Component {
           marginRight: -margin / 2,
         }}
       >
-        {this.props.children.map(child => this.renderChild(child))}
+        {this.props.items.map(this.renderItem)}
         {this.renderPlaceholder()}
       </div>
     );

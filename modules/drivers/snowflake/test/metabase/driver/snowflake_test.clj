@@ -1,76 +1,115 @@
 (ns metabase.driver.snowflake-test
   (:require [clojure
+             [set :as set]
              [string :as str]
              [test :refer :all]]
+            [clojure.java.jdbc :as jdbc]
             [metabase
              [driver :as driver]
              [models :refer [Table]]
              [query-processor :as qp]
-             [test :as mt]]
+             [sync :as sync]
+             [test :as mt]
+             [util :as u]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.models.database :refer [Database]]
             [metabase.test.data
              [dataset-definitions :as dataset-defs]
              [sql :as sql.tx]]
-            [metabase.test.data.sql.ddl :as ddl]))
+            [metabase.test.data.sql.ddl :as ddl]
+            [toucan.db :as db]))
 
-;; make sure we didn't break the code that is used to generate DDL statements when we add new test datasets
 (deftest ddl-statements-test
-  (is (= "DROP DATABASE IF EXISTS \"test-data\"; CREATE DATABASE \"test-data\";"
-         (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition dataset-defs/test-data))))
-  (is (= (map
-          #(str/replace % #"\s+" " ")
-          ["DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"users\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"users\" (\"name\" TEXT, \"last_login\" TIMESTAMP_LTZ, \"password\"
-           TEXT, \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;"
-           "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"categories\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"categories\" (\"name\" TEXT, \"id\" INTEGER AUTOINCREMENT, PRIMARY
-           KEY (\"id\")) ;"
-           "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"venues\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"venues\" (\"name\" TEXT, \"latitude\" FLOAT, \"longitude\" FLOAT,
-           \"price\" INTEGER, \"category_id\" INTEGER, \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;"
-           "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"checkins\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"checkins\" (\"user_id\" INTEGER, \"venue_id\" INTEGER, \"date\"
-           DATE, \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;"
-           "ALTER TABLE \"test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"tegory_id_categories_927642602\" FOREIGN
-           KEY (\"category_id\") REFERENCES \"test-data\".\"PUBLIC\".\"categories\" (\"id\");"
-           "ALTER TABLE \"test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_-815717481\"
-           FOREIGN KEY (\"user_id\") REFERENCES \"test-data\".\"PUBLIC\".\"users\" (\"id\");"
-           "ALTER TABLE \"test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ns_venue_id_venues_-1854903846\"
-           FOREIGN KEY (\"venue_id\") REFERENCES \"test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
-         (ddl/create-db-ddl-statements :snowflake (mt/get-dataset-definition dataset-defs/test-data)))))
+  (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
+    (testing "Create DB DDL statements"
+      (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
+             (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition dataset-defs/test-data)))))
+
+    (testing "Create Table DDL statements"
+      (is (= (map
+              #(str/replace % #"\s+" " ")
+              ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                \"last_login\" TIMESTAMP_LTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
+               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                PRIMARY KEY (\"id\")) ;"
+               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                \"category_id\" INTEGER, \"latitude\" FLOAT, \"longitude\" FLOAT, \"price\" INTEGER, PRIMARY KEY (\"id\")) ;"
+               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
+                \"user_id\" INTEGER, \"venue_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
+               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
+                FOREIGN KEY (\"category_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
+               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
+                FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
+               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
+                FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
+             (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
+                                                                 (update :database-name #(str "v3_" %)))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
 ;; bug in the JDBC driver -- Cam
-#_(deftest describe-database-test
-    (mt/test-driver :snowflake
-      (testing "describe-database"
-        (let [expected {:tables
-                        #{{:name "users",      :schema "PUBLIC", :description nil}
-                          {:name "venues",     :schema "PUBLIC", :description nil}
-                          {:name "checkins",   :schema "PUBLIC", :description nil}
-                          {:name "categories", :schema "PUBLIC", :description nil}}}]
-          (testing "should work with normal details"
-            (is (= expected
-                   (driver/describe-database :snowflake (mt/db)))))
-          (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
-            (is (= expected
-                   (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
-          (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
-            (is (thrown? Exception
-                         (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
-          (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
-            (is (= expected
-                   (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
+(deftest describe-database-test
+  (mt/test-driver :snowflake
+    (testing "describe-database"
+      (let [expected {:tables
+                      #{{:name "users",      :schema "PUBLIC", :description nil}
+                        {:name "venues",     :schema "PUBLIC", :description nil}
+                        {:name "checkins",   :schema "PUBLIC", :description nil}
+                        {:name "categories", :schema "PUBLIC", :description nil}}}]
+        (testing "should work with normal details"
+          (is (= expected
+                 (driver/describe-database :snowflake (mt/db)))))
+        (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
+          (is (= expected
+                 (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
+        (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
+          (is (thrown? Exception
+                       (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
+        (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
+          (is (= expected
+                 (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
+
+(deftest describe-database-views-test
+  (mt/test-driver :snowflake
+    (testing "describe-database views"
+      (let [details (mt/dbdef->connection-details :snowflake :db {:database-name "views_test"})
+            spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        ;; create the snowflake DB
+        (jdbc/execute! spec ["DROP DATABASE IF EXISTS \"views_test\";"]
+                       {:transaction? false})
+        (jdbc/execute! spec ["CREATE DATABASE \"views_test\";"]
+                       {:transaction? false})
+        ;; create the DB object
+        (mt/with-temp Database [database {:engine :snowflake, :details (assoc details :db "views_test")}]
+          (let [sync! #(sync/sync-database! database)]
+            ;; create a view
+            (doseq [statement ["CREATE VIEW \"views_test\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";"
+                               "GRANT SELECT ON \"views_test\".\"PUBLIC\".\"example_view\" TO PUBLIC;"]]
+              (jdbc/execute! spec [statement]))
+            ;; now sync the DB
+            (sync!)
+            ;; now take a look at the Tables in the database, there should be an entry for the view
+            (is (= [{:name "example_view"}]
+                   (map (partial into {})
+                        (db/select [Table :name] :db_id (u/get-id database)))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (= {:name   "categories"
               :schema "PUBLIC"
-              :fields #{{:name          "id"
-                         :database-type "NUMBER"
-                         :base-type     :type/Number
-                         :pk?           true}
-                        {:name "name", :database-type "VARCHAR", :base-type :type/Text}}}
+              :fields #{{:name              "id"
+                         :database-type     "NUMBER"
+                         :base-type         :type/Number
+                         :pk?               true
+                         :database-position 0}
+                        {:name              "name"
+                         :database-type     "VARCHAR"
+                         :base-type         :type/Text
+                         :database-position 1}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
@@ -88,10 +127,10 @@
       (is (= true
              (can-connect? (:details (mt/db))))
           "can-connect? should return true for normal Snowflake DB details")
-      (is (= false
-             (mt/suppress-output
-               (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
-          "can-connect? should return false for Snowflake databases that don't exist (#9041)"))))
+      (is (thrown? net.snowflake.client.jdbc.SnowflakeSQLException
+                   (mt/suppress-output
+                    (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
+          "can-connect? should throw for Snowflake databases that don't exist (#9511)"))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake
@@ -124,7 +163,7 @@
                      {:database   (mt/id)
                       :type       :native
                       :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
-                                                       "FROM \"test-data\".\"PUBLIC\".\"users\" "
+                                                       "FROM \"v3_test-data\".\"PUBLIC\".\"users\" "
                                                        "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
                                                        "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
                                    :template-tags {:filter_date {:name         "filter_date"

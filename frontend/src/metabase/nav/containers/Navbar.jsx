@@ -17,15 +17,14 @@ import * as Urls from "metabase/lib/urls";
 import { color, darken, lighten } from "metabase/lib/colors";
 
 import Icon, { IconWrapper } from "metabase/components/Icon";
+import EntityMenu from "metabase/components/EntityMenu";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
-import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Modal from "metabase/components/Modal";
 
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-
 import ProfileLink from "metabase/nav/components/ProfileLink";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import { getPath, getContext, getUser } from "../selectors";
 import {
@@ -203,16 +202,6 @@ export default class Navbar extends Component {
       this._newPopover.close();
     }
   }
-
-  componentDidUpdate(prevProps) {
-    if (prevProps.location !== this.props.location) {
-      this.setState({ modal: null });
-      if (this._newPopover) {
-        this._newPopover.close();
-      }
-    }
-  }
-
   renderAdminNav() {
     return (
       // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
@@ -355,19 +344,23 @@ export default class Navbar extends Component {
             </Link>
           )}
           {hasDataAccess && (
-            <Link
-              mr={[1, 2]}
-              to="browse"
-              p={1}
-              className="flex align-center rounded transition-background"
-              data-metabase-event={`NavBar;Data Browse`}
-              hover={{
-                backgroundColor: darken(color("brand")),
-              }}
+            <IconWrapper
+              className="relative hide sm-show mr1 overflow-hidden"
+              hover={NavHover}
             >
-              <Icon name="table_spaced" size={14} />
-              <h4 className="hide md-show ml1 text-nowrap">{t`Browse Data`}</h4>
-            </Link>
+              <Link
+                to="browse"
+                className="flex align-center rounded transition-background"
+                data-metabase-event={`NavBar;Data Browse`}
+              >
+                <Icon
+                  name="table_spaced"
+                  size={14}
+                  p={"11px"}
+                  tooltip={t`Browse data`}
+                />
+              </Link>
+            </IconWrapper>
           )}
           <EntityMenu
             tooltip={t`Create`}

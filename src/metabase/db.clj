@@ -101,7 +101,7 @@
   (or (:type @connection-string-details)
       (config/config-kw :mb-db-type)))
 
-(def ^:private db-connection-details
+(def db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself)."
   (delay
@@ -116,7 +116,7 @@
            (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
            " "
            (trs "For more information, see")
-           "https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"))))
+           " https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"))))
    (or @connection-string-details
        (case (db-type)
          ;; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
@@ -248,14 +248,21 @@
    (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
      {"maxPoolSize" max-pool-size})))
 
+(defn quoting-style
+  "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
+  uppercase all identifiers (since this is H2's default behavior) whereas in the SQL QP we stick with the case we got
+  when we synced the DB."
+  [db-type]
+  (case db-type
+    :postgres :ansi
+    :h2       :h2
+    :mysql    :mysql))
+
 (defn- create-connection-pool!
   "Create a connection pool for the application DB and set it as the default Toucan connection. This is normally called
   once during start up; calling it a second time (e.g. from the REPL) will "
   [jdbc-spec]
-  (db/set-default-quoting-style! (case (db-type)
-                                   :postgres :ansi
-                                   :h2       :h2
-                                   :mysql    :mysql))
+  (db/set-default-quoting-style! (quoting-style (db-type)))
   ;; REPL usage only: kill the old pool if one exists
   (u/ignore-exceptions
     (when-let [^PoolBackedDataSource pool (:datasource (db/connection))]

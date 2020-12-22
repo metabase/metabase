@@ -16,6 +16,7 @@
              [field-values :as field-values]
              [metric :as metric]
              [metric-important-field :as metric-important-field]
+             [native-query-snippet :as native-query-snippet]
              [permissions :as permissions]
              [permissions-group :as permissions-group]
              [permissions-group-membership :as permissions-group-membership]
@@ -53,6 +54,7 @@
          field-values/keep-me
          metric/keep-me
          metric-important-field/keep-me
+         native-query-snippet/keep-me
          permissions/keep-me
          permissions-group/keep-me
          permissions-group-membership/keep-me
@@ -89,6 +91,7 @@
  [field-values FieldValues]
  [metric Metric]
  [metric-important-field MetricImportantField]
+ [native-query-snippet NativeQuerySnippet]
  [permissions Permissions]
  [permissions-group PermissionsGroup]
  [permissions-group-membership PermissionsGroupMembership]

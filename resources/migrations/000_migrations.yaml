@@ -13,6 +13,15 @@ databaseChangeLog:
       name: quote_strategy
       value: LEGACY
       dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp with time zone
+      dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp(6)
+      dbms: mysql,mariadb
+
   - changeSet:
       id: '1'
       author: agilliland
@@ -1546,6 +1555,9 @@ databaseChangeLog:
   - changeSet:
       id: 12
       author: agilliland
+      validCheckSum:
+        - 8:bedbea570e5dfc694b4cf5a8f6a4f445
+        - 8:e862a199cba5b4ce0cba713110f66cfb
       changes:
         - addColumn:
             tableName: report_card
@@ -1559,6 +1571,9 @@ databaseChangeLog:
                     foreignKeyName: fk_report_card_ref_database_id
                     deferrable: false
                     initiallyDeferred: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: table_id
                   type: int
@@ -1568,6 +1583,9 @@ databaseChangeLog:
                     foreignKeyName: fk_report_card_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: query_type
                   type: varchar(16)
@@ -3357,6 +3375,9 @@ databaseChangeLog:
   - changeSet:
       id: 49
       author: camsaul
+      validCheckSum:
+        - 8:56dcab086b21de1df002561efeac8bb6
+        - 8:4508e7d5f6d4da3c4a2de3bf5e3c5851
       changes:
         ######################################## Card public_uuid & indices ########################################
         - addColumn:
@@ -3368,6 +3389,9 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Card.'
                   constraints:
                     unique: true
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -3391,6 +3415,9 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Dashboard.'
                   constraints:
                     unique: true
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -3412,6 +3439,9 @@ databaseChangeLog:
   - changeSet:
       id: 50
       author: camsaul
+      validCheckSum:
+        - 8:388da4c48984aad647709514e4ba9204
+        - 8:98a6ab6428ea7a589507464e34ade58a
       changes:
         ######################################## new Card columns ########################################
         - addColumn:
@@ -3424,6 +3454,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: embedding_params
                   type: text
@@ -3439,6 +3472,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: embedding_params
                   type: text
@@ -3625,6 +3661,9 @@ databaseChangeLog:
   - changeSet:
       id: 55
       author: camsaul
+      validCheckSum:
+        - 8:87c4becde5fe208ba2c356128df86fba
+        - 8:11bbd199bfa57b908ea3b1a470197de9
       changes:
         - addColumn:
             tableName: report_dashboard
@@ -3636,6 +3675,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: position
                   type: integer
@@ -3798,6 +3840,9 @@ databaseChangeLog:
   - changeSet:
       id: 60
       author: camsaul
+      validCheckSum:
+        - 8:4f997b2cd3309882e900493892381f38
+        - 8:2141162a1c99a5dd95e5a67c5595e6d7
       comment: 'Added 0.26.0'
       changes:
         - addColumn:
@@ -3810,6 +3855,9 @@ databaseChangeLog:
                   defaultValue: '0 50 * * * ? *' # run at the end of every hour
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: metabase_database
+            columns:
               - column:
                   name: cache_field_values_schedule
                   type: varchar(254)
@@ -3969,22 +4017,31 @@ databaseChangeLog:
                   constraints:
                     nullable: false
   - changeSet:
-    - id: 68
-    - author: sbelak
-    - comment: 'Added 0.27.0'
-    - changes:
-      - addColumn:
+      id: 68
+      author: sbelak
+      comment: 'Added 0.27.0'
+      validCheckSum:
+        - 8:ca201aeb20c1719a46c6bcc3fc95c81d
+        - 8:b4ac06d133dfbdc6567d992c7e18c6ec
+      changes:
+        - addColumn:
             tableName: computation_job
             columns:
               - column:
                   name: context
                   type: text
+        - addColumn:
+            tableName: computation_job
+            columns:
               - column:
                   name: ended_at
                   type: DATETIME
   - changeSet:
       id: 69
       author: senior
+      validCheckSum:
+        - 8:97b7768436b9e8d695bae984020d754c
+        - 8:eadbe00e97eb53df4b3df60462f593f6
       comment: 'Added 0.27.0'
       remarks: 'Add columns to the pulse table for alerts'
       changes:
@@ -3995,10 +4052,16 @@ databaseChangeLog:
                   name: alert_condition
                   type: varchar(254)
                   remarks: 'Condition (i.e. "rows" or "goal") used as a guard for alerts'
+        - addColumn:
+            tableName: pulse
+            columns:
               - column:
                   name: alert_first_only
                   type: boolean
                   remarks: 'True if the alert should be disabled after the first notification'
+        - addColumn:
+            tableName: pulse
+            columns:
               - column:
                   name: alert_above_goal
                   type: boolean
@@ -4041,6 +4104,9 @@ databaseChangeLog:
   - changeSet:
       id: 72
       author: senior
+      validCheckSum:
+        - 8:ed16046dfa04c139f48e9068eb4faee4
+        - 8:4dc6debdf779ab9273cf2158a84bb154
       comment: 'Added 0.28.0'
       changes:
         - addColumn:
@@ -4053,6 +4119,9 @@ databaseChangeLog:
                   remarks: 'True if a CSV of the data should be included for this pulse card'
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: pulse_card
+            columns:
               - column:
                   name: include_xls
                   type: boolean
@@ -4094,9 +4163,10 @@ databaseChangeLog:
         - addColumn:
             tableName: report_card
             columns:
-              name: read_permissions
-              type: text
-              remarks: 'Permissions required to view this Card and run its query.'
+              - column:
+                  name: read_permissions
+                  type: text
+                  remarks: 'Permissions required to view this Card and run its query.'
   - changeSet:
       id: 76
       author: senior
@@ -4105,9 +4175,10 @@ databaseChangeLog:
         - addColumn:
             tableName: metabase_table
             columns:
-              name: fields_hash
-              type: text
-              remarks: 'Computed hash of all of the fields associated to this table'
+              - column:
+                  name: fields_hash
+                  type: text
+                  remarks: 'Computed hash of all of the fields associated to this table'
   - changeSet:
       id: 77
       author: senior
@@ -4116,9 +4187,75 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: login_attributes
-              type: text
-              remarks: 'JSON serialized map with attributes used for row level permissions'
+              - column:
+                  name: login_attributes
+                  type: text
+                  remarks: 'JSON serialized map with attributes used for row level permissions'
+  - changeSet:
+      id: 78
+      author: camsaul
+      comment: 'Added 0.30.0'
+      changes:
+        - createTable:
+            tableName: group_table_access_policy
+            remarks: 'Records that a given Card (Question) should automatically replace a given Table as query source for a given a Perms Group.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: int
+                  remarks: 'ID of the Permissions Group this policy affects.'
+                  constraints:
+                    nullable: false
+                    references: permissions_group(id)
+                    foreignKeyName: fk_gtap_group_id
+                    deleteCascade: true
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: 'ID of the Table that should get automatically replaced as query source for the Permissions Group.'
+                  constraints:
+                    nullable: false
+                    references: metabase_table(id)
+                    foreignKeyName: fk_gtap_table_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: 'ID of the Card (Question) to be used to replace the Table.'
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_gtap_card_id
+              - column:
+                  name: attribute_remappings
+                  type: text
+                  remarks: 'JSON-encoded map of user attribute identifier to the param name used in the Card.'
+              # TODO - do we also want to include `created_at` and `updated_at` columns here? We can add them later if needed
+        # Add an index on table_id + group_id since that is what the Query Processor is going to be looking up 99% of
+        # the time in order to get the corresponding Card ID for query-rewriting purposes
+        #
+        # TODO - do we want indexes on any of the other FKs? Are we going to be looking up all the GTAPs for a given
+        # Table or for a given Group with enough regularity we would want to put indexes on those columns?
+        - createIndex:
+            indexName: idx_gtap_table_id_group_id
+            tableName: group_table_access_policy
+            columns:
+              - column:
+                  name: table_id
+              - column:
+                  name: group_id
+        # There should only ever be one GTAP entry for a give Group + Table combination.
+        - addUniqueConstraint:
+            tableName: group_table_access_policy
+            columnNames: table_id, group_id
+            constraintName: unique_gtap_table_id_group_id
   - changeSet:
       id: 79
       author: camsaul
@@ -4127,12 +4264,13 @@ databaseChangeLog:
         - addColumn:
             tableName: report_dashboard
             columns:
-              name: collection_id
-              type: int
-              remarks: 'Optional ID of Collection this Dashboard belongs to.'
-              constraints:
-                references: collection(id)
-                foreignKeyName: fk_dashboard_collection_id
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'Optional ID of Collection this Dashboard belongs to.'
+                  constraints:
+                    references: collection(id)
+                    foreignKeyName: fk_dashboard_collection_id
               # TODO - if someone deletes a collection, what should happen to the Dashboards that are in it? Should they
               # get deleted as well? Or should collection_id be cleared, effectively putting them in the so-called
               # "root" collection?
@@ -4145,12 +4283,13 @@ databaseChangeLog:
         - addColumn:
             tableName: pulse
             columns:
-              name: collection_id
-              type: int
-              remarks: 'Options ID of Collection this Pulse belongs to.'
-              constraints:
-                references: collection(id)
-                foreignKeyName: fk_pulse_collection_id
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'Options ID of Collection this Pulse belongs to.'
+                  constraints:
+                    references: collection(id)
+                    foreignKeyName: fk_pulse_collection_id
         - createIndex:
             tableName: pulse
             indexName: idx_pulse_collection_id
@@ -4164,12 +4303,13 @@ databaseChangeLog:
         - addColumn:
             tableName: collection
             columns:
-              name: location
-              type: varchar(254)
-              remarks: 'Directory-structure path of ancestor Collections. e.g. "/1/2/" means our Parent is Collection 2, and their parent is Collection 1.'
-              constraints:
-                nullable: false
-              defaultValue: "/"
+              - column:
+                  name: location
+                  type: varchar(254)
+                  remarks: 'Directory-structure path of ancestor Collections. e.g. "/1/2/" means our Parent is Collection 2, and their parent is Collection 1.'
+                  constraints:
+                    nullable: false
+                  defaultValue: "/"
         - createIndex:
             tableName: collection
             indexName: idx_collection_location
@@ -4184,21 +4324,24 @@ databaseChangeLog:
         - addColumn:
             tableName: report_dashboard
             columns:
-              name: collection_position
-              type: smallint
-              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
         - addColumn:
             tableName: report_card
             columns:
-              name: collection_position
-              type: smallint
-              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
         - addColumn:
             tableName: pulse
             columns:
-              name: collection_position
-              type: smallint
-              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
   - changeSet:
       id: 82
       author: senior
@@ -4207,11 +4350,22 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: updated_at
-              type: datetime
-              remarks: 'When was this User last updated?'
+              - column:
+                  name: updated_at
+                  type: datetime
+                  remarks: 'When was this User last updated?'
         - sql:
             sql: update core_user set updated_at=date_joined
+# Remove the GTAP card_id constraint. When not included, will default to querying against the GTAP table_id.
+  - changeSet:
+      id: 83
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - dropNotNullConstraint:
+            tableName: group_table_access_policy
+            columnName: card_id
+            columnDataType: int
 # Switch the logic for metric/segment archiving to be more consistent with other entities in the model.
 # Similarly, add the archived flag to pulses which doesn't have one.
   - changeSet:
@@ -4242,10 +4396,11 @@ databaseChangeLog:
         - addColumn:
             tableName: pulse
             columns:
-              name: archived
-              type: boolean
-              remarks: 'Has this pulse been archived?'
-              defaultValueBoolean: false
+              - column:
+                  name: archived
+                  type: boolean
+                  remarks: 'Has this pulse been archived?'
+                  defaultValueBoolean: false
         # Before this change, metrics/segments had opposite logic, rather than marking something as archived
         # it was marked as active. Since the column is now an archived column, flip the boolean value
         #
@@ -4262,15 +4417,16 @@ databaseChangeLog:
         - addColumn:
             tableName: collection
             columns:
-              name: personal_owner_id
-              type: int
-              remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
-              constraints:
-                references: core_user(id)
-                foreignKeyName: fk_collection_personal_owner_id
-                unique: true
-                uniqueConstraintName: unique_collection_personal_owner_id
-                deleteCascade: true
+              - column:
+                  name: personal_owner_id
+                  type: int
+                  remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
+                  constraints:
+                    references: core_user(id)
+                    foreignKeyName: fk_collection_personal_owner_id
+                    unique: true
+                    uniqueConstraintName: unique_collection_personal_owner_id
+                    deleteCascade: true
         # Needed so we can efficiently look up the Collection belonging to a User, and so we can efficiently enforce the
         # unique constraint
         - createIndex:
@@ -4290,9 +4446,10 @@ databaseChangeLog:
         - addColumn:
             tableName: collection
             columns:
-              name: _slug
-              type: varchar(254)
-              remarks: 'Sluggified version of the Collection name. Used only for display purposes in URL; not unique or indexed.'
+              - column:
+                  name: _slug
+                  type: varchar(254)
+                  remarks: 'Sluggified version of the Collection name. Used only for display purposes in URL; not unique or indexed.'
         # I don't know of an easy way to copy existing values of slug to _slug with Liquibase as we create the column so
         # just have to do it this way instead
         - sql:
@@ -4337,6 +4494,21 @@ databaseChangeLog:
             tableName: raw_column
         - dropTable:
             tableName: raw_table
+  - changeSet:
+      id: 88
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: saml_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+                  remarks: 'Boolean to indicate if this user is authenticated via SAML'
 
 # The Quartz Task Scheduler can use a DB to 'cluster' tasks and make sure they are only ran by a single instance where
 # using a multi-instance Metabase setup.
@@ -4995,6 +5167,24 @@ databaseChangeLog:
               - column:
                   name: TRIGGER_GROUP
 
+  - changeSet:
+      id: 90
+      author: senior
+      comment: 'Added 0.30.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: sso_source
+                  type: varchar(254)
+                  remarks: 'String to indicate the SSO backend the user is from'
+        - sql:
+            sql: update core_user set sso_source='saml' where saml_auth=true
+        - dropColumn:
+            tableName: core_user
+            columnName: saml_auth
+
 # Forgot to get rid of the raw_table_id and raw_column_id columns when we dropped the tables they referenced in migration 87.
 
   - changeSet:
@@ -5023,9 +5213,10 @@ databaseChangeLog:
         - addColumn:
             tableName: query_execution
             columns:
-              name: database_id
-              type: integer
-              remarks: 'ID of the database this query was ran against.'
+              - column:
+                  name: database_id
+                  type: integer
+                  remarks: 'ID of the database this query was ran against.'
 
 # Start recording the actual query dictionary that's been executed
 
@@ -5037,9 +5228,10 @@ databaseChangeLog:
         - addColumn:
             tableName: query
             columns:
-              name: query
-              type: text
-              remarks: 'The actual "query dictionary" for this query.'
+              - column:
+                  name: query
+                  type: text
+                  remarks: 'The actual "query dictionary" for this query.'
 
 # Create the TaskHistory table, intended to provide debugging info on our background/quartz processes
   - changeSet:
@@ -5138,9 +5330,10 @@ databaseChangeLog:
         - addColumn:
             tableName: metabase_field
             columns:
-              name: settings
-              type: text
-              remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
+              - column:
+                  name: settings
+                  type: text
+                  remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
 #
 # Change MySQL/Maria's blob type to LONGBLOB to more closely match what H2 and PostgreSQL support for size limits
 #
@@ -5285,12 +5478,28 @@ databaseChangeLog:
         - addColumn:
             tableName: metabase_database
             columns:
-              name: auto_run_queries
-              remarks: 'Whether to automatically run queries when doing simple filtering and summarizing in the Query Builder.'
-              type: boolean
-              constraints:
-                nullable: false
-              defaultValueBoolean: true
+              - column:
+                  name: auto_run_queries
+                  remarks: 'Whether to automatically run queries when doing simple filtering and summarizing in the Query Builder.'
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  defaultValueBoolean: true
+
+
+  # To fix EE full-app embedding without compromising security. Full-app embed sessions cannot have `SameSite` attributes in their cookies.
+  - changeSet:
+      id: 104
+      author: camsaul
+      comment: 'Added EE 1.1.6/CE 0.33.0'
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: anti_csrf_token
+                  type: text
+                  remarks: 'Anti-CSRF token for full-app embed sessions.'
 
 #
 # Change `metabase_field.database_type` to `text` to accomodate more exotic field types (enums in Clickhouse, rows in Presto, ...)
@@ -5298,7 +5507,7 @@ databaseChangeLog:
   - changeSet:
       id: 106
       author: sb
-      comment: 'Added 0.34.0'
+      comment: 'Added 0.33.5'
       changes:
         - modifyDataType:
             tableName: metabase_field
@@ -6220,9 +6429,51 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: locale
-              remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
-              type: varchar(5)
+              - column:
+                  name: locale
+                  remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
+                  type: varchar(5)
+
+# Add Field `database_position` to keep the order in which fields are ordered in the DB, `custom_position` for custom
+# position; and Table `field_order` setting.
+
+  - changeSet:
+      id: 165
+      author: sb
+      comment: 'Added field_order to Table and database_position to Field'
+      validCheckSum:
+        - 8:474a357368a665d5e0701b9eb5f313f9
+        - 8:8848644da9dd9e40924ae71ac4c7c370
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_position
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: custom_position
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: field_order
+                  type: varchar(254)
+                  defaultValue: database
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: update metabase_field set database_position = id
 
 # Change field_values.updated_at and query_cache.updated_at from datetime to timestamp [with time zone] to get >
 # second resolution on MySQL.
@@ -6230,14 +6481,6 @@ databaseChangeLog:
 # query_cache.updated_at was originally converted to a timestamp in 161, but we used `timestamp` instead of
 # `timestamp(6)`. It is converted correctly here.
 
-  - property:
-      name: timestamp_type
-      value: timestamp with time zone
-      dbms: postgresql,h2
-  - property:
-      name: timestamp_type
-      value: timestamp(6)
-      dbms: mysql,mariadb
   - changeSet:
       id: 166
       author: camsaul
@@ -6251,3 +6494,1395 @@ databaseChangeLog:
             tableName: query_cache
             columnName: updated_at
             newDataType: ${timestamp_type}
+
+# Create the native query snippets table, intended to store snippets and their metadata
+  - changeSet:
+      id: 167
+      author: walterl, camsaul
+      comment: 'Added 0.36.0'
+      changes:
+        # If an older version of this Table was created locally (during dev) drop it, we have an updated definition
+        - sql:
+            sql: drop table if exists native_query_snippet
+        - createTable:
+            tableName: native_query_snippet
+            remarks: 'Query snippets (raw text) to be substituted in native queries'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(254)
+                  remarks: 'Name of the query snippet'
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: content
+                  type: text
+                  remarks: 'Raw query snippet'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_snippet_creator_id
+                    # This primarily affects tests because under normal
+                    # circumstances we don't delete Users, we just archive them
+                    deleteCascade: true
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  # it seems like defaultValueComputed actaully just ends
+                  # getting ignored anyway -- see
+                  # https://stackoverflow.com/questions/58816496/force-liquibase-to-current-timestamp-instead-of-now
+                  # We set a custom value for MySQL/MariaDB in MetabaseMySqlCreateTableSqlGenerator.java
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        # Needed to efficiently enforce the unique constraint on name and so we can lookup by name as well.
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_snippet_name
+            columns:
+              - column:
+                  name: name
+
+# Convert query execution from DATETIME to TIMESTAMP(6) so have normalize TZ
+# offset and so MySQL/MariaDB has better than second precision
+
+  - changeSet:
+      id: 168
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - modifyDataType:
+            tableName: query_execution
+            columnName: started_at
+            newDataType: ${timestamp_type}
+
+# Remove `Table.rows`, which hasn't been used for years now. Older versions of Metabase used to store the row count in
+# this column but we disabled it a long time ago for performance reasons. Now it's time to remove it entirely.
+
+  - changeSet:
+      id: 169
+      author: camsaul
+      comment: Added 0.36.0
+      objectQuotingStrategy: ${quote_strategy}
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: rows
+
+# Remove fields_hash from Table model, as we no longer skip sync steps if metadata
+# hash hasn't changed.
+
+  - changeSet:
+      id: 170
+      author: sb
+      comment: Added 0.36.0
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: fields_hash
+
+# In EE, NativeQuerySnippets have a permissions system based on "snippet folders" which are Collections under the
+# hood. However, these Collections live in a separate "namespace" -- a completely separate hierarchy of Collections.
+
+  - changeSet:
+      id: 171
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'ID of the Snippet Folder (Collection) this Snippet is in, if any'
+                  constraints:
+                    nullable: true
+                    references: collection(id)
+                    foreignKeyName: fk_snippet_collection_id
+                    deleteCascade: true
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_snippet_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: 172
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: namespace
+                  type: varchar(254)
+                  remarks: 'The namespace (hierachy) this Collection belongs to. NULL means the Collection is in the default namespace.'
+                  constraints:
+                    nullable: true
+
+# These migrations convert various FK constraints in the DB to ones with ON DELETE CASCADE so the DB can handle this
+# instead of relying on Toucan pre-delete methods to do it, which are subject to race conditions.
+
+  # activity.user_id -> core_user.id
+  - changeSet:
+      id: 173
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: activity
+            constraintName: fk_activity_ref_user_id
+
+  - changeSet:
+      id: 174
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: activity
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_activity_ref_user_id
+            onDelete: CASCADE
+
+  # card_label.card_id -> report_card.id
+  - changeSet:
+      id: 175
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: card_label
+            constraintName: fk_card_label_ref_card_id
+
+  - changeSet:
+      id: 176
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: card_label
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_card_label_ref_card_id
+            onDelete: CASCADE
+
+  # card_label.label_id -> label.id
+  - changeSet:
+      id: 177
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: card_label
+            constraintName: fk_card_label_ref_label_id
+
+  - changeSet:
+      id: 178
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: card_label
+            baseColumnNames: label_id
+            referencedTableName: label
+            referencedColumnNames: id
+            constraintName: fk_card_label_ref_label_id
+            onDelete: CASCADE
+
+  # collection.personal_owner_id -> core_user.id
+  - changeSet:
+      id: 179
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: collection
+            constraintName: fk_collection_personal_owner_id
+
+  - changeSet:
+      id: 180
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection
+            baseColumnNames: personal_owner_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_collection_personal_owner_id
+            onDelete: CASCADE
+
+  # collection_revision.user_id -> core_user.id
+  - changeSet:
+      id: 181
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: collection_revision
+            constraintName: fk_collection_revision_user_id
+
+  - changeSet:
+      id: 182
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection_revision
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_collection_revision_user_id
+            onDelete: CASCADE
+
+  # computation_job.creator_id -> core_user.id
+  - changeSet:
+      id: 183
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: computation_job
+            constraintName: fk_computation_job_ref_user_id
+
+  - changeSet:
+      id: 184
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: computation_job
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_computation_job_ref_user_id
+            onDelete: CASCADE
+
+  # computation_job_result.job_id -> computation_job.id
+  - changeSet:
+      id: 185
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: computation_job_result
+            constraintName: fk_computation_result_ref_job_id
+
+  - changeSet:
+      id: 186
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: computation_job_result
+            baseColumnNames: job_id
+            referencedTableName: computation_job
+            referencedColumnNames: id
+            constraintName: fk_computation_result_ref_job_id
+            onDelete: CASCADE
+
+  # core_session.user_id -> core_user.id
+  - changeSet:
+      id: 187
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: core_session
+            constraintName: fk_session_ref_user_id
+
+  - changeSet:
+      id: 188
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_session
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_session_ref_user_id
+            onDelete: CASCADE
+
+  # dashboardcard_series.card_id -> report_card.id
+  - changeSet:
+      id: 189
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: dashboardcard_series
+            constraintName: fk_dashboardcard_series_ref_card_id
+
+  - changeSet:
+      id: 190
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dashboardcard_series
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_dashboardcard_series_ref_card_id
+            onDelete: CASCADE
+
+  # dashboardcard_series.dashboardcard_id -> report_dashboardcard.id
+  - changeSet:
+      id: 191
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: dashboardcard_series
+            constraintName: fk_dashboardcard_series_ref_dashboardcard_id
+
+  - changeSet:
+      id: 192
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dashboardcard_series
+            baseColumnNames: dashboardcard_id
+            referencedTableName: report_dashboardcard
+            referencedColumnNames: id
+            constraintName: fk_dashboardcard_series_ref_dashboardcard_id
+            onDelete: CASCADE
+
+  # group_table_access_policy.card_id -> report_card.id
+  - changeSet:
+      id: 193
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: group_table_access_policy
+            constraintName: fk_gtap_card_id
+
+  - changeSet:
+      id: 194
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: group_table_access_policy
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_gtap_card_id
+            onDelete: CASCADE
+
+  # metabase_field.parent_id -> metabase_field.id
+  - changeSet:
+      id: 195
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field
+            constraintName: fk_field_parent_ref_field_id
+
+  - changeSet:
+      id: 196
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: parent_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_parent_ref_field_id
+            onDelete: CASCADE
+
+  # metabase_field.table_id -> metabase_table.id
+  - changeSet:
+      id: 197
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field
+            constraintName: fk_field_ref_table_id
+
+  - changeSet:
+      id: 198
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_field_ref_table_id
+            onDelete: CASCADE
+
+  # metabase_fieldvalues.field_id -> metabase_field.id
+  - changeSet:
+      id: 199
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_fieldvalues
+            constraintName: fk_fieldvalues_ref_field_id
+
+  - changeSet:
+      id: 200
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_fieldvalues
+            baseColumnNames: field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_fieldvalues_ref_field_id
+            onDelete: CASCADE
+
+  # metabase_table.db_id -> metabase_database.id
+  - changeSet:
+      id: 201
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table
+            constraintName: fk_table_ref_database_id
+
+  - changeSet:
+      id: 202
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_table_ref_database_id
+            onDelete: CASCADE
+
+  # metric.creator_id -> core_user.id
+  - changeSet:
+      id: 203
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metric
+            constraintName: fk_metric_ref_creator_id
+
+  - changeSet:
+      id: 204
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metric
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_metric_ref_creator_id
+            onDelete: CASCADE
+
+  # metric.table_id -> metabase_table.id
+  - changeSet:
+      id: 205
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metric
+            constraintName: fk_metric_ref_table_id
+
+  - changeSet:
+      id: 206
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metric
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_metric_ref_table_id
+            onDelete: CASCADE
+
+  # metric_important_field.field_id -> metabase_field.id
+  - changeSet:
+      id: 207
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metric_important_field
+            constraintName: fk_metric_important_field_metabase_field_id
+
+  - changeSet:
+      id: 208
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metric_important_field
+            baseColumnNames: field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_metric_important_field_metabase_field_id
+            onDelete: CASCADE
+
+  # metric_important_field.metric_id -> metric.id
+  - changeSet:
+      id: 209
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metric_important_field
+            constraintName: fk_metric_important_field_metric_id
+
+  - changeSet:
+      id: 210
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metric_important_field
+            baseColumnNames: metric_id
+            referencedTableName: metric
+            referencedColumnNames: id
+            constraintName: fk_metric_important_field_metric_id
+            onDelete: CASCADE
+
+  # native_query_snippet.collection_id -> collection.id
+  - changeSet:
+      id: 211
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            constraintName: fk_snippet_collection_id
+
+  - changeSet:
+      id: 212
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_snippet_collection_id
+            onDelete: SET NULL
+
+  # permissions.group_id -> permissions_group.id
+  - changeSet:
+      id: 213
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: permissions
+            constraintName: fk_permissions_group_id
+
+  - changeSet:
+      id: 214
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permissions
+            baseColumnNames: group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_permissions_group_id
+            onDelete: CASCADE
+
+  # permissions_group_membership.group_id -> permissions_group.id
+  - changeSet:
+      id: 215
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: permissions_group_membership
+            constraintName: fk_permissions_group_group_id
+
+  - changeSet:
+      id: 216
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permissions_group_membership
+            baseColumnNames: group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_permissions_group_group_id
+            onDelete: CASCADE
+
+  # permissions_group_membership.user_id -> core_user.id
+  - changeSet:
+      id: 217
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: permissions_group_membership
+            constraintName: fk_permissions_group_membership_user_id
+
+  - changeSet:
+      id: 218
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permissions_group_membership
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_permissions_group_membership_user_id
+            onDelete: CASCADE
+
+  # permissions_revision.user_id -> core_user.id
+  - changeSet:
+      id: 219
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: permissions_revision
+            constraintName: fk_permissions_revision_user_id
+
+  - changeSet:
+      id: 220
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permissions_revision
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_permissions_revision_user_id
+            onDelete: CASCADE
+
+  # pulse.collection_id -> collection.id
+  - changeSet:
+      id: 221
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse
+            constraintName: fk_pulse_collection_id
+
+  - changeSet:
+      id: 222
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_pulse_collection_id
+            onDelete: SET NULL
+
+  # pulse.creator_id -> core_user.id
+  - changeSet:
+      id: 223
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse
+            constraintName: fk_pulse_ref_creator_id
+
+  - changeSet:
+      id: 224
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_pulse_ref_creator_id
+            onDelete: CASCADE
+
+  # pulse_card.card_id -> report_card.id
+  - changeSet:
+      id: 225
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_card
+            constraintName: fk_pulse_card_ref_card_id
+
+  - changeSet:
+      id: 226
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_card
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_pulse_card_ref_card_id
+            onDelete: CASCADE
+
+  # pulse_card.pulse_id -> pulse.id
+  - changeSet:
+      id: 227
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_card
+            constraintName: fk_pulse_card_ref_pulse_id
+
+  - changeSet:
+      id: 228
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_card
+            baseColumnNames: pulse_id
+            referencedTableName: pulse
+            referencedColumnNames: id
+            constraintName: fk_pulse_card_ref_pulse_id
+            onDelete: CASCADE
+
+  # pulse_channel.pulse_id -> pulse.id
+  - changeSet:
+      id: 229
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_channel
+            constraintName: fk_pulse_channel_ref_pulse_id
+
+  - changeSet:
+      id: 230
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel
+            baseColumnNames: pulse_id
+            referencedTableName: pulse
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_ref_pulse_id
+            onDelete: CASCADE
+
+  # pulse_channel_recipient.pulse_channel_id -> pulse_channel.id
+  - changeSet:
+      id: 231
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_channel_recipient
+            constraintName: fk_pulse_channel_recipient_ref_pulse_channel_id
+
+  - changeSet:
+      id: 232
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel_recipient
+            baseColumnNames: pulse_channel_id
+            referencedTableName: pulse_channel
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_recipient_ref_pulse_channel_id
+            onDelete: CASCADE
+
+  # pulse_channel_recipient.user_id -> core_user.id
+  - changeSet:
+      id: 233
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_channel_recipient
+            constraintName: fk_pulse_channel_recipient_ref_user_id
+
+  - changeSet:
+      id: 234
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel_recipient
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_recipient_ref_user_id
+            onDelete: CASCADE
+
+  # report_card.collection_id -> collection.id
+  - changeSet:
+      id: 235
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_card_collection_id
+
+  - changeSet:
+      id: 236
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_card_collection_id
+            onDelete: SET NULL
+
+  # report_card.made_public_by_id -> core_user.id
+  - changeSet:
+      id: 237
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_card_made_public_by_id
+
+  - changeSet:
+      id: 238
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: made_public_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_card_made_public_by_id
+            onDelete: CASCADE
+
+  # report_card.creator_id -> core_user.id
+  - changeSet:
+      id: 239
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_card_ref_user_id
+
+  - changeSet:
+      id: 240
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_card_ref_user_id
+            onDelete: CASCADE
+
+  # report_card.database_id -> metabase_database.id
+  - changeSet:
+      id: 241
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_ref_database_id
+
+  - changeSet:
+      id: 242
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_report_card_ref_database_id
+            onDelete: CASCADE
+
+  # report_card.table_id -> metabase_table.id
+  - changeSet:
+      id: 243
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_ref_table_id
+
+  - changeSet:
+      id: 244
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_report_card_ref_table_id
+            onDelete: CASCADE
+
+  # report_cardfavorite.card_id -> report_card.id
+  - changeSet:
+      id: 245
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_cardfavorite
+            constraintName: fk_cardfavorite_ref_card_id
+
+  - changeSet:
+      id: 246
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_cardfavorite
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_cardfavorite_ref_card_id
+            onDelete: CASCADE
+
+  # report_cardfavorite.owner_id -> core_user.id
+  - changeSet:
+      id: 247
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_cardfavorite
+            constraintName: fk_cardfavorite_ref_user_id
+
+  - changeSet:
+      id: 248
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_cardfavorite
+            baseColumnNames: owner_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_cardfavorite_ref_user_id
+            onDelete: CASCADE
+
+  # report_dashboard.collection_id -> collection.id
+  - changeSet:
+      id: 249
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboard
+            constraintName: fk_dashboard_collection_id
+
+  - changeSet:
+      id: 250
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_dashboard_collection_id
+            onDelete: SET NULL
+
+  # report_dashboard.made_public_by_id -> core_user.id
+  - changeSet:
+      id: 251
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboard
+            constraintName: fk_dashboard_made_public_by_id
+
+  - changeSet:
+      id: 252
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: made_public_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_dashboard_made_public_by_id
+            onDelete: CASCADE
+
+  # report_dashboard.creator_id -> core_user.id
+  - changeSet:
+      id: 253
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboard
+            constraintName: fk_dashboard_ref_user_id
+
+  - changeSet:
+      id: 254
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_dashboard_ref_user_id
+            onDelete: CASCADE
+
+  # report_dashboardcard.card_id -> report_card.id
+  - changeSet:
+      id: 255
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            constraintName: fk_dashboardcard_ref_card_id
+
+  - changeSet:
+      id: 256
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_dashboardcard_ref_card_id
+            onDelete: CASCADE
+
+  # report_dashboardcard.dashboard_id -> report_dashboard.id
+  - changeSet:
+      id: 257
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            constraintName: fk_dashboardcard_ref_dashboard_id
+
+  - changeSet:
+      id: 258
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_dashboardcard_ref_dashboard_id
+            onDelete: CASCADE
+
+  # revision.user_id -> core_user.id
+  - changeSet:
+      id: 259
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: revision
+            constraintName: fk_revision_ref_user_id
+
+  - changeSet:
+      id: 260
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: revision
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_revision_ref_user_id
+            onDelete: CASCADE
+
+  # segment.creator_id -> core_user.id
+  - changeSet:
+      id: 261
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: segment
+            constraintName: fk_segment_ref_creator_id
+
+  - changeSet:
+      id: 262
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: segment
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_segment_ref_creator_id
+            onDelete: CASCADE
+
+  # segment.table_id -> metabase_table.id
+  - changeSet:
+      id: 263
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: segment
+            constraintName: fk_segment_ref_table_id
+
+  - changeSet:
+      id: 264
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: segment
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_segment_ref_table_id
+            onDelete: CASCADE
+
+  # view_log.user_id -> core_user.id
+  - changeSet:
+      id: 265
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: view_log
+            constraintName: fk_view_log_ref_user_id
+
+  - changeSet:
+      id: 266
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: view_log
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_view_log_ref_user_id
+            onDelete: CASCADE
+
+# changesets 268-272 allow for handling user account emails in lowercase (GH issue 3047)
+  - changeSet:
+      id: 268
+      author: rlotun
+      comment: Added 0.37.0  # create index on lower(email), for performance reasons (not availble on h2 and only on more recent versions of mysql)
+      failOnError: false
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - dbms:
+                type: postgresql,mysql,mariadb
+      changes:
+        - createIndex:
+            columns:
+             - column:
+                 name: lower(email)
+                 type: varchar(254)
+            tableName: core_user
+            indexName: idx_lower_email
+  - changeSet:
+      id: 269
+      author: rlotun
+      comment: Added 0.37.0  # set email values to lower(email) but do so defensively and in a way that works on postgres and mysql - skip over those that would introduce duplicates (e.g. Reza@email.com and reza@email.com)
+      changes:
+        - sql :
+            sql : UPDATE core_user SET email = lower(email) WHERE lower(email) NOT IN (SELECT * FROM (SELECT lower(email) FROM core_user GROUP BY lower(email) HAVING count(email) > 1) as e)
+  - changeSet:
+      id: 270
+      author: rlotun
+      comment: Added 0.37.0 # try to install citext extension on posgres (user requires privileges on postgres)
+      failOnError: false
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - dbms:
+                type: postgresql
+      changes:
+        - sql :
+            sql : CREATE EXTENSION IF NOT EXISTS citext
+  - changeSet:
+      id: 271
+      author: rlotun
+      comment: Added 0.37.0 # try to convert email column to citext on postgres, if citext extension installed
+      failOnError: false
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - dbms:
+                type: postgresql
+            - sqlCheck:
+                expectedResult: 1
+                sql: SELECT count(*) FROM pg_extension WHERE extname = 'citext'
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: email
+            newDataType: citext
+  - changeSet:
+      id: 272
+      author: rlotun
+      comment: Added 0.37.0 # for H2 convert column to VARCHAR_IGNORECASE
+      failOnError: false
+      preConditions:
+         - or:
+             - dbms:
+                   type: h2
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: email
+            newDataType: varchar_ignorecase(254)
+
+  - changeSet:
+      id: 273
+      author: camsaul
+      comment: Added 0.37.1
+      changes:
+        - addDefaultValue:
+            tableName: core_user
+            columnName: is_superuser
+            columnDataType: boolean
+            defaultValueBoolean: false
+
+  - changeSet:
+      id: 274
+      author: camsaul
+      comment: Added 0.37.1
+      changes:
+        - addDefaultValue:
+            tableName: core_user
+            columnName: is_active
+            columnDataType: boolean
+            defaultValueBoolean: true
+
+ # Add refingerprint to database to mark if fingerprinting or
+ # not. Nullable in first pass so can be opt in and then in a
+ # subsequent pass can be globally turned on where null, respecting
+ # people who turned it on and then off.
+
+  - changeSet:
+      id: 275
+      author: dpsutton
+      comment: 'Added 0.38.0 refingerprint to Database'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: refingerprint
+                  type: boolean
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: 276
+      author: robroland
+      comment: Added 0.38.0 - Dashboard subscriptions
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                name: dashboard_card_id
+                type: int
+                constraints:
+                  nullable: true
+                  references: report_dashboardcard(id)
+                  foreignKeyName: fk_pulse_card_ref_pulse_card_id
+                  deferrable: false
+                  initiallyDeferred: false
+            tableName: pulse_card
+
+  - changeSet:
+      id: 277
+      author: tsmacdonald
+      comment: Added 0.38.0 - Dashboard subscriptions
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_card
+            constraintName: fk_pulse_card_ref_pulse_card_id
+
+  - changeSet:
+      id: 278
+      author: tsmacdonald
+      comment: Added 0.38.0 - Dashboard subscrptions
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_card
+            baseColumnNames: dashboard_card_id
+            referencedTableName: report_dashboardcard
+            referencedColumnNames: id
+            constraintName: fk_pulse_card_ref_pulse_card_id
+            onDelete: CASCADE

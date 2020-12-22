@@ -10,7 +10,6 @@ import { setIn } from "icepick";
 jest.mock("metabase/lib/analytics");
 jest.mock("metabase/containers/CollectionSelect");
 
-import { GroupsPermissions } from "metabase/meta/types/Permissions";
 import { normalizedMetadata } from "./selectors.unit.spec.fixtures";
 import {
   getTablesPermissionsGrid,
@@ -21,7 +20,7 @@ import {
 
 /******** INITIAL TEST STATE ********/
 
-const initialPermissions: GroupsPermissions = {
+const initialPermissions = {
   1: {
     // Sample dataset
     1: {

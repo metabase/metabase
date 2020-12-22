@@ -6,11 +6,8 @@ import { ModalFooter } from "metabase/components/ModalContent";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import Button from "metabase/components/Button";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
-import GroupSummary from "metabase/admin/people/components/GroupSummary";
-import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { t } from "ttag";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isSpecialGroup } from "metabase/lib/groups";
@@ -303,35 +300,13 @@ class MappingGroupSelect extends React.Component {
       return <LoadingSpinner />;
     }
 
-    const selected = selectedGroups.reduce(
-      (g, id) => ({ ...g, [id]: true }),
-      {},
-    );
-
     return (
-      <PopoverWithTrigger
-        ref="popover"
-        triggerElement={
-          <div className="flex align-center">
-            <span className="mr1 text-medium">
-              <GroupSummary groups={groups} selectedGroups={selected} />
-            </span>
-            <Icon className="text-light" name="chevrondown" size={10} />
-          </div>
-        }
-        triggerClasses="AdminSelectBorderless py1"
-        sizeToFit
-      >
-        {groups.length > 0 ? (
-          <GroupSelect
-            groups={groups}
-            selectedGroups={selected}
-            onGroupChange={onGroupChange}
-          />
-        ) : (
-          <span className="p1">{t`No mappable groups`}</span>
-        )}
-      </PopoverWithTrigger>
+      <GroupSelect
+        groups={groups}
+        selectedGroupIds={selectedGroups}
+        onGroupChange={onGroupChange}
+        emptyListMessage={t`No mappable groups`}
+      />
     );
   }
 }

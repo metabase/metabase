@@ -13,13 +13,18 @@
 .*/node_modules/update-notifier/.*
 .*/node_modules/boxen/.*
 .*/node_modules/libnpx/.*
-.*/node_modules/@babel/standalone/.*
+.*/node_modules/@babel/.*
 .*/node_modules/@testing-library/jest-dom/.*
 .*/node_modules/.*/node_modules/chalk/.*
 .*/node_modules/react-draggable/lib/.*
+.*/node_modules/redux-form/es/.*
+.*/node_modules/annotate-react-dom/src/annotate-react-dom.js
+.*/node_modules/csstype/.*
+.*/node_modules/gensync/.*
 
 [include]
 .*/frontend/.*
+.*/enterprise/frontend/.*
 
 [libs]
 ./frontend/interfaces
@@ -31,9 +36,11 @@ esproposal.decorators=ignore
 esproposal.class_static_fields=enable
 esproposal.class_instance_fields=enable
 suppress_comment= \\(.\\|\n\\)*\\$FlowFixMe
+module.name_mapper='^metabase-enterprise\/\(.*\)$' -> '<PROJECT_ROOT>/enterprise/frontend/src/metabase-enterprise/\1'
 module.name_mapper='.*\(\.css\)' -> 'CSSModule'
 module.name_mapper='^ace/\(.*\)$' -> '<PROJECT_ROOT>/node_modules/ace-builds/src-min-noconflict/\1'
 module.name_mapper='^assets\/\(.*\)$' -> '<PROJECT_ROOT>/resources/frontend_client/app/assets/\1'
+module.name_mapper='^metabase-types\/\(.*\)$' -> '<PROJECT_ROOT>/frontend/src/metabase-types/\1'
 module.system=haste
 strip_root=true
 module.file_ext=.js

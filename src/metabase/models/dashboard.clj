@@ -18,10 +18,15 @@
              [interface :as i]
              [params :as params]
              [permissions :as perms]
+             [pulse :refer [Pulse]]
+             [pulse-card :as pulse-card :refer [PulseCard]]
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.query-processor.async :as qp.async]
-            [metabase.util.i18n :as ui18n]
+            [metabase.util
+             [i18n :as ui18n :refer [tru]]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -49,15 +54,67 @@
 
 (models/defmodel Dashboard :report_dashboard)
 
+(defn- assert-valid-parameters [{:keys [parameters]}]
+  (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
+    (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
+                    {:parameters parameters}))))
 
 (defn- pre-delete [dashboard]
-  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
-  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
+  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard)))
 
 (defn- pre-insert [dashboard]
-  (let [defaults {:parameters []}]
-    (merge defaults dashboard)))
+  (let [defaults  {:parameters []}
+        dashboard (merge defaults dashboard)]
+    (u/prog1 dashboard
+      (assert-valid-parameters dashboard)
+      (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
+(defn- pre-update [dashboard]
+  (u/prog1 dashboard
+    (assert-valid-parameters dashboard)
+    (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
+
+(defn- post-update
+  "Updates the pulses' names and syncs the PulseCards"
+  [dashboard]
+  (let [dashboard-id (:id dashboard)
+        affected (db/query
+                  {:select    [[:p.id :pulse_id] [:pc.card_id :card_id]]
+                   :modifiers [:distinct]
+                   :from      [[Dashboard :d]]
+                   :join      [[DashboardCard :dc] [:= :dc.dashboard_id :d.id]
+                               [PulseCard :pc] [:= :pc.dashboard_card_id :dc.id]
+                               [Pulse :p] [:= :p.id :pc.pulse_id]]
+                   :where     [:= :d.id dashboard-id]})]
+    (when-let [pulse-ids (seq (distinct (map :pulse_id affected)))]
+      (let [correct-card-ids     (->> (db/query {:select [:dc.card_id]
+                                                 :modifiers [:distinct]
+                                                 :from [[DashboardCard :dc]]
+                                                 :where [:and
+                                                         [:= :dc.dashboard_id dashboard-id]
+                                                         [:not= :dc.card_id nil]]})
+                                      (map :card_id)
+                                      set)
+            stale-card-ids       (->> affected
+                                      (keep :card_id)
+                                      set)
+            cards-to-add         (set/difference correct-card-ids stale-card-ids)
+            card-id->dashcard-id (when (seq cards-to-add)
+                                   (db/select-field->id :card_id DashboardCard :dashboard_id dashboard-id,
+                                                        :card_id [:in cards-to-add]))
+            positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
+                                                      (range)))
+            new-pulse-cards      (for [pulse-id                         pulse-ids,
+                                       [[card-id dashcard-id] position] (map vector card-id->dashcard-id
+                                                                                    (positions-for pulse-id))]
+                                   {:pulse_id          pulse-id
+                                    :card_id           card-id
+                                    :dashboard_card_id dashcard-id
+                                    :position          position})]
+        (db/transaction
+          (db/update-where! Pulse {:id [:in pulse-ids]}
+            :name (:name dashboard))
+          (pulse-card/bulk-create! new-pulse-cards))))))
 
 (u/strict-extend (class Dashboard)
   models/IModel
@@ -66,6 +123,8 @@
           :types       (constantly {:parameters :json, :embedding_params :json})
           :pre-delete  pre-delete
           :pre-insert  pre-insert
+          :pre-update  pre-update
+          :post-update post-update
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
   ;; You can read/write a Dashboard if you can read/write its parent Collection

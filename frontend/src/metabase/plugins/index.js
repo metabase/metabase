@@ -38,25 +38,14 @@ export const PLUGIN_AUTH_PROVIDERS = [];
 // Only show the password tab in account settings if these functions all return true
 export const PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS = [];
 
-export const PLUGIN_DRILLS = [];
-// additional settings that are spread into chart settings
-export const PLUGIN_CHART_SETTINGS = {};
-
-// List of functions that return columns settings for a column.
-// They override existing column settings for that column.
-export const PLUGIN_TABLE_COLUMN_SETTINGS = [];
-
-// These functions are used in the formatting code. They're not automatically
-// connected anywhere. Instead, they should be called directly with
-// `PLUGIN_FORMATTING_HELPERS.name(value, options)`.
-export const PLUGIN_FORMATTING_HELPERS = {
-  url: (value, options) => String(value),
-  urlText: (value, options) =>
-    options.link_text || PLUGIN_FORMATTING_HELPERS.url(value, options),
-};
-
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   getShowAuthScene: (state, props) => true,
   getLogoBackgroundClass: (state, props) => "bg-white",
 };
+
+// snippet sidebar
+export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
+export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
+export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
+export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];

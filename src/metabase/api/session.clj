@@ -24,13 +24,15 @@
              [schema :as su]]
             [schema.core :as s]
             [throttle.core :as throttle]
-            [toucan.db :as db])
+            [toucan
+             [db :as db]
+             [models :as t.models]])
   (:import com.unboundid.util.LDAPSDKException
            java.util.UUID))
 
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
-  `:sso` (for other login types). Returns the newly generated session `UUID`."
+  `:sso` (for other login types). Returns the newly generated Session."
   {:arglists '(^java.util.UUID [session-type user])}
   (fn [session-type & _]
     session-type))
@@ -40,19 +42,25 @@
    :last_login s/Any
    s/Keyword   s/Any})
 
-(s/defmethod create-session! :sso
+(s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_, user :- CreateSessionUserInfo]
-  (u/prog1 (UUID/randomUUID)
-    (db/insert! Session
-      :id      (str <>)
-      :user_id (u/get-id user))
+  (let [session-uuid (UUID/randomUUID)
+        session      (or
+                      (db/insert! Session
+                        :id      (str session-uuid)
+                        :user_id (u/get-id user))
+                      ;; HACK !!! For some reason `db/insert~ doesn't seem to be working correctly for Session.
+                      (t.models/post-insert (Session (str session-uuid))))]
+    (assert (map? session))
     (events/publish-event! :user-login
-      {:user_id (:id user), :session_id (str <>), :first_login (nil? (:last_login user))})))
+      {:user_id (u/get-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
+    (assoc session :id session-uuid)))
 
-(s/defmethod create-session! :password
+(s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
   [session-type, user :- CreateSessionUserInfo]
-  ;; this is actually the same as `create-session!` for `:sso` for CE. Resist the urge to refactor this multimethod
-  ;; out impl is a little different in EE.
+  ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
+  (when-not (public-settings/enable-password-login)
+    (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
   ((get-method create-session! :sso) session-type user))
 
 
@@ -66,7 +74,10 @@
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
-(s/defn ^:private ldap-login :- (s/maybe UUID)
+(def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
+(def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
+
+(s/defn ^:private ldap-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password]
@@ -84,10 +95,10 @@
       (catch LDAPSDKException e
         (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
 
-(s/defn ^:private email-login :- (s/maybe UUID)
+(s/defn ^:private email-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password]
-  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
+  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :%lower.email (u/lower-case-en username), :is_active true)]
     (when (pass/verify-password password (:password_salt user) (:password user))
       (create-session! :password user))))
 
@@ -99,7 +110,7 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(s/defn ^:private login :- UUID
+(s/defn ^:private login :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
   [username :- su/NonBlankString, password :- su/NonBlankString]
@@ -119,13 +130,6 @@
   (or (some->> (public-settings/source-address-header) (get headers))
       remote-addr))
 
-(defn- do-login
-  "Logs user in and creates an appropriate Ring response containing the newly created session's ID."
-  [username password request]
-  (let [session-id (login username password)
-        response   {:id session-id}]
-    (mw.session/set-session-cookie request response session-id)))
-
 (defn- do-http-400-on-error [f]
   (try
     (f)
@@ -143,13 +147,17 @@
   [:as {{:keys [username password]} :body, :as request}]
   {username su/NonBlankString
    password su/NonBlankString}
-  (let [request-source (source-address request)]
+  (let [request-source (source-address request)
+        do-login (fn []
+                   (let [{session-uuid :id, :as session} (login username password)
+                         response                        {:id (str session-uuid)}]
+                     (mw.session/set-session-cookie request response session)))]
     (if throttling-disabled?
-      (do-login username password request)
+      (do-login)
       (http-400-on-error
         (throttle/with-throttling [(login-throttlers :ip-address) request-source
                                    (login-throttlers :username)   username]
-          (do-login username password request))))))
+          (do-login))))))
 
 
 (api/defendpoint DELETE "/"
@@ -179,7 +187,7 @@
     (throttle-check (forgot-password-throttlers :ip-address) source-address)
     (throttle-check (forgot-password-throttlers :email)      email)
     (when-let [{user-id :id, google-auth? :google_auth} (db/select-one [User :id :google_auth]
-                                                                       :email email, :is_active true)]
+                                                                       :%lower.email (u/lower-case-en email), :is_active true)]
       (let [reset-token        (user/set-password-reset-token! user-id)
             password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
         (email/send-password-reset-email! email google-auth? server-name password-reset-url)
@@ -219,12 +227,10 @@
         (when-not (:last_login user)
           (email/send-user-joined-admin-notification-email! (User user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
-        (let [session-id (create-session! :password user)]
-          (mw.session/set-session-cookie
-           request
-           {:success    true
-            :session_id (str session-id)}
-           session-id)))
+        (let [{session-uuid :id, :as session} (create-session! :password user)
+              response                        {:success    true
+                                               :session_id (str session-uuid)}]
+          (mw.session/set-session-cookie request response session)))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 (api/defendpoint GET "/password_reset_token_valid"
@@ -306,21 +312,29 @@
   ;; things hairy and only enforce those for non-Google Auth users
   (user/create-new-google-auth-user! new-user))
 
-(s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe UUID)
+(s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
   [first-name last-name email]
-  (when-let [user (or (db/select-one [User :id :last_login] :email email)
+  (when-let [user (or (db/select-one [User :id :last_login] :%lower.email (u/lower-case-en email))
                       (google-auth-create-new-user! {:first_name first-name
                                                      :last_name  last-name
                                                      :email      email}))]
     (create-session! :sso user)))
 
-(defn- do-google-auth [{{:keys [token]} :body :as request}]
+(defn do-google-auth
+  "Call to Google to perform an authentication"
+  [{{:keys [token]} :body, :as request}]
   (let [token-info-response                    (http/post (format google-auth-token-info-url token))
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
     (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
-    (let [session-id (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))
-          response   {:id session-id}]
-      (mw.session/set-session-cookie request response session-id))))
+    (let [{session-uuid :id, :as session} (api/check-500
+                                           (google-auth-fetch-or-create-user! given_name family_name email))
+          response                        {:id (str session-uuid)}
+          user                            (db/select-one [User :id :is_active], :email email)]
+      (if (and user (:is_active user))
+        (mw.session/set-session-cookie request response session)
+        (throw (ex-info (str disabled-account-message)
+                        {:status-code 400
+                         :errors      {:account disabled-account-snippet}}))))))
 
 (api/defendpoint POST "/google_auth"
   "Login with Google Auth."

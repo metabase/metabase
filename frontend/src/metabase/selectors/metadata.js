@@ -18,10 +18,6 @@ import _ from "underscore";
 import { shallowEqual } from "recompose";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
-import {
-  getFilterOperators,
-  getAggregationOperatorsWithFields,
-} from "metabase/lib/schema_metadata";
 import { getIn } from "icepick";
 
 // fully nomalized, raw "entities"
@@ -149,20 +145,8 @@ export const getMetadata = createSelector(
       }
     });
 
-    hydrate(meta.fields, "filter_operators", f =>
-      getFilterOperators(f, f.table),
-    );
-    hydrate(meta.tables, "aggregation_operators", t =>
-      getAggregationOperatorsWithFields(t),
-    );
-
     hydrate(meta.fields, "values", f => getFieldValues(f));
     hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
-
-    hydrateLookup(meta.databases, "tables", "id");
-    hydrateLookup(meta.tables, "fields", "id");
-    hydrateLookup(meta.fields, "filter_operators", "name");
-    hydrateLookup(meta.tables, "aggregation_operators", "short");
 
     return meta;
   },
@@ -308,17 +292,6 @@ function hydrateList(objects, property, targetObjects) {
       .map(id => targetObjects[id])
       .filter(o => o != null),
   );
-}
-
-// creates a *_lookup object for a previously hydrated list
-function hydrateLookup(objects, property, idProperty = "id") {
-  hydrate(objects, property + "_lookup", object => {
-    const lookup = {};
-    for (const item of object[property] || []) {
-      lookup[item[idProperty]] = item;
-    }
-    return lookup;
-  });
 }
 
 function filterValues(obj, pred) {

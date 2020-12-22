@@ -4,6 +4,7 @@ import {
   getDatas,
   getXValues,
   parseXValue,
+  syntheticStackedBarsForWaterfallChart,
 } from "metabase/visualizations/lib/renderer_utils";
 
 describe("getXValues", () => {
@@ -208,5 +209,148 @@ describe("getDatas", () => {
     const warn = () => {};
     const [[[m]]] = getDatas({ settings, series }, warn);
     expect(moment.isMoment(m)).toBe(true);
+  });
+});
+
+describe("syntheticStackedBarsForWaterfallChart", () => {
+  const cols = [
+    {
+      name: "PRODUCT",
+      base_type: "type/Text",
+    },
+    {
+      name: "PROFIT",
+      base_type: "type/Integer",
+    },
+  ];
+
+  function prepareDatas(...rows) {
+    const data = rows.map((row, rowIndex) => {
+      const seriesIndex = 0;
+      const point = row.slice();
+      point._origin = { cols, row, rowIndex, seriesIndex };
+      return point;
+    });
+    return Array.of(data);
+  }
+
+  it("should create the stacked bars for 1 row", () => {
+    const datas = prepareDatas(["Apples", 10]);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
+    expect(typeof stackedBarsDatas.length).toEqual("number");
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
+      stacked.map(e => e[1]),
+    );
+    expect(beams).toEqual([0, 0]);
+    expect(negatives).toEqual([0, 0]);
+    expect(positives).toEqual([10, 0]);
+    expect(total).toEqual([0, 10]);
+  });
+
+  it("should create the stacked bars for 2 rows", () => {
+    const datas = prepareDatas(["Apples", 10], ["Bananas", 4]);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
+    expect(typeof stackedBarsDatas.length).toEqual("number");
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
+      stacked.map(e => e[1]),
+    );
+    expect(beams).toEqual([0, 10, 0]);
+    expect(negatives).toEqual([0, 0, 0]);
+    expect(positives).toEqual([10, 4, 0]);
+    expect(total).toEqual([0, 0, 14]);
+  });
+
+  it("should create the stacked bars for 3 rows", () => {
+    const datas = prepareDatas(["Apples", 10], ["Bananas", 4], ["Oranges", 5]);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
+    expect(typeof stackedBarsDatas.length).toEqual("number");
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
+      stacked.map(e => e[1]),
+    );
+    expect(beams).toEqual([0, 10, 14, 0]);
+    expect(negatives).toEqual([0, 0, 0, 0]);
+    expect(positives).toEqual([10, 4, 5, 0]);
+    expect(total).toEqual([0, 0, 0, 19]);
+  });
+
+  it("should work with all-negative values", () => {
+    const datas = prepareDatas(["X", -14], ["Y", -3], ["Z", -10]);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
+    expect(typeof stackedBarsDatas.length).toEqual("number");
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
+      stacked.map(e => e[1]),
+    );
+    expect(beams).toEqual([0, -14, -17, 0]);
+    expect(negatives).toEqual([-14, -3, -10, 0]);
+    expect(positives).toEqual([0, 0, 0, 0]);
+    expect(total).toEqual([0, 0, 0, -27]);
+  });
+
+  it("should work with mixed (positives & negatives) values", () => {
+    const datas = prepareDatas(["P", -2], ["Q", 24], ["R", -5]);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
+    expect(typeof stackedBarsDatas.length).toEqual("number");
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
+      stacked.map(e => e[1]),
+    );
+    expect(beams).toEqual([0, -2, 22, 0]);
+    expect(negatives).toEqual([-2, 0, -5, 0]);
+    expect(positives).toEqual([0, 24, 0, 0]);
+    expect(total).toEqual([0, 0, 0, 17]);
+  });
+
+  it("should work even when the total bar is not meant to shown", () => {
+    const datas = prepareDatas(["A", 3], ["B", 5], ["C", 7]);
+    const settings = {
+      "waterfall.show_total": false,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
+    expect(typeof stackedBarsDatas.length).toEqual("number");
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
+      stacked.map(e => e[1]),
+    );
+    expect(beams).toEqual([0, 3, 8]);
+    expect(negatives).toEqual([0, 0, 0]);
+    expect(positives).toEqual([3, 5, 7]);
+    expect(total).toEqual([0, 0, 0]);
   });
 });

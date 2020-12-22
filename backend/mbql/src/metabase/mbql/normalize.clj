@@ -225,11 +225,13 @@
       alias
       (update :alias mbql.u/qualified-name))))
 
-(defn- normalize-source-metadata [metadata]
-  (-> metadata
-      (update :base_type    keyword)
-      (update :special_type keyword)
-      (update :fingerprint  walk/keywordize-keys)))
+(defn normalize-source-metadata
+  "Normalize source/results metadata for a single column."
+  [metadata]
+  {:pre [(map? metadata)]}
+  (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :special_type :visibility_type :source :unit])
+      (m/update-existing :field_ref normalize-tokens)
+      (m/update-existing :fingerprint walk/keywordize-keys)))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
@@ -272,35 +274,40 @@
                      (vec path))
         special-fn (when (seq path)
                      (get-in path->special-token-normalization-fn path))]
-    (cond
-      (fn? special-fn)
-      (special-fn x)
+    (try
+      (cond
+        (fn? special-fn)
+        (special-fn x)
 
-      ;; Skip record types because this query is an `expanded` query, which is not going to play nice here. Hopefully we
-      ;; can remove expanded queries entirely soon.
-      (record? x)
-      x
+        ;; Skip record types because this query is an `expanded` query, which is not going to play nice here. Hopefully we
+        ;; can remove expanded queries entirely soon.
+        (record? x)
+        x
 
-      ;; maps should just get the keys normalized and then recursively call normalize-tokens on the values.
-      ;; Each recursive call appends to the keypath above so we can handle top-level clauses in a special way if needed
-      (map? x)
-      (into {} (for [[k v] x
-                     :let  [k (mbql.u/normalize-token k)]]
-                 [k (normalize-tokens v (conj (vec path) k))]))
+        ;; maps should just get the keys normalized and then recursively call normalize-tokens on the values.
+        ;; Each recursive call appends to the keypath above so we can handle top-level clauses in a special way if needed
+        (map? x)
+        (into {} (for [[k v] x
+                       :let  [k (mbql.u/normalize-token k)]]
+                   [k (normalize-tokens v (conj (vec path) k))]))
 
-      ;; MBQL clauses handled above because of special cases
-      (mbql-clause? x)
-      (normalize-mbql-clause-tokens x)
+        ;; MBQL clauses handled above because of special cases
+        (mbql-clause? x)
+        (normalize-mbql-clause-tokens x)
 
-      ;; for non-mbql sequential collections (probably something like the subclauses of :order-by or something like
-      ;; that) recurse on all the args.
-      ;;
-      ;; To signify that we're recursing into a sequential collection, this appends `::sequence` to path
-      (sequential? x)
-      (mapv #(normalize-tokens % (conj (vec path) ::sequence)) x)
+        ;; for non-mbql sequential collections (probably something like the subclauses of :order-by or something like
+        ;; that) recurse on all the args.
+        ;;
+        ;; To signify that we're recursing into a sequential collection, this appends `::sequence` to path
+        (sequential? x)
+        (mapv #(normalize-tokens % (conj (vec path) ::sequence)) x)
 
-      :else
-      x)))
+        :else
+        x)
+      (catch Throwable e
+        (throw (ex-info (tru "Error normalizing form.")
+                        {:form x, :path path}
+                        e))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -344,7 +351,9 @@
     ;; all the other filter types have an implict field ID for the first arg
     ;; (e.g. [:= 10 20] gets canonicalized to [:= [:field-id 10] 20]
     [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain
-                           := :!= :< :<= :> :>= :is-null :not-null :between :inside :time-interval}) arg & args]
+                           := :!= :< :<= :> :>=
+                           :is-empty :not-empty :is-null :not-null
+                           :between :inside :time-interval}) arg & args]
     (apply vector filter-name (if (mbql-clause? arg)
                                 (canonicalize-expression-subclause arg)
                                 ;; Support legacy expressions like [:> 1 25] where 1 is a field id.
@@ -548,10 +557,15 @@
   "Canonicalize a query [MBQL query], rewriting the query as if you perfectly followed the recommended style guides for
   writing MBQL. Does things like removes unneeded and empty clauses, converts older MBQL '95 syntax to MBQL '98, etc."
   [{:keys [query parameters source-metadata], :as outer-query}]
-  (cond-> outer-query
-    source-metadata move-source-metadata-to-mbql-query
-    query           (update :query canonicalize-inner-mbql-query)
-    parameters      (update :parameters (partial mapv canonicalize-mbql-clauses))))
+  (try
+    (cond-> outer-query
+      source-metadata move-source-metadata-to-mbql-query
+      query           (update :query canonicalize-inner-mbql-query)
+      parameters      (update :parameters (partial mapv canonicalize-mbql-clauses)))
+    (catch Throwable e
+      (throw (ex-info (tru "Error canonicalizing query")
+                      {:query query}
+                      e)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -587,8 +601,12 @@
   "Perform transformations that operate on the query as a whole, making sure the structure as a whole is logical and
   consistent."
   [query]
-  (-> query
-      remove-breakout-fields-from-fields))
+  (try
+    (remove-breakout-fields-from-fields query)
+    (catch Throwable e
+      (throw (ex-info (tru "Error performing whole query transformations")
+                      {:query query}
+                      e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
@@ -632,14 +650,20 @@
    (remove-empty-clauses query []))
 
   ([x path]
-   (let [special-fn (when (seq path)
-                      (get-in path->special-remove-empty-clauses-fn path))]
-     (cond
-       (fn? special-fn) (special-fn x)
-       (record? x)      x
-       (map? x)         (remove-empty-clauses-in-map x path)
-       (sequential? x)  (remove-empty-clauses-in-sequence x path)
-       :else            x))))
+   (try
+     (let [special-fn (when (seq path)
+                        (get-in path->special-remove-empty-clauses-fn path))]
+       (cond
+         (fn? special-fn) (special-fn x)
+         (record? x)      x
+         (map? x)         (remove-empty-clauses-in-map x path)
+         (sequential? x)  (remove-empty-clauses-in-sequence x path)
+         :else            x))
+     (catch Throwable e
+       (throw (ex-info "Error removing empty clauses from form."
+                       {:form x, :path path}
+                       e))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
@@ -648,10 +672,17 @@
 (def ^{:arglists '([outer-query])} normalize
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
-  (comp remove-empty-clauses
-        perform-whole-query-transformations
-        canonicalize
-        normalize-tokens))
+  (let [normalize* (comp remove-empty-clauses
+                         perform-whole-query-transformations
+                         canonicalize
+                         normalize-tokens)]
+    (fn [query]
+      (try
+        (normalize* query)
+        (catch Throwable e
+          (throw (ex-info (tru "Error normalizing query")
+                          {:query query}
+                          e)))))))
 
 (defn normalize-fragment
   "Normalize just a specific fragment of a query, such as just the inner MBQL part or just a filter clause. `path` is

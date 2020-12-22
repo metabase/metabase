@@ -5,12 +5,12 @@ import { jt } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-import type { Field } from "metabase/meta/types/Field";
+import type { Field } from "metabase-types/types/Field";
 import type {
   ClickAction,
   ClickActionProps,
   ClickActionPopoverProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 type FieldFilter = (field: Field) => boolean;
 
@@ -45,6 +45,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
     {
       name: "pivot-by-" + name.toLowerCase(),
       section: "breakout",
+      buttonType: "token",
       title: clicked ? (
         name
       ) : (
@@ -54,7 +55,6 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
           )}`}
         </span>
       ),
-      icon: icon,
       // eslint-disable-next-line react/display-name
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <BreakoutPopover

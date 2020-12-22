@@ -7,7 +7,7 @@ import cx from "classnames";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { DatasetQuery } from "metabase/meta/types/Card";
+import { DatasetQuery } from "metabase-types/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
@@ -62,7 +62,7 @@ export default class VisualizationResult extends Component {
         <div className={cx(className, "flex")}>
           <ErrorMessage
             type="noRows"
-            title="No results!"
+            title={t`No results!`}
             message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
             action={
               <div>

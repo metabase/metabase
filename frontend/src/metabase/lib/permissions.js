@@ -1,8 +1,8 @@
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName, TableId } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { SchemaName, TableId } from "metabase-types/types/Table";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
@@ -14,7 +14,7 @@ import type {
   Group,
   GroupId,
   GroupsPermissions,
-} from "metabase/meta/types/Permissions";
+} from "metabase-types/types/Permissions";
 
 type TableEntityId = {
   databaseId: DatabaseId,
@@ -200,7 +200,7 @@ function inferEntityPermissionValueFromChildTables(
   metadata: Metadata,
 ) {
   const { databaseId } = entityId;
-  const database = metadata && metadata.databases[databaseId];
+  const database = metadata && metadata.database(databaseId);
 
   const entityIdsForDescendantTables: TableEntityId[] = _.chain(database.tables)
     .filter(t => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
@@ -342,7 +342,7 @@ export function updateSchemasPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const database = metadata.databases[databaseId];
+  const database = metadata.database(databaseId);
   const schemaNames = database && database.schemaNames();
   const schemaNamesOrNoSchema =
     schemaNames &&

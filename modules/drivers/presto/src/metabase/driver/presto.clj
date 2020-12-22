@@ -11,6 +11,7 @@
              [core :as hsql]
              [helpers :as h]]
             [java-time :as t]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -18,6 +19,7 @@
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
+            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [context :as context]
@@ -197,10 +199,14 @@
 (def ^:private presto-metadata-sync-query-timeout
   (u/minutes->ms 2))
 
-(defn- execute-presto-query-for-sync
-  "Execute a Presto query for metadata sync."
+(defn- execute-query-for-sync
   [details query]
-  (let [result-chan (a/promise-chan)]
+  (let [result-chan (a/promise-chan)
+        query       (if (string? query)
+                      query
+                      (do
+                        (assert (empty? (second query)) "Presto doesn't allow parameterized queries")
+                        (first query)))]
     (execute-presto-query details query nil (fn [cols rows]
                                               (a/>!! result-chan {:cols cols, :rows rows})))
     (let [[val] (a/alts!! [result-chan (a/timeout presto-metadata-sync-query-timeout)])]
@@ -211,7 +217,7 @@
 
 (s/defmethod driver/can-connect? :presto
   [driver {:keys [catalog] :as details} :- PrestoConnectionDetails]
-  (let [{[[v]] :rows} (execute-presto-query-for-sync details
+  (let [{[[v]] :rows} (execute-query-for-sync details
                         (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'"
                                 (sql.u/quote-name driver :database catalog)))]
     (= v "information_schema")))
@@ -224,15 +230,24 @@
   "Return a set of all schema names in this `database`."
   [driver {{:keys [catalog schema] :as details} :details :as database}]
   (let [sql            (str "SHOW SCHEMAS FROM " (sql.u/quote-name driver :database catalog))
-        {:keys [rows]} (execute-presto-query-for-sync details sql)]
+        {:keys [rows]} (execute-query-for-sync details sql)]
     (set (map first rows))))
 
-(defn- describe-schema [driver {{:keys [catalog] :as details} :details} {:keys [schema]}]
-  (let [sql            (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))
-        {:keys [rows]} (execute-presto-query-for-sync details sql)
-        tables         (map first rows)]
-    (set (for [table-name tables]
-           {:name table-name, :schema schema}))))
+(defn- have-select-privilege? [driver details schema table-name]
+  (try
+    (let [sql-args (sql-jdbc.describe-database/simple-select-probe-query driver schema table-name)]
+      ;; if the query completes without throwing an Exception, we can SELECT from this table
+      (execute-query-for-sync details sql-args)
+      true)
+    (catch Throwable _
+      false)))
+
+(defn- describe-schema [driver {{:keys [catalog user] :as details} :details :as db} {:keys [schema]}]
+  (let [sql (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))]
+    (set (for [[table-name & _] (:rows (execute-query-for-sync details sql))
+               :when            (have-select-privilege? driver details schema table-name)]
+           {:name   table-name
+            :schema schema}))))
 
 (def ^:private excluded-schemas #{"information_schema"})
 
@@ -245,13 +260,18 @@
 (defmethod driver/describe-table :presto
   [driver {{:keys [catalog] :as details} :details} {schema :schema, table-name :name}]
   (let [sql            (str "DESCRIBE " (sql.u/quote-name driver :table catalog schema table-name))
-        {:keys [rows]} (execute-presto-query-for-sync details sql)]
+        {:keys [rows]} (execute-query-for-sync details sql)]
     {:schema schema
      :name   table-name
-     :fields (set (for [[name type] rows]
-                    {:name          name
-                     :database-type type
-                     :base-type     (presto-type->base-type type)}))}))
+     :fields (set (for [[idx [name type]] (m/indexed rows)]
+                    {:name              name
+                     :database-type     type
+                     :base-type         (presto-type->base-type type)
+                     :database-position idx}))}))
+
+(defmethod driver/db-start-of-week :presto
+  [_]
+  :monday)
 
 (defmethod sql.qp/->honeysql [:presto Boolean]
   [_ bool]
@@ -361,23 +381,16 @@
 (defmethod sql.qp/date [:presto :hour]            [_ _ expr] (hsql/call :date_trunc (hx/literal :hour) expr))
 (defmethod sql.qp/date [:presto :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
 (defmethod sql.qp/date [:presto :day]             [_ _ expr] (hsql/call :date_trunc (hx/literal :day) expr))
-;; Presto is ISO compliant, so we need to offset Monday = 1 to Sunday = 1
-(defmethod sql.qp/date [:presto :day-of-week]     [_ _ expr] (hx/+ (hx/mod (hsql/call :day_of_week expr) 7) 1))
 (defmethod sql.qp/date [:presto :day-of-month]    [_ _ expr] (hsql/call :day expr))
 (defmethod sql.qp/date [:presto :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 
-;; Similar to DoW, sicne Presto is ISO compliant the week starts on Monday, we need to shift that to Sunday
+(defmethod sql.qp/date [:presto :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :presto (hsql/call :day_of_week expr)))
+
 (defmethod sql.qp/date [:presto :week]
   [_ _ expr]
-  (hsql/call :date_add
-    (hx/literal :day) -1 (hsql/call :date_trunc
-                           (hx/literal :week) (hsql/call :date_add
-                                                (hx/literal :day) 1 expr))))
-
-;; Offset by one day forward to "fake" a Sunday starting week
-(defmethod sql.qp/date [:presto :week-of-year]
-  [_ _ expr]
-  (hsql/call :week (hsql/call :date_add (hx/literal :day) 1 expr)))
+  (sql.qp/adjust-start-of-week :presto (partial hsql/call :date_trunc (hx/literal :week)) expr))
 
 (defmethod sql.qp/date [:presto :month]           [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
 (defmethod sql.qp/date [:presto :month-of-year]   [_ _ expr] (hsql/call :month expr))

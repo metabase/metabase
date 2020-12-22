@@ -90,6 +90,14 @@
            count
            (= 1)))))
 
+(deftest wierd-characters-in-names-test
+  (mt/with-log-level :info
+    (mt/with-test-user :rasta
+      (with-dashboard-cleanup
+        (-> (Table (mt/id :venues))
+            (assoc :display_name "%Venues")
+            test-automagic-analysis)))))
+
 (expect
   (mt/with-test-user :rasta
     (with-dashboard-cleanup

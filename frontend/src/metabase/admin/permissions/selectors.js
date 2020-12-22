@@ -44,12 +44,12 @@ import Group from "metabase/entities/groups";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { SchemaName } from "metabase-types/types/Table";
 import type {
   Group as GroupType,
   GroupsPermissions,
-} from "metabase/meta/types/Permissions";
+} from "metabase-types/types/Permissions";
 
 const getPermissions = state => state.admin.permissions.permissions;
 const getOriginalPermissions = state =>
@@ -290,6 +290,24 @@ const OPTION_COLLECTION_READ = {
   value: "read",
   title: t`View collection`,
   tooltip: t`Can view items in this collection`,
+};
+
+const OPTION_SNIPPET_COLLECTION_WRITE = {
+  ...OPTION_COLLECTION_WRITE,
+  title: t`Grant Edit access`,
+  tooltip: t`Can modify snippets in this folder`,
+};
+
+const OPTION_SNIPPET_COLLECTION_READ = {
+  ...OPTION_COLLECTION_READ,
+  title: t`Grant View access`,
+  tooltip: t`Can insert and use snippets in this folder, but can't edit the SQL they contain`,
+};
+
+const OPTION_SNIPPET_COLLECTION_NONE = {
+  ...OPTION_NONE,
+  title: t`Revoke access`,
+  tooltip: t`Can't view or insert snippets in this folder`,
 };
 
 export const getTablesPermissionsGrid = createSelector(
@@ -683,6 +701,7 @@ export const getDatabasesPermissionsGrid = createSelector(
 );
 
 import Collections from "metabase/entities/collections";
+import SnippetCollections from "metabase/entities/snippet-collections";
 
 const getCollectionId = (state, props) => props && props.collectionId;
 
@@ -691,9 +710,17 @@ const getSingleCollectionPermissionsMode = (state, props) =>
 
 const permissionsCollectionFilter = collection => !collection.is_personal;
 
+const getNamespace = (state, props) => props.namespace;
+
+const getExpandedCollectionsById = (state, props) =>
+  (props.namespace === "snippets"
+    ? SnippetCollections
+    : Collections
+  ).selectors.getExpandedCollectionsById(state, props);
+
 const getCollections = createSelector(
   [
-    Collections.selectors.getExpandedCollectionsById,
+    getExpandedCollectionsById,
     getCollectionId,
     getSingleCollectionPermissionsMode,
   ],
@@ -726,11 +753,13 @@ export const getCollectionsPermissionsGrid = createSelector(
   getGroups,
   getPermissions,
   getPropagatePermissions,
+  getNamespace,
   (
     collections,
     groups: Array<GroupType>,
     permissions: GroupsPermissions,
     propagatePermissions: boolean,
+    namespace: string,
   ) => {
     if (!groups || groups.length === 0 || !permissions || !collections) {
       return null;
@@ -757,25 +786,35 @@ export const getCollectionsPermissionsGrid = createSelector(
 
     return {
       type: "collection",
-      icon: "collection",
+      icon: "folder",
       crumbs,
       groups,
       permissions: {
         access: {
           header: t`Collection Access`,
           options(groupId, entityId) {
-            return [
-              OPTION_COLLECTION_WRITE,
-              OPTION_COLLECTION_READ,
-              OPTION_NONE,
-            ];
+            return namespace === "snippets"
+              ? [
+                  OPTION_SNIPPET_COLLECTION_WRITE,
+                  OPTION_SNIPPET_COLLECTION_READ,
+                  OPTION_SNIPPET_COLLECTION_NONE,
+                ]
+              : [OPTION_COLLECTION_WRITE, OPTION_COLLECTION_READ, OPTION_NONE];
           },
           actions(groupId, { collectionId }) {
             const collection = _.findWhere(collections, {
               id: collectionId,
             });
             if (collection && collection.children.length > 0) {
-              return [TogglePropagateAction];
+              return [
+                () =>
+                  TogglePropagateAction({
+                    message:
+                      namespace === "snippets"
+                        ? t`Also change sub-folders`
+                        : t`Also change sub-collections`,
+                  }),
+              ];
             } else {
               return [];
             }

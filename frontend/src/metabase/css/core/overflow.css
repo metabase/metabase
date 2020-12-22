@@ -17,3 +17,11 @@
 .overflow-y-hidden {
   overflow-y: hidden;
 }
+
+.overflow-x-scroll {
+  overflow-x: scroll;
+}
+
+.overflow-y-scroll {
+  overflow-y: scroll;
+}

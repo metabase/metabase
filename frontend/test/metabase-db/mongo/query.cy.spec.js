@@ -3,108 +3,109 @@ import {
   restore,
   modal,
   signInAsNormalUser,
+  addMongoDatabase,
 } from "__support__/cypress";
 
-function addMongoDatabase() {
-  cy.request("POST", "/api/database", {
-    engine: "mongo",
-    name: "MongoDB",
-    details: {
-      host: "localhost",
-      dbname: "admin",
-      port: 27017,
-      user: null,
-      pass: null,
-      authdb: null,
-      "additional-options": null,
-      "use-srv": false,
-      "tunnel-enabled": false,
-    },
-    auto_run_queries: true,
-    is_full_sync: true,
-    schedules: {
-      cache_field_values: {
-        schedule_day: null,
-        schedule_frame: null,
-        schedule_hour: 0,
-        schedule_type: "daily",
-      },
-      metadata_sync: {
-        schedule_day: null,
-        schedule_frame: null,
-        schedule_hour: null,
-        schedule_type: "hourly",
-      },
-    },
-  });
-}
+const MONGO_DB_NAME = "QA Mongo4";
 
 describe("mongodb > user > query", () => {
   before(() => {
     restore();
     signInAsAdmin();
-    addMongoDatabase();
+    addMongoDatabase(MONGO_DB_NAME);
   });
 
-  beforeEach(() => {
-    signInAsNormalUser();
-  });
-
-  it("can query a Mongo database as a user", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("MongoDB").click();
-    cy.contains("Version").click();
-    cy.contains("featureCompatibilityVersion");
-  });
-
-  it.only("can write a native MongoDB query", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.contains("MongoDB").click();
-
-    cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
-      parseSpecialCharSequences: false,
+  context("as an admin", () => {
+    it("can query a Mongo database", () => {
+      queryMongoDB();
     });
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("1");
   });
 
-  it("can save a native MongoDB query", () => {
-    cy.server();
-    cy.route("POST", "/api/card").as("createQuestion");
-
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.contains("MongoDB").click();
-
-    cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
-      parseSpecialCharSequences: false,
-    });
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("1");
-
-    // Close the Ace editor because it interferes with the modal for some reason
-    cy.get(".Icon-contract").click();
-
-    cy.contains("Save").click();
-    modal()
-      .findByLabelText("Name")
-      .focus()
-      .type("mongo count");
-    modal()
-      .contains("button", "Save")
-      .should("not.be.disabled")
-      .click();
-
-    cy.wait("@createQuestion").then(({ status }) => {
-      expect(status).to.equal(202);
+  context("as a user", () => {
+    beforeEach(() => {
+      signInAsNormalUser();
     });
 
-    modal()
-      .contains("Not now")
-      .click();
+    it("can query a Mongo database", () => {
+      queryMongoDB();
+    });
 
-    cy.url().should("match", /\/question\/\d+$/);
+    it("can write a native MongoDB query", () => {
+      writeNativeMongoQuery();
+    });
+
+    it("can save a native MongoDB query", () => {
+      cy.server();
+      cy.route("POST", "/api/card").as("createQuestion");
+
+      writeNativeMongoQuery();
+
+      cy.findByText("Save").click();
+      modal()
+        .findByLabelText("Name")
+        .focus()
+        .type("mongo count");
+      modal()
+        .contains("button", "Save")
+        .should("not.be.disabled")
+        .click();
+
+      cy.wait("@createQuestion").then(({ status }) => {
+        expect(status).to.equal(202);
+      });
+
+      cy.findByText("Not now").click();
+
+      cy.url().should("match", /\/question\/\d+$/);
+    });
+
+    it.skip("should correctly apply distinct count on multiple columns (metabase#13097)", () => {
+      askMongoQuestion({ table_name: "People", mode: "notebook" });
+      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Number of distinct values of ...").click();
+      cy.findByText("City").click();
+      cy.get("[class*=NotebookCell]").within(() => {
+        cy.get(".Icon-add").click();
+      });
+      cy.findByText("Number of distinct values of ...").click();
+      cy.findByText("State").click();
+
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.findByText("Visualize").click();
+      cy.wait("@dataset");
+
+      cy.log("**Reported failing on stats ~v0.36.3**");
+      cy.findAllByText("1,966").should("have.length", 1); // City
+      cy.findByText("49"); // State
+    });
   });
 });
+
+function askMongoQuestion({ table_name, mode } = {}) {
+  const QUESTION_MODE =
+    mode === "notebook" ? "Custom question" : "Simple question";
+
+  cy.visit("/question/new");
+  cy.findByText(QUESTION_MODE).click();
+  cy.findByText(MONGO_DB_NAME).click();
+  cy.findByText(table_name).click();
+}
+
+function queryMongoDB() {
+  askMongoQuestion({ table_name: "Orders" });
+  cy.contains("37.65");
+}
+
+function writeNativeMongoQuery() {
+  cy.visit("/question/new");
+  cy.findByText("Native query").click();
+  cy.findByText(MONGO_DB_NAME).click();
+
+  cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
+    parseSpecialCharSequences: false,
+  });
+  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.findByText("18,760");
+}

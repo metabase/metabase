@@ -76,7 +76,7 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ![Joining](./images/notebook/join-step.png)
 
-The join step allows you to combine your current data with another table, or even with a saved question.
+You can [join data](https://www.metabase.com/blog/joining-tables/index.html) to combine your current data with another table, or even with a saved question.
 
 Currently you can't use joins if your starting data is from a Google Analytics or MongoDB database.
 
@@ -86,12 +86,14 @@ After you click on the Join Data button to add a join step, you'll need to pick 
 
 Next, you'll need to pick the columns you want to join on. This means you pick a column from the first table, and a column from the second table, and the join will stitch rows together where the value from the first column is equal to the value in the second column. A very common example is to join on an ID column in each table, so if you happened to pick a table to join on where there is a foreign key relationship between the tables, Metabase will automatically pick those corresponding ID columns for you. At the end of your join step, there's a `Columns` button you can click to choose which columns you want to include from the joined data.
 
-By default, Metabase will do a left outer join, but you can click on the Venn diagram icon to change this to a different type of join. The options you'll see will differ based on the type of database you're using. Here are what the basic types of joins each do:
+By default, Metabase will do a left outer join, but you can click on the Venn diagram icon to select a different type of join. Not all databases support all types of joins, so Metabase will only display the options supported by the database you're using.
+
+Here are the basic types of joins:
 
 - **Left outer join:** select all records from Table A, along with records from Table B that meet the join condition, if any.
-- **Right outer join:** select all records from Table B, along with records from Table B that meet the join condition, if any.
+- **Right outer join:** select all records from Table B, along with records from Table A that meet the join condition, if any.
 - **Inner join:** only select the records from Table A and B where the join condition is met.
-- **Full outer join:** select all records from both tables, whether or not the join condition is met. This is not available for MySQL or H2, and is only available for some database types, like Spark SQL, SQL Server, and SQLite.
+- **Full outer join:** select all records from both tables, whether or not the join condition is met.
 
 **A left outer join example:** If Table A is Orders and Table B is Customers, and assuming you do a join where the `customer_id` column in Orders is equal to the `ID` column in Customers, when you do a left outer join your results will be a full list of all your orders, and each order row will also display the columns of the customer who placed that order. Since a single customer can place many orders, a given customer's information might be repeated many times for different order rows. If there isn't a corresponding customer for a given order, the order's information will be shown, but the customer columns will just be blank for that row.
 
@@ -100,6 +102,8 @@ By default, Metabase will do a left outer join, but you can click on the Venn di
 In many cases you might have tables A, B, and C, where A and B have a connection, and B and C have a connection, but A and C don't. If you want to join A to B to C, all you have to do is add multiple join steps. Click on Join Data, join table A to table B, then click the Join Data step below that completed join block to add a second join step, and join the results of your last join to table C.
 
 ![An A to B to C join](./images/notebook/join-a-b-c.png)
+
+See [Joins in Metabase](https://www.metabase.com/blog/joining-tables/index.html) to learn more.
 
 ### Viewing the SQL that powers your question
 

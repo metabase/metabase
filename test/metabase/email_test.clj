@@ -1,12 +1,19 @@
 (ns metabase.email-test
   "Various helper functions for testing email functionality."
   ;; TODO - Move to something like `metabase.test.util.email`?
-  (:require [expectations :refer :all]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.email :as email]
+            [metabase
+             [email :as email]
+             [util :refer [prog1]]]
             [metabase.test.data.users :as user]
-            [metabase.test.util :as tu])
-  (:import javax.activation.MimeType))
+            [metabase.test.util :as tu]
+            [postal
+             [core :as postal]
+             [message :as message]])
+  (:import java.io.File
+           javax.activation.MimeType))
 
 ;; TODO - this should be made dynamic so it's (at least theoretically) possible to use this in parallel
 (def inbox
@@ -138,17 +145,84 @@
                     :to #{email}}
                     email-map)]}))
 
-;; simple test of email sending capabilities
-(expect
-  [{:from    (email/email-from-address)
-    :to      ["test@test.com"]
-    :subject "101 Reasons to use Metabase"
-    :body    [{:type    "text/html; charset=utf-8"
-               :content "101. Metabase will make you a better person"}]}]
-  (with-fake-inbox
-    (email/send-message!
-      :subject      "101 Reasons to use Metabase"
-      :recipients   ["test@test.com"]
-      :message-type :html
-      :message      "101. Metabase will make you a better person")
-    (@inbox "test@test.com")))
+(defn temp-csv
+  [file-basename content]
+  (prog1 (File/createTempFile file-basename ".csv")
+    (with-open [file (io/writer <>)]
+      (.write ^java.io.Writer file ^String content))))
+
+(defn mock-send-email!
+  "To stub out email sending, instead returning the would-be email contents as a string"
+  [smtp-credentials email-details]
+  (-> email-details
+      message/make-jmessage
+      message/message->str))
+
+(deftest send-message!-test
+  (tu/with-temporary-setting-values [email-from-address "lucky@metabase.com"
+                                     email-smtp-host    "smtp.metabase.com"
+                                     email-smtp-username "lucky"
+                                     email-smtp-password "d1nner3scapee!"
+                                     email-smtp-port     "1025"
+                                     email-smtp-security "none"]
+    (testing "basic sending"
+      (is (=
+           [{:from    (email/email-from-address)
+             :to      ["test@test.com"]
+             :subject "101 Reasons to use Metabase"
+             :body    [{:type    "text/html; charset=utf-8"
+                        :content "101. Metabase will make you a better person"}]}]
+           (with-fake-inbox
+             (email/send-message!
+               :subject      "101 Reasons to use Metabase"
+               :recipients   ["test@test.com"]
+               :message-type :html
+               :message      "101. Metabase will make you a better person")
+             (@inbox "test@test.com")))))
+    (testing "with an attachment"
+      (let [recipient    "csv_user@example.com"
+            csv-contents "hugs_with_metabase,hugs_without_metabase\n1,0"
+            csv-file     (temp-csv "metabase-reasons" csv-contents)
+            params       {:subject      "101 Reasons to use Metabase"
+                          :recipients   [recipient]
+                          :message-type :attachments
+                          :message      [{:type "text/html; charset=utf-8"
+                                          :content "100. Metabase will hug you when you're sad"}
+                                         {:type :attachment
+                                          :content-type "text/csv"
+                                          :file-name "metabase-reasons.csv"
+                                          :content csv-file
+                                          :description "very scientific data"}]}]
+        (testing "it sends successfully"
+          (is (=
+               [{:from    (email/email-from-address)
+                 :to      [recipient]
+                 :subject "101 Reasons to use Metabase"
+                 :body    [{:type    "text/html; charset=utf-8"
+                            :content "100. Metabase will hug you when you're sad"}
+                           {:type         :attachment
+                            :content-type "text/csv"
+                            :file-name    "metabase-reasons.csv"
+                            :content      csv-file
+                            :description  "very scientific data"}]}]
+               (with-fake-inbox
+                 (m/mapply email/send-message! params)
+                 (@inbox recipient)))))
+        (testing "it does not wrap long, non-ASCII filenames"
+          (with-redefs [email/send-email! mock-send-email!]
+            (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
+                  csv-file                     (temp-csv basename csv-contents)
+                  params-with-problematic-file (-> params
+                                                   (assoc-in [:message 1 :file-name] (str basename ".csv"))
+                                                   (assoc-in [:message 1 :content] csv-file))]
+              ;; Bad string (ignore the linebreak):
+              ;; Content-Disposition: attachment; filename="=?UTF-8?Q?this-is-quite-long-and-ha?= =?UTF-8?Q?s-non-
+              ;; =C3=82\"; filename*1=\"=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
+              ;;           ^-- this is the problem
+              ;; Acceptable string (again, ignore the linebreak):
+              ;; Content-Disposition: attachment;	filename= "=?UTF-8?Q?this-is-quite-long-and-ha?=
+              ;; =?UTF-8?Q?s-non-=C3=82=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
+
+              (is (re-find
+                   #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
+                   (m/mapply email/send-message! params-with-problematic-file))))))))))

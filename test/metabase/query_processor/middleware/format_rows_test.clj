@@ -68,6 +68,8 @@
                       :limit    5})))))))))
 
 (deftest format-value-test
+  ;; `t` = original value
+  ;; `expected` = the same value when shifted to `zone`
   (doseq [[t expected zone]
           [[(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "Asia/Tokyo"))
             "2011-04-17T15:00:00Z"
@@ -125,10 +127,8 @@
             "2011-04-18T00:00:00Z"
             "UTC"]
 
-           ;; formatting `OffsetTime` currently doesn't adjust the time into the results timezone, because that can't
-           ;; be done without knowing the date (e.g., because of DST boundaries)
            [(t/offset-time 19 55 0 0 (t/zone-offset 9))
-            "19:55:00+09:00"
+            "10:55:00Z"
             "UTC"]
 
            [(t/offset-time 19 55 0 0 (t/zone-offset 9))
@@ -140,7 +140,7 @@
             "UTC"]
 
            [(t/offset-time 19 55 0 0 (t/zone-offset 0))
-            "19:55:00Z"
+            "04:55:00+09:00"
             "Asia/Tokyo"]
 
            [(t/local-time 19 55)
@@ -158,9 +158,12 @@
                                         ["2019-07-01T13:14:15Z" "US/Pacific"]]]
       (testing (format "system clock = %s; system timezone = %s" clock-instant clock-zone)
         (mt/with-clock (t/mock-clock (t/instant clock-instant) clock-zone)
-          (is (= expected
-                 (format-rows/format-value t (t/zone-id zone)))
-              (format "format %s '%s' with results timezone ID '%s'" (.getName (class t)) t zone)))))))
+          (testing (format "\nformat %s '%s' with results timezone ID '%s'" (.getName (class t)) t zone)
+            (is (= expected
+                   (format-rows/format-value t (t/zone-id zone)))))))))
+  (testing "can handle infinity dates (#12761)"
+    (is (format-rows/format-value java.time.OffsetDateTime/MAX (t/zone-id "UTC")))
+    (is (format-rows/format-value java.time.OffsetDateTime/MIN (t/zone-id "UTC")))))
 
 (deftest results-timezone-test
   (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"

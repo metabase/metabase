@@ -1,8 +1,10 @@
 (ns metabase.util.i18n
   "i18n functionality."
   (:require [cheshire.generate :as json-gen]
+            [clojure
+             [string :as str]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [metabase.util.i18n.impl :as impl]
             [potemkin :as p]
             [potemkin.types :as p.types]
@@ -93,14 +95,21 @@
   "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."
   [format-string args]
   (assert (string? format-string)
-    "The first arg to (deferred-)trs/tru must be a String! `gettext` does not eval Clojure files.")
-  (let [message-format    (MessageFormat. format-string)
-        expected-num-args (count (.getFormats message-format))
-        actual-num-args   (count args)]
+          "The first arg to (deferred-)trs/tru must be a String! `gettext` does not eval Clojure files.")
+  (let [message-format             (MessageFormat. format-string)
+        ;; number of {n} placeholders in format string including any you may have skipped. e.g. "{0} {2}" -> 3
+        expected-num-args-by-index (count (.getFormatsByArgumentIndex message-format))
+        ;; number of {n} placeholders in format string *not* including ones you make have skipped. e.g. "{0} {2}" -> 2
+        expected-num-args          (count (.getFormats message-format))
+        actual-num-args            (count args)]
+    (assert (= expected-num-args expected-num-args-by-index)
+            (format "(deferred-)trs/tru with format string %s is missing some {} placeholders. Expected %s. Did you skip any?"
+                    (pr-str (.toPattern message-format))
+                    (str/join ", " (map (partial format "{%d}") (range expected-num-args-by-index)))))
     (assert (= expected-num-args actual-num-args)
-      (format (str "(deferred-)trs/tru with format string \"%s\" expects %d args, got %d. "
-                   "Did you forget to escape a single quote?")
-              (.toPattern message-format) expected-num-args actual-num-args))))
+            (str (format (str "(deferred-)trs/tru with format string %s expects %d args, got %d.")
+                         (pr-str (.toPattern message-format)) expected-num-args actual-num-args)
+                 " Did you forget to escape a single quote?"))))
 
 (defmacro deferred-tru
   "Similar to `tru` but creates a `UserLocalizedString` instance so that conversion to the correct locale can be delayed

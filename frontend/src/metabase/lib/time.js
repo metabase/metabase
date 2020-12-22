@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
@@ -16,7 +16,7 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("hour"),
   "day-of-week": value =>
     moment()
-      .day(value - 1)
+      .weekday(value - 1)
       .startOf("day"),
   "day-of-month": value =>
     moment("2016-01-01") // initial date must be in month with 31 days to format properly

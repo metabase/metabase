@@ -14,6 +14,7 @@ export type ColorFamily = { [name: ColorName]: ColorString };
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
 /* eslint-disable no-color-literals */
 const colors = {
+
   brand: "#51617D",
   accent1: "#1A72E5",
   accent2: "#30D8D7",
@@ -23,15 +24,23 @@ const colors = {
   accent6: "#3FCCE6",
   accent7: "#7a49a5",
   "admin-navbar": "#1A72E5",
+
+  brand: "#509EE3",
+  "brand-light": "#DDECFA",
+  accent1: "#88BF4D",
+  accent2: "#A989C5",
+  accent3: "#EF8C8C",
+  accent4: "#F9D45C",
+  accent5: "#F2A86F",
+  accent6: "#98D9D9",
+  accent7: "#7172AD",
+  "admin-navbar": "#7172AD",
+
   white: "#FFFFFF",
   black: "#2E353B",
   success: "#84BB4C",
   error: "#ED6E6E",
-  warning: "#f9d45c",
-  "text-dark": "#2E353B",
-  "text-medium": "#74838f",
-  "text-light": "#C7CFD4",
-  "text-white": "#FFFFFF",
+"text-white": "#FFFFFF",
   "bg-black": "#2E353B",
   "bg-dark": "#93A1AB",
   "bg-medium": "#EDF2F5",
@@ -119,7 +128,7 @@ function syncDeprecatedColorFamilies() {
   normal.orange = colors["accent5"];
   normal.teal = colors["accent6"];
   normal.indigo = colors["accent7"];
-  normal.gray = colors["text-medium"];
+  normal.gray = colors["text-dark"];
   normal.grey1 = colors["text-light"];
   normal.grey2 = colors["text-medium"];
   normal.grey3 = colors["text-dark"];
@@ -234,7 +243,7 @@ const PREFERRED_COLORS = {
 
 const PREFERRED_COLORS_MAP = {};
 for (const color in PREFERRED_COLORS) {
-  if (PREFERRED_COLORS.hasOwnProperty(color)) {
+  if (Object.prototype.hasOwnProperty.call(PREFERRED_COLORS, color)) {
     const keys = PREFERRED_COLORS[color];
     for (let i = 0; i < keys.length; i++) {
       PREFERRED_COLORS_MAP[keys[i]] = color;

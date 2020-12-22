@@ -6,6 +6,7 @@
              [db :as mdb]
              [util :as u]]
             [metabase.mbql
+             [normalize :as mbql.normalize]
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.mbql.schema.helpers :as mbql.s.helpers]
@@ -47,7 +48,7 @@
     :else
     (throw (IllegalArgumentException. (str (deferred-trs "Don't know how to wrap:") " " field-id-or-form)))))
 
-(s/defn ^:private field-ids->param-field-values
+(s/defn field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
   returned by various endpoints as `:param_values`."
   [param-field-ids :- (s/maybe #{su/IntGreaterThanZero})]
@@ -62,20 +63,20 @@
   [[_ tag] dashcard]
   (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(s/defn ^:private param-target->field-clause :- (s/maybe FieldIDOrLiteral)
+(s/defn param-target->field-clause :- (s/maybe FieldIDOrLiteral)
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target dashcard]
-  (when (mbql.u/is-clause? :dimension target)
-    (let [[_ dimension] target]
-      (try
-        (unwrap-field-clause
-         (if (mbql.u/is-clause? :template-tag dimension)
-           (template-tag->field-form dimension dashcard)
-           dimension))
-        (catch Throwable e
-          (log/error e (tru "Could not find matching Field ID for target:") target))))))
-
+  (let [target (mbql.normalize/normalize-tokens target :ignore-path)]
+    (when (mbql.u/is-clause? :dimension target)
+      (let [[_ dimension] target]
+        (try
+          (unwrap-field-clause
+           (if (mbql.u/is-clause? :template-tag dimension)
+             (template-tag->field-form dimension dashcard)
+             dimension))
+          (catch Throwable e
+            (log/error e (tru "Could not find matching Field ID for target:") target)))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
@@ -116,7 +117,6 @@
       ;; add matching `:name_field` if it's a PK
       (assoc field :name_field (when (isa? (:special_type field) :type/PK)
                                  (table-id->name-field (:table_id field)))))))
-
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we
 ;; don't want to return. The two functions below work to remove the unneeded ones.

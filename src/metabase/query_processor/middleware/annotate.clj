@@ -15,6 +15,7 @@
              [error-type :as error-type]
              [reducible :as qp.reducible]
              [store :as qp.store]]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.util
              [i18n :refer [deferred-tru tru]]
              [schema :as su]]
@@ -73,39 +74,22 @@
                   :first-row        (first rows)
                   :type             error-type/qp}))))))
 
-(defn- native-column-info-for-a-single-column
-  "Determine column metadata for a single column for native query results."
-  [unique-name-fn {col-name :name, driver-base-type :base_type, :as driver-col-metadata} values-sample]
-  ;; Native queries don't have the type information from the original `Field` objects used in the query.
-  ;;
-  ;; If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
-  ;; of rows and infer the base type based on the classes of the values
-  (let [col-name  (name col-name)
-        base-type (or (when-not (= driver-base-type :type/*)
-                        driver-base-type)
-                      (driver.common/values->base-type values-sample)
-                      :type/*)]
-    (merge
-     {:display_name (u/qualified-name col-name)
-      :base_type    base-type
-      :source       :native}
-     ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
-     ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
-     ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
-     ;; `:field-literal`, omit the `:field_ref`.
-     (when (seq col-name)
-       {:field_ref [:field-literal (unique-name-fn col-name) base-type]})
-     driver-col-metadata
-     {:base_type base-type})))
-
 (defmethod column-info :native
   [_ {:keys [cols rows]}]
   (check-driver-native-columns cols rows)
-  (mapv (partial native-column-info-for-a-single-column (mbql.u/unique-name-generator))
-        cols
-        (for [i (range (count cols))]
-          (for [row rows]
-            (nth row i)))))
+  (let [unique-name-fn (mbql.u/unique-name-generator)]
+    (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
+           (let [col-name (name col-name)]
+             (merge
+              {:display_name (u/qualified-name col-name)
+               :source       :native}
+              ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
+              ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
+              ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
+              ;; `:field-literal`, omit the `:field_ref`.
+              (when (seq col-name)
+                {:field_ref [:field-literal (unique-name-fn col-name) base-type]})
+              driver-col-metadata))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -177,7 +161,8 @@
     {:base_type    :type/Float
      :special_type :type/Number}))
 
-(s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
+(s/defn col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
+  "Return column metadata for a field clause such as `:field-id` or `:field-literal`."
   [{:keys [source-metadata expressions], :as inner-query} :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping
@@ -559,18 +544,29 @@
   (deduplicate-cols-names
    (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
 
-(def ^:private column-info-sample-size
-  "Number of result rows to sample when adding column info to results."
-  100)
+(defn base-type-inferer
+  "Native queries don't have the type information from the original `Field` objects used in the query.
+  If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
+  of rows and infer the base type based on the classes of the values"
+  [{:keys [cols]}]
+  (apply f/col-wise (for [{driver-base-type :base_type} cols]
+                      (if (contains? #{nil :type/*} driver-base-type)
+                        (driver.common/values->base-type)
+                        (f/constant-fingerprinter driver-base-type)))))
 
-(defn- add-column-info-xform [{query-type :type, :as query} metadata rf]
+(defn- add-column-info-xform
+  [query metadata rf]
   (qp.reducible/combine-additional-reducing-fns
    rf
-   [((take column-info-sample-size) conj)]
-   (fn combine [result sampled-rows]
-     (rf (cond-> result
-           (map? result)
-           (assoc-in [:data :cols] (merged-column-info query (assoc metadata :rows sampled-rows))))))))
+   [(base-type-inferer metadata)
+    ((take 1) conj)]
+   (fn combine [result base-types truncated-rows]
+     (let [metadata (update metadata :cols (partial map (fn [col base-type]
+                                                          (assoc col :base_type base-type)))
+                            base-types)]
+       (rf (cond-> result
+             (map? result) (assoc-in [:data :cols] (merged-column-info query
+                                                                       (assoc metadata :rows truncated-rows)))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."

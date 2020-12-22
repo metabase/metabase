@@ -35,12 +35,13 @@
   "Execute `request`, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
   rethrowing them."
   [^AbstractGoogleClientRequest request]
-  (try (.execute request)
-       (catch GoogleJsonResponseException e
-         (let [^GoogleJsonError error (.getDetails e)]
-           (throw (ex-info (or (.getMessage error)
-                               (.getStatusMessage e))
-                           (into {} error)))))))
+  (try
+    (.execute request)
+    (catch GoogleJsonResponseException e
+      (let [^GoogleJsonError error (.getDetails e)]
+        (throw (ex-info (or (.getMessage error)
+                            (.getStatusMessage e))
+                        (into {} error)))))))
 
 (defn execute
   "Execute `request`, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
@@ -58,7 +59,7 @@
   "Creates the application name string, separated out from the `def` below so it's testable with different values"
   [{:keys [tag ^String hash branch]}]
   (let [encoded-hash (some-> hash (.getBytes "UTF-8") codec/base64-encode)]
-    (format "Metabase/%s (GPN:Metabse; %s %s)"
+    (format "Metabase/%s (GPN:Metabase; %s %s)"
             (or tag "?")
             (or encoded-hash "?")
             (or branch "?"))))

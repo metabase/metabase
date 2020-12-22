@@ -47,10 +47,10 @@ import { has_field_values_options } from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
 
-import type { ColumnSettings as ColumnSettingsType } from "metabase/meta/types/Dataset";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { TableId } from "metabase/meta/types/Table";
-import type { FieldId } from "metabase/meta/types/Field";
+import type { ColumnSettings as ColumnSettingsType } from "metabase-types/types/Dataset";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { FieldId } from "metabase-types/types/Field";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
@@ -195,8 +195,8 @@ export default class FieldApp extends React.Component {
       params: { section },
     } = this.props;
 
-    const db = metadata.databases[databaseId];
-    const table = metadata.tables[tableId];
+    const db = metadata.database(databaseId);
+    const table = metadata.table(tableId);
 
     const isLoading = !field || !table || !idfields;
 
@@ -224,18 +224,20 @@ export default class FieldApp extends React.Component {
             }
           >
             <div className="wrapper">
-              <div className="mb4 pt2 ml-auto mr-auto">
-                <Breadcrumbs
-                  crumbs={[
-                    [db.name, `/admin/datamodel/database/${db.id}`],
-                    [
-                      table.display_name,
-                      `/admin/datamodel/database/${db.id}/table/${table.id}`,
-                    ],
-                    t`${field.display_name} – Field Settings`,
-                  ]}
-                />
-              </div>
+              {db && table && (
+                <div className="mb4 pt2 ml-auto mr-auto">
+                  <Breadcrumbs
+                    crumbs={[
+                      [db.name, `/admin/datamodel/database/${db.id}`],
+                      [
+                        table.display_name,
+                        `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                      ],
+                      t`${field.display_name} – Field Settings`,
+                    ]}
+                  />
+                </div>
+              )}
               <div className="absolute top right mt4 mr4">
                 <SaveStatus ref={ref => (this.saveStatus = ref)} />
               </div>
@@ -320,6 +322,7 @@ const FieldGeneralPane = ({
         description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
       />
       <Select
+        className="inline-block"
         value={field.has_field_values}
         onChange={({ target: { value } }) =>
           onUpdateFieldProperties({

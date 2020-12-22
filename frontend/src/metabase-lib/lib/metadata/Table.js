@@ -8,18 +8,16 @@ import Database from "./Database";
 import Schema from "./Schema";
 import Field from "./Field";
 
-import type { SchemaName } from "metabase/meta/types/Table";
-import type { FieldMetadata } from "metabase/meta/types/Metadata";
-
-import { singularize } from "metabase/lib/formatting";
-
 import Dimension from "../Dimension";
 
+import { singularize } from "metabase/lib/formatting";
+import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
+import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+
+import type { SchemaName } from "metabase-types/types/Table";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type EntityType = string; // TODO: move somewhere central
-
-import _ from "underscore";
 
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
@@ -31,7 +29,7 @@ export default class Table extends Base {
   // @deprecated: use schema.name (all tables should have a schema object, in theory)
   schema_name: ?SchemaName;
 
-  fields: FieldMetadata[];
+  fields: Field[];
 
   entity_type: ?EntityType;
 
@@ -56,6 +54,15 @@ export default class Table extends Base {
       tableId: this.id,
       metadata: this.metadata,
     });
+  }
+
+  isSavedQuestion(): boolean {
+    return this.savedQuestionId() !== null;
+  }
+
+  savedQuestionId() {
+    const match = String(this.id).match(/card__(\d+)/);
+    return match ? parseInt(match[1]) : null;
   }
 
   query(query = {}): StructuredQuery {
@@ -91,11 +98,44 @@ export default class Table extends Base {
     return this.fields.filter(field => field.isDate());
   }
 
+  // AGGREGATIONS
+
+  @memoize
   aggregationOperators() {
-    return this.aggregation_operators || [];
+    return getAggregationOperatorsWithFields(this);
   }
 
-  aggregation(agg) {
-    return _.findWhere(this.aggregationOperators(), { short: agg });
+  @memoize
+  aggregationOperatorsLookup() {
+    return createLookupByProperty(this.aggregationOperators(), "short");
+  }
+
+  aggregationOperator(short) {
+    return this.aggregation_operators_lookup[short];
+  }
+
+  // @deprecated: use aggregationOperators
+  // $FlowFixMe: known to not have side-effects
+  get aggregation_operators() {
+    return this.aggregationOperators();
+  }
+
+  // @deprecated: use aggregationOperatorsLookup
+  // $FlowFixMe: known to not have side-effects
+  get aggregation_operators_lookup() {
+    return this.aggregationOperatorsLookup();
+  }
+
+  // FIELDS
+
+  @memoize
+  fieldsLookup() {
+    return createLookupByProperty(this.fields, "id");
+  }
+
+  // @deprecated: use fieldsLookup
+  // $FlowFixMe: known to not have side-effects
+  get fields_lookup() {
+    return this.fieldsLookup();
   }
 }

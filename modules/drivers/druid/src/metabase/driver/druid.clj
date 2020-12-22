@@ -32,8 +32,13 @@
 
 (defmethod driver/execute-reducible-query :druid
   [_ query context respond]
-  (execute/execute-reducible-query (partial client/do-query-with-cancellation (context/canceled-chan context)) query respond))
+  (execute/execute-reducible-query (partial client/do-query-with-cancellation (context/canceled-chan context))
+                                   query respond))
 
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true}]
   (defmethod driver/supports? [:druid feature] [_ _] supported?))
+
+(defmethod driver/db-start-of-week :druid
+  [_]
+  :sunday)

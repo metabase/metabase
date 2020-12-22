@@ -26,7 +26,6 @@
   ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
   (str/replace s #"(?i)</script" "</scr\\\\ipt"))
 
-
 (defn- fallback-localization [locale-or-name]
   (json/generate-string
    {"headers"
@@ -79,6 +78,8 @@
       :googleAnalyticsJS  (load-inline-js "index_ganalytics")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
       :localizationJSON   (escape-script (load-localization))
+      :favicon            (h.util/escape-html (public-settings/application-favicon-url))
+      :applicationName    (h.util/escape-html (public-settings/application-name))
       :uri                (h.util/escape-html uri)
       :baseHref           (h.util/escape-html (base-href))
       :embedCode          (when embeddable? (embed/head uri))

@@ -30,16 +30,16 @@
   "Schema for a valid table visibility type."
   (apply s/enum (map name table/visibility-types)))
 
+(def ^:private FieldOrder
+  "Schema for a valid table field ordering."
+  (apply s/enum (map name table/field-orderings)))
+
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
-  (for [table (-> (db/select Table, :active true, {:order-by [[:name :asc]]})
-                  (hydrate :db))
-        :when (mi/can-read? table)]
-    ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf.
-    ;; TODO - should that be part of `post-select` instead?
-    (update table :rows (fn [n]
-                          (or n 0)))))
+  (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
+    (hydrate tables :db)
+    (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
@@ -50,36 +50,42 @@
 ;; TODO: this should changed to `update-tables!` and update multiple tables in one db request
 (defn- update-table!
   [id {:keys [visibility_type] :as body}]
-  (api/write-check Table id)
-  (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
+  (let [table (Table id)]
+    (api/write-check table)
     ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update
     ;; description and related fields if passed in
     (api/check-500
      (db/update! Table id
        (assoc (u/select-keys-when body
-                :non-nil [:display_name :show_in_getting_started :entity_type]
+                :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                 :present [:description :caveats :points_of_interest])
-         :visibility_type visibility_type)))
-    (let [updated-table   (Table id)
-          now-visible?    (nil? (:visibility_type updated-table)) ; only Tables with `nil` visibility type are visible
-          was-visible?    (nil? original-visibility-type)
-          became-visible? (and now-visible? (not was-visible?))]
+              :visibility_type visibility_type)))
+    (let [updated-table        (Table id)
+          changed-field-order? (not= (:field_order updated-table) (:field_order table))
+          now-visible?         (nil? (:visibility_type updated-table)) ; only Tables with `nil` visibility type are visible
+          was-visible?         (nil? (:visibility_type table))
+          became-visible?      (and now-visible? (not was-visible?))]
       (when became-visible?
         (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name updated-table))))
         (sync/sync-table! updated-table))
-      updated-table)))
+      (if changed-field-order?
+        (do
+          (table/update-field-positions! updated-table)
+          (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+         updated-table))))
 
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
-                   show_in_getting_started], :as body} :body}]
+                   show_in_getting_started field_order], :as body} :body}]
   {display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe su/NonBlankString)
    caveats                 (s/maybe su/NonBlankString)
    points_of_interest      (s/maybe su/NonBlankString)
-   show_in_getting_started (s/maybe s/Bool)}
+   show_in_getting_started (s/maybe s/Bool)
+   field_order             (s/maybe FieldOrder)}
   (update-table! id body))
 
 (api/defendpoint PUT "/"
@@ -233,23 +239,23 @@
                 field)))))
 
 (defn fetch-query-metadata
-  "Returns the query metadata used to power the query builder for the given table `table-or-table-id`"
-  [table include_sensitive_fields include_hidden_fields]
+  "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?` and
+  `include-hidden-fields?` can be either booleans or boolean strings."
+  [table include-sensitive-fields? include-hidden-fields?]
   (api/read-check table)
-  (let [driver (driver.u/database->driver (:db_id table))]
+  (let [driver                    (driver.u/database->driver (:db_id table))
+        include-sensitive-fields? (cond-> include-sensitive-fields? (string? include-sensitive-fields?) Boolean/parseBoolean)
+        include-hidden-fields?    (cond-> include-hidden-fields? (string? include-hidden-fields?) Boolean/parseBoolean)]
     (-> table
         (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options driver)
         format-fields-for-response
-        (update :fields
-                (let [hidden    (Boolean/parseBoolean include_hidden_fields)
-                      sensitive (Boolean/parseBoolean include_sensitive_fields)]
-                  (partial filter (fn [{:keys [visibility_type]}]
-                                    (case (keyword visibility_type)
-                                      :hidden    hidden
-                                      :sensitive sensitive
-                                      true))))))))
+        (update :fields (partial filter (fn [{visibility-type :visibility_type}]
+                                          (case (keyword visibility-type)
+                                            :hidden    include-hidden-fields?
+                                            :sensitive include-sensitive-fields?
+                                            true)))))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -369,5 +375,12 @@
   "Return related entities."
   [id]
   (-> id Table api/read-check related/related))
+
+(api/defendpoint PUT "/:id/fields/order"
+  "Reorder fields"
+  [id :as {field_order :body}]
+  {field_order [su/IntGreaterThanZero]}
+  (api/check-superuser)
+  (-> id Table api/check-404 (table/custom-order-fields! field_order)))
 
 (api/define-routes)

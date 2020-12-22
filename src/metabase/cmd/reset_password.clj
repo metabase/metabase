@@ -1,5 +1,7 @@
 (ns metabase.cmd.reset-password
-  (:require [metabase.db :as mdb]
+  (:require [metabase
+             [db :as mdb]
+             [util :as u]]
             [metabase.models.user :as user :refer [User]]
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
@@ -7,7 +9,7 @@
 (defn- set-reset-token!
   "Set and return a new `reset_token` for the user with EMAIL-ADDRESS."
   [email-address]
-  (let [user-id (or (db/select-one-id User, :email email-address)
+  (let [user-id (or (db/select-one-id User, :%lower.email (u/lower-case-en email-address))
                     (throw (Exception. (str (deferred-trs "No user found with email address ''{0}''. " email-address)
                                             (deferred-trs "Please check the spelling and try again.")))))]
     (user/set-password-reset-token! user-id)))

@@ -86,6 +86,10 @@
   (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel details))]
     (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
 
+(defmethod driver/db-start-of-week :oracle
+  [_]
+  :sunday)
+
 (defn- trunc
   "Truncate a date. See also this [table of format
   templates](http://docs.oracle.com/cd/B28359_01/olap.111/b28126/dml_functions_2071.htm#CJAEFAIA)
@@ -102,9 +106,7 @@
 (defmethod sql.qp/date [:oracle :day]            [_ _ v] (trunc :dd v))
 (defmethod sql.qp/date [:oracle :day-of-month]   [_ _ v] (hsql/call :extract :day v))
 ;; [SIC] The format template for truncating to start of week is 'day' in Oracle #WTF
-;; iw = same day of the week as first day of the ISO year
-;; iy = ISO year
-(defmethod sql.qp/date [:oracle :week]           [_ _ v] (trunc :day v))
+(defmethod sql.qp/date [:oracle :week]           [_ _ v] (sql.qp/adjust-start-of-week :oracle (partial trunc :day) v))
 (defmethod sql.qp/date [:oracle :month]          [_ _ v] (trunc :month v))
 (defmethod sql.qp/date [:oracle :month-of-year]  [_ _ v] (hsql/call :extract :month v))
 (defmethod sql.qp/date [:oracle :quarter]        [_ _ v] (trunc :q v))
@@ -113,11 +115,6 @@
 (defmethod sql.qp/date [:oracle :day-of-year] [driver _ v]
   (hx/inc (hx/- (sql.qp/date driver :day v) (trunc :year v))))
 
-(defmethod sql.qp/date [:oracle :week-of-year] [_ _ v]
-  (hx/inc (hx// (hx/- (trunc :iw v)
-                      (trunc :iy v))
-                7)))
-
 (defmethod sql.qp/date [:oracle :quarter-of-year] [driver _ v]
   (hx// (hx/+ (sql.qp/date driver :month-of-year (sql.qp/date driver :quarter v))
               2)
@@ -125,8 +122,7 @@
 
 ;; subtract number of days between today and first day of week, then add one since first day of week = 1
 (defmethod sql.qp/date [:oracle :day-of-week] [driver _ v]
-  (hx/inc (hx/- (sql.qp/date driver :day v)
-                (sql.qp/date driver :week v))))
+  (sql.qp/adjust-day-of-week :oracle (hx/->integer (hsql/call :to_char v (hx/literal :d)))))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 
@@ -171,9 +167,21 @@
   (hx/+ (hsql/raw "timestamp '1970-01-01 00:00:00 UTC'")
         (num-to-ds-interval :second field-or-value)))
 
+(defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateTimeString]
+  [_driver _special_type expr]
+  (hsql/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
+
+(defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateString]
+  [_driver _special_type expr]
+  (hsql/call :to_date expr "YYYY-MM-DD"))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]
   (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :microseconds]
+  [driver _ field-or-value]
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
 
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.
@@ -203,7 +211,7 @@
 ;; )
 ;; WHERE __rownum__ >= 100;
 ;;
-;; See issue #3568 and the Oracle documentation for more details:
+;; See metabase#3568 and the Oracle documentation for more details:
 ;; http://docs.oracle.com/cd/B19306_01/server.102/b14200/pseudocolumns009.htm
 (defmethod sql.qp/apply-top-level-clause [:oracle :limit]
   [_ _ honeysql-query {value :limit}]
@@ -304,6 +312,10 @@
       "WMSYS"
       "XDB"
       "XS$NULL"}))
+
+(defmethod driver/escape-entity-name-for-metadata :oracle
+  [_ entity-name]
+  (str/replace entity-name "/" "//"))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle
   [_]

@@ -72,28 +72,27 @@
 ;; 2. Check that we can join MULTIPLE tables in a single query
 ;;    (this query joins both cities and categories)
 (datasets/expect-with-drivers (mt/normal-drivers-with-feature :foreign-keys)
-  ;; CITY_ID, CATEGORY_ID, ID
+  ;; ID, CITY_ID, CATEGORY_ID
   ;; Cities are already alphabetized in the source data which is why CITY_ID is sorted
-  [[1 12   6]
-   [1 11 355]
-   [1 11 596]
-   [1 13 379]
-   [1  5 413]
-   [1  1 426]
-   [2 11  67]
-   [2 11 524]
-   [2 13  77]
-   [2 13 202]]
+  [[6 1 12]
+   [355 1 11]
+   [596 1 11]
+   [379 1 13]
+   [413 1  5]
+   [426 1  1]
+   [67 2 11]
+   [524 2 11]
+   [77 2 13]
+   [202 2 13]]
   (->> (mt/dataset tupac-sightings
          (mt/run-mbql-query sightings
            {:order-by [[:asc $city_id->cities.name]
                        [:desc $category_id->categories.name]
                        [:asc $id]]
             :limit    10}))
-       ;; drop timestamps. reverse ordering to make the results columns order match order-by
+       ;; drop timestamps.
        qp.test/rows
        (map butlast)
-       (map reverse)
        (qp.test/format-rows-by [int int int])))
 
 
@@ -150,4 +149,4 @@
         (mt/run-mbql-query messages
           {:aggregation [[:count]]
            :breakout    [$sender_id->users.name]
-           :filter      [:= $reciever_id->users.name "Rasta Toucan"]})))))
+           :filter      [:= $receiver_id->users.name "Rasta Toucan"]})))))

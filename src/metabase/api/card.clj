@@ -523,7 +523,6 @@
           (reverse (range starting-position (+ (count sorted-cards) starting-position)))
           (reverse sorted-cards)))))
 
-
 (defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
   ;; if moving to a collection, make sure we have write perms for it
   (when new-collection-id-or-nil
@@ -584,7 +583,10 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
-(defn- query-for-card [{query :dataset_query, :as card} parameters constraints middleware]
+(defn query-for-card
+  "Generate a query for a saved Card"
+  [{query :dataset_query
+    :as   card} parameters constraints middleware]
   (let [query (-> query
                   ;; don't want default constraints overridding anything that's already there
                   (m/dissoc-in [:middleware :add-default-userland-constraints?])
@@ -611,8 +613,9 @@
                             (qp/process-query-and-save-execution! query info context)))}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
-        query (assoc (query-for-card card parameters constraints middleware)
-                     :async? true)
+        query (-> (assoc (query-for-card card parameters constraints middleware)
+                         :async? true)
+                  (assoc-in [:middleware :js-int-to-string?] true))
         info  {:executed-by  api/*current-user-id*
                :context      context
                :card-id      card-id
@@ -639,7 +642,9 @@
      :parameters  (json/parse-string parameters keyword)
      :constraints nil
      :context     (dataset-api/export-format->context export-format)
-     :middleware  {:skip-results-metadata? true})))
+     :middleware  {:skip-results-metadata? true
+                   :format-rows?           false
+                   :js-int-to-string?      false})))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

@@ -50,10 +50,9 @@ export const BackendResource = createSharedResource("BackendResource", {
           "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
           "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
           "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
-          "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "-Duser.timezone=US/Pacific",
-          `-Dlog4j.configuration=file:${__dirname}/log4j.properties`,
+          `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
           "-jar",
           "target/uberjar/metabase.jar",
         ],
@@ -64,6 +63,10 @@ export const BackendResource = createSharedResource("BackendResource", {
             MB_JETTY_HOST: "0.0.0.0",
             MB_JETTY_PORT: server.port,
             MB_ENABLE_TEST_ENDPOINTS: "true",
+            MB_PREMIUM_EMBEDDING_TOKEN:
+              (process.env["MB_EDITION"] === "ee" &&
+                process.env["ENTERPRISE_TOKEN"]) ||
+              undefined,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||

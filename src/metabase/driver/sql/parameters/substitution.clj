@@ -25,7 +25,7 @@
            java.time.temporal.Temporal
            java.util.UUID
            [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues
-            ReferencedCardQuery]))
+            ReferencedCardQuery ReferencedQuerySnippet]))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -240,10 +240,9 @@
   (:replacement-snippet
    (honeysql->replacement-snippet-info
     driver
-    (let [identifier (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))
-          identifier (cond->> identifier
-                       (isa? special-type :type/UNIXTimestampSeconds)      (sql.qp/unix-timestamp->honeysql driver :seconds)
-                       (isa? special-type :type/UNIXTimestampMilliseconds) (sql.qp/unix-timestamp->honeysql driver :milliseconds))]
+    (let [identifier (cond->> (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))
+                       (isa? special-type :type/UNIXTimestamp)
+                       (sql.qp/unix-timestamp->honeysql driver (sql.qp/special-type->unix-timestamp-unit special-type)))]
       (if (date-params/date-type? param-type)
         (sql.qp/date driver :day identifier)
         identifier)))))
@@ -267,9 +266,17 @@
             :replacement-snippet (partial str (field->identifier driver field (:type value)) " "))))
 
 
-;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
+;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
 (defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
-  [_driver {:keys [query]}]
+  [_ {:keys [query]}]
   {:prepared-statement-args nil
    :replacement-snippet     (str "(" query ")")})
+
+
+;;; ---------------------------------- Native Query Snippet replacement snippet info ---------------------------------
+
+(defmethod ->replacement-snippet-info [:sql ReferencedQuerySnippet]
+  [_ {:keys [content]}]
+  {:prepared-statement-args nil
+   :replacement-snippet     content})

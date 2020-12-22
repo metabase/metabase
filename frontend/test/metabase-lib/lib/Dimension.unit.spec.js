@@ -223,7 +223,7 @@ describe("Dimension", () => {
         it("should return array of FK dimensions for foreign key field dimension", () => {
           pending();
           // Something like this:
-          // fieldsInProductsTable = metadata.tables[1].fields.length;
+          // fieldsInProductsTable = metadata.table(1).fields.length;
           // expect(FKDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
         });
         it("should return empty array for non-FK field dimension", () => {
@@ -286,7 +286,7 @@ describe("Dimension", () => {
         it("should return an array with dimensions for each datetime unit", () => {
           pending();
           // Something like this:
-          // fieldsInProductsTable = metadata.tables[1].fields.length;
+          // fieldsInProductsTable = metadata.table(1).fields.length;
           // expect(FKDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
         });
         it("should return empty array for non-date field dimension", () => {
@@ -421,7 +421,7 @@ describe("Dimension", () => {
         it("should return array of FK dimensions for foreign key field dimension", () => {
           pending();
           // Something like this:
-          // fieldsInProductsTable = metadata.tables[1].fields.length;
+          // fieldsInProductsTable = metadata.table(1).fields.length;
           // expect(FKDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
         });
         it("should return empty array for non-FK field dimension", () => {

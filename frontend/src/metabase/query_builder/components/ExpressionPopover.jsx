@@ -30,7 +30,7 @@ export default class ExpressionPopover extends React.Component {
     const isValid = !error && (!onChangeName || name);
 
     return (
-      <div style={{ width: 500 }}>
+      <div style={{ width: 498 }}>
         <div className="text-medium p1 py2 border-bottom flex align-center">
           <a className="cursor-pointer flex align-center" onClick={onBack}>
             <Icon name="chevronleft" size={18} />
@@ -56,19 +56,6 @@ export default class ExpressionPopover extends React.Component {
               }
             }}
           />
-          {error &&
-            (Array.isArray(error) ? (
-              error.map(error => (
-                <div
-                  className="text-error mb1"
-                  style={{ whiteSpace: "pre-wrap" }}
-                >
-                  {error.message}
-                </div>
-              ))
-            ) : (
-              <div className="text-error mb1">{error.message}</div>
-            ))}
           {onChangeName && (
             <input
               className="input block full my1"

@@ -6,14 +6,15 @@
             [honeysql.core :as hsql]
             [metabase
              [config :as config]
-             [db :as mdb]]
+             [db :as mdb]
+             [util :as u]]
             [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [session :refer [Session]]
              [user :as user :refer [User]]]
-            [metabase.util.i18n :as i18n]
+            [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
             [ring.util.response :as resp]
             [schema.core :as s]
             [toucan.db :as db])
@@ -31,9 +32,10 @@
 ;;
 ;; Finally we'll check for the presence of a `X-Metabase-Session` header. If that isn't present, you don't have a
 ;; Session ID and thus are definitely not authenticated
-(def ^:private ^String metabase-session-cookie        "metabase.SESSION")
-(def ^:private ^String metabase-legacy-session-cookie "metabase.SESSION_ID") ; this can be removed in 0.33.x
-(def ^:private ^String metabase-session-header        "x-metabase-session")
+
+(def ^:private ^String metabase-session-cookie          "metabase.SESSION")
+(def ^:private ^String metabase-embedded-session-cookie "metabase.EMBEDDED_SESSION")
+(def ^:private ^String anti-csrf-token-header           "x-metabase-anti-csrf-token")
 
 (defn- clear-cookie [response cookie-name]
   (resp/set-cookie response cookie-name nil {:expires "Thu, 1 Jan 1970 00:00:00 GMT", :path "/"}))
@@ -75,63 +77,123 @@
     scheme
     (= scheme :https)))
 
-(s/defn set-session-cookie
-  "Add a `Set-Cookie` header to `response` to persist the Metabase session."
-  [request response, session-id :- UUID]
-  (-> response
-      wrap-body-if-needed
-      (clear-cookie metabase-legacy-session-cookie)
-      ;; See also https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie and `ring.middleware.cookies`
-      (resp/set-cookie
-       metabase-session-cookie
-       (str session-id)
-       (merge
-        {:same-site :lax
-         :http-only true
-         :path      "/"}
-        ;; If the env var `MB_SESSION_COOKIES=true`, do not set the `Max-Age` directive; cookies with no `Max-Age` and
-        ;; no `Expires` directives are session cookies, and are deleted when the browser is closed
-        ;;
-        ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#Session_cookies
-        (when-not (config/config-bool :mb-session-cookies)
-          ;; max-session age-is in minutes; Max-Age= directive should be in seconds
-          {:max-age (* 60 (config/config-int :max-session-age))})
-        ;; If the authentication request request was made over HTTPS (hopefully always except for local dev instances)
-        ;; add `Secure` attribute so the cookie is only sent over HTTPS.
-        (when (https-request? request)
-          {:secure true})))))
-
 (defn clear-session-cookie
   "Add a header to `response` to clear the current Metabase session cookie."
   [response]
-  (-> response
-      wrap-body-if-needed
-      (clear-cookie metabase-session-cookie)
-      (clear-cookie metabase-legacy-session-cookie)))
+  (reduce clear-cookie (wrap-body-if-needed response) [metabase-session-cookie metabase-embedded-session-cookie]))
 
-(defn- wrap-session-id* [{:keys [cookies headers] :as request}]
-  (let [session-id (or (get-in cookies [metabase-session-cookie :value])
-                       (get-in cookies [metabase-legacy-session-cookie :value])
-                       (headers metabase-session-header))]
-    (if (seq session-id)
-      (assoc request :metabase-session-id session-id)
-      request)))
+(defmulti set-session-cookie
+  "Add an appropriate cookie to persist a newly created Session to `response`."
+  {:arglists '([request response session])}
+  (fn [_ _ {session-type :type}] (keyword session-type)))
+
+(defmethod set-session-cookie :default
+  [_ _ session]
+  (throw (ex-info (str (tru "Invalid session. Expected an instance of Session."))
+           {:session session})))
+
+(s/defmethod set-session-cookie :normal
+  [request response {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}]
+  (let [response       (wrap-body-if-needed response)
+        cookie-options (merge
+                        {:same-site config/mb-session-cookie-samesite
+                         :http-only true
+                         ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
+                         ;; up breaking things
+                         :path      "/" #_ (site-path)}
+                        ;; If the env var `MB_SESSION_COOKIES=true`, do not set the `Max-Age` directive; cookies
+                        ;; with no `Max-Age` and no `Expires` directives are session cookies, and are deleted when
+                        ;; the browser is closed
+                        ;;
+                        ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#Session_cookies
+                        (when-not (config/config-bool :mb-session-cookies)
+                          ;; max-session age-is in minutes; Max-Age= directive should be in seconds
+                          {:max-age (* 60 (config/config-int :max-session-age))})
+                        ;; If the authentication request request was made over HTTPS (hopefully always except for
+                        ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
+                        (when (https-request? request)
+                          {:secure true})
+                        (when (= config/mb-session-cookie-samesite :none)
+                          (log/warn
+                           (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is")
+                                (deferred-trs "served over an insecure connection. Some browsers will reject ")
+                                (deferred-trs "cookies under these conditions. ")
+                                (deferred-trs "https://www.chromestatus.com/feature/5633521622188032")))))]
+    (resp/set-cookie response metabase-session-cookie (str session-uuid) cookie-options)))
+
+(s/defmethod set-session-cookie :full-app-embed
+  [request response {session-uuid :id, anti-csrf-token :anti_csrf_token} :- {:id       (s/cond-pre UUID u/uuid-regex)
+                                                                             s/Keyword s/Any}]
+  (let [response       (wrap-body-if-needed response)
+        cookie-options (merge
+                        {:http-only true
+                         :path      "/"}
+                        (when (https-request? request)
+                          {:secure true}))]
+    (-> response
+        (resp/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
+        (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                wrap-session-id                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private ^String metabase-session-header "x-metabase-session")
+
+(defmulti ^:private wrap-session-id-with-strategy
+  "Attempt to add `:metabase-session-id` to `request` based on a specific strategy. Return modified request if
+  successful or `nil` if we should try another strategy."
+  {:arglists '([strategy request])}
+  (fn [strategy _]
+    strategy))
+
+(defmethod wrap-session-id-with-strategy :embedded-cookie
+  [_ {:keys [cookies headers], :as request}]
+  (when-let [session (get-in cookies [metabase-embedded-session-cookie :value])]
+    (when-let [anti-csrf-token (get headers anti-csrf-token-header)]
+      (assoc request :metabase-session-id session, :anti-csrf-token anti-csrf-token))))
+
+(defmethod wrap-session-id-with-strategy :normal-cookie
+  [_ {:keys [cookies], :as request}]
+  (when-let [session (get-in cookies [metabase-session-cookie :value])]
+    (when (seq session)
+      (assoc request :metabase-session-id session))))
+
+(defmethod wrap-session-id-with-strategy :header
+  [_ {:keys [headers], :as request}]
+  (when-let [session (get headers metabase-session-header)]
+    (when (seq session)
+      (assoc request :metabase-session-id session))))
+
+(defmethod wrap-session-id-with-strategy :best
+  [_ request]
+  (some
+   (fn [strategy]
+     (wrap-session-id-with-strategy strategy request))
+   [:embedded-cookie :normal-cookie :header]))
 
 (defn wrap-session-id
   "Middleware that sets the `:metabase-session-id` keyword on the request if a session id can be found.
-
-   We first check the request :cookies for `metabase.SESSION_ID`, then if no cookie is found we look in the
-   http headers for `X-METABASE-SESSION`.  If neither is found then then no keyword is bound to the request."
+   We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
+  for `X-METABASE-SESSION`. If neither is found then then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
-    (handler (wrap-session-id* request) respond raise)))
+    (let [request (or (wrap-session-id-with-strategy :best request)
+                      request)]
+      (handler request respond raise))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             wrap-current-user-info                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Because this query runs on every single API request it's worth it to optimize it a bit and only compile it to SQL
 ;; once rather than every time
-(def ^:private ^{:arglists '([db-type max-age-minutes])} session-with-id-query
+(def ^:private ^{:arglists '([db-type max-age-minutes session-type])} session-with-id-query
   (memoize
-   (fn [db-type max-age-minutes]
-     (vec
+   (fn [db-type max-age-minutes session-type]
+     (first
       (db/honeysql->sql
        {:select    [[:session.user_id :metabase-user-id]
                     [:user.is_superuser :is-superuser?]
@@ -142,22 +204,29 @@
                     [:= :user.is_active true]
                     [:= :session.id (hsql/raw "?")]
                     (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
-                      [:> :session.created_at oldest-allowed])]
+                      [:> :session.created_at oldest-allowed])
+                    [:= :session.anti_csrf_token (case session-type
+                                                   :normal         nil
+                                                   :full-app-embed "?")]]
         :limit     1})))))
 
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
-  [session-id]
+  [session-id anti-csrf-token]
   (when (and session-id (init-status/complete?))
-    (first
-     (jdbc/query (db/connection) (conj (session-with-id-query (mdb/db-type) (config/config-int :max-session-age))
-                                       session-id)))))
+    (let [sql    (session-with-id-query (mdb/db-type)
+                                        (config/config-int :max-session-age)
+                                        (if (seq anti-csrf-token) :full-app-embed :normal))
+          params (concat [session-id]
+                         (when (seq anti-csrf-token)
+                           [anti-csrf-token]))]
+      (first (jdbc/query (db/connection) (cons sql params))))))
 
-;; if someone passes in an `X-Metabase-Locale` header, use that for `user-locale` (overriding any value in the DB)
-(defn- merge-current-user-info [{:keys [metabase-session-id], {:strs [x-metabase-locale]} :headers, :as request}]
+(defn- merge-current-user-info
+  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]9
   (merge
    request
-   (current-user-info-for-session metabase-session-id)
+   (current-user-info-for-session metabase-session-id anti-csrf-token)
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
@@ -167,6 +236,11 @@
   [handler]
   (fn [request respond raise]
     (handler (merge-current-user-info request) respond raise)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               bind-current-user                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private current-user-fields
   (into [User] user/admin-or-self-visible-columns))
@@ -195,7 +269,8 @@
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB
-  *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User. Overrides `site-locale` if set.
+  *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User.
+                                        Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
   *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB"
   [handler]
@@ -203,11 +278,18 @@
     (with-current-user-for-request request
       (handler request respond raise))))
 
+(defn with-current-user-fetch-user-for-id
+  "Part of the impl for `with-current-user` -- don't use this directly."
+  [current-user-id]
+  (when current-user-id
+    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]]
+      :id current-user-id)))
+
 (defmacro with-current-user
   "Execute code in body with User with `current-user-id` bound as the current user. (This is not used in the middleware
   itself but elsewhere where we want to simulate a User context, such as when rendering Pulses or in tests.) "
   {:style/indent 1}
   [current-user-id & body]
   `(do-with-current-user
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]] :id ~current-user-id)
+    (with-current-user-fetch-user-for-id ~current-user-id)
     (fn [] ~@body)))

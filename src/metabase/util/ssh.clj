@@ -2,12 +2,16 @@
   (:require [clojure.tools.logging :as log]
             [metabase.util :as u])
   (:import java.io.ByteArrayInputStream
+           java.util.concurrent.TimeUnit
            org.apache.sshd.client.future.ConnectFuture
            org.apache.sshd.client.session.ClientSession
            org.apache.sshd.client.session.forward.PortForwardingTracker
            org.apache.sshd.client.SshClient
            [org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$ResourceDecodeResult]
-           org.apache.sshd.common.session.SessionHolder
+           [org.apache.sshd.common.session
+            SessionHeartbeatController
+            SessionHeartbeatController$HeartbeatType
+            SessionHolder]
            org.apache.sshd.common.util.GenericUtils
            org.apache.sshd.common.util.io.resource.AbstractIoResource
            org.apache.sshd.common.util.net.SshdSocketAddress
@@ -50,6 +54,9 @@
         session                    (doto ^ClientSession (.getSession conn-status)
                                      (maybe-add-tunnel-password! tunnel-pass)
                                      (maybe-add-tunnel-private-key! tunnel-private-key tunnel-private-key-passphrase)
+                                     (.setSessionHeartbeat SessionHeartbeatController$HeartbeatType/IGNORE
+                                                           TimeUnit/SECONDS
+                                                           180)
                                      (.. auth (verify default-ssh-timeout)))
         tracker                    (.createLocalPortForwardingTracker session
                                                                       (SshdSocketAddress. "" 0)
@@ -135,7 +142,7 @@
   (when (use-ssh-tunnel? details)
     (.close ^ClientSession (:tunnel-session details))))
 
-(defn with-ssh-tunnel*
+(defn do-with-ssh-tunnel
   "Starts an SSH tunnel, runs the supplied function with the tunnel open, then closes it"
   [details f]
   (if (use-ssh-tunnel? details)
@@ -143,8 +150,6 @@
       (try
         (log/trace (u/format-color 'cyan "<< OPENED SSH TUNNEL >>"))
         (f details-with-tunnel)
-        (catch Exception e
-          (throw e))
         (finally
           (close-tunnel! details-with-tunnel)
           (log/trace (u/format-color 'cyan "<< CLOSED SSH TUNNEL >>")))))
@@ -154,6 +159,6 @@
   "Starts an ssh tunnel, and binds the supplied name to a database
   details map with it's values adjusted to use the tunnel"
   [[name details] & body]
-  `(with-ssh-tunnel* ~details
+  `(do-with-ssh-tunnel ~details
      (fn [~name]
        ~@body)))

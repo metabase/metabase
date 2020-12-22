@@ -4,7 +4,7 @@ describe("scenarios > dashboard > embed", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
-  it("should have the correct embed snippet", () => {
+  it.skip("should have the correct embed snippet", () => {
     cy.visit("/dashboard/1");
     cy.get(".Icon-share").click();
     cy.contains(/Embed this .* in an application/).click();
@@ -54,33 +54,27 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
   it("should update the name and description", () => {
     cy.visit("/dashboard/1");
     // click pencil icon to edit
-    cy.get(".Icon-pencil").click();
+    cy.get(".Icon-ellipsis").click();
     // update title
-    cy.get(".Header-title input")
-      .first()
-      .type("{selectall}Orders per year");
-    // update desc
-    cy.get(".Header-title input")
-      .last()
-      .type("{selectall}How many orders were placed in each year?");
-    cy.contains("Save").click();
+    popover().within(() =>
+      cy.findByText("Change title and description").click(),
+    );
+
+    modal().within(() => {
+      cy.findByText("Change title and description");
+      cy.findByLabelText("Name").type("{selectall}Orders per year");
+      cy.findByLabelText("Description").type(
+        "{selectall}How many orders were placed in each year?",
+      );
+      cy.findByText("Update").click();
+    });
 
     // refresh page and check that title/desc were updated
     cy.visit("/dashboard/1");
-    cy.contains("Orders per year")
+    cy.findByText("Orders per year")
       .next()
       .trigger("mouseenter");
-    cy.contains("How many orders were placed in each year?");
-
-    // reset title/desc
-    cy.get(".Icon-pencil").click();
-    cy.get(".Header-title input")
-      .first()
-      .type("{selectall}Orders over time");
-    cy.get(".Header-title input")
-      .last()
-      .clear();
-    cy.contains("Save").click();
+    cy.findByText("How many orders were placed in each year?");
   });
 
   it("should let you add a parameter to a dashboard with a text box", () => {
@@ -93,29 +87,12 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
       .last()
       .find("textarea")
       .type("text text text");
-    cy.get(".Icon-funnel_add").click();
-    popover()
-      .contains("Other Categories")
-      .click();
-    cy.contains("Done").click();
-    cy.contains("Save").click();
+    cy.get(".Icon-filter").click();
+    popover().within(() => cy.findByText("Other Categories").click());
+    cy.findByText("Save").click();
 
     // confirm text box and filter are still there
-    cy.contains("text text text");
-    cy.get("input[placeholder=Category]");
-
-    // reset
-    // remove text box
-    cy.get(".Icon-pencil").click();
-    cy.get(".DashCard")
-      .last()
-      .find(".Icon-close")
-      .click({ force: true });
-    modal()
-      .contains("button", "Remove")
-      .click({ force: true });
-    // remove filter
-    cy.contains("Remove").click();
-    cy.contains("Save").click();
+    cy.findByText("text text text");
+    cy.findByPlaceholderText("Category");
   });
 });

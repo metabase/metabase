@@ -16,12 +16,18 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test.data.impl :as data.impl]))
 
+(def initialized?
+  (atom nil))
+
 (defn init!
   []
-  (mbc/init!))
+  (mbc/init!)
+  (reset! initialized? true))
 
 (defn start!
   []
+  (when-not @initialized?
+    (init!))
   (metabase.server/start-web-server! #'metabase.handler/app)
   (metabase.db/setup-db!)
   (metabase.plugins/load-plugins!)

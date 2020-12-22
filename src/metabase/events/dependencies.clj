@@ -14,8 +14,8 @@
     :metric-create
     :metric-update})
 
-(def ^:private dependencies-channel
-  "Channel for receiving event notifications we want to subscribe to for dependencies events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for dependencies events."}
+  dependencies-channel
   (async/chan))
 
 
@@ -46,8 +46,6 @@
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
-
-(defn events-init
-  "Automatically called during startup; start the events listener for dependencies topics."
-  []
+(defmethod events/init! ::Dependencies
+  [_]
   (events/start-event-listener! dependencies-topics dependencies-channel process-dependencies-event))

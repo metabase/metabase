@@ -109,6 +109,13 @@
 (derive :type/UNIXTimestamp :type/Integer)
 (derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
+(derive :type/UNIXTimestampMicroseconds :type/UNIXTimestamp)
+
+(derive :type/TemporalString :type/Text)
+(derive :type/TemporalString :type/DateTime)
+(derive :type/ISO8601DateTimeString :type/TemporalString)
+(derive :type/ISO8601DateString :type/TemporalString)
+(derive :type/ISO8601TimeString :type/TemporalString)
 
 (derive :type/CreationTimestamp :type/DateTime)
 (derive :type/CreationTime :type/Time)
@@ -134,6 +141,12 @@
 (derive :type/DeletionDate :type/Date)
 (derive :type/DeletionDate :type/DeletionTimestamp)
 
+(derive :type/UpdatedTimestamp :type/DateTime)
+(derive :type/UpdatedTime :type/Date)
+(derive :type/UpdatedTime :type/UpdatedTimestamp)
+(derive :type/UpdatedDate :type/Date)
+(derive :type/UpdatedDate :type/UpdatedTimestamp)
+
 (derive :type/Birthdate :type/Date)
 
 
@@ -157,6 +170,12 @@
 (derive :type/State :type/Address)
 (derive :type/Country :type/Address)
 (derive :type/ZipCode :type/Address)
+
+;;; Structured
+
+(derive :type/Structured :type/*)
+(derive :type/SerializedJSON :type/Structured)
+(derive :type/XML :type/Structured)
 
 
 ;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and

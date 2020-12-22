@@ -10,8 +10,8 @@ import Select, { Option } from "metabase/components/Select";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
-import type { TemplateTag } from "metabase/meta/types/Query";
-import type { Database } from "metabase/meta/types/Database";
+import type { TemplateTag } from "metabase-types/types/Query";
+import type { Database } from "metabase-types/types/Database";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import { fetchField } from "metabase/redux/metadata";
@@ -19,7 +19,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import MetabaseSettings from "metabase/lib/settings";
-import type { FieldId } from "metabase/meta/types/Field";
+import type { FieldId } from "metabase-types/types/Field";
 
 type Props = {
   tag: TemplateTag,
@@ -83,7 +83,7 @@ export default class TagEditorParam extends Component {
     const { tag, onUpdate, metadata } = this.props;
     const dimension = ["field-id", fieldId];
     if (!_.isEqual(tag.dimension !== dimension)) {
-      const field = metadata.fields[dimension[1]];
+      const field = metadata.field(dimension[1]);
       if (!field) {
         return;
       }
@@ -111,7 +111,7 @@ export default class TagEditorParam extends Component {
       table,
       fieldMetadataLoaded = false;
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
-      const field = metadata.fields[tag.dimension[1]];
+      const field = metadata.field(tag.dimension[1]);
 
       if (field) {
         widgetOptions = parameterOptionsForField(field);
@@ -220,6 +220,7 @@ export default class TagEditorParam extends Component {
               type="text"
               value={tag["display-name"]}
               className="AdminSelect p1 text-bold text-dark bordered border-medium rounded full"
+              style={{ fontSize: "14px" }}
               onBlurChange={e =>
                 this.setParameterAttribute("display-name", e.target.value)
               }

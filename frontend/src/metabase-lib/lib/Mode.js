@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import Question from "metabase-lib/lib/Question";
 import { getMode } from "metabase/modes/lib/modes";
 
@@ -7,7 +5,7 @@ import type {
   ClickAction,
   ClickObject,
   QueryMode,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 export default class Mode {
   _question: Question;
@@ -37,13 +35,14 @@ export default class Mode {
     return this._queryMode.name;
   }
 
-  actionsForClick(clicked: ?ClickObject, settings): ClickAction[] {
-    return _.flatten(
-      this._queryMode
-        .drills()
-        .map(actionCreator =>
-          actionCreator({ question: this._question, settings, clicked }),
-        ),
+  actionsForClick(clicked: ?ClickObject, settings, extraData): ClickAction[] {
+    return this._queryMode.drills().flatMap(actionCreator =>
+      actionCreator({
+        question: this._question,
+        settings,
+        clicked,
+        extraData,
+      }),
     );
   }
 }

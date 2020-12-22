@@ -4,6 +4,7 @@
              [data :as data]
              [set :as set]]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.mbql
              [normalize :as normalize]
              [schema :as mbql.s]
@@ -87,6 +88,20 @@
       (when-let [diff (second (data/diff query <>))]
         (log/tracef "\n\nSubstituted params:\n%s\n" (u/pprint-to-str 'cyan diff))))))
 
+(defn- assoc-db-in-snippet-tag
+  [db template-tags]
+  (->> template-tags
+       (m/map-vals
+        (fn [v]
+          (cond-> v
+            (= (:type v) :snippet) (assoc :database db))))
+       (into {})))
+
+(defn- hoist-database-for-snippet-tags
+  "Assocs the `:database` ID from `query` in all snippet template tags."
+  [query]
+  (u/update-in-when query [:native :template-tags] (partial assoc-db-in-snippet-tag (:database query))))
+
 (defn substitute-parameters
   "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholers with appropriate values
   and/or modifiying the query as appropriate. This looks for maps that have the key `:parameters` and/or
@@ -96,4 +111,5 @@
   well as any prepared statement args needed. MBQL queries will have additional filter clauses added."
   [qp]
   (fn [query rff context]
-    (qp (substitute-parameters* query) rff context)))
+    (qp ((comp substitute-parameters* hoist-database-for-snippet-tags) query)
+        rff context)))

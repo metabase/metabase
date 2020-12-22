@@ -196,8 +196,11 @@
 
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
-  []
-  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+  ([]
+   (throw-403 nil))
+
+  ([e]
+   (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403} e))))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
@@ -349,8 +352,10 @@
    (check-404 obj)
    (check-403 (mi/can-read? obj))
    obj)
+
   ([entity id]
    (read-check (entity id)))
+
   ([entity id & other-conditions]
    (read-check (apply db/select-one entity :id id other-conditions))))
 
@@ -373,10 +378,20 @@
 
   This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
   not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
-  hardcoded into this -- this should be considered an antipattern and be refactored out going forward."
+  hardcoded into them -- this should be considered an antipattern and be refactored out going forward."
   {:added "0.32.0", :style/indent 2}
   [entity m]
   (check-403 (mi/can-create? entity m)))
+
+(defn update-check
+  "NEW! Check whether the current user has permissions to UPDATE an object by applying a map of `changes`.
+
+  This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
+  not implement this method. Most `PUT` API endpoints instead have the `can-update?` logic for a given model hardcoded
+  into them -- this should be considered an antipattern and be refactored out going forward."
+  {:added "0.36.0", :style/indent 2}
+  [instance changes]
+  (check-403 (mi/can-update? instance changes)))
 
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 
@@ -384,7 +399,7 @@
   "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."
   []
   (check (public-settings/enable-public-sharing)
-         [400 (tru "Public sharing is not enabled.")]))
+    [400 (tru "Public sharing is not enabled.")]))
 
 (defn check-embedding-enabled
   "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
@@ -393,7 +408,7 @@
     [400 (tru "Embedding is not enabled.")]))
 
 (defn check-not-archived
-  "Check that the OBJECT exists and is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
+  "Check that the `object` exists and is not `:archived`, or throw a `404`. Returns `object` as-is if check passes."
   [object]
   (u/prog1 object
     (check-404 object)

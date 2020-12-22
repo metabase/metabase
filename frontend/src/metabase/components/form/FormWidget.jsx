@@ -10,6 +10,7 @@ import FormSelectWidget from "./widgets/FormSelectWidget";
 import FormNumericInputWidget from "./widgets/FormNumericInputWidget";
 import FormToggleWidget from "./widgets/FormToggleWidget";
 import FormCollectionWidget from "./widgets/FormCollectionWidget";
+import FormSnippetCollectionWidget from "./widgets/FormSnippetCollectionWidget";
 import FormHiddenWidget from "./widgets/FormHiddenWidget";
 import FormTextFileWidget from "./widgets/FormTextFileWidget";
 
@@ -24,6 +25,7 @@ const WIDGETS = {
   integer: FormNumericInputWidget,
   boolean: FormToggleWidget,
   collection: FormCollectionWidget,
+  snippetCollection: FormSnippetCollectionWidget,
   hidden: FormHiddenWidget,
   textFile: FormTextFileWidget,
 };

@@ -32,13 +32,13 @@
    (mt/with-test-user :rasta
      (with-dashboard-cleanup
        (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
-             result       (validation-fn ((mt/user->client :rasta) :get 200 api-endpoint))]
+             result       (validation-fn (mt/user-http-request :rasta :get 200 api-endpoint))]
          (when (and result
                     (try
                       (testing "Endpoint should return 403 if user does not have permissions"
                         (perms/revoke-permissions! (perms-group/all-users) (mt/id))
                         (revoke-fn)
-                        (let [result ((mt/user->client :rasta) :get 403 api-endpoint)]
+                        (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
                           (is (= "You don't have permissions to do that."
                                  result))
                           (= "You don't have permissions to do that." result)))
@@ -160,11 +160,11 @@
     (mt/with-test-user :rasta
       (transforms.test/with-test-transform-specs
         (de.test/with-test-domain-entity-specs
-          (mt/with-model-cleanup ['Card 'Collection]
+          (mt/with-model-cleanup [Card Collection]
             (transforms/apply-transform! (mt/id) "PUBLIC" (first @transforms.specs/transform-specs))
-            (is (= [[4 1 10.0646 -165.374 "Red Medicine" 3 1.5 4 3 2 1]
-                    [11 2 34.0996 -118.329 "Stout Burgers & Beers" 2 2.0 11 2 1 1]
-                    [11 3 34.0406 -118.428 "The Apple Pan" 2 2.0 11 2 1 1]]
+            (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1.5 4 3 2 1]
+                    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0 11 2 1 1]
+                    [3 "The Apple Pan" 11 34.0406 -118.428 2 2.0 11 2 1 1]]
                    (api-call "transform/%s" ["Test transform"]
                              #(revoke-collection-permissions!
                                (transforms.materialize/get-collection "Test transform"))

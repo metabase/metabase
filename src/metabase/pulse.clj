@@ -10,6 +10,8 @@
             [metabase.middleware.session :as session]
             [metabase.models
              [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
              [database :refer [Database]]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.pulse.render :as render]
@@ -24,26 +26,42 @@
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
-
 ;; TODO - this is probably something that could live somewhere else and just be reused
 ;; TODO - this should be done async
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
   [{pulse-creator-id :creator_id} card-or-id & {:as options}]
+  ;; The Card must either be executed in the context of a User or by the MetaBot which itself is not a User
+  {:pre [(or (integer? pulse-creator-id)
+             (= (:context options) :metabot))]}
   (let [card-id (u/get-id card-or-id)]
     (try
       (when-let [{query :dataset_query, :as card} (Card :id card-id, :archived false)]
-        (let [query (assoc query :async? false)]
-          (session/with-current-user pulse-creator-id
-            {:card   card
-             :result (qp/process-query-and-save-with-max-results-constraints!
-                      query
-                      (merge {:executed-by pulse-creator-id
-                              :context     :pulse
-                              :card-id     card-id}
-                             options))})))
+        (let [query         (assoc query :async? false)
+              process-query (fn []
+                              (qp/process-query-and-save-with-max-results-constraints!
+                               query
+                               (merge {:executed-by pulse-creator-id
+                                       :context     :pulse
+                                       :card-id     card-id}
+                                      options)))]
+          {:card   card
+           :result (if pulse-creator-id
+                     (session/with-current-user pulse-creator-id
+                       (process-query))
+                     (process-query))}))
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
+
+(defn execute-dashboard
+  "Execute all the cards in a dashboard for a Pulse"
+  [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
+  (let [dashboard-id (u/get-id dashboard-or-id)
+        dashboard (Dashboard :id dashboard-id)]
+    (for [dashcard (db/select DashboardCard :dashboard_id dashboard-id)]
+      (if options
+        (execute-card pulse (:card_id dashcard) options)
+        (execute-card pulse (:card_id dashcard))))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -150,6 +168,9 @@
     (not (are-all-cards-empty? results))
     true))
 
+;; 'notification' used below means a map that has information needed to send a Pulse/Alert, including results of
+;; running the underlying query
+
 (defmulti ^:private notification
   "Polymorphoic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
   channel_type (i.e. email vs. slack)"
@@ -213,14 +234,20 @@
             :when   (contains? (set channel-ids) (:id channel))]
         (notification pulse results channel)))))
 
-(defn- pulse->notifications [{:keys [cards], pulse-id :id, :as pulse}]
-  (let [results (for [card  cards
-                      ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                      :let  [result (execute-card pulse (u/get-id card), :pulse-id pulse-id)]
-                      ;; some cards may return empty results, e.g. if the card has been archived
-                      :when result]
-                  result)]
-    (results->notifications pulse results)))
+(defn- pulse->notifications
+  "Execute the underlying queries for a sequence of Pulses and return the results as 'notification' maps."
+  [{:keys [cards dashboard dashboard_id], pulse-id :id, :as pulse}]
+  (results->notifications pulse
+                          (if dashboard
+                            ;; send the dashboard
+                            (execute-dashboard pulse dashboard_id)
+                            ;; send the cards instead
+                            (for [card  cards
+                                  ;; Pulse ID may be `nil` if the Pulse isn't saved yet
+                                  :let  [result (execute-card pulse (u/get-id card), :pulse-id pulse-id)]
+                                  ;; some cards may return empty results, e.g. if the card has been archived
+                                  :when result]
+                              result))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -228,7 +255,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti ^:private send-notification!
-  "Invokes the side-affecty function for sending emails/slacks depending on the notification type"
+  "Invokes the side-effecty function for sending emails/slacks depending on the notification type"
   {:arglists '([pulse-or-alert])}
   (fn [{:keys [channel-id]}]
     (if channel-id :slack :email)))
@@ -266,7 +293,7 @@
        (send-pulse! pulse)                       Send to all Channels
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
   [{:keys [cards], :as pulse} & {:keys [channel-ids]}]
-  {:pre [(map? pulse)]}
+  {:pre [(map? pulse) (integer? (:creator_id pulse))]}
   (let [pulse (-> pulse
                   pulse/map->PulseInstance
                   ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`

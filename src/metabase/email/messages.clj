@@ -3,20 +3,23 @@
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [clojure.core.cache :as cache]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [java-time :as t]
             [medley.core :as m]
             [metabase
              [config :as config]
+             [driver :as driver]
              [email :as email]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.pulse.render :as render]
             [metabase.pulse.render
              [body :as render.body]
              [style :as render.style]]
-            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
             [metabase.util
              [i18n :refer [deferred-trs trs tru]]
@@ -26,17 +29,66 @@
              [core :as stencil]
              [loader :as stencil-loader]]
             [toucan.db :as db])
-  (:import [java.io File IOException]))
+  (:import [java.io File IOException OutputStream]))
 
-(when config/is-dev?
-  (alter-meta! #'stencil.core/render-file assoc :style/indent 1))
+(defn- app-name-trs
+  "Return the user configured application name, or Metabase translated
+  via tru if a name isn't configured."
+  []
+  (or (public-settings/application-name)
+      (trs "Metabase")))
 
 ;; Dev only -- disable template caching
 (when config/is-dev?
+  (alter-meta! #'stencil.core/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
+(def ^:private ^:const data-uri-svg-regex #"^data:image/svg\+xml;base64,(.*)$")
+
+(defn- data-uri-svg? [url]
+  (re-matches data-uri-svg-regex url))
+
+(defn- themed-image-url
+  [url color]
+  (try
+    (let [base64 (second (re-matches data-uri-svg-regex url))
+          svg    (u/decode-base64 base64)
+          themed (str/replace svg #"<svg\b([^>]*)( fill=\"[^\"]*\")([^>]*)>" (str "<svg$1$3 fill=\"" color "\">"))]
+      (str "data:image/svg+xml;base64," (u/encode-base64 themed)))
+  (catch Throwable e
+    url)))
+
+(defn- logo-url []
+  (let [url   (public-settings/application-logo-url)
+        color (public-settings/application-color)]
+    (cond
+      (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
+      ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
+      ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
+      true                              nil
+      (data-uri-svg? url)               (themed-image-url url color)
+      :else                             url)))
+
+(defn- button-style [color]
+  (str "display: inline-block; "
+       "box-sizing: border-box; "
+       "padding: 0.5rem 1.375rem; "
+       "font-size: 1.063rem; "
+       "font-weight: bold; "
+       "text-decoration: none; "
+       "cursor: pointer; "
+       "color: #fff; "
+       "border: 1px solid " color "; "
+       "background-color: " color "; "
+       "border-radius: 4px;"))
 
 ;;; Various Context Helper Fns. Used to build Stencil template context
+
+(defn- common-context []
+  {:applicationName    (public-settings/application-name)
+   :applicationColor   (public-settings/application-color)
+   :applicationLogoUrl (logo-url)
+   :buttonStyle        (button-style (public-settings/application-color))})
 
 (defn- random-quote-context []
   (let [data-quote (quotation/random-quote)]
@@ -67,7 +119,8 @@
   [invited invitor join-url]
   (let [company      (or (public-settings/site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
-                       (merge {:emailType    "new_user_invite"
+                       (merge (common-context)
+                              {:emailType    "new_user_invite"
                                :invitedName  (:first_name invited)
                                :invitorName  (:first_name invitor)
                                :invitorEmail (:email invitor)
@@ -77,7 +130,7 @@
                                :logoHeader   true}
                               (random-quote-context)))]
     (email/send-message!
-      :subject      (str "You're invited to join " company "'s Metabase")
+      :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
       :recipients   [(:email invited)]
       :message-type :html
       :message      message-body)))
@@ -99,12 +152,13 @@
   (let [recipients (all-admin-recipients)]
     (email/send-message!
       :subject      (str (if google-auth?
-                           (trs "{0} created a Metabase account"     (:common_name new-user))
-                           (trs "{0} accepted their Metabase invite" (:common_name new-user))))
+                           (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
+                           (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
       :recipients   recipients
       :message-type :html
       :message      (stencil/render-file "metabase/email/user_joined_notification"
-                      (merge {:logoHeader        true
+                      (merge (common-context)
+                             {:logoHeader        true
                               :joinedUserName    (:first_name new-user)
                               :joinedViaSSO      google-auth?
                               :joinedUserEmail   (:email new-user)
@@ -122,13 +176,14 @@
          (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file "metabase/email/password_reset"
-                       {:emailType        "password_reset"
-                        :hostname         hostname
-                        :sso              google-auth?
-                        :passwordResetUrl password-reset-url
-                        :logoHeader       true})]
+                       (merge (common-context)
+                              {:emailType        "password_reset"
+                               :hostname         hostname
+                               :sso              google-auth?
+                               :passwordResetUrl password-reset-url
+                               :logoHeader       true}))]
     (email/send-message!
-      :subject      (trs "[Metabase] Password Reset Request")
+      :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -165,9 +220,10 @@
   (let [context      (merge (update context :dependencies build-dependencies)
                             notification-context
                             (random-quote-context))
-        message-body (stencil/render-file "metabase/email/notification" context)]
+        message-body (stencil/render-file "metabase/email/notification"
+                                          (merge (common-context) context))]
     (email/send-message!
-      :subject      (trs "[Metabase] Notification")
+      :subject      (trs "[{0}] Notification" (app-name-trs))
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -177,14 +233,15 @@
   [email msg-type]
   {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
   (let [subject      (str (if (= "abandon" msg-type)
-                            (trs "[Metabase] Help make Metabase better.")
-                            (trs "[Metabase] Tell us how things are going.")))
+                            (trs "[{0}] Help make [{1}] better." (app-name-trs) (app-name-trs))
+                            (trs "[{0}] Tell us how things are going." (app-name-trs))))
         context      (merge notification-context
                             (random-quote-context)
                             (if (= "abandon" msg-type)
                               (abandonment-context)
                               (follow-up-context)))
-        message-body (stencil/render-file "metabase/email/follow_up_email" context)]
+        message-body (stencil/render-file "metabase/email/follow_up_email"
+                                          (merge (common-context) context))]
     (email/send-message!
       :subject      subject
       :recipients   [email]
@@ -198,7 +255,8 @@
    :content      url})
 
 (defn- pulse-context [pulse]
-  (merge {:emailType    "pulse"
+  (merge (common-context)
+         {:emailType    "pulse"
           :pulseName    (:name pulse)
           :sectionStyle (render.style/style (render.style/section-style))
           :colorGrey4   render.style/color-gray-4
@@ -260,18 +318,42 @@
       :else
       (no "less than %d columns, %d rows in results" render.body/cols-limit render.body/rows-limit))))
 
+(defn- stream-api-results-to-export-format
+  "For legacy compatability. Takes QP results in the normal `:api` response format and streams them to a different
+  format.
+
+  TODO -- this function is provided mainly because rewriting all of the Pulse/Alert code to stream results directly
+  was a lot of work. I intend to rework that code so we can stream directly to the correct export format(s) at some
+  point in the future; for now, this function is a stopgap.
+
+  Results are streamed synchronosuly. Caller is responsible for closing `os` when this call is complete."
+  [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
+  ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
+    ;; get timezone information when writing results
+  (driver/with-driver (driver.u/database->driver database-id)
+    (qp.store/with-store
+      (qp.store/fetch-and-store-database! database-id)
+      (let [w (qp.streaming.i/streaming-results-writer export-format os)]
+        (qp.streaming.i/begin! w results)
+        (dorun
+         (map-indexed
+          (fn [i row]
+            (qp.streaming.i/write-row! w row i))
+          rows))
+        (qp.streaming.i/finish! w results)))))
+
 (defn- result-attachment
   [{{card-name :name, :as card} :card, {{:keys [rows], :as result-data} :data, :as result} :result}]
   (when (seq rows)
     [(when-let [temp-file (and (include-csv-attachment? card result-data)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (qp.streaming/stream-api-results-to-export-format :csv os result))
+         (stream-api-results-to-export-format :csv os result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (qp.streaming/stream-api-results-to-export-format :xlsx os result))
+         (stream-api-results-to-export-format :xlsx os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- result-attachments [results]

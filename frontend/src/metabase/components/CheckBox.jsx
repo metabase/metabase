@@ -5,6 +5,7 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon";
 
 import { color as c, normal as defaultColors } from "metabase/lib/colors";
+import { KEYCODE_SPACE } from "metabase/lib/keyboard";
 
 export default class CheckBox extends Component {
   static propTypes = {
@@ -35,6 +36,12 @@ export default class CheckBox extends Component {
     }
   }
 
+  onKeyPress = e => {
+    if (e.keyCode === KEYCODE_SPACE) {
+      this.onClick(e);
+    }
+  };
+
   render() {
     const {
       className,
@@ -55,17 +62,22 @@ export default class CheckBox extends Component {
       height: size,
       backgroundColor: checked ? checkedColor : "white",
       border: `2px solid ${checked ? checkedColor : uncheckedColor}`,
+      borderRadius: 4,
     };
     return (
       <div
         className={cx(
           className,
-          "flex align-center justify-center rounded cursor-pointer",
+          "flex align-center justify-center cursor-pointer",
         )}
         style={{ ...style, ...checkboxStyle }}
         onClick={e => {
           this.onClick(e);
         }}
+        onKeyPress={this.onKeyPress}
+        role="checkbox"
+        aria-checked={checked}
+        tabIndex="0"
       >
         {(checked || indeterminate) && !noIcon && (
           <Icon

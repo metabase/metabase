@@ -7,8 +7,8 @@ import type {
   Column,
   ColumnName,
   DatasetData,
-} from "metabase/meta/types/Dataset";
-import type { Field as FieldReference } from "metabase/meta/types/Query";
+} from "metabase-types/types/Dataset";
+import type { Field as FieldReference } from "metabase-types/types/Query";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
@@ -20,9 +20,8 @@ type ColumnSetting = {
   enabled: boolean,
 };
 
-// Many aggregations result in [[null]] if there are no rows to aggregate after filters
 export const datasetContainsNoResults = (data: DatasetData): boolean =>
-  data.rows.length === 0 || _.isEqual(data.rows, [[null]]);
+  data.rows == null || data.rows.length === 0;
 
 /**
  * @returns min and max for a value in a column

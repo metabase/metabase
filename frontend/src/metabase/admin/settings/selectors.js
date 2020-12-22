@@ -64,17 +64,7 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Email Address for Help Requests`,
         type: "string",
       },
-      {
-        key: "report-timezone",
-        display_name: t`Report Timezone`,
-        type: "select",
-        options: [
-          { name: t`Database Default`, value: "" },
-          ...MetabaseSettings.get("available-timezones"),
-        ],
-        note: t`Not all databases support timezones, in which case this setting won't take effect.`,
-        allowValueCollection: true,
-      },
+
       {
         key: "anon-tracking-enabled",
         display_name: t`Anonymous Tracking`,
@@ -232,6 +222,32 @@ const SECTIONS = updateSectionsWithPlugins({
             window.location.reload();
           }
         },
+      },
+      {
+        key: "report-timezone",
+        display_name: t`Report Timezone`,
+        type: "select",
+        options: [
+          { name: t`Database Default`, value: "" },
+          ...MetabaseSettings.get("available-timezones"),
+        ],
+        note: t`Not all databases support timezones, in which case this setting won't take effect.`,
+        allowValueCollection: true,
+      },
+      {
+        key: "start-of-week",
+        display_name: t`First day of the week`,
+        type: "select",
+        options: [
+          { value: "sunday", name: t`Sunday` },
+          { value: "monday", name: t`Monday` },
+          { value: "tuesday", name: t`Tuesday` },
+          { value: "wednesday", name: t`Wednesday` },
+          { value: "thursday", name: t`Thursday` },
+          { value: "friday", name: t`Friday` },
+          { value: "saturday", name: t`Saturday` },
+        ],
+        defaultValue: "sunday",
       },
       {
         display_name: t`Localization options`,

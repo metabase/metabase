@@ -1,5 +1,9 @@
 import { signInAsAdmin, signOut, restore, popover } from "__support__/cypress";
 
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, PEOPLE } = SAMPLE_DATASET;
+
 const METABASE_SECRET_KEY =
   "24134bd93e081773fb178e8e1abb4e8a973822f7e19c872bd92c8d5a122ef63f";
 
@@ -9,9 +13,6 @@ const QUESTION_JWT_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJxdWVzdGlvbiI6M30sInBhcmFtcyI6e30sImlhdCI6MTU3OTU1OTg3NH0.alV205oYgfyWuwLNQSLVgfHop1tpevX4C26Xal-bia8";
 const DASHBOARD_JWT_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE1Nzk1NjAxMTF9.LjOiTp4p2lV3b2VpSjcg0GuSaE2O0xhHwc59JDYcBJI";
-const ORDER_USER_ID_FIELD_ID = 9;
-const PEOPLE_NAME_FIELD_ID = 20;
-const PEOPLE_ID_FIELD_ID = 21;
 
 // NOTE: some overlap with parameters.cy.spec.js
 
@@ -21,6 +22,16 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   before(() => {
     restore();
     signInAsAdmin();
+
+    cy.request("POST", `/api/field/${ORDERS.USER_ID}/dimension`, {
+      type: "external",
+      name: "User ID",
+      human_readable_field_id: PEOPLE.NAME,
+    });
+
+    [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach(id =>
+      cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
+    );
 
     createQuestion().then(res => {
       questionId = res.body.id;
@@ -32,22 +43,34 @@ describe("scenarios > dashboard > parameters-embedded", () => {
         });
       });
     });
-    cy.request("POST", `/api/field/${ORDER_USER_ID_FIELD_ID}/dimension`, {
-      type: "external",
-      name: "User ID",
-      human_readable_field_id: PEOPLE_NAME_FIELD_ID,
-    });
-
-    [ORDER_USER_ID_FIELD_ID, PEOPLE_NAME_FIELD_ID, PEOPLE_ID_FIELD_ID].forEach(
-      id =>
-        cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
-    );
 
     cy.request("PUT", `/api/setting/embedding-secret-key`, {
       value: METABASE_SECRET_KEY,
     });
     cy.request("PUT", `/api/setting/enable-embedding`, { value: true });
     cy.request("PUT", `/api/setting/enable-public-sharing`, { value: true });
+  });
+
+  describe("embeded params", () => {
+    it.skip("should be hideable", () => {
+      // Check viewable
+      cy.visit("/dashboard/2");
+      cy.get(".Icon-share").click();
+      cy.findByText("Embed this dashboard in an application").click();
+
+      cy.findByText("Parameters");
+      cy.get(".Modal--full").within(() => {
+        cy.findByText("Id");
+        cy.findByText("User");
+        cy.findAllByText("Disabled").should("have.length", 4);
+      });
+
+      // Check hideable
+      cy.visit("/dashboard/2#hide_parameters=id%2Cname");
+      cy.reload();
+      cy.findByText("User");
+      cy.findByText("Name").should("not.exist");
+    });
   });
 
   describe("private question", () => {
@@ -162,7 +185,7 @@ function sharedParametersTests(visitUrl) {
     popover()
       .find('[placeholder="Search by Name or enter an ID"]')
       .type("Aly");
-    popover().contains("Alycia Collins - 541");
+    popover().contains("Alycia McCullough - 2016");
   });
 
   it("should allow searching PEOPLE.NAME by PEOPLE.NAME", () => {
@@ -171,7 +194,7 @@ function sharedParametersTests(visitUrl) {
     popover()
       .find('[placeholder="Search by Name"]')
       .type("Aly");
-    popover().contains("Alycia Collins");
+    popover().contains("Alycia McCullough");
   });
 
   it("should show values for PEOPLE.SOURCE", () => {
@@ -187,7 +210,7 @@ function sharedParametersTests(visitUrl) {
     popover()
       .find('[placeholder="Search by Name or enter an ID"]')
       .type("Aly");
-    popover().contains("Alycia Collins - 541");
+    popover().contains("Alycia McCullough - 2016");
   });
 
   it("should accept url parameters", () => {
@@ -211,7 +234,7 @@ const createQuestion = () =>
             name: "id",
             display_name: "Id",
             type: "dimension",
-            dimension: ["field-id", 21],
+            dimension: ["field-id", PEOPLE.ID],
             "widget-type": "id",
             default: null,
           },
@@ -220,7 +243,7 @@ const createQuestion = () =>
             name: "name",
             display_name: "Name",
             type: "dimension",
-            dimension: ["field-id", 20],
+            dimension: ["field-id", PEOPLE.NAME],
             "widget-type": "category",
             default: null,
           },
@@ -229,7 +252,7 @@ const createQuestion = () =>
             name: "source",
             display_name: "Source",
             type: "dimension",
-            dimension: ["field-id", 24],
+            dimension: ["field-id", PEOPLE.SOURCE],
             "widget-type": "category",
             default: null,
           },
@@ -238,7 +261,7 @@ const createQuestion = () =>
             name: "user_id",
             display_name: "User",
             type: "dimension",
-            dimension: ["field-id", 9],
+            dimension: ["field-id", ORDERS.USER_ID],
             "widget-type": "id",
             default: null,
           },

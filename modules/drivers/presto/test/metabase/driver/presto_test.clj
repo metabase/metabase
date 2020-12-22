@@ -93,22 +93,28 @@
             :schema "default"
             :fields #{{:name          "name",
                        :database-type "varchar(255)"
-                       :base-type     :type/Text}
+                       :base-type     :type/Text
+                       :database-position 1}
                       {:name          "latitude"
                        :database-type "double"
-                       :base-type     :type/Float}
+                       :base-type     :type/Float
+                       :database-position 3}
                       {:name          "longitude"
                        :database-type "double"
-                       :base-type     :type/Float}
+                       :base-type     :type/Float
+                       :database-position 4}
                       {:name          "price"
                        :database-type "integer"
-                       :base-type     :type/Integer}
+                       :base-type     :type/Integer
+                       :database-position 5}
                       {:name          "category_id"
                        :database-type "integer"
-                       :base-type     :type/Integer}
+                       :base-type     :type/Integer
+                       :database-position 2}
                       {:name          "id"
                        :database-type "integer"
-                       :base-type     :type/Integer}}}
+                       :base-type     :type/Integer
+                       :database-position 0}}}
            (driver/describe-table :presto (mt/db) (db/select-one 'Table :id (mt/id :venues)))))))
 
 (deftest table-rows-sample-test
@@ -119,7 +125,8 @@
             ["Wurstküche"]
             ["Brite Spot Family Restaurant"]]
            (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                     [(Field (mt/id :venues :name))]))))))
+                     [(Field (mt/id :venues :name))]
+                     (constantly conj)))))))
 
 
 ;;; APPLY-PAGE

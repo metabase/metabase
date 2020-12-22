@@ -34,7 +34,7 @@ describe("scenarios > admin > databases > add", () => {
 
     typeField("Name", "Test db name");
     typeField("Database name", "test_postgres_db");
-    typeField("Database username", "uberadmin");
+    typeField("Username", "uberadmin");
 
     cy.findByText("Save")
       .should("not.be.disabled")
@@ -50,7 +50,7 @@ describe("scenarios > admin > databases > add", () => {
 
     typeField("Name", "Test db name");
     typeField("Database name", "test_postgres_db");
-    typeField("Database username", "uberadmin");
+    typeField("Username", "uberadmin");
 
     cy.findByText("Save").should("not.be.disabled");
 
@@ -73,7 +73,7 @@ describe("scenarios > admin > databases > add", () => {
 
     typeField("Name", "Test db name");
     typeField("Database name", "test_postgres_db");
-    typeField("Database username", "uberadmin");
+    typeField("Username", "uberadmin");
 
     cy.findByText("Save").should("not.be.disabled");
 
@@ -111,7 +111,7 @@ describe("scenarios > admin > databases > add", () => {
 
     typeField("Name", "Test db name");
     typeField("Database name", "test_postgres_db");
-    typeField("Database username", "uberadmin");
+    typeField("Username", "uberadmin");
 
     cy.findByText("Save").click();
 

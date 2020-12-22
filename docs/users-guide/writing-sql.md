@@ -24,11 +24,21 @@ Questions asked using SQL can be saved, downloaded, or added to a dashboard just
 
 ### Using SQL filters
 
-If you or someone else wrote a SQL query that includes [variables](13-sql-parameters.md), your question might have filter widgets at the top of the screen. These let you modify and filter the SQL query before it's run, changing the results you might get.
+If you or someone else wrote a SQL query that includes [variables](13-sql-parameters.md), your question might have filter widgets at the top of the screen. Filter widgets let you modify the SQL query before it's run, changing the results you might get.
 
 ![SQL filter](images/SQL-filter-widget.png)
 
 Writing SQL queries that use variables or parameters can be very powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](13-sql-parameters.md).
+
+### SQL snippets
+
+You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code across multiple questions that are composed using the SQL editor.
+
+
+### Learn more
+
+- [Best practices for writing SQL queries](https://www.metabase.com/blog/sql-best-practices/index.html).
+
 
 ---
 

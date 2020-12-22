@@ -9,7 +9,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 function getFiltersForColumn(column) {
   if (
@@ -18,9 +18,9 @@ function getFiltersForColumn(column) {
   ) {
     return [
       { name: "<", operator: "<" },
+      { name: ">", operator: ">" },
       { name: "=", operator: "=" },
       { name: "≠", operator: "!=" },
-      { name: ">", operator: ">" },
     ];
   } else {
     return [{ name: "=", operator: "=" }, { name: "≠", operator: "!=" }];
@@ -51,7 +51,9 @@ export default function QuickFilterDrill({
     return [
       {
         name: "view-fks",
-        section: "filter",
+        section: "standalone_filter",
+        buttonType: "horizontal",
+        icon: "filter",
         title: (
           <span>
             {jt`View this ${singularize(
@@ -68,6 +70,7 @@ export default function QuickFilterDrill({
   return operators.map(({ name, operator }) => ({
     name: operator,
     section: "filter",
+    buttonType: "token-filter",
     title: <span className="h2">{name}</span>,
     question: () => question.filter(operator, column, value),
   }));

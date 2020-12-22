@@ -26,8 +26,7 @@
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import clojure.lang.Keyword))
+            [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
@@ -44,7 +43,7 @@
    :base-type                        (s/cond-pre {:native su/NonBlankString} su/FieldType)
    (s/optional-key :special-type)    (s/maybe su/FieldType)
    (s/optional-key :visibility-type) (s/maybe (apply s/enum field/visibility-types))
-   (s/optional-key :fk)              (s/maybe s/Keyword)
+   (s/optional-key :fk)              (s/maybe su/KeywordOrString)
    (s/optional-key :field-comment)   (s/maybe su/NonBlankString)})
 
 (def ^:private ValidFieldDefinition
@@ -95,7 +94,7 @@
 ;;; |                                            Loading Test Extensions                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(declare before-run after-run)
+(declare before-run)
 
 (defonce ^:private has-done-before-run (atom #{}))
 
@@ -170,7 +169,7 @@
   []
   (the-driver-with-test-extensions (or driver/*driver* :h2)))
 
-(defn escaped-name
+(defn escaped-database-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."
   ^String [^DatabaseDefinition {:keys [database-name]}]
   {:pre [(string? database-name)]}
@@ -247,7 +246,6 @@
 
 (defmethod before-run ::test-extensions [_]) ; default-impl is a no-op
 
-
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
@@ -262,14 +260,27 @@
 
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
-  and add the appropriate data. This method should drop existing databases with the same name if applicable, unless
-  the skip-drop-db? arg is true. This is to workaround a scenario where the postgres driver terminates the connection
-  before dropping the DB and causes some tests to fail. (This refers to creating the actual *DBMS* database itself,
-  *not* a Metabase `Database` object.)
+  and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
+  `Database` object.)
 
   Optional `options` as third param. Currently supported options include `skip-drop-db?`. If unspecified,
-  `skip-drop-db?` should default to `false`."
+  `skip-drop-db?` should default to `false`.
+
+  This method should drop existing databases with the same name if applicable, unless the `skip-drop-db?` arg is
+  truthy. This is to work around a scenario where the Postgres driver terminates the connection before dropping the DB
+  and causes some tests to fail.
+
+  This method is not expected to return anything; use `dbdef->connection-details` to get connection details for this
+  database after you create it."
   {:arglists '([driver database-definition & {:keys [skip-drop-db?]}])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti destroy-db!
+  "Destroy the database created for `database-definition`, if one exists. This is only called if loading data fails for
+  one reason or another, to revert the changes made thus far; implementations should clean up everything related to
+  the database in question."
+  {:arglists '([driver database-definition])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

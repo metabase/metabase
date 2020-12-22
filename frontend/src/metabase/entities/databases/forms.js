@@ -4,27 +4,32 @@ import { t, jt } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
 import getFieldsForBigQuery from "./big-query-fields";
+import getFieldsForMongo from "./mongo-fields";
 
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
 
 const DATABASE_DETAIL_OVERRIDES = {
-  "tunnel-enabled": (engine, details) => ({
+  "tunnel-enabled": (engine, details, id) => ({
     title: t`Use an SSH-tunnel for database connections`,
     description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
   }),
-  "use-jvm-timezone": (engine, details) => ({
+  "use-jvm-timezone": (engine, details, id) => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
     description: t`We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data.`,
   }),
-  "use-srv": (engine, details) => ({
+  "include-user-id-and-hash": (engine, details, id) => ({
+    title: t`Include User ID and query hash in queries`,
+    description: t`When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs.`,
+  }),
+  "use-srv": (engine, details, id) => ({
     title: t`Use DNS SRV when connecting`,
     description: t`Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled.`,
   }),
-  "client-id": (engine, details) => ({
+  "client-id": (engine, details, id) => ({
     description: getClientIdDescription(engine, details),
   }),
-  "auth-code": (engine, details) => ({
+  "auth-code": (engine, details, id) => ({
     description: (
       <div>
         <div>{getAuthCodeLink(engine, details)}</div>
@@ -32,8 +37,13 @@ const DATABASE_DETAIL_OVERRIDES = {
       </div>
     ),
   }),
-  "service-account-json": (engine, details) => ({
+  "service-account-json": (engine, details, id) => ({
     validate: value => {
+      // this field is only required if this is a new entry
+      if (id) {
+        return null;
+      }
+
       if (!value) {
         return t`required`;
       }
@@ -45,22 +55,22 @@ const DATABASE_DETAIL_OVERRIDES = {
       return null;
     },
   }),
-  "tunnel-private-key": (engine, details) => ({
+  "tunnel-private-key": (engine, details, id) => ({
     title: t`SSH private key`,
     placeholder: t`Paste the contents of your ssh private key here`,
     type: "text",
   }),
-  "tunnel-private-key-passphrase": (engine, details) => ({
+  "tunnel-private-key-passphrase": (engine, details, id) => ({
     title: t`Passphrase for the SSH private key`,
   }),
-  "tunnel-auth-option": (engine, details) => ({
+  "tunnel-auth-option": (engine, details, id) => ({
     title: t`SSH Authentication`,
     options: [
       { name: t`SSH Key`, value: "ssh-key" },
       { name: t`Password`, value: "password" },
     ],
   }),
-  "ssl-cert": (engine, details) => ({
+  "ssl-cert": (engine, details, id) => ({
     title: t`Server SSL certificate chain`,
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
@@ -170,11 +180,15 @@ function getAuthCodeEnableAPILink(engine, details) {
   }
 }
 
-function getFieldsForEngine(engine, details) {
+function getFieldsForEngine(engine, details, id) {
   let info = (MetabaseSettings.get("engines") || {})[engine];
   if (engine === "bigquery") {
     // BigQuery has special logic to switch out forms depending on what style of authenication we use.
     info = getFieldsForBigQuery(details);
+  }
+  if (engine === "mongo") {
+    // Mongo has special logic to switch between a connection URI and broken out fields
+    info = getFieldsForMongo(details, info, id);
   }
   if (info) {
     const fields = [];
@@ -216,6 +230,7 @@ function getFieldsForEngine(engine, details) {
         name: `details.${field.name}`,
         title: field["display-name"],
         type: field.type,
+        description: field.description,
         placeholder: field.placeholder || field.default,
         options: field.options,
         validate: value => (field.required && !value ? t`required` : null),
@@ -227,7 +242,8 @@ function getFieldsForEngine(engine, details) {
             : value,
         horizontal: field.type === "boolean",
         initial: field.default,
-        ...(overrides && overrides(engine, details)),
+        readOnly: field.readOnly || false,
+        ...(overrides && overrides(engine, details, id)),
       });
     }
     return fields;
@@ -245,7 +261,7 @@ const ENGINE_OPTIONS = Object.entries(MetabaseSettings.get("engines") || {})
 
 const forms = {
   details: {
-    fields: ({ engine, details = {} } = {}) => [
+    fields: ({ id, engine, details = {} } = {}) => [
       {
         name: "engine",
         title: t`Database type`,
@@ -260,7 +276,7 @@ const forms = {
         validate: value => !value && t`required`,
         hidden: !engine,
       },
-      ...(getFieldsForEngine(engine, details) || []),
+      ...(getFieldsForEngine(engine, details, id) || []),
       {
         name: "auto_run_queries",
         type: "boolean",
@@ -274,6 +290,13 @@ const forms = {
         type: "boolean",
         title: t`This is a large database, so let me choose when Metabase syncs and scans`,
         description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
+        hidden: !engine,
+      },
+      {
+        name: "refingerprint",
+        type: "boolean",
+        title: t`Periodically refingerprint tables`,
+        description: t`When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.`,
         hidden: !engine,
       },
       { name: "is_full_sync", type: "hidden" },

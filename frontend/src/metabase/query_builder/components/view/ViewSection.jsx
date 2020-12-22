@@ -2,7 +2,7 @@ import React from "react";
 
 import { Flex } from "grid-styled";
 
-import Subhead from "metabase/components/Subhead";
+import Subhead from "metabase/components/type/Subhead";
 
 const ViewSection = ({
   align = "center",
@@ -14,7 +14,8 @@ const ViewSection = ({
 }) => (
   <Flex
     align={align}
-    px={[1, 3]}
+    pl={[1, 3]}
+    pr={[1, 2]}
     style={style}
     {...props}
     className={className}

@@ -1,6 +1,7 @@
 (ns metabase.pulse.render.style
   "CSS styles and related helper code for Pulse rendering."
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [metabase.public-settings :as public-settings]))
 
 ;; TODO - we should move other CSS definitions from `metabase.pulse.render` namespaces into this one, so they're all
 ;; in one place.
@@ -66,9 +67,14 @@
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
 ;; Too much of a hassle to have it be a fn in one version of the code an a constant in another
 (defn primary-color
-  "Primary color to use in Pulses. For CE, this is always the classic Metabase blue."
+  "Primary color to use in Pulses; normally 'classic' MB blue, but customizable when whitelabeling is enabled."
   []
-  color-brand)
+  (public-settings/application-color))
+
+(defn secondary-color
+  "Secondary color to use in Pulse charts; normally red, but customizable when whitelabeling is enabled."
+  []
+  (public-settings/secondary-chart-color))
 
 (defn font-style
   "Font family to use in rendered Pulses."

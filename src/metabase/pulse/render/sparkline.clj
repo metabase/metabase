@@ -99,16 +99,14 @@
     (image-bundle/make-image-bundle render-type (render-sparkline-to-png x-axis-values y-axis-values))))
 
 
-(s/defn sparkline-rows
+(s/defn cleaned-rows
   "Get sorted rows from query results, with nils removed, appropriate for rendering as a sparkline."
   [timezone-id :- (s/maybe s/Str) card {:keys [rows cols], :as data}]
-  (let [[x-axis-rowfn
-         y-axis-rowfn] (common/graphing-column-row-fns card data)
-        format-val     (format-val-fn timezone-id cols x-axis-rowfn)]
-    (common/non-nil-rows
-     x-axis-rowfn
-     y-axis-rowfn
-     (if (> (format-val (x-axis-rowfn (first rows)))
-            (format-val (x-axis-rowfn (last rows))))
-       (reverse rows)
-       rows))))
+  (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
+        format-val                  (format-val-fn timezone-id cols x-axis-rowfn)
+        present-rows                (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
+        formatted-value             (comp format-val x-axis-rowfn)]
+    (if (> (formatted-value (first present-rows))
+           (formatted-value (last present-rows)))
+      (reverse present-rows)
+      present-rows)))

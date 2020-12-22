@@ -2,10 +2,16 @@
  * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
  */
 :root {
+
   --color-brand: #51617D;
   --color-accent1: #1A72E5;
   --color-accent2: #30D8D7;
   --color-accent3: #EC3C62;
+  --color-brand: #509ee3;
+  --color-brand-light: #ddecfa;
+  --color-accent1: #88bf4d;
+  --color-accent2: #a989c5;
+  --color-accent3: #ef8c8c;
   --color-accent4: #f9d45c;
   --color-accent5: #2CA800;
   --color-accent6: #3FCCE6;
@@ -15,10 +21,7 @@
   --color-black: #2e353b;
   --color-success: #84bb4c;
   --color-error: #ed6e6e;
-  --color-warning: #f9d45c;
-  --color-text-dark: #2e353b;
-  --color-text-medium: #74838f;
-  --color-text-light: #c7cfd4;
+
   --color-text-white: #ffffff;
   --color-bg-black: #2e353b;
   --color-bg-dark: #93a1ab;
@@ -110,7 +113,26 @@
 :local(.text-brand-light),
 .text-brand-light-hover:hover,
 :local(.text-brand-light-hover):hover {
-  color: var(--color-text-light);
+  color: var(--color-brand-light);
+}
+
+.bg-brand-light {
+  background-color: var(--color-brand-light);
+}
+
+.bg-brand-dark,
+.bg-brand-dark-hover:hover {
+  background-color: color(var(--color-brand) blackness(+12%));
+}
+
+.bg-brand-dark,
+.bg-brand-dark-hover:hover {
+  background-color: color(var(--color-brand) blackness(+12%));
+}
+
+.bg-brand-dark,
+.bg-brand-dark-hover:hover {
+  background-color: color(var(--color-brand) blackness(+12%));
 }
 
 .bg-brand,
@@ -195,7 +217,12 @@
   background-color: var(--color-accent2);
 }
 
-.bg-green {
+.bg-purple-light {
+  background-color: color(var(--color-accent7) alpha(-85%));
+}
+
+.bg-green,
+.bg-green-hover:hover {
   background-color: var(--color-accent1);
 }
 .bg-green-saturated,

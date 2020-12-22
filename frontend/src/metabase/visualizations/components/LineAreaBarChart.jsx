@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import CardRenderer from "./CardRenderer";
 import LegendHeader from "./LegendHeader";
-import { TitleLegendHeader } from "./TitleLegendHeader";
+import TitleLegendHeader from "./TitleLegendHeader";
 
 import "./LineAreaBarChart.css";
 
@@ -69,7 +69,7 @@ for (let i = 0; i < MAX_SERIES; i++) {
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 export default class LineAreaBarChart extends Component {
   props: VisualizationProps;

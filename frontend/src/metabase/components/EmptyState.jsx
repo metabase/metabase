@@ -5,7 +5,7 @@ import { Box, Flex } from "grid-styled";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Text from "metabase/components/Text";
+import Text from "metabase/components/type/Text";
 
 type EmptyStateProps = {
   message?: React$Element<any>,
@@ -50,7 +50,7 @@ const EmptyState = ({
         <LegacyIcon {...rest} />
         <LegacyImage {...rest} />
       </Box>
-      {title && <h2>{title}</h2>}
+      {title && <h2 className="text-medium">{title}</h2>}
       {message && <Text color="medium">{message}</Text>}
     </Flex>
     {/* TODO - we should make this children or some other more flexible way to

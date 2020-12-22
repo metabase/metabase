@@ -1,6 +1,15 @@
 /* @flow weak */
 
-import { assoc, dissoc, assocIn, getIn, chain } from "icepick";
+import {
+  assoc,
+  dissoc,
+  assocIn,
+  dissocIn,
+  updateIn,
+  getIn,
+  chain,
+  merge,
+} from "icepick";
 import _ from "underscore";
 
 import {
@@ -12,6 +21,8 @@ import {
 import { open } from "metabase/lib/dom";
 import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
+
+import Question from "metabase-lib/lib/Question";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
@@ -28,17 +39,18 @@ import type {
   DashboardWithCards,
   DashCard,
   DashCardId,
-} from "metabase/meta/types/Dashboard";
-import type { CardId } from "metabase/meta/types/Card";
+} from "metabase-types/types/Dashboard";
+import type { CardId } from "metabase-types/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { clickBehaviorIsValid } from "metabase/lib/click-behavior";
 import { createCard } from "metabase/lib/card";
 
 import {
   addParamValues,
   addFields,
-  fetchDatabaseMetadata,
+  loadMetadataForQueries,
 } from "metabase/redux/metadata";
 import { push } from "react-router-redux";
 
@@ -49,9 +61,15 @@ import {
   EmbedApi,
   AutoApi,
   MetabaseApi,
+  maybeUsePivotEndpoint,
 } from "metabase/services";
 
-import { getDashboard, getDashboardComplete } from "./selectors";
+import {
+  getDashboard,
+  getDashboardBeforeEditing,
+  getDashboardComplete,
+  getParameterValues,
+} from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
@@ -68,6 +86,7 @@ const dashboard = new schema.Entity("dashboard", {
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
+export const SET_SHARING = "metabase/dashboard/SET_SHARING";
 
 // NOTE: this is used in metabase/redux/metadata but can't be imported directly due to circular reference
 export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
@@ -82,6 +101,8 @@ export const SET_DASHCARD_ATTRIBUTES =
   "metabase/dashboard/SET_DASHCARD_ATTRIBUTES";
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS =
   "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
+export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN =
+  "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN";
 export const REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS =
   "metabase/dashboard/REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS";
 export const UPDATE_DASHCARD_ID = "metabase/dashboard/UPDATE_DASHCARD_ID";
@@ -111,6 +132,16 @@ export const SET_PARAMETER_INDEX = "metabase/dashboard/SET_PARAMETER_INDEX";
 export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 
+export const SHOW_ADD_PARAMETER_POPOVER =
+  "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
+export const HIDE_ADD_PARAMETER_POPOVER =
+  "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
+
+export const SHOW_CLICK_BEHAVIOR_SIDEBAR =
+  "metabase/dashboard/SHOW_CLICK_BEHAVIOR_SIDEBAR";
+export const HIDE_CLICK_BEHAVIOR_SIDEBAR =
+  "metabase/dashboard/HIDE_CLICK_BEHAVIOR_SIDEBAR";
+
 function getDashboardType(id) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
@@ -130,8 +161,17 @@ function getDashboardType(id) {
 
 export const initialize = createAction(INITIALIZE);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
+export const setSharing = createAction(SET_SHARING);
 
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
+export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
+export const hideAddParameterPopover = createAction(HIDE_ADD_PARAMETER_POPOVER);
+export const showClickBehaviorSidebar = createAction(
+  SHOW_CLICK_BEHAVIOR_SIDEBAR,
+);
+export const hideClickBehaviorSidebar = createAction(
+  HIDE_CLICK_BEHAVIOR_SIDEBAR,
+);
 
 // these operations don't get saved to server immediately
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
@@ -166,10 +206,7 @@ export const addCardToDashboard = ({
   dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
   dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
 
-  // guard in case card was filtered
-  if (card.dataset_query && card.dataset_query.database) {
-    dispatch(fetchDatabaseMetadata(card.dataset_query.database));
-  }
+  dispatch(loadMetadataForDashboard([dashcard]));
 };
 
 export const addDashCardToDashboard = function({
@@ -225,13 +262,34 @@ export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
   function() {
     return async function(dispatch, getState) {
-      const { dashboards, dashcards, dashboardId } = getState().dashboard;
+      const state = getState();
+      const { dashboards, dashcards, dashboardId } = state.dashboard;
       const dashboard = {
         ...dashboards[dashboardId],
         ordered_cards: dashboards[dashboardId].ordered_cards.map(
           dashcardId => dashcards[dashcardId],
         ),
       };
+
+      // clean invalid dashcards
+      // We currently only do this for dashcard click behavior.
+      // Invalid (partially complete) states are fine during editing,
+      // but we should restore the previous value if saved while invalid.
+      const dashboardBeforeEditing = getDashboardBeforeEditing(state);
+      const clickBehaviorPath = ["visualization_settings", "click_behavior"];
+      dashboard.ordered_cards = dashboard.ordered_cards.map((card, index) => {
+        if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
+          const startingValue = getIn(dashboardBeforeEditing, [
+            "ordered_cards",
+            index,
+            ...clickBehaviorPath,
+          ]);
+          return startingValue == null
+            ? dissocIn(card, clickBehaviorPath)
+            : assocIn(card, clickBehaviorPath, startingValue);
+        }
+        return card;
+      });
 
       // remove isRemoved dashboards
       await Promise.all(
@@ -375,7 +433,7 @@ function getAllDashboardCards(dashboard) {
   return results;
 }
 
-function isVirtualDashCard(dashcard) {
+export function isVirtualDashCard(dashcard) {
   return _.isObject(dashcard.visualization_settings.virtual_card);
 }
 
@@ -539,14 +597,14 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
-        MetabaseApi.dataset(
+        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
           { ...datasetQuery, ignore_cache: ignoreCache },
           queryOptions,
         ),
       );
     } else {
       result = await fetchDataOrError(
-        CardApi.query(
+        maybeUsePivotEndpoint(CardApi.query, card)(
           {
             cardId: card.id,
             parameters: datasetQuery.parameters,
@@ -662,16 +720,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     if (dashboardType === "normal" || dashboardType === "transient") {
-      // fetch database metadata for every card
-      _.chain(result.ordered_cards)
-        .map(dc => [dc.card].concat(dc.series))
-        .flatten()
-        .filter(
-          card => card && card.dataset_query && card.dataset_query.database,
-        )
-        .map(card => card.dataset_query.database)
-        .uniq()
-        .each(dbId => dispatch(fetchDatabaseMetadata(dbId)));
+      dispatch(loadMetadataForDashboard(result.ordered_cards));
     }
 
     // copy over any virtual cards from the dashcard to the underlying card/question
@@ -714,6 +763,10 @@ export const updateEmbeddingParams = createAction(
 export const onUpdateDashCardVisualizationSettings = createAction(
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
   (id, settings) => ({ id, settings }),
+);
+export const onUpdateDashCardColumnSettings = createAction(
+  UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN,
+  (id, column, settings) => ({ id, column, settings }),
 );
 export const onReplaceAllDashCardVisualizationSettings = createAction(
   REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
@@ -795,6 +848,14 @@ export const removeParameter = createThunkAction(
   },
 );
 
+export const setParameter = createThunkAction(
+  SET_PARAMETER_NAME,
+  (parameterId, parameter) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, () => parameter);
+    return { id: parameterId, ...parameter };
+  },
+);
+
 export const setParameterName = createThunkAction(
   SET_PARAMETER_NAME,
   (parameterId, name) => (dispatch, getState) => {
@@ -802,6 +863,17 @@ export const setParameterName = createThunkAction(
       setParamName(parameter, name),
     );
     return { id: parameterId, name };
+  },
+);
+
+export const setParameterFilteringParameters = createThunkAction(
+  SET_PARAMETER_NAME,
+  (parameterId, filteringParameters) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      filteringParameters,
+    }));
+    return { id: parameterId, filteringParameters };
   },
 );
 
@@ -843,6 +915,15 @@ export const setParameterValue = createThunkAction(
     return { id: parameterId, value };
   },
 );
+
+export const setOrUnsetParameterValues = pairs => (dispatch, getState) => {
+  const parameterValues = getParameterValues(getState());
+  pairs
+    .map(([id, value]) =>
+      setParameterValue(id, value === parameterValues[id] ? null : value),
+    )
+    .forEach(dispatch);
+};
 
 export const CREATE_PUBLIC_LINK = "metabase/dashboard/CREATE_PUBLIC_LINK";
 export const createPublicLink = createAction(
@@ -932,10 +1013,22 @@ const dashboardId = handleActions(
 
 const isEditing = handleActions(
   {
-    [INITIALIZE]: { next: state => false },
-    [SET_EDITING_DASHBOARD]: { next: (state, { payload }) => payload },
+    [INITIALIZE]: { next: state => null },
+    [SET_EDITING_DASHBOARD]: {
+      next: (state, { payload }) => (payload ? payload : null),
+    },
   },
-  false,
+  {},
+);
+
+const isSharing = handleActions(
+  {
+    [INITIALIZE]: { next: state => false },
+    [SET_SHARING]: {
+      next: (state, { payload }) => payload || false,
+    },
+  },
+  {},
 );
 
 export function syncParametersAndEmbeddingParams(before, after) {
@@ -1045,6 +1138,22 @@ const dashcards = handleActions(
           .assocIn([id, "isDirty"], true)
           .value(),
     },
+    [UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN]: {
+      next: (state, { payload: { column, id, settings } }) =>
+        chain(state)
+          .updateIn([id, "visualization_settings"], (value = {}) =>
+            updateIn(
+              merge({ column_settings: {} }, value),
+              ["column_settings", column],
+              columnSettings => ({
+                ...columnSettings,
+                ...settings,
+              }),
+            ),
+          )
+          .assocIn([id, "isDirty"], true)
+          .value(),
+    },
     [REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS]: {
       next: (state, { payload: { id, settings } }) =>
         chain(state)
@@ -1072,6 +1181,37 @@ const editingParameterId = handleActions(
   {
     [SET_EDITING_PARAMETER_ID]: { next: (state, { payload }) => payload },
     [ADD_PARAMETER]: { next: (state, { payload: { id } }) => id },
+    // possibly clear state:
+    [REMOVE_PARAMETER]: {
+      next: (state, { payload: { id } }) => (state === id ? null : state),
+    },
+    [SET_EDITING_DASHBOARD]: {
+      next: (state, { payload }) => (payload ? state : null),
+    },
+    [INITIALIZE]: { next: state => null },
+  },
+  null,
+);
+
+const isAddParameterPopoverOpen = handleActions(
+  {
+    [SHOW_ADD_PARAMETER_POPOVER]: () => true,
+    [HIDE_ADD_PARAMETER_POPOVER]: () => false,
+    [INITIALIZE]: () => false,
+  },
+  false,
+);
+
+const clickBehaviorSidebarDashcardId = handleActions(
+  {
+    [SHOW_CLICK_BEHAVIOR_SIDEBAR]: (state, { payload }) => payload,
+    [HIDE_CLICK_BEHAVIOR_SIDEBAR]: state => null,
+    // possibly clear state:
+    [SET_EDITING_DASHBOARD]: (state, { payload }) => (payload ? state : null),
+    [SET_EDITING_PARAMETER_ID]: (state, { payload }) =>
+      payload != null ? null : state,
+    [ADD_PARAMETER]: (state, { payload }) => null,
+    [INITIALIZE]: state => null,
   },
   null,
 );
@@ -1173,14 +1313,28 @@ const loadingDashCards = handleActions(
   { dashcardIds: [], loadingIds: [], startTime: null },
 );
 
+const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
+  const metadata = getMetadata(getState());
+
+  const queries = dashCards
+    .filter(dc => !isVirtualDashCard(dc) && dc.card.dataset_query) // exclude text cards and queries without perms
+    .flatMap(dc => [dc.card].concat(dc.series || []))
+    .map(card => new Question(card, metadata).query());
+
+  return dispatch(loadMetadataForQueries(queries));
+};
+
 export default combineReducers({
   dashboardId,
   isEditing,
+  isSharing,
   dashboards,
   dashcards,
   editingParameterId,
+  clickBehaviorSidebarDashcardId,
   dashcardData,
   slowCards,
   parameterValues,
   loadingDashCards,
+  isAddParameterPopoverOpen,
 });

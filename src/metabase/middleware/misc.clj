@@ -40,10 +40,10 @@
 ;;
 ;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting
 ;; the (initial) value of `site-url`
-(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host] :as headers} :headers, :as request}]
+(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent] :as headers} :headers, :as request}]
   (when (and (mdb/db-is-setup?)
              (not (public-settings/site-url))
-             api/*current-user*)
+              api/*current-user* (or (nil? user-agent) ((complement clojure.string/includes?) user-agent "HealthChecker"))); Not setting URL if it's a healthcheck by ELB
     (when-let [site-url (or origin x-forwarded-host host)]
       (log/info (trs "Setting Metabase site URL to {0}" site-url))
       (try
@@ -77,3 +77,17 @@
      request
      (comp respond maybe-add-disable-buffering-header)
      raise)))
+
+
+;;; -------------------------------------------------- Bind request --------------------------------------------------
+
+(def ^:dynamic *request*
+  "The Ring request currently being handled by this thread, if any."
+  nil)
+
+(defn bind-request
+  "Ring middleware that binds `*request*` for the duration of this Ring request."
+  [handler]
+  (fn [request respond raise]
+    (binding [*request* request]
+      (handler request respond raise))))

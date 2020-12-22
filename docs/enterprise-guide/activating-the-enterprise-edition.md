@@ -6,6 +6,8 @@ You can get a license by signing up for a free trial of the Enterprise edition. 
 
 To get the Enterprise edition, you can either [download the latest .jar file](https://downloads.metabase.com/enterprise/latest/metabase.jar), or get the [latest Docker image](https://hub.docker.com/r/metabase/metabase-enterprise/) at `metabase/metabase-enterprise:latest`
 
+If you don't want to host the Enterprise Edition yourself, you can have it hosted for you with [Metabase Cloud](https://www.metabase.com/start/hosted/index.html).
+
 Once you have the Enterprise edition running, to activate all of its features go to the Admin Panel within Metabase, click on the Enterprise tab, click the "Activate a license" button, and then paste in your license token. The page should change to show you that Enterprise features are now active.
 
 ### Validating Your Enterprise Token

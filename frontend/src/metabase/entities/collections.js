@@ -8,6 +8,8 @@ import * as Urls from "metabase/lib/urls";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
+import { GET } from "metabase/lib/api";
+
 import {
   getUser,
   getUserDefaultCollectionId,
@@ -16,6 +18,9 @@ import {
 
 import { t } from "ttag";
 
+const listCollectionsTree = GET("/api/collection/tree");
+const listCollections = GET("/api/collection");
+
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
@@ -23,6 +28,16 @@ const Collections = createEntity({
 
   displayNameOne: t`collection`,
   displayNameMany: t`collections`,
+
+  api: {
+    list: async (params, ...args) =>
+      /* Parts of the UI, like ItemPicker don't yet know about the /tree endpoint and break if it's used,
+      so choose which endpoint to use based on the presence of a "tree" param
+      */
+      params && params.tree
+        ? listCollectionsTree(params, ...args)
+        : listCollections(params, ...args),
+  },
 
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
@@ -47,7 +62,7 @@ const Collections = createEntity({
   objectSelectors: {
     getName: collection => collection && collection.name,
     getUrl: collection => Urls.collection(collection.id),
-    getIcon: collection => "all",
+    getIcon: collection => "folder",
   },
 
   selectors: {
@@ -195,7 +210,7 @@ type ExpandedCollection = {
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-function getExpandedCollectionsById(
+export function getExpandedCollectionsById(
   collections: Collection[],
   userPersonalCollectionId: ?CollectionId,
 ): { [key: PseudoCollectionId]: ExpandedCollection } {

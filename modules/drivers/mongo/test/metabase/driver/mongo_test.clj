@@ -31,32 +31,37 @@
 
 ;; ## Tests for connection functions
 (deftest can-connect-test?
-  (mt/test-driver :mongo
-    (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
-                                                            :port   3000
-                                                            :dbname "bad-db-name"}
-                                                 :expected false}
-                                                {:details  {}
-                                                 :expected false}
-                                                {:details  {:host   "localhost"
-                                                            :port   27017
-                                                            :dbname "metabase-test"}
-                                                 :expected true}
-                                                {:details  {:host   "localhost"
-                                                            :dbname "metabase-test"}
-                                                 :expected true
-                                                 :message  "should use default port 27017 if not specified"}
-                                                {:details  {:host   "123.4.5.6"
-                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
-                                                 :expected false}
-                                                {:details  {:host   "localhost"
-                                                            :port   3000
-                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
-                                                 :expected false}]]
-
-      (is (= expected
-             (driver.u/can-connect-with-details? :mongo details))
-          message))))
+  (mt/test-driver
+   :mongo
+   (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
+                                                           :port   3000
+                                                           :dbname "bad-db-name"}
+                                                :expected false}
+                                               {:details  {}
+                                                :expected false}
+                                               {:details  {:host   "localhost"
+                                                           :port   27017
+                                                           :dbname "metabase-test"}
+                                                :expected true}
+                                               {:details  {:host   "localhost"
+                                                           :dbname "metabase-test"}
+                                                :expected true
+                                                :message  "should use default port 27017 if not specified"}
+                                               {:details  {:host   "123.4.5.6"
+                                                           :dbname "bad-db-name?connectTimeoutMS=50"}
+                                                :expected false}
+                                               {:details  {:host   "localhost"
+                                                           :port   3000
+                                                           :dbname "bad-db-name?connectTimeoutMS=50"}
+                                                :expected false}
+                                               {:details  {:conn-uri "mongodb://localhost:27017/metabase-test"}
+                                                :expected true}
+                                               {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
+                                                :expected false}]]
+      (testing (str "connect with " details)
+        (is (= expected
+               (driver.u/can-connect-with-details? :mongo details))
+            message)))))
 
 (def ^:private native-query
   "[{\"$project\": {\"_id\": \"$_id\"}},
@@ -100,23 +105,29 @@
             :name   "venues"
             :fields #{{:name          "name"
                        :database-type "java.lang.String"
-                       :base-type     :type/Text}
+                       :base-type     :type/Text
+                       :database-position 1}
                       {:name          "latitude"
                        :database-type "java.lang.Double"
-                       :base-type     :type/Float}
+                       :base-type     :type/Float
+                       :database-position 3}
                       {:name          "longitude"
                        :database-type "java.lang.Double"
-                       :base-type     :type/Float}
+                       :base-type     :type/Float
+                       :database-position 4}
                       {:name          "price"
                        :database-type "java.lang.Long"
-                       :base-type     :type/Integer}
+                       :base-type     :type/Integer
+                       :database-position 5}
                       {:name          "category_id"
                        :database-type "java.lang.Long"
-                       :base-type     :type/Integer}
+                       :base-type     :type/Integer
+                       :database-position 2}
                       {:name          "_id"
                        :database-type "java.lang.Long"
                        :base-type     :type/Integer
-                       :pk?           true}}}
+                       :pk?           true
+                       :database-position 0}}}
            (driver/describe-table :mongo (mt/db) (Table (mt/id :venues)))))))
 
 (deftest nested-columns-test
@@ -160,7 +171,8 @@
                 [5 "Brite Spot Family Restaurant"]]
                (vec (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
                               [(Field (mt/id :venues :id))
-                               (Field (mt/id :venues :name))])))))))))
+                               (Field (mt/id :venues :name))]
+                              (constantly conj))))))))))
 
 
 ;; ## Big-picture tests for the way data should look post-sync
@@ -208,15 +220,23 @@
      [{:field-name "name", :base-type :type/Text}
       {:field-name "bird_id", :base-type :type/MongoBSONID}]
      [["Rasta Toucan" (ObjectId. "012345678901234567890123")]
-      ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]]])
+      ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]
+      ["Unlucky Raven" nil]]]])
 
 (deftest bson-ids-test
   (mt/test-driver :mongo
-    (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
-           (rows (mt/dataset with-bson-ids
-                   (mt/run-mbql-query birds
-                     {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
-        "Check that we support Mongo BSON ID and can filter by it (#1367)")))
+    (testing "BSON IDs"
+     (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
+            (rows (mt/dataset with-bson-ids
+                    (mt/run-mbql-query birds
+                      {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
+         "Check that we support Mongo BSON ID and can filter by it (#1367)")
+
+     (is (= [[3 "Unlucky Raven" nil]]
+            (rows (mt/dataset with-bson-ids
+                    (mt/run-mbql-query birds
+                      {:filter [:is-null $bird_id]}))))
+         "handle null ObjectId queries properly (#11134)"))))
 
 (deftest bson-fn-call-forms-test
   (mt/test-driver :mongo

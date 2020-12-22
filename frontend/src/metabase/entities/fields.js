@@ -1,9 +1,12 @@
 import { createEntity } from "metabase/lib/entities";
 import {
+  compose,
+  withAction,
+  withCachedDataAndRequestState,
+  withNormalize,
   handleActions,
   createAction,
   createThunkAction,
-  fetchData,
   updateData,
 } from "metabase/lib/redux";
 import { normalize } from "normalizr";
@@ -38,7 +41,7 @@ export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 export const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
 export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
-export default createEntity({
+const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
@@ -64,18 +67,19 @@ export default createEntity({
   // ACTION CREATORS
 
   objectActions: {
-    fetchFieldValues: createThunkAction(
-      FETCH_FIELD_VALUES,
-      ({ id }, reload) => (dispatch, getState) =>
-        fetchData({
-          dispatch,
-          getState,
-          requestStatePath: ["entities", "fields", id, "values"],
-          existingStatePath: ["entities", "fields", id, "values"],
-          getData: () => MetabaseApi.field_values({ fieldId: id }),
-          reload,
-        }),
-    ),
+    fetchFieldValues: compose(
+      withAction(FETCH_FIELD_VALUES),
+      withCachedDataAndRequestState(
+        ({ id }) => [...Fields.getObjectStatePath(id)],
+        ({ id }) => [...Fields.getObjectStatePath(id), "values"],
+      ),
+      withNormalize(FieldSchema),
+    )(({ id: fieldId }) => async (dispatch, getState) => {
+      const { field_id: id, values } = await MetabaseApi.field_values({
+        fieldId,
+      });
+      return { id, values };
+    }),
 
     // Docstring from m.api.field:
     // Update the human-readable values for a `Field` whose special type is
@@ -139,16 +143,6 @@ export default createEntity({
 
   reducer: handleActions(
     {
-      [FETCH_FIELD_VALUES]: {
-        next: (state, { payload: fieldValues }) =>
-          fieldValues
-            ? assocIn(
-                state,
-                [fieldValues.field_id, "values"],
-                fieldValues.values,
-              )
-            : state,
-      },
       [ADD_PARAM_VALUES]: {
         next: (state, { payload: paramValues }) => {
           for (const fieldValues of Object.values(paramValues)) {
@@ -201,3 +195,5 @@ export default createEntity({
       ].filter(f => f),
   },
 });
+
+export default Fields;

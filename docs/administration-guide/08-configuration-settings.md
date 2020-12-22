@@ -1,6 +1,8 @@
-## Settings
+## General settings
 
-Here are a few other miscellaneous settings you can configure from the home page of the **Admin Panel**.
+This section contains settings for your whole instance, like its URL, the reporting timezone, and toggles for disabling or enabling some of Metabase's optional features.
+
+You can configure these settings in the **General** section of the **Settings** tab in the **Admin Panel**.
 
 ### Site Name
 
@@ -9,6 +11,16 @@ How you’d like to refer to this instance of Metabase.
 ### Site URL
 
 The base URL of this Metabase instance. The base URL is used in emails to allow users to click through to their specific instance. Make sure to include http:// or https:// to make sure it’s reachable.
+
+### Redirect to HTTPS
+
+Force all traffic to use HTTPS via redirect, if the site can serve over HTTPS.
+
+_Default: disabled_.
+
+For example, if you are serving your Metabase application at "example.com", and you enable HTTPS redirect, when a user enters an address like "example.com/data" in their browser's address bar, the user will be automatically redirected to a secure connection at "https://example.com/data".
+
+> Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
 
 ### Email Address for Help Requests
 
@@ -19,10 +31,6 @@ This email address will be displayed in various messages throughout Metabase whe
 The **report timezone** sets the default time zone for displaying times. The timezone is used when breaking out data by dates.
 
 _Setting the default timezone will not change the timezone of any data in your database_. If the underlying times in your database aren't assigned to a timezone, Metabase will use the report timezone as the default timezone.
-
-### Language Settings
-
-Metabase has been translated into a variety of languages, and this setting allows you to configure the language to be used for external Metabase communications, such as emails and pulses. There is not currently a setting to set the language in the Metabase interface for all of your users; instead, Metabase relies on each user's browser language to determine which language should be used, provided Metabase supports that translation. You can check [which languages Metabase currently supports](../faq/general/what-languages-can-be-used-with-metabase.md).
 
 ### Anonymous Tracking
 
@@ -44,6 +52,6 @@ To manually fix field or table names if they still look wrong, you can go to the
 
 ---
 
-## Next: setting formatting defaults for dates and numbers
+## Next: Formatting data
 
-Easily customize how numbers, dates, times, and currencies should be displayed in Metabase with [formatting settings](19-formatting-settings.md).
+Customize the default language for Metabase, as well as how numbers, dates, times, and currencies should be displayed in Metabase with [formatting settings](19-formatting-settings.md).

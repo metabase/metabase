@@ -1,25 +1,12 @@
 /* @flow */
 
-import type { Breakout, BreakoutClause } from "metabase/meta/types/Query";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { Field } from "metabase/meta/types/Field";
-
-import * as FIELD_REF from "./field_ref";
+import type { Breakout, BreakoutClause } from "metabase-types/types/Query";
 
 import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Breakouts, with nulls removed
 export function getBreakouts(breakouts: ?BreakoutClause): Breakout[] {
   return (breakouts || []).filter(b => b != null);
-}
-
-export function getBreakoutFields(
-  breakouts: ?BreakoutClause,
-  tableMetadata: TableMetadata,
-): Field[] {
-  return getBreakouts(breakouts).map(
-    breakout => (FIELD_REF.getFieldTarget(breakout, tableMetadata) || {}).field,
-  );
 }
 
 // turns a list of Breakouts into the canonical BreakoutClause

@@ -323,17 +323,25 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuery = query => dispatch =>
+export const loadMetadataForQuery = query => loadMetadataForQueries([query]);
+
+export const loadMetadataForQueries = queries => dispatch =>
   Promise.all(
-    query.dependentMetadata().map(({ type, id, ...options }) => {
-      if (type === "table") {
-        if (options.foreignTables) {
-          return dispatch(Tables.actions.fetchMetadataAndForeignTables({ id }));
+    _.chain(queries)
+      .map(q => q.dependentMetadata())
+      .flatten()
+      .uniq(false, dep => dep.type + dep.id)
+      .map(({ type, id, foreignTables }) => {
+        if (type === "table") {
+          return (foreignTables
+            ? Tables.actions.fetchMetadataAndForeignTables
+            : Tables.actions.fetchMetadata)({ id });
         } else {
-          return dispatch(Tables.actions.fetchMetadata({ id }));
+          console.warn(`loadMetadataForQueries: type ${type} not implemented`);
         }
-      } else {
-        console.warn(`loadQueryMetadata: type ${type} not implemented`);
-      }
-    }),
+      })
+      // unrecognized types would result in undefined, so we filter that out
+      .filter(action => action !== undefined)
+      .map(dispatch)
+      .value(),
   ).catch(e => console.error("Failed loading metadata for query", e));

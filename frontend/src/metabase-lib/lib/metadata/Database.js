@@ -6,10 +6,12 @@ import Base from "./Base";
 import Table from "./Table";
 import Schema from "./Schema";
 
+import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+
 import { generateSchemaId } from "metabase/schema";
 
-import type { SchemaName } from "metabase/meta/types/Table";
-import type { DatabaseFeature } from "metabase/meta/types/Database";
+import type { SchemaName } from "metabase-types/types/Table";
+import type { DatabaseFeature } from "metabase-types/types/Database";
 
 type VirtualDatabaseFeature = "join";
 
@@ -33,6 +35,8 @@ export default class Database extends Base {
     return this.name;
   }
 
+  // SCHEMAS
+
   schema(schemaName: ?SchemaName) {
     return this.metadata.schema(generateSchemaId(this.id, schemaName));
   }
@@ -40,6 +44,21 @@ export default class Database extends Base {
   schemaNames(): SchemaName[] {
     return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
   }
+
+  // TABLES
+
+  @memoize
+  tablesLookup() {
+    return createLookupByProperty(this.tables, "id");
+  }
+
+  // @deprecated: use tablesLookup
+  // $FlowFixMe: known to not have side-effects
+  get tables_lookup() {
+    return this.tablesLookup();
+  }
+
+  // FEATURES
 
   hasFeature(
     feature: null | DatabaseFeature | VirtualDatabaseFeature,
@@ -59,6 +78,8 @@ export default class Database extends Base {
       return set.has(feature);
     }
   }
+
+  // QUESTIONS
 
   newQuestion(): Question {
     return this.question()

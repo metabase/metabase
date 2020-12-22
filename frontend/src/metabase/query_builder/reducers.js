@@ -7,7 +7,11 @@ import {
   INITIALIZE_QB,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
+  TOGGLE_SNIPPET_SIDEBAR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+  SET_MODAL_SNIPPET,
+  SET_SNIPPET_COLLECTION_ID,
   CLOSE_QB_NEWB_MODAL,
   RELOAD_CARD,
   API_CREATE_QUESTION,
@@ -56,6 +60,7 @@ const DEFAULT_UI_CONTROLS = {
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" or "notebook"
+  snippetCollectionId: null,
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
@@ -63,6 +68,13 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
+};
+
+// this is used to close toher sidebar when one is updated
+const CLOSED_NATIVE_EDITOR_SIDEBARS = {
+  isShowingTemplateTagsEditor: false,
+  isShowingSnippetSidebar: false,
+  isShowingDataReference: false,
 };
 
 // various ui state options
@@ -80,6 +92,7 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({
         ...state,
         ...DEFAULT_UI_CONTROLS,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         ...payload.uiControls,
       }),
     },
@@ -87,24 +100,44 @@ export const uiControls = handleActions(
     [TOGGLE_DATA_REFERENCE]: {
       next: (state, { payload }) => ({
         ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingDataReference: !state.isShowingDataReference,
-        isShowingTemplateTagsEditor: false,
       }),
     },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { payload }) => ({
         ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingTemplateTagsEditor: !state.isShowingTemplateTagsEditor,
-        isShowingDataReference: false,
+      }),
+    },
+    [TOGGLE_SNIPPET_SIDEBAR]: {
+      next: (state, { payload }) => ({
+        ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+        isShowingSnippetSidebar: !state.isShowingSnippetSidebar,
+        snippetCollectionId: null,
       }),
     },
     [SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { isShowingTemplateTagsEditor }) => ({
         ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingTemplateTagsEditor,
-        isShowingDataReference: false,
       }),
     },
+    [SET_NATIVE_EDITOR_SELECTED_RANGE]: (state, { payload }) => ({
+      ...state,
+      nativeEditorSelectedRange: payload,
+    }),
+    [SET_MODAL_SNIPPET]: (state, { payload }) => ({
+      ...state,
+      modalSnippet: payload,
+    }),
+    [SET_SNIPPET_COLLECTION_ID]: (state, { payload }) => ({
+      ...state,
+      snippetCollectionId: payload,
+    }),
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
     },

@@ -4,15 +4,16 @@
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util
+             [date-2 :as u.date]
+             [i18n :refer [tru]]]
             [potemkin.types :as p.types])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId]))
 
-;; TODO - consider moving to `metabase.util.date-2/format-with-timezone`
 (p.types/defprotocol+ FormatValue
   "Protocol for determining how QP results of various classes are serialized. Drivers can add implementations to support
   custom driver types as needed."
-  (format-value [v, ^ZoneId timezone-id]
+  (format-value [v ^ZoneId timezone-id]
     "Serialize a value in the QP results. You can add impementations for driver-specific types as needed."))
 
 (extend-protocol FormatValue
@@ -24,41 +25,34 @@
   (format-value [v _]
     v)
 
-  ;; TIMEZONE FIXME — not sure this makes sense at all...
   LocalTime
   (format-value [t timezone-id]
-    (t/format :iso-offset-time (t/offset-time t timezone-id)))
+    (t/format :iso-offset-time (u.date/with-time-zone-same-instant t timezone-id)))
 
-  ;; TODO - this is a little screwy, for `OffsetDateTime` and `ZonedDateTime` we convert them into the `timezone-id`
-  ;; (by adjusting offset as needed); because `OffsetTime` doesn't have a date (and adjusting offset can't be done
-  ;; with Zone ID alone), return it *without* adjusting it into `timezone-id`
   OffsetTime
-  (format-value [t _]
-    (t/format :iso-offset-time t))
+  (format-value [t timezone-id]
+    (t/format :iso-offset-time (u.date/with-time-zone-same-instant t timezone-id)))
 
   LocalDate
   (format-value [t timezone-id]
-    (t/format :iso-offset-date-time (t/offset-date-time t (t/local-time 0) timezone-id)))
+    (t/format :iso-offset-date-time (u.date/with-time-zone-same-instant t timezone-id)))
 
   LocalDateTime
   (format-value [t timezone-id]
-    (t/format :iso-offset-date-time (t/offset-date-time t timezone-id)))
+    (t/format :iso-offset-date-time (u.date/with-time-zone-same-instant t timezone-id)))
 
+  ;; convert to a ZonedDateTime
   Instant
   (format-value [t timezone-id]
-    (t/format :iso-offset-date-time (t/offset-date-time t timezone-id)))
+    (format-value (t/zoned-date-time t (t/zone-id "UTC")) timezone-id))
 
   OffsetDateTime
   (format-value [t, ^ZoneId timezone-id]
-    (t/format :iso-offset-date-time
-              (let [rules  (.getRules timezone-id)
-                    offset (.getOffset rules (t/instant t))]
-                (t/with-offset-same-instant t offset))))
+    (t/format :iso-offset-date-time (u.date/with-time-zone-same-instant t timezone-id)))
 
   ZonedDateTime
   (format-value [t timezone-id]
-    (t/format :iso-offset-date-time
-              (t/offset-date-time (t/with-zone-same-instant t timezone-id)))))
+    (t/format :iso-offset-date-time (u.date/with-time-zone-same-instant t timezone-id))))
 
 (defn- format-rows-xform [rf]
   {:pre [(fn? rf)]}

@@ -19,23 +19,27 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import { isID, isFK } from "metabase/lib/schema_metadata";
 
 import type {
   ClickObject,
   VisualizationProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 type Props = VisualizationProps & {
   height: number,
   className?: string,
   isPivoted: boolean,
   getColumnTitle: number => string,
+  getExtraDataForClick?: Function,
+  limit?: number,
 };
 
 type State = {
@@ -112,8 +116,10 @@ export default class TableSimple extends Component {
       isPivoted,
       settings,
       getColumnTitle,
+      card,
     } = this.props;
     const { rows, cols } = data;
+    const limit = getIn(card, ["dataset_query", "query", "limit"]) || undefined;
     const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const { page, pageSize, sortColumn, sortDescending } = this.state;
@@ -134,6 +140,13 @@ export default class TableSimple extends Component {
       if (sortDescending) {
         rowIndexes.reverse();
       }
+    }
+
+    let paginateMessage;
+    if (limit === undefined && rows.length >= HARD_ROW_LIMIT) {
+      paginateMessage = t`Rows ${start + 1}-${end + 1} of first ${rows.length}`;
+    } else {
+      paginateMessage = t`Rows ${start + 1}-${end + 1} of ${rows.length}`;
     }
 
     return (
@@ -190,11 +203,16 @@ export default class TableSimple extends Component {
                       const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(
                         data,
+                        settings,
                         rowIndex,
                         columnIndex,
                         isPivoted,
                       );
                       const columnSettings = settings.column(column);
+
+                      const extraData = this.props.getExtraDataForClick
+                        ? this.props.getExtraDataForClick(clicked)
+                        : {};
 
                       const cellData =
                         value == null ? (
@@ -208,7 +226,7 @@ export default class TableSimple extends Component {
                         ) : (
                           formatValue(value, {
                             ...columnSettings,
-                            clicked: clicked,
+                            clicked: { ...clicked, extraData },
                             type: "cell",
                             jsx: true,
                             rich: true,
@@ -253,6 +271,7 @@ export default class TableSimple extends Component {
                                     onVisualizationClick({
                                       ...clicked,
                                       element: e.currentTarget,
+                                      extraData,
                                     });
                                   }
                                 : undefined
@@ -274,9 +293,7 @@ export default class TableSimple extends Component {
             ref="footer"
             className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text"
           >
-            <span className="text-bold">{t`Rows ${start + 1}-${end + 1} of ${
-              rows.length
-            }`}</span>
+            <span className="text-bold">{paginateMessage}</span>
             <span
               className={cx("text-brand-hover px1 cursor-pointer", {
                 disabled: start === 0,

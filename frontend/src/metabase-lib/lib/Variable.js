@@ -2,7 +2,7 @@
 
 import type Metadata from "./metadata/Metadata";
 import type Query from "./queries/Query";
-import type { TemplateTag } from "metabase/meta/types/Query";
+import type { TemplateTag } from "metabase-types/types/Query";
 
 import NativeQuery from "./queries/NativeQuery";
 

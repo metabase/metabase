@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
+            [medley.core :as m]
             [metabase
              [config :as config]
              [driver :as driver]
@@ -118,7 +119,10 @@
 
 (defn- ids-of-dbs-that-support-source-queries []
   (set (filter (fn [db-id]
-                 (some-> (driver.u/database->driver db-id) (driver/supports? :nested-queries)))
+                 (try
+                   (some-> (driver.u/database->driver db-id) (driver/supports? :nested-queries))
+                   (catch Throwable e
+                     (log/error e (tru "Error determining whether Database supports nested queries")))))
                (db/select-ids Database))))
 
 (defn- source-query-cards
@@ -173,6 +177,12 @@
       include-tables?             add-tables
       include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
+(def FetchAllIncludeValues
+  "Schema for matching the include parameter of the GET / endpoint"
+  (su/with-api-error-message
+    (s/maybe (s/eq "tables"))
+    (deferred-tru "include must be either empty or the value 'tables'")))
+
 (api/defendpoint GET "/"
   "Fetch all `Databases`.
 
@@ -189,7 +199,7 @@
   [include_tables include_cards include saved]
   {include_tables (s/maybe su/BooleanString)
    include_cards  (s/maybe su/BooleanString)
-   include        (s/maybe (s/eq "tables"))
+   include        FetchAllIncludeValues
    saved          (s/maybe su/BooleanString)}
   (when (and config/is-dev?
              (or include_tables include_cards))
@@ -431,21 +441,26 @@
 (s/defn ^:private test-connection-details :- su/Map
   "Try a making a connection to database `engine` with `details`.
 
-  Tries twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
+  If the `details` has SSL explicitly enabled, go with that and do not accept plaintext connections. If it is disabled,
+  try twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
   the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
   also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
-  (let [details (if (supports-ssl? (keyword engine))
-                  (assoc details :ssl true)
-                  details)]
+  (if (and (supports-ssl? (keyword engine))
+           (true? (:ssl details)))
+    (let [error (test-database-connection engine details)]
+      (or error details))
+    (let [details (if (supports-ssl? (keyword engine))
+                    (assoc details :ssl true)
+                    details)]
     ;; this loop tries connecting over ssl and non-ssl to establish a connection
     ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
-    (loop [details details]
-      (let [error (test-database-connection engine details)]
-        (if (and error
-                 (true? (:ssl details)))
-          (recur (assoc details :ssl false))
-          (or error details))))))
+      (loop [details details]
+        (let [error (test-database-connection engine details)]
+          (if (and error
+                   (true? (:ssl details)))
+            (recur (assoc details :ssl false))
+            (or error details)))))))
 
 (def ^:private CronSchedulesMap
   "Schema with values for a DB's schedules that can be put directly into the DB."
@@ -519,12 +534,26 @@
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
+(defn upsert-sensitive-fields
+  "Replace any sensitive values not overriden in the PUT with the original values"
+  [database details]
+  (when details
+    (merge (:details database)
+           (reduce
+            (fn [details k]
+              (if (= protected-password (get details k))
+                (m/update-existing details k (constantly (get-in database [:details k])))
+                details))
+            details
+            database/sensitive-fields))))
+
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-                   auto_run_queries]} :body}]
+                   auto_run_queries refingerprint]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
+   refingerprint      (s/maybe s/Bool)
    details            (s/maybe su/Map)
    schedules          (s/maybe ExpandedSchedulesMap)
    description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
@@ -533,9 +562,7 @@
    auto_run_queries   (s/maybe s/Bool)}
   (api/check-superuser)
   (api/let-404 [database (Database id)]
-    (let [details    (if-not (= protected-password (:password details))
-                       details
-                       (assoc details :password (get-in database [:details :password])))
+    (let [details    (upsert-sensitive-fields database details)
           conn-error (when (some? details)
                        (assert (some? engine))
                        (test-database-connection engine details))
@@ -551,18 +578,19 @@
           ;;       that seems like the kind of thing that will almost never work in any practical way
           ;; TODO - this means one cannot unset the description. Does that matter?
           (api/check-500 (db/update-non-nil-keys! Database id
-                           (merge
-                            {:name               name
-                             :engine             engine
-                             :details            details
-                             :is_full_sync       full-sync?
-                             :is_on_demand       (boolean is_on_demand)
-                             :description        description
-                             :caveats            caveats
-                             :points_of_interest points_of_interest
-                             :auto_run_queries   auto_run_queries}
-                            (when schedules
-                              (schedule-map->cron-strings schedules)))))
+                                                  (merge
+                                                   {:name               name
+                                                    :engine             engine
+                                                    :details            details
+                                                    :refingerprint      refingerprint
+                                                    :is_full_sync       full-sync?
+                                                    :is_on_demand       (boolean is_on_demand)
+                                                    :description        description
+                                                    :caveats            caveats
+                                                    :points_of_interest points_of_interest
+                                                    :auto_run_queries   auto_run_queries}
+                                                   (when schedules
+                                                     (schedule-map->cron-strings schedules)))))
           (let [db (Database id)]
             (events/publish-event! :database-update db)
             ;; return the DB with the expanded schedules back in place
@@ -653,7 +681,7 @@
   at least some of its tables?)"
   [database-id schema-name]
   (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
-    (perms/object-path database-id schema-name)))
+                                      (perms/object-path database-id schema-name)))
 
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
@@ -682,7 +710,12 @@
 (defn- schema-tables-list [db-id schema]
   (api/read-check Database db-id)
   (api/check-403 (can-read-schema? db-id schema))
-  (filter mi/can-read? (db/select Table :db_id db-id, :schema schema, :active true, :visibility_type nil, {:order-by [[:name :asc]]})))
+  (filter mi/can-read? (db/select Table
+                         :db_id           db-id
+                         :schema          schema
+                         :active          true
+                         :visibility_type nil
+                         {:order-by [[:name :asc]]})))
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"

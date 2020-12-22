@@ -4,7 +4,9 @@
   `metabase.sync.sync-metadata.fields.*` namespaces to determine what sync operations need to be performed by
   comparing the differences in the two sets of Metadata."
   (:require [medley.core :as m]
-            [metabase.models.field :as field :refer [Field]]
+            [metabase.models
+             [field :as field :refer [Field]]
+             [table :as table]]
             [metabase.sync
              [fetch-metadata :as fetch-metadata]
              [interface :as i]]
@@ -20,14 +22,15 @@
 (s/defn ^:private fields->parent-id->fields :- {common/ParentID #{common/TableMetadataFieldWithID}}
   [fields :- (s/maybe [i/FieldInstance])]
   (->> (for [field fields]
-         {:parent-id     (:parent_id field)
-          :id            (:id field)
-          :name          (:name field)
-          :database-type (:database_type field)
-          :base-type     (:base_type field)
-          :special-type  (:special_type field)
-          :pk?           (isa? (:special_type field) :type/PK)
-          :field-comment (:description field)})
+         {:parent-id         (:parent_id field)
+          :id                (:id field)
+          :name              (:name field)
+          :database-type     (:database_type field)
+          :base-type         (:base_type field)
+          :special-type      (:special_type field)
+          :pk?               (isa? (:special_type field) :type/PK)
+          :field-comment     (:description field)
+          :database-position (:database_position field)})
        ;; make a map of parent-id -> set of child Fields
        (group-by :parent-id)
        ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
@@ -60,9 +63,10 @@
 (s/defn ^:private table->fields :- [i/FieldInstance]
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
-  (db/select [Field :name :database_type :base_type :special_type :parent_id :id :description]
-    :table_id (u/get-id table)
-    :active   true))
+  (db/select [Field :name :database_type :base_type :special_type :parent_id :id :description :database_position]
+    :table_id  (u/get-id table)
+    :active    true
+    {:order-by (table/field-order-rule table)}))
 
 (s/defn our-metadata :- #{common/TableMetadataFieldWithID}
   "Return information we have about Fields for a `table` in the application database in (almost) exactly the same
@@ -76,7 +80,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn db-metadata :- #{i/TableMetadataField}
-  "Fetch metadata about Fields belonging to a given TABLE directly from an external database by calling its
-   driver's implementation of `describe-table`."
-  [database :- i/DatabaseInstance, table :- i/TableInstance]
+  "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
+  implementation of `describe-table`."
+  [database :- i/DatabaseInstance table :- i/TableInstance]
   (:fields (fetch-metadata/table-metadata database table)))

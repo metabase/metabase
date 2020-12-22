@@ -5,8 +5,8 @@ import moment from "moment";
 import { rangeForValue, fieldRefForColumn } from "metabase/lib/dataset";
 import { isDate, isNumber } from "metabase/lib/schema_metadata";
 
-import type { Breakout } from "metabase/meta/types/Query";
-import type { DimensionValue } from "metabase/meta/types/Visualization";
+import type { Breakout } from "metabase-types/types/Query";
+import type { DimensionValue } from "metabase-types/types/Visualization";
 import { parseTimestamp } from "metabase/lib/time";
 
 import Question from "metabase-lib/lib/Question";

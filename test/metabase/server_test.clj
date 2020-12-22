@@ -9,6 +9,7 @@
     (with-redefs [config/config-str (constantly "10")]
       (is (= {:keystore       "10"
               :max-queued     10
+              :request-header-size 10
               :port           10
               :min-threads    10
               :host           "10"

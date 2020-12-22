@@ -109,7 +109,9 @@
                             :distinct___count :count
                             col-name))]
     {:cols (vec (for [col-name fixed-col-names]
-                  {:name (u/qualified-name col-name)}))}))
+                  {:name      (u/qualified-name col-name)
+                   ;; Placeholder so metadata is well formed, we'll infer actual types later
+                   :base_type :type/*}))}))
 
 (defn- result-rows [{rows :results, :as results} actual-col-names annotate-col-names]
   (let [getters (vec (col-names->getter-fns actual-col-names annotate-col-names))]
@@ -125,15 +127,20 @@
   (vec (remove #(re-find #"^___" (name %)) columns)))
 
 (defn- reduce-results
-  [{{:keys [query query-type mbql?]} :native, :as outer-query} {:keys [projections], :as result} respond]
+  [{{:keys [query mbql?]} :native, :as outer-query} {:keys [projections], :as result} respond]
   (let [col-names          (if mbql?
                              (->> projections
                                   remove-bonus-keys
                                   vec)
                              (-> result :results first keys))
         metadata           (result-metadata col-names)
-        annotate-col-names (map (comp keyword :name) (annotate/merged-column-info outer-query metadata))]
-    (respond metadata (result-rows result col-names annotate-col-names))))
+        annotate-col-names (map (comp keyword :name) (annotate/merged-column-info outer-query metadata))
+        rows               (result-rows result col-names annotate-col-names)
+        base-types         (transduce identity (annotate/base-type-inferer metadata) rows)
+        metadata           (update metadata :cols (partial map (fn [col base-type]
+                                                                 (assoc col :base_type base-type)))
+                                   base-types)]
+    (respond metadata rows)))
 
 (defn execute-reducible-query
   "Execute a query for a Druid DB."

@@ -18,13 +18,14 @@
     "react/no-find-dom-node": 0,
     "flowtype/define-flow-type": 1,
     "flowtype/use-flow-type": 1,
-    "no-color-literals": 1,
-    "prefer-const": [1, { "destructuring": "all" }]
+    "prefer-const": [1, { "destructuring": "all" }],
+    "no-useless-escape": 0
   },
   "globals": {
     "pending": false,
+    "before": true,
     "cy": true,
-    "Cypress": true
+    "Cypress": true,
   },
   "env": {
     "browser": true,
@@ -43,5 +44,10 @@
   "settings": {
     "import/resolver": "webpack",
     "import/ignore": ["\\.css$"]
+  },
+  "parserOptions": {
+    "ecmaFeatures": {
+      "legacyDecorators": true
+    }
   }
 }

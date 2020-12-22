@@ -8,7 +8,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 import { AggregationDimension } from "metabase-lib/lib/Dimension";
 
@@ -52,6 +52,8 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     {
       name: "underlying-records",
       section: "records",
+      buttonType: "horizontal",
+      icon: "table_spaced",
       title: ngettext(
         msgid`View this ${inflectedTableName}`,
         `View these ${inflectedTableName}`,

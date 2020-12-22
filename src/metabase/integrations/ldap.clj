@@ -1,18 +1,20 @@
 (ns metabase.integrations.ldap
   (:require [cheshire.core :as json]
             [clj-ldap.client :as ldap]
-            [clojure.string :as str]
-            [metabase.integrations.common :as integrations.common]
+            [clojure.tools.logging :as log]
+            [metabase.integrations.ldap
+             [default-implementation :as default-impl]
+             [interface :as i]]
             [metabase.models
              [setting :as setting :refer [defsetting]]
-             [user :as user :refer [User]]]
+             [user :refer [User]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [toucan.db :as db])
-  (:import [com.unboundid.ldap.sdk DN Filter LDAPConnectionPool LDAPException]))
-
-(def ^:private filter-placeholder
-  "{login}")
+            [metabase.util
+             [i18n :refer [deferred-tru tru]]
+             [schema :as su]]
+            [schema.core :as s])
+  (:import [com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException]))
 
 (defsetting ldap-enabled
   (deferred-tru "Enable LDAP authentication.")
@@ -85,6 +87,17 @@
                  (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
              (setting/set-json! :ldap-group-mappings new-value)))
 
+(defsetting ldap-sync-user-attributes
+  (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
+  :type :boolean
+  :default true)
+
+;; TODO - maybe we want to add a csv setting type?
+(defsetting ldap-sync-user-attributes-blacklist
+  (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
+  :default "userPassword,dn,distinguishedName"
+  :type    :csv)
+
 (defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
   :type       :boolean
@@ -95,7 +108,12 @@
                                    (ldap-user-base)))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
-  {:host      (str host ":" port)
+  ;; Connecting via IPv6 requires us to use this form for :host, otherwise
+  ;; clj-ldap will find the first : and treat it as an IPv4 and port number
+  {:host      {:address host
+               :port    (if (string? port)
+                          (Integer/parseInt port)
+                          port)}
    :bind-dn   bind-dn
    :password  password
    :ssl?      (= security "ssl")
@@ -113,30 +131,17 @@
   ^LDAPConnectionPool []
   (ldap/connect (settings->ldap-options)))
 
-(defn- with-connection
-  "Applies `f` with a connection and `args`"
-  [f & args]
+(defn- do-with-ldap-connection
+  "Impl for `with-ldap-connection` macro."
+  [f]
   (with-open [conn (get-connection)]
-    (apply f conn args)))
+    (f conn)))
 
-(defn- ldap-groups->mb-group-ids
-  "Will translate a set of DNs to a set of MB group IDs using the configured mappings."
-  [ldap-groups]
-  (-> (ldap-group-mappings)
-      (select-keys (map #(DN. (str %)) ldap-groups))
-      vals
-      flatten
-      set))
-
-(defn- get-user-groups
-  "Retrieve groups for a supplied DN."
-  ([^String dn]
-    (with-connection get-user-groups dn))
-  ([conn ^String dn]
-    (when (ldap-group-base)
-      (let [results (ldap/search conn (ldap-group-base) {:scope  :sub
-                                                         :filter (Filter/createEqualityFilter "member" dn)})]
-        (map :dn results)))))
+(defmacro ^:private with-ldap-connection
+  "Execute `body` with `connection-binding` bound to a LDAP connection."
+  [[connection-binding] & body]
+  `(do-with-ldap-connection (fn [~(vary-meta connection-binding assoc :tag `LDAPConnectionPool)]
+                              ~@body)))
 
 (def ^:private user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"})
 (def ^:private group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"})
@@ -174,54 +179,49 @@
     (catch Exception e
       {:status :ERROR, :message (.getMessage e)})))
 
-(defn- search [conn, ^String username]
-  (first
-   (ldap/search
-    conn
-    (ldap-user-base)
-    {:scope      :sub
-     :filter     (str/replace (ldap-user-filter) filter-placeholder (Filter/encodeValue username))
-     :size-limit 1})))
-
-(defn find-user
-  "Gets user information for the supplied username."
-  ([username]
-   (with-connection find-user username))
-
-  ([conn username]
-   (when-let [{:keys [dn], :as result} (u/lower-case-map-keys (search conn username))]
-     (let [{fname (keyword (ldap-attribute-firstname))
-            lname (keyword (ldap-attribute-lastname))
-            email (keyword (ldap-attribute-email))}    result]
-       ;; Make sure we got everything as these are all required for new accounts
-       (when-not (some empty? [dn fname lname email])
-         {:dn         dn
-          :first-name fname
-          :last-name  lname
-          :email      email
-          :groups     (when (ldap-group-sync)
-                        ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
-                        ;; groups. Otherwise we have to make the inverse query to get them.
-                        (or (:memberof result) (get-user-groups dn) []))})))))
-
 (defn verify-password
   "Verifies if the supplied password is valid for the `user-info` (from `find-user`) or DN."
   ([user-info password]
-   (with-connection verify-password user-info password))
+   (with-ldap-connection [conn]
+     (verify-password conn user-info password)))
 
   ([conn user-info password]
    (let [dn (if (string? user-info) user-info (:dn user-info))]
      (ldap/bind? conn dn password))))
 
-(defn fetch-or-create-user!
+;; we want the EE implementation namespace to be loaded immediately if present so the extra Settings that it defines
+;; are available elsewhere (e.g. so they'll show up in the API endpoints that list Settings)
+(def ^:private impl
+  ;; if EE impl is present, use it. It implements the strategy pattern and will forward method invocations to the
+  ;; default OSS impl if we don't have a valid EE token. Thus the actual EE versions of the methods won't get used
+  ;; unless EE code is present *and* we have a valid EE token.
+  (u/prog1 (or (u/ignore-exceptions
+                 (classloader/require 'metabase-enterprise.enhancements.integrations.ldap)
+                 (some-> (resolve 'metabase-enterprise.enhancements.integrations.ldap/ee-strategy-impl) var-get))
+               default-impl/impl)
+    (log/debugf "LDAP integration set to %s" <>)))
+
+(s/defn ^:private ldap-settings :- i/LDAPSettings
+  []
+  {:first-name-attribute (ldap-attribute-firstname)
+   :last-name-attribute  (ldap-attribute-lastname)
+   :email-attribute      (ldap-attribute-email)
+   :sync-groups?         (ldap-group-sync)
+   :group-base           (ldap-group-base)
+   :group-mappings       (ldap-group-mappings)
+   :user-base            (ldap-user-base)
+   :user-filter          (ldap-user-filter)})
+
+(s/defn find-user :- (s/maybe i/UserInfo)
+  "Get user information for the supplied username."
+  ([username :- su/NonBlankString]
+   (with-ldap-connection [conn]
+     (find-user conn username)))
+
+  ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
+   (i/find-user impl ldap-connection username (ldap-settings))))
+
+(s/defn fetch-or-create-user! :- (class User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
-  [{:keys [first-name last-name email groups]}]
-  (let [user (or (db/select-one [User :id :last_login] :email email)
-                 (user/create-new-ldap-auth-user!
-                  {:first_name first-name
-                   :last_name  last-name
-                   :email      email}))]
-    (u/prog1 user
-      (when (ldap-group-sync)
-        (let [group-ids (ldap-groups->mb-group-ids groups)]
-          (integrations.common/sync-group-memberships! user group-ids))))))
+  [user-info :- i/UserInfo]
+  (i/fetch-or-create-user! impl user-info (ldap-settings)))

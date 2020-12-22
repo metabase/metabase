@@ -7,7 +7,7 @@ import _ from "underscore";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 const BLACKLIST_TYPES = [
   TYPE.PK,
@@ -33,7 +33,9 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     {
       name: "distribution",
       title: t`Distribution`,
-      section: "distribution",
+      buttonType: "horizontal",
+      section: "summarize",
+      icon: "bar",
       question: () => question.distribution(column),
     },
   ];

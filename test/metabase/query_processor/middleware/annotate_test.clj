@@ -22,36 +22,29 @@
 
 (deftest native-column-info-test
   (testing "native column info"
-    (testing "should still infer types even if the initial value(s) are `nil` (#4256)"
-      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}
-              {:name "b", :display_name "b", :base_type :type/Integer, :source :native, :field_ref [:field-literal "b" :type/Integer]}]
-             (annotate/column-info
-              {:type :native}
-              {:cols [{:name "a"} {:name "b"}]
-               :rows [[1 nil] [2 nil] [3 nil] [4 5] [6 7]]}))))
+    (testing "should still infer types even if the initial value(s) are `nil` (#4256, #6924)"
+      (is (= [:type/Integer]
+             (transduce identity (#'annotate/base-type-inferer {:cols [{}]})
+                        (concat (repeat 1000 [nil]) [[1] [2]])))))
 
     (testing "should use default `base_type` of `type/*` if there are no non-nil values in the sample"
-      (is (= [{:name "a", :display_name "a", :base_type :type/*, :source :native, :field_ref [:field-literal "a" :type/*]}]
-             (annotate/column-info
-              {:type :native}
-              {:cols [{:name "a"}]
-               :rows [[nil]]}))))
+      (is (= [:type/*]
+             (transduce identity (#'annotate/base-type-inferer {:cols [{}]})
+                        [[nil]]))))
 
     (testing "should attempt to infer better base type if driver returns :type/* (#12150)"
       ;; `merged-column-info` handles merging info returned by driver & inferred by annotate
-      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}]
-             (annotate/merged-column-info
-              {:type :native}
-              {:cols [{:name "a", :base_type :type/*}]
-               :rows [[1] [2] [nil] [3]]}))))
+      (is (= [:type/Integer]
+             (transduce identity (#'annotate/base-type-inferer {:cols [{:base_type :type/*}]})
+                        [[1] [2] [nil] [3]]))))
 
     (testing "should disambiguate duplicate names"
       (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}
               {:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a_2" :type/Integer]}]
              (annotate/column-info
               {:type :native}
-              {:cols [{:name "a"} {:name "a"}]
-               :rows [[1 nil] [2 nil] [3 nil] [4 5] [6 7]]}))))))
+              {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
+               :rows [[1 nil]]}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -38,6 +38,7 @@ class VisualizationError extends Component {
 
   render() {
     const { card, duration, error, className } = this.props;
+    console.log("error", error);
 
     if (error && typeof error.status === "number") {
       // Assume if the request took more than 15 seconds it was due to a timeout
@@ -63,6 +64,16 @@ class VisualizationError extends Component {
           />
         );
       }
+    } else if (error instanceof Error) {
+      return (
+        <div className={cx(className, "QueryError2 flex justify-center")}>
+          <div className="QueryError-image QueryError-image--queryError mr4" />
+          <div className="QueryError2-details">
+            <h1 className="text-bold">{t`There was a problem with this visualization`}</h1>
+            <ErrorDetails className="pt2" details={error} />
+          </div>
+        </div>
+      );
     } else if (
       card &&
       card.dataset_query &&

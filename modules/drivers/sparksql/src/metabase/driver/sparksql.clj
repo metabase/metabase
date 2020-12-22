@@ -6,6 +6,7 @@
             [honeysql
              [core :as hsql]
              [helpers :as h]]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql
@@ -119,11 +120,12 @@
                                                       (dash-to-underscore schema)
                                                       (dash-to-underscore table-name)))])]
        (set
-        (for [{col-name :col_name, data-type :data_type, :as result} results
-              :when                                                  (valid-describe-table-row? result)]
-          {:name          col-name
-           :database-type data-type
-           :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))}))))})
+        (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
+              :when (valid-describe-table-row? result)]
+          {:name              col-name
+           :database-type     data-type
+           :base-type         (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))
+           :database-position idx}))))})
 
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
 (defmethod driver/execute-reducible-query :sparksql

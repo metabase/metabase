@@ -128,7 +128,7 @@
                 (u/pprint-to-str 'yellow source-query)))
     {:source-query    source-query
      :database        database-id
-     :source-metadata (normalize/normalize-fragment [:query :source-metadata] result-metadata)}))
+     :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}))
 
 (s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero
   [source-table-str :- mbql.s/source-table-card-id-regex]
@@ -169,9 +169,9 @@
       (try
         (resolve-all* resolved)
         (catch Throwable e
-          (throw (ex-info (.getMessage e)
-                   {:resolving &match, :resolved resolved}
-                   e)))))))
+          (throw (ex-info (tru "Error resolving source query")
+                          {:resolving &match, :resolved resolved}
+                          e)))))))
 
 (defn- check-for-circular-references
   "Check that there are no circular dependencies among source cards. This is equivalent to

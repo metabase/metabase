@@ -47,7 +47,7 @@ describe("getMetadata", () => {
     });
 
     it("should have a parent database", () => {
-      expect(table.database).toEqual(metadata.databases[SAMPLE_DATASET.id]);
+      expect(table.database).toEqual(metadata.database(SAMPLE_DATASET.id));
     });
   });
 

@@ -51,6 +51,20 @@
   not explicitly marked as a foreign key, because the test dataset syntax does not yet have a way to support nullable
   foreign keys.)")
 
+(tx/defdataset-edn airports
+  "Major international airports from around the world. Location information is broken out into a series of tables:
+
+    Continent > Country > Region (e.g. State) > Municipality (e.g. City) > Airport
+
+  This makes this dataset ideal for testing things where we must join multiple levels of tables.")
+
+(tx/defdataset-edn sample-dataset
+  "The sample dataset that ships with Metabase, but converted to an EDN dataset definition so it can be used in tests.
+  This dataset is pretty large (over 20k rows) so it can take a long time to load -- keep that in mind. There is one
+  difference from the H2 version that ships with Metabase -- this version uses `:type/DateTimeWithTZ` `updated_at`
+  columns (i.e., `TIMESTAMP WITH TIME ZONE`) instead of `:type/DateType`, to make it easier to use this test data
+  across multiple databases.")
+
 (defn- date-only
   "Convert date or datetime temporal value to `t` to an appropriate date type, discarding time information."
   [t]
@@ -107,12 +121,15 @@
         (update
          tabledef
          :field-definitions
-         concat
-         [(tx/map->FieldDefinition {:field-name "null_only_date", :base-type :type/Date})]))
+         (fn [[date-field-def user-id-field-def venue-id-field-def]]
+           [date-field-def
+            (tx/map->FieldDefinition {:field-name "null_only_date", :base-type :type/Date})
+            user-id-field-def
+            venue-id-field-def])))
       :rows
       (fn [rows]
-        (for [row rows]
-          (concat row [nil]))))))
+        (for [[date user-id venue-id] rows]
+          [date nil user-id venue-id])))))
 
 (defonce ^{:doc "The main `test-data` dataset, but `last_login` has a base type of `:type/DateTimeWithTZ`."}
   test-data-with-timezones
@@ -145,6 +162,7 @@
           [username last-login password-text (if (zero? idx)
                                                1
                                                idx)])))))
+
 (tx/defdataset ^:private attempted-murders
   "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the
   date/time when they spotting occured in several different column types.
@@ -152,15 +170,15 @@
   No Database we support supports all of these different types, so the expectation is that we'll use the closest
   equivalent for each column."
   [["attempts"
-    [{:field-name "num_crows",      :base-type :type/Integer}
-     {:field-name "date",           :base-type :type/Date}
-     {:field-name "time",           :base-type :type/Time}
-     {:field-name "time_ltz",       :base-type :type/TimeWithLocalTZ}
-     {:field-name "time_tz",        :base-type :type/TimeWithZoneOffset}
+    [{:field-name "date",           :base-type :type/Date}
      {:field-name "datetime",       :base-type :type/DateTime}
      {:field-name "datetime_ltz",   :base-type :type/DateTimeWithLocalTZ}
      {:field-name "datetime_tz",    :base-type :type/DateTimeWithZoneOffset}
-     {:field-name "datetime_tz_id", :base-type :type/DateTimeWithZoneID}]
+     {:field-name "datetime_tz_id", :base-type :type/DateTimeWithZoneID}
+     {:field-name "time",           :base-type :type/Time}
+     {:field-name "time_ltz",       :base-type :type/TimeWithLocalTZ}
+     {:field-name "time_tz",        :base-type :type/TimeWithZoneOffset}
+     {:field-name "num_crows",      :base-type :type/Integer}]
     (for [[cnt t] [[6 #t "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]
                    [8 #t "2019-11-02T00:14:14.246-07:00[America/Los_Angeles]"]
                    [6 #t "2019-11-03T23:35:17.906-08:00[America/Los_Angeles]"]
@@ -181,12 +199,13 @@
                    [3 #t "2019-11-18T20:47:27.902-08:00[America/Los_Angeles]"]
                    [5 #t "2019-11-19T00:35:23.146-08:00[America/Los_Angeles]"]
                    [1 #t "2019-11-20T20:09:55.752-08:00[America/Los_Angeles]"]]]
-      [cnt                              ; num-crows
-       (t/local-date t)                 ; date
-       (t/local-time t)                 ; time
-       (t/offset-time t)                ; time-ltz
-       (t/offset-time t)                ; time-tz
+      [(t/local-date t)                 ; date
        (t/local-date-time t)            ; datetime
        (t/offset-date-time t)           ; datetime-ltz
        (t/offset-date-time t)           ; datetime-tz
-       t])]])                           ; datetime-tz-id
+       t                                ; datetime-tz-id
+       (t/local-time t)                 ; time
+       (t/offset-time t)                ; time-ltz
+       (t/offset-time t)                ; time-tz
+       cnt                              ; num-crows
+       ])]])

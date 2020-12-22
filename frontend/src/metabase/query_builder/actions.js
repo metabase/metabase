@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, updateIn } from "icepick";
+import { getIn, assocIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -39,6 +39,7 @@ import {
   getOriginalCard,
   getIsEditing,
   getTransformedSeries,
+  getRawSeries,
   getResultsMetadata,
   getFirstQueryResult,
   getIsPreviewing,
@@ -46,6 +47,9 @@ import {
   getQueryBuilderMode,
   getIsShowingTemplateTagsEditor,
   getIsRunning,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
+  getSnippetCollectionId,
 } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
@@ -61,11 +65,12 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import Snippets from "metabase/entities/snippets";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
-import type { Card } from "metabase/meta/types/Card";
+import type { Card } from "metabase-types/types/Card";
 
 type UiControls = {
   isEditing?: boolean,
@@ -77,9 +82,11 @@ type UiControls = {
 
 const PREVIEW_RESULT_LIMIT = 10;
 
-const getTemplateTagCount = (question: Question) => {
+const getTemplateTagWithoutSnippetsCount = (question: Question) => {
   const query = question.query();
-  return query instanceof NativeQuery ? query.templateTags().length : 0;
+  return query instanceof NativeQuery
+    ? query.templateTagsWithoutSnippets().length
+    : 0;
 };
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
@@ -327,6 +334,7 @@ export const initializeQB = (location, params) => {
     }
 
     let preserveParameters = false;
+    let snippetFetch;
     if (params.cardId || serializedCard) {
       // existing card being loaded
       try {
@@ -344,9 +352,39 @@ export const initializeQB = (location, params) => {
         } else if (card.original_card_id) {
           // deserialized card contains the card id, so just populate originalCard
           originalCard = await loadCard(card.original_card_id);
-          // if the cards are equal then show the original
-          if (cardIsEquivalent(card, originalCard)) {
+          if (
+            cardIsEquivalent(card, originalCard, { checkParameters: false }) &&
+            !cardIsEquivalent(card, originalCard, { checkParameters: true })
+          ) {
+            // if the cards are equal except for parameters, copy over the id to undirty the card
+            card.id = originalCard.id;
+          } else if (cardIsEquivalent(card, originalCard)) {
+            // if the cards are equal then show the original
             card = Utils.copy(originalCard);
+          }
+        }
+        // if this card has any snippet tags we might need to fetch snippets pending permissions
+        if (
+          Object.values(
+            getIn(card, ["dataset_query", "native", "template-tags"]) || {},
+          ).filter(t => t.type === "snippet").length > 0
+        ) {
+          const dbId = card.database_id;
+          let database = Databases.selectors.getObject(getState(), {
+            entityId: dbId,
+          });
+          // if we haven't already loaded this database, block on loading dbs now so we can check write permissions
+          if (!database) {
+            await dispatch(Databases.actions.fetchList());
+            database = Databases.selectors.getObject(getState(), {
+              entityId: dbId,
+            });
+          }
+
+          // database could still be missing if the user doesn't have any permissions
+          // if the user has native permissions against this db, fetch snippets
+          if (database && database.native_permissions === "write") {
+            snippetFetch = dispatch(Snippets.actions.fetchList());
           }
         }
 
@@ -440,9 +478,23 @@ export const initializeQB = (location, params) => {
     }
 
     let question = card && new Question(card, getMetadata(getState()));
-    if (params.cardId) {
+    if (question && question.isSaved()) {
       // loading a saved question prevents auto-viz selection
-      question = question && question.lockDisplay();
+      question = question.lockDisplay();
+    }
+
+    if (question && question.isNative() && snippetFetch) {
+      await snippetFetch;
+      const snippets = Snippets.selectors.getList(getState());
+      question = question.setQuery(
+        question.query().updateQueryTextWithNewSnippetNames(snippets),
+      );
+    }
+
+    for (const [paramId, value] of Object.entries(
+      (card && card.parameterValues) || {},
+    )) {
+      dispatch(setParameterValue(paramId, value));
     }
 
     card = question && question.card();
@@ -499,6 +551,18 @@ export const setIsShowingTemplateTagsEditor = isShowingTemplateTagsEditor => ({
   isShowingTemplateTagsEditor,
 });
 
+export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
+export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR, () => {
+  MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Snippet Sidebar");
+});
+
+export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
+  "metabase/qb/SET_IS_SHOWING_SNIPPET_SIDEBAR";
+export const setIsShowingSnippetSidebar = isShowingSnippetSidebar => ({
+  type: SET_IS_SHOWING_SNIPPET_SIDEBAR,
+  isShowingSnippetSidebar,
+});
+
 export const setIsPreviewing = isPreviewing => ({
   type: SET_UI_CONTROLS,
   payload: { isPreviewing },
@@ -508,6 +572,49 @@ export const setIsNativeEditorOpen = isNativeEditorOpen => ({
   type: SET_UI_CONTROLS,
   payload: { isNativeEditorOpen },
 });
+
+export const SET_NATIVE_EDITOR_SELECTED_RANGE =
+  "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
+export const setNativeEditorSelectedRange = createAction(
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+);
+
+export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
+export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
+
+export const SET_SNIPPET_COLLECTION_ID =
+  "metabase/qb/SET_SNIPPET_COLLECTION_ID";
+export const setSnippetCollectionId = createAction(SET_SNIPPET_COLLECTION_ID);
+
+export const openSnippetModalWithSelectedText = () => (dispatch, getState) => {
+  const state = getState();
+  const content = getNativeEditorSelectedText(state);
+  const collection_id = getSnippetCollectionId(state);
+  dispatch(setModalSnippet({ content, collection_id }));
+};
+
+export const closeSnippetModal = () => (dispatch, getState) => {
+  dispatch(setModalSnippet(null));
+};
+
+export const insertSnippet = snip => (dispatch, getState) => {
+  const name = snip.name;
+  const question = getQuestion(getState());
+  const query = question.query();
+  const nativeEditorCursorOffset = getNativeEditorCursorOffset(getState());
+  const nativeEditorSelectedText = getNativeEditorSelectedText(getState());
+  const selectionStart =
+    nativeEditorCursorOffset - (nativeEditorSelectedText || "").length;
+  const newText =
+    query.queryText().slice(0, selectionStart) +
+    `{{snippet: ${name}}}` +
+    query.queryText().slice(nativeEditorCursorOffset);
+  const datasetQuery = query
+    .setQueryText(newText)
+    .updateSnippetsWithIds([snip])
+    .datasetQuery();
+  dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
+};
 
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
@@ -727,6 +834,46 @@ export const updateQuestion = (
       run = false;
     }
 
+    // <PIVOT LOGIC>
+    // We have special logic when going to, coming from, or updating a pivot table.
+    const isPivot = newQuestion.display() === "pivot";
+    const wasPivot = oldQuestion.display() === "pivot";
+    const queryHasBreakouts =
+      isPivot &&
+      newQuestion.isStructured() &&
+      newQuestion.query().breakouts().length > 0;
+
+    // we can only pivot queries with breakouts
+    if (isPivot && queryHasBreakouts) {
+      // compute the pivot setting now so we can query the appropriate data
+      const series = assocIn(
+        getRawSeries(getState()),
+        [0, "card"],
+        newQuestion.card(),
+      );
+      const key = "pivot_table.column_split";
+      const setting = getQuestionWithDefaultVisualizationSettings(
+        newQuestion,
+        series,
+      ).setting(key);
+      newQuestion = newQuestion.updateSettings({ [key]: setting });
+    }
+
+    if (
+      // switching to pivot
+      (isPivot && !wasPivot) ||
+      // switching away from pivot
+      (!isPivot && wasPivot) ||
+      // updating the pivot rows/cols
+      !_.isEqual(
+        newQuestion.setting("pivot_table.column_split"),
+        oldQuestion.setting("pivot_table.column_split"),
+      )
+    ) {
+      run = true; // force a run when switching to/from pivot or updating it's setting
+    }
+    // </PIVOT LOGIC>
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
@@ -735,8 +882,8 @@ export const updateQuestion = (
     }
 
     // See if the template tags editor should be shown/hidden
-    const oldTagCount = getTemplateTagCount(oldQuestion);
-    const newTagCount = getTemplateTagCount(newQuestion);
+    const oldTagCount = getTemplateTagWithoutSnippetsCount(oldQuestion);
+    const newTagCount = getTemplateTagWithoutSnippetsCount(newQuestion);
     if (newTagCount > oldTagCount) {
       dispatch(setIsShowingTemplateTagsEditor(true));
     } else if (
@@ -882,7 +1029,7 @@ export const runQuestionQuery = ({
     const originalQuestion: ?Question = getOriginalQuestion(getState());
 
     const cardIsDirty = originalQuestion
-      ? question.isDirtyComparedTo(originalQuestion)
+      ? question.isDirtyComparedToWithoutParameters(originalQuestion)
       : true;
 
     if (shouldUpdateUrl) {
@@ -1032,7 +1179,6 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     const newCard = startNewCard("query", card.dataset_query.database);
 
     newCard.dataset_query.query["source-table"] = fk.origin.table.id;
-    newCard.dataset_query.query.aggregation = ["rows"];
     newCard.dataset_query.query.filter = [
       "and",
       ["=", fk.origin.id, originValue],

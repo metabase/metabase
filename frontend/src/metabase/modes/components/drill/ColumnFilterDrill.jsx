@@ -12,7 +12,7 @@ import type {
   ClickAction,
   ClickActionProps,
   ClickActionPopoverProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 export default function QuickFilterDrill({
   question,
@@ -38,8 +38,10 @@ export default function QuickFilterDrill({
   return [
     {
       name: "filter-column",
-      section: "filter",
-      title: t`Filter`,
+      section: "summarize",
+      title: t`Filter by this column`,
+      buttonType: "horizontal",
+      icon: "filter",
       // eslint-disable-next-line react/display-name
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <FilterPopover

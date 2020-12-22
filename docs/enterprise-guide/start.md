@@ -8,6 +8,6 @@ The Enterprise Edition of Metabase provides added functionality and solutions fo
 * [Sandboxing data based on user attributes](data-sandboxes.md)
 * [Embedding the entire Metabase app in your own web app](full-app-embedding.md)
 * [Customizing how Metabase looks with white labeling](whitelabeling.md)
-* [Customizing drill-through for charts and tables](customizing-drill-through.md)
 * [Copying contents of one Metabase instance to another (serialization)](serialization.md)
 * [Using the audit logs](audit.md)
+* [Organizing SQL snippets with folders and permissions](sql-snippets.md)

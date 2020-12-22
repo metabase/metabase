@@ -1,7 +1,6 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
   (:require [bigml.histogram.core :as hist]
-            [cheshire.core :as json]
             [java-time :as t]
             [kixi.stats
              [core :as stats]
@@ -17,7 +16,9 @@
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
-           java.time.temporal.Temporal))
+           [java.time.chrono ChronoLocalDateTime ChronoZonedDateTime]
+           java.time.temporal.Temporal
+           java.time.ZoneOffset))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -157,6 +158,8 @@
               {:type {~(first field-type) fingerprint#}})))
          (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
+(declare ->temporal)
+
 (defn- earliest
   ([] nil)
   ([acc]
@@ -182,9 +185,11 @@
 
 (extend-protocol ITemporalCoerceable
   nil      (->temporal [_]    nil)
-  String   (->temporal [this] (u.date/parse this))
-  Long     (->temporal [this] (t/instant this))
-  Integer  (->temporal [this] (t/instant this))
+  String   (->temporal [this] (->temporal (u.date/parse this)))
+  Long     (->temporal [this] (->temporal (t/instant this)))
+  Integer  (->temporal [this] (->temporal (t/instant this)))
+  ChronoLocalDateTime (->temporal [this] (.toInstant this (ZoneOffset/UTC)))
+  ChronoZonedDateTime (->temporal [this] (.toInstant this))
   Temporal (->temporal [this] this))
 
 (deffingerprinter :type/DateTime
@@ -219,10 +224,20 @@
         :q3  q3)))))
 
 (defn- valid-serialized-json?
-  "Is x a serialized JSON dictionary or array."
+  "Is x a serialized JSON dictionary or array. Hueristically recognize maps and arrays. Uses the following strategies:
+  - leading character {: assume valid JSON
+  - leading character [: assume valid json unless its of the form [ident] where ident is not a boolean."
   [x]
   (u/ignore-exceptions
-    ((some-fn map? sequential?) (json/parse-string x))))
+    (when (and x (string? x))
+      (let [matcher (case (first x)
+                      \[ (fn bracket-matcher [s]
+                           (cond (re-find #"^\[\s*(?:true|false)" s) true
+                                 (re-find #"^\[\s*[a-zA-Z]" s) false
+                                 :else true))
+                      \{ (constantly true)
+                      (constantly false))]
+        (matcher x)))))
 
 (deffingerprinter :type/Text
   ((map str) ; we cast to str to support `field-literal` type overwriting:
@@ -231,6 +246,7 @@
    (robust-fuse {:percent-json   (stats/share valid-serialized-json?)
                  :percent-url    (stats/share u/url?)
                  :percent-email  (stats/share u/email?)
+                 :percent-state  (stats/share u/state?)
                  :average-length ((map count) stats/mean)})))
 
 (defn fingerprint-fields

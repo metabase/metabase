@@ -1,74 +1,9 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-# Generate the resources/version.properties file
-version() {
-    VERSION_INFO=$(./bin/version)
-    IFS=', ' read -a info <<< ${VERSION_INFO}
+source "./bin/check-clojure-cli.sh"
+check_clojure_cli
 
-    echo "Tagging uberjar with version '$VERSION_INFO'..."
-
-    # Ok, now generate the appropriate version.properties file.
-    echo "tag=${info[0]}" > resources/version.properties
-    echo "hash=${info[1]}" >> resources/version.properties
-    echo "branch=${info[2]}" >> resources/version.properties
-    echo "date=${info[3]}" >> resources/version.properties
-}
-
-frontend-deps() {
-    echo "Running 'yarn' to download javascript dependencies..." &&
-    yarn
-}
-
-frontend() {
-    frontend-deps
-    echo "Running 'webpack' with NODE_ENV=production assemble and minify frontend assets..." &&
-    NODE_ENV=production ./node_modules/.bin/webpack --bail
-}
-
-frontend-fast() {
-    frontend-deps
-    echo "Running 'webpack' with NODE_ENV=development to assemble frontend assets..." &&
-    NODE_ENV=development ./node_modules/.bin/webpack --bail --devtool eval
-}
-
-translations() {
-    frontend-deps
-    echo "Running './bin/i18n/build-translation-resources' to build translation resources..."
-    if ! ./bin/i18n/build-translation-resources; then
-      echo "Building translation resources failed, please install 'gettext', or build without translations by running './bin/build no-translations'."
-      exit 1
-    fi
-}
-
-drivers() {
-    echo "Building Metabase drivers..."
-    ./bin/build-drivers.sh
-}
-
-uberjar() {
-    echo "Running 'lein uberjar'..."
-    lein clean && lein uberjar
-}
-
-all() {
-    version && translations && frontend && drivers && uberjar
-}
-
-no-translations() {
-    version && frontend && drivers && uberjar
-}
-
-# Default to running all but let someone specify one or more sub-tasks to run instead if desired
-# e.g.
-# ./bin/build                  # do everything
-# ./bin/build version          # just update version.properties
-# ./bin/build version uberjar  # just update version.properties and build uberjar
-if [ "$1" ]; then
-    for cmd in "$@"; do
-        $cmd
-    done
-else
-    all
-fi
+cd bin/build-mb
+clojure -M -m build $@

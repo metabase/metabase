@@ -12,7 +12,6 @@
             [metabase.models
              [permissions :as perms]
              [permissions-group :as group]]
-            [metabase.test.data.users :as test-users]
             [toucan.db :as db]))
 
 (def ^:private default-search-row
@@ -110,16 +109,27 @@
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
+(def ^:private ^:dynamic *search-request-results-database-id*
+  "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`
+  Database. Other results are filtered out so these tests can be ran from the REPL without the presence of other
+  Databases causing the tests to fail."
+  mt/id)
+
 (defn- search-request [user-kwd & params]
-  (vec
-   (sorted-results
-    (let [raw-results (apply (test-users/user->client user-kwd) :get 200 "search" params)]
-      (for [result raw-results
-            ;; filter out any results not from the usual test data DB (e.g. results from other drivers)
-            :when  (contains? #{(mt/id) nil} (:database_id result))]
-        (-> result
-            mt/boolean-ids-and-timestamps
-            (update :collection_name #(some-> % string?))))))))
+  (let [raw-results      (apply (mt/user->client user-kwd) :get 200 "search" params)
+        keep-database-id (if (fn? *search-request-results-database-id*)
+                           (*search-request-results-database-id*)
+                           *search-request-results-database-id*)]
+    (if (:error raw-results)
+      raw-results
+      (vec
+       (sorted-results
+        (for [result raw-results
+              ;; filter out any results not from the usual test data DB (e.g. results from other drivers)
+              :when  (contains? #{keep-database-id nil} (:database_id result))]
+          (-> result
+              mt/boolean-ids-and-timestamps
+              (update :collection_name #(some-> % string?)))))))))
 
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
@@ -153,8 +163,8 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-root-collection "test"
         (mt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
-          (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
+                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+          (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
           (is (= (remove (comp #{"collection"} :model) (default-search-results))
                  (search-request :rasta :q "test")))))))
 
@@ -163,7 +173,7 @@
       (with-search-items-in-collection {:keys [collection]} "test"
         (with-search-items-in-root-collection "test2"
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
             (perms/grant-collection-read-permissions! group (u/get-id collection))
             (is (= (sorted-results
                     (into
@@ -179,8 +189,8 @@
       (with-search-items-in-collection {:keys [collection]} "test"
         (with-search-items-in-root-collection "test2"
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (perms/grant-collection-read-permissions! group collection)
             (is (= (sorted-results
                     (into
@@ -194,7 +204,7 @@
     (with-search-items-in-collection {coll-1 :collection} "test"
       (with-search-items-in-collection {coll-2 :collection} "test2"
         (mt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
+                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
           (perms/grant-collection-read-permissions! group (u/get-id coll-1))
           (perms/grant-collection-read-permissions! group (u/get-id coll-2))
           (is (= (sorted-results
@@ -209,7 +219,7 @@
       (with-search-items-in-collection {coll-1 :collection} "test"
         (with-search-items-in-collection {coll-2 :collection} "test2"
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
             (perms/grant-collection-read-permissions! group (u/get-id coll-1))
             (is (= (sorted-results
                     (into
@@ -217,24 +227,44 @@
                      (map #(merge default-search-row % (table-search-results))
                           [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
                            {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}])))
-                   (search-request :rasta :q "test")))))))))
+                   (search-request :rasta :q "test"))))))))
+
+  (testing "Metrics on tables for which the user does not have access to should not show up in results"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [{table-id :id} {:db_id  db-id
+                                              :schema nil}]
+                    Metric   [_ {:table_id table-id
+                                 :name     "test metric"}]]
+      (perms/revoke-permissions! (group/all-users) db-id)
+      (is (= []
+             (search-request :rasta :q "test")))))
+
+  (testing "Segments on tables for which the user does not have access to should not show up in results"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [{table-id :id} {:db_id  db-id
+                                              :schema nil}]
+                    Segment  [_ {:table_id table-id
+                                 :name     "test segment"}]]
+      (perms/revoke-permissions! (group/all-users) db-id)
+      (is (= []
+             (search-request :rasta :q "test"))))))
 
 (deftest favorites-test
   (testing "Favorites are per user, so other user's favorites don't cause search results to be favorited"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
       (mt/with-temp* [CardFavorite      [_ {:card_id  (u/get-id card)
-                                            :owner_id (test-users/user->id :rasta)}]
+                                            :owner_id (mt/user->id :rasta)}]
                       DashboardFavorite [_ {:dashboard_id (u/get-id dashboard)
-                                            :user_id      (test-users/user->id :rasta)}]]
+                                            :user_id      (mt/user->id :rasta)}]]
         (is (= (default-results-with-collection)
                (search-request :crowberto :q "test"))))))
 
   (testing "Basic search, should find 1 of each entity type and include favorites when available"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
       (mt/with-temp* [CardFavorite      [_ {:card_id  (u/get-id card)
-                                            :owner_id (test-users/user->id :crowberto)}]
+                                            :owner_id (mt/user->id :crowberto)}]
                       DashboardFavorite [_ {:dashboard_id (u/get-id dashboard)
-                                            :user_id      (test-users/user->id :crowberto)}]]
+                                            :user_id      (mt/user->id :crowberto)}]]
         (is (= (on-search-types #{"dashboard" "card"}
                                 #(assoc % :favorite true)
                                 (default-results-with-collection))
@@ -275,7 +305,7 @@
                (filter (fn [{:keys [model id]}]
                          (and (= id (u/get-id pulse))
                               (= "pulse" model)))
-                       ((test-users/user->client :crowberto) :get 200 "search"))))))))
+                       ((mt/user->client :crowberto) :get 200 "search"))))))))
 
 (defn- default-table-search-row [table-name]
   (merge
@@ -288,22 +318,28 @@
     :model        "table"
     :database_id  true}))
 
+(defmacro ^:private do-test-users {:style/indent 1} [[user-binding users] & body]
+  `(doseq [user# ~users
+           :let [~user-binding user#]]
+     (testing (format "\nuser = %s" user#)
+       ~@body)))
+
 (deftest table-test
-  (testing "You should see Tables in the search results!"
+  (testing "You should see Tables in the search results!\n"
     (mt/with-temp Table [table {:name "Round Table"}]
-      (doseq [user [:crowberto :rasta]]
+      (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Round Table")]
                (search-request user :q "Round Table")))))
     (testing "When searching with ?archived=true, normal Tables should not show up in the results"
       (let [table-name (mt/random-name)]
         (mt/with-temp Table [table {:name table-name}]
-          (doseq [user [:crowberto :rasta]]
+          (do-test-users [user [:crowberto :rasta]]
             (is (= []
                    (search-request user :q table-name :archived true)))))))
     (testing "*archived* tables should not appear in search results"
       (let [table-name (mt/random-name)]
         (mt/with-temp Table [table {:name table-name, :active false}]
-          (doseq [user [:crowberto :rasta]]
+          (do-test-users [user [:crowberto :rasta]]
             (is (= []
                    (search-request user :q table-name)))))))
     (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
@@ -311,4 +347,29 @@
                       Table    [table {:db_id db-id}]]
         (perms/revoke-permissions! (group/all-users) db-id)
         (is (= []
-               (search-request :rasta :q (:name table))))))))
+               (binding [*search-request-results-database-id* db-id]
+                 (search-request :rasta :q (:name table)))))))))
+
+(deftest all-users-no-perms-table-test
+  (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
+                "does have perms, they should still be able to see it (#12332)")
+    (mt/with-temp* [Database                   [{db-id :id}]
+                    Table                      [table {:name "Round Table", :db_id db-id}]
+                    PermissionsGroup           [{group-id :id}]
+                    PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta)}]]
+      (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
+      (perms/grant-permissions! group-id (perms/table-read-path table))
+      (do-test-users [user [:crowberto :rasta]]
+        (is (= [(default-table-search-row "Round Table")]
+               (binding [*search-request-results-database-id* db-id]
+                 (search-request user :q "Round Table"))))))))
+
+(deftest collection-namespaces-test
+  (testing "Search should only return Collections in the 'default' namespace"
+    (mt/with-temp* [Collection [c1 {:name "Normal Collection"}]
+                    Collection [c2 {:name "Coin Collection", :namespace "currency"}]]
+      (is (= ["Normal Collection"]
+             (->> (search-request :crowberto :q "Collection")
+                  (filter #(and (= (:model %) "collection")
+                                (#{"Normal Collection" "Coin Collection"} (:name %))))
+                  (map :name)))))))

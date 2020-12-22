@@ -1,61 +1,92 @@
 (ns metabase.db.metadata-queries-test
-  (:require [metabase.db.metadata-queries :refer :all]
+  (:require [clojure.test :refer :all]
+            [metabase
+             [driver :as driver]
+             [models :as models :refer [Field Table]]
+             [query-processor :as qp]
+             [test :as mt]]
+            [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.models
-             [card :refer [Card]]
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]
-             [table :refer [Table]]]
-            [metabase.test :as mt]
-            [metabase.test.data :refer :all]
-            [metabase.test.data.datasets :as datasets]
-            [toucan.util.test :as tt]))
+             [database :as database]
+             [field :as field]
+             [table :as table]]
+            [schema.core :as s]))
 
 ;; Redshift tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
 (defn- metadata-queries-test-drivers []
   (mt/normal-drivers-except #{:redshift}))
 
-;; ### FIELD-DISTINCT-COUNT
-(datasets/expect-with-drivers (metadata-queries-test-drivers)
-  100
-  (field-distinct-count (Field (id :checkins :venue_id))))
+(deftest field-distinct-count-test
+  (mt/test-drivers (metadata-queries-test-drivers)
+    (is (= 100
+           (metadata-queries/field-distinct-count (Field (mt/id :checkins :venue_id)))))
+    (is (= 15
+           (metadata-queries/field-distinct-count (Field (mt/id :checkins :user_id)))))))
 
-(datasets/expect-with-drivers (metadata-queries-test-drivers)
-  15
-  (field-distinct-count (Field (id :checkins :user_id))))
+(deftest field-count-test
+  (mt/test-drivers (metadata-queries-test-drivers)
+    (is (= 1000
+           (metadata-queries/field-count (Field (mt/id :checkins :venue_id)))))))
 
+(deftest table-row-count-test
+  (mt/test-drivers (metadata-queries-test-drivers)
+    (is (= 1000
+           (metadata-queries/table-row-count (Table (mt/id :checkins)))))))
 
-;; ### FIELD-COUNT
-(datasets/expect-with-drivers (metadata-queries-test-drivers)
-  1000
-  (field-count (Field (id :checkins :venue_id))))
+(deftest field-distinct-values-test
+  (mt/test-drivers (metadata-queries-test-drivers)
+    (is (= [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+           (map int (metadata-queries/field-distinct-values (Field (mt/id :checkins :user_id))))))))
 
+(deftest table-rows-sample-test
+  (let [expected [["20th Century Cafe"]
+                  ["25°"]
+                  ["33 Taps"]
+                  ["800 Degrees Neapolitan Pizzeria"]
+                  ["BCD Tofu House"]]
+        table    (Table (mt/id :venues))
+        fields   [(Field (mt/id :venues :name))]
+        fetch!   #(->> (metadata-queries/table-rows-sample table fields (constantly conj) (when % {:truncation-size %}))
+                       ;; since order is not guaranteed do some sorting here so we always get the same results
+                       (sort-by first)
+                       (take 5))]
+    (is (= :type/Text (-> fields first :base_type)))
+    (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+      (is (= expected (fetch! nil)))
+      (testing "truncates text fields (see #13288)"
+        (doseq [size [1 4 80]]
+          (is (= (mapv (fn [[s]] [(subs (or s "") 0 (min size (count s)))])
+                       expected)
+                 (fetch! size))
+              "Did not truncate a text field")))))
 
-;; ### TABLE-ROW-COUNT
-(datasets/expect-with-drivers (metadata-queries-test-drivers)
-  1000
-  (table-row-count (Table (id :checkins))))
+  (testing "substring checking"
+    (with-redefs [table/database (constantly (database/map->DatabaseInstance {:id 5678}))]
+      (let [table  (table/map->TableInstance {:id 1234})
+            fields [(field/map->FieldInstance {:id 4321 :base_type :type/Text})]]
+        (testing "uses substrings if driver supports expressions"
+          (with-redefs [driver/supports? (constantly true)]
+            (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
+              (is (seq (get-in query [:query :expressions]))))))
+        (testing "doesnt' use substrings if driver doesn't support expressions"
+          (with-redefs [driver/supports? (constantly false)]
+            (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
+              (is (empty? (get-in query [:query :expressions])))))))
+      (testing "pre-existing json fields are still marked as `:type/Text`"
+        (let [table (table/map->TableInstance {:id 1234})
+              fields [(field/map->FieldInstance {:id 4321, :base_type :type/Text, :special_type :type/SerializedJSON})]]
+          (with-redefs [driver/supports? (constantly true)]
+            (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
+              (is (empty? (get-in query [:query :expressions]))))))))))
 
-
-;; ### FIELD-DISTINCT-VALUES
-(datasets/expect-with-drivers (metadata-queries-test-drivers)
-  [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
-  (map int (field-distinct-values (Field (id :checkins :user_id)))))
-
-
-;; ### DB-ID
-(tt/expect-with-temp [Database [{database-id :id}]
-                      Table [{table-id :id} {:db_id database-id}]
-                      Metric [{metric-id :id} {:table_id table-id}]
-                      Segment [{segment-id :id} {:table_id table-id}]
-                      Field [{field-id :id} {:table_id table-id}]
-                      Card [{card-id :id}
-                            {:table_id table-id
-                             :database_id database-id}]]
-  [database-id database-id database-id database-id database-id]
-  (mapv db-id [(Table table-id)
-               (Metric metric-id)
-               (Segment segment-id)
-               (Card card-id)
-               (Field field-id)]))
+(deftest text-field?-test
+  (testing "recognizes fields suitable for fingerprinting"
+    (doseq [field [{:base_type :type/Text}
+                   {:base_type :type/Text :special_type :type/State}
+                   {:base_type :type/Text :special_type :type/URL}]]
+      (is (#'metadata-queries/text-field? field)))
+    (doseq [field [{:base_type :type/Structured} ; json fields in pg
+                   {:base_type :type/Text :special_type :type/SerializedJSON} ; "legacy" json fields in pg
+                   {:base_type :type/Text :special_type :type/XML}]]
+      (is (not (#'metadata-queries/text-field? field))))))

@@ -43,6 +43,11 @@
     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
     :required     true}])
 
+(defmethod driver/db-start-of-week :h2
+  [_]
+  :monday)
+
+
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
 (defn- connection-string->file+options
   "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
@@ -94,7 +99,7 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    (hsql/call :dateadd (hx/literal unit) (long amount) hsql-form)))
+    (hsql/call :dateadd (hx/literal unit) (hx/cast :long amount) hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]
@@ -142,6 +147,9 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
   (add-to-1970 expr "millisecond"))
 
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
+  (add-to-1970 expr "microsecond"))
+
 
 ;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
 ;; and then converting back to a date.
@@ -155,22 +163,29 @@
 (defmethod sql.qp/date [:h2 :hour]            [_ _ expr] (trunc-with-format "yyyyMMddHH" expr))
 (defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr] (hx/hour expr))
 (defmethod sql.qp/date [:h2 :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:h2 :day-of-week]     [_ _ expr] (hsql/call :day_of_week expr))
 (defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
 (defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
-(defmethod sql.qp/date [:h2 :week]            [_ _ expr] (trunc-with-format "YYYYww" expr)) ; Y = week year; w = week in year
-(defmethod sql.qp/date [:h2 :week-of-year]    [_ _ expr] (hx/week expr))
 (defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
 (defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (hx/quarter expr))
 (defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
 
+(defmethod sql.qp/date [:h2 :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :h2 (hsql/call :iso_day_of_week expr)))
+
+(defmethod sql.qp/date [:h2 :week]
+  [_ _ expr]
+  (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
+                                     (hx/- 1 (sql.qp/date :h2 :day-of-week expr))
+                                     :day))
+
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;
 ;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
-;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10])
-;; *  Concatenate the year and quarter start month together to create a yyyyMM date string;
-;; *  Parse the string as a date. :sunglasses:
+;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10]);
+;; *  concatenate the year and quarter start month together to create a yyyymm date string;
+;; *  parse the string as a date. :sunglasses:
 ;;
 ;; Postgres DATE_TRUNC('quarter', x)
 ;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')

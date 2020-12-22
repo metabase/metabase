@@ -86,6 +86,11 @@
   [& args]
   (apply driver.common/current-db-time args))
 
+(defmethod driver/db-start-of-week :redshift
+  [_]
+  :sunday)
+
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -171,36 +176,36 @@
  [:postgres Types/TIMESTAMP])
 
 (prefer-method
+ sql-jdbc.execute/read-column-thunk
+ [::legacy/use-legacy-classes-for-read-and-set Types/TIME]
+ [:postgres Types/TIME])
+
+(prefer-method
  sql-jdbc.execute/set-parameter
  [::legacy/use-legacy-classes-for-read-and-set OffsetTime]
  [:postgres OffsetTime])
 
-(defn query->field-values
-  "Convert a MBQL query to a map of field->value"
-  [query]
+(defn- field->parameter-value
+  "Map fields used in parameters to parameter `:value`s."
+  [{:keys [user-parameters]}]
   (into {}
-        (filter identity
-                (map
-                 (fn [param]
-                   (if (contains? param :name)
-                     [(:name param) (:value param)]
+        (keep (fn [param]
+                (if (contains? param :name)
+                  [(:name param) (:value param)]
 
-                     (when-let [field-id (mbql.u/match-one
-                                          param
-                                          [:dimension field]
-                                          (let [field-id-or-name (mbql.u/field-clause->id-or-literal field)]
-                                            (when (integer? field-id-or-name)
-                                              field-id-or-name)))]
-                       [(:name (qp.store/field field-id)) (:value param)])))
-                 (:user-parameters query)))))
+                  (when-let [field-id (mbql.u/match-one param
+                                        [:field-id field-id] (when (contains? (set &parents) :dimension)
+                                                               field-id))]
+                    [(:name (qp.store/field field-id)) (:value param)]))))
+        user-parameters))
 
 (defmethod qputil/query->remark :redshift
-  [_ {{:keys [executed-by query-hash card-id], :as info} :info, query-type :type :as query}]
+  [_ {{:keys [executed-by query-hash card-id]} :info, :as query}]
   (str "/* partner: \"metabase\", "
-       (json/generate-string {:dashboard_id nil ;; requires metabase/metabase#11909
-                              :chart_id card-id
-                              :optional_user_id executed-by
+       (json/generate-string {:dashboard_id        nil ;; requires metabase/metabase#11909
+                              :chart_id            card-id
+                              :optional_user_id    executed-by
                               :optional_account_id (pubset/site-uuid)
-                              :filter_values (query->field-values query)})
+                              :filter_values       (field->parameter-value query)})
        " */ "
        (qputil/default-query->remark query)))

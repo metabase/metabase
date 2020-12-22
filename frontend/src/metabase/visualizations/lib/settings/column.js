@@ -35,10 +35,10 @@ import currency from "metabase/lib/currency";
 
 import type { Settings, SettingDef } from "../settings";
 import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
-import type { DatetimeUnit } from "metabase/meta/types/Query";
-import type { Column } from "metabase/meta/types/Dataset";
-import type { Series } from "metabase/meta/types/Visualization";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { DatetimeUnit } from "metabase-types/types/Query";
+import type { Column } from "metabase-types/types/Dataset";
+import type { Series } from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
 
 type ColumnSettings = Settings;
 
@@ -80,7 +80,7 @@ export function getGlobalSettingsForColumn(column: Column) {
   const customFormatting = MetabaseSettings.get("custom-formatting");
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
   for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
-    if (isa(column.special_type, type)) {
+    if (isa(column.special_type || column.base_type, type)) {
       // $FlowFixMe
       Object.assign(settings, globalSettings);
     }
@@ -386,6 +386,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: "100 000,00", value: ", " },
         { name: "100.000,00", value: ",." },
         { name: "100000.00", value: "." },
+        { name: "100’000.00", value: ".’" },
       ],
     },
     default: ".,",
