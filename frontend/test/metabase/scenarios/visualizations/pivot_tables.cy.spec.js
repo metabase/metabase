@@ -86,6 +86,25 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.findByText("3,976");
     });
   });
+
+  it("should be able to use binned numeric dimension as a grouping (metabase#14136)", () => {
+    // Sample dataset Orders > Count by Subtotal: Auto binned
+    cy.visit(
+      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7InR5cGUiOiJxdWVyeSIsInF1ZXJ5Ijp7InNvdXJjZS10YWJsZSI6MiwiYWdncmVnYXRpb24iOltbImNvdW50Il1dLCJicmVha291dCI6W1siYmlubmluZy1zdHJhdGVneSIsWyJmaWVsZC1pZCIsMTRdLCJkZWZhdWx0Il1dfSwiZGF0YWJhc2UiOjF9LCJkaXNwbGF5IjoiYmFyIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319",
+    );
+    cy.findByText("Count by Subtotal: Auto binned");
+
+    cy.findByText("Visualization").click();
+    cy.get(".Icon-pivot_table").click({ force: true });
+
+    cy.get(".Visualization").within(() => {
+      cy.findByText("Subtotal");
+      cy.findByText("Count");
+      cy.contains(/\d+\s+–\s+\d+/);
+      cy.findByText("2,720");
+      cy.findByText("18,760");
+    });
+  });
 });
 
 function createAndVisitTestQuestion({ display = "pivot" } = {}) {
