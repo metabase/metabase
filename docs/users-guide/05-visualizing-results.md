@@ -174,7 +174,7 @@ Where it makes sense, Metabase will automatically include aggregations for group
 
 ![Bar chart](images/visualizations/bar.png)
 
-Learn more about [Bar charts](https://www.metabase.com/blog/bar-chart/index.html).
+Learn more about [Bar charts](https://www.metabase.com/learn/basics/visualizing-data/bar-charts.html).
 
 **Area charts** are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
 
@@ -212,15 +212,15 @@ If you're trying to group a number by a column that has a lot of possible values
 
 #### Histograms
 
-If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/blog/histograms/index.html)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
+If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/learn/basics/visualizing-data/histograms.html)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
 
-![Histogram](images/histogram.png)
+![Histogram](images/visualizations/histogram.png)
 
 By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the area to the right of the column you're grouping by:
 
 ![Binning options](images/notebook/histogram-bins.png)
 
-Learn more about histograms(https://www.metabase.com/blog/histograms/index.html).
+Learn more about histograms(https://www.metabase.com/learn/basics/visualizing-data/histograms.html).
 
 #### Options for line, bar, and area charts
 
@@ -261,7 +261,7 @@ Waterfall charts are a kind of bar chart useful for visualizing results that con
 
 In the example above, the waterfall chart displays "Profit" for each "Product": Apples, Bananas, Oranges, Peaches, and Mangos. From left to right, each bar indicates the change in total. The products with green bars indicate positive values (they made a profit). Peaches, however, lost money, indicated by a red bar, which signals a negative value. The purple bar at the end shows the total profit of all products combined. You can show values on each bar, and change the colors for increases and decreases.
 
-In general, for waterfall charts you'll want a query that is a single metric grouped by a single dimension: by time or category.
+For waterfall charts, you'll want a query that is a single metric grouped by a single dimension: by time or category.
 
 ### Scatterplots and bubble charts
 
@@ -306,7 +306,7 @@ When you open up the Map options, you can manually switch between a region map (
 
 Metabase also allows administrators to add custom region maps via GeoJSON files through the Metabase **Admin Panel**.
 
-Learn more about [visualizing data with maps](https://www.metabase.com/blog/map-visualization/index.html).
+Learn more about [visualizing data with maps](https://www.metabase.com/learn/basics/visualizing-data/maps.html).
 
 ---
 
