@@ -5,13 +5,7 @@ export const getScrollY = () =>
   typeof window.scrollY === "undefined" ? window.pageYOffset : window.scrollY;
 
 // denotes whether the current page is loaded in an iframe or not
-export const IFRAMED = (function() {
-  try {
-    return window.self !== window.top;
-  } catch (e) {
-    return true;
-  }
-})();
+export const IFRAMED = false
 
 // add a global so we can check if the parent iframe is Metabase
 window.METABASE = true;
