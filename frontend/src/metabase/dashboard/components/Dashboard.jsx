@@ -53,6 +53,7 @@ type Props = {
   isEditable: boolean,
   isEditing: boolean,
   isEditingParameter: boolean,
+  isSharing: boolean,
 
   parameters: Parameter[],
   parameterValues: ParameterValues,
@@ -249,6 +250,7 @@ export default class Dashboard extends Component {
       location,
       isFullscreen,
       isNightMode,
+      isSharing,
       hideParameters,
     } = this.props;
     const { error } = this.state;
@@ -285,7 +287,7 @@ export default class Dashboard extends Component {
         className={cx("Dashboard flex-full", {
           "Dashboard--fullscreen": isFullscreen,
           "Dashboard--night": isNightMode,
-          "full-height": isEditing, // prevents header from scrolling so we can have a fixed sidebar
+          "full-height": isEditing || isSharing, // prevents header from scrolling so we can have a fixed sidebar
         })}
         loading={!dashboard}
         error={error}
@@ -308,7 +310,7 @@ export default class Dashboard extends Component {
             </header>
             <div
               className={cx("flex shrink-below-content-size flex-full", {
-                "flex-basis-none": isEditing,
+                "flex-basis-none": isEditing || isSharing,
               })}
             >
               <div className="flex-auto overflow-x-hidden">
