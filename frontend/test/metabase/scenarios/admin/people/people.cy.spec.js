@@ -1,5 +1,8 @@
-import { signInAsAdmin, restore, USERS } from "__support__/cypress";
-const { normal } = USERS;
+// Includes migrations from:
+//  - frontend/test/metabase/admin/people/containers/EditUserModal.integ.spec.js
+//  - frontend/test/metabase/admin/people/containers/PeopleListingApp.integ.spec.js
+import { signInAsAdmin, restore, popover, USERS } from "__support__/cypress";
+const { normal, admin } = USERS;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -7,7 +10,12 @@ describe("scenarios > admin > people", () => {
     signInAsAdmin();
   });
 
-  const email = `testy${Math.round(Math.random() * 100000)}@metabase.com`;
+  const TEST_USER = {
+    first_name: "Testy",
+    last_name: "McTestface",
+    email: `testy${Math.round(Math.random() * 100000)}@metabase.com`,
+    password: "12341234",
+  };
 
   describe("user management", () => {
     it("should render (metabase-enterprise#210)", () => {
@@ -48,56 +56,104 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should allow admin to create new users", () => {
+      const { first_name, last_name, email } = TEST_USER;
+      const FULL_NAME = `${first_name} ${last_name}`;
       cy.visit("/admin/people");
-      cy.findByText("Add someone").click();
+      clickButton("Add someone");
 
       // first modal
-      cy.findByLabelText("First name").type("Testy");
-      cy.findByLabelText("Last name").type("McTestface");
+      cy.findByLabelText("First name").type(first_name);
+      cy.findByLabelText("Last name").type(last_name);
       // bit of a hack since there are multiple "Email" nodes
       cy.findByLabelText("Email").type(email);
-      cy.findByText("Create").click();
+      clickButton("Create");
 
       // second modal
-      cy.findByText("Testy McTestface has been added");
+      cy.findByText(`${FULL_NAME} has been added`);
       cy.findByText("Show").click();
       cy.findByText("Done").click();
 
-      cy.findByText("Testy McTestface");
+      cy.findByText(FULL_NAME);
     });
+
     it("should disallow admin to create new users with case mutation of existing user", () => {
       cy.visit("/admin/people");
-      cy.findByText("Add someone").click();
+      clickButton("Add someone");
 
       // first modal
       cy.findByLabelText("First name").type(normal.first_name + "New");
       cy.findByLabelText("Last name").type(normal.last_name + "New");
       // bit of a hack since there are multiple "Email" nodes
       cy.findByLabelText("Email").type(normal.username.toUpperCase());
-      cy.findByText("Create").click();
+      clickButton("Create");
       cy.contains("Email address already in use.");
     });
 
-    // Migrated from `frontend/test/metabase/admin/people/containers/EditUserModal.integ.spec.js`
-    it("should edit existing user details", () => {
-      const NEW_NAME = "John";
+    it("should disallow admin to deactivate themselves", () => {
+      const { first_name, last_name } = admin;
+      const FULL_NAME = `${first_name} ${last_name}`;
 
       cy.visit("/admin/people");
-      cy.findByText(`${normal.first_name} ${normal.last_name}`)
-        .closest("tr")
-        .within(() => {
-          cy.get(".Icon-ellipsis").click();
-        });
+      getUserOptions(FULL_NAME);
+      popover().within(() => {
+        cy.findByText("Edit user");
+        cy.findByText("Reset password");
+        cy.findByText("Deactivate user").should("not.exist");
+      });
+    });
+
+    it("should allow admin to deactivate other admins", () => {
+      // Turn a random existing user into an admin
+      cy.request("PUT", "/api/user/2", {
+        is_superuser: true,
+      }).then(({ body }) => {
+        const { first_name, last_name } = body;
+        const FULL_NAME = `${first_name} ${last_name}`;
+
+        cy.visit("/admin/people");
+        getUserOptions(FULL_NAME);
+
+        cy.findByText("Deactivate user").click();
+        clickButton("Deactivate");
+        cy.findByText(FULL_NAME).should("not.exist");
+
+        cy.log("**-- It should load inactive users --**");
+        cy.findByText("Deactivated").click();
+        cy.findByText(FULL_NAME);
+      });
+    });
+
+    it("should edit existing user details", () => {
+      const { first_name, last_name } = normal;
+      const FULL_NAME = `${first_name} ${last_name}`;
+      const NEW_NAME = "John";
+      const NEW_FULL_NAME = `${NEW_NAME} ${last_name}`;
+
+      cy.visit("/admin/people");
+      getUserOptions(FULL_NAME);
       cy.findByText("Edit user").click();
-      cy.findByDisplayValue(normal.first_name)
+      cy.findByDisplayValue(first_name)
         .click()
         .clear()
         .type(NEW_NAME);
-      cy.findByText("Update")
-        .closest(".Button")
-        .should("not.be.disabled")
-        .click();
-      cy.findByText(`${NEW_NAME} ${normal.last_name}`);
+
+      clickButton("Update");
+      cy.findByText(NEW_FULL_NAME);
     });
   });
 });
+
+function getUserOptions(full_name) {
+  cy.findByText(full_name)
+    .closest("tr")
+    .within(() => {
+      cy.get(".Icon-ellipsis").click();
+    });
+}
+
+function clickButton(button_name) {
+  cy.findByText(button_name)
+    .closest(".Button")
+    .should("not.be.disabled")
+    .click();
+}
