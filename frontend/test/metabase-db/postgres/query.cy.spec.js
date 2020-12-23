@@ -37,7 +37,7 @@ describe("postgres > user > query", () => {
     cy.contains("37.65");
   });
 
-  it.skip("should properly switch visualization to pivot table (metabase#14148)", () => {
+  it("should properly switch visualization to pivot table (metabase#14148)", () => {
     cy.server();
     cy.route("POST", "/api/advanced_computation/pivot/dataset").as(
       "pivotDataset",
