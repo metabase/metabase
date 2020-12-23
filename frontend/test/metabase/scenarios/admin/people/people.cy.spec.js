@@ -1,8 +1,16 @@
 // Includes migrations from:
 //  - frontend/test/metabase/admin/people/containers/EditUserModal.integ.spec.js
 //  - frontend/test/metabase/admin/people/containers/PeopleListingApp.integ.spec.js
-import { signInAsAdmin, restore, popover, USERS } from "__support__/cypress";
+//  - frontend/test/metabase/admin/people/containers/GroupDetailApp.integ.spec.js
+import {
+  signInAsAdmin,
+  restore,
+  popover,
+  USERS,
+  USER_GROUPS,
+} from "__support__/cypress";
 const { normal, admin } = USERS;
+const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -53,6 +61,12 @@ describe("scenarios > admin > people", () => {
 
       // The same list as for "People"
       cy.get("@result-rows").should("have.length", 5);
+    });
+
+    it.only("should load the members when navigating to the group directly", () => {
+      cy.visit(`/admin/people/groups/${DATA_GROUP}`);
+      cy.findByText("No Collection Tableton");
+      cy.findByText("Robert Tableton");
     });
 
     it("should allow admin to create new users", () => {
