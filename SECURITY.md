@@ -4,14 +4,7 @@ Security is very important to us at Metabase.
 
 ## Supported Versions
 
-We currently support the following versions with security hotfixes.
-
-| Version  | Supported          |
-| -------- | ------------------ |
-| x.37.x   | :white_check_mark: |
-| x.36.x   | :white_check_mark: |
-| x.35.x   | :white_check_mark: |
-| < x.35.x | :x:                |
+We typically only support the latest release of Metabase for maintenance updates, but depending on the nature of the security issue we may issue hotfixes for arbitrarily earlier versions of Metabase.
 
 ## Reporting a Vulnerability
 
