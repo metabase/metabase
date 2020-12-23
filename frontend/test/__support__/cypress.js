@@ -182,10 +182,10 @@ export function withDatabase(databaseId, f) {
     for (const table of body.tables) {
       const fields = {};
       for (const field of table.fields) {
-        fields[field.name] = field.id;
+        fields[field.name.toUpperCase()] = field.id;
       }
-      database[table.name] = fields;
-      database[table.name + "_ID"] = table.id;
+      database[table.name.toUpperCase()] = fields;
+      database[table.name.toUpperCase() + "_ID"] = table.id;
     }
     f(database);
   });
