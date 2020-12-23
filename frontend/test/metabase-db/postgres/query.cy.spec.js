@@ -2,10 +2,13 @@ import {
   signInAsAdmin,
   restore,
   addPostgresDatabase,
+  withDatabase,
+  visitQuestionAdhoc,
   popover,
 } from "__support__/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
+const PG_DB_ID = 2;
 
 describe("postgres > user > query", () => {
   beforeEach(() => {
@@ -37,33 +40,29 @@ describe("postgres > user > query", () => {
     cy.contains("37.65");
   });
 
-  it("should properly switch visualization to pivot table (metabase#14148)", () => {
+  it("should display pivot tables  (metabase#14148)", () => {
     cy.server();
     cy.route("POST", "/api/advanced_computation/pivot/dataset").as(
       "pivotDataset",
     );
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
-    cy.findByText(PG_DB_NAME).click();
-    cy.findByText("Products").click();
-    cy.findByText("Pick the metric you want to see").click();
-    cy.findByText("Count of rows").click();
-    cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
-      cy.findByText("Category").click();
-    });
-    cy.get(".Icon-add")
-      .last()
-      .click();
-    popover().within(() => {
-      cy.findByText("Created At").click();
-    });
+    withDatabase(PG_DB_ID, ({ PRODUCTS, PRODUCTS_ID }) =>
+      visitQuestionAdhoc({
+        display: "pivot",
+        dataset_query: {
+          database: PG_DB_ID,
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field-id", PRODUCTS.CATEGORY],
+              ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
+            ],
+          },
+        },
+      }),
+    );
 
-    cy.findByText("Visualize").click();
-
-    cy.findByText("Visualization").click();
-    cy.get(".Icon-pivot_table").click({ force: true });
     cy.log(
       "**Reported failing on v0.38.0-rc1 querying Postgres, Redshift and BigQuery. It works on MySQL and H2.**",
     );
