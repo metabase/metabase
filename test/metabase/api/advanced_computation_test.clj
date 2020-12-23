@@ -83,9 +83,9 @@
           (is (= 6 (count (get-in result [:data :cols]))))
           (is (= 1192 (count rows)))
 
-          (is (= ["AK" "Affiliate" "Doohickey" 18 81 0] (first rows)))
-          (is (= ["WV" "Facebook" nil 45 292 4] (nth rows 1000)))
-          (is (= [nil nil nil 18760 69540 7] (last rows)))))
+          (is (= [0 "AK" "Affiliate" "Doohickey" 18 81] (first rows)))
+          (is (= [4 "WV" "Facebook" nil 45 292] (nth rows 1000)))
+          (is (= [7 nil nil nil 18760 69540] (last rows)))))
 
       (testing "with an added expression"
         (let [query (-> (pivot-query)
@@ -105,9 +105,9 @@
                     :expression_name "test-expr"
                     :field_ref ["expression" "test-expr"]
                     :source "fields"}
-                   (nth cols 5))))
+                   (nth cols 6))))
 
-          (is (= [nil nil nil 18760 69540 "wheeee" 7] (last rows))))))))
+          (is (= [7 nil nil nil 18760 69540 "wheeee"] (last rows))))))))
 
 (deftest pivot-filter-dataset-test
   (mt/dataset sample-dataset
