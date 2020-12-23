@@ -73,6 +73,9 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
     [CardApi.query, CardApi.query_pivot],
     [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
+    [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
+    [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
+    [EmbedApi.dashboardCardQuery, EmbedApi.dashboardCardQueryPivot],
   ];
   for (const [from, to] of mapping) {
     if (api === from) {
@@ -144,22 +147,35 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
+const PIVOT_PUBLIC_PREFIX = "/api/advanced_computation/public/pivot/";
+
 export const PublicApi = {
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
-  cardQueryPivot: GET(
-    "/api/advanced_computation/public/pivot/card/:uuid/query",
-  ),
+  cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
   dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
+  dashboardCardQueryPivot: GET(
+    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/card/:cardId",
+  ),
 };
 
 export const EmbedApi = {
   card: GET(embedBase + "/card/:token"),
   cardQuery: GET(embedBase + "/card/:token/query"),
+  cardQueryPivot: GET(
+    PIVOT_PUBLIC_PREFIX +
+      (IS_EMBED_PREVIEW ? "preview_embed" : "embed") +
+      "/card/:token/query",
+  ),
   dashboard: GET(embedBase + "/dashboard/:token"),
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
+  ),
+  dashboardCardQueryPivot: GET(
+    PIVOT_PUBLIC_PREFIX +
+      (IS_EMBED_PREVIEW ? "preview_embed" : "embed") +
+      "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
 };
 
