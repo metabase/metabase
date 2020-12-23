@@ -266,9 +266,11 @@
      [400 (tru "Embedding is not enabled for this object.")])))
 
 (def ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
+  "Runs check-embedding-enabled-for-object for a given Dashboard id"
   (partial check-embedding-enabled-for-object Dashboard))
 
 (def ^{:arglists '([card-id])} check-embedding-enabled-for-card
+  "Runs check-embedding-enabled-for-object for a given Card id"
   (partial check-embedding-enabled-for-object Card))
 
 
