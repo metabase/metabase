@@ -4,7 +4,6 @@ import {
   addPostgresDatabase,
   withDatabase,
   visitQuestionAdhoc,
-  popover,
 } from "__support__/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
