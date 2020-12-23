@@ -175,6 +175,17 @@ export default class ChartClickActions extends Component {
       });
       delete groupedClickActions["sum"];
     }
+    if (
+      clicked.column &&
+      clicked.column.source === "native" &&
+      groupedClickActions["sort"]
+    ) {
+      // restyle the Formatting action for SQL columns
+      groupedClickActions["sort"][0] = {
+        ...groupedClickActions["sort"][0],
+        buttonType: "horizontal",
+      };
+    }
     const sections = _.chain(groupedClickActions)
       .pairs()
       .sortBy(([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99))
@@ -274,7 +285,7 @@ export const ChartClickAction = ({
   const className = cx("cursor-pointer no-decoration", {
     "text-center sort token-blue mr1 bg-brand-hover":
       action.buttonType === "sort",
-    "formatting-button flex-align-right text-brand-hover":
+    "formatting-button flex-align-right text-brand-hover text-light":
       action.buttonType === "formatting",
     "horizontal-button p1 flex flex-auto align-center bg-brand-hover text-dark text-white-hover":
       action.buttonType === "horizontal",
@@ -312,16 +323,14 @@ export const ChartClickAction = ({
         </Link>
       </div>
     );
-  } else if (action.tooltip) {
-    // Only the Sort and Formatting actions have tooltips.
+  } else if (
+    action.buttonType === "sort" ||
+    action.buttonType === "formatting"
+  ) {
     return (
       <Tooltip tooltip={action.tooltip}>
         <div
-          className={cx(className, {
-            "flex flex-row align-center":
-              action.buttonType === "formatting" ||
-              action.buttonType === "sort",
-          })}
+          className={cx(className, "flex flex-row align-center")}
           onClick={() => handleClickAction(action)}
         >
           {action.icon && (
@@ -334,7 +343,6 @@ export const ChartClickAction = ({
               name={action.icon}
             />
           )}
-          {action.title && action.title}
         </div>
       </Tooltip>
     );
