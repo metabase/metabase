@@ -45,17 +45,18 @@ describe("postgres > user > query", () => {
       "pivotDataset",
     );
 
-    withDatabase(PG_DB_ID, ({ PRODUCTS, PRODUCTS_ID }) =>
+    withDatabase(PG_DB_ID, ({ PEOPLE, PEOPLE_ID }) =>
       visitQuestionAdhoc({
         display: "pivot",
         dataset_query: {
+          type: "query",
           database: PG_DB_ID,
           query: {
-            "source-table": PRODUCTS_ID,
+            "source-table": PEOPLE_ID,
             aggregation: [["count"]],
             breakout: [
-              ["field-id", PRODUCTS.CATEGORY],
-              ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
+              ["field-id", PEOPLE.SOURCE],
+              ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "year"],
             ],
           },
         },
@@ -69,6 +70,6 @@ describe("postgres > user > query", () => {
       expect(xhr.response.body.cause || "").not.to.contain("ERROR");
     });
     cy.findByText(/Grand totals/i);
-    cy.findByText("200");
+    cy.findByText("2,500");
   });
 });
