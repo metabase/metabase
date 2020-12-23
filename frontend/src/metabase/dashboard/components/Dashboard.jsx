@@ -53,6 +53,7 @@ type Props = {
   isEditable: boolean,
   isEditing: boolean,
   isEditingParameter: boolean,
+  isSharing: boolean,
 
   parameters: Parameter[],
   parameterValues: ParameterValues,
