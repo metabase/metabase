@@ -68,7 +68,7 @@ describe("postgres > user > query", () => {
       "**Reported failing on v0.38.0-rc1 querying Postgres, Redshift and BigQuery. It works on MySQL and H2.**",
     );
     cy.wait("@pivotDataset").then(xhr => {
-      expect(xhr.response.body.cause).not.to.contain("ERROR");
+      expect(xhr.response.body.cause || "").not.to.contain("ERROR");
     });
     cy.findByText(/Grand totals/i);
     cy.findByText("200");
