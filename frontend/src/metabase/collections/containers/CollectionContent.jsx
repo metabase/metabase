@@ -161,6 +161,9 @@ export default class CollectionContent extends React.Component {
 
     const collectionHasPins = pinned.length > 0;
 
+    const avaliableTypes = unpinned.map(u => u.model);
+    const showFilters = unpinned.length > 5 && avaliableTypes.length > 1;
+
     return (
       <Box pt={2}>
         <Box w={"80%"} ml="auto" mr="auto">
@@ -287,7 +290,7 @@ export default class CollectionContent extends React.Component {
             </PinDropTarget>
           )}
           <Box className="relative" mt={1}>
-            {unpinnedItems.length > 0 && (
+            {showFilters && (
               <ItemTypeFilterBar
                 analyticsContext={ANALYTICS_CONTEXT}
                 filters={ITEM_TYPE_FILTERS.map((f, i) => {
