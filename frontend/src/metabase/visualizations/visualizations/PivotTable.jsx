@@ -9,7 +9,7 @@ import { Flex } from "grid-styled";
 import Ellipsified from "metabase/components/Ellipsified";
 import { isDimension } from "metabase/lib/schema_metadata";
 import { isPivotGroupColumn, multiLevelPivot } from "metabase/lib/data_grid";
-import { formatColumn, formatValue } from "metabase/lib/formatting";
+import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
@@ -50,11 +50,7 @@ export default class PivotTable extends Component {
   }
 
   static isSensible({ cols }) {
-    return (
-      cols.length >= 2 &&
-      cols.every(isColumnValid) &&
-      cols.filter(col => col.source === "breakout").length < 5
-    );
+    return cols.length >= 2 && cols.every(isColumnValid);
   }
 
   static checkRenderable([{ data }]) {
@@ -160,6 +156,8 @@ export default class PivotTable extends Component {
     const {
       topIndex,
       leftIndex,
+      topIndexFormatters,
+      leftIndexFormatters,
       getRowSection,
       rowCount,
       columnCount,
@@ -195,6 +193,149 @@ export default class PivotTable extends Component {
         CELL_HEIGHT
       );
     }
+
+    // Create three memoized cell renderers
+    // These are tied to the `multiLevelPivot` call, so they're awkwardly shoved in render for now
+
+    const topHeaderRenderer = _.memoize(
+      ({ key, style, columnIndex }) => {
+        if (columnIndex === topIndex.length) {
+          return (
+            <div
+              key={key}
+              style={style}
+              className="flex-column justify-end px1 pt1"
+            >
+              <Cell value={t`Row totals`} width={valueIndexes.length} />
+            </div>
+          );
+        }
+        const rows = topIndex[columnIndex];
+        return (
+          <div key={key} style={style} className="flex-column px1 pt1">
+            {rows.map((row, index) => (
+              <Flex style={{ height: CELL_HEIGHT }}>
+                {row.map(({ value, span }) => (
+                  <div
+                    style={{ width: CELL_WIDTH * span }}
+                    className={cx({
+                      "border-bottom": index < rows.length - 1,
+                    })}
+                  >
+                    <Ellipsified>
+                      {index < topIndexFormatters.length
+                        ? topIndexFormatters[index](value)
+                        : value // Metric names don't have formatters
+                      }
+                    </Ellipsified>
+                  </div>
+                ))}
+              </Flex>
+            ))}
+          </div>
+        );
+      },
+      ({ columnIndex }) => columnIndex,
+    );
+
+    const leftHeaderRenderer = _.memoize(
+      ({ key, style, index }) => {
+        if (index === leftIndex.length) {
+          return (
+            <Cell
+              value={t`Grand totals`}
+              isSubtotal
+              key={key}
+              style={{
+                ...style,
+                paddingLeft: LEFT_HEADER_LEFT_SPACING,
+                width: leftHeaderWidth,
+              }}
+            />
+          );
+        }
+        return (
+          <div key={key} style={style} className="flex flex-column">
+            <div className="flex">
+              {leftIndex[index].map((col, index) => (
+                <div
+                  className="flex flex-column bg-light"
+                  style={{
+                    paddingLeft: index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
+                  }}
+                >
+                  {col.map(({ value, span = 1 }) => (
+                    <div
+                      style={{
+                        height: CELL_HEIGHT * span,
+                        width: LEFT_HEADER_CELL_WIDTH,
+                      }}
+                      className="px1"
+                    >
+                      <div
+                        style={{
+                          height: CELL_HEIGHT,
+                          lineHeight: `${CELL_HEIGHT}px`,
+                          width: LEFT_HEADER_CELL_WIDTH,
+                        }}
+                      >
+                        <Ellipsified>
+                          {leftIndexFormatters[index](value)}
+                        </Ellipsified>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            {showRowSubtotals && (
+              <Cell
+                value={t`Totals for ${leftIndexFormatters[0](
+                  leftIndex[index][0][0].value,
+                )}`}
+                isSubtotal
+                style={{
+                  paddingLeft: LEFT_HEADER_LEFT_SPACING,
+                  width: leftHeaderWidth,
+                }}
+              />
+            )}
+          </div>
+        );
+      },
+      ({ index }) => index,
+    );
+
+    const bodyRenderer = _.memoize(
+      ({ key, style, rowIndex, columnIndex }) => {
+        const rows = getRowSection(columnIndex, rowIndex);
+        return (
+          <Flex flexDirection="column" key={key} style={style}>
+            {rows.map((row, index) => (
+              <Flex key={index}>
+                {row.map(({ value, isSubtotal, clicked }, index) => (
+                  <Cell
+                    key={index}
+                    value={value}
+                    isSubtotal={isSubtotal}
+                    isBody
+                    onClick={
+                      clicked &&
+                      (() =>
+                        this.props.onVisualizationClick({
+                          ...clicked,
+                          settings: this.props.settings,
+                        }))
+                    }
+                  />
+                ))}
+              </Flex>
+            ))}
+          </Flex>
+        );
+      },
+      ({ rowIndex, columnIndex }) => [rowIndex, columnIndex].join(),
+    );
 
     return (
       <div className="no-outline">
@@ -232,49 +373,7 @@ export default class PivotTable extends Component {
                   rowHeight={topHeaderHeight}
                   columnCount={columnCount}
                   columnWidth={columnWidth}
-                  cellRenderer={({ key, style, columnIndex }) => {
-                    if (columnIndex === topIndex.length) {
-                      return (
-                        <div
-                          key={key}
-                          style={style}
-                          className="flex-column justify-end px1 pt1"
-                        >
-                          <Cell
-                            value={t`Row totals`}
-                            width={valueIndexes.length}
-                          />
-                        </div>
-                      );
-                    }
-                    const rows = topIndex[columnIndex];
-                    return (
-                      <div
-                        key={key}
-                        style={style}
-                        className="flex-column px1 pt1"
-                      >
-                        {rows.map((row, index) => (
-                          <Flex style={{ height: CELL_HEIGHT }}>
-                            {row.map(({ value, span }) => (
-                              <div
-                                style={{ width: CELL_WIDTH * span }}
-                                className={cx({
-                                  "border-bottom": index < rows.length - 1,
-                                })}
-                              >
-                                <Ellipsified>
-                                  {formatValue(value, {
-                                    column: columns[columnIndexes[index]],
-                                  })}
-                                </Ellipsified>
-                              </div>
-                            ))}
-                          </Flex>
-                        ))}
-                      </div>
-                    );
-                  }}
+                  cellRenderer={topHeaderRenderer}
                   onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                   scrollLeft={scrollLeft}
                 />
@@ -286,76 +385,7 @@ export default class PivotTable extends Component {
                   className="scroll-hide-all text-dark border-right border-medium"
                   rowCount={rowCount}
                   rowHeight={rowHeight}
-                  rowRenderer={({ key, style, index }) => {
-                    if (index === leftIndex.length) {
-                      return (
-                        <Flex key={key} style={style}>
-                          <Flex flexDirection="column">
-                            <Cell
-                              value={t`Grand totals`}
-                              isSubtotal
-                              style={{
-                                paddingLeft: LEFT_HEADER_LEFT_SPACING,
-                                width: leftHeaderWidth,
-                              }}
-                            />
-                          </Flex>
-                        </Flex>
-                      );
-                    }
-                    return (
-                      <div key={key} style={style} className="flex flex-column">
-                        <div className="flex">
-                          {leftIndex[index].map((col, index) => (
-                            <div
-                              className="flex flex-column bg-light"
-                              style={{
-                                paddingLeft:
-                                  index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
-                              }}
-                            >
-                              {col.map(({ value, span = 1 }) => (
-                                <div
-                                  style={{
-                                    height: CELL_HEIGHT * span,
-                                    width: LEFT_HEADER_CELL_WIDTH,
-                                  }}
-                                  className="px1"
-                                >
-                                  <Ellipsified>
-                                    <div
-                                      style={{
-                                        height: CELL_HEIGHT,
-                                        lineHeight: `${CELL_HEIGHT}px`,
-                                        width: LEFT_HEADER_CELL_WIDTH,
-                                      }}
-                                    >
-                                      {formatValue(value, {
-                                        column: columns[rowIndexes[index]],
-                                      })}
-                                    </div>
-                                  </Ellipsified>
-                                </div>
-                              ))}
-                            </div>
-                          ))}
-                        </div>
-                        {showRowSubtotals && (
-                          <Cell
-                            value={t`Totals for ${formatValue(
-                              leftIndex[index][0][0].value,
-                              { column: columns[rowIndexes[0]] },
-                            )}`}
-                            isSubtotal
-                            style={{
-                              paddingLeft: LEFT_HEADER_LEFT_SPACING,
-                              width: leftHeaderWidth,
-                            }}
-                          />
-                        )}
-                      </div>
-                    );
-                  }}
+                  rowRenderer={leftHeaderRenderer}
                   scrollTop={scrollTop}
                   onScroll={({ scrollTop }) => onScroll({ scrollTop })}
                 />
@@ -369,31 +399,7 @@ export default class PivotTable extends Component {
                   rowHeight={rowHeight}
                   columnCount={columnCount}
                   columnWidth={columnWidth}
-                  cellRenderer={({ key, style, rowIndex, columnIndex }) => {
-                    const rows = getRowSection(columnIndex, rowIndex);
-                    return (
-                      <Flex flexDirection="column" key={key} style={style}>
-                        {rows.map(row => (
-                          <Flex>
-                            {row.map(({ value, isSubtotal, clicked }) => (
-                              <Cell
-                                value={value}
-                                isSubtotal={isSubtotal}
-                                onClick={
-                                  clicked &&
-                                  (() =>
-                                    this.props.onVisualizationClick({
-                                      ...clicked,
-                                      settings: this.props.settings,
-                                    }))
-                                }
-                              />
-                            ))}
-                          </Flex>
-                        ))}
-                      </Flex>
-                    );
-                  }}
+                  cellRenderer={bodyRenderer}
                   onScroll={({ scrollLeft, scrollTop }) =>
                     onScroll({ scrollLeft, scrollTop })
                   }
@@ -418,6 +424,7 @@ function Cell({
   baseWidth = CELL_WIDTH,
   baseHeight = CELL_HEIGHT,
   style,
+  isBody = false,
 }) {
   return (
     <div
@@ -435,7 +442,12 @@ function Cell({
       onClick={onClick}
     >
       <div className="px1">
-        <Ellipsified>{value}</Ellipsified>
+        {isBody ? (
+          // Ellipsified isn't really needed for body cells. Avoiding it helps performance.
+          value
+        ) : (
+          <Ellipsified>{value}</Ellipsified>
+        )}
       </div>
     </div>
   );
