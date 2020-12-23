@@ -37,6 +37,9 @@ import BulkActionBar from "metabase/components/BulkActionBar";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
+import ItemTypeFilterBar, {
+  FILTERS as ITEM_TYPE_FILTERS,
+} from "metabase/collections/components/ItemTypeFilterBar";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 // import CollectionList from "metabase/components/CollectionList";
 
@@ -284,9 +287,24 @@ export default class CollectionContent extends React.Component {
             </PinDropTarget>
           )}
           <Box className="relative" mt={1}>
-            {// if there are pins and we also have items show a heading for this section
-            collectionHasPins && unpinnedItems.length > 0 && (
-              <CollectionSectionHeading>{t`Everything else`}</CollectionSectionHeading>
+            {unpinnedItems.length > 0 && (
+              <ItemTypeFilterBar
+                analyticsContext={ANALYTICS_CONTEXT}
+                filters={ITEM_TYPE_FILTERS.map((f, i) => {
+                  /* swaps out the all items label between Everything and Everything else
+                based on whether there are pinned items */
+                  if (i === 0) {
+                    return {
+                      ...f,
+                      name:
+                        collectionHasPins && unpinnedItems.length > 0
+                          ? t`Everything else`
+                          : t`Everything`,
+                    };
+                  }
+                  return f;
+                })}
+              />
             )}
             {unpinnedItems.length > 0 && (
               <PinDropTarget pinIndex={null} margin={8}>
