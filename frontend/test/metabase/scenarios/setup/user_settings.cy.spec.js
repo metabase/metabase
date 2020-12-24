@@ -3,8 +3,7 @@ import { restore, signInAsNormalUser, USERS } from "__support__/cypress";
 const { first_name, last_name, username: email } = USERS.normal;
 
 const requestsCount = alias =>
-  cy.state("requests").filter(a => a.alias === alias).length;
-
+  cy.state("requests").filter(a => a.alias === alias);
 describe("user > settings", () => {
   beforeEach(() => {
     restore();
@@ -30,8 +29,10 @@ describe("user > settings", () => {
     cy.findByText("Update").click();
     cy.findByDisplayValue("John");
 
+    // It is hard and unreliable to assert that something didn't happen in Cypress
+    // This solution was the only one that worked out of all others proposed in this SO topic: https://stackoverflow.com/a/59302542/8815185
     cy.get("@membership").then(() => {
-      expect(requestsCount("ufg")).to.eq(0);
+      expect(requestsCount("membership")).to.have.length(0);
     });
   });
 });
