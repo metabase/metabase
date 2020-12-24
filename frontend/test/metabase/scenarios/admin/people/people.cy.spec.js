@@ -1,9 +1,6 @@
-// Includes migrations from:
-//  - frontend/test/metabase/admin/people/containers/EditUserModal.integ.spec.js
-//  - frontend/test/metabase/admin/people/containers/PeopleListingApp.integ.spec.js
-//  - frontend/test/metabase/admin/people/containers/GroupDetailApp.integ.spec.js
-//  - frontend/test/metabase/admin/people/containers/UserActivationModal.integ.spec.js
-//  - frontend/test/metabase/admin/people/containers/UserPasswordResetModal.integ.spec.js
+// Includes migrations from integration tests:
+// https://github.com/metabase/metabase/pull/14174
+
 import {
   signInAsAdmin,
   restore,
@@ -11,6 +8,7 @@ import {
   USERS,
   USER_GROUPS,
 } from "__support__/cypress";
+
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
@@ -93,14 +91,13 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should disallow admin to create new users with case mutation of existing user", () => {
+      const { first_name, last_name, username: email } = normal;
       cy.visit("/admin/people");
       clickButton("Add someone");
 
-      // first modal
-      cy.findByLabelText("First name").type(normal.first_name + "New");
-      cy.findByLabelText("Last name").type(normal.last_name + "New");
-      // bit of a hack since there are multiple "Email" nodes
-      cy.findByLabelText("Email").type(normal.username.toUpperCase());
+      cy.findByLabelText("First name").type(first_name + "New");
+      cy.findByLabelText("Last name").type(last_name + "New");
+      cy.findByLabelText("Email").type(email.toUpperCase());
       clickButton("Create");
       cy.contains("Email address already in use.");
     });
@@ -110,7 +107,7 @@ describe("scenarios > admin > people", () => {
       const FULL_NAME = `${first_name} ${last_name}`;
 
       cy.visit("/admin/people");
-      getUserOptions(FULL_NAME);
+      showUserOptions(FULL_NAME);
       popover().within(() => {
         cy.findByText("Edit user");
         cy.findByText("Reset password");
@@ -127,7 +124,7 @@ describe("scenarios > admin > people", () => {
         const FULL_NAME = `${first_name} ${last_name}`;
 
         cy.visit("/admin/people");
-        getUserOptions(FULL_NAME);
+        showUserOptions(FULL_NAME);
 
         cy.findByText("Deactivate user").click();
         clickButton("Deactivate");
@@ -153,7 +150,7 @@ describe("scenarios > admin > people", () => {
       const NEW_FULL_NAME = `${NEW_NAME} ${last_name}`;
 
       cy.visit("/admin/people");
-      getUserOptions(FULL_NAME);
+      showUserOptions(FULL_NAME);
       cy.findByText("Edit user").click();
       cy.findByDisplayValue(first_name)
         .click()
@@ -169,7 +166,7 @@ describe("scenarios > admin > people", () => {
       const FULL_NAME = `${first_name} ${last_name}`;
 
       cy.visit("/admin/people");
-      getUserOptions(FULL_NAME);
+      showUserOptions(FULL_NAME);
       cy.findByText("Reset password").click();
       cy.findByText(`Reset ${FULL_NAME}'s password?`);
       clickButton("Reset password");
@@ -193,7 +190,7 @@ describe("scenarios > admin > people", () => {
       });
 
       cy.visit("/admin/people");
-      getUserOptions(FULL_NAME);
+      showUserOptions(FULL_NAME);
       cy.findByText("Reset password").click();
       cy.findByText(`Reset ${FULL_NAME}'s password?`);
       clickButton("Reset password");
@@ -205,7 +202,7 @@ describe("scenarios > admin > people", () => {
   });
 });
 
-function getUserOptions(full_name) {
+function showUserOptions(full_name) {
   cy.findByText(full_name)
     .closest("tr")
     .within(() => {
