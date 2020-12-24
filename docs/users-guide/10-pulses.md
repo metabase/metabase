@@ -1,3 +1,15 @@
+## Dashboard subscriptions will replace pulses in a future release
+
+[Dashboard subscriptions](dashboard-subscriptions) will be replacing pulses in a future release of Metabase. When that happens, we'll provide a guide for migrating your pulses to dashboard subscriptions. So if you're thinking of setting up a pulse, try out a dashboard subscription instead.
+
+### How dashboard subscriptions differ from pulses
+
+- **Pulses** if you worked hard to create a beautiful dashboard and then wanted to send that dashboard out to folks regularly, you'd have to go create a pulse and then manually add each and every question from that dashboard to the pulse. What a hassle.
+
+- **Dashboard subscriptions**: you can just subscribe to that beautiful dashboard you made. All you need to do is add emails or Slack usernames to the list of subscribers, tell Metabase when to send the updates, and you're done.
+
+Learn more about [dashboard subscriptions](dashboard-subscriptions).
+
 ## Sharing updates with pulses
 
 The Pulses feature in Metabase gives you the ability to automatically send regular updates to your teammates to help everyone keep track of changes to the metrics that matter to you most. You can deliver a pulse via email or [Slack](https://slack.com/), on the schedule of your choice.
