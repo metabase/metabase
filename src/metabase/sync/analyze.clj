@@ -113,9 +113,9 @@
                                classify-tables-summary)])
 
 (s/defn analyze-db!
-  "Perform in-depth analysis on the data for all Tables in a given DATABASE.
-   This is dependent on what each database driver supports, but includes things like cardinality testing and table row
-   counting. This also updates the `:last_analyzed` value for each affected Field."
+  "Perform in-depth analysis on the data for all Tables in a given `database`. This is dependent on what each database
+  driver supports, but includes things like cardinality testing and table row counting. This also updates the
+  `:last_analyzed` value for each affected Field."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
@@ -124,8 +124,8 @@
           (update-fields-last-analyzed-for-db! database tables))))))
 
 (s/defn refingerprint-db!
-  "Refingerprint a subset of tables in a given DATABASE.
-  This will re-fingerprint tables up to a threshold amount of `fingerprint/max-refingerprint-field-count`."
+  "Refingerprint a subset of tables in a given `database`. This will re-fingerprint tables up to a threshold amount of
+  `fingerprint/max-refingerprint-field-count`."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)

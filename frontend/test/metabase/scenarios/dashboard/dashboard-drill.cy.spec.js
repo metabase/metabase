@@ -3,8 +3,12 @@ import {
   restore,
   modal,
   popover,
-  withSampleDataset,
+  createNativeQuestion,
 } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { REVIEWS, REVIEWS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > dashboard > dashboard drill", () => {
   before(restore);
@@ -47,6 +51,80 @@ describe("scenarios > dashboard > dashboard drill", () => {
     // click value and confirm url updates
     cy.findByText("column value: 111").click();
     cy.location("pathname").should("eq", "/foo/111/param-value");
+  });
+
+  it.skip("should insert values from hidden column on custom destination URL click through (metabase#13927)", () => {
+    cy.log("**-- 1. Create a question --**");
+
+    createNativeQuestion(
+      "13927",
+      `SELECT PEOPLE.STATE, PEOPLE.CITY from PEOPLE;`,
+    ).then(({ body: { id: QUESTION_ID } }) => {
+      cy.log("**-- 2. Create a dashboard --**");
+
+      cy.request("POST", "/api/dashboard", {
+        name: "13927D",
+      }).then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.log("**-- 3. Add question to the dashboard --**");
+
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          cy.log("**-- 4. Set card parameters --**");
+
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 6,
+                sizeY: 8,
+                series: [],
+                visualization_settings: {
+                  "table.cell_column": "CITY",
+                  "table.pivot_column": "STATE",
+                  column_settings: {
+                    '["name","CITY"]': {
+                      click_behavior: {
+                        type: "link",
+                        linkType: "url",
+                        linkTextTemplate:
+                          "Click to find out which state does {{CITY}} belong to.",
+                        linkTemplate: "/test/{{STATE}}",
+                      },
+                    },
+                  },
+                  "table.columns": [
+                    {
+                      name: "STATE",
+                      fieldRef: ["field-literal", "STATE", "type/Text"],
+                      enabled: false,
+                    },
+                    {
+                      name: "CITY",
+                      fieldRef: ["field-literal", "CITY", "type/Text"],
+                      enabled: true,
+                    },
+                  ],
+                },
+                parameter_mappings: [],
+              },
+            ],
+          });
+        });
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+        cy.findByText(
+          "Click to find out which state does Rye belong to.",
+        ).click();
+
+        cy.log("**Reported failing on v0.37.2**");
+        cy.location("pathname").should("eq", "/test/CO");
+      });
+    });
   });
 
   it("should handle question click through on a table", () => {
@@ -174,89 +252,88 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13062
     // 1. set "Rating" Field type to: "Category"
-    withSampleDataset(({ REVIEWS }) => {
-      cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
-        special_type: "type/Category",
-      });
-      // 2. create a question based on Reviews
-      cy.request("POST", `/api/card`, {
-        name: "13062Q",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": 4,
-          },
-          type: "query",
+
+    cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
+      special_type: "type/Category",
+    });
+    // 2. create a question based on Reviews
+    cy.request("POST", `/api/card`, {
+      name: "13062Q",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": REVIEWS_ID,
         },
-        display: "table",
-        visualization_settings: {},
-      }).then(({ body: { id: questionId } }) => {
-        // 3. create a dashboard
-        cy.request("POST", "/api/dashboard", {
-          name: "13062D",
-        }).then(({ body: { id: dashboardId } }) => {
-          // add filter to the dashboard
-          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-            parameters: [
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: questionId } }) => {
+      // 3. create a dashboard
+      cy.request("POST", "/api/dashboard", {
+        name: "13062D",
+      }).then(({ body: { id: dashboardId } }) => {
+        // add filter to the dashboard
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          parameters: [
+            {
+              id: "18024e69",
+              name: "Category",
+              slug: "category",
+              type: "category",
+            },
+          ],
+        });
+
+        // add previously created question to the dashboard
+        cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+          cardId: questionId,
+        }).then(({ body: { id: dashCardId } }) => {
+          // connect filter to that question
+          cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+            cards: [
               {
-                id: "18024e69",
-                name: "Category",
-                slug: "category",
-                type: "category",
+                id: dashCardId,
+                card_id: questionId,
+                row: 0,
+                col: 0,
+                sizeX: 8,
+                sizeY: 6,
+                parameter_mappings: [
+                  {
+                    parameter_id: "18024e69",
+                    card_id: questionId,
+                    target: ["dimension", ["field-id", REVIEWS.RATING]],
+                  },
+                ],
               },
             ],
           });
-
-          // add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            cardId: questionId,
-          }).then(({ body: { id: dashCardId } }) => {
-            // connect filter to that question
-            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-              cards: [
-                {
-                  id: dashCardId,
-                  card_id: questionId,
-                  row: 0,
-                  col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
-                  parameter_mappings: [
-                    {
-                      parameter_id: "18024e69",
-                      card_id: questionId,
-                      target: ["dimension", ["field-id", REVIEWS.RATING]],
-                    },
-                  ],
-                },
-              ],
-            });
-          });
-
-          // NOTE: The actual "Assertion" phase begins here
-          cy.log("**Reported failing on Metabase 1.34.3 and 0.36.2**");
-
-          cy.log("**The first case**");
-          // set filter values (ratings 5 and 4) directly through the URL
-          cy.visit(`/dashboard/${dashboardId}?category=5&category=4`);
-
-          // drill-through
-          cy.findByText("xavier").click();
-          cy.findByText("=").click();
-
-          cy.findByText("Reviewer is xavier");
-          cy.findByText("Rating is equal to 2 selections");
-          cy.contains("Reprehenderit non error"); // xavier's review
-
-          cy.log("**The second case**");
-          // go back to the dashboard
-          cy.visit(`/dashboard/${dashboardId}?category=5&category=4`);
-          cy.findByText("2 selections");
-
-          cy.findByText("13062Q").click(); // the card title
-          cy.findByText("Rating is equal to 2 selections");
-          cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
         });
+
+        // NOTE: The actual "Assertion" phase begins here
+        cy.log("**Reported failing on Metabase 1.34.3 and 0.36.2**");
+
+        cy.log("**The first case**");
+        // set filter values (ratings 5 and 4) directly through the URL
+        cy.visit(`/dashboard/${dashboardId}?category=5&category=4`);
+
+        // drill-through
+        cy.findByText("xavier").click();
+        cy.findByText("=").click();
+
+        cy.findByText("Reviewer is xavier");
+        cy.findByText("Rating is equal to 2 selections");
+        cy.contains("Reprehenderit non error"); // xavier's review
+
+        cy.log("**The second case**");
+        // go back to the dashboard
+        cy.visit(`/dashboard/${dashboardId}?category=5&category=4`);
+        cy.findByText("2 selections");
+
+        cy.findByText("13062Q").click(); // the card title
+        cy.findByText("Rating is equal to 2 selections");
+        cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
       });
     });
   });

@@ -39,6 +39,7 @@ import {
   getOriginalCard,
   getIsEditing,
   getTransformedSeries,
+  getRawSeries,
   getResultsMetadata,
   getFirstQueryResult,
   getIsPreviewing,
@@ -832,6 +833,46 @@ export const updateQuestion = (
     if (!newQuestion.canAutoRun()) {
       run = false;
     }
+
+    // <PIVOT LOGIC>
+    // We have special logic when going to, coming from, or updating a pivot table.
+    const isPivot = newQuestion.display() === "pivot";
+    const wasPivot = oldQuestion.display() === "pivot";
+    const queryHasBreakouts =
+      isPivot &&
+      newQuestion.isStructured() &&
+      newQuestion.query().breakouts().length > 0;
+
+    // we can only pivot queries with breakouts
+    if (isPivot && queryHasBreakouts) {
+      // compute the pivot setting now so we can query the appropriate data
+      const series = assocIn(
+        getRawSeries(getState()),
+        [0, "card"],
+        newQuestion.card(),
+      );
+      const key = "pivot_table.column_split";
+      const setting = getQuestionWithDefaultVisualizationSettings(
+        newQuestion,
+        series,
+      ).setting(key);
+      newQuestion = newQuestion.updateSettings({ [key]: setting });
+    }
+
+    if (
+      // switching to pivot
+      (isPivot && !wasPivot) ||
+      // switching away from pivot
+      (!isPivot && wasPivot) ||
+      // updating the pivot rows/cols
+      !_.isEqual(
+        newQuestion.setting("pivot_table.column_split"),
+        oldQuestion.setting("pivot_table.column_split"),
+      )
+    ) {
+      run = true; // force a run when switching to/from pivot or updating it's setting
+    }
+    // </PIVOT LOGIC>
 
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });

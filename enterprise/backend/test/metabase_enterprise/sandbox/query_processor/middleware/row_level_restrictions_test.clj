@@ -9,6 +9,7 @@
              [query-processor :as qp]
              [test :as mt]
              [util :as u]]
+            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
             [metabase-enterprise.sandbox.test-util :as mt.tu]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -21,7 +22,8 @@
             [metabase.query-processor.util :as qputil]
             [metabase.test.data.env :as tx.env]
             [metabase.test.util :as tu]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      SHARED GTAP DEFINITIONS & HELPER FNS                                      |
@@ -551,3 +553,41 @@
                               :alias        "Venue"}]
                   :order-by [[:asc $id]]
                   :limit    3})))))))
+
+(deftest sandboxing-run-sql-queries-to-infer-columns-test
+  (testing "Run SQL queries to infer the columns when used as GTAPS (#13716)\n"
+    (testing "Should work with SQL queries that return less columns than there were in the original Table\n"
+      (mt/with-gtaps (mt/$ids
+                       {:gtaps      {:venues   {:query      (mt/native-query
+                                                              {:query         (str "SELECT DISTINCT VENUES.ID, VENUES.NAME "
+                                                                                   "FROM VENUES "
+                                                                                   "WHERE VENUES.ID IN ({{sandbox}})")
+                                                               :template-tags {"sandbox"
+                                                                               {:name         "sandbox"
+                                                                                :display-name "Sandbox"
+                                                                                :type         :text}}})
+                                                :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
+                                     :checkins {}}
+                        :attributes {"venue_id" 1}})
+        (let [venues-gtap-card-id (db/select-one-field :card_id GroupTableAccessPolicy
+                                    :group_id (:id &group)
+                                    :table_id (mt/id :venues))]
+          (assert (integer? venues-gtap-card-id))
+          (testing "GTAP Card should not yet current have result_metadata"
+            (is (= nil
+                   (db/select-one-field :result_metadata Card :id venues-gtap-card-id))))
+          (testing "Should be able to run the query"
+            (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
+                   (mt/rows
+                     (mt/run-mbql-query venues
+                       {:fields   [$id $name] ; joined fields get appended automatically because we specify :all :below
+                        :joins    [{:fields       :all
+                                    :source-table $$venues
+                                    :condition    [:= $id [:joined-field "Venue" $id]]
+                                    :alias        "Venue"}]
+                        :order-by [[:asc $id]]
+                        :limit    3})))))
+          (testing "After running the query the first time, result_metadata should have been saved for the GTAP Card"
+            (is (= [{:name "ID", :base_type :type/BigInteger, :display_name "ID"}
+                    {:name "NAME", :base_type :type/Text, :display_name "NAME"}]
+                   (db/select-one-field :result_metadata Card :id venues-gtap-card-id)))))))))

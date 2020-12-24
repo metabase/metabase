@@ -205,33 +205,15 @@ export default class CollectionContent extends React.Component {
                     isRoot={isRoot}
                   />
                 )}
-              <Box>
-                <EntityMenu
-                  tooltip={t`Create`}
-                  className="hide sm-show mr1 text-brand"
-                  triggerIcon="add"
-                  items={[
-                    {
-                      title: t`New dashboard`,
-                      icon: `dashboard`,
-                      action: () => this.setState({ showDashboardModal: true }),
-                      event: `NavBar;New Dashboard Click;`,
-                    },
-                    {
-                      title: t`New pulse`,
-                      icon: `pulse`,
-                      link: Urls.newPulse(),
-                      event: `NavBar;New Pulse Click;`,
-                    },
-                    {
-                      title: t`New collection`,
-                      icon: `folder`,
-                      link: Urls.newCollection(this.props.collectionId),
-                      event: `NavBar;New Dashboard Click;`,
-                    },
-                  ]}
-                />
-              </Box>
+              {collection && collection.can_write && (
+                <Tooltip tooltip={t`New collection`}>
+                  <Link to={Urls.newCollection(this.props.collectionId)}>
+                    <IconWrapper>
+                      <Icon name="folder" />
+                    </IconWrapper>
+                  </Link>
+                </Tooltip>
+              )}
             </Flex>
           </Flex>
           {collectionHasPins ? (
@@ -347,6 +329,9 @@ export default class CollectionContent extends React.Component {
                         </ItemDragSource>
                       </Box>
                     )}
+                    // needed in order to prevent an issue with content not fully rendering
+                    // due to the collection content scrolling layout
+                    useAutoSizerHeight={true}
                   />
                 </Box>
               </PinDropTarget>

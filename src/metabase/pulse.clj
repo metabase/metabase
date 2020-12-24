@@ -168,6 +168,9 @@
     (not (are-all-cards-empty? results))
     true))
 
+;; 'notification' used below means a map that has information needed to send a Pulse/Alert, including results of
+;; running the underlying query
+
 (defmulti ^:private notification
   "Polymorphoic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
   channel_type (i.e. email vs. slack)"
@@ -231,7 +234,9 @@
             :when   (contains? (set channel-ids) (:id channel))]
         (notification pulse results channel)))))
 
-(defn- pulse->notifications [{:keys [cards dashboard dashboard_id], pulse-id :id, :as pulse}]
+(defn- pulse->notifications
+  "Execute the underlying queries for a sequence of Pulses and return the results as 'notification' maps."
+  [{:keys [cards dashboard dashboard_id], pulse-id :id, :as pulse}]
   (results->notifications pulse
                           (if dashboard
                             ;; send the dashboard

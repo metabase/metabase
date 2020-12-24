@@ -4,8 +4,13 @@ import {
   popover,
   _typeUsingGet,
   _typeUsingPlaceholder,
-  withSampleDataset,
+  signInAsAdmin,
+  openOrdersTable,
 } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
 
 const customFormulas = [
   {
@@ -23,8 +28,10 @@ function firstCell(contain_assertion, value) {
 }
 
 describe("scenarios > question > custom columns", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    signInAsNormalUser();
+  });
 
   it.skip("cc should only apply to correct column (metabase#12649)", () => {
     // Create custom question
@@ -69,8 +76,7 @@ describe("scenarios > question > custom columns", () => {
 
   it("can create a custom column (metabase#13241)", () => {
     const columnName = "Simple Math";
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     cy.get(".Icon-add_data").click();
 
     popover().within(() => {
@@ -91,7 +97,7 @@ describe("scenarios > question > custom columns", () => {
 
   it("can create a custom column with an existing column name", () => {
     customFormulas.forEach(({ customFormula, columnName }) => {
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
       cy.get(".Icon-add_data").click();
 
       popover().within(() => {
@@ -111,8 +117,7 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it("should create custom column with fields from aggregated data (metabase#12762)", () => {
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
 
     cy.findByText("Summarize").click();
 
@@ -161,8 +166,7 @@ describe("scenarios > question > custom columns", () => {
 
   it.skip("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
     const columnName = "TestColumn";
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
 
     // Add custom column that will be used later in summarize (group by)
     cy.findByText("Custom column").click();
@@ -213,8 +217,7 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should not return same results for columns with the same name (metabase#12649)", () => {
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     // join with Products
     cy.findByText("Join data").click();
     cy.findByText("Products").click();
@@ -243,36 +246,121 @@ describe("scenarios > question > custom columns", () => {
       });
   });
 
-  it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
-    withSampleDataset(({ ORDERS }) => {
-      cy.request("POST", "/api/card", {
-        name: "13634",
-        dataset_query: {
-          database: 1,
-          query: {
-            expressions: { "Foo Bar": ["+", 57910, 1] },
-            "source-query": {
-              aggregation: [["cum-count"]],
-              breakout: [
-                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-              ],
-              "source-table": 2,
-            },
-          },
-          type: "query",
-        },
-        display: "table",
-        visualization_settings: {},
-      }).then(({ body: { id: questionId } }) => {
-        cy.visit(`/question/${questionId}`);
-        cy.findByText("13634");
+  it.skip("should be able to use custom expression after aggregation (metabase#13857)", () => {
+    const CE_NAME = "13857_CE";
+    const CC_NAME = "13857_CC";
 
-        cy.log(
-          "**Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2**",
-        );
-        cy.findByText("Foo Bar");
-        cy.findAllByText("57911");
+    signInAsAdmin();
+
+    cy.request("POST", "/api/card", {
+      name: "13857",
+      dataset_query: {
+        database: 1,
+        query: {
+          expressions: {
+            [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
+          },
+          "source-query": {
+            aggregation: [
+              ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
+            ],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ],
+            "source-table": ORDERS_ID,
+          },
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.server();
+      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.log("**Reported failing v0.34.3 through v0.37.2**");
+      cy.wait("@cardQuery").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
       });
+
+      cy.findByText(CC_NAME);
+    });
+  });
+
+  it("should work with implicit joins (metabase#14080)", () => {
+    const CC_NAME = "OneisOne";
+    signInAsAdmin();
+
+    cy.request("POST", "/api/card", {
+      name: "14080",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: { [CC_NAME]: ["*", 1, 1] },
+          aggregation: [
+            [
+              "distinct",
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.ID],
+              ],
+            ],
+            ["sum", ["expression", CC_NAME]],
+          ],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.server();
+      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.log("**Regression since v0.37.1 - it works on v0.37.0**");
+      cy.wait("@cardQuery").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+
+      cy.contains(`Sum of ${CC_NAME}`);
+      cy.get(".Visualization .dot").should("have.length.of.at.least", 8);
+    });
+  });
+
+  it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
+    cy.request("POST", "/api/card", {
+      name: "13634",
+      dataset_query: {
+        database: 1,
+        query: {
+          expressions: { "Foo Bar": ["+", 57910, 1] },
+          "source-query": {
+            aggregation: [["cum-count"]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ],
+            "source-table": ORDERS_ID,
+          },
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: questionId } }) => {
+      cy.visit(`/question/${questionId}`);
+      cy.findByText("13634");
+
+      cy.log("**Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2**");
+      cy.findByText("Foo Bar");
+      cy.findAllByText("57911");
     });
   });
 });

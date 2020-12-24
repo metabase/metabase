@@ -5,9 +5,12 @@ import {
   signInAsAdmin,
   USERS,
   signInAsNormalUser,
-  withSampleDataset,
   describeWithToken,
-} from "../../../../../frontend/test/__support__/cypress";
+} from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { PRODUCTS } = SAMPLE_DATASET;
 
 const year = new Date().getFullYear();
 
@@ -15,41 +18,39 @@ export function generateQuestions(users) {
   users.forEach(user => {
     signIn(user);
 
-    withSampleDataset(({ PRODUCTS }) => {
-      cy.request("POST", `/api/card`, {
-        name: `${user} test q`,
-        dataset_query: {
-          type: "native",
-          native: {
-            query: "SELECT * FROM products WHERE {{ID}}",
-            "template-tags": {
-              ID: {
-                id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-                name: "ID",
-                display_name: "ID",
-                type: "dimension",
-                dimension: ["field-id", PRODUCTS.ID],
-                "widget-type": "category",
-                default: null,
-              },
+    cy.request("POST", `/api/card`, {
+      name: `${user} test q`,
+      dataset_query: {
+        type: "native",
+        native: {
+          query: "SELECT * FROM products WHERE {{ID}}",
+          "template-tags": {
+            ID: {
+              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+              name: "ID",
+              display_name: "ID",
+              type: "dimension",
+              dimension: ["field-id", PRODUCTS.ID],
+              "widget-type": "category",
+              default: null,
             },
           },
-          database: 1,
         },
-        display: "scalar",
-        description: null,
-        visualization_settings: {},
-        collection_id: null,
-        result_metadata: null,
-        metadata_checksum: null,
-      });
+        database: 1,
+      },
+      display: "scalar",
+      description: null,
+      visualization_settings: {},
+      collection_id: null,
+      result_metadata: null,
+      metadata_checksum: null,
     });
   });
 }
 export function generateDashboards(users) {
   users.forEach(user => {
     signIn(user);
-    cy.visit("/collection/root");
+    cy.visit("/");
     cy.get(".Icon-add").click();
     cy.findByText("New dashboard").click();
     cy.findByLabelText("Name").type(user + " test dash");

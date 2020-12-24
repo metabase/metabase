@@ -50,7 +50,6 @@ export const BackendResource = createSharedResource("BackendResource", {
           "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
           "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
           "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
-          "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "-Duser.timezone=US/Pacific",
           `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,

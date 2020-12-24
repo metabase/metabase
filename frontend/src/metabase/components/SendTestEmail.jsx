@@ -28,7 +28,7 @@ export default class SendTestEmail extends Component {
         normalText={t`Send email now`}
         activeText={t`Sending…`}
         failedText={t`Sending failed`}
-        successText={t`Pulse sent`}
+        successText={t`Email sent`}
         forceActiveStyle={true}
       />
     );

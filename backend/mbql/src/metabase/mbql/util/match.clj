@@ -105,6 +105,13 @@
   [patterns-and-results]
   (= '_ (second (reverse patterns-and-results))))
 
+(defmethod match/emit-pattern-for-syntax [:isa? :default]
+  [[_ parent]] {::match/tag ::isa? :parent parent})
+
+(defmethod match/to-source ::isa?
+  [{parent :parent} ocr]
+  `(isa? ~ocr ~parent))
+
 (defmacro match
   "Internal impl for `match`. Generate a pattern-matching function using `core.match`, and call it with `form`."
   [form patterns-and-results]

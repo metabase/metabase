@@ -18,14 +18,6 @@ import {
 } from "./utils";
 
 import {
-  minTimeseriesUnit,
-  computeTimeseriesDataInverval,
-  getTimezone,
-} from "./timeseries";
-
-import { computeNumericDataInverval } from "./numeric";
-
-import {
   applyChartTimeseriesXAxis,
   applyChartQuantitativeXAxis,
   applyChartOrdinalXAxis,
@@ -56,7 +48,9 @@ import {
   getDatas,
   getFirstNonEmptySeries,
   getXValues,
+  getXInterval,
   syntheticStackedBarsForWaterfallChart,
+  xValueForWaterfallTotal,
   isDimensionTimeseries,
   isRemappedToString,
   isMultiCardSeries,
@@ -103,30 +97,6 @@ function checkSeriesIsValid({ series, maxSeries }) {
   }
 }
 
-function getXInterval({ settings, series }, xValues, warn) {
-  if (isTimeseries(settings)) {
-    // We need three pieces of information to define a timeseries range:
-    // 1. interval - it's really the "unit": month, day, etc
-    // 2. count - how many intervals per tick?
-    // 3. timezone - what timezone are values in? days vary in length by timezone
-    const unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
-    const timezone = getTimezone(series, warn);
-    const { count, interval } = computeTimeseriesDataInverval(xValues, unit);
-    return { count, interval, timezone };
-  } else if (isQuantitative(settings) || isHistogram(settings)) {
-    // Get the bin width from binning_info, if available
-    // TODO: multiseries?
-    const binningInfo = getFirstNonEmptySeries(series).data.cols[0]
-      .binning_info;
-    if (binningInfo) {
-      return binningInfo.bin_width;
-    }
-
-    // Otherwise try to infer from the X values
-    return computeNumericDataInverval(xValues);
-  }
-}
-
 function getXAxisProps(props, datas, warn) {
   const rawXValues = getXValues(props);
   const isHistogram = isHistogramBar(props);
@@ -137,7 +107,7 @@ function getXAxisProps(props, datas, warn) {
   const xValues = isHistogram
     ? [...rawXValues, Math.max(...rawXValues) + xInterval]
     : props.chartType === "waterfall" && props.settings["waterfall.show_total"]
-    ? [...rawXValues, t`Total`]
+    ? [...rawXValues, xValueForWaterfallTotal(props)]
     : rawXValues;
 
   return {
@@ -272,10 +242,10 @@ export function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(
   originalDatas,
   warn,
 ) {
-  const { settings, chartType } = props;
+  const { settings, chartType, series } = props;
   const datas =
     chartType === "waterfall"
-      ? syntheticStackedBarsForWaterfallChart(originalDatas, settings)
+      ? syntheticStackedBarsForWaterfallChart(originalDatas, settings, series)
       : originalDatas;
   const isStackedBar = isStacked(settings, datas) || chartType === "waterfall";
 
@@ -510,7 +480,10 @@ function setChartColor({ series, settings, chartType }, chart, groups, index) {
 
   if (chartType === "waterfall") {
     chart.on("pretransition", function(chart) {
-      chart.selectAll("g.stack._0 rect.bar").style("fill", "transparent");
+      chart
+        .selectAll("g.stack._0 rect.bar")
+        .style("fill", "transparent")
+        .style("pointer-events", "none");
       chart
         .selectAll("g.stack._3 rect.bar")
         .style("fill", settings["waterfall.total_color"]);

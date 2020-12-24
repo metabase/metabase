@@ -253,12 +253,13 @@
       ;; middleware is doing the right thing
       (with-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
         (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
-          (is (thrown?
-               Exception
-               (mt/suppress-output
-                 (qp.test/rows
+          (mt/with-temp-vals-in-db Card (:id card) {:result_metadata nil}
+            (is (thrown?
+                 Exception
+                 (mt/suppress-output
+                  (qp.test/rows
                    (qp/process-query
-                    (nested-venues-query card)))))))))))
+                    (nested-venues-query card))))))))))))
 
 (deftest field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)

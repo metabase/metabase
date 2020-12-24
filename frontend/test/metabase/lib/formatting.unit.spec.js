@@ -26,10 +26,30 @@ describe("formatting", () => {
       expect(formatNumber(-10)).toEqual("-10");
       expect(formatNumber(-99999999)).toEqual("-99,999,999");
     });
+    it("should format large numbers correctly with non-default number separator", () => {
+      const options = { number_separators: ",." };
+      expect(formatNumber(10.1, options)).toEqual("10,1");
+      expect(formatNumber(99999999.9, options)).toEqual("99.999.999,9");
+      expect(formatNumber(-10.1, options)).toEqual("-10,1");
+      expect(formatNumber(-99999999.9, options)).toEqual("-99.999.999,9");
+    });
     it("should format to 2 significant digits", () => {
       expect(formatNumber(1 / 3)).toEqual("0.33");
       expect(formatNumber(-1 / 3)).toEqual("-0.33");
       expect(formatNumber(0.0001 / 3)).toEqual("0.000033");
+    });
+    describe("in enclosing negative mode", () => {
+      it("should format -4 as (4)", () => {
+        expect(formatNumber(-4, { negativeInParentheses: true })).toEqual(
+          "(4)",
+        );
+      });
+      it("should format 7 as 7", () => {
+        expect(formatNumber(7, { negativeInParentheses: true })).toEqual("7");
+      });
+      it("should format 0 as 0", () => {
+        expect(formatNumber(0, { negativeInParentheses: true })).toEqual("0");
+      });
     });
     describe("in compact mode", () => {
       it("should format 0 as 0", () => {

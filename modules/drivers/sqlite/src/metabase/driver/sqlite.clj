@@ -98,6 +98,7 @@
 
 (def ^:private ->date     (partial hsql/call :date))
 (def ^:private ->datetime (partial hsql/call :datetime))
+(def ^:private ->time     (partial hsql/call :time))
 
 (defn- strftime [format-str expr]
   (hsql/call :strftime (hx/literal format-str) expr))
@@ -219,6 +220,18 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
+
+(defmethod sql.qp/cast-temporal-string [:sqlite :type/ISO8601DateTimeString]
+  [_driver _special_type expr]
+  (->datetime expr))
+
+(defmethod sql.qp/cast-temporal-string [:sqlite :type/ISO8601DateString]
+  [_driver _special_type expr]
+  (->date expr))
+
+(defmethod sql.qp/cast-temporal-string [:sqlite :type/ISO8601TimeString]
+  [_driver _special_type expr]
+  (->time expr))
 
 ;; SQLite doesn't like Temporal values getting passed in as prepared statement args, so we need to convert them to
 ;; date literal strings instead to get things to work

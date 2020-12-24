@@ -163,3 +163,7 @@ textarea {
     transform: rotate(-360deg);
   }
 }
+
+.no-outline * {
+  outline: none;
+}

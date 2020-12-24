@@ -269,7 +269,8 @@
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB
-  *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User. Overrides `site-locale` if set.
+  *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User.
+                                        Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
   *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB"
   [handler]
@@ -277,11 +278,18 @@
     (with-current-user-for-request request
       (handler request respond raise))))
 
+(defn with-current-user-fetch-user-for-id
+  "Part of the impl for `with-current-user` -- don't use this directly."
+  [current-user-id]
+  (when current-user-id
+    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]]
+      :id current-user-id)))
+
 (defmacro with-current-user
   "Execute code in body with User with `current-user-id` bound as the current user. (This is not used in the middleware
   itself but elsewhere where we want to simulate a User context, such as when rendering Pulses or in tests.) "
   {:style/indent 1}
   [current-user-id & body]
   `(do-with-current-user
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]] :id ~current-user-id)
+    (with-current-user-fetch-user-for-id ~current-user-id)
     (fn [] ~@body)))

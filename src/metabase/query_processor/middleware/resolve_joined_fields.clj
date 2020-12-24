@@ -13,7 +13,7 @@
       1 [:joined-field (-> candidate-tables first :alias) [:field-id id]]
       0 [:field-id id]
       (let [{:keys [id name]} (qp.store/table table_id)]
-        (throw (ex-info (tru "Cannot resolve joined field due to ambigious joins: table {0} (ID {1}) joined multiple times. You need to wrap field references in explicit :joined-field clauses."
+        (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to wrap field references in explicit :joined-field clauses."
                              name id)
                  {:error error-type/invalid-query
                   :joins joins}))))))

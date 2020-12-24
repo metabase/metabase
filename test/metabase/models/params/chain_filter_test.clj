@@ -308,3 +308,9 @@
     (testing "search for something crazy = should return empty results"
       (is (= []
              (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "zzzzz")))))))
+
+(deftest time-interval-test
+  (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"
+    (mt/$ids
+      (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
+             (#'chain-filter/filter-clause $$checkins %checkins.date "past32weeks"))))))

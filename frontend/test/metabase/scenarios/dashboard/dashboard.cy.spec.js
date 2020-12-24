@@ -1,12 +1,15 @@
+// Mostly ported from `dashboard.e2e.spec.js`
+// *** Haven't ported: should add the parameter values to state tree for public dashboards
 import {
   popover,
   restore,
   signInAsAdmin,
-  withSampleDataset,
   selectDashboardFilter,
 } from "__support__/cypress";
-// Mostly ported from `dashboard.e2e.spec.js`
-// *** Haven't ported: should add the parameter values to state tree for public dashboards
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 
 function saveDashboard() {
   cy.findByText("Save").click();
@@ -21,7 +24,7 @@ describe("scenarios > dashboard", () => {
 
   it("should create new dashboard", () => {
     // Create dashboard
-    cy.visit("/collection/root");
+    cy.visit("/");
     cy.get(".Icon-add").click();
     cy.findByText("New dashboard").click();
     cy.findByLabelText("Name").type("Test Dash");
@@ -108,35 +111,33 @@ describe("scenarios > dashboard", () => {
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
     // programatically create and save a question as per repro instructions in #11007
-    withSampleDataset(({ ORDERS, PRODUCTS }) => {
-      cy.request("POST", "/api/card", {
-        name: "11007",
-        dataset_query: {
-          database: 1,
-          filter: [">", ["field-literal", "sum", "type/Float"], 100],
-          query: {
-            "source-table": 2,
-            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
-              [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.ID],
-              ],
-              [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.CATEGORY],
-              ],
+    cy.request("POST", "/api/card", {
+      name: "11007",
+      dataset_query: {
+        database: 1,
+        filter: [">", ["field-literal", "sum", "type/Float"], 100],
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+            [
+              "fk->",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", PRODUCTS.ID],
             ],
-            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
-          },
-          type: "query",
+            [
+              "fk->",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", PRODUCTS.CATEGORY],
+            ],
+          ],
+          filter: ["=", ["field-id", ORDERS.USER_ID], 1],
         },
-        display: "table",
-        visualization_settings: {},
-      });
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
     });
 
     // create a dashboard
@@ -186,83 +187,81 @@ describe("scenarios > dashboard", () => {
 
   it.skip("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
     // 1. create a question based on repro steps in #13597
-    withSampleDataset(({ PEOPLE }) => {
-      cy.request("POST", "/api/card", {
-        name: "13597",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": 3,
-            limit: 2,
-          },
-          type: "query",
+    cy.request("POST", "/api/card", {
+      name: "13597",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 2,
         },
-        display: "map",
-        visualization_settings: {},
-      }).then(({ body: { id: questionId } }) => {
-        // 2. create a dashboard
-        cy.request("POST", "/api/dashboard", {
-          name: "13597D",
-        }).then(({ body: { id: dashboardId } }) => {
-          // add filter (ID) to the dashboard
-          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-            parameters: [
-              {
-                id: "92eb69ea",
-                name: "ID",
-                slug: "id",
-                type: "id",
-              },
-            ],
-          });
+        type: "query",
+      },
+      display: "map",
+      visualization_settings: {},
+    }).then(({ body: { id: questionId } }) => {
+      // 2. create a dashboard
+      cy.request("POST", "/api/dashboard", {
+        name: "13597D",
+      }).then(({ body: { id: dashboardId } }) => {
+        // add filter (ID) to the dashboard
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          parameters: [
+            {
+              id: "92eb69ea",
+              name: "ID",
+              slug: "id",
+              type: "id",
+            },
+          ],
+        });
 
-          // add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            cardId: questionId,
-          }).then(({ body: { id: dashCardId } }) => {
-            // connect filter to that question
-            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-              cards: [
-                {
-                  id: dashCardId,
-                  card_id: questionId,
-                  row: 0,
-                  col: 0,
-                  sizeX: 10,
-                  sizeY: 8,
-                  parameter_mappings: [
-                    {
-                      parameter_id: "92eb69ea",
-                      card_id: questionId,
-                      target: ["dimension", ["field-id", PEOPLE.ID]],
-                    },
-                  ],
-                  visualization_settings: {
-                    // set click behavior to update filter (ID)
-                    click_behavior: {
-                      type: "crossfilter",
-                      parameterMapping: {
+        // add previously created question to the dashboard
+        cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+          cardId: questionId,
+        }).then(({ body: { id: dashCardId } }) => {
+          // connect filter to that question
+          cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+            cards: [
+              {
+                id: dashCardId,
+                card_id: questionId,
+                row: 0,
+                col: 0,
+                sizeX: 10,
+                sizeY: 8,
+                parameter_mappings: [
+                  {
+                    parameter_id: "92eb69ea",
+                    card_id: questionId,
+                    target: ["dimension", ["field-id", PEOPLE.ID]],
+                  },
+                ],
+                visualization_settings: {
+                  // set click behavior to update filter (ID)
+                  click_behavior: {
+                    type: "crossfilter",
+                    parameterMapping: {
+                      id: "92eb69ea",
+                      source: { id: "ID", name: "ID", type: "column" },
+                      target: {
                         id: "92eb69ea",
-                        source: { id: "ID", name: "ID", type: "column" },
-                        target: {
-                          id: "92eb69ea",
-                          type: "parameter",
-                        },
+                        type: "parameter",
                       },
                     },
                   },
                 },
-              ],
-            });
+              },
+            ],
           });
-
-          cy.visit(`/dashboard/${dashboardId}`);
-          cy.get(".leaflet-marker-icon") // pin icon
-            .eq(0)
-            .click({ force: true });
-          cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
-          cy.contains("Hudson Borer - 1");
         });
+
+        cy.visit(`/dashboard/${dashboardId}`);
+        cy.get(".leaflet-marker-icon") // pin icon
+          .eq(0)
+          .click({ force: true });
+        cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
+        cy.contains("Hudson Borer - 1");
       });
     });
   });

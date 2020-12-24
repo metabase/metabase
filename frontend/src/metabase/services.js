@@ -1,7 +1,10 @@
 /* @flow */
+import _ from "underscore";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Question from "metabase-lib/lib/Question";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -9,8 +12,9 @@ const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
-import type { Data, Options } from "metabase/lib/api";
+import type { Data, Options, APIMethod } from "metabase/lib/api";
 
+import type { Card } from "metabase-types/types/Card";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { DatabaseCandidates } from "metabase-types/types/Auto";
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
@@ -28,6 +32,43 @@ export const GTAPApi = {
   attributes: GET("/api/mt/user/attributes"),
 };
 
+// Pivot tables need extra data beyond what's described in the MBQL query itself.
+// To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
+// Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
+// If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
+export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
+  function wrap(api) {
+    return (params: ?Data, ...rest: any) => {
+      const question = new Question(card, new Metadata());
+      const setting = question.setting("pivot_table.column_split");
+      const breakout = question.query().breakouts();
+      const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
+        setting,
+        fieldRefs =>
+          fieldRefs
+            .map(field_ref => breakout.findIndex(b => _.isEqual(b, field_ref)))
+            .filter(index => index !== -1),
+      );
+      return api({ ...params, pivot_rows, pivot_cols }, ...rest);
+    };
+  }
+  if (card.display !== "pivot") {
+    return api;
+  }
+
+  const mapping = [
+    [CardApi.query, CardApi.query_pivot],
+    [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
+    [PublicApi.cardQuery, PublicApi.cardQueryPivot],
+  ];
+  for (const [from, to] of mapping) {
+    if (api === from) {
+      return wrap(to);
+    }
+  }
+  return api;
+}
+
 export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
@@ -41,6 +82,7 @@ export const CardApi = {
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:cardId"),
   query: POST("/api/card/:cardId/query"),
+  query_pivot: POST("/api/advanced_computation/pivot/card/:cardId/query"),
   // isfavorite:                  GET("/api/card/:cardId/favorite"),
   favorite: POST("/api/card/:cardId/favorite"),
   unfavorite: DELETE("/api/card/:cardId/favorite"),
@@ -92,6 +134,9 @@ export const CollectionsApi = {
 export const PublicApi = {
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
+  cardQueryPivot: GET(
+    "/api/advanced_computation/public/pivot/card/:uuid/query",
+  ),
   dashboard: GET("/api/public/dashboard/:uuid"),
   dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
 };
@@ -217,6 +262,7 @@ export const MetabaseApi = {
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
+  dataset_pivot: POST("/api/advanced_computation/pivot/dataset"),
   dataset_duration: POST("/api/dataset/duration"),
   native: POST("/api/dataset/native"),
 

@@ -1,70 +1,176 @@
 import {
   signInAsAdmin,
   restore,
-  withSampleDataset,
   openProductsTable,
+  openOrdersTable,
   popover,
   sidebar,
 } from "__support__/cypress";
 
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE_ID } = SAMPLE_DATASET;
+
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should allow brush date filter", () => {
-    withSampleDataset(({ ORDERS, PRODUCTS }) => {
-      cy.request("POST", "/api/card", {
-        name: "Orders by Product → Created At (month) and Product → Category",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": 2,
-            aggregation: [["count"]],
-            breakout: [
-              [
-                "datetime-field",
-                [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CREATED_AT],
-                ],
-                "month",
-              ],
+    cy.request("POST", "/api/card", {
+      name: "Orders by Product → Created At (month) and Product → Category",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "datetime-field",
               [
                 "fk->",
                 ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.CATEGORY],
+                ["field-id", PRODUCTS.CREATED_AT],
               ],
+              "month",
+            ],
+            [
+              "fk->",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", PRODUCTS.CATEGORY],
+            ],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+      visualization_settings: {},
+    }).then(response => {
+      cy.visit(`/question/${response.body.id}`);
+
+      // wait for chart to expand and display legend/labels
+      cy.contains("Loading..."); // this gives more time to load
+      cy.contains("Gadget");
+      cy.contains("January, 2017");
+      cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
+
+      // drag across to filter
+      cy.get(".dc-chart svg")
+        .trigger("mousedown", 100, 200)
+        .trigger("mousemove", 200, 200)
+        .trigger("mouseup", 200, 200);
+
+      // new filter applied
+      cy.contains("Created At between May, 2016 July, 2016");
+      // more granular axis labels
+      cy.contains("June, 2016");
+      // confirm that product category is still broken out
+      cy.contains("Gadget");
+      cy.contains("Doohickey");
+      cy.contains("Gizmo");
+      cy.contains("Widget");
+    });
+  });
+
+  it.skip("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
+    cy.log("**--1. Create the first question--**");
+
+    cy.request("POST", "/api/card", {
+      name: "13457_Q1",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+      visualization_settings: {},
+    }).then(({ body: { id: Q1_ID } }) => {
+      cy.log("**--2. Create the second question--**");
+
+      cy.request("POST", "/api/card", {
+        name: "13457_Q2",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["avg", ["field-id", ORDERS.DISCOUNT]],
+              ["avg", ["field-id", ORDERS.QUANTITY]],
+            ],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
             ],
           },
           type: "query",
         },
         display: "line",
         visualization_settings: {},
-      }).then(response => {
-        cy.visit(`/question/${response.body.id}`);
+      }).then(({ body: { id: Q2_ID } }) => {
+        cy.log("**--3. Create a dashboard--**");
 
-        // wait for chart to expand and display legend/labels
-        cy.contains("Loading..."); // this gives more time to load
-        cy.contains("Gadget");
-        cy.contains("January, 2017");
-        cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
+        cy.request("POST", "/api/dashboard", {
+          name: "13457D",
+        }).then(({ body: { id: DASHBOARD_ID } }) => {
+          cy.log("**--4. Add the first question to the dashboard--**");
 
-        // drag across to filter
-        cy.get(".dc-chart svg")
-          .trigger("mousedown", 100, 200)
-          .trigger("mousemove", 200, 200)
-          .trigger("mouseup", 200, 200);
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: Q1_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            cy.log(
+              "**--5. Add additional series combining it with the second question--**",
+            );
 
-        // new filter applied
-        cy.contains("Created At between May, 2016 July, 2016");
-        // more granular axis labels
-        cy.contains("June, 2016");
-        // confirm that product category is still broken out
-        cy.contains("Gadget");
-        cy.contains("Doohickey");
-        cy.contains("Gizmo");
-        cy.contains("Widget");
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: Q1_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 16,
+                  sizeY: 12,
+                  series: [
+                    {
+                      id: Q2_ID,
+                      model: "card",
+                    },
+                  ],
+                  visualization_settings: {},
+                  parameter_mappings: [],
+                },
+              ],
+            });
+          });
+
+          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+          cy.log("**The first series line**");
+          cy.get(".sub.enable-dots._0")
+            .find(".dot")
+            .eq(0)
+            .click({ force: true });
+          cy.findByText(/Zoom in/i);
+          cy.findByText(/View these Orders/i);
+
+          // Click anywhere else to close the first action panel
+          cy.findByText("13457D").click();
+
+          // Second line from the second question
+          cy.log("**The third series line**");
+          cy.get(".sub.enable-dots._2")
+            .find(".dot")
+            .eq(0)
+            .click({ force: true });
+          cy.findByText(/Zoom in/i);
+          cy.findByText(/View these Orders/i);
+        });
       });
     });
   });
@@ -84,7 +190,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       visualization_settings: {},
       dataset_query: {
         database: 1,
-        query: { "source-table": 3, limit: 5 },
+        query: { "source-table": PEOPLE_ID, limit: 5 },
         type: "query",
       },
     });
@@ -118,21 +224,19 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
   it.skip("should drill through a with date filter (metabase#12496)", () => {
     // save a question of orders by week
-    withSampleDataset(({ ORDERS }) => {
-      cy.request("POST", "/api/card", {
-        name: "Orders by Created At: Week",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": 2,
-            aggregation: [["count"]],
-            breakout: [["datetime-field", ORDERS.CREATED_AT, "week"]],
-          },
-          type: "query",
+    cy.request("POST", "/api/card", {
+      name: "Orders by Created At: Week",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["datetime-field", ORDERS.CREATED_AT, "week"]],
         },
-        display: "line",
-        visualization_settings: {},
-      });
+        type: "query",
+      },
+      display: "line",
+      visualization_settings: {},
     });
 
     // Load the question up
@@ -155,8 +259,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     cy.findByText("Summarize").click();
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();

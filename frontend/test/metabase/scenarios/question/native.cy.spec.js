@@ -3,8 +3,11 @@ import {
   restore,
   popover,
   modal,
-  withSampleDataset,
 } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS } = SAMPLE_DATASET;
 
 describe("scenarios > question > native", () => {
   before(restore);
@@ -158,36 +161,34 @@ describe("scenarios > question > native", () => {
   });
 
   it("can load a question with a date filter (from issue metabase#12228)", () => {
-    withSampleDataset(({ ORDERS }) => {
-      cy.request("POST", "/api/card", {
-        name: "Test Question",
-        dataset_query: {
-          type: "native",
-          native: {
-            query: "select count(*) from orders where {{created_at}}",
-            "template-tags": {
-              created_at: {
-                id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-                name: "created_at",
-                "display-name": "Created at",
-                type: "dimension",
-                dimension: ["field-id", ORDERS.CREATED_AT],
-                "widget-type": "date/month-year",
-              },
+    cy.request("POST", "/api/card", {
+      name: "Test Question",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: "select count(*) from orders where {{created_at}}",
+          "template-tags": {
+            created_at: {
+              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+              name: "created_at",
+              "display-name": "Created at",
+              type: "dimension",
+              dimension: ["field-id", ORDERS.CREATED_AT],
+              "widget-type": "date/month-year",
             },
           },
-          database: 1,
         },
-        display: "scalar",
-        description: null,
-        visualization_settings: {},
-        collection_id: null,
-        result_metadata: null,
-        metadata_checksum: null,
-      }).then(response => {
-        cy.visit(`/question/${response.body.id}?created_at=2020-01`);
-        cy.contains("580");
-      });
+        database: 1,
+      },
+      display: "scalar",
+      description: null,
+      visualization_settings: {},
+      collection_id: null,
+      result_metadata: null,
+      metadata_checksum: null,
+    }).then(response => {
+      cy.visit(`/question/${response.body.id}?created_at=2020-01`);
+      cy.contains("580");
     });
   });
 

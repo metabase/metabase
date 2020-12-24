@@ -167,9 +167,21 @@
   (hx/+ (hsql/raw "timestamp '1970-01-01 00:00:00 UTC'")
         (num-to-ds-interval :second field-or-value)))
 
+(defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateTimeString]
+  [_driver _special_type expr]
+  (hsql/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
+
+(defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateString]
+  [_driver _special_type expr]
+  (hsql/call :to_date expr "YYYY-MM-DD"))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]
   (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :microseconds]
+  [driver _ field-or-value]
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
 
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.

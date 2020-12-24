@@ -109,6 +109,13 @@
 (derive :type/UNIXTimestamp :type/Integer)
 (derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
+(derive :type/UNIXTimestampMicroseconds :type/UNIXTimestamp)
+
+(derive :type/TemporalString :type/Text)
+(derive :type/TemporalString :type/DateTime)
+(derive :type/ISO8601DateTimeString :type/TemporalString)
+(derive :type/ISO8601DateString :type/TemporalString)
+(derive :type/ISO8601TimeString :type/TemporalString)
 
 (derive :type/CreationTimestamp :type/DateTime)
 (derive :type/CreationTime :type/Time)

@@ -7,7 +7,8 @@
             [metabase.models
              [card :refer [Card]]
              [dashboard-card-series :refer [DashboardCardSeries]]
-             [interface :as i]]
+             [interface :as i]
+             [pulse-card :refer [PulseCard]]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -166,5 +167,7 @@
   {:pre [(map? dashboard-card)
          (integer? user-id)]}
   (let [{:keys [id]} (dashboard dashboard-card)]
-    (db/delete! DashboardCard :id (:id dashboard-card))
+    (db/transaction
+      (db/delete! PulseCard :dashboard_card_id (:id dashboard-card))
+      (db/delete! DashboardCard :id (:id dashboard-card)))
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))

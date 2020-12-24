@@ -660,11 +660,12 @@
           (letfn [(dimension-options []
                     (let [response ((mt/user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
                       (map #(dimension-options-for-field response %) ["latitude" "longitude"])))]
-            (testing "Nested queries missing a fingerprint should not show binning-options"
-              ;; By default result_metadata will be nil (and no fingerprint). Just asking for query_metadata after the
-              ;; card was created but before it was ran should not allow binning
-              (is (= [nil nil]
-                     (dimension-options))))
+            (testing "Nested queries missing a fingerprint/results metadata should not show binning-options"
+              (mt/with-temp-vals-in-db Card (:id card) {:result_metadata nil}
+                ;; By default result_metadata will be nil (and no fingerprint). Just asking for query_metadata after the
+                ;; card was created but before it was ran should not allow binning
+                (is (= [nil nil]
+                       (dimension-options)))))
 
             (testing "Nested queries with a fingerprint should have dimension options for binning"
               ;; run the Card which will populate its result_metadata column

@@ -87,7 +87,7 @@ const CollectionItem = props => {
 };
 
 CollectionItem.defaultProps = {
-  iconName: "all",
+  iconName: "folder",
 };
 
 export default CollectionItem;

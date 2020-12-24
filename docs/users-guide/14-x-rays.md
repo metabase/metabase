@@ -10,11 +10,11 @@ One great way to explore your data in general in Metabase is to click on points 
 
 ### Comparisons
 
-When you click on a bar or point on a chart, you can now also choose the Compare action from the menu that pops up to see how the thing you've clicked on compares to the rest of the data.
+To see how the value of a bar, point, or geographic region compares to the rest of the data, click on it to pull up the action menu, then select **Compare to the rest**.
 
 ![Compare menu](images/x-rays/x-ray-compare-popover.png)
 
-If you're already looking at an X-ray of a table or a segment, Metabase will also give you the option to compare the current table or segment to other segments of the table, if there are any. This is a very fast, powerful way to see, for example, how different segments of your users or orders compare to each other.
+If you're already looking at an X-ray of a table or a segment, Metabase will also give you the option to compare the current table or segment to other segments of the table, if there are any. This is a fast, powerful way to see, for example, how different segments of your users or orders compare to each other.
 
 ![Comparison](images/x-rays/x-ray-comparison-1.png)
 ![Comparison](images/x-rays/x-ray-comparison-2.png)
@@ -25,9 +25,9 @@ Another great way to get to know your data is by X-raying your tables. From the 
 
 ## X-rays in the data browser and data reference
 
-You can also view an x-ray by browsing to a table and clicking on the lightning bolt icon. Click on the `Browse Data` button in the top navigation, select a database, and hover over a table to see the icon.
+You can also view an X-ray by browsing to a table and clicking on the lightning bolt icon. Click on the `Browse Data` button in the top navigation, select a database, and hover over a table to see the icon.
 
-From the Browse Data page, you can also click on `Learn about our data` to view the Data Reference section. From here you can navigate through databases, tables, columns, metrics, or segments, and you can click on the x-ray link in the left sidebar to see an X-ray of the item you're currently viewing.
+From the Browse Data page, you can also click on `Learn about our data` to view the Data Reference section. From here you can navigate through databases, tables, columns, metrics, or segments, and you can click on the X-ray link in the left sidebar to see an X-ray of the item you're currently viewing.
 
 ![Data Reference X-ray](images/x-rays/data-reference.png)
 

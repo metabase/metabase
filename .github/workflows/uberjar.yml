@@ -1,0 +1,138 @@
+name: Uberjar
+
+on:
+  push:
+    branches:
+      - master
+      - 'release-**'
+    tags:
+      - '**'
+    paths-ignore:
+    - 'docs/**'
+    - 'frontend/test/**'
+    - 'enterprise/frontend/test/**'
+
+jobs:
+
+  build:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        edition: [ee, oss]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Prepare JDK 8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 8
+    - name: Install gettext
+      run: sudo apt install gettext
+    - name: Install Clojure CLI
+      run: |
+        curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
+        sudo bash ./linux-install-1.10.1.708.sh
+    - name: Check versions
+      run: |
+        echo "Node.js `node --version`"
+        echo "yarn `yarn --version`"
+        java -version
+        echo "Clojure `clojure -e "(println (clojure-version))"`"
+        lein --version
+        msgfmt --version
+
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}-${{ hashFiles('**/deps.edn') }}
+
+    - run: yarn install --lockfile
+    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+${{ matrix.edition }} deps
+    - run: ./bin/build
+
+    - name: Mark with the commit hash
+      run:  git rev-parse --short HEAD > COMMIT-ID
+    - name: Calculate SHA256 checksum
+      run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+    - name: Upload JARs as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+        path: |
+          ./target/uberjar/metabase.jar
+          ./COMMIT-ID
+          ./SHA256.sum
+
+  check:
+    runs-on: ubuntu-20.04
+    name: check ${{ matrix.edition }} (java ${{ matrix.java-version }})
+    needs: build
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        edition: [ee, oss]
+        java-version: [8, 11, 13]
+    steps:
+    - name: Prepare JRE (Java Run-time Environment)
+      uses: actions/setup-java@v1
+      with:
+        java-package: jre
+        java-version: ${{ matrix.java-version }}
+    - run: java -version
+
+    - uses: actions/download-artifact@v2
+      name: Retrieve uberjar artifact
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+
+    - name: Launch uberjar
+      run: |
+        java -jar ./target/uberjar/metabase.jar &
+        sleep 180
+      timeout-minutes: 5
+
+    - name: Check API health
+      run: curl -s localhost:3000/api/health
+
+  known-issue-java15:
+    runs-on: ubuntu-20.04
+    needs: build
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        edition: [ee, oss]
+    steps:
+    - name: Prepare JRE 15
+      uses: actions/setup-java@v1
+      with:
+        java-package: jre
+        java-version: 15
+    - run: java -version
+
+    - uses: actions/download-artifact@v2
+      name: Retrieve uberjar artifact
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+
+    - name: Launch uberjar
+      run: |
+        java -jar ./target/uberjar/metabase.jar &
+        sleep 180
+      timeout-minutes: 5
+
+    - name: Check API health
+      run: curl -s localhost:3000/api/health
+      continue-on-error: true

@@ -132,6 +132,9 @@
   (let [field-name (str \$ (field->name field "."))]
     (cond
       ;; TIMEZONE FIXME — use `java.time` classes
+      (isa? (:special_type field) :type/UNIXTimestampMicroseconds)
+      {$add [(java.util.Date. 0) {$divide [field-name 1000]}]}
+
       (isa? (:special_type field) :type/UNIXTimestampMilliseconds)
       {$add [(java.util.Date. 0) field-name]}
 
