@@ -3,6 +3,7 @@
 //  - frontend/test/metabase/admin/people/containers/PeopleListingApp.integ.spec.js
 //  - frontend/test/metabase/admin/people/containers/GroupDetailApp.integ.spec.js
 //  - frontend/test/metabase/admin/people/containers/UserActivationModal.integ.spec.js
+//  - frontend/test/metabase/admin/people/containers/UserPasswordResetModal.integ.spec.js
 import { before } from "underscore";
 import {
   signInAsAdmin,
@@ -11,6 +12,7 @@ import {
   USERS,
   USER_GROUPS,
 } from "__support__/cypress";
+import { modal } from "../../../../__support__/cypress";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
@@ -162,6 +164,45 @@ describe("scenarios > admin > people", () => {
 
       clickButton("Update");
       cy.findByText(NEW_FULL_NAME);
+    });
+
+    it("should reset user password without SMTP set up", () => {
+      const { first_name, last_name } = normal;
+      const FULL_NAME = `${first_name} ${last_name}`;
+
+      cy.visit("/admin/people");
+      getUserOptions(FULL_NAME);
+      cy.findByText("Reset password").click();
+      cy.findByText(`Reset ${FULL_NAME}'s password?`);
+      clickButton("Reset password");
+      cy.findByText(`${first_name}'s password has been reset`);
+      cy.findByText(/^temporary password$/i);
+      clickButton("Done");
+    });
+
+    it("should reset user password with SMTP set up", () => {
+      const { first_name, last_name } = normal;
+      const FULL_NAME = `${first_name} ${last_name}`;
+
+      // Dummy SMTP setup
+      cy.request("PUT", "/api/setting", {
+        "email-smtp-host": "smtp.foo.test",
+        "email-smtp-port": "587",
+        "email-smtp-security": "none",
+        "email-smtp-username": "nevermind",
+        "email-smtp-password": "it-is-secret-NOT",
+        "email-from-address": "nonexisting@metabase.test",
+      });
+
+      cy.visit("/admin/people");
+      getUserOptions(FULL_NAME);
+      cy.findByText("Reset password").click();
+      cy.findByText(`Reset ${FULL_NAME}'s password?`);
+      clickButton("Reset password");
+      cy.findByText(`${first_name}'s password has been reset`).should(
+        "not.exist",
+      );
+      cy.findByText(/^temporary password$/i).should("not.exist");
     });
   });
 });
