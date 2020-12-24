@@ -4,6 +4,7 @@ jest.unmock("metabase/components/ExplicitSize");
 
 import React from "react";
 import renderer from "react-test-renderer";
+// TODO: re-write using React Testing Library (Enzyme is removed!)
 import { render } from "enzyme";
 import { assocIn } from "icepick";
 
