@@ -1,5 +1,5 @@
 import React from "react";
-import { shallow } from "enzyme";
+import { render, screen } from "@testing-library/react";
 
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import Question from "metabase-lib/lib/Question";
@@ -33,11 +33,14 @@ describe("GuiQueryEditor", () => {
       .query()
       .aggregate(["count"]);
 
-    const component = shallow(getGuiQueryEditor(query));
+    render(getGuiQueryEditor(query));
+    const ADD_ICONS = screen.getAllByRole("img", { name: /add/i });
 
-    // The add button is a BreakoutWidget React component
-    expect(component.find("BreakoutWidget").length).toBe(1);
+    screen.getByText("Add a grouping");
+    // 1. Filter, 2. Count, 3. Group-by
+    expect(ADD_ICONS.length).toBe(3);
   });
+
   it("should allow adding more than one breakout", () => {
     const query: StructuredQuery = Question.create({
       databaseId: SAMPLE_DATASET.id,
@@ -48,9 +51,12 @@ describe("GuiQueryEditor", () => {
       .aggregate(["count"])
       .breakout(["field-id", ORDERS.TOTAL.id]);
 
-    const component = shallow(getGuiQueryEditor(query));
+    render(getGuiQueryEditor(query));
+    const ADD_ICONS = screen.getAllByRole("img", { name: /add/i });
 
-    // Both the first breakout and the add button which both are the same BreakoutWidget React component
-    expect(component.find("BreakoutWidget").length).toBe(2);
+    screen.getByText("Total");
+    screen.getByRole("img", { name: /close/i }); // Now we can close the first breakout
+    // 1. Filter, 2. Count, 3. Group-by (new add icon after the first breakout)
+    expect(ADD_ICONS.length).toBe(3);
   });
 });
