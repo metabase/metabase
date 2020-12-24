@@ -4,7 +4,6 @@
 //  - frontend/test/metabase/admin/people/containers/GroupDetailApp.integ.spec.js
 //  - frontend/test/metabase/admin/people/containers/UserActivationModal.integ.spec.js
 //  - frontend/test/metabase/admin/people/containers/UserPasswordResetModal.integ.spec.js
-import { before } from "underscore";
 import {
   signInAsAdmin,
   restore,
@@ -12,7 +11,6 @@ import {
   USERS,
   USER_GROUPS,
 } from "__support__/cypress";
-import { modal } from "../../../../__support__/cypress";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
