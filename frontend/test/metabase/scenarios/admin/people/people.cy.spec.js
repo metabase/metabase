@@ -2,6 +2,8 @@
 //  - frontend/test/metabase/admin/people/containers/EditUserModal.integ.spec.js
 //  - frontend/test/metabase/admin/people/containers/PeopleListingApp.integ.spec.js
 //  - frontend/test/metabase/admin/people/containers/GroupDetailApp.integ.spec.js
+//  - frontend/test/metabase/admin/people/containers/UserActivationModal.integ.spec.js
+import { before } from "underscore";
 import {
   signInAsAdmin,
   restore,
@@ -63,7 +65,7 @@ describe("scenarios > admin > people", () => {
       cy.get("@result-rows").should("have.length", 5);
     });
 
-    it.only("should load the members when navigating to the group directly", () => {
+    it("should load the members when navigating to the group directly", () => {
       cy.visit(`/admin/people/groups/${DATA_GROUP}`);
       cy.findByText("No Collection Tableton");
       cy.findByText("Robert Tableton");
@@ -116,7 +118,7 @@ describe("scenarios > admin > people", () => {
       });
     });
 
-    it("should allow admin to deactivate other admins", () => {
+    it("should allow admin to deactivate and reactivate other admins/users", () => {
       // Turn a random existing user into an admin
       cy.request("PUT", "/api/user/2", {
         is_superuser: true,
@@ -133,6 +135,13 @@ describe("scenarios > admin > people", () => {
 
         cy.log("**-- It should load inactive users --**");
         cy.findByText("Deactivated").click();
+        cy.findByText(FULL_NAME);
+        cy.get(".Icon-refresh").click();
+        cy.findByText(`Reactivate ${FULL_NAME}?`);
+        clickButton("Reactivate");
+        // It redirects to all people listing
+        cy.findByText("Deactivated").should("not.exist");
+        cy.findByText("Add someone");
         cy.findByText(FULL_NAME);
       });
     });
