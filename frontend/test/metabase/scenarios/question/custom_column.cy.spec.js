@@ -334,4 +334,46 @@ describe("scenarios > question > custom columns", () => {
       cy.get(".Visualization .dot").should("have.length.of.at.least", 8);
     });
   });
+
+  it.skip("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
+    const CC_NAME = "Double the fun";
+
+    cy.request("POST", "/api/card", {
+      name: "14193",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
+            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+            ],
+          },
+          expressions: {
+            [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+          },
+        },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      // Test displays collapsed filter - click on number 1 to expand and show the filter name
+      cy.get(".Icon-filter")
+        .parent()
+        .contains("1")
+        .click();
+
+      cy.findByText(/Subtotal is greater than 0/i)
+        .parent()
+        .find(".Icon-close")
+        .click();
+
+      cy.findByText(CC_NAME);
+    });
+  });
 });
