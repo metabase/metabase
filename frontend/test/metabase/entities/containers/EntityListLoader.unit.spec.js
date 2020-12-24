@@ -1,6 +1,6 @@
 import React from "react";
 
-import { mount } from "enzyme";
+import { render } from "@testing-library/react";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import { Provider } from "react-redux";
 
@@ -26,7 +26,7 @@ describe("EntityListLoader", () => {
 
   describe("with entityType of search", () => {
     it("should handle object entityQuery", async () => {
-      mount(
+      render(
         <MockEntityProvider>
           <EntityListLoader
             entityType="search"
@@ -40,7 +40,7 @@ describe("EntityListLoader", () => {
     });
 
     it("should handle function entityQuery", async () => {
-      mount(
+      render(
         <MockEntityProvider>
           <EntityListLoader
             entityType="search"
