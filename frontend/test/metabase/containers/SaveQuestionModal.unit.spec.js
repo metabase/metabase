@@ -1,5 +1,5 @@
 import React from "react";
-import { mount } from "enzyme";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Question from "metabase-lib/lib/Question";
@@ -15,11 +15,11 @@ import { createStore, combineReducers } from "redux";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
 
-const mountSaveQuestionModal = (question, originalQuestion) => {
+const renderSaveQuestionModal = (question, originalQuestion) => {
   const store = createStore(combineReducers({ form }));
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
-  const component = mount(
+  render(
     <Provider store={store}>
       <SaveQuestionModal
         card={question.card()}
@@ -31,7 +31,7 @@ const mountSaveQuestionModal = (question, originalQuestion) => {
       />
     </Provider>,
   );
-  return { store, component, onSaveMock, onCreateMock };
+  return { store, onSaveMock, onCreateMock };
 };
 
 describe("SaveQuestionModal", () => {
@@ -46,13 +46,12 @@ describe("SaveQuestionModal", () => {
       .question();
 
     // Use the count aggregation as an example case (this is equally valid for filters and groupings)
-    const { component, onCreateMock } = mountSaveQuestionModal(
-      newQuestion,
-      null,
-    );
-    component.find("button[type='submit']").simulate("click");
+    const { onCreateMock } = renderSaveQuestionModal(newQuestion, null);
+
+    fireEvent.click(screen.getByText("Save"));
     expect(onCreateMock.mock.calls).toHaveLength(1);
   });
+
   it("should call onSave correctly for a dirty, saved question", async () => {
     const originalQuestion = Question.create({
       databaseId: SAMPLE_DATASET.id,
@@ -71,11 +70,11 @@ describe("SaveQuestionModal", () => {
       .question();
 
     // Use the count aggregation as an example case (this is equally valid for filters and groupings)
-    const { component, onSaveMock } = mountSaveQuestionModal(
+    const { onSaveMock } = renderSaveQuestionModal(
       dirtyQuestion,
       originalQuestion,
     );
-    component.find("button[type='submit']").simulate("click");
+    fireEvent.click(screen.getByText("Save"));
     expect(onSaveMock.mock.calls.length).toBe(1);
   });
 
@@ -100,11 +99,11 @@ describe("SaveQuestionModal", () => {
       .breakout(["field-id", ORDERS.TOTAL.id])
       .question();
 
-    const { component, onSaveMock } = mountSaveQuestionModal(
+    const { onSaveMock } = renderSaveQuestionModal(
       dirtyQuestion,
       originalQuestion,
     );
-    component.find("button[type='submit']").simulate("click");
+    fireEvent.click(screen.getByText("Save"));
     expect(onSaveMock.mock.calls[0][0].collection_id).toEqual(5);
   });
 });
