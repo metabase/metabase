@@ -42,6 +42,10 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Emailed daily at 8:00 AM").click();
     cy.findByText("Delete this subscription").scrollIntoView();
     cy.findByText("Questions to attach");
-    cy.findByText("Orders");
+    cy.findAllByRole("listitem")
+      .contains("Orders") // yields the whole <li> element
+      .within(() => {
+        cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
+      });
   });
 });
