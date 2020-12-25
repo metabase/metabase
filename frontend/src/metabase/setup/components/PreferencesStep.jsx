@@ -90,6 +90,7 @@ export default class PreferencesStep extends Component {
                 className="link"
                 href={MetabaseSettings.docsUrl("information-collection")}
                 target="_blank"
+                rel="noreferrer"
               >{t`Here's a full list of everything we track and why.`}</a>
             </div>
 

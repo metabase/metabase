@@ -157,6 +157,7 @@ const RenderedPulseCardPreview = ({ href, children }) => (
       textDecoration: "none",
     }}
     target="_blank"
+    rel="noreferrer"
   >
     {children}
   </a>

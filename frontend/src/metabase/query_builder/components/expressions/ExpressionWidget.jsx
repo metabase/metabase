@@ -66,6 +66,7 @@ export default class ExpressionWidget extends Component {
               <a
                 className="link"
                 target="_blank"
+                rel="noreferrer"
                 href={MetabaseSettings.docsUrl(
                   "users-guide/custom-questions",
                   "creating-custom-columns",

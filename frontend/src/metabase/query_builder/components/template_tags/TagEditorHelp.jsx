@@ -297,6 +297,7 @@ const TagEditorHelp = ({
         <a
           href={MetabaseSettings.docsUrl("users-guide/13-sql-parameters")}
           target="_blank"
+          rel="noreferrer"
           data-metabase-event="QueryBuilder;Template Tag Documentation Click"
         >{t`Read the full documentation`}</a>
       </p>

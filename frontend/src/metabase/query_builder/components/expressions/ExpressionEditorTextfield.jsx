@@ -64,6 +64,7 @@ const HelpText = ({ helpText, width }) =>
         <a
           className="link text-bold block my1"
           target="_blank"
+          rel="noreferrer"
           href={MetabaseSettings.docsUrl("users-guide/expressions")}
         >
           <Icon name="reference" size={12} className="mr1" />

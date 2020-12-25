@@ -63,6 +63,7 @@ export default class Setup extends Component {
           className="link"
           href={MetabaseSettings.docsUrl("setting-up-metabase")}
           target="_blank"
+          rel="noreferrer"
         >{t`our getting started guide`}</a>{" "}
         {t`is just a click away.`}
       </div>

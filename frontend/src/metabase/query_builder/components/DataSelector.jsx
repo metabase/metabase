@@ -905,6 +905,7 @@ const TablePicker = ({
                 "picking-your-starting-data",
               )}
               target="_blank"
+              rel="noreferrer"
               className="block link"
             >{t`Learn more about nested queries`}</a>
           </div>

@@ -56,6 +56,7 @@ const PremiumExplanation = ({ showEnterScreen }) => (
         className="link mx1"
         href={PREMIUM_EMBEDDING_STORE_URL}
         target="_blank"
+        rel="noreferrer"
       >
         {t`Buy a token`}
       </a>
