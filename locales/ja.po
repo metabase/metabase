@@ -13228,7 +13228,7 @@ msgstr "データベース{0}に対する定期タスクのスケジューリン
 msgid "All elements must be distinct."
 msgstr "全ての項目が一意でなければなりません"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "含めたい列を選ぶ"
@@ -14952,8 +14952,7 @@ msgstr "個々のフィールドに入力します"
 
 #: frontend/src/metabase/entities/snippets.js:10
 msgid "Enter some SQL here so you can reuse it later"
-msgstr "ここにSQLを入力して、後で再利用できるようにします\n"
-""
+msgstr "ここにSQLを入力して、後で再利用できるようにします"
 
 #: frontend/src/metabase/entities/snippets.js:20
 msgid "Give your snippet a name"
@@ -17615,21 +17614,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "豆類は淘汰されつつある"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "代わりに{0}を設定できるようになりました。Pulses は将来のリリースで削除し、まだ持っているものは移行するようにします。"
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "ダッシュボード購読"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "サブスクリプションの{0}チャートは、ダッシュボードと同じように表示されません。{1}"
-

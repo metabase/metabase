@@ -271,9 +271,7 @@ msgstr "بررسی انجام نگرفت"
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:92
 msgid "Scan triggered!"
-msgstr "اسکن شروع شد\n"
-"\n"
-""
+msgstr "اسکن شروع شد"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:233
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:400
@@ -9678,13 +9676,11 @@ msgstr "HH:MM"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:251
 msgid "HH:MM:SS"
-msgstr "HH:MM:SS\n"
-""
+msgstr "HH:MM:SS"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:254
 msgid "HH:MM:SS.MS"
-msgstr "HH:MM:SS.MS\n"
-""
+msgstr "HH:MM:SS.MS"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:265
 msgid "Time style"
@@ -9958,8 +9954,7 @@ msgstr "فقط یک بخش Google Analytics به طور همزمان مجاز ا
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "MONGO AGGREGATION PIPELINE:"
-msgstr "MONGO AGGREGATION PIPELINE:\n"
-""
+msgstr ":خط لوله تجمع مونگو"
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "Error: mismatched columns in results! Expected: {0} Got: {1}"
@@ -10335,8 +10330,7 @@ msgstr "رویدادها در هر ساعت از روز"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Singleton]]"
-msgstr "[[Singleton]]\n"
-""
+msgstr "[[Singleton]]"
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Country.yaml
@@ -10837,8 +10831,7 @@ msgstr "10 کشور برتر با فروش"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Timestamp]]"
-msgstr "[[Timestamp]]\n"
-""
+msgstr "[[Timestamp]]"
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Where these transactions happened"
@@ -11506,8 +11499,7 @@ msgstr "کلاس"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
 msgid "Triggers"
-msgstr "ماشه ها\n"
-""
+msgstr "ماشه ها"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
 msgid "View triggers"
@@ -11876,8 +11868,7 @@ msgstr "بانک اطلاعاتی نمی توانند در دایرکتوری م
 
 #: src/metabase/plugins.clj
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory.\n"
-""
+msgstr "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
 
 #: src/metabase/plugins.clj
 msgid "Failied to initialize plugin {0}"
@@ -12187,8 +12178,7 @@ msgstr "[[CreateTimestamp]] تا چهارم سال"
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How they compare across location"
-msgstr "نحوه مقایسه انها در سراسر مکان یا نحوه مقایه انها بر اساس موقعیت مکانی\n"
-""
+msgstr "نحوه مقایسه انها در سراسر مکان یا نحوه مقایه انها بر اساس موقعیت مکانی"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "Here's a closer look at your [[this]] by products"
@@ -12361,12 +12351,11 @@ msgstr "{0} به اتمام رسید به {1}"
 
 #: src/metabase/api/metric.clj
 msgid "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."
-msgstr "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id.\n"
-""
+msgstr "DELETE / api / metric /: شناسه منسوخ شده است. درعوض ، مقدار «بایگانی شده» آن را از طریق PUT / api / metric /: id تغییر دهید."
 
 #: src/metabase/api/segment.clj
 msgid "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."
-msgstr "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."
+msgstr "DELETE / api / segment /: شناسه منسوخ شده است. درعوض ، مقدار «بایگانی شده» آن را از طریق PUT / api / segment /: id تغییر دهید."
 
 #: src/metabase/api/user.clj
 msgid "Value of is_superuser must correspond to presence of Admin group ID in group_ids."
@@ -12699,8 +12688,7 @@ msgstr "تجمیع"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:68
 msgid "Breakout"
-msgstr "Breakout\n"
-""
+msgstr "برک آوت"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/AggregateStep.jsx:18
 msgid "Pick the metric you want to see"
@@ -12853,8 +12841,7 @@ msgstr "این معمولاً خیلی سریع است اما به نظر می �
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:17
 msgid "Combo"
-msgstr "Combo\n"
-""
+msgstr "ترکیبی"
 
 #: frontend/src/metabase/visualizations/visualizations/RowChart.jsx:13
 msgid "Row"
@@ -12866,7 +12853,7 @@ msgstr "روند"
 
 #: frontend/src/metabase-lib/lib/DimensionOptions.js:129
 msgid "Boolean"
-msgstr "Boolean"
+msgstr "بولی"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.js:62
 msgid "Unknown Segment"
@@ -13101,16 +13088,16 @@ msgstr "جمع {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "SD of {0}"
-msgstr "SD of {0}"
+msgstr "انحراف معیار {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Min of {0}"
-msgstr "Min of {0}\n"
+msgstr "حداقل {0}"
 ""
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Max of {0}"
-msgstr "Max of {0}"
+msgstr "حداکثر {0}"
 
 #. until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
 #: src/metabase/query_processor/middleware/annotate.clj
@@ -13273,7 +13260,7 @@ msgstr "برنامه ریزی وظایف برای بانک اطلاعات {0} ا
 msgid "All elements must be distinct."
 msgstr "همه عناصر باید مشخص باشند."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "ستون هایی را که می خواهید گنجانید انتخاب کنید"
@@ -13827,8 +13814,7 @@ msgstr "لطفاً این جزئیات را در درخواستهای پشتیب
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:37
 msgid "youlooknicetoday@email.com"
-msgstr "youlooknicetoday@email.com\n"
-""
+msgstr "youlooknicetoday@email.com"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:50
 msgid "Remember me"
@@ -17664,21 +17650,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "ضربان ها به تدریج خارج می شوند"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "به جای آن می توانید {0} را تنظیم کنید. ما در نسخه بعدی Pulses را حذف خواهیم کرد و به شما کمک می کنیم هر آنچه را که هنوز دارید حمل کنید."
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "اشتراک داشبورد"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} نمودارهای اشتراک شما همانند داشبورد شما به نظر نمی رسند. {1}"
-

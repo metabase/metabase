@@ -13223,7 +13223,7 @@ msgstr "資料庫任務調度失敗"
 msgid "All elements must be distinct."
 msgstr "所有元素必須唯一"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "選擇需要包含的欄位"
@@ -13849,20 +13849,18 @@ msgstr "密碼不符合"
 
 #: frontend/src/metabase/entities/users/forms.js:86
 msgid "Department of Awesome"
-msgstr "Department of Awesome"
+msgstr "很棒的系"
 
 #: frontend/src/metabase/lib/core.js:88 frontend/src/metabase/lib/core.js:93
 #: frontend/src/metabase/lib/core.js:98 frontend/src/metabase/lib/core.js:103
 #: frontend/src/metabase/lib/core.js:108 frontend/src/metabase/lib/core.js:113
 msgid "Financial"
-msgstr "Financial"
+msgstr "金融"
 
 #: frontend/src/metabase/lib/core.js:120 frontend/src/metabase/lib/core.js:125
 #: frontend/src/metabase/lib/core.js:130
 msgid "Numeric"
-msgstr "\n"
-"Numeric\n"
-""
+msgstr "數字"
 
 #: frontend/src/metabase/lib/core.js:169 frontend/src/metabase/lib/core.js:174
 #: frontend/src/metabase/lib/core.js:179 frontend/src/metabase/lib/core.js:184
@@ -13874,19 +13872,17 @@ msgstr "\n"
 #: frontend/src/metabase/lib/core.js:239 frontend/src/metabase/lib/core.js:244
 #: frontend/src/metabase/lib/core.js:249
 msgid "Date and Time"
-msgstr "\n"
-"Date and Time\n"
-""
+msgstr "日期和時間"
 
 #: frontend/src/metabase/lib/core.js:256 frontend/src/metabase/lib/core.js:261
 #: frontend/src/metabase/lib/core.js:266
 msgid "Categorical"
-msgstr "Categorical"
+msgstr "分類的"
 
 #: frontend/src/metabase/lib/core.js:273 frontend/src/metabase/lib/core.js:278
 #: frontend/src/metabase/lib/core.js:283
 msgid "URLs"
-msgstr "URLs"
+msgstr "網址"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:59
 msgid "Returns the average of the values in the column."
@@ -13900,14 +13896,12 @@ msgstr "此欄位的值要計算平均"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:431
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:439
 msgid "start"
-msgstr "\n"
-"start"
+msgstr "開始"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:431
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:440
 msgid "end"
-msgstr "\n"
-"end"
+msgstr "結束"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:16
 msgid "Checks a date or numeric column's values to see if they're within the specified range."
@@ -13915,8 +13909,7 @@ msgstr "檢查欄位資料看看數值是否符合特定範圍"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:17
 msgid "Rating"
-msgstr "\n"
-"Rating"
+msgstr "評分"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:94
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:99
@@ -13927,34 +13920,33 @@ msgstr "\n"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:486
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:502
 msgid "condition"
-msgstr "\n"
-"condition"
+msgstr "健康）狀況"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:486
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:506
 msgid "output"
-msgstr "output"
+msgstr "輸出"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:34
 msgid "Tests a list of cases and returns the corresponding value of the first true case, with an optional default value if nothing else is met."
-msgstr "Tests a list of cases and returns the corresponding value of the first true case, with an optional default value if nothing else is met"
+msgstr "測試案例列表並返回第一個真實案例的對應值，如果不滿足其他條件，則返回一個可選的默認值。"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:490
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:494
 msgid "Weight"
-msgstr "Weight"
+msgstr "重量"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:492
 msgid "Large"
-msgstr "Large"
+msgstr "大"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:496
 msgid "Medium"
-msgstr "Medium"
+msgstr "中"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:498
 msgid "Small"
-msgstr "Small"
+msgstr "最小的"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:100
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:112
@@ -14195,8 +14187,7 @@ msgstr "返回此欄位的最大值"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:84
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:152
 msgid "Age"
-msgstr "\n"
-"Age"
+msgstr "年齡"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:88
 msgid "The numeric column whose maximum you want to find."
@@ -14208,7 +14199,7 @@ msgstr "返回此欄位的最小值"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:72
 msgid "Salary"
-msgstr "Salary"
+msgstr "薪水"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:76
 msgid "The numeric column whose minimum you want to find."
@@ -14217,18 +14208,17 @@ msgstr "數值欄位中欲尋找的最小值"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:203
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:212
 msgid "position"
-msgstr "position"
+msgstr "位置"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:203
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:215
 msgid "length"
-msgstr "\n"
-"length"
+msgstr "長度"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:185
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:196
 msgid "new_text"
-msgstr "new_text"
+msgstr "新文字"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:247
 msgid "Replaces a part of the input text with new text."
@@ -14236,7 +14226,7 @@ msgstr "以新文字替換部分輸入文字"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:189
 msgid "Order ID"
-msgstr "Order ID"
+msgstr "訂單編號"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:189
 msgid "Updated Part of ID"
@@ -14272,12 +14262,11 @@ msgstr "假如文字開頭符合比較的文字則返回結果為真"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:407
 msgid "Course Name"
-msgstr "\n"
-"Course Name"
+msgstr "課程名"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:407
 msgid "Computer Science"
-msgstr "Computer Science"
+msgstr "計算機科學"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:412
 msgid "The string of text that the original text should start with."
@@ -14394,13 +14383,12 @@ msgstr "感謝使用 Metabase ！"
 
 #: frontend/src/metabase/public/components/LogoBadge.jsx:20
 msgid "Powered by {0}"
-msgstr "Powered by {0}"
+msgstr "由{0}提供支持"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:195
 #: frontend/src/metabase/sharing/components/SharingSidebar.jsx:686
 msgid "To:"
-msgstr "\n"
-"To:"
+msgstr "至："
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:39
 msgid "This question can't be used because it's based on a different database."
@@ -14424,16 +14412,15 @@ msgstr "載入中..."
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:78
 msgid "Question #…"
-msgstr "Question #…"
+msgstr "題 ＃…"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:80
 msgid "Question #{0}"
-msgstr "Question #{0}"
+msgstr "問題＃{0}"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:114
 msgid "Last edited {0}"
-msgstr "\n"
-"Last edited {0}"
+msgstr "上次編輯的{0}"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:250
 msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
@@ -14470,8 +14457,7 @@ msgstr "24小時制"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:341
 msgid "Symbol"
-msgstr "\n"
-"Symbol"
+msgstr "符號"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:365
 msgid "In the column heading"
@@ -14487,11 +14473,11 @@ msgstr "資料格式"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:350
 msgid "Full"
-msgstr "Full"
+msgstr "充分"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:198
 msgid "No change from last {0}"
-msgstr "No change from last {0}"
+msgstr "與上一個{0}相比沒有變化"
 
 #: src/metabase/api/database.clj
 msgid "Connection to ''{0}:{1}'' successful, but could not connect to DB."
@@ -14673,7 +14659,7 @@ msgstr "無法設定 {0} ，因為是唯讀設定"
 
 #: src/metabase/models/setting.clj
 msgid "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
-msgstr "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
+msgstr "def設置描述字符串必須具有`：visibility``：internal`，`：setter``：none`或國際化，且已找到：`{0}`"
 
 #: src/metabase/models/setting.clj
 msgid "Setting {0} is internal"
@@ -14681,30 +14667,28 @@ msgstr "設定 {0} 是內部的"
 
 #: src/metabase/plugins.clj
 msgid "Loading local plugin manifest at {0}"
-msgstr "\n"
-"Loading local plugin manifest at {0}"
+msgstr "正在{0}加載本地插件清單"
 
 #: src/metabase/public_settings.clj
 msgid "Google Analytics tracking code."
-msgstr "Google Analytics tracking code."
+msgstr "Google Analytics（分析）跟踪代碼。"
 
 #: src/metabase/pulse.clj
 msgid "Sending Pulse ({0}: {1}) with {2} Cards via email"
-msgstr "Sending Pulse ({0}: {1}) with {2} Cards via email"
+msgstr "通過電子郵件使用{2}張卡發送脈衝（{0}：{1}）"
 
 #: src/metabase/pulse.clj
 msgid "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
-msgstr "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
+msgstr "通過鬆弛通過{2}卡發送脈衝（{0}：{1}）"
 
 #: src/metabase/pulse/render.clj
 msgid "Rendering pulse card with chart-type {0} and render-type {1}"
-msgstr "Rendering pulse card with chart-type {0} and render-type {1}"
+msgstr "圖表類型為{0}且渲染類型為{1}的渲染脈衝卡"
 
 #. TODO  - there is code that calls this in `render.body` regardless of the types of values
 #: src/metabase/pulse/render/datetime.clj
 msgid "FIXME: These aren''t valid temporal literals: {0} {1}. Why are we attempting to format them as such?"
-msgstr "\n"
-"FIXME: These aren''t valid temporal literals: {0} {1}. Why are we attempting to format them as such?"
+msgstr "修復我：這些不是有效的時間文字：{0} {1}。 我們為什麼要嘗試格式化它們？"
 
 #: src/metabase/query_processor/context/default.clj
 msgid "Error reducing result rows"
@@ -14736,7 +14720,7 @@ msgstr "清除舊查詢結果快取錯誤"
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Caching results for next time for query with hash {0}."
-msgstr "Caching results for next time for query with hash {0}."
+msgstr "下次緩存結果以使用哈希{0}查詢。"
 
 #: src/metabase/query_processor/middleware/cache.clj
 #: src/metabase/query_processor/middleware/cache_backend/db.clj
@@ -14749,7 +14733,7 @@ msgstr "查詢結果快取成功"
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Query took {0} to run; miminum for cache eligibility is {1}"
-msgstr "Query took {0} to run; miminum for cache eligibility is {1}"
+msgstr "查詢花費{0}運行； 符合緩存條件的最低要求是{1}"
 
 #: src/metabase/query_processor/middleware/cache/impl.clj
 msgid "Results are too large to cache."
@@ -14757,11 +14741,11 @@ msgstr "結果太大無法快取進來"
 
 #: src/metabase/query_processor/middleware/cache/impl.clj
 msgid "Serialization timed out after {0}."
-msgstr "Serialization timed out after {0}."
+msgstr "{0}之後，序列化超時。"
 
 #: src/metabase/query_processor/middleware/cache/impl.clj
 msgid "Error parsing serialized results"
-msgstr "Error parsing serialized results"
+msgstr "解析序列化結果時出錯"
 
 #: src/metabase/query_processor/middleware/cache_backend/db.clj
 msgid "Error purging old cache entries"
@@ -14769,11 +14753,11 @@ msgstr "清除舊查詢結果快取錯誤"
 
 #: src/metabase/query_processor/middleware/cache_backend/db.clj
 msgid "Caching results for query with hash {0}."
-msgstr "Caching results for query with hash {0}."
+msgstr "使用哈希{0}緩存查詢結果。"
 
 #: src/metabase/query_processor/middleware/process_userland_query.clj
 msgid "Cannot save QueryExecution, missing :context"
-msgstr "Cannot save QueryExecution, missing :context"
+msgstr "無法保存QueryExecution，缺少：context"
 
 #: src/metabase/query_processor/middleware/process_userland_query.clj
 msgid "Error saving query execution info"
@@ -14817,7 +14801,7 @@ msgstr "從欄位產生 insights 錯誤"
 
 #: src/metabase/task/follow_up_emails.clj
 msgid "Sending abandonment email!"
-msgstr "送出 abandonment email ！"
+msgstr "發送遺棄電子郵件！"
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:88
 msgid "You can create saved metrics to add a named metric option. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating \"Average Price\" for an Orders table."
@@ -17629,21 +17613,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "脈沖正在逐步淘汰"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "您現在可以改為設置{0}。我們將在未來的版本中刪除Pulses，並幫助您遷移所有剩餘的內容。"
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "儀表板訂閱"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "訂閱中的{0}圖表與儀表板中的圖表不同。 {1}"
-

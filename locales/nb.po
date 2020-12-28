@@ -13294,7 +13294,7 @@ msgstr "Kunne ikke planlegge oppgaver for Database {0}"
 msgid "All elements must be distinct."
 msgstr "Alle elementer må være unike."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Velg kolonnene du vil inkludere"
@@ -13697,8 +13697,7 @@ msgstr "Sender Puls ({0}: {1}) via Slack"
 
 #: src/metabase/pulse.clj
 msgid "Sending Alert ({0}: {1}) via email"
-msgstr "Sender Alarm ({0}: {1}) på e-post\n"
-""
+msgstr "Sender Alarm ({0}: {1}) på e-post"
 
 #: src/metabase/pulse.clj
 msgid "Metabase alert: {0} has {1}"
@@ -17699,21 +17698,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulser avvikles"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Du kan nå konfigurere {0} i stedet. Vi fjerner Pulses i en fremtidig utgivelse, og hjelper deg med å migrere noe du fortsatt har."
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "dashbordabonnement"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} diagrammer i abonnementet ditt vil ikke se ut som i dashbordet ditt. {1}"
-

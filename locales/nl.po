@@ -76,8 +76,10 @@ msgid "Metabase can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr "Metabase kan de waardes van elk veld in deze database scannen om de checkbox filters in dashboards en vragen weer te geven. Dit is een resource-intensief proces, voornamelijk indien je een grote database hebt.\n"
-""
+msgstr "Metabase kan de waardes van elk veld in deze\n"
+"database scannen om de checkbox filters in dashboards en vragen weer te geven. Dit\n"
+"is een resource-intensief proces, voornamelijk indien je een grote\n"
+"database hebt."
 
 #: frontend/src/metabase/entities/databases/forms.js:318
 msgid "When should Metabase automatically scan and cache field values?"
@@ -8921,8 +8923,7 @@ msgstr "JVM timezone is {0} and detected database timezone is {1}."
 
 #: src/metabase/util/date.clj
 msgid "Configure a report timezone to ensure proper date and time conversions."
-msgstr "Configure a report timezone to ensure proper date and time conversions.\n"
-""
+msgstr "Configure a report timezone to ensure proper date and time conversions."
 
 #: src/metabase/util/embed.clj
 msgid "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints."
@@ -11460,8 +11461,7 @@ msgstr "Database {0} bestaat niet"
 
 #: src/metabase/query_processor/store.clj
 msgid "Error: Database is not present in the Query Processor Store."
-msgstr "\n"
-"Error: Database is not present in the Query Processor Store."
+msgstr "Error: Database is not present in the Query Processor Store."
 
 #: src/metabase/util/embed.clj
 msgid "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."
@@ -11889,8 +11889,7 @@ msgstr "Plug-ins laden in {0} ..."
 
 #: src/metabase/plugins/classloader.clj
 msgid "Using Clojure base loader as shared context classloader: {0}"
-msgstr "\n"
-"Using Clojure base loader as shared context classloader: {0}"
+msgstr "Using Clojure base loader as shared context classloader: {0}"
 
 #: src/metabase/plugins/classloader.clj
 msgid "Setting current thread context classloader to shared classloader {0}..."
@@ -13053,8 +13052,7 @@ msgstr "Cannot resolve :field-literal inside :fk-> unless inside join with expli
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Cannot find Table ID for {0}"
-msgstr "\n"
-"Cannot find Table ID for {0}"
+msgstr "Cannot find Table ID for {0}"
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "No matching info found."
@@ -13195,8 +13193,7 @@ msgstr "Unable to resolve driver for query: Database {0} does not exist."
 
 #: src/metabase/query_processor/middleware/resolve_joins.clj
 msgid "Cannot use :fields :all in join against source query unless it has :source-metadata."
-msgstr "\n"
-"Cannot use :fields :all in join against source query unless it has :source-metadata."
+msgstr "Cannot use :fields :all in join against source query unless it has :source-metadata."
 
 #: src/metabase/query_processor/middleware/resolve_joins.clj
 msgid "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
@@ -13274,7 +13271,7 @@ msgstr "Kan taken voor database {0} niet plannen"
 msgid "All elements must be distinct."
 msgstr "Alle elementen moeten uniek zijn."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Kies de kolommen die je mee wilt nemen"
@@ -15225,8 +15222,7 @@ msgstr "Fout bij versturen van database verwijdering notificatie"
 
 #: src/metabase/models/native_query_snippet.clj
 msgid "You cannot update the creator_id of a NativeQuerySnippet."
-msgstr "Je kunt de creator_id van een NativeQuerySnippet niet bijwerken.\n"
-""
+msgstr "Je kunt de creator_id van een NativeQuerySnippet niet bijwerken."
 
 #: src/metabase/models/setting.clj
 msgid "Error fetching value of Setting"
@@ -17674,21 +17670,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulsen worden uitgefaseerd"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Je kunt nu {0} in plaats daarvan instellen. We zullen Pulsen verwijderen in een toekomstige release, en je helpen met het migreren van alles wat je nog hebt."
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "dashboard abonnementen"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} de grafieken in uw abonnement zullen er niet hetzelfde uitzien als in uw dashboard. {1}"
-

@@ -48,7 +48,7 @@ msgstr "儲存"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
 msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
-msgstr "為了做一些預設分析的事情，Metabase需要掃描您的資料庫。我們將會定期自動掃描您的資料庫，確保資料庫欄位的資訊在 Metabase 是最新的狀態。您可以在下方更改分析的時間。"
+msgstr "為了做一些預設分析的事情，Metabase需要掃描您的資料庫。我們將會定期自動掃描您的資料庫，確保資料庫欄位的後設資料在 Metabase 是最新的狀態。您可以在下方更改更新掃描時間。"
 
 #: frontend/src/metabase/entities/databases/forms.js:307
 msgid "Database syncing"
@@ -58,7 +58,7 @@ msgstr "資料庫同步中"
 msgid "This is a lightweight process that checks for\n"
 "updates to this database’s schema. In most cases, you should be fine leaving this\n"
 "set to sync hourly."
-msgstr "這個程序僅僅檢查資料庫欄位的更新，並不會耗費太多系統資源。在多數的狀況，您應該讓他每小時同步一次。"
+msgstr "這個程序僅僅檢查資料庫欄位後設資料的更新，並不會耗費太多系統資源。在多數的狀況，您可以每小時同步一次。"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:42
 #: frontend/src/metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget.jsx:22
@@ -74,11 +74,11 @@ msgid "Metabase can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr "Metabase 可以掃描資料庫中每個欄位的值，用來壤使用者啟用查詢或資訊看板中的篩選器。當您的資料庫較大時，這個功能同時會耗費更多的系統資源。"
+msgstr "Metabase 可以掃描資料庫中每個欄位的值，用來讓使用者啟用查詢或資訊看板中的篩選器。當您的資料庫較大時，這個功能同時會耗費更多的系統資源。"
 
 #: frontend/src/metabase/entities/databases/forms.js:318
 msgid "When should Metabase automatically scan and cache field values?"
-msgstr "Metabase應該在什麼時候自動掃描快取的欄位值"
+msgstr "Metabase應該在什麼時候自動掃描及快取欄位值？"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:25
 msgid "Regularly, on a schedule"
@@ -86,7 +86,7 @@ msgstr "根據排程，週期性地啟動"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:50
 msgid "Only when adding a new filter widget"
-msgstr "只有當您在新增一個新的篩選控制項時"
+msgstr "只在新增篩選控制項時"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:54
 msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
@@ -115,7 +115,7 @@ msgstr "是否要刪除這個資料庫？"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:61
 msgid "All saved questions, metrics, and segments that rely on this database will be lost."
-msgstr "所有依賴這個資料庫相關之儲存問題，量值，資料段將會一併刪除。"
+msgstr "所有與這個資料庫相關之提問，量值，資料段將會一併刪除。"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:62
 msgid "This cannot be undone."
@@ -128,11 +128,11 @@ msgstr "如果確認，請輸入"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:52
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:65
 msgid "DELETE"
-msgstr "刪除"
+msgstr "DELETE"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
 msgid "in this box:"
-msgstr "在這個框裡:"
+msgstr "在輸入框裡："
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:247
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:77
@@ -270,7 +270,7 @@ msgstr "放棄儲存的欄位值"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:257
 msgid "Remove this database"
-msgstr "刪除資料庫"
+msgstr "刪除此資料庫"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:76
 msgid "Add database"
@@ -295,15 +295,15 @@ msgstr "名稱"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:89
 msgid "Engine"
-msgstr "引擎"
+msgstr "資料庫引擎"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:118
 msgid "Deleting..."
-msgstr "刪除中。。。"
+msgstr "刪除中......"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:148
 msgid "Loading ..."
-msgstr "載入中。。。"
+msgstr "載入中......"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:164
 msgid "Bring the sample dataset back"
@@ -334,15 +334,15 @@ msgstr "修訂記錄"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:32
 msgid "Retire this {0}?"
-msgstr "作廢 {0}？"
+msgstr "不使用這個 {0}？"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:37
 msgid "Saved questions and other things that depend on this {0} will continue to work, but this {1} will no longer be selectable from the query builder."
-msgstr "儲存的問題和依賴於此{0}的其他內容將繼續有效，但不再可以從查詢構建器中選擇此{1}。"
+msgstr "儲存的提問和依賴於此{0}的其他內容將繼續有效，但無法再從查詢構建器中選擇此{1}。"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:38
 msgid "If you're sure you want to retire this {0}, please write a quick explanation of why it's being retired:"
-msgstr "如果您確定要讓此{0}退役，請解釋一下原因："
+msgstr "如果您確定要讓此{0}不使用，請解釋一下原因："
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:42
 msgid "This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this {0}."
@@ -350,7 +350,7 @@ msgstr "這將顯示在活動訊息和電子郵件中，該電子郵件將發送
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:57
 msgid "Retire"
-msgstr "作廢"
+msgstr "不使用(Retire)"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:58
 msgid "Retiring…"
@@ -427,7 +427,7 @@ msgstr "可見性"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList.jsx:112
 msgid "Type"
-msgstr "類型"
+msgstr "後設資料(Metadata)欄位類型"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataHeader.jsx:104
 msgid "Current database:"
@@ -435,7 +435,7 @@ msgstr "當前資料庫"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataHeader.jsx:84
 msgid "Show original schema"
-msgstr "顯示原始資料綱要結構"
+msgstr "顯示原始資料庫綱要(Schema)"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchema.jsx:47
 msgid "Data Type"
@@ -452,7 +452,7 @@ msgstr "搜尋資料庫綱要結構"
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchemaList.jsx:53
 msgid "{0} schema"
 msgid_plural "{0} schemas"
-msgstr[0] "{0}模式"
+msgstr[0] "{0} 綱要結構"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:99
 msgid "Why Hide?"
@@ -485,12 +485,12 @@ msgstr "後設資料完整度"
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:77
 msgid "{0} Queryable Table"
 msgid_plural "{0} Queryable Tables"
-msgstr[0] "{0}可查詢表"
+msgstr[0] "{0}可查詢的資料表"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:91
 msgid "{0} Hidden Table"
 msgid_plural "{0} Hidden Tables"
-msgstr[0] "{0}隱藏表"
+msgstr[0] "{0}隱藏的資料表"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:115
 msgid "Find a table"
@@ -565,7 +565,7 @@ msgstr "編輯"
 
 #: frontend/src/metabase/admin/datamodel/components/revisions/Revision.jsx:37
 msgid "made some changes"
-msgstr "做了一些改動"
+msgstr "做了一些變動"
 
 #: frontend/src/metabase/admin/datamodel/components/revisions/Revision.jsx:46
 #: frontend/src/metabase/home/components/Activity.jsx:83
@@ -599,7 +599,7 @@ msgstr "欄位過濾"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:322
 msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
-msgstr "當在篩選器中使用此欄位時，人們應該使用什麼形式輸入他們想要過濾的值?"
+msgstr "當在篩選器中使用此欄位時，使用者應該用什麼形式輸入他們想要過濾的值?"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:448
 msgid "No description for this field yet"
@@ -611,7 +611,7 @@ msgstr "原始值"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:407
 msgid "Mapped value"
-msgstr "對映值"
+msgstr "對應值"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:450
 msgid "Enter value"
@@ -627,7 +627,7 @@ msgstr "使用外鍵"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:28
 msgid "Custom mapping"
-msgstr "自訂映射"
+msgstr "自訂對應"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:56
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:164
@@ -648,7 +648,7 @@ msgstr "顯示值"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:339
 msgid "Choose to show the original value from the database, or have this field display associated or custom information."
-msgstr "選擇顯示資料庫中的原始值，或者顯示此欄位的關聯或自訂訊息。"
+msgstr "選擇顯示資料庫中的原始值，或者顯示此欄位的相關或自訂訊息。"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:283
 msgid "Choose a field"
@@ -656,7 +656,7 @@ msgstr "選擇欄位"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:304
 msgid "Please select a column to use for display."
-msgstr "請選擇顯示欄位"
+msgstr "請選擇欄位來做展示"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:771
 msgid "Tip:"
@@ -664,7 +664,7 @@ msgstr "提示："
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:460
 msgid "You might want to update the field name to make sure it still makes sense based on your remapping choices."
-msgstr "您可能想要更新這個欄位的名稱來確保它基於您的重新映射選擇時仍然有意義"
+msgstr "您可能想要更新這個欄位的名稱來確保它基於您的重新對應選擇時仍然有意義"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:355
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:83
@@ -673,7 +673,7 @@ msgstr "快取欄位值"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:356
 msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
-msgstr "Metabase 通過掃描該欄位，以啟用資訊看板和問題的多選框篩選。"
+msgstr "Metabase 會掃描該欄位，來啟用資訊看板和提問的多選框篩選。"
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:14
 msgid "Re-scan this field"
@@ -682,7 +682,7 @@ msgstr "重新掃描該欄位"
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:22
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:97
 msgid "Discard cached field values"
-msgstr "丟棄欄位快取"
+msgstr "丟棄欄位值快取"
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:24
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:99
@@ -713,7 +713,7 @@ msgstr "敘述必填"
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:38
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:37
 msgid "Revision message is required"
-msgstr "調整訊息必填"
+msgstr "版本訊息必填"
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:44
 msgid "Aggregation is required"
@@ -835,7 +835,7 @@ msgstr "設定"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:84
 msgid "Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
-msgstr "Metabase掃描此表中的值以啟用資訊看板和問題中的複選框篩選器。"
+msgstr "Metabase掃描此表中的值以啟用資訊看板和提問中的複選框篩選器。"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:89
 msgid "Re-scan this table"
@@ -862,7 +862,7 @@ msgstr "姓"
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:46
 #: frontend/src/metabase/components/NewsletterForm.jsx:94
 msgid "Email address"
-msgstr "信箱地址"
+msgstr "電子郵件地址"
 
 #: frontend/src/metabase/admin/people/components/EditUserForm.jsx:202
 msgid "Permission Groups"
@@ -870,12 +870,12 @@ msgstr "群組權限"
 
 #: frontend/src/metabase/components/form/widgets/FormGroupsWidget.jsx:61
 msgid "Make this user an admin"
-msgstr "設為管理員"
+msgstr "設為系統管理員"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "所有屬於這個{0}群組的使用者，並且不能從這個群組中被移除。為這個群組設定許可權限是一個確保您知道Metabase新使用者將會能夠看到什麼的好辦法。"
+msgstr "所有屬於這個{0}群組的使用者，且無法從這個群組中被移除。為這個群組設定許可權限是一個確保您知道Metabase新使用者將會能夠看到什麼的好辦法。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
 msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
@@ -898,7 +898,7 @@ msgstr "組員"
 #: frontend/src/metabase/lib/core.js:146
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:298
 msgid "Email"
-msgstr "信箱"
+msgstr "電子郵件設定"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:213
 msgid "A group is only as good as its members."
@@ -908,7 +908,7 @@ msgstr "群組內成員權限一致"
 #: frontend/src/metabase/admin/routes.jsx:55
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:50
 msgid "Admin"
-msgstr "管理員"
+msgstr "系統管理"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:16
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:230
@@ -920,7 +920,7 @@ msgstr "和"
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:31
 msgid "{0} other group"
 msgid_plural "{0} other groups"
-msgstr[0] "{0}其他組"
+msgstr[0] "{0}個群組"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:37
 msgid "Default"
@@ -986,7 +986,7 @@ msgstr "群組名稱"
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:175
 #: frontend/src/metabase/entities/users/forms.js:70
 msgid "Groups"
-msgstr "群組"
+msgstr "所屬群組"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:364
 msgid "Create a group"
@@ -994,7 +994,7 @@ msgstr "建立群組"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:370
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
-msgstr "可以通過群組控制成員的資料權限。更改群組權限來控制群組內成員權限。管理員和全員(All Users)是預設分組，無法刪除。"
+msgstr "可以通過群組控制成員的資料權限。更改群組權限來控制群組內成員權限。系統管理員和全員(All Users)是預設分組，無法刪除。"
 
 #: frontend/src/metabase/admin/people/components/UserActionsSelect.jsx:79
 msgid "Edit Details"
@@ -1006,7 +1006,7 @@ msgstr "重新邀請"
 
 #: frontend/src/metabase/admin/people/components/UserActionsSelect.jsx:90
 msgid "Reset Password"
-msgstr "重設密碼"
+msgstr "重新設定密碼"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:40
 msgid "Deactivate"
@@ -1017,7 +1017,7 @@ msgstr "停用"
 #: frontend/src/metabase/admin/routes.jsx:93
 #: frontend/src/metabase/nav/containers/Navbar.jsx:209
 msgid "People"
-msgstr "人員管理"
+msgstr "帳號管理"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:192
 msgid "Who do you want to add?"
@@ -1040,7 +1040,7 @@ msgstr "新增其他人"
 msgid "We couldn’t send them an email invitation,\n"
 "so make sure to tell them to log in using {0}\n"
 "and this password we’ve generated for them:"
-msgstr "我們不能給他們發送邀請電子郵件，請務必告訴他們，使用{0}和密碼來登入系統:"
+msgstr "我們無法給他們發送邀請電子郵件，請務必告訴他們，使用{0}和此產生的密碼來登入系統:"
 
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:73
 msgid "If you want to be able to send email invites, just go to the {0} page."
@@ -1084,7 +1084,7 @@ msgstr "他們將能夠再次登入，並且將被放回到帳戶被停用之前
 
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:51
 msgid "Reset {0}'s password?"
-msgstr "重設{0}的密碼"
+msgstr "重新設定{0}的密碼"
 
 #: frontend/src/metabase/components/form/StandardForm.jsx:76
 msgid "Reset"
@@ -1098,7 +1098,7 @@ msgstr "是否確認執行此操作？"
 
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:41
 msgid "{0}'s password has been reset"
-msgstr "{0}的密碼已被重設"
+msgstr "{0}的密碼已被重新設定"
 
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:45
 msgid "Here’s a temporary password they can use to log in and then change their password."
@@ -1124,7 +1124,7 @@ msgstr "邀請其他人"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:133
 msgid "Last Login"
-msgstr "上次登入"
+msgstr "最近登入時間"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:154
 msgid "Signed up via Google"
@@ -1146,7 +1146,7 @@ msgstr "永不"
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0} table"
 msgid_plural "{0} tables"
-msgstr[0] "{0}表"
+msgstr[0] "{0} 資料表"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:49
 msgid " will be "
@@ -1181,7 +1181,7 @@ msgstr "原生查詢"
 #: frontend/src/metabase/admin/permissions/routes.jsx:14
 #: frontend/src/metabase/nav/containers/Navbar.jsx:227
 msgid "Permissions"
-msgstr "權限"
+msgstr "權限管理"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:32
 msgid "Save permissions?"
@@ -1222,11 +1222,11 @@ msgstr "對不起，發生錯誤。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:71
 msgid "Administrators always have the highest level of access to everything in Metabase."
-msgstr "管理員始終對Metabase中的所有內容具有最高級別的訪問權限。"
+msgstr "系統管理員對Metabase中的所有內容具有最高級別的訪問權限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:73
 msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
-msgstr "每個Metabase使用者都屬於“所有使用者”組。如果要限制一個使用者組對某些內容的訪問權限，請確保“所有使用者”組具有相同或更低級別的訪問權限。"
+msgstr "每個Metabase使用者都屬於\"所有使用者群組\"。如果要限制某個使用者群組對某些內容的訪問權限，請確保“所有使用者”組具有相同或更低級別的訪問權限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:75
 msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
@@ -1278,7 +1278,7 @@ msgstr "允許原始查詢語句寫作？"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:186
 msgid "This will also change this group's data access to Unrestricted for this database."
-msgstr "這也將更改此組對此資料庫的“不受限制的”訪問權限。"
+msgstr "這也將更改此群組對此資料庫的“不受限制的”存取權限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:187
 msgid "Allow"
@@ -1286,27 +1286,27 @@ msgstr "允許"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:224
 msgid "Revoke access to all tables?"
-msgstr "取消所有表的權限"
+msgstr "取消所有資料表的存取權限"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:225
 msgid "This will also revoke this group's access to raw queries for this database."
-msgstr "這也將撤消此組對該資料庫的原始查詢的訪問權限。"
+msgstr "這也將撤消此群組對該資料庫的原始查詢的存取權限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:254
 msgid "Grant unrestricted access"
-msgstr "授予不受限制的訪問權限"
+msgstr "授予不受限制的存取權限"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:255
 msgid "Unrestricted access"
-msgstr "不受限制的權限"
+msgstr "不受限制的存取權限"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:262
 msgid "Limited access"
-msgstr "受限制的權限"
+msgstr "受限制的存取權限"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:270
 msgid "No access"
-msgstr "沒有權限"
+msgstr "沒有存取權限"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:276
 msgid "Write raw queries"
@@ -1328,13 +1328,13 @@ msgstr "檢視集合(collection)"
 #: frontend/src/metabase/admin/permissions/selectors.js:463
 #: frontend/src/metabase/admin/permissions/selectors.js:576
 msgid "Data Access"
-msgstr "允許訪問資料"
+msgstr "允許資料存取權限"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:528
 #: frontend/src/metabase/admin/permissions/selectors.js:683
 #: frontend/src/metabase/admin/permissions/selectors.js:688
 msgid "View tables"
-msgstr "檢視表格"
+msgstr "檢視資料表權限"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:624
 msgid "SQL Queries"
@@ -1347,7 +1347,7 @@ msgstr "檢視綱要結構"
 #: frontend/src/metabase/admin/routes.jsx:66
 #: frontend/src/metabase/nav/containers/Navbar.jsx:215
 msgid "Data Model"
-msgstr "資料模型"
+msgstr "後設資料設定"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:118
 #: frontend/src/metabase/plugins/builtin/auth/google.js:31
@@ -1417,7 +1417,7 @@ msgstr "完成"
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:113
 #: frontend/src/metabase/admin/settings/selectors.js:187
 msgid "Authentication"
-msgstr "認證"
+msgstr "授權認證"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm.jsx:18
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:25
@@ -1463,7 +1463,7 @@ msgstr "為了允許使用者使用Google登入，您需要給Metabase一個Goog
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:140
 msgid "Your Google client ID"
-msgstr "您的Google使用者端ID"
+msgstr "您的Google客戶端ID"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:145
 msgid "Allow users to sign up on their own if their Google account email address is from:"
@@ -1556,7 +1556,7 @@ msgstr "比如，英國、巴西、火星"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:298
 msgid "URL for the GeoJSON file you want to use"
-msgstr "您想使用的GeoJSON檔案URL"
+msgstr "您想使用的GeoJSON來源URL"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:304
 msgid "Like https://my-mb-server.com/maps/my-map.json"
@@ -1608,7 +1608,7 @@ msgstr "啟用"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:24
 msgid "Premium embedding enabled"
-msgstr "標準編輯已啟用"
+msgstr "高級嵌入已啟用"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:26
 msgid "Enter the token you bought from the Metabase Store"
@@ -1729,12 +1729,12 @@ msgstr "未知設定{0}"
 
 #: frontend/src/metabase/admin/settings/selectors.js:37
 msgid "Setup"
-msgstr "初始化"
+msgstr "初始化設定"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:214
 #: frontend/src/metabase/admin/settings/selectors.js:42
 msgid "General"
-msgstr "基本設定"
+msgstr "一般設定"
 
 #: frontend/src/metabase/admin/settings/selectors.js:46
 msgid "Site Name"
@@ -1863,7 +1863,7 @@ msgstr "使用者名稱或DN"
 #: frontend/src/metabase/user/components/UserSettings.jsx:66
 #: src/metabase/driver/common.clj
 msgid "Password"
-msgstr "密碼"
+msgstr "密碼設定"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:69
 msgid "User search base"
@@ -1900,11 +1900,11 @@ msgstr "姓氏屬性"
 #: enterprise/frontend/src/metabase-enterprise/auth/index.js:227
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:102
 msgid "Synchronize group memberships"
-msgstr "同步組成員"
+msgstr "同步群組成員"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:113
 msgid "Group search base"
-msgstr "使用者組搜索庫"
+msgstr "使用者群組搜索庫"
 
 #: frontend/src/metabase/admin/settings/selectors.js:191
 msgid "Maps"
@@ -2014,7 +2014,7 @@ msgstr "這個Google帳戶不存在Metabase帳戶"
 
 #: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:17
 msgid "You'll need an administrator to create a Metabase account before you can use Google to log in."
-msgstr "在您能夠使用Google帳戶登入之前，需要一個管理員來建立一個Metabase帳戶"
+msgstr "在您能夠使用Google帳戶登入之前，需要一個系統管理員來建立一個Metabase帳戶"
 
 #: frontend/src/metabase/auth/components/AuthProviderButton.jsx:23
 msgid "Sign in with {0}"
@@ -2022,7 +2022,7 @@ msgstr "用{0}登入"
 
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:33
 msgid "Please contact an administrator to have them reset your password"
-msgstr "請聯絡管理員來重設您的密碼"
+msgstr "請聯絡系統管理員來重設您的密碼"
 
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:40
 msgid "Forgot password"
@@ -2050,7 +2050,7 @@ msgstr "或者"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:35
 msgid "Username or email address"
-msgstr "使用者名稱或者信箱地址"
+msgstr "使用者帳號或者電子郵件地址"
 
 #: frontend/src/metabase/auth/components/AuthProviderButton.jsx:23
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:56
@@ -2063,7 +2063,7 @@ msgstr "我似乎忘記了我的密碼"
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:65
 msgid "request a new reset email"
-msgstr "發送一個新的重設email郵件"
+msgstr "發送一個新的重設密碼郵件"
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:73
 msgid "Whoops, that's an expired link"
@@ -2072,7 +2072,7 @@ msgstr "噢，那是個過期的連結"
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:125
 msgid "For security reasons, password reset links expire after a little while. If you still need\n"
 "to reset your password, you can {0}."
-msgstr "於安全原因，密碼重設連結會在一段時間後過期。如果您仍需要重設密碼，可以{0}。"
+msgstr "基於安全原因，密碼重設連結會在一段時間後過期。如果您仍需要重設密碼，可以{0}。"
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:82
 msgid "New password"
@@ -2172,7 +2172,7 @@ msgstr "取消歸檔此{0}"
 #: frontend/src/metabase/reference/databases/DatabaseList.jsx:48
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:39
 msgid "Our data"
-msgstr "我們的資料"
+msgstr "目前資料集"
 
 #: frontend/src/metabase/components/BrowseApp.jsx:156
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:53
@@ -2227,7 +2227,7 @@ msgstr "六"
 
 #: frontend/src/metabase/components/ChannelSetupMessage.jsx:41
 msgid "Your admin's email address"
-msgstr "您的管理員的信箱地址"
+msgstr "您的系統管理員的電子郵件地址"
 
 #: frontend/src/metabase/components/ChannelSetupModal.jsx:37
 msgid "To send {0}, you'll need to set up {1} integration."
@@ -2240,7 +2240,7 @@ msgstr "或者"
 
 #: frontend/src/metabase/components/ChannelSetupModal.jsx:40
 msgid "To send {0}, an admin needs to set up {1} integration."
-msgstr "要發送{0}，管理員需要設定{1}集成。"
+msgstr "要發送{0}，系統管理員需要設定{1}集成。"
 
 #: frontend/src/metabase/components/CollectionEmptyState.jsx:15
 msgid "This collection is empty, like a blank canvas"
@@ -2248,7 +2248,7 @@ msgstr "這個集合空空如也，什麼都沒有"
 
 #: frontend/src/metabase/components/CollectionEmptyState.jsx:16
 msgid "You can use collections to organize and group dashboards, questions and pulses for your team or yourself"
-msgstr "您可以使用集合來為您的團隊或您自己組織和分組資訊看板、問題和定時通知。"
+msgstr "您可以使用集合來為您的團隊或您自己組織和分組資訊看板、提問和定時通知。"
 
 #: frontend/src/metabase/components/CollectionEmptyState.jsx:56
 msgid "Create another collection"
@@ -2286,7 +2286,7 @@ msgstr "拖到這裡取消固定"
 #: frontend/src/metabase/collections/containers/CollectionContent.jsx:398
 msgid "{0} item selected"
 msgid_plural "{0} items selected"
-msgstr[0] "已選擇{0}個項目"
+msgstr[0] "已選擇{0}項"
 
 #: frontend/src/metabase/collections/containers/CollectionContent.jsx:434
 msgid "Move {0} items?"
@@ -2445,7 +2445,7 @@ msgstr "新增到資訊看板"
 #: frontend/src/metabase/components/EntityMenu.info.js:50
 #: frontend/src/metabase/components/EntityMenu.info.js:102
 msgid "Download results"
-msgstr "下載結果"
+msgstr "下載結果資料集"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:52
 #: frontend/src/metabase/components/EntityMenu.info.js:104
@@ -2553,7 +2553,7 @@ msgstr "新的"
 
 #: frontend/src/metabase/components/Header.jsx:109
 msgid "Asked by {0}"
-msgstr "被{0}發起的提問"
+msgstr "被{0}的發問"
 
 #: frontend/src/metabase/components/HistoryModal.jsx:12
 msgid "Today, "
@@ -2569,7 +2569,7 @@ msgstr "第一次修訂。"
 
 #: frontend/src/metabase/components/HistoryModal.jsx:31
 msgid "Reverted to an earlier revision and {0}"
-msgstr "回滾到一個更早的調整並且{0}"
+msgstr "回溯到一個更早的版本並且{0}"
 
 #: frontend/src/metabase/components/HistoryModal.jsx:42
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:265
@@ -2577,19 +2577,19 @@ msgstr "回滾到一個更早的調整並且{0}"
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:309
 #: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:58
 msgid "Revision history"
-msgstr "調整記錄"
+msgstr "版本記錄"
 
 #: frontend/src/metabase/components/HistoryModal.jsx:46
 msgid "When"
-msgstr "什麼時候"
+msgstr "什麼時候(When)"
 
 #: frontend/src/metabase/components/HistoryModal.jsx:47
 msgid "Who"
-msgstr "誰"
+msgstr "誰(Who)"
 
 #: frontend/src/metabase/components/HistoryModal.jsx:48
 msgid "What"
-msgstr "什麼"
+msgstr "什麼(What)"
 
 #: frontend/src/metabase/components/HistoryModal.jsx:67
 msgid "Revert"
@@ -2627,7 +2627,7 @@ msgstr "定時任務"
 #: frontend/src/metabase/components/LeftNavPane.jsx:36
 #: frontend/src/metabase/query_builder/components/SidebarHeader.jsx:16
 msgid "Back"
-msgstr "後退"
+msgstr "返回"
 
 #: frontend/src/metabase/components/ListSearchField.jsx:17
 msgid "Find..."
@@ -2743,7 +2743,7 @@ msgstr "第一個"
 #: frontend/src/metabase/components/SchedulePicker.jsx:35
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:23
 msgid "Last"
-msgstr "過往"
+msgstr "最後一個"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:36
 #: frontend/src/metabase/sharing/components/SharingSidebar.jsx:347
@@ -2814,11 +2814,11 @@ msgstr "表格"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList.jsx:150
 msgid "Database"
-msgstr "資料庫"
+msgstr "資料庫來源設定"
 
 #: frontend/src/metabase/containers/EntitySearch.jsx:49
 msgid "Creator"
-msgstr "創造者"
+msgstr "建立者"
 
 #: frontend/src/metabase/containers/EntitySearch.jsx:239
 msgid "No results found"
@@ -2866,19 +2866,19 @@ msgstr "替換還是儲存為新的？"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:167
 msgid "Replace original question, \"{0}\""
-msgstr "替換原始問題''{0}''"
+msgstr "替換原始提問''{0}''"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:171
 msgid "Save as new question"
-msgstr "儲存為新問題"
+msgstr "儲存為新提問"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:92
 msgid "First, save your question"
-msgstr "首先，儲存您的問題"
+msgstr "首先，儲存您的提問"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:93
 msgid "Save question"
-msgstr "儲存問題"
+msgstr "儲存提問"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:132
 msgid "What is the name of your card?"
@@ -2935,11 +2935,11 @@ msgstr "正在使用的提問"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:270
 msgid "That question isn't compatible"
-msgstr "那個問題不相容"
+msgstr "那個提問不相容"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:309
 msgid "Search for a question"
-msgstr "搜尋問題"
+msgstr "搜尋提問"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:343
 msgid "We're not sure if this question is compatible"
@@ -3536,7 +3536,7 @@ msgstr "一個所有值的欄位表"
 
 #: frontend/src/metabase/lib/core.js:302
 msgid "Plain input box"
-msgstr "文本框"
+msgstr "輸入框"
 
 #: frontend/src/metabase/lib/core.js:308
 msgid "Everywhere"
@@ -3544,7 +3544,7 @@ msgstr "所有地方"
 
 #: frontend/src/metabase/lib/core.js:309
 msgid "The default setting. This field will be displayed normally in tables and charts."
-msgstr "預設設定。這個欄位通常將會被展示在表單中和圖表中。"
+msgstr "預設設定。這個欄位通常將會被顯示在表格和圖表中。"
 
 #: frontend/src/metabase/lib/core.js:254
 msgid "Only in Detail Views"
@@ -3583,11 +3583,11 @@ msgstr "累積計數"
 #: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:19
 #: frontend/src/metabase/visualizations/lib/utils.js:130
 msgid "Sum"
-msgstr "求和"
+msgstr "總和"
 
 #: frontend/src/metabase/lib/expressions/config.js:10
 msgid "CumulativeSum"
-msgstr "累積求和"
+msgstr "累積總和"
 
 #: frontend/src/metabase/visualizations/lib/utils.js:131
 msgid "Distinct"
@@ -3635,7 +3635,7 @@ msgstr "您好"
 #: frontend/src/metabase/lib/greeting.js:5
 #: frontend/src/metabase/lib/greeting.js:29
 msgid "How's it going"
-msgstr "它工作的怎麼樣"
+msgstr "如何開始資料分析"
 
 #: frontend/src/metabase/lib/greeting.js:6
 msgid "Howdy"
@@ -4027,7 +4027,7 @@ msgstr "比如Q1,2016"
 
 #: frontend/src/metabase/meta/Dashboard.js:45
 msgid "Single Date"
-msgstr "單個日期"
+msgstr "單一日期"
 
 #: frontend/src/metabase/meta/Dashboard.js:46
 msgid "Like January 31, 2016"
@@ -4043,7 +4043,7 @@ msgstr "比如十二月25日，2015-二月14日，2016"
 
 #: frontend/src/metabase/meta/Dashboard.js:55
 msgid "Relative Date"
-msgstr "相關日期"
+msgstr "相對日期"
 
 #: frontend/src/metabase/meta/Dashboard.js:56
 msgid "Like \"the last 7 days\" or \"this month\""
@@ -4077,7 +4077,7 @@ msgstr "時間"
 
 #: frontend/src/metabase/meta/Dashboard.js:101
 msgid "Date range, relative date, time of day, etc."
-msgstr "日期範圍,相關日期，一天中的時間，等等"
+msgstr "日期範圍,相對日期，一天中的時間，等等"
 
 #: frontend/src/metabase/lib/core.js:56 frontend/src/metabase/lib/core.js:61
 #: frontend/src/metabase/lib/core.js:66 frontend/src/metabase/lib/core.js:71
@@ -4106,11 +4106,11 @@ msgstr "類別、類型、模型、評分等"
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:43
 #: frontend/src/metabase/user/components/UserSettings.jsx:56
 msgid "Account settings"
-msgstr "帳戶設定"
+msgstr "帳號設定"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:50
 msgid "Exit admin"
-msgstr "退出管理員"
+msgstr "退出系統管理"
 
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:35
 msgid "Logs"
@@ -4137,23 +4137,23 @@ msgstr "謝謝使用"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:116
 msgid "You're on version"
-msgstr "正在使用版本"
+msgstr "目前使用版本"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:119
 msgid "Built on"
-msgstr "建立於"
+msgstr "建置於"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:139
 msgid "is a Trademark of"
-msgstr "是一個……的商標"
+msgstr "是 Metabase Inc 的註冊商標"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:141
 msgid "and is built with care in San Francisco, CA"
-msgstr "並且它在加州，舊金山精心被打造"
+msgstr "在加州舊金山精心設計"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:198
 msgid "Metabase Admin"
-msgstr "Metabase管理員"
+msgstr "Metabase 系統管理員"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:326
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:35
@@ -4169,7 +4169,7 @@ msgstr "新資訊看板"
 #: frontend/src/metabase/collections/containers/CollectionContent.jsx:221
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:129
 msgid "New pulse"
-msgstr "新定時任務"
+msgstr "新定時通知任務"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:323
 msgid "Reference"
@@ -4252,7 +4252,7 @@ msgstr "過去30天"
 #: src/metabase/api/table.clj
 msgid "Week"
 msgid_plural "Weeks"
-msgstr[0] "週"
+msgstr[0] "周"
 
 #: frontend/src/metabase/lib/query_time.js:200
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
@@ -4361,7 +4361,7 @@ msgstr "樣式"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:82
 msgid "Which parameters can users of this embed use?"
-msgstr "這個嵌套可以使用什麼參數？"
+msgstr "這個嵌入可以使用什麼參數？"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:84
 msgid "This {0} doesn't have any parameters to configure yet."
@@ -4429,7 +4429,7 @@ msgstr "更多{0}"
 
 #: frontend/src/metabase/public/components/widgets/EmbedCodePane.jsx:103
 msgid "examples on GitHub"
-msgstr "在GitHub上的案例"
+msgstr "在GitHub上的範例"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:71
 msgid "Enable sharing"
@@ -4441,7 +4441,7 @@ msgstr "禁用這個公共連結？"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:76
 msgid "This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link."
-msgstr "會取消已存在的連結。可以重新生效，但是連結會變更。"
+msgstr "這將會取消已存在的連結。可以重新生效，但是連結會變更。"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:116
 msgid "Public link"
@@ -4457,7 +4457,7 @@ msgstr "公開嵌入"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:155
 msgid "Embed this {0} in blog posts or web pages by copying and pasting this snippet:"
-msgstr "將這個代碼塊黏貼到頁面代碼，可以在部落格或者網頁中啟用{0}。"
+msgstr "將這個代碼塊黏貼到頁面代碼，可以在部落格或者網頁中嵌入{0}。"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:172
 msgid "Embed this {0} in an application"
@@ -4512,7 +4512,7 @@ msgstr "什麼是定時任務"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:143
 msgid "Got it"
-msgstr "得到結果了！"
+msgstr "已經了解！"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:159
 msgid "Where should this data go?"
@@ -4572,7 +4572,7 @@ msgstr "挑選您想在這個定時任務裡發送的圖表。"
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:27
 #: frontend/src/metabase/sharing/components/SharingSidebar.jsx:57
 msgid "Emails"
-msgstr "電子信箱"
+msgstr "電子郵件"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:28
 #: frontend/src/metabase/sharing/components/SharingSidebar.jsx:58
@@ -4627,7 +4627,7 @@ msgstr "定時任務已發送。"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:286
 msgid "{0} needs to be set up by an administrator."
-msgstr "{0}需要被設定成管理員"
+msgstr "{0}需要被設定成系統管理員"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:299
 msgid "Slack"
@@ -4639,11 +4639,11 @@ msgstr "將這個定時通知放到哪個集合中？"
 
 #: frontend/src/metabase/pulse/components/PulseEditName.jsx:35
 msgid "Name your pulse"
-msgstr "命名定時任務"
+msgstr "命名定時通知任務"
 
 #: frontend/src/metabase/pulse/components/PulseEditName.jsx:37
 msgid "Give your pulse a name to help others understand what it's about"
-msgstr "命名定時任務方便其他人理解"
+msgstr "給定時通知任務一個名稱方便其他人理解"
 
 #: frontend/src/metabase/pulse/components/PulseEditName.jsx:49
 msgid "Important metrics"
@@ -4659,7 +4659,7 @@ msgstr "如果都沒有結果，跳過該定時任務"
 
 #: frontend/src/metabase/pulse/components/RecipientPicker.jsx:65
 msgid "Enter email addresses you'd like this data to go to"
-msgstr "輸入您想這個資料被送達的信箱地址"
+msgstr "輸入您想這個資料被送達的電子郵件地址"
 
 #: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:16
 msgid "Help everyone on your team stay in sync with your data."
@@ -4702,7 +4702,7 @@ msgstr "檢視"
 
 #: frontend/src/metabase/modes/components/actions/CompareWithTable.jsx:29
 msgid "Compare this with all rows in the table"
-msgstr "把這個在表單中和所有原始資料比較"
+msgstr "比較資料表中和所有原始資料"
 
 #: frontend/src/metabase/modes/components/actions/CompoundQueryAction.jsx:14
 msgid "Analyze the results of this Query"
@@ -4785,7 +4785,8 @@ msgstr "不重複"
 #: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.jsx:57
 msgid "View this {0}"
 msgid_plural "View these {0}"
-msgstr[0] "查看此{0}"
+msgstr[0] "檢視這個{0}\n"
+"Plural:檢視這些{0}"
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:227
 #: frontend/src/metabase/modes/components/drill/ZoomDrill.jsx:26
@@ -5136,7 +5137,7 @@ msgstr "顯示查詢"
 
 #: frontend/src/metabase/query_builder/components/QueryDefinitionTooltip.jsx:20
 msgid "This metric has been retired.  It's no longer available for use."
-msgstr "這個量值已經被淘汰，它將不再可用了"
+msgstr "這個量值已經被棄用，它將不再可用了"
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:34
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:46
@@ -5207,7 +5208,7 @@ msgstr "原生查詢"
 
 #: frontend/src/metabase/query_builder/components/QueryModeButton.jsx:52
 msgid "Not Supported"
-msgstr "不支持"
+msgstr "不支援"
 
 #: frontend/src/metabase/query_builder/components/QueryModeButton.jsx:58
 msgid "View the {0}"
@@ -5296,7 +5297,7 @@ msgstr "您的提問花了很長時間"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:52
 msgid "We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know."
-msgstr "並沒有及時從資料庫裡獲取結果，因此停止。可以過段時間再嘗試，或者問題依舊存在，可以聯繫管理員。"
+msgstr "並沒有及時從資料庫裡獲取結果，因此停止。可以過段時間再嘗試，或者問題依舊存在，可以聯繫系統管理員。"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:61
 msgid "We're experiencing server issues"
@@ -5304,7 +5305,7 @@ msgstr "我們碰到了伺服器問題"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:62
 msgid "Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin."
-msgstr "等待一兩分鐘後，再刷新頁面。如果問題依舊存在，請聯絡管理員。"
+msgstr "等待一兩分鐘後，再刷新頁面。如果問題依舊存在，請聯絡系統管理員。"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:106
 msgid "There was a problem with your question"
@@ -5357,7 +5358,7 @@ msgstr "{0}的和"
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:63
 #: frontend/src/metabase/reference/segments/SegmentFieldDetail.jsx:51
 msgid "All distinct values of {0}"
-msgstr "{0}的去重值"
+msgstr "{0}的去重複值"
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:190
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:39
@@ -5583,7 +5584,7 @@ msgstr "為變數提供“欄位篩選器”類型將允許您連結SQL卡到資
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:264
 msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
-msgstr "新增“欄位篩選器”變數時，您需要將其映射到特定欄位。 然後，您可以選擇在問題上顯示過濾組件，但即使不這樣做，現在可以在將此問題新增到資訊看板時將“欄位篩選器”變數映射到資訊看板篩選器。 欄位篩選器應在“WHERE”子句中使用。"
+msgstr "新增“欄位篩選器”變數時，您需要將其對應到特定欄位。 然後，您可以選擇在提問上顯示篩選器組件，但即使不這樣做，現在可以在將此提問新增到資訊看板時將“欄位篩選器”變數對應到資訊看板篩選器。 欄位篩選器應在“WHERE”子句中使用。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:271
 msgid "Optional Clauses"
@@ -5607,7 +5608,7 @@ msgstr "過濾標籤"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:134
 msgid "Variable type"
-msgstr "多種類型"
+msgstr "變數類型"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:143
 msgid "Text"
@@ -5623,7 +5624,7 @@ msgstr "欄位篩選條件"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:153
 msgid "Field to map to"
-msgstr "欄位映射到"
+msgstr "欄位對應到"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:180
 msgid "Filter widget type"
@@ -5680,7 +5681,7 @@ msgstr "沒有欄位類型"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/SummarizeStep.jsx:26
 msgid "by"
-msgstr "通過"
+msgstr "根據(by)"
 
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:25
 #: frontend/src/metabase/reference/databases/FieldList.jsx:156
@@ -5740,7 +5741,7 @@ msgstr "檢視這個量值"
 
 #: frontend/src/metabase/reference/components/GuideDetail.jsx:112
 msgid "By {0}"
-msgstr "按{0}"
+msgstr "根據{0}"
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:146
 msgid "Remove item"
@@ -5765,7 +5766,7 @@ msgstr "有什麼事情是這個資訊看板的使用者需要知道的嗎？"
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:170
 msgid "Anything users should be aware of about this {0}?"
-msgstr "任何事情關於{0}是使用者需要知道的嗎?"
+msgstr "還有任何事情關於{0}是使用者需要知道的嗎?"
 
 #: frontend/src/metabase/reference/components/MetricImportantFieldsDetail.jsx:26
 msgid "Which 2-3 fields do you usually group this metric by?"
@@ -5773,7 +5774,7 @@ msgstr "您經常用哪2-3個欄位把這些量值聚合？"
 
 #: frontend/src/metabase/reference/components/GuideHeader.jsx:25
 msgid "This is the perfect place to start if you’re new to your company’s data, or if you just want to check in on what’s going on."
-msgstr "如果對於公司資料不了解，或者想檢查一下怎麼回事，這是一個很好的選擇。"
+msgstr "如果對於公司資料不了解，或者想檢查一下怎麼回事，這是一個很好的開始。"
 
 #: frontend/src/metabase/reference/components/MetricImportantFieldsDetail.jsx:52
 msgid "Most useful fields to group this metric by"
@@ -5789,7 +5790,7 @@ msgstr "對為什麼必須做這些修改進行文字記錄"
 
 #: frontend/src/metabase/reference/databases/DatabaseDetail.jsx:170
 msgid "Why this database is interesting"
-msgstr "為什麼這個資料庫十分有趣"
+msgstr "為什麼對這個資料庫有興趣"
 
 #: frontend/src/metabase/reference/databases/DatabaseDetail.jsx:180
 msgid "Things to be aware of about this database"
@@ -5812,12 +5813,12 @@ msgstr "資料庫和資料表"
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.jsx:31
 #: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:31
 msgid "Details"
-msgstr "細節"
+msgstr "資料集相關資訊"
 
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:34
 #: frontend/src/metabase/reference/databases/TableList.jsx:114
 msgid "Tables in {0}"
-msgstr "{0}中的報表"
+msgstr "{0} 資料集中的資料表"
 
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:226
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:204
@@ -5828,7 +5829,7 @@ msgstr "實際在資料庫中的名稱"
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:235
 #: frontend/src/metabase/reference/segments/SegmentFieldDetail.jsx:231
 msgid "Why this field is interesting"
-msgstr "為什麼這個欄位有趣"
+msgstr "為什麼這個欄位有興趣"
 
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:245
 #: frontend/src/metabase/reference/segments/SegmentFieldDetail.jsx:241
@@ -5859,7 +5860,7 @@ msgstr "欄位名稱"
 
 #: frontend/src/metabase/reference/databases/FieldSidebar.jsx:46
 msgid "X-ray this field"
-msgstr "透視這個欄位"
+msgstr "綜覽欄位資訊"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:8
 msgid "Metabase is no fun without any data"
@@ -5871,7 +5872,7 @@ msgstr "一但您連接了一個資料庫，它將會出現在這裡"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:10
 msgid "Databases will appear here once your admins have added some"
-msgstr "一但您的管理員新增了，資料庫將會出現在這裡"
+msgstr "一但您的系統管理員新增了，資料庫將會出現在這裡"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:12
 msgid "Connect a database"
@@ -5943,11 +5944,11 @@ msgstr "我們最重要的資訊看板"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:189
 msgid "Numbers that we pay attention to"
-msgstr "我們注意的那些數字"
+msgstr "我們注意的那些數值"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:214
 msgid "Metrics are important numbers your company cares about. They often represent a core indicator of how the business is performing."
-msgstr "量值是貴公司關心的重要數字,它們通常代表業務運營方式的核心量值。"
+msgstr "量值是貴公司關心的重要數值,它們通常代表業務運營方式的核心量值。"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:222
 msgid "See all metrics"
@@ -5959,7 +5960,7 @@ msgstr "劃分和表格"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:82
 msgid "Tables"
-msgstr "表格"
+msgstr "資料表"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:263
 msgid "Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like {0}"
@@ -6023,7 +6024,7 @@ msgstr "什麼是您最重要的資訊看板?"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:290
 msgid "Do you have any commonly referenced metrics?"
-msgstr "您有常引用的量值嗎？"
+msgstr "您有常參考的量值嗎？"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:292
 msgid "Learn how to define a metric"
@@ -6076,7 +6077,7 @@ msgstr "使用者如果對這個資料感到疑惑，他們應該聯繫誰尋求
 #: frontend/src/metabase/reference/metrics/MetricDetail.jsx:76
 #: frontend/src/metabase/reference/segments/SegmentDetail.jsx:97
 msgid "Please enter a revision message"
-msgstr "請輸入一個調整訊息"
+msgstr "請輸入一個版本訊息"
 
 #: frontend/src/metabase/reference/metrics/MetricDetail.jsx:216
 msgid "Why this Metric is interesting"
@@ -6096,19 +6097,19 @@ msgstr "它是如何計算的裡面還沒有東西"
 
 #: frontend/src/metabase/reference/metrics/MetricDetail.jsx:297
 msgid "Other fields you can group this metric by"
-msgstr "您可以通過聚合這個量值形成的其他領域"
+msgstr "您可以通過聚合這個量值形成的其他欄位"
 
 #: frontend/src/metabase/reference/metrics/MetricDetail.jsx:298
 msgid "Fields you can group this metric by"
-msgstr "您可以通過聚合這個量值得到的領域"
+msgstr "您可以通過聚合這個量值得到的欄位"
 
 #: frontend/src/metabase/reference/metrics/MetricList.jsx:24
 msgid "Metrics are the official numbers that your team cares about"
-msgstr "量值是您的團隊關心的官方數字"
+msgstr "量值是您的團隊關心的數值"
 
 #: frontend/src/metabase/reference/metrics/MetricList.jsx:26
 msgid "Metrics will appear here once your admins have created some"
-msgstr "一但您的管理員建立了一些量值的話，它們將會出現在這裡"
+msgstr "一但您的系統管理員建立了一些量值的話，它們將會出現在這裡"
 
 #: frontend/src/metabase/reference/metrics/MetricList.jsx:28
 msgid "Learn how to create metrics"
@@ -6120,13 +6121,13 @@ msgstr "新增這個量值的圖表會在這裡顯示。"
 
 #: frontend/src/metabase/reference/metrics/MetricRevisions.jsx:29
 msgid "There are no revisions for this metric"
-msgstr "這個量值沒有修改歷史"
+msgstr "這個量值沒有修改版本"
 
 #: frontend/src/metabase/reference/metrics/MetricRevisions.jsx:91
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:52
 #: frontend/src/metabase/reference/segments/SegmentRevisions.jsx:90
 msgid "Revision history for {0}"
-msgstr "{0}的修改歷史"
+msgstr "{0}的修改版本"
 
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:44
 msgid "X-ray this metric"
@@ -6150,7 +6151,7 @@ msgstr "為您的團隊定義公共劃分，讓它用來提問也十分容易"
 
 #: frontend/src/metabase/reference/segments/SegmentList.jsx:25
 msgid "Segments will appear here once your admins have created some"
-msgstr "您的管理員新增後，劃分將會出現在這裡，"
+msgstr "您的系統管理員新增後，劃分將會出現在這裡，"
 
 #: frontend/src/metabase/reference/segments/SegmentList.jsx:27
 msgid "Learn how to create segments"
@@ -6271,7 +6272,7 @@ msgstr "如果您不知從何下手"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:66
 msgid "our getting started guide"
-msgstr "初始化檔案"
+msgstr "初級上手教學"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:67
 msgid "is just a click away."
@@ -6295,7 +6296,7 @@ msgstr "您已經設定完畢了！"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:179
 msgid "Take me to Metabase"
-msgstr "帶我去Metabase"
+msgstr "開始使用Metabase"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:49
 msgid "What should we call you?"
@@ -6333,7 +6334,7 @@ msgstr "超棒的部門"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:26
 msgid "Metabot is admiring your integers…"
-msgstr "Metabot正在欣賞您的整數……"
+msgstr "Metabot正在欣賞您的數值……"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:27
 msgid "Metabot is performing billions of differential equations…"
@@ -6370,7 +6371,7 @@ msgstr "這需要花費一段時間。 在此期間，您可以檢視其中一�
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:86
 msgid "I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!"
-msgstr "我看了一下您剛剛連接的資料，我對一些有趣的資料進行了探索分析。 希望您喜歡他們！"
+msgstr "我看了一下您剛剛連接的資料，我對一些有趣的資料進行了探索分析。 希望您喜歡！"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:98
 msgid "I'm done exploring for now"
@@ -6378,11 +6379,11 @@ msgstr "我暫時完成了探索"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:20
 msgid "Welcome to the Query Builder!"
-msgstr "歡迎使用報表設計器！"
+msgstr "歡迎使用查詢設計器！"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:22
 msgid "The Query Builder lets you assemble questions (or \"queries\") to ask about your data."
-msgstr "查詢建立器允許您收集問題（或者“查詢”）來向您的資料提問。"
+msgstr "查詢設計器允許您收集提問（或者“查詢”）來向您的資料發問。"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:26
 msgid "Tell me more"
@@ -6390,15 +6391,15 @@ msgstr "告訴我更多"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:43
 msgid "Start by picking the table with the data that you have a question about."
-msgstr "選擇您有相關提問的資料表單來開始吧"
+msgstr "選擇您有相關提問的資料表來開始吧"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:45
 msgid "Go ahead and select the \"Orders\" table from the dropdown menu."
-msgstr "繼續並且從下拉菜單中選擇“指派”表單"
+msgstr "繼續並且從下拉選單中選擇“訂單”資料表"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:78
 msgid "Filter your data to get just what you want."
-msgstr "過濾您的資料來獲得您想要的結果"
+msgstr "篩選您的資料來獲得您想要的結果"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:79
 msgid "Click the plus button and select the \"Created At\" field."
@@ -6418,11 +6419,11 @@ msgstr "試一試：點擊<strong>Raw Data</strong> 修改為 <strong>Count of r
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:142
 msgid "Add a grouping to break out your results by category, day, month, and more."
-msgstr "新增分組以分類，日期，月份等區隔呈現您的結果。"
+msgstr "新增分組以分類，日期，月份等方式來呈現您的結果。"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:144
 msgid "Let's do it: click on <strong>Add a grouping</strong>, and choose <strong>Created At: by Week</strong>."
-msgstr "讓我們來試試：新增一個聚合，並且選擇建立以：周為單位"
+msgstr "讓我們來試試：新增<strong>Add a grouping</strong>，並且選擇建立<strong>Created At: by Week</strong>以周為單位"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:152
 msgid "Click on \"by day\" to change it to \"Week.\""
@@ -6438,11 +6439,11 @@ msgstr "您做的真棒！點擊執行查詢來獲取您的結果！"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:192
 msgid "You can view your results as a chart instead of a table."
-msgstr "您可以用圖表的形式檢視您的結果，而不僅僅是表單"
+msgstr "您可以用圖表的形式檢視您的結果，而不僅僅是表格方式"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:194
 msgid "Everbody likes charts! Click the <strong>Visualization</strong> dropdown and select <strong>Line</strong>."
-msgstr "每個人都喜歡圖表！點擊可視化下拉菜單並且選擇線段"
+msgstr "每個人都喜歡圖表！點擊可視化下拉選單並且選擇線條圖"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:216
 msgid "Well done!"
@@ -6450,7 +6451,7 @@ msgstr "做得漂亮！"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:218
 msgid "That's all! If you still have questions, check out our"
-msgstr "就這些了！如果您還有問題的話，請檢視我們的"
+msgstr "就這些了！如果您還有問題的話，請看看我們的"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:223
 msgid "User's Guide"
@@ -6458,7 +6459,7 @@ msgstr "使用者入門"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:223
 msgid "Have fun exploring your data!"
-msgstr "祝您在資料的海洋裡探索愉快！"
+msgstr "祝您在資料的世界裡探索愉快！"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:226
 msgid "Thanks"
@@ -6494,11 +6495,11 @@ msgstr "帳戶成功更新！"
 
 #: frontend/src/metabase/entities/users/forms.js:96
 msgid "Current password"
-msgstr "當前密碼"
+msgstr "目前密碼"
 
 #: frontend/src/metabase/user/components/UpdateUserDetails.jsx:137
 msgid "Sign in with Google Email address"
-msgstr "用Google信箱地址登入"
+msgstr "用Google電子郵件地址登入"
 
 #: frontend/src/metabase/user/components/UserSettings.jsx:65
 msgid "User Details"
@@ -6585,7 +6586,7 @@ msgstr "（這對於資訊看板來說有點太長了）"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:503
 msgid "This is usually pretty fast but seems to be taking awhile right now."
-msgstr "這個一般超級快，但是看起來現在等了有一會了"
+msgstr "這個還算快，但是看起來現在等了有一會了"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx:37
 msgid "Select a field"
@@ -6658,7 +6659,7 @@ msgstr "在這個欄位中的資料將會根據它們的值被染色"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:279
 msgid "When a cell in these columns is {0} it will be tinted this color."
-msgstr "當一個資料在這些欄位中是{0}時，它將會被染成這個顏色。"
+msgstr "當一個資料在這些欄位中是{0}時，它將會被渲染成這個顏色。"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:313
 msgid "Which columns should be affected?"
@@ -6756,7 +6757,7 @@ msgstr "沒有{0}的可視化"
 
 #: frontend/src/metabase/visualizations/lib/warnings.js:25
 msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed."
-msgstr "''{0}''是未聚合的欄位，如果它在X軸的點上有多於一個的值，這些值將會被求和。"
+msgstr "''{0}''是未聚合的欄位，如果它在X軸的點上有多於一個的值，這些值將會被加總。"
 
 #: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:96
 msgid "This chart type requires at least 2 columns."
@@ -6855,7 +6856,7 @@ msgstr "X軸"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:119
 msgid "Add a series breakout..."
-msgstr "新增一系欄位斷點......"
+msgstr "新增一序列欄位斷點......"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:132
 #: frontend/src/metabase/visualizations/visualizations/RowChart.jsx:35
@@ -6864,7 +6865,7 @@ msgstr "Y軸"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:160
 msgid "Add another series..."
-msgstr "新增另一個系欄位……"
+msgstr "新增另一個序列欄位……"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:177
 msgid "Bubble size"
@@ -6934,7 +6935,7 @@ msgstr "X軸比例"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:422
 msgid "Timeseries"
-msgstr "時間系欄位"
+msgstr "時間序列欄位"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:425
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:443
@@ -6953,7 +6954,7 @@ msgstr "日誌"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:430
 msgid "Histogram"
-msgstr "柱狀圖"
+msgstr "柱狀圖(Histogram)"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:432
 msgid "Ordinal"
@@ -6994,7 +6995,7 @@ msgstr "當需要時使用一個分離的Y軸"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:529
 msgid "Show label on x-axis"
-msgstr "展示標籤在X軸上"
+msgstr "在X軸上呈現標籤"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:535
 msgid "X-axis label"
@@ -7002,7 +7003,7 @@ msgstr "X軸標籤"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:544
 msgid "Show label on y-axis"
-msgstr "展示標籤在Y軸上"
+msgstr "在Y軸上呈現標籤"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:550
 msgid "Y-axis label"
@@ -7019,7 +7020,7 @@ msgstr "區域"
 
 #: frontend/src/metabase/visualizations/visualizations/AreaChart.jsx:22
 msgid "area chart"
-msgstr "區域圖表"
+msgstr "區域圖"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:257
 #: frontend/src/metabase/visualizations/visualizations/BarChart.jsx:18
@@ -7028,11 +7029,11 @@ msgstr "柱"
 
 #: frontend/src/metabase/visualizations/visualizations/BarChart.jsx:21
 msgid "bar chart"
-msgstr "柱形圖"
+msgstr "柱狀圖"
 
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:62
 msgid "Which fields do you want to use?"
-msgstr "您想要使用哪個領域？"
+msgstr "您想要使用哪個欄位？"
 
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:32
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:122
@@ -7050,7 +7051,7 @@ msgstr "漏斗類型"
 
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:123
 msgid "Bar chart"
-msgstr "柱形圖"
+msgstr "柱狀圖"
 
 #: frontend/src/metabase/visualizations/visualizations/LineChart.jsx:20
 msgid "line chart"
@@ -7120,7 +7121,7 @@ msgstr "半徑"
 
 #: frontend/src/metabase/visualizations/visualizations/Map.jsx:278
 msgid "Blur"
-msgstr "模糊"
+msgstr "模糊程度"
 
 #: frontend/src/metabase/visualizations/visualizations/Map.jsx:284
 msgid "Min Opacity"
@@ -7162,7 +7163,7 @@ msgstr "需要用哪些欄位？"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:49
 msgid "Pie"
-msgstr "餅圖"
+msgstr "圓餅圖"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:105
 msgid "Dimension"
@@ -7241,7 +7242,7 @@ msgstr "分散"
 
 #: frontend/src/metabase/visualizations/visualizations/ScatterPlot.jsx:19
 msgid "scatter plot"
-msgstr "散點圖"
+msgstr "散佈圖"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:84
 msgid "Pivot the table"
@@ -7296,7 +7297,7 @@ msgstr "顯示背景"
 #: frontend/src/metabase-lib/lib/Dimension.js:756
 msgid "{0} bin"
 msgid_plural "{0} bins"
-msgstr[0] "{0}箱"
+msgstr[0] "{0} 刻度間隔"
 
 #: frontend/src/metabase-lib/lib/Dimension.js:762
 msgid "Auto binned"
@@ -7308,15 +7309,15 @@ msgstr "DELETE /api/alert/:id 已棄用，請使用  PUT /api/alert/:id 來更�
 
 #: src/metabase/api/automagic_dashboards.clj
 msgid "invalid show value"
-msgstr "不可用顯示值"
+msgstr "無效顯示值"
 
 #: src/metabase/api/automagic_dashboards.clj
 msgid "invalid value for prefix"
-msgstr "不可用的前綴值"
+msgstr "無效前綴值"
 
 #: src/metabase/api/automagic_dashboards.clj
 msgid "invalid value for rule name"
-msgstr "不可用的規則名"
+msgstr "無效規則名稱"
 
 #: src/metabase/api/automagic_dashboards.clj
 msgid "value couldn''t be parsed as base64 encoded JSON"
@@ -7340,7 +7341,7 @@ msgstr "DELETE /api/card/:id 已棄用，請使用  PUT /api/card/:id 來更改�
 
 #: src/metabase/api/common.clj src/metabase/api/common/internal.clj
 msgid "Invalid field: {0}"
-msgstr "無效領域：{0}"
+msgstr "無效欄位：{0}"
 
 #: src/metabase/api/common.clj
 msgid "Invalid value ''{0}'' for ''{1}'': {2}"
@@ -7352,7 +7353,7 @@ msgstr "必須是：{0}的其中一個"
 
 #: src/metabase/api/common.clj
 msgid "Invalid Request."
-msgstr "不可用請求"
+msgstr "無效請求"
 
 #: src/metabase/api/common.clj
 msgid "Not found."
@@ -7372,7 +7373,7 @@ msgstr "警告: 末端 {0}/{1} 不包含 docstring."
 
 #: src/metabase/api/common.clj
 msgid "starting streaming request"
-msgstr "開始流請求"
+msgstr "開始串流請求"
 
 #: src/metabase/async/api_response.clj
 msgid "connection closed, canceling request"
@@ -7445,11 +7446,11 @@ msgstr "與存儲的密碼不匹配"
 
 #: src/metabase/api/session.clj
 msgid "Problem connecting to LDAP server, will fallback to local authentication {0}"
-msgstr "連接到LDAP伺服器時出現問題，將會完全返回本地授權驗證。"
+msgstr "連接到LDAP伺服器時出現問題，將會完全返回本地授權驗證 {0}。"
 
 #: src/metabase/api/session.clj
 msgid "Invalid reset token"
-msgstr "無效的重設記號"
+msgstr "無效的重設token"
 
 #: src/metabase/api/session.clj
 msgid "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."
@@ -7461,15 +7462,15 @@ msgstr "設定後，如果使用者的Google帳戶電子郵件地址來自此域
 
 #: src/metabase/api/session.clj
 msgid "Invalid Google Auth token."
-msgstr "無效的Google Auth記號"
+msgstr "無效的Google Auth token"
 
 #: src/metabase/api/session.clj
 msgid "Email is not verified."
-msgstr "信箱未認證"
+msgstr "電子郵件未認證"
 
 #: src/metabase/api/session.clj
 msgid "You''ll need an administrator to create a Metabase account before you can use Google to log in."
-msgstr "在您能夠使用Google來登入之前，您需要一個管理員來建立一個Metabase帳戶。"
+msgstr "在您能夠使用Google來登入之前，您需要一個系統管理員來建立一個Metabase帳戶。"
 
 #: src/metabase/api/session.clj
 msgid "Successfully authenticated Google Auth token for: {0} {1}"
@@ -7489,7 +7490,7 @@ msgstr "連接到您的資料，讓您的整個團隊可以開始探索。"
 
 #: src/metabase/api/setup.clj
 msgid "Set up email"
-msgstr "設定信箱"
+msgstr "設定電子郵件"
 
 #: src/metabase/api/setup.clj
 msgid "Add email credentials so you can more easily invite team members and get updates via Pulses."
@@ -7575,23 +7576,23 @@ msgstr "無間隔"
 #: frontend/src/metabase/lib/query_time.js:196 src/metabase/api/table.clj
 msgid "Day"
 msgid_plural "Days"
-msgstr[0] "天"
+msgstr[0] "日"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
 #: frontend/src/metabase/lib/query_time.js:192 src/metabase/api/table.clj
 msgid "Minute"
 msgid_plural "Minutes"
-msgstr[0] "分鐘"
+msgstr[0] "分"
 
 #: frontend/src/metabase/lib/query_time.js:194 src/metabase/api/table.clj
 msgid "Hour"
 msgid_plural "Hours"
-msgstr[0] "小時"
+msgstr[0] "時"
 
 #: frontend/src/metabase/lib/query_time.js:202 src/metabase/api/table.clj
 msgid "Quarter"
 msgid_plural "Quarters"
-msgstr[0] "25美分硬幣"
+msgstr[0] "季度"
 
 #: src/metabase/api/table.clj
 msgid "Minute of Hour"
@@ -7660,11 +7661,11 @@ msgstr "找不到合適的圖像寫入器！"
 
 #: src/metabase/api/user.clj
 msgid "Email address already in use."
-msgstr "信箱地址已經被使用。"
+msgstr "電子郵件地址已經被使用。"
 
 #: src/metabase/api/user.clj
 msgid "Email address already associated to another user."
-msgstr "信箱地址已經被另一個使用者關聯。"
+msgstr "電子郵件地址已經被關聯另一個使用者。"
 
 #: src/metabase/api/user.clj
 msgid "Not able to reactivate an active user"
@@ -7672,7 +7673,7 @@ msgstr "不能恢復活動一個已經處於活動狀態的使用者"
 
 #: src/metabase/api/user.clj
 msgid "Invalid password"
-msgstr "不可用密碼"
+msgstr "無效密碼"
 
 #: src/metabase/automagic_dashboards/comparison.clj
 msgid "All {0}"
@@ -7748,7 +7749,7 @@ msgstr "劃分 {0}"
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0} metric"
 msgid_plural "{0} metrics"
-msgstr[0] "{0}指標"
+msgstr[0] "量值 {0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0} field"
@@ -7756,7 +7757,7 @@ msgstr "欄位 {0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "\"{0}\" question"
-msgstr "問題 ''{0}''"
+msgstr "提問 ''{0}''"
 
 #: src/metabase/automagic_dashboards/comparison.clj
 #: src/metabase/automagic_dashboards/core.clj
@@ -7904,7 +7905,7 @@ msgstr "錯誤解析%s:n%s"
 
 #: src/metabase/cmd/reset_password.clj
 msgid "No user found with email address ''{0}''. "
-msgstr "用信箱地址沒有找到使用者''{0}''"
+msgstr "此電子郵件地址''{0}''沒有找到使用者"
 
 #: src/metabase/cmd/reset_password.clj
 msgid "Please check the spelling and try again."
@@ -7924,7 +7925,7 @@ msgstr "失敗 [[[{0}]]]"
 
 #: src/metabase/core.clj
 msgid "Please use the following URL to setup your Metabase installation:"
-msgstr "請使用下欄位URL來設定您的Metabase安裝程式:"
+msgstr "請使用下列URL來設定您的Metabase安裝程式:"
 
 #: src/metabase/core.clj
 msgid "Metabase Shutting Down ..."
@@ -7949,7 +7950,7 @@ msgstr "Metabse資料庫設定、遷移中。坐穩了，這個可能要花一�
 
 #: src/metabase/core.clj
 msgid "Looks like this is a new installation ... preparing setup wizard"
-msgstr "看起來這是一個新的安裝過程……正在準備安裝嚮導"
+msgstr "看起來這是一個新的安裝過程……正在準備安裝精靈"
 
 #: src/metabase/core.clj
 msgid "Metabase Initialization COMPLETE"
@@ -8046,7 +8047,7 @@ msgstr "看起來資料庫名稱不正確。"
 
 #: src/metabase/driver/common.clj
 msgid "It looks like your host is invalid."
-msgstr "看起來您的伺服器不可用。"
+msgstr "看起來您的伺服器無效。"
 
 #: src/metabase/driver/common.clj
 msgid "Please double-check it and try again."
@@ -8075,7 +8076,7 @@ msgstr "執行查詢時使用的連接時區。預設為系統時區"
 
 #: src/metabase/driver.clj
 msgid "Registered driver {0} {1}"
-msgstr "已註冊的驅動器 {0} {1}"
+msgstr "已註冊的驅動程式 {0} {1}"
 
 #: src/metabase/driver.clj
 msgid "No -init-driver function found for ''{0}''"
@@ -8083,12 +8084,12 @@ msgstr "對於''{0}''沒找到“init-driver”函數"
 
 #: src/metabase/driver/common.clj
 msgid "Unable to parse date string ''{0}'' for database engine ''{1}''"
-msgstr "資料庫引擎“{ 1 }”無法解析日期字串“{ 0 }”"
+msgstr "資料庫引擎“ {1}”無法解析日期字串“{0}”"
 
 #. all-NULL columns in DBs like Mongo w/o explicit types
 #: src/metabase/driver/common.clj
 msgid "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*."
-msgstr "不知道如何將類“{ 0 }”映射到欄位BaseType類型，落回到：type/*"
+msgstr "不知道如何將類別“{0}”對應到欄位BaseType類型，回復到：type/*"
 
 #: src/metabase/driver/util.clj
 msgid "Failed to connect to database: {0}"
@@ -8108,7 +8109,7 @@ msgstr "設定時區失敗:"
 
 #: modules/drivers/googleanalytics/src/metabase/driver/googleanalytics.clj
 msgid "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
-msgstr "您必須啟用 Google AnalyticsAPI。 使用此連結轉到 Google Developers Console：{0}"
+msgstr "您必須啟用 Google AnalyticsAPI。 使用此連結到 Google Developers Console：{0}"
 
 #: src/metabase/driver/h2.clj
 msgid "Running SQL queries against H2 databases using the default (admin) database user is forbidden."
@@ -8124,17 +8125,17 @@ msgstr "發現 metabase.driver.FixedHiveDriver."
 
 #: src/metabase/driver/sparksql.clj
 msgid "Successfully registered metabase.driver.FixedHiveDriver with JDBC."
-msgstr "成功用JDBC註冊Metabse.驅動.修復的Hive驅動"
+msgstr "成功使用FixedHiveDriver JDBC註冊為Metabse驅動程式"
 
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj
 msgid "Email address you want to use as the sender of Metabase."
-msgstr "您想要使用的作為Metabse發送者的信箱地址"
+msgstr "您想要使用的作為Metabse發送者的電子郵件地址"
 
 #: src/metabase/email.clj
 msgid "The address of the SMTP server that handles your emails."
-msgstr "SMTP伺服器地址處理您的信箱。"
+msgstr "處理電子郵件的伺服器地址。"
 
 #: src/metabase/email.clj
 msgid "SMTP username."
@@ -8150,7 +8151,7 @@ msgstr "您的SMTP服務發送郵件使用的埠"
 
 #: src/metabase/email.clj
 msgid "SMTP secure connection protocol. (tls, ssl, starttls, or none)"
-msgstr "SMTP安全連接協議（tls，sll，starttls，或者沒有）"
+msgstr "SMTP安全連接協議（tls，ssl，starttls，或者沒有）"
 
 #: src/metabase/email.clj
 msgid "none"
@@ -8182,11 +8183,11 @@ msgstr "伺服器埠，通常使用389或者636如果SSL被使用的話。"
 
 #: src/metabase/integrations/ldap.clj
 msgid "Use SSL, TLS or plain text."
-msgstr "使用SSL、TLS或純文本"
+msgstr "使用SSL、TLS或純文字"
 
 #: src/metabase/integrations/ldap.clj
 msgid "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."
-msgstr "要綁定的可分辨名稱（如果有的話），該使用者將被用來搜尋有關其他使用者的訊息。"
+msgstr "要綁定的可辨識名稱（如果有的話），該使用者將被用來搜尋有關其他使用者的訊息。"
 
 #: src/metabase/integrations/ldap.clj
 msgid "The password to bind with for the lookup user."
@@ -8240,7 +8241,7 @@ msgstr "上次MetaBot確認已經是{0}之前了。"
 
 #: src/metabase/metabot/instance.clj
 msgid "This instance will now handle MetaBot duties."
-msgstr "這個實例現在將處理Myabor任務"
+msgstr "這個實例現在將處理MetaBot任務"
 
 #: src/metabase/metabot.clj
 msgid "Here''s what I can {0}:"
@@ -8260,7 +8261,7 @@ msgstr "這是您的{0}張最新的卡片:n{1}"
 
 #: src/metabase/metabot/command.clj
 msgid "Could you be a little more specific? I found these cards with names that matched:n{0}"
-msgstr "您能再具體一點嗎？我找到了這些名稱匹配{0}的卡片"
+msgstr "您能再特別一點嗎？我找到了這些名稱一樣{0}的卡片"
 
 #: src/metabase/metabot/command.clj
 msgid "I don''t know what Card `{0}` is. Give me a Card ID or name."
@@ -8268,7 +8269,7 @@ msgstr "我不知道卡片 `{0} `是什麼。給我一個卡片ID或者名稱。
 
 #: src/metabase/metabot/command.clj
 msgid "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don''t know which card you want, try `metabot list`."
-msgstr "展示哪個卡片？給我卡片名字或者它的ID的一部分，我可以展示它。如果您不知道您需要的是哪個卡片，試試 `metabot欄位表 `"
+msgstr "展示哪個卡片？給我卡片名字或者它的ID的一部分，我可以展示它。如果您不知道您需要的是哪個卡片，試試 `metabot list`"
 
 #: src/metabase/metabot/command.clj
 msgid "Ok, just a second..."
@@ -8304,11 +8305,11 @@ msgstr "連接websocket時發生錯誤："
 
 #: src/metabase/metabot/instance.clj
 msgid "This instance is performing MetaBot duties."
-msgstr "此實例正在執行MetaBot職責。"
+msgstr "此實例正在執行MetaBot任務。"
 
 #: src/metabase/metabot/instance.clj
 msgid "Another instance is already handling MetaBot duties."
-msgstr "另一個實例已經在處理MetaBot職責。"
+msgstr "另一個實例已經在處理MetaBot任務。"
 
 #: src/metabase/metabot.clj
 msgid "Starting MetaBot threads..."
@@ -8336,7 +8337,7 @@ msgstr "檢視{0}獲取更多訊息。"
 
 #: src/metabase/models/card.clj
 msgid "Cannot save Question: source query has circular references."
-msgstr "不能儲存提問：源查詢擁有循環引用。"
+msgstr "不能儲存提問：來源查詢擁有循環引用。"
 
 #: src/metabase/models/card.clj src/metabase/models/query/permissions.clj
 #: src/metabase/query_processor/middleware/fetch_source_query.clj
@@ -8346,7 +8347,7 @@ msgstr "卡片{0}不存在"
 
 #: src/metabase/models/card.clj
 msgid "You do not have permissions to run ad-hoc native queries against Database {0}."
-msgstr "您沒有權限來對資料庫{0}執行點對點原始查詢。"
+msgstr "您沒有權限來對資料庫{0}執行即席(ad-hoc)原始查詢。"
 
 #: src/metabase/models/collection.clj
 msgid "Invalid color"
@@ -8374,7 +8375,7 @@ msgstr "您無法移動個人集合。"
 
 #: src/metabase/models/collection.clj
 msgid "Invalid Collection location: some or all ancestors do not exist."
-msgstr "集合位置無效：部分或全部祖先不存在。"
+msgstr "集合位置無效：部分或全部上層結構不存在。"
 
 #: src/metabase/models/collection.clj
 msgid "You cannot archive the Root Collection."
@@ -8427,23 +8428,23 @@ msgstr "欄位{0}之前自動設定顯示為一個欄位表組件，但是現在
 
 #: src/metabase/models/field_values.clj
 msgid "Switching Field to use a search widget instead."
-msgstr "轉換領域來使用一個搜索組件。"
+msgstr "轉換欄位來使用一個搜索組件。"
 
 #: src/metabase/models/field_values.clj
 msgid "Storing updated FieldValues for Field {0}..."
-msgstr "儲存Field{0}更新過的FieldValues"
+msgstr "儲存欄位{0}更新過的FieldValues"
 
 #: src/metabase/models/field_values.clj
 msgid "Storing FieldValues for Field {0}..."
-msgstr "儲存Field{0}的FieldValues"
+msgstr "儲存欄位{0}的FieldValues"
 
 #: src/metabase/models/humanization.clj
 msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
-msgstr "Metabase 會嘗試將資料表名稱和表中欄位名稱轉換為適合閱讀的版本，例如：將somehorriblename轉換為 Some Horrible Name。"
+msgstr "Metabase 會嘗試將資料表名稱和表中欄位名稱轉換為適合理解的版本，例如：將somehorriblename轉換為 Some Horrible Name。"
 
 #: src/metabase/models/humanization.clj
 msgid "This doesn’t work all that well if the names are in a language other than English, however."
-msgstr "然而，如果名字是用英語以外的語言命名的，這將不會工作的很好"
+msgstr "然而，如果名字是用英語以外的語言命名的，這將不會轉換的很好"
 
 #: src/metabase/models/humanization.clj
 msgid "Do you want us to take a guess?"
@@ -8451,15 +8452,15 @@ msgstr "您想讓我們猜一下嗎？"
 
 #: src/metabase/models/permissions.clj
 msgid "You cannot create or revoke permissions for the 'Admin' group."
-msgstr "您無法為“管理員”組建立或撤消權限。"
+msgstr "您無法為系統管理員群組建立或撤消權限。"
 
 #: src/metabase/models/permissions.clj
 msgid "Invalid permissions object path: ''{0}''."
-msgstr "不可用的許可對象路徑：''{0}''。"
+msgstr "無效的許可對象路徑：''{0}''。"
 
 #: src/metabase/models/permissions.clj
 msgid "You cannot update a permissions entry!"
-msgstr "您不能更新一個許可權限入口！"
+msgstr "您不能更新一個授權入口！"
 
 #: src/metabase/models/permissions.clj
 msgid "Delete it and create a new one."
@@ -8471,7 +8472,7 @@ msgstr "您無法編輯個人集合或其後代的權限。"
 
 #: src/metabase/models/permissions.clj
 msgid "Looks like someone else edited the permissions and your data is out of date."
-msgstr "看起來別的什麼人編輯了許可，並且您的資料過期了。"
+msgstr "看起來有人編輯了授權，並且您的資料過期了。"
 
 #: src/metabase/models/permissions.clj
 msgid "Please fetch new data and try again."
@@ -8483,7 +8484,7 @@ msgstr "建立萬能權限群組''{0}''（ID={1}）"
 
 #: src/metabase/models/permissions_group.clj
 msgid "A group with that name already exists."
-msgstr "組名稱已存在"
+msgstr "群組名稱已存在"
 
 #: src/metabase/models/permissions_group.clj
 msgid "You cannot edit or delete the ''{0}'' permissions group!"
@@ -8499,7 +8500,7 @@ msgstr "您不能在所有使用者群組中新增或者移除成員。"
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot remove the last member of the 'Admin' group!"
-msgstr "您不能移除最後一個管理員群組的成員。"
+msgstr "您不能移除最後一個系統管理員群組的成員。"
 
 #: src/metabase/models/permissions_revision.clj
 msgid "You cannot update a PermissionsRevision!"
@@ -8508,7 +8509,7 @@ msgstr "您不能更新一個許可權限的修訂版本！"
 #. if there's still not a Card, throw an Exception!
 #: src/metabase/models/pulse.clj
 msgid "Invalid Alert: Alert does not have a Card assoicated with it"
-msgstr "不可用警告:警示沒有一個與它相關聯的卡片。"
+msgstr "無效警告:沒有一個與它相關聯的卡片。"
 
 #: src/metabase/models/pulse.clj
 msgid "value must be a map with the keys `{0}`, `{1}`, and `{2}`."
@@ -8520,11 +8521,11 @@ msgstr "值必須是帶有以下鍵的映射 `({0})`"
 
 #: src/metabase/models/query/permissions.clj
 msgid "Error calculating permissions for query: {0}"
-msgstr "錯誤的查詢計算許可:{0}"
+msgstr "錯誤的查詢計算授權:{0}"
 
 #: src/metabase/models/query/permissions.clj
 msgid "Invalid query type: {0}"
-msgstr "不可用的請求類型：{0}"
+msgstr "無效的查詢類型：{0}"
 
 #: src/metabase/models/query_execution.clj
 msgid "You cannot update a QueryExecution!"
@@ -8589,7 +8590,7 @@ msgstr "您的Metabase插件目錄中應該有一些外部依賴項。"
 
 #: src/metabase/plugins.clj
 msgid "With Java 9 or higher, Metabase cannot automatically add them to your classpath."
-msgstr "對於Java 9或更高版本，Metabase無法自動將它們新增到類路徑中。"
+msgstr "對於Java 9或更高版本，Metabase無法自動將它們新增到類別路徑中。"
 
 #: src/metabase/plugins.clj
 msgid "Instead, you should include them at launch with the -cp option. For example:"
@@ -8621,11 +8622,11 @@ msgstr "此Metabase實例的基本URL，例如“http://metabase.my-company.com�
 
 #: src/metabase/public_settings.clj
 msgid "The default language for this Metabase instance."
-msgstr "這個Metabse實例的預設語言"
+msgstr "這個Metabse實例的預設語系"
 
 #: src/metabase/public_settings.clj
 msgid "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."
-msgstr "這個只應用於信箱、趨勢及其他。使用者的瀏覽器將指定在使用者界面中使用的語言"
+msgstr "這個設定只適用於電子郵件、Pulses及其他。使用者的瀏覽器將指定在使用者界面中使用的語言"
 
 #: src/metabase/public_settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
@@ -8641,11 +8642,11 @@ msgstr "採用可視化地圖的過程中，要使用地圖伺服器的url模板
 
 #: src/metabase/public_settings.clj
 msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?"
-msgstr "啟用管理員來為提問和資訊看板建立公開的可瀏覽連結（並且可嵌入的iframes框架）嗎？"
+msgstr "啟用系統管理員來為提問和資訊看板建立公開的可瀏覽連結（並且可嵌入的iframes框架）嗎？"
 
 #: src/metabase/public_settings.clj
 msgid "Allow admins to securely embed questions and dashboards within other applications?"
-msgstr "允許管理員在其他應用程式中安全地嵌入報表和資訊看板?"
+msgstr "允許系統管理員在其他應用程式中安全地嵌入提問和資訊看板?"
 
 #: src/metabase/public_settings.clj
 msgid "Allow using a saved question as the source for other queries?"
@@ -8653,11 +8654,11 @@ msgstr "允許使用一個已經存儲的提問作為"
 
 #: src/metabase/public_settings.clj
 msgid "Enabling caching will save the results of queries that take a long time to run."
-msgstr "能夠使用快取儲存需要長時間執行的查詢結果集"
+msgstr "啟用快取儲存需要長時間執行的查詢結果集"
 
 #: src/metabase/public_settings.clj
 msgid "The maximum size of the cache, per saved question, in kilobytes:"
-msgstr "快取最大值，"
+msgstr "快取最大值，以kb為單位"
 
 #: src/metabase/public_settings.clj
 msgid "The absolute maximum time to keep any cached query results, in seconds."
@@ -8677,7 +8678,7 @@ msgstr "如果一個查詢平均要花了2分鐘，同時您輸入了10作為放
 
 #: src/metabase/public_settings.clj
 msgid "When using the default binning strategy and a number of bins is not provided, this number will be used as the default."
-msgstr "當使用預設的封裝（打包）策略是，如果沒有提供封裝（打包）的數量，該數字將用作預設值"
+msgstr "當使用預設的封裝（打包）策略是，如果沒有提供封裝（打包）的數量，該數量將用作預設值"
 
 #: src/metabase/public_settings.clj
 msgid "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees)."
@@ -8791,7 +8792,7 @@ msgstr "共分類了{0}個欄位，{1}個失敗"
 
 #: src/metabase/sync/analyze.clj
 msgid "Total number of tables classified {0}, {1} updated"
-msgstr "表數目分類 {0}, {1} 更新"
+msgstr "共分類了{0}個資料表, {1} 更新"
 
 #: src/metabase/sync/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -8799,7 +8800,7 @@ msgstr "{0}生成浮水印錯誤"
 
 #: src/metabase/sync/field_values.clj
 msgid "Updated {0} field value sets, created {1}, deleted {2} with {3} errors"
-msgstr "更新{0}領域值集合，建立了{1}，刪除了{2}和{3}錯誤"
+msgstr "更新{0}欄位值集合，建立了{1}，刪除了{2}和{3}錯誤"
 
 #: src/metabase/sync/sync_metadata.clj
 msgid "Total number of fields sync''d {0}, number of fields updated {1}"
@@ -8807,7 +8808,7 @@ msgstr "共同步欄位{0}個，更新欄位{1}個"
 
 #: src/metabase/sync/sync_metadata.clj
 msgid "Total number of tables sync''d {0}, number of tables updated {1}"
-msgstr "共同步表{0}個，更新表{1}個"
+msgstr "共同步資料表{0}個，更新表{1}個"
 
 #: src/metabase/sync/sync_metadata.clj
 msgid "Found timezone id {0}"
@@ -8815,7 +8816,7 @@ msgstr "發現時區id{0}"
 
 #: src/metabase/sync/sync_metadata.clj
 msgid "Total number of foreign keys sync''d {0}, {1} updated and {2} tables failed to update"
-msgstr "共同步外鍵{0}個，{1}個更新，{2}個表更新失敗"
+msgstr "共同步外鍵{0}個，{1}個更新，{2}個資料表更新失敗"
 
 #: src/metabase/sync/util.clj
 msgid "{0} Database {1} ''{2}''"
@@ -8823,7 +8824,7 @@ msgstr "{0}資料庫{1}“{2}”"
 
 #: src/metabase/sync/util.clj
 msgid "Table {0} ''{1}''"
-msgstr "表單{0}“{1}”"
+msgstr "資料表{0}“{1}”"
 
 #: src/metabase/sync/util.clj
 msgid "Field {0} ''{1}''"
@@ -8863,11 +8864,11 @@ msgstr "載入任務命名空間"
 
 #: src/metabase/task.clj
 msgid "Starting Quartz Scheduler"
-msgstr "啟動Quartz調度"
+msgstr "啟動Quartz排程"
 
 #: src/metabase/task.clj
 msgid "Stopping Quartz Scheduler"
-msgstr "停止Quartz調度"
+msgstr "停止Quartz排程"
 
 #: src/metabase/task.clj
 msgid "Job already exists:"
@@ -8886,7 +8887,7 @@ msgstr "資料庫時區衝突"
 
 #: src/metabase/util/date.clj
 msgid "JVM timezone is {0} and detected database timezone is {1}."
-msgstr "jvm域資料庫時區不一致"
+msgstr "JVM 時區是{0}，資料庫時區是{1}"
 
 #: src/metabase/util/date.clj
 msgid "Configure a report timezone to ensure proper date and time conversions."
@@ -8902,11 +8903,12 @@ msgstr "MB_ENCRYPTION_SECRET_KEY至少要16個字元"
 
 #: src/metabase/util/encryption.clj
 msgid "Saved credentials encryption is ENABLED for this Metabase instance."
-msgstr "已存儲的證書加密方式已經為這個Metabase事例啟用"
+msgstr "已存儲的證書加密方式已經為這個Metabase實例啟用"
 
 #: src/metabase/util/encryption.clj
 msgid "Saved credentials encryption is DISABLED for this Metabase instance."
-msgstr "已存儲的證書加密方式已經為這個Metabase事例禁用"
+msgstr "已存儲的證書加密方式已經為這個Metabase實\n"
+"例禁用"
 
 #: src/metabase/util/encryption.clj
 msgid "nFor more information, see"
@@ -8922,15 +8924,15 @@ msgstr "值必須是字串"
 
 #: src/metabase/util/schema.clj
 msgid "value must be a boolean."
-msgstr "值必須是布爾值"
+msgstr "值必須是布林值"
 
 #: src/metabase/util/schema.clj
 msgid "value must be a string that matches the regex `{0}`."
-msgstr "值必須是與正則表達式''{0}''匹配的字串。"
+msgstr "值必須是與正則表達式`{0}`匹配的字串。"
 
 #: src/metabase/util/schema.clj
 msgid "value must satisfy one of the following requirements: "
-msgstr "值必須滿足下欄位一個要求:"
+msgstr "值必須滿足下列要求之一："
 
 #: src/metabase/util/schema.clj
 msgid "value may be nil, or if non-nil, {0}"
@@ -8942,7 +8944,7 @@ msgstr "值必須是{0}其中之一。"
 
 #: src/metabase/util/schema.clj
 msgid "value must be an array."
-msgstr "值必須是一個數組。"
+msgstr "值必須是一個陣列。"
 
 #: src/metabase/util/schema.clj
 msgid "Each {0}"
@@ -8950,7 +8952,7 @@ msgstr "遍歷 {0}"
 
 #: src/metabase/util/schema.clj
 msgid "The array cannot be empty."
-msgstr "數組不能為空。"
+msgstr "陣列不能為空。"
 
 #: src/metabase/util/schema.clj
 msgid "value must be a non-blank string."
@@ -9006,15 +9008,15 @@ msgstr "有效的地圖"
 
 #: src/metabase/util/schema.clj
 msgid "value must be a map."
-msgstr "必須是MAP"
+msgstr "值必須是MAP"
 
 #: src/metabase/util/schema.clj
 msgid "Valid email address"
-msgstr "有效的信箱地址"
+msgstr "有效的電子郵件地址"
 
 #: src/metabase/util/schema.clj
 msgid "value must be a valid email address."
-msgstr "值必須是有效的信箱地址"
+msgstr "值必須是有效的電子郵件地址"
 
 #: src/metabase/util/schema.clj
 msgid "Insufficient password strength"
@@ -9030,7 +9032,7 @@ msgstr "值必須是個有效的大於0的整數。"
 
 #: src/metabase/util/schema.clj
 msgid "value must be a valid boolean string (''true'' or ''false'')."
-msgstr "必須是布爾值（“true”或者“false”）"
+msgstr "必須是布林值（“true”或者“false”）"
 
 #: src/metabase/util/schema.clj
 msgid "value must be a valid JSON string."
@@ -9365,11 +9367,11 @@ msgstr "集合儲存在"
 
 #: frontend/src/metabase/lib/groups.js:4
 msgid "All Users"
-msgstr "所有使用者"
+msgstr "所有使用者群組"
 
 #: frontend/src/metabase/lib/groups.js:5
 msgid "Administrators"
-msgstr "管理員"
+msgstr "系統管理群組"
 
 #: frontend/src/metabase/lib/groups.js:6
 msgid "MetaBot"
@@ -9467,7 +9469,7 @@ msgstr "您的團隊的最重要的資訊看板在這裡"
 
 #: frontend/src/metabase/containers/Overworld.jsx:396
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
-msgstr "把面板固定在{0}裡，使之對所有人可見"
+msgstr "把資訊看板固定在{0}裡，讓所有人都可看見"
 
 #: src/metabase/db/liquibase.clj
 msgid "Unable to release the Liquibase lock after a migration failure"
@@ -9536,7 +9538,7 @@ msgstr "結束於"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:70
 msgid "Duration (ms)"
-msgstr "用時"
+msgstr "執行時間(ms)"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:34
 #: frontend/src/metabase/lib/core.js:92
@@ -9977,7 +9979,7 @@ msgstr "欄位{0}''{1}''應具有欄位值，並且屬於具有按需欄位值�
 
 #: src/metabase/models/permissions.clj
 msgid "You cannot create or revoke permissions for the ''Admin'' group."
-msgstr "您不能為“管理員（Admin）”群組建立或撤銷權限"
+msgstr "您無法為\"系統管理員（Admin）\"群組建立或撤銷權限"
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''MetaBot'' group."
@@ -11580,54 +11582,54 @@ msgstr "[[this.short-name]]按坐標"
 #: frontend/src/metabase/lib/query_time.js:190
 msgid "Default period"
 msgid_plural "Default periods"
-msgstr[0] "默認期限"
+msgstr[0] "預設週期"
 
 #: frontend/src/metabase/lib/query_time.js:206
 msgid "Minute of hour"
 msgid_plural "Minutes of hour"
-msgstr[0] "一小時"
+msgstr[0] "一小時內的分鐘數"
 
 #: frontend/src/metabase/lib/query_time.js:208
 msgid "Hour of day"
 msgid_plural "Hours of day"
-msgstr[0] "一天中的時間"
+msgstr[0] "一天內的小時數"
 
 #: frontend/src/metabase/lib/query_time.js:210
 msgid "Day of week"
 msgid_plural "Days of week"
-msgstr[0] "星期幾"
+msgstr[0] "一週內的天數"
 
 #: frontend/src/metabase/lib/query_time.js:212
 msgid "Day of month"
 msgid_plural "Days of month"
-msgstr[0] "一個月中的某天"
+msgstr[0] "一月內的天數"
 
 #: frontend/src/metabase/lib/query_time.js:214
 msgid "Day of year"
 msgid_plural "Days of year"
-msgstr[0] "一年中的一天"
+msgstr[0] "一年內的天數"
 
 #: frontend/src/metabase/lib/query_time.js:216
 msgid "Week of year"
 msgid_plural "Weeks of year"
-msgstr[0] "一年中的第幾週"
+msgstr[0] "一年的星期數"
 
 #: frontend/src/metabase/lib/query_time.js:218
 msgid "Month of year"
 msgid_plural "Months of year"
-msgstr[0] "一年中的月份"
+msgstr[0] "一年的月數"
 
 #: frontend/src/metabase/lib/query_time.js:220
 msgid "Quarter of year"
 msgid_plural "Quarters of year"
-msgstr[0] "季度季度"
+msgstr[0] "季度"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.js:285
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:65
 #: frontend/src/metabase/query_builder/components/Filter.jsx:81
 msgid "{0} selection"
 msgid_plural "{0} selections"
-msgstr[0] "{0}選擇"
+msgstr[0] "{0} 選擇"
 
 #: frontend/src/metabase/parameters/components/widgets/DateQuarterYearWidget.jsx:11
 msgid "[Q]Q"
@@ -12513,7 +12515,7 @@ msgstr "將這個歸檔?"
 
 #: frontend/src/metabase/components/BrowseApp.jsx:253
 msgid "Learn about our data"
-msgstr "了解我們的資料"
+msgstr "了解資料集"
 
 #: frontend/src/metabase/entities/databases/forms.js:26
 msgid "Use DNS SRV when connecting"
@@ -12535,7 +12537,7 @@ msgstr "這個選項開啟時，當使用者在檢視表格或圖表時使用“
 
 #: frontend/src/metabase/containers/Overworld.jsx:329
 msgid "Learn about this database"
-msgstr "了解這個資料庫"
+msgstr "了解這個資料集"
 
 #: frontend/src/metabase/dashboard/containers/ArchiveDashboardModal.jsx:51
 msgid "Archive this dashboard?"
@@ -12715,7 +12717,7 @@ msgstr "獲取提醒警告"
 #: frontend/src/metabase/query_builder/components/view/QuestionDescription.jsx:31
 msgid "{0} breakout"
 msgid_plural "{0} breakouts"
-msgstr[0] "{0}突破"
+msgstr[0] "{0} 爆發"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionFilters.jsx:41
 msgid "Hide filters"
@@ -12732,7 +12734,7 @@ msgstr "從這開始"
 #: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:22
 msgid "{0} row"
 msgid_plural "{0} rows"
-msgstr[0] "{0}行"
+msgstr[0] "{0} 行"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:29
 msgid "Show all rows"
@@ -12795,7 +12797,7 @@ msgstr "新增量值"
 #: frontend/src/metabase/lib/core.js:157 frontend/src/metabase/lib/core.js:162
 #: frontend/src/metabase/user/components/UserSettings.jsx:64
 msgid "Profile"
-msgstr "首頁"
+msgstr "基本資料"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:575
 msgid "This is usually pretty fast but seems to be taking a while right now."
@@ -13221,7 +13223,7 @@ msgstr "資料庫任務調度失敗"
 msgid "All elements must be distinct."
 msgstr "所有元素必須唯一"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "選擇需要包含的欄位"
@@ -13282,7 +13284,7 @@ msgstr "在完成Google身份驗證之前，該視窗已關閉"
 
 #: frontend/src/metabase/auth/components/GoogleButton.jsx:51
 msgid "There was an issue signing in with Google. Pleast contact an administrator."
-msgstr "使用Google登入時出現問題。 請與管理員聯繫。"
+msgstr "使用Google登入時出現問題。 請與系統管理員聯繫。"
 
 #: frontend/src/metabase/plugins/builtin/auth/password.js:9
 msgid "Sign in with email"
@@ -13581,11 +13583,11 @@ msgstr "JSON解析錯誤"
 
 #: src/metabase/public_settings.clj
 msgid "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data"
-msgstr "是否在首頁上顯示資料。 管理員可以關閉此功能，來讓使用者獲得比原始資料更好的內容"
+msgstr "是否在首頁上顯示資料。 系統管理員可以關閉此功能，來讓使用者獲得比原始資料更好的內容"
 
 #: src/metabase/public_settings.clj
 msgid "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data"
-msgstr "是否在首頁上顯示x-ray建議。 如果固定了任何資訊看板，它們也將被隱藏。 管理員可能會將其隱藏起來，來讓使用者獲得比原始資料更好的內容"
+msgstr "是否在首頁上顯示綜覽資料(x-ray)建議。 如果固定了任何資訊看板，它們也將被隱藏。 系統管理員可能會將其隱藏起來，來讓使用者獲得比原始資料更好的內容"
 
 #: src/metabase/public_settings.clj
 msgid "Identify the source of HTTP requests by this header's value, instead of its remote address."
@@ -13621,7 +13623,7 @@ msgstr "通過Slack發送通知（{0}：{1}）"
 
 #: src/metabase/pulse.clj
 msgid "Sending Alert ({0}: {1}) via email"
-msgstr "通過信箱發送警告（{0}：{1}）"
+msgstr "通過電子郵件發送警告（{0}：{1}）"
 
 #: src/metabase/pulse.clj
 msgid "Metabase alert: {0} has {1}"
@@ -13847,20 +13849,18 @@ msgstr "密碼不符合"
 
 #: frontend/src/metabase/entities/users/forms.js:86
 msgid "Department of Awesome"
-msgstr "Department of Awesome"
+msgstr "很棒的系"
 
 #: frontend/src/metabase/lib/core.js:88 frontend/src/metabase/lib/core.js:93
 #: frontend/src/metabase/lib/core.js:98 frontend/src/metabase/lib/core.js:103
 #: frontend/src/metabase/lib/core.js:108 frontend/src/metabase/lib/core.js:113
 msgid "Financial"
-msgstr "Financial"
+msgstr "金融"
 
 #: frontend/src/metabase/lib/core.js:120 frontend/src/metabase/lib/core.js:125
 #: frontend/src/metabase/lib/core.js:130
 msgid "Numeric"
-msgstr "\n"
-"Numeric\n"
-""
+msgstr "數字"
 
 #: frontend/src/metabase/lib/core.js:169 frontend/src/metabase/lib/core.js:174
 #: frontend/src/metabase/lib/core.js:179 frontend/src/metabase/lib/core.js:184
@@ -13872,19 +13872,17 @@ msgstr "\n"
 #: frontend/src/metabase/lib/core.js:239 frontend/src/metabase/lib/core.js:244
 #: frontend/src/metabase/lib/core.js:249
 msgid "Date and Time"
-msgstr "\n"
-"Date and Time\n"
-""
+msgstr "日期和時間"
 
 #: frontend/src/metabase/lib/core.js:256 frontend/src/metabase/lib/core.js:261
 #: frontend/src/metabase/lib/core.js:266
 msgid "Categorical"
-msgstr "Categorical"
+msgstr "分類的"
 
 #: frontend/src/metabase/lib/core.js:273 frontend/src/metabase/lib/core.js:278
 #: frontend/src/metabase/lib/core.js:283
 msgid "URLs"
-msgstr "URLs"
+msgstr "網址"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:59
 msgid "Returns the average of the values in the column."
@@ -13898,14 +13896,12 @@ msgstr "此欄位的值要計算平均"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:431
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:439
 msgid "start"
-msgstr "\n"
-"start"
+msgstr "開始"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:431
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:440
 msgid "end"
-msgstr "\n"
-"end"
+msgstr "結束"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:16
 msgid "Checks a date or numeric column's values to see if they're within the specified range."
@@ -13913,8 +13909,7 @@ msgstr "檢查欄位資料看看數值是否符合特定範圍"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:17
 msgid "Rating"
-msgstr "\n"
-"Rating"
+msgstr "評分"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:94
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:99
@@ -13925,34 +13920,33 @@ msgstr "\n"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:486
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:502
 msgid "condition"
-msgstr "\n"
-"condition"
+msgstr "健康）狀況"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:486
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:506
 msgid "output"
-msgstr "output"
+msgstr "輸出"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:34
 msgid "Tests a list of cases and returns the corresponding value of the first true case, with an optional default value if nothing else is met."
-msgstr "Tests a list of cases and returns the corresponding value of the first true case, with an optional default value if nothing else is met"
+msgstr "測試案例列表並返回第一個真實案例的對應值，如果不滿足其他條件，則返回一個可選的默認值。"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:490
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:494
 msgid "Weight"
-msgstr "Weight"
+msgstr "重量"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:492
 msgid "Large"
-msgstr "Large"
+msgstr "大"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:496
 msgid "Medium"
-msgstr "Medium"
+msgstr "中"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:498
 msgid "Small"
-msgstr "Small"
+msgstr "最小的"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:100
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:112
@@ -14193,8 +14187,7 @@ msgstr "返回此欄位的最大值"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:84
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:152
 msgid "Age"
-msgstr "\n"
-"Age"
+msgstr "年齡"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:88
 msgid "The numeric column whose maximum you want to find."
@@ -14206,7 +14199,7 @@ msgstr "返回此欄位的最小值"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:72
 msgid "Salary"
-msgstr "Salary"
+msgstr "薪水"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:76
 msgid "The numeric column whose minimum you want to find."
@@ -14215,18 +14208,17 @@ msgstr "數值欄位中欲尋找的最小值"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:203
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:212
 msgid "position"
-msgstr "position"
+msgstr "位置"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:203
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:215
 msgid "length"
-msgstr "\n"
-"length"
+msgstr "長度"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:185
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:196
 msgid "new_text"
-msgstr "new_text"
+msgstr "新文字"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:247
 msgid "Replaces a part of the input text with new text."
@@ -14234,7 +14226,7 @@ msgstr "以新文字替換部分輸入文字"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:189
 msgid "Order ID"
-msgstr "Order ID"
+msgstr "訂單編號"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:189
 msgid "Updated Part of ID"
@@ -14270,12 +14262,11 @@ msgstr "假如文字開頭符合比較的文字則返回結果為真"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:407
 msgid "Course Name"
-msgstr "\n"
-"Course Name"
+msgstr "課程名"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:407
 msgid "Computer Science"
-msgstr "Computer Science"
+msgstr "計算機科學"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:412
 msgid "The string of text that the original text should start with."
@@ -14356,27 +14347,27 @@ msgstr "必須包含 {0}"
 #: frontend/src/metabase/lib/settings.js:216
 msgid "at least {0} character long"
 msgid_plural "at least {0} characters long"
-msgstr[0] "至少{0}個字符長"
+msgstr[0] "至少 {0} 字元長度"
 
 #: frontend/src/metabase/lib/settings.js:225
 msgid "{0} lower case letter"
 msgid_plural "{0} lower case letters"
-msgstr[0] "{0}小寫字母"
+msgstr[0] "{0} 小寫字母"
 
 #: frontend/src/metabase/lib/settings.js:234
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
-msgstr[0] "{0}大寫字母"
+msgstr[0] "{0} 大寫字母"
 
 #: frontend/src/metabase/lib/settings.js:243
 msgid "{0} number"
 msgid_plural "{0} numbers"
-msgstr[0] "{0}號"
+msgstr[0] "{0} 數字umbe"
 
 #: frontend/src/metabase/lib/settings.js:248
 msgid "{0} special character"
 msgid_plural "{0} special characters"
-msgstr[0] "{0}特殊字符"
+msgstr[0] "{0} special character"
 
 #: frontend/src/metabase/lib/validate.js:8
 msgid "must be a valid email address"
@@ -14392,13 +14383,12 @@ msgstr "感謝使用 Metabase ！"
 
 #: frontend/src/metabase/public/components/LogoBadge.jsx:20
 msgid "Powered by {0}"
-msgstr "Powered by {0}"
+msgstr "由{0}提供支持"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:195
 #: frontend/src/metabase/sharing/components/SharingSidebar.jsx:686
 msgid "To:"
-msgstr "\n"
-"To:"
+msgstr "至："
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:39
 msgid "This question can't be used because it's based on a different database."
@@ -14422,16 +14412,15 @@ msgstr "載入中..."
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:78
 msgid "Question #…"
-msgstr "Question #…"
+msgstr "題 ＃…"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:80
 msgid "Question #{0}"
-msgstr "Question #{0}"
+msgstr "問題＃{0}"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:114
 msgid "Last edited {0}"
-msgstr "\n"
-"Last edited {0}"
+msgstr "上次編輯的{0}"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:250
 msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
@@ -14468,8 +14457,7 @@ msgstr "24小時制"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:341
 msgid "Symbol"
-msgstr "\n"
-"Symbol"
+msgstr "符號"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:365
 msgid "In the column heading"
@@ -14485,11 +14473,11 @@ msgstr "資料格式"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:350
 msgid "Full"
-msgstr "Full"
+msgstr "充分"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:198
 msgid "No change from last {0}"
-msgstr "No change from last {0}"
+msgstr "與上一個{0}相比沒有變化"
 
 #: src/metabase/api/database.clj
 msgid "Connection to ''{0}:{1}'' successful, but could not connect to DB."
@@ -14671,7 +14659,7 @@ msgstr "無法設定 {0} ，因為是唯讀設定"
 
 #: src/metabase/models/setting.clj
 msgid "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
-msgstr "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
+msgstr "def設置描述字符串必須具有`：visibility``：internal`，`：setter``：none`或國際化，且已找到：`{0}`"
 
 #: src/metabase/models/setting.clj
 msgid "Setting {0} is internal"
@@ -14679,30 +14667,28 @@ msgstr "設定 {0} 是內部的"
 
 #: src/metabase/plugins.clj
 msgid "Loading local plugin manifest at {0}"
-msgstr "\n"
-"Loading local plugin manifest at {0}"
+msgstr "正在{0}加載本地插件清單"
 
 #: src/metabase/public_settings.clj
 msgid "Google Analytics tracking code."
-msgstr "Google Analytics tracking code."
+msgstr "Google Analytics（分析）跟踪代碼。"
 
 #: src/metabase/pulse.clj
 msgid "Sending Pulse ({0}: {1}) with {2} Cards via email"
-msgstr "Sending Pulse ({0}: {1}) with {2} Cards via email"
+msgstr "通過電子郵件使用{2}張卡發送脈衝（{0}：{1}）"
 
 #: src/metabase/pulse.clj
 msgid "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
-msgstr "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
+msgstr "通過鬆弛通過{2}卡發送脈衝（{0}：{1}）"
 
 #: src/metabase/pulse/render.clj
 msgid "Rendering pulse card with chart-type {0} and render-type {1}"
-msgstr "Rendering pulse card with chart-type {0} and render-type {1}"
+msgstr "圖表類型為{0}且渲染類型為{1}的渲染脈衝卡"
 
 #. TODO  - there is code that calls this in `render.body` regardless of the types of values
 #: src/metabase/pulse/render/datetime.clj
 msgid "FIXME: These aren''t valid temporal literals: {0} {1}. Why are we attempting to format them as such?"
-msgstr "\n"
-"FIXME: These aren''t valid temporal literals: {0} {1}. Why are we attempting to format them as such?"
+msgstr "修復我：這些不是有效的時間文字：{0} {1}。 我們為什麼要嘗試格式化它們？"
 
 #: src/metabase/query_processor/context/default.clj
 msgid "Error reducing result rows"
@@ -14734,7 +14720,7 @@ msgstr "清除舊查詢結果快取錯誤"
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Caching results for next time for query with hash {0}."
-msgstr "Caching results for next time for query with hash {0}."
+msgstr "下次緩存結果以使用哈希{0}查詢。"
 
 #: src/metabase/query_processor/middleware/cache.clj
 #: src/metabase/query_processor/middleware/cache_backend/db.clj
@@ -14747,7 +14733,7 @@ msgstr "查詢結果快取成功"
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Query took {0} to run; miminum for cache eligibility is {1}"
-msgstr "Query took {0} to run; miminum for cache eligibility is {1}"
+msgstr "查詢花費{0}運行； 符合緩存條件的最低要求是{1}"
 
 #: src/metabase/query_processor/middleware/cache/impl.clj
 msgid "Results are too large to cache."
@@ -14755,11 +14741,11 @@ msgstr "結果太大無法快取進來"
 
 #: src/metabase/query_processor/middleware/cache/impl.clj
 msgid "Serialization timed out after {0}."
-msgstr "Serialization timed out after {0}."
+msgstr "{0}之後，序列化超時。"
 
 #: src/metabase/query_processor/middleware/cache/impl.clj
 msgid "Error parsing serialized results"
-msgstr "Error parsing serialized results"
+msgstr "解析序列化結果時出錯"
 
 #: src/metabase/query_processor/middleware/cache_backend/db.clj
 msgid "Error purging old cache entries"
@@ -14767,11 +14753,11 @@ msgstr "清除舊查詢結果快取錯誤"
 
 #: src/metabase/query_processor/middleware/cache_backend/db.clj
 msgid "Caching results for query with hash {0}."
-msgstr "Caching results for query with hash {0}."
+msgstr "使用哈希{0}緩存查詢結果。"
 
 #: src/metabase/query_processor/middleware/process_userland_query.clj
 msgid "Cannot save QueryExecution, missing :context"
-msgstr "Cannot save QueryExecution, missing :context"
+msgstr "無法保存QueryExecution，缺少：context"
 
 #: src/metabase/query_processor/middleware/process_userland_query.clj
 msgid "Error saving query execution info"
@@ -14815,7 +14801,7 @@ msgstr "從欄位產生 insights 錯誤"
 
 #: src/metabase/task/follow_up_emails.clj
 msgid "Sending abandonment email!"
-msgstr "送出 abandonment email ！"
+msgstr "發送遺棄電子郵件！"
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:88
 msgid "You can create saved metrics to add a named metric option. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating \"Average Price\" for an Orders table."
@@ -14835,7 +14821,7 @@ msgstr "聰明"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList.jsx:176
 msgid "Column order: {0}"
-msgstr "列順序：{0}"
+msgstr "欄位排列順序：{0}"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:203
 msgid "Unhide all"
@@ -14891,11 +14877,11 @@ msgstr "本地化選項"
 
 #: frontend/src/metabase/components/BrowseApp.jsx:51
 msgid "This database doesn't have any tables."
-msgstr "該數據庫沒有任何表。"
+msgstr "該資料庫沒有任何資料表。"
 
 #: frontend/src/metabase/dashboard/containers/DashCardCardParameterMapper.jsx:125
 msgid "This field only accepts a single value because it's used in a SQL query."
-msgstr "該字段僅接受一個值，因為它在SQL查詢中使用。"
+msgstr "該欄位僅接受一個值，因為它在SQL查詢中使用。"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:17
 msgid "Service Accounts"
@@ -15178,7 +15164,7 @@ msgstr "{0}只能進入{1}名稱空間的Collections中。"
 
 #: src/metabase/models/database.clj
 msgid "Error sending database deletion notification"
-msgstr "發送數據庫刪除通知時出錯"
+msgstr "送出資料庫刪除通知時錯誤"
 
 #: src/metabase/models/native_query_snippet.clj
 msgid "You cannot update the creator_id of a NativeQuerySnippet."
@@ -15186,19 +15172,19 @@ msgstr "您無法更新NativeQuerySnippet的creator_id。"
 
 #: src/metabase/models/setting.clj
 msgid "Error fetching value of Setting"
-msgstr "獲取設置值時出錯"
+msgstr "撈取設置值時錯誤"
 
 #: src/metabase/public_settings.clj
 msgid "The language that should be used for Metabase's UI, system emails, pulses, and alerts."
-msgstr "Metabase的UI，系統電子郵件，脈沖和警報應使用的語言。"
+msgstr "語系會使用在Metabase的UI，系統電子郵件，pulses和alerts。"
 
 #: src/metabase/public_settings.clj
 msgid "This is also the default language for all users, which they can change from their own account settings."
-msgstr "這也是所有用戶的默認語言，他們可以從自己的帳戶設置中更改。"
+msgstr "這也是所有用戶的預設語系，他們可以從自己的帳戶設置中更改。"
 
 #: src/metabase/public_settings.clj
 msgid "Invalid locale {0}"
-msgstr "無效的語言環境{0}"
+msgstr "無效的語系環境{0}"
 
 #: src/metabase/public_settings.clj
 msgid "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS"
@@ -15214,7 +15200,7 @@ msgstr "註冊字體時出錯：Metabase無法發送Pulse。"
 
 #: src/metabase/pulse/render/png.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
-msgstr "這是某些JVM的已知問題。有關更多詳細信息，請參見{0}。"
+msgstr "這是某些JVM的已知問題。有關更多詳細資訊，請參考{0}。"
 
 #: src/metabase/pulse/render/png.clj
 msgid "Error rendering Pulse"
@@ -15226,7 +15212,7 @@ msgstr "查詢在{0}之後超時，引發超時異常。"
 
 #: src/metabase/query_processor/middleware/add_implicit_clauses.clj
 msgid "No fields found for table {0}."
-msgstr "找不到表{0}的字段。"
+msgstr "找不到資料表{0}的欄位。"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Case"
@@ -15234,7 +15220,7 @@ msgstr "案件"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Variance of {0}"
-msgstr "{0}的方差"
+msgstr "{0}的變異數"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Median of {0}"
@@ -15242,11 +15228,11 @@ msgstr "{0}的中位數"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "{0}th percentile of {1}"
-msgstr "{1}的第{0}個百分點"
+msgstr "{1}的第{0}個百分位數"
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Not caching results: results are larger than {0} KB"
-msgstr "不緩存結果：結果大於{0} KB"
+msgstr "不緩存結果集：結果集大於{0} KB"
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Cannot cache results: expected byte array, got {0}"
@@ -15286,19 +15272,19 @@ msgstr "生成時間序列洞察力時出錯，輸入鍵為：{0}"
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Database position of {0} has changed from ''{1}'' to ''{2}''."
-msgstr "{0}的數據庫位置已從“ {1}”更改為“ {2}”。"
+msgstr "資料庫{0}位置已從“ {1}”更改為“ {2}”。"
 
 #: src/metabase/task/sync_databases.clj
 msgid "Unscheduling task for Database {0}: trigger: {1}"
-msgstr "數據庫{0}的未調度任務：觸發器：{1}"
+msgstr "資料庫{0}的未排程任務：觸發器：{1}"
 
 #: src/metabase/util/schema.clj
 msgid "value must be a keyword or string."
-msgstr "值必須是關鍵字或字符串。"
+msgstr "值必須是關鍵字或字串。"
 
 #: src/metabase/util/schema.clj
 msgid "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'."
-msgstr "字符串必須是有效的兩個字母的ISO語言或語言國家/地區代碼，例如“ en”或“ en_US”。"
+msgstr "語系字串必須是有效的兩個字母的ISO語系或國家/地區語系代碼，例如“ en”或“ en_US”。"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTable.jsx:117
 msgid "Rows {0}-{1}"
@@ -17627,21 +17613,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "脈沖正在逐步淘汰"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "您現在可以改為設置{0}。我們將在未來的版本中刪除Pulses，並幫助您遷移所有剩餘的內容。"
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "儀表板訂閱"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "訂閱中的{0}圖表與儀表板中的圖表不同。 {1}"
-

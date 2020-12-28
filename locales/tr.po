@@ -12560,8 +12560,7 @@ msgid "Using this option requires that provided host is a FQDN.  If connecting t
 "leave this disabled."
 msgstr "Bu seçeneğin kullanılması, sağlanan ana makinenin bir FQDN olmasını gerektirir. Eğer\n"
 "bir Atlas kümesine bağlaniyorsa, bu seçeneği etkinleştirmeniz gerekebilir. Bunun ne anlama geldiğini bilmiyorsanız,\n"
-"bunu devre dışı bırakın.\n"
-""
+"bunu devre dışı bırakın."
 
 #: frontend/src/metabase/entities/databases/forms.js:283
 msgid "Automatically run queries when doing simple filtering and summarizing"
@@ -13055,8 +13054,7 @@ msgstr "{0} çözülemedi"
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Invalid fk-> clause: nowhere to add corresponding join."
-msgstr "\n"
-"Invalid fk cümleciği : karşılık gelen birleştirme hiç bir yerde bulunamadı."
+msgstr "Invalid fk cümleciği : karşılık gelen birleştirme hiç bir yerde bulunamadı."
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "{0} driver does not support foreign keys."
@@ -13263,7 +13261,7 @@ msgstr "{0} Veritabanı için görevler zamanlanamadı"
 msgid "All elements must be distinct."
 msgstr "Tüm unsurlar farklı olmalıdır"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Eklemek istediğiniz sütunları seçin"
@@ -13436,8 +13434,7 @@ msgstr "(⌘ + enter)"
 
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor.jsx:687
 msgid "(Ctrl + enter)"
-msgstr "\n"
-"(Ctrl + enter)"
+msgstr "(Ctrl + enter)"
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:151
 msgid "Here's where your results will appear"
@@ -14193,8 +14190,7 @@ msgstr "Normal ifadeye göre eşleşen alt dizeleri ayıklar."
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:222
 msgid "Address"
-msgstr "\n"
-"Adres"
+msgstr "Adres"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:180
 msgid "The column or string of text to search though."
@@ -14705,8 +14701,7 @@ msgstr "{0} ayarlayamazsınız; salt okunur bir ayardır."
 
 #: src/metabase/models/setting.clj
 msgid "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
-msgstr "\n"
-"defsetting açıklama dizeleri şunlardan biri olmalıdır : `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
+msgstr "defsetting açıklama dizeleri şunlardan biri olmalıdır : `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
 
 #: src/metabase/models/setting.clj
 msgid "Setting {0} is internal"
@@ -15107,8 +15102,7 @@ msgstr "Akış yanıt gövdesinde beklenmedik özel durum yakalandı"
 
 #: src/metabase/async/streaming_response.clj
 msgid "bound-fn caught unexpected Exception"
-msgstr "\n"
-"bound-fn beklenmedik özel durum yakaladı"
+msgstr "bound-fn beklenmedik özel durum yakaladı"
 
 #: src/metabase/async/streaming_response.clj
 msgid "Error determining whether HTTP request was canceled"
@@ -15359,8 +15353,7 @@ msgstr "{0} kullanılıyor"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:69
 #: enterprise/frontend/src/metabase-enterprise/auth/index.js:28
 msgid "SAML"
-msgstr "\n"
-"SAML"
+msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:72
 msgid "Set up SAML-based SSO"
@@ -15891,8 +15884,7 @@ msgstr "Gösterge tablosu filtresi güncelleme"
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:151
 msgid "{0} updates {1} filter"
 msgid_plural "{0} updates {1} filters"
-msgstr[0] "{0} güncelleme {1} filtresi\n"
-""
+msgstr[0] "{0} güncelleme {1} filtresi"
 msgstr[1] "filtreleri {0} günceller {1}"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:157
@@ -16150,8 +16142,7 @@ msgstr "Sütunda bulunan en küçük değeri verir"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:96
 msgid "Google"
-msgstr "\n"
-"Google"
+msgstr "Google"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:119
 msgid "Sums up the specified column only for rows where the condition is true."
@@ -16698,8 +16689,7 @@ msgstr "bu koşullar altında çerezler."
 
 #: src/metabase/middleware/session.clj
 msgid "https://www.chromestatus.com/feature/5633521622188032"
-msgstr "\n"
-"https://www.chromestatus.com/feature/5633521622188032"
+msgstr "https://www.chromestatus.com/feature/5633521622188032"
 
 #: src/metabase/models/collection.clj
 msgid "Top folder"
@@ -17389,8 +17379,7 @@ msgstr "JWT kullanıcısının adını almak için anahtar"
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "Key to retrieve the JWT user's last name"
-msgstr "\n"
-"Key to retrieve the JWT user's last name"
+msgstr "JWT kullanıcısının soyadını almak için anahtar"
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "Key to retrieve the JWT user's groups"
@@ -17437,8 +17426,7 @@ msgstr "Geçersiz sorgu: {1} sütununa {0} ekleyemezsiniz."
 
 #: modules/drivers/bigquery/src/metabase/driver/bigquery/query_processor.clj
 msgid "It doesn''t make sense to convert between DATEs and TIMEs!"
-msgstr "\n"
-"It doesn''t make sense to convert between DATEs and TIMEs!"
+msgstr "DATE ve TIME arasında dönüştürme yapmak mantıklı değil!"
 
 #: modules/drivers/druid/src/metabase/driver/druid/client.clj
 msgid "Druid request error [{0}]: {1}"
@@ -17458,8 +17446,7 @@ msgstr "İstemci bağlantısı kapatıldı, sorgu kimliği bulunamadı, sorgu ip
 
 #: modules/drivers/druid/src/metabase/driver/druid/client.clj
 msgid "Client closed connection, canceling Druid queryId {0}"
-msgstr "\n"
-"Client closed connection, canceling Druid queryId {0}"
+msgstr "Client closed connection, canceling Druid queryId {0}"
 
 #: modules/drivers/druid/src/metabase/driver/druid/client.clj
 msgid "Canceling Druid query with ID {0}"
@@ -17676,21 +17663,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulses aşamalı olarak kaldırılıyor"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Artık bunun yerine {0} kurabilirsiniz. Pulses gelecekteki bir sürümde kaldıracağız ve hala sahip olduklarınızı taşımanıza yardımcı olacağız."
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "kontrol paneli abonelikleri"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Aboneliğinizdeki {0} grafikleri, kontrol panelinizdekilerle aynı görünmeyecek. {1}"
-

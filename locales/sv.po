@@ -745,8 +745,7 @@ msgstr "Resultat:"
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:109
 msgid "Name Your Metric"
-msgstr "Namnge ditt mått\n"
-""
+msgstr "Namnge ditt mått"
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:110
 msgid "Give your metric a name to help others find it."
@@ -13254,7 +13253,7 @@ msgstr "Kunde inte schemalägga jobb för databas {0}"
 msgid "All elements must be distinct."
 msgstr "Alla element måste vara distinkta."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Välj kolumnerna du vill ha med"
@@ -17646,21 +17645,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulser fasas ut"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Du kan nu ställa in {0} istället. Vi tar bort Pulses i en framtida version och hjälper dig att migrera allt du fortfarande har."
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "instrumentpanelprenumerationer"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} diagram i din prenumeration ser inte ut som i instrumentpanelen. {1}"
-

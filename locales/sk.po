@@ -13330,7 +13330,7 @@ msgstr "Nepodarilo sa naplánovať úlohy pre databázu {0}"
 msgid "All elements must be distinct."
 msgstr "Všetky prvky musia byť jednoznačné."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Vyberte stĺpce, ktoré chcete zahrnúť"
@@ -13738,8 +13738,7 @@ msgstr "Upozornenie od Metabase: {0} ma {1}"
 
 #: src/metabase/pulse.clj
 msgid "Sending Alert ({0}: {1}) via Slack"
-msgstr "Posiela sa upozornenie ({0}: {1}) cez Slack\n"
-""
+msgstr "Posiela sa upozornenie ({0}: {1}) cez Slack"
 
 #: src/metabase/pulse.clj
 msgid "Alert: {0}"
@@ -17744,21 +17743,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Impulzy sa postupne rušia"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Teraz môžete namiesto toho nastaviť {0}. V budúcom vydaní Pulses odstránime a pomôžeme vám migrovať všetky, ktoré ešte máte."
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "predplatné na palubnej doske"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Grafy {0} vo vašom odbere nebudú vyzerať rovnako ako na vašom hlavnom paneli. {1}"
-

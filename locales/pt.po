@@ -3894,7 +3894,7 @@ msgstr "Soma de ..."
 msgid "Sum of all the values of a column."
 msgstr "Soma de todos os valores de uma coluna."
 
-#. Acho que a agregação de "Medium of.... " está ficando errada, pois traduz em 
+#. Acho que a agregação de "Medium of.... " está ficando errada, pois traduz em
 #. "Média de... de" mas vou deixar a tradução assim por enquanto
 #: frontend/src/metabase/lib/schema_metadata.js:524
 msgid "Average of ..."
@@ -13295,7 +13295,7 @@ msgstr "Falha ao agendar tarefas para o Banco de Dados {0}"
 msgid "All elements must be distinct."
 msgstr "Todos os elementos devem ser distintos."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Selecione as colunas que quer incluir"
@@ -15740,13 +15740,11 @@ msgstr "Necessita de mais tempo? Pronto para comprar?"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:158
 msgid "Your features are active!"
-msgstr "\n"
-"Seus recursos estão ativos!"
+msgstr "Seus recursos estão ativos!"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:161
 msgid "Your licence is valid through {0}"
-msgstr "\n"
-"Sua licença é válida através de {0}"
+msgstr "Sua licença é válida através de {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:172
 msgid "Your license has expired"
@@ -17280,8 +17278,7 @@ msgstr "Não é possível criar um novo usuário JWT quando o JWT não está con
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/jwt.clj
 msgid "JWT SSO has not been enabled and/or configured"
-msgstr "\n"
-"JWT SSO não foi habilitado e / ou configurado"
+msgstr "JWT SSO não foi habilitado e / ou configurado"
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
 msgid "Invalid SAML configuration: could not find user email."
@@ -17305,8 +17302,7 @@ msgstr "Aviso: parâmetro `redirect` esperado, mas nenhum está presente"
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
 msgid "Error generating SAML request"
-msgstr "\n"
-"Erro ao gerar solicitação SAML"
+msgstr "Erro ao gerar solicitação SAML"
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
 msgid "Unable to log in: SAML IdP certificate is not set."
@@ -17349,8 +17345,7 @@ msgstr "Certificado codificado para o provedor de identidade. Dependendo do seu 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending\n"
 "on your IdP, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v"
-msgstr "\n"
-"Este é um identificador exclusivo para o IdP. Muitas vezes referido como ID da entidade ou simplesmente 'Emissor'. Dependendo em seu IdP, geralmente é algo como http://www.examplo.com/141xkex604w0Q5PN724v"
+msgstr "Este é um identificador exclusivo para o IdP. Muitas vezes referido como ID da entidade ou simplesmente 'Emissor'. Dependendo em seu IdP, geralmente é algo como http://www.examplo.com/141xkex604w0Q5PN724v"
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "This application name will be used for requests to the Identity Provider"
@@ -17697,21 +17692,20 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Os Pulsos estão sendo gradualmente eliminados"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Agora você pode instalar {0} em seu lugar. Nós removeremos os Pulsos em um lançamento futuro, e o ajudaremos a migrar qualquer um que você ainda tenha."
 
-#: 
+#:
 msgid "dashboard subscriptions"
 msgstr "assinaturas de Painéis"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} os gráficos em sua assinatura não terão o mesmo aspecto que em seu painel de controle. {1}"
-
