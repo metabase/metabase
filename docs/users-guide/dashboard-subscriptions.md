@@ -1,8 +1,6 @@
 ## Dashboard subscriptions
 
-Dashboard subscriptions are a great way to keep you and your team up to date on the data that matters most. 
-
-Dashboard subscriptions allow you to send all of the questions on a dashboard via email or Slack. If your Metabase has email or Slack set up, all you need to do is create a dashboard and then add subscribers to it. You can set up as many subscriptions to a dashboard as you like. If you make any changes to the dashboard, Metabase will update the subscription the next time they're delivered. 
+Dashboard subscriptions are a great way to keep you and your team up to date on the data that matters most. They allow you to send all of the questions on a dashboard via email or Slack. If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like the send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscription the next time they're delivered.
 
 ### Enabling dashboard subscriptions
 
@@ -22,17 +20,31 @@ Let's say we want to email a dashboard. We'll click on the **Email it** option i
 
 ![Dashboard subscription email options](images/dashboard-subscriptions/email-options.png)
 
-We can:
+### Email subscription options
 
-- **Add subscribers** to the dashboard, either by their email address or Slack username.
-- Determine **how often** Metabase sends the dashboard (daily, weekly, or monthly) and what **time of day** Metabase sends the dashboard.
-- Whether Metabase should also **attach results** to the email (which will include up 2000 rows of data).
-- If there are **no results**, we can tell Metabase to skip sending the dashboard at all.
-- Or send an email right now (which you can also use to send a test email to yourself).
+For emails, we can:
+
+- **Add subscribers**. We can add subscribers to the dashboard by adding their email addresses.
+- **Determine frequency and timing**. Determine how often Metabase sends the dashboard (daily, weekly, or monthly) and what time of day Metabase sends the dashboard.
+- **Attach results**. Whether Metabase should also attach results to the email (which will include up 2000 rows of data). Note that Metabase will automatically attach results as a table for questions that do not translate
+- **Skip updates without results**. If there are no results, we can tell Metabase to skip sending the dashboard at all.
+- **Immediate gratification:** Or send an email right now, which is great for sending a test email.
+
+### Email example
 
 ![Example dashboard subscription email](images/dashboard-subscriptions/example-email.png)
 
-You'll notice in the email that Metabase excludes any text cards on the dashboard, and that the charts look different - Metabase reformats the charts to make them more legible in email. Additionally, tables that exceed either 10 columns or 20 rows get the rest of their results, up to 2000 rows, included as an attachment. You'll also get a random data quotation, like this one from the mathematician Andrejs Dunkels: "It's easy to lie with statistics. It's hard to tell the truth without statistics."
+You'll notice in the email that Metabase excludes any text cards on the dashboard, and that the charts look different - Metabase reformats the charts to make them more legible in email. Additionally, tables that exceed either 10 columns or 20 rows get the rest of their results, up to 2000 rows, included as an attachment. As a bonus, Metabase will toss in a random data quotation, like this one from the mathematician Andrejs Dunkels: "It's easy to lie with statistics. It's hard to tell the truth without statistics."
 
+### Slack subscription options
 
+For Slack subscriptions, you can set up a subscription for a single person using their Slack username, or for a channel (like #general).
 
+![slack subscription options](images/dashboard-subscriptions/slack-subscription-options.png)
+
+You can specify how often Metabase sends a Slack message, and whether to send a message if the dashboard fails to return results.
+
+### Related reading
+
+- [Setting up email](https://www.metabase.com/docs/latest/administration-guide/02-setting-up-email.html)
+- [Setting up Slack](https://www.metabase.com/docs/latest/administration-guide/09-setting-up-slack.html)
