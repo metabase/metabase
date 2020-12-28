@@ -161,7 +161,7 @@ export default class CollectionContent extends React.Component {
 
     const collectionHasPins = pinned.length > 0;
 
-    const avaliableTypes = unpinned.map(u => u.model);
+    const avaliableTypes = _.uniq(unpinned.map(u => u.model));
     const showFilters = unpinned.length > 5 && avaliableTypes.length > 1;
 
     return (
