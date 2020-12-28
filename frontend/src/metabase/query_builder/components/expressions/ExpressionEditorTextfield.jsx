@@ -24,6 +24,7 @@ import {
   KEYCODE_DOWN,
 } from "metabase/lib/keyboard";
 
+import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -61,14 +62,14 @@ const HelpText = ({ helpText, width }) =>
             <p className="mt1 text-bold">{description}</p>
           </div>
         ))}
-        <a
+        <ExternalLink
           className="link text-bold block my1"
           target="_blank"
           href={MetabaseSettings.docsUrl("users-guide/expressions")}
         >
           <Icon name="reference" size={12} className="mr1" />
           {t`Learn more`}
-        </a>
+        </ExternalLink>
       </div>
     </Popover>
   ) : null;

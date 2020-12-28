@@ -3,6 +3,8 @@ import { t } from "ttag";
 import SettingsInput from "./SettingInput";
 import cx from "classnames";
 
+import ExternalLink from "metabase/components/ExternalLink";
+
 const PREMIUM_EMBEDDING_STORE_URL =
   "https://store.metabase.com/product/embedding";
 const PREMIUM_EMBEDDING_SETTING_KEY = "premium-embedding-token";
@@ -51,13 +53,13 @@ const PremiumExplanation = ({ showEnterScreen }) => (
     <h2>Premium embedding</h2>
     <p className="mt1">{t`Premium embedding lets you disable "Powered by Metabase" on your embedded dashboards and questions.`}</p>
     <div className="mt2 mb3">
-      <a
+      <ExternalLink
         className="link mx1"
         href={PREMIUM_EMBEDDING_STORE_URL}
         target="_blank"
       >
         {t`Buy a token`}
-      </a>
+      </ExternalLink>
       <a className="link mx1" onClick={showEnterScreen}>
         {t`Enter a token`}
       </a>

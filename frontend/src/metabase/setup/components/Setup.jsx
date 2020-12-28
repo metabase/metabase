@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import ExternalLink from "metabase/components/ExternalLink";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -59,11 +60,11 @@ export default class Setup extends Component {
     return (
       <div className="SetupHelp bordered border-dashed p2 rounded mb4">
         {t`If you feel stuck`},{" "}
-        <a
+        <ExternalLink
           className="link"
           href={MetabaseSettings.docsUrl("setting-up-metabase")}
           target="_blank"
-        >{t`our getting started guide`}</a>{" "}
+        >{t`our getting started guide`}</ExternalLink>{" "}
         {t`is just a click away.`}
       </div>
     );

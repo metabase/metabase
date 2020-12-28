@@ -7,6 +7,7 @@ import { Flex } from "grid-styled";
 import Card from "metabase/components/Card";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
+import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
@@ -503,13 +504,13 @@ class SharingSidebar extends React.Component {
       <Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${(
         <span className="text-bold">Note:</span>
       )} charts in your subscription won't look the same as in your dashboard. ${(
-        <a
+        <ExternalLink
           className="link"
           target="_blank"
           href={MetabaseSettings.docsUrl("users-guide/10-pulses")}
         >
           Learn more
-        </a>
+        </ExternalLink>
       )}.`}</Text>
     );
 
