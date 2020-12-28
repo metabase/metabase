@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
+import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/components/AccordionList";
@@ -899,14 +900,16 @@ const TablePicker = ({
         {isSavedQuestionList && (
           <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
-            <a
+            <ExternalLink
               href={MetabaseSettings.docsUrl(
                 "users-guide/custom-questions",
                 "picking-your-starting-data",
               )}
               target="_blank"
               className="block link"
-            >{t`Learn more about nested queries`}</a>
+            >
+              {t`Learn more about nested queries`}
+            </ExternalLink>
           </div>
         )}
       </div>
