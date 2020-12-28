@@ -290,7 +290,7 @@ export default class CollectionContent extends React.Component {
             </PinDropTarget>
           )}
           <Box className="relative" mt={1}>
-            {showFilters && (
+            {showFilters ? (
               <ItemTypeFilterBar
                 analyticsContext={ANALYTICS_CONTEXT}
                 filters={ITEM_TYPE_FILTERS.map((f, i) => {
@@ -308,6 +308,11 @@ export default class CollectionContent extends React.Component {
                   return f;
                 })}
               />
+            ) : (
+              collectionHasPins &&
+              unpinnedItems.length > 0 && (
+                <CollectionSectionHeading>{t`Everything else`}</CollectionSectionHeading>
+              )
             )}
             {unpinnedItems.length > 0 && (
               <PinDropTarget pinIndex={null} margin={8}>
