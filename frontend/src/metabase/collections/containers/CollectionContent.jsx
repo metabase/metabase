@@ -5,7 +5,7 @@ import { t, msgid, ngettext } from "ttag";
 import cx from "classnames";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
-import { dissoc } from "icepick";
+import { dissoc, assocIn } from "icepick";
 
 import { entityTypeForObject } from "metabase/schema";
 
@@ -163,6 +163,11 @@ export default class CollectionContent extends React.Component {
 
     const avaliableTypes = _.uniq(unpinned.map(u => u.model));
     const showFilters = unpinned.length > 5 && avaliableTypes.length > 1;
+    const everythingName =
+      collectionHasPins && unpinned.length > 0
+        ? t`Everything else`
+        : t`Everything`;
+    const filters = assocIn(ITEM_TYPE_FILTERS, [0, "name"], everythingName);
 
     return (
       <Box pt={2}>
@@ -293,21 +298,7 @@ export default class CollectionContent extends React.Component {
             {showFilters ? (
               <ItemTypeFilterBar
                 analyticsContext={ANALYTICS_CONTEXT}
-                filters={ITEM_TYPE_FILTERS.map((f, i) => {
-                  /* swaps out the all items label between Everything and Everything else
-                based on whether there are pinned items */
-                  if (i === 0) {
-                    return {
-                      ...f,
-                      name:
-                        //use unpinned here to make sure this doesn't change as we filter
-                        collectionHasPins && unpinned.length > 0
-                          ? t`Everything else`
-                          : t`Everything`,
-                    };
-                  }
-                  return f;
-                })}
+                filters={filters}
               />
             ) : (
               collectionHasPins &&
