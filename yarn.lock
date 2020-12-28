@@ -13087,7 +13087,7 @@ style-loader@^0.19.0:
     loader-utils "^1.0.2"
     schema-utils "^0.3.0"
 
-styled-components@3.2.6, styled-components@>=3.0.0:
+styled-components@3.2.6:
   version "3.2.6"
   resolved "https://registry.yarnpkg.com/styled-components/-/styled-components-3.2.6.tgz#99e6e75a746bdedd295a17e03dd1493055a1cc3b"
   integrity sha1-mebnWnRr3t0pWhfgPdFJMFWhzDs=
@@ -13103,7 +13103,7 @@ styled-components@3.2.6, styled-components@>=3.0.0:
     stylis-rule-sheet "^0.0.10"
     supports-color "^3.2.3"
 
-styled-system@2.2.5, "styled-system@>=2.0.0 || >=3.0.0", styled-system@>=2.0.1, styled-system@>=2.0.2:
+styled-system@2.2.5, "styled-system@>=2.0.0 || >=3.0.0", styled-system@>=2.0.2:
   version "2.2.5"
   resolved "https://registry.yarnpkg.com/styled-system/-/styled-system-2.2.5.tgz#95f1e2c2c9ddc5c462cc56237cf039aa9ecfd27d"
   integrity sha512-/KJxEzd+mPQxTdr85l7K3b6ac97R4G0M2SlTm9sM48dGkg1CjTIURIvvSV3Y92kE+9GUfrPsG2MpeV8QnmSIQg==
@@ -13187,15 +13187,6 @@ symbol-tree@^3.2.1:
   version "3.2.4"
   resolved "https://registry.yarnpkg.com/symbol-tree/-/symbol-tree-3.2.4.tgz#430637d248ba77e078883951fb9aa0eed7c63fa2"
   integrity sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==
-
-system-components@2.0.3:
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/system-components/-/system-components-2.0.3.tgz#39fa5051c7f276f6b7b0ea990e5fdaef98949343"
-  integrity sha512-6SSV146Tc9BIp7C8s1TAVjcTU2wUvXIfEniK4pAI5Vk1qVBMNXGYKIF9yG/Bhy9m+rlQKkYJMLynli2c+Us/KA==
-  dependencies:
-    clean-tag "^1.0.3"
-    styled-components ">=3.0.0"
-    styled-system ">=2.0.1"
 
 table@^5.2.3:
   version "5.4.6"
