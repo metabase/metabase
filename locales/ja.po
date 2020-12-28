@@ -37,7 +37,7 @@ msgstr "データベースタイプを選択する"
 #: frontend/src/metabase/components/ActionButton.jsx:51
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:7
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:153
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:169
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:172
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:46
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:15
 #: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:213
@@ -51,7 +51,7 @@ msgstr "保存"
 msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
 msgstr "効果的に使用するため、Metabaseはデータベースをスキャンします。また、メタデータを最新に保つために定期的に再スキャンします。以下から再スキャンの頻度を設定することができます。"
 
-#: frontend/src/metabase/entities/databases/forms.js:291
+#: frontend/src/metabase/entities/databases/forms.js:307
 msgid "Database syncing"
 msgstr "データベース同期中"
 
@@ -66,7 +66,7 @@ msgstr "データベーススキーマの更新チェックは軽量なプロセ
 msgid "Scan"
 msgstr "スキャン"
 
-#: frontend/src/metabase/entities/databases/forms.js:298
+#: frontend/src/metabase/entities/databases/forms.js:314
 msgid "Scanning for Filter Values"
 msgstr "フィルター値をスキャン中"
 
@@ -78,7 +78,7 @@ msgid "Metabase can scan the values present in each\n"
 "database."
 msgstr "Metabaseは、このデータベースの各フィールドの値をスキャンして、ダッシュボードや質問のチェックボックスフィルターを有効にすることができます。 データベースが非常に大きい場合は、ややリソースに負荷がかかる処理となります。"
 
-#: frontend/src/metabase/entities/databases/forms.js:302
+#: frontend/src/metabase/entities/databases/forms.js:318
 msgid "When should Metabase automatically scan and cache field values?"
 msgstr "フィールド値のスキャンとキャッシュをいつ行いますか？"
 
@@ -149,7 +149,7 @@ msgstr "このテキストボックスに:"
 #: frontend/src/metabase/admin/permissions/selectors.js:173
 #: frontend/src/metabase/admin/permissions/selectors.js:188
 #: frontend/src/metabase/admin/permissions/selectors.js:227
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:357
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:361
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:208
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:275
 #: frontend/src/metabase/components/ArchiveModal.jsx:37
@@ -158,7 +158,7 @@ msgstr "このテキストボックスに:"
 #: frontend/src/metabase/components/HeaderModal.jsx:49
 #: frontend/src/metabase/components/form/CustomForm.jsx:260
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:288
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:163
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:166
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:32
 #: frontend/src/metabase/dashboard/components/Sidebar.jsx:28
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:191
@@ -187,7 +187,7 @@ msgstr "削除"
 #: frontend/src/metabase/admin/permissions/selectors.js:348
 #: frontend/src/metabase/admin/permissions/selectors.js:459
 #: frontend/src/metabase/admin/routes.jsx:60
-#: frontend/src/metabase/nav/containers/Navbar.jsx:247
+#: frontend/src/metabase/nav/containers/Navbar.jsx:221
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:18
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:21
 msgid "Databases"
@@ -205,7 +205,7 @@ msgstr "接続"
 msgid "Scheduling"
 msgstr "スケジューリング"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:193
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:192
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:175
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:62
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:80
@@ -282,12 +282,12 @@ msgstr "データベースを追加"
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:28
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:28
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:123
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:183
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:187
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:91
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:131
-#: frontend/src/metabase/entities/collections.js:94
+#: frontend/src/metabase/entities/collections.js:109
 #: frontend/src/metabase/entities/dashboards.js:143
-#: frontend/src/metabase/entities/databases/forms.js:265
+#: frontend/src/metabase/entities/databases/forms.js:274
 #: frontend/src/metabase/entities/questions.js:87
 #: frontend/src/metabase/entities/questions.js:103
 #: frontend/src/metabase/visualizations/lib/settings/column.js:349
@@ -388,10 +388,11 @@ msgid "No special type"
 msgstr "特別タイプなし"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem.jsx:188
-#: frontend/src/metabase/lib/core.js:275
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:44
+#: frontend/src/metabase/lib/core.js:290
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:16
 #: frontend/src/metabase/reference/components/Field.jsx:57
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:37
+#: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:271
 msgid "Other"
 msgstr "その他"
 
@@ -404,7 +405,7 @@ msgstr "特別タイプを選択する"
 msgid "Select a target"
 msgstr "ターゲットを選択する"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:807
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:843
 #: frontend/src/metabase/dashboard/components/ClickMappings.jsx:155
 #: frontend/src/metabase/query_builder/components/notebook/steps/FieldsPicker.jsx:23
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:83
@@ -505,7 +506,7 @@ msgstr "スキーマ"
 #: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:40
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp.jsx:39
 #: frontend/src/metabase/home/containers/SearchApp.jsx:67
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:43
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:15
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:27
 #: frontend/src/metabase/reference/metrics/MetricList.jsx:62
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:21
@@ -701,7 +702,7 @@ msgstr "テーブルを選択し、スキーマを見てメタデータを追加
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:31
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:30
-#: frontend/src/metabase/entities/collections.js:97
+#: frontend/src/metabase/entities/collections.js:112
 #: frontend/src/metabase/entities/snippet-collections.js:75
 msgid "Name is required"
 msgstr "名前が必要です"
@@ -827,7 +828,7 @@ msgstr "他ユーザーにも変更理由がわかるよう、このセグメン
 #: frontend/src/metabase/admin/routes.jsx:137
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:216
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:94
-#: frontend/src/metabase/nav/containers/Navbar.jsx:229
+#: frontend/src/metabase/nav/containers/Navbar.jsx:203
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:18
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:94
 #: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:201
@@ -894,7 +895,7 @@ msgstr "メンバー"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:187
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:125
-#: frontend/src/metabase/admin/settings/selectors.js:121
+#: frontend/src/metabase/admin/settings/selectors.js:111
 #: frontend/src/metabase/entities/users/forms.js:26
 #: frontend/src/metabase/lib/core.js:146
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:298
@@ -966,10 +967,10 @@ msgstr "グループを削除する"
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:41
 #: frontend/src/metabase/components/HeaderModal.jsx:43
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:281
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:642
-#: frontend/src/metabase/dashboard/components/Sidebar.jsx:36
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:657
+#: frontend/src/metabase/dashboard/components/Sidebar.jsx:37
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:193
-#: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:86
+#: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:73
 #: frontend/src/metabase/query_builder/components/SidebarContent.jsx:17
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:113
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:334
@@ -1017,7 +1018,7 @@ msgstr "無効化"
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:21
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:94
 #: frontend/src/metabase/admin/routes.jsx:93
-#: frontend/src/metabase/nav/containers/Navbar.jsx:235
+#: frontend/src/metabase/nav/containers/Navbar.jsx:209
 msgid "People"
 msgstr "ユーザー"
 
@@ -1094,7 +1095,7 @@ msgstr "リセットする"
 
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:54
 #: frontend/src/metabase/components/ConfirmContent.jsx:13
-#: frontend/src/metabase/dashboard/containers/ArchiveDashboardModal.jsx:54
+#: frontend/src/metabase/dashboard/containers/ArchiveDashboardModal.jsx:52
 msgid "Are you sure you want to do this?"
 msgstr "よろしいですか？"
 
@@ -1181,7 +1182,7 @@ msgid " native queries for "
 msgstr "のネイティブクエリ"
 
 #: frontend/src/metabase/admin/permissions/routes.jsx:14
-#: frontend/src/metabase/nav/containers/Navbar.jsx:253
+#: frontend/src/metabase/nav/containers/Navbar.jsx:227
 msgid "Permissions"
 msgstr "権限"
 
@@ -1347,7 +1348,7 @@ msgid "View schemas"
 msgstr "スキーマを見る"
 
 #: frontend/src/metabase/admin/routes.jsx:66
-#: frontend/src/metabase/nav/containers/Navbar.jsx:241
+#: frontend/src/metabase/nav/containers/Navbar.jsx:215
 msgid "Data Model"
 msgstr "データモデル"
 
@@ -1377,7 +1378,7 @@ msgstr "LDAPディレクトリ内のユーザーに対し、LDAP資格情報に�
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:76
-#: frontend/src/metabase/admin/settings/selectors.js:168
+#: frontend/src/metabase/admin/settings/selectors.js:158
 msgid "That's not a valid email address"
 msgstr "有効なメールアドレスではありません"
 
@@ -1417,7 +1418,7 @@ msgstr "クリア"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:68
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:19
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:113
-#: frontend/src/metabase/admin/settings/selectors.js:197
+#: frontend/src/metabase/admin/settings/selectors.js:187
 msgid "Authentication"
 msgstr "認証"
 
@@ -1501,94 +1502,94 @@ msgstr "アップデートする"
 msgid "What's Changed:"
 msgstr "変更箇所:"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:131
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:135
 msgid "Add a map"
 msgstr "マップを追加する"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:184
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:188
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:123
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:550
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:587
-#: frontend/src/metabase/lib/core.js:267
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:562
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:599
+#: frontend/src/metabase/lib/core.js:282
 msgid "URL"
 msgstr "URL"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:201
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:205
 msgid "Delete custom map"
 msgstr "カスタムマップを削除する"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:203
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:207
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:337
 #: frontend/src/metabase/containers/Overworld.jsx:146
 #: frontend/src/metabase/containers/Overworld.jsx:293
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:287
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:303
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:124
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:160
 msgid "Remove"
 msgstr "削除する"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:228
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:232
 #: frontend/src/metabase/dashboard/containers/DashCardCardParameterMapper.jsx:177
-#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:248
+#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:250
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:140
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:188
 msgid "Select…"
 msgstr "選択..."
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:243
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:247
 msgid "Sample values:"
 msgstr "サンプル値:"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:281
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:285
 msgid "Add a new map"
 msgstr "新しいマップを追加する"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:281
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:285
 msgid "Edit map"
 msgstr "マップを編集する"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:282
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:286
 msgid "What do you want to call this map?"
 msgstr "このマップを何と呼びますか？"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:287
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:291
 msgid "e.g. United Kingdom, Brazil, Mars"
 msgstr "例: イギリス、ブラジル、火星"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:294
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:298
 msgid "URL for the GeoJSON file you want to use"
 msgstr "使用したいGeoJSONファイルのURL"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:300
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:304
 msgid "Like https://my-mb-server.com/maps/my-map.json"
 msgstr "例: https://my-mb-server.com/maps/my-map.json"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:311
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:315
 msgid "Refresh"
 msgstr "更新"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:311
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:315
 msgid "Load"
 msgstr "読み込み"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:317
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:321
 msgid "Which property specifies the region’s identifier?"
 msgstr "地域の識別子を指定するプロパティはどれですか？"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:326
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:330
 msgid "Which property specifies the region’s display name?"
 msgstr "地域の表示名を指定するプロパティはどれですか？"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:347
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:351
 msgid "Load a GeoJSON file to see a preview"
 msgstr "GeoJSONファイルを読み込み、プレビューを表示する"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:365
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:369
 msgid "Save map"
 msgstr "マップを保存する"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:365
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:369
 msgid "Add map"
 msgstr "マップを追加する"
 
@@ -1715,12 +1716,12 @@ msgid "Generate Key"
 msgstr "キーを発行する"
 
 #: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:11
-#: frontend/src/metabase/admin/settings/selectors.js:88
+#: frontend/src/metabase/admin/settings/selectors.js:78
 msgid "Enabled"
 msgstr "有効"
 
 #: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:11
-#: frontend/src/metabase/admin/settings/selectors.js:93
+#: frontend/src/metabase/admin/settings/selectors.js:83
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:104
 msgid "Disabled"
 msgstr "無効"
@@ -1750,11 +1751,11 @@ msgstr "サイトのURL"
 msgid "Email Address for Help Requests"
 msgstr "ヘルプリクエストのメールアドレス"
 
-#: frontend/src/metabase/admin/settings/selectors.js:69
+#: frontend/src/metabase/admin/settings/selectors.js:228
 msgid "Report Timezone"
 msgstr "タイムゾーン"
 
-#: frontend/src/metabase/admin/settings/selectors.js:72
+#: frontend/src/metabase/admin/settings/selectors.js:231
 msgid "Database Default"
 msgstr "データベースのデフォルト"
 
@@ -1762,7 +1763,7 @@ msgstr "データベースのデフォルト"
 msgid "Select a timezone"
 msgstr "タイムゾーンを選択する"
 
-#: frontend/src/metabase/admin/settings/selectors.js:75
+#: frontend/src/metabase/admin/settings/selectors.js:234
 msgid "Not all databases support timezones, in which case this setting won't take effect."
 msgstr "すべてのデータベースがタイムゾーンをサポートしているわけではありません。この場合、この設定は有効になりません。"
 
@@ -1774,64 +1775,64 @@ msgstr "言語"
 msgid "Select a language"
 msgstr "言語を選択する"
 
-#: frontend/src/metabase/admin/settings/selectors.js:80
+#: frontend/src/metabase/admin/settings/selectors.js:70
 msgid "Anonymous Tracking"
 msgstr "匿名のトラッキング"
 
-#: frontend/src/metabase/admin/settings/selectors.js:85
+#: frontend/src/metabase/admin/settings/selectors.js:75
 msgid "Friendly Table and Field Names"
 msgstr "わかりやすいテーブル名とフィールド名"
 
-#: frontend/src/metabase/admin/settings/selectors.js:91
+#: frontend/src/metabase/admin/settings/selectors.js:81
 msgid "Only replace underscores and dashes with spaces"
 msgstr "アンダースコアとダッシュをスペースに置き換える"
 
-#: frontend/src/metabase/admin/settings/selectors.js:99
+#: frontend/src/metabase/admin/settings/selectors.js:89
 msgid "Enable Nested Queries"
 msgstr "ネストしたクエリを有効化する"
 
-#: frontend/src/metabase/admin/settings/selectors.js:110
+#: frontend/src/metabase/admin/settings/selectors.js:100
 msgid "Updates"
 msgstr "アップデート"
 
-#: frontend/src/metabase/admin/settings/selectors.js:115
+#: frontend/src/metabase/admin/settings/selectors.js:105
 msgid "Check for updates"
 msgstr "アップデートを確認する"
 
-#: frontend/src/metabase/admin/settings/selectors.js:126
+#: frontend/src/metabase/admin/settings/selectors.js:116
 msgid "SMTP Host"
 msgstr "SMTPホスト"
 
-#: frontend/src/metabase/admin/settings/selectors.js:134
+#: frontend/src/metabase/admin/settings/selectors.js:124
 msgid "SMTP Port"
 msgstr "SMTPポート"
 
-#: frontend/src/metabase/admin/settings/selectors.js:138
+#: frontend/src/metabase/admin/settings/selectors.js:128
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:47
 msgid "That's not a valid port number"
 msgstr "無効なポート番号です"
 
-#: frontend/src/metabase/admin/settings/selectors.js:142
+#: frontend/src/metabase/admin/settings/selectors.js:132
 msgid "SMTP Security"
 msgstr "SMTPセキュリティ"
 
-#: frontend/src/metabase/admin/settings/selectors.js:150
+#: frontend/src/metabase/admin/settings/selectors.js:140
 msgid "SMTP Username"
 msgstr "SMTPユーザーネーム"
 
-#: frontend/src/metabase/admin/settings/selectors.js:157
+#: frontend/src/metabase/admin/settings/selectors.js:147
 msgid "SMTP Password"
 msgstr "SMTPパスワード"
 
-#: frontend/src/metabase/admin/settings/selectors.js:164
+#: frontend/src/metabase/admin/settings/selectors.js:154
 msgid "From Address"
 msgstr "送信元アドレス"
 
-#: frontend/src/metabase/admin/settings/selectors.js:178
+#: frontend/src/metabase/admin/settings/selectors.js:168
 msgid "Slack API Token"
 msgstr "Slack APIトークン"
 
-#: frontend/src/metabase/admin/settings/selectors.js:180
+#: frontend/src/metabase/admin/settings/selectors.js:170
 msgid "Enter the token you received from Slack"
 msgstr "Slackから受け取ったトークンを入力する"
 
@@ -1860,7 +1861,7 @@ msgid "Username or DN"
 msgstr "ユーザーネームまたはDN"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:43
-#: frontend/src/metabase/entities/databases/forms.js:61
+#: frontend/src/metabase/entities/databases/forms.js:70
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:64
 #: frontend/src/metabase/user/components/UserSettings.jsx:66
 #: src/metabase/driver/common.clj
@@ -1879,27 +1880,27 @@ msgstr "ユーザーフィルター"
 msgid "Check your parentheses"
 msgstr "かっこを確認する"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:125
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:205
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:132
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:212
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:87
 msgid "Email attribute"
 msgstr "メール属性"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:130
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:210
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:137
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:217
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:92
 msgid "First name attribute"
 msgstr "名の属性"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:215
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:142
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:222
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:97
 msgid "Last name attribute"
 msgstr "姓の属性"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:162
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:140
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:220
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:166
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:147
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:227
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:102
 msgid "Synchronize group memberships"
 msgstr "グループメンバーを同期する"
@@ -1908,79 +1909,79 @@ msgstr "グループメンバーを同期する"
 msgid "Group search base"
 msgstr "グループ検索ベース"
 
-#: frontend/src/metabase/admin/settings/selectors.js:201
+#: frontend/src/metabase/admin/settings/selectors.js:191
 msgid "Maps"
 msgstr "マップ"
 
-#: frontend/src/metabase/admin/settings/selectors.js:205
+#: frontend/src/metabase/admin/settings/selectors.js:195
 msgid "Map tile server URL"
 msgstr "マップタイルサーバーのURL"
 
-#: frontend/src/metabase/admin/settings/selectors.js:206
+#: frontend/src/metabase/admin/settings/selectors.js:196
 msgid "Metabase uses OpenStreetMaps by default."
 msgstr "Metabaseはデフォルト設定でOpenStreetMapsを使用します"
 
-#: frontend/src/metabase/admin/settings/selectors.js:211
+#: frontend/src/metabase/admin/settings/selectors.js:201
 msgid "Custom Maps"
 msgstr "カスタムマップ"
 
-#: frontend/src/metabase/admin/settings/selectors.js:212
+#: frontend/src/metabase/admin/settings/selectors.js:202
 msgid "Add your own GeoJSON files to enable different region map visualizations"
 msgstr "独自のGeoJSONファイルを追加して、異なるリージョンマップのビジュアライゼーションを可能にする"
 
-#: frontend/src/metabase/admin/settings/selectors.js:260
+#: frontend/src/metabase/admin/settings/selectors.js:261
 msgid "Public Sharing"
 msgstr "公開"
 
-#: frontend/src/metabase/admin/settings/selectors.js:264
+#: frontend/src/metabase/admin/settings/selectors.js:265
 msgid "Enable Public Sharing"
 msgstr "公開を有効化する"
 
-#: frontend/src/metabase/admin/settings/selectors.js:269
+#: frontend/src/metabase/admin/settings/selectors.js:270
 msgid "Shared Dashboards"
 msgstr "公開されたダッシュボード"
 
-#: frontend/src/metabase/admin/settings/selectors.js:275
+#: frontend/src/metabase/admin/settings/selectors.js:276
 msgid "Shared Questions"
 msgstr "公開された質問"
 
-#: frontend/src/metabase/admin/settings/selectors.js:282
+#: frontend/src/metabase/admin/settings/selectors.js:283
 msgid "Embedding in other Applications"
 msgstr "他アプリケーションに埋め込む"
 
-#: frontend/src/metabase/admin/settings/selectors.js:308
+#: frontend/src/metabase/admin/settings/selectors.js:309
 msgid "Enable Embedding Metabase in other Applications"
 msgstr "他アプリケーションへのMetabaseの埋め込みを有効化する"
 
-#: frontend/src/metabase/admin/settings/selectors.js:318
+#: frontend/src/metabase/admin/settings/selectors.js:319
 msgid "Embedding secret key"
 msgstr "秘密キーを埋め込む"
 
-#: frontend/src/metabase/admin/settings/selectors.js:324
+#: frontend/src/metabase/admin/settings/selectors.js:325
 msgid "Embedded Dashboards"
 msgstr "埋め込みダッシュボード"
 
-#: frontend/src/metabase/admin/settings/selectors.js:330
+#: frontend/src/metabase/admin/settings/selectors.js:331
 msgid "Embedded Questions"
 msgstr "埋め込み質問"
 
-#: frontend/src/metabase/admin/settings/selectors.js:337
+#: frontend/src/metabase/admin/settings/selectors.js:338
 msgid "Caching"
 msgstr "キャッシュ"
 
-#: frontend/src/metabase/admin/settings/selectors.js:341
+#: frontend/src/metabase/admin/settings/selectors.js:342
 msgid "Enable Caching"
 msgstr "キャッシュを有効化する"
 
-#: frontend/src/metabase/admin/settings/selectors.js:346
+#: frontend/src/metabase/admin/settings/selectors.js:347
 msgid "Minimum Query Duration"
 msgstr "最低クエリ期間"
 
-#: frontend/src/metabase/admin/settings/selectors.js:353
+#: frontend/src/metabase/admin/settings/selectors.js:354
 msgid "Cache Time-To-Live (TTL) multiplier"
 msgstr "キャッシュTTL乗数"
 
-#: frontend/src/metabase/admin/settings/selectors.js:360
+#: frontend/src/metabase/admin/settings/selectors.js:361
 msgid "Max Cache Entry Size"
 msgstr "最大キャッシュエントリーサイズ"
 
@@ -2113,14 +2114,14 @@ msgid "Sign in with your new password"
 msgstr "新しいパスワードでサインインする"
 
 #: frontend/src/metabase/components/ActionButton.jsx:53
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:171
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:174
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:186
 msgid "Save failed"
 msgstr "保存が失敗しました"
 
 #: frontend/src/metabase/components/ActionButton.jsx:54
 #: frontend/src/metabase/components/SaveStatus.jsx:60
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:172
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:175
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:133
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:187
 msgid "Saved"
@@ -2139,17 +2140,19 @@ msgid "The dashboards, collections, and pulses in this collection will also be a
 msgstr "このコレクション内のダッシュボード、コレクション、パルスもアーカイブされます"
 
 #: enterprise/frontend/src/metabase-enterprise/snippets/components/CollectionOptionsButton.jsx:85
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:475
 #: frontend/src/metabase/components/ArchiveModal.jsx:40
-#: frontend/src/metabase/components/CollectionLanding.jsx:616
-#: frontend/src/metabase/components/EntityMenu.info.js:31
-#: frontend/src/metabase/components/EntityMenu.info.js:87
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:339
+#: frontend/src/metabase/components/EntityMenu.info.js:32
+#: frontend/src/metabase/components/EntityMenu.info.js:88
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:338
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:50
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:196
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:201
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:202
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:58
 #: frontend/src/metabase/routes.jsx:198
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:480
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:481
 msgid "Archive"
 msgstr "アーカイブ"
 
@@ -2183,9 +2186,9 @@ msgstr "このテーブルを自動探査(X-ray)する"
 msgid "Learn about this table"
 msgstr "このテーブルについて詳細を見る"
 
-#: frontend/src/metabase/components/Button.info.js:11
 #: frontend/src/metabase/components/Button.info.js:12
 #: frontend/src/metabase/components/Button.info.js:13
+#: frontend/src/metabase/components/Button.info.js:14
 msgid "Clickity click"
 msgstr "カチカチ"
 
@@ -2250,7 +2253,7 @@ msgstr "このコレクションは空です"
 msgid "You can use collections to organize and group dashboards, questions and pulses for your team or yourself"
 msgstr "コレクションを使用して、ダッシュボード、質問とパルスを整理してグループ化することができます。"
 
-#: frontend/src/metabase/components/CollectionEmptyState.jsx:28
+#: frontend/src/metabase/components/CollectionEmptyState.jsx:56
 msgid "Create another collection"
 msgstr "他のコレクションを作成する"
 
@@ -2270,56 +2273,55 @@ msgstr "データのクエリは質問として保存されました"
 msgid "Pins"
 msgstr "固定"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:340
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:299
 msgid "Drag something here to pin it to the top"
 msgstr "ドラッグしてトップに固定してください"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:782
-#: frontend/src/metabase/components/CollectionLanding.jsx:352
 #: frontend/src/metabase/home/containers/SearchApp.jsx:77
 msgid "Collections"
 msgstr "コレクション"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:431
-#: frontend/src/metabase/components/CollectionLanding.jsx:452
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:370
 msgid "Drag here to un-pin"
 msgstr "固定を外すにはドラッグしてください"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:487
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:398
 msgid "{0} item selected"
 msgid_plural "{0} items selected"
 msgstr[0] "{0}アイテムが選択されました"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:517
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:434
 msgid "Move {0} items?"
 msgstr "{0}アイテムを移動しますか？"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:518
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:435
 msgid "Move \"{0}\"?"
 msgstr "{0}を移動しますか？"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:623
-#: frontend/src/metabase/components/EntityMenu.info.js:29
-#: frontend/src/metabase/components/EntityMenu.info.js:85
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:482
+#: frontend/src/metabase/components/EntityMenu.info.js:30
+#: frontend/src/metabase/components/EntityMenu.info.js:86
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:69
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:329
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:328
 #: frontend/src/metabase/query_builder/components/view/QuestionEntityMenu.jsx:36
 msgid "Move"
 msgstr "移動する"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:687
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:514
 msgid "Edit this collection"
 msgstr "このコレクションを編集する"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:695
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:522
 msgid "Archive this collection"
 msgstr "このコレクションをアーカイブする"
 
 #: frontend/src/metabase/components/CollectionList.jsx:67
-#: frontend/src/metabase/entities/collections.js:158
+#: frontend/src/metabase/entities/collections.js:173
 msgid "My personal collection"
 msgstr "パーソナルコレクション"
 
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:227
 #: frontend/src/metabase/components/CollectionList.jsx:107
 msgid "New collection"
 msgstr "新しいコレクション"
@@ -2338,7 +2340,7 @@ msgid "Some database installations can only be accessed by connecting through an
 "Enabling this is usually slower than a direct connection."
 msgstr "一部のデータベースインストールは、SSHホストを介して接続することによってのみアクセスできます。VPNが利用できない場合、このオプションを使用することでセキュリティーレベルを高めることができます。この機能を有効にすると直接接続するよりも動作が遅くなりことがあります。"
 
-#: frontend/src/metabase/entities/databases/forms.js:282
+#: frontend/src/metabase/entities/databases/forms.js:291
 msgid "This is a large database, so let me choose when Metabase syncs and scans"
 msgstr "データベースが大きいため、Metabaseの同期とスキャンのタイミングを選択します"
 
@@ -2347,17 +2349,17 @@ msgid "By default, Metabase does a lightweight hourly sync and an intensive dail
 "If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "Metabaseはフィールド値に対し1時間毎のクイックスキャンと毎日のフルスキャンを行うようデフォルトで設定されています。データベースが大きい場合、この設定をオンにし、いつどのようにフィールド値のスキャンをするか確認することをお勧めします。"
 
-#: frontend/src/metabase/entities/databases/forms.js:113
+#: frontend/src/metabase/entities/databases/forms.js:122
 msgid "{0} to generate a Client ID and Client Secret for your project."
 msgstr "クライアントIDとクライアントシークレットを作成するには{0}してください"
 
-#: frontend/src/metabase/entities/databases/forms.js:115
-#: frontend/src/metabase/entities/databases/forms.js:130
-#: frontend/src/metabase/entities/databases/forms.js:166
+#: frontend/src/metabase/entities/databases/forms.js:124
+#: frontend/src/metabase/entities/databases/forms.js:139
+#: frontend/src/metabase/entities/databases/forms.js:175
 msgid "Click here"
 msgstr "こちらをクリックしてください"
 
-#: frontend/src/metabase/entities/databases/forms.js:118
+#: frontend/src/metabase/entities/databases/forms.js:127
 msgid "Choose \"Other\" as the application type. Name it whatever you'd like."
 msgstr "アプリケーションタイプは「その他」を選択してください。名前は自由に付けられます。"
 
@@ -2365,19 +2367,19 @@ msgstr "アプリケーションタイプは「その他」を選択してくだ
 msgid "{0} to get an auth code"
 msgstr "認証コードを取得するため{0}"
 
-#: frontend/src/metabase/entities/databases/forms.js:142
+#: frontend/src/metabase/entities/databases/forms.js:151
 msgid "with Google Drive permissions"
 msgstr "Googleドライブ権限で"
 
-#: frontend/src/metabase/entities/databases/forms.js:164
+#: frontend/src/metabase/entities/databases/forms.js:173
 msgid "To use Metabase with this data you must enable API access in the Google Developers Console."
 msgstr "このデータでMetabaseを利用するには、Google Developers ConsoleのAPIアクセスを有効化する必要があります"
 
-#: frontend/src/metabase/entities/databases/forms.js:165
+#: frontend/src/metabase/entities/databases/forms.js:174
 msgid "{0} to go to the console if you haven't already done so."
 msgstr "有効化していない場合は、Consoleで{0}してください"
 
-#: frontend/src/metabase/entities/databases/forms.js:266
+#: frontend/src/metabase/entities/databases/forms.js:275
 msgid "How would you like to refer to this database?"
 msgstr "どのようにこのデータベースを参照しますか？"
 
@@ -2397,74 +2399,75 @@ msgstr "次へ"
 msgid "Delete this {0}"
 msgstr "この{0}を削除する"
 
-#: frontend/src/metabase/components/EntityItem.jsx:45
+#: frontend/src/metabase/components/EntityItem.jsx:49
 msgid "Pin this item"
 msgstr "このアイテムを固定する"
 
-#: frontend/src/metabase/components/EntityItem.jsx:51
+#: frontend/src/metabase/components/EntityItem.jsx:55
 msgid "Move this item"
 msgstr "このアイテムを移動する"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:24
-#: frontend/src/metabase/components/EntityMenu.info.js:80
+#: frontend/src/metabase/components/EntityMenu.info.js:25
+#: frontend/src/metabase/components/EntityMenu.info.js:81
 #: frontend/src/metabase/query_builder/components/view/QuestionEntityMenu.jsx:21
 msgid "Edit this question"
 msgstr "この質問を編集する"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:26
-#: frontend/src/metabase/components/EntityMenu.info.js:47
-#: frontend/src/metabase/components/EntityMenu.info.js:82
-#: frontend/src/metabase/components/EntityMenu.info.js:99
+#: frontend/src/metabase/components/EntityMenu.info.js:27
+#: frontend/src/metabase/components/EntityMenu.info.js:48
+#: frontend/src/metabase/components/EntityMenu.info.js:83
+#: frontend/src/metabase/components/EntityMenu.info.js:100
 msgid "Action type"
 msgstr "アクションタイプ"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:28
-#: frontend/src/metabase/components/EntityMenu.info.js:84
+#: frontend/src/metabase/components/EntityMenu.info.js:29
+#: frontend/src/metabase/components/EntityMenu.info.js:85
 #: frontend/src/metabase/query_builder/components/view/QuestionEntityMenu.jsx:26
 msgid "View revision history"
 msgstr "履歴を見る"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:29
-#: frontend/src/metabase/components/EntityMenu.info.js:85
+#: frontend/src/metabase/components/EntityMenu.info.js:30
+#: frontend/src/metabase/components/EntityMenu.info.js:86
 msgid "Move action"
 msgstr "アクションを移動する"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:33
-#: frontend/src/metabase/components/EntityMenu.info.js:89
+#: frontend/src/metabase/components/EntityMenu.info.js:34
+#: frontend/src/metabase/components/EntityMenu.info.js:90
 msgid "Archive action"
 msgstr "アクションをアーカイブする"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:45
-#: frontend/src/metabase/components/EntityMenu.info.js:97
+#: frontend/src/metabase/components/EntityMenu.info.js:46
+#: frontend/src/metabase/components/EntityMenu.info.js:98
 #: frontend/src/metabase/query_builder/components/view/QuestionEntityMenu.jsx:31
 msgid "Add to dashboard"
 msgstr "ダッシュボードに追加する"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:49
-#: frontend/src/metabase/components/EntityMenu.info.js:101
+#: frontend/src/metabase/components/EntityMenu.info.js:50
+#: frontend/src/metabase/components/EntityMenu.info.js:102
 msgid "Download results"
 msgstr "結果をダウンロードする"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:51
-#: frontend/src/metabase/components/EntityMenu.info.js:103
-#: frontend/src/metabase/dashboard/containers/DashboardEmbedWidget.jsx:53
+#: frontend/src/metabase/components/EntityMenu.info.js:52
+#: frontend/src/metabase/components/EntityMenu.info.js:104
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:73
+#: frontend/src/metabase/dashboard/containers/DashboardSharingEmbeddingModal.jsx:59
 msgid "Sharing and embedding"
 msgstr "共有と埋め込み"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:53
-#: frontend/src/metabase/components/EntityMenu.info.js:105
+#: frontend/src/metabase/components/EntityMenu.info.js:54
+#: frontend/src/metabase/components/EntityMenu.info.js:106
 msgid "Another action type"
 msgstr "他のアクションタイプ"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:65
-#: frontend/src/metabase/components/EntityMenu.info.js:67
-#: frontend/src/metabase/components/EntityMenu.info.js:113
-#: frontend/src/metabase/components/EntityMenu.info.js:115
+#: frontend/src/metabase/components/EntityMenu.info.js:66
+#: frontend/src/metabase/components/EntityMenu.info.js:68
+#: frontend/src/metabase/components/EntityMenu.info.js:114
+#: frontend/src/metabase/components/EntityMenu.info.js:116
 msgid "Get alerts about this"
 msgstr "これに関するアラートを受け取る"
 
-#: frontend/src/metabase/components/EntityMenu.info.js:69
-#: frontend/src/metabase/components/EntityMenu.info.js:117
+#: frontend/src/metabase/components/EntityMenu.info.js:70
+#: frontend/src/metabase/components/EntityMenu.info.js:118
 #: frontend/src/metabase/query_builder/components/view/NativeQueryButton.jsx:21
 msgid "View the SQL"
 msgstr "SQLを見る"
@@ -2493,35 +2496,35 @@ msgstr "スキーマに基づく"
 msgid "A look at your"
 msgstr "見てみる"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:383
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:393
 msgid "Search the list"
 msgstr "一覧を検索する"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:394
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:404
 msgid "Search by {0}"
 msgstr "{0}で検索する"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:396
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:406
 msgid " or enter an ID"
 msgstr "␣またはIDを入力する"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:401
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:411
 msgid "Enter an ID"
 msgstr "IDを入力する"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:403
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:413
 msgid "Enter a number"
 msgstr "番号を入力する"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:405
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:415
 msgid "Enter some text"
 msgstr "テキストを入力する"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:519
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:529
 msgid "No matching {0} found."
 msgstr "一致する{0}が見つかりませんでした"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:528
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:538
 msgid "Including every option in your filter probably won’t do much…"
 msgstr "フィルターに全てのオプションを含めてしまうと、効果的な結果が得られない場合があります"
 
@@ -2569,9 +2572,9 @@ msgid "Reverted to an earlier revision and {0}"
 msgstr "以前の履歴と{0}に戻しました"
 
 #: frontend/src/metabase/components/HistoryModal.jsx:42
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:266
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:271
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:310
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:265
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:270
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:309
 #: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:58
 msgid "Revision history"
 msgstr "履歴"
@@ -2691,61 +2694,59 @@ msgstr "今はしない"
 msgid "Error:"
 msgstr "エラー:"
 
-#: frontend/src/metabase/admin/settings/selectors.js:241
+#: frontend/src/metabase/admin/settings/selectors.js:242
 #: frontend/src/metabase/components/SchedulePicker.jsx:24
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:340
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:334
 msgid "Sunday"
 msgstr "日曜日"
 
-#: frontend/src/metabase/admin/settings/selectors.js:242
+#: frontend/src/metabase/admin/settings/selectors.js:243
 #: frontend/src/metabase/components/SchedulePicker.jsx:25
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:328
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:322
 msgid "Monday"
 msgstr "月曜日"
 
-#: frontend/src/metabase/admin/settings/selectors.js:243
+#: frontend/src/metabase/admin/settings/selectors.js:244
 #: frontend/src/metabase/components/SchedulePicker.jsx:26
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:330
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:324
 msgid "Tuesday"
 msgstr "火曜日"
 
-#: frontend/src/metabase/admin/settings/selectors.js:244
+#: frontend/src/metabase/admin/settings/selectors.js:245
 #: frontend/src/metabase/components/SchedulePicker.jsx:27
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:332
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:326
 msgid "Wednesday"
 msgstr "水曜日"
 
-#: frontend/src/metabase/admin/settings/selectors.js:245
+#: frontend/src/metabase/admin/settings/selectors.js:246
 #: frontend/src/metabase/components/SchedulePicker.jsx:28
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:334
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:328
 msgid "Thursday"
 msgstr "木曜日"
 
-#: frontend/src/metabase/admin/settings/selectors.js:246
+#: frontend/src/metabase/admin/settings/selectors.js:247
 #: frontend/src/metabase/components/SchedulePicker.jsx:29
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:336
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:330
 msgid "Friday"
 msgstr "金曜日"
 
-#: frontend/src/metabase/admin/settings/selectors.js:247
+#: frontend/src/metabase/admin/settings/selectors.js:248
 #: frontend/src/metabase/components/SchedulePicker.jsx:30
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:338
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:332
 msgid "Saturday"
 msgstr "土曜日"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:34
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:349
 msgid "First"
 msgstr "最初"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:35
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:23
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:351
 msgid "Last"
 msgstr "最後"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:36
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:353
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:347
 msgid "15th (Midpoint)"
 msgstr "15日（中日）"
 
@@ -2777,7 +2778,7 @@ msgstr "赤"
 msgid "Yellow"
 msgstr "黄"
 
-#: frontend/src/metabase/components/Select.info.js:7
+#: frontend/src/metabase/components/Select.info.js:8
 msgid "A component used to make a selection"
 msgstr "選択に使用された要素"
 
@@ -2798,8 +2799,8 @@ msgstr "申し訳ありません、閲覧権限がありません"
 msgid "Unknown error encountered"
 msgstr "不明エラーが発生しました"
 
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:210
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
-#: frontend/src/metabase/nav/containers/Navbar.jsx:373
 msgid "Create"
 msgstr "作成する"
 
@@ -2848,8 +2849,9 @@ msgstr "データを接続すると、X線と呼ばれる自動探査を表示�
 msgid "Start here"
 msgstr "ここから開始する"
 
+#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:77
 #: frontend/src/metabase/containers/Overworld.jsx:379
-#: frontend/src/metabase/entities/collections.js:150
+#: frontend/src/metabase/entities/collections.js:165
 #: src/metabase/models/collection.clj
 msgid "Our analytics"
 msgstr "分析"
@@ -2885,7 +2887,7 @@ msgstr "カードの名前は？"
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:31
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:18
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:142
-#: frontend/src/metabase/entities/collections.js:102
+#: frontend/src/metabase/entities/collections.js:117
 #: frontend/src/metabase/entities/dashboards.js:149
 #: frontend/src/metabase/entities/questions.js:90
 #: frontend/src/metabase/entities/questions.js:106
@@ -2901,7 +2903,7 @@ msgid "Description"
 msgstr "説明"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:143
-#: frontend/src/metabase/entities/collections.js:104
+#: frontend/src/metabase/entities/collections.js:119
 #: frontend/src/metabase/entities/dashboards.js:151
 #: frontend/src/metabase/entities/questions.js:92
 #: frontend/src/metabase/entities/questions.js:108
@@ -2951,31 +2953,31 @@ msgstr "ダッシュボードをアーカイブする"
 msgid "Make sure to make a selection for each series, or the filter won't work on this card."
 msgstr "各シリーズを必ず選択してください。選択しない場合、このカードでフィルターは機能しません。"
 
-#: frontend/src/metabase/dashboard/components/Dashboard.jsx:305
+#: frontend/src/metabase/dashboard/components/Dashboard.jsx:327
 msgid "This dashboard is looking empty."
 msgstr "このダッシュボードは空です"
 
-#: frontend/src/metabase/dashboard/components/Dashboard.jsx:306
+#: frontend/src/metabase/dashboard/components/Dashboard.jsx:328
 msgid "Add a question to start making it useful!"
 msgstr "質問を追加して使い易くしましょう！"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:38
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:99
 msgid "Daytime mode"
 msgstr "昼モード"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:38
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:99
 msgid "Nighttime mode"
 msgstr "夜モード"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:117
 msgid "Exit fullscreen"
 msgstr "フルスクリーンを解除する"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:117
 msgid "Enter fullscreen"
 msgstr "フルスクリーン"
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:170
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:173
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:185
 msgid "Saving…"
 msgstr "保存中..."
@@ -2989,7 +2991,7 @@ msgid "Add a question to this dashboard"
 msgstr "このダッシュボードに質問を追加する"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:498
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:242
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:241
 msgid "Add a filter"
 msgstr "フィルターを追加する"
 
@@ -2997,7 +2999,7 @@ msgstr "フィルターを追加する"
 msgid "Parameters"
 msgstr "パラメーター"
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:221
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:220
 msgid "Add a text box"
 msgstr "テキストボックスを追加する"
 
@@ -3005,7 +3007,7 @@ msgstr "テキストボックスを追加する"
 msgid "Move dashboard"
 msgstr "ダッシュボードを移動する"
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:279
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:278
 msgid "Edit dashboard"
 msgstr "ダッシュボードを編集する"
 
@@ -3084,7 +3086,7 @@ msgstr "この質問を削除しますか？"
 msgid "Your dashboard was saved"
 msgstr "ダッシュボードが保存されました"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:740
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:554
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:79
 msgid "See it"
 msgstr "見る"
@@ -3110,12 +3112,12 @@ msgstr "このフィールドの値は、選択した他のフィールドの値
 msgid "No valid fields"
 msgstr "有効なフィールドがありません"
 
-#: frontend/src/metabase/entities/collections.js:98
+#: frontend/src/metabase/entities/collections.js:113
 #: frontend/src/metabase/entities/snippet-collections.js:76
 msgid "Name must be 100 characters or less"
 msgstr "名前は100文字以下で入力してください"
 
-#: frontend/src/metabase/entities/collections.js:112
+#: frontend/src/metabase/entities/collections.js:127
 #: frontend/src/metabase/entities/snippet-collections.js:90
 msgid "Color is required"
 msgstr "色が必要です"
@@ -3175,7 +3177,7 @@ msgstr "から最新のデータを受信しました"
 
 #: frontend/src/metabase/home/components/Activity.jsx:247
 #: frontend/src/metabase/lib/query_time.js:180
-#: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:331
+#: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:336
 msgid "Unknown"
 msgstr "不明"
 
@@ -3349,7 +3351,7 @@ msgstr "外部キー"
 msgid "Points to another table to make a connection."
 msgstr "接続する別のテーブルを提示する"
 
-#: frontend/src/metabase/lib/core.js:257
+#: frontend/src/metabase/lib/core.js:272
 msgid "Avatar Image URL"
 msgstr "アバターイメージURL"
 
@@ -3375,15 +3377,15 @@ msgstr "都市"
 msgid "Country"
 msgstr "国"
 
-#: frontend/src/metabase/lib/core.js:240
+#: frontend/src/metabase/lib/core.js:255
 msgid "Enum"
 msgstr "列挙型"
 
-#: frontend/src/metabase/lib/core.js:262
+#: frontend/src/metabase/lib/core.js:277
 msgid "Image URL"
 msgstr "イメージURL"
 
-#: frontend/src/metabase/lib/core.js:274
+#: frontend/src/metabase/lib/core.js:289
 msgid "Field containing JSON"
 msgstr "JSONを含むフィールド"
 
@@ -3407,11 +3409,11 @@ msgstr "数値"
 msgid "State"
 msgstr "州"
 
-#: frontend/src/metabase/lib/core.js:233
+#: frontend/src/metabase/lib/core.js:248
 msgid "UNIX Timestamp (Seconds)"
 msgstr "UNIX時刻（秒）"
 
-#: frontend/src/metabase/lib/core.js:228
+#: frontend/src/metabase/lib/core.js:243
 msgid "UNIX Timestamp (Milliseconds)"
 msgstr "UNIX時刻（ミリ秒）"
 
@@ -3444,7 +3446,7 @@ msgstr "作成時間"
 msgid "Creation date"
 msgstr "作成日"
 
-#: frontend/src/metabase/lib/core.js:245
+#: frontend/src/metabase/lib/core.js:260
 msgid "Product"
 msgstr "商品"
 
@@ -3452,7 +3454,7 @@ msgstr "商品"
 msgid "User"
 msgstr "ユーザー"
 
-#: frontend/src/metabase/lib/core.js:250
+#: frontend/src/metabase/lib/core.js:265
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:96
 msgid "Source"
 msgstr "ソース"
@@ -3463,15 +3465,15 @@ msgstr "ソース"
 msgid "Price"
 msgstr "料金"
 
-#: frontend/src/metabase/lib/core.js:223
+#: frontend/src/metabase/lib/core.js:238
 msgid "Join timestamp"
 msgstr "タイムスタンプ参加"
 
-#: frontend/src/metabase/lib/core.js:218
+#: frontend/src/metabase/lib/core.js:233
 msgid "Join time"
 msgstr "参加時間"
 
-#: frontend/src/metabase/lib/core.js:213
+#: frontend/src/metabase/lib/core.js:228
 msgid "Join date"
 msgstr "登録日"
 
@@ -3524,23 +3526,23 @@ msgstr "売上総利益"
 msgid "Birthday"
 msgstr "生年月日"
 
-#: frontend/src/metabase/lib/core.js:285
+#: frontend/src/metabase/lib/core.js:300
 msgid "Search box"
 msgstr "検索ボックス"
 
-#: frontend/src/metabase/lib/core.js:286
+#: frontend/src/metabase/lib/core.js:301
 msgid "A list of all values"
 msgstr "全値の一覧"
 
-#: frontend/src/metabase/lib/core.js:287
+#: frontend/src/metabase/lib/core.js:302
 msgid "Plain input box"
 msgstr "入力ボックス"
 
-#: frontend/src/metabase/lib/core.js:293
+#: frontend/src/metabase/lib/core.js:308
 msgid "Everywhere"
 msgstr "どこでも"
 
-#: frontend/src/metabase/lib/core.js:294
+#: frontend/src/metabase/lib/core.js:309
 msgid "The default setting. This field will be displayed normally in tables and charts."
 msgstr "デフォルト設定。このフィールドは通常テーブルやチャートに表示されます。"
 
@@ -3548,7 +3550,7 @@ msgstr "デフォルト設定。このフィールドは通常テーブルやチ
 msgid "Only in Detail Views"
 msgstr "詳細表示のみ"
 
-#: frontend/src/metabase/lib/core.js:299
+#: frontend/src/metabase/lib/core.js:314
 msgid "This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart."
 msgstr "このフィールドは、単一のレコードの詳細を閲覧する場合にのみ表示されます。 処理に時間のかかる情報や、テーブルやチャート内では利用できない情報に使用してください。"
 
@@ -3566,10 +3568,10 @@ msgstr "Metabaseはこのフィールドを取得しなくなります。取得�
 #: frontend/src/metabase/visualizations/lib/utils.js:129
 #: src/metabase/query_processor/middleware/annotate.clj
 #: resources/automagic_dashboards/field/DateTime.yaml
-#: resources/automagic_dashboards/field/Number.yaml
-#: resources/automagic_dashboards/field/GenericField.yaml
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
+#: resources/automagic_dashboards/field/Number.yaml
+#: resources/automagic_dashboards/field/Country.yaml
+#: resources/automagic_dashboards/field/GenericField.yaml
 msgid "Count"
 msgstr "カウント"
 
@@ -3578,7 +3580,7 @@ msgid "CumulativeCount"
 msgstr "累積カウント"
 
 #: frontend/src/metabase/lib/schema_metadata.js:516
-#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:18
+#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:19
 #: frontend/src/metabase/visualizations/lib/utils.js:130
 msgid "Sum"
 msgstr "合計"
@@ -3601,14 +3603,12 @@ msgid "Average"
 msgstr "平均"
 
 #: frontend/src/metabase/lib/schema_metadata.js:570
-#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:26
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:48
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:484
 msgid "Min"
 msgstr "最低"
 
 #: frontend/src/metabase/lib/schema_metadata.js:579
-#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:30
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:57
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:492
 msgid "Max"
@@ -3618,12 +3618,12 @@ msgstr "最高"
 msgid "sad sad panda, lexing errors detected"
 msgstr "字句エラーが検出されました"
 
-#: frontend/src/metabase/lib/formatting.js:855
+#: frontend/src/metabase/lib/formatting.js:854
 msgid "{0} second"
 msgid_plural "{0} seconds"
 msgstr[0] "{0}秒"
 
-#: frontend/src/metabase/lib/formatting.js:858
+#: frontend/src/metabase/lib/formatting.js:857
 msgid "{0} minute"
 msgid_plural "{0} minutes"
 msgstr[0] "{0}分"
@@ -3635,7 +3635,7 @@ msgstr "ようこそ！"
 #: frontend/src/metabase/lib/greeting.js:5
 #: frontend/src/metabase/lib/greeting.js:29
 msgid "How's it going"
-msgstr "調子はどう？"
+msgstr "調子はどう"
 
 #: frontend/src/metabase/lib/greeting.js:6
 msgid "Howdy"
@@ -3703,12 +3703,12 @@ msgstr "の累積和"
 #: frontend/src/metabase/lib/query/description.js:107
 #: frontend/src/metabase/lib/query/description.js:276
 msgid "Maximum of "
-msgstr "の最高"
+msgstr "の最大値"
 
 #: frontend/src/metabase/lib/query/description.js:112
 #: frontend/src/metabase/lib/query/description.js:278
 msgid "Minimum of "
-msgstr "の最低"
+msgstr "の最小値"
 
 #: frontend/src/metabase/lib/query/description.js:126
 #: frontend/src/metabase/lib/query/description.js:286
@@ -3868,7 +3868,7 @@ msgstr "回答の全行数"
 
 #: frontend/src/metabase/lib/schema_metadata.js:515
 msgid "Sum of ..."
-msgstr "の合計"
+msgstr "...の合計"
 
 #: frontend/src/metabase/lib/schema_metadata.js:517
 msgid "Sum of all the values of a column."
@@ -3876,7 +3876,7 @@ msgstr "列の全値の合計"
 
 #: frontend/src/metabase/lib/schema_metadata.js:524
 msgid "Average of ..."
-msgstr "の平均"
+msgstr "...の平均"
 
 #: frontend/src/metabase/lib/schema_metadata.js:526
 msgid "Average of all the values of a column"
@@ -3892,7 +3892,7 @@ msgstr "回答の全行のうちユニーク値の列数"
 
 #: frontend/src/metabase/lib/schema_metadata.js:542
 msgid "Cumulative sum of ..."
-msgstr "累積合計"
+msgstr "...の累積合計"
 
 #: frontend/src/metabase/lib/schema_metadata.js:493
 msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
@@ -3916,7 +3916,7 @@ msgstr "回答の全行の間で列の値がどれくらい異なるかを表す
 
 #: frontend/src/metabase/lib/schema_metadata.js:569
 msgid "Minimum of ..."
-msgstr "...の最低"
+msgstr "...の最小値"
 
 #: frontend/src/metabase/lib/schema_metadata.js:571
 msgid "Minimum value of a column"
@@ -3924,7 +3924,7 @@ msgstr "列の最低値"
 
 #: frontend/src/metabase/lib/schema_metadata.js:578
 msgid "Maximum of ..."
-msgstr "...の最高"
+msgstr "...の最大値"
 
 #: frontend/src/metabase/lib/schema_metadata.js:580
 msgid "Maximum value of a column"
@@ -4151,22 +4151,22 @@ msgstr "は右記の会社が有する商標です"
 msgid "and is built with care in San Francisco, CA"
 msgstr "カリフォルニアのサンフランシスコで制作されています"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:224
+#: frontend/src/metabase/nav/containers/Navbar.jsx:198
 msgid "Metabase Admin"
 msgstr "Metabase管理者"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:354
+#: frontend/src/metabase/nav/containers/Navbar.jsx:326
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:35
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:36
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:36
 msgid "Ask a question"
 msgstr "照会する"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:379
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:215
 msgid "New dashboard"
 msgstr "新しいダッシュボード"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:385
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:221
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:129
 msgid "New pulse"
 msgstr "新しいパルス"
@@ -4214,7 +4214,7 @@ msgstr "ネイティブクエリ"
 msgid "For more complicated questions, you can write your own SQL or native query."
 msgstr "複雑な質問については、独自のSQLまたはネイティブクエリを記述することができます。"
 
-#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:247
+#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:249
 msgid "Select a default value…"
 msgstr "デフォルト値を選択する"
 
@@ -4252,8 +4252,7 @@ msgstr "過去30日"
 #: src/metabase/api/table.clj
 msgid "Week"
 msgid_plural "Weeks"
-msgstr[0] "週\n"
-"週"
+msgstr[0] "週"
 
 #: frontend/src/metabase/lib/query_time.js:200
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
@@ -4261,8 +4260,7 @@ msgstr[0] "週\n"
 #: src/metabase/api/table.clj
 msgid "Month"
 msgid_plural "Months"
-msgstr[0] "月\n"
-"月"
+msgstr[0] "月"
 
 #: frontend/src/metabase/lib/query_time.js:204
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
@@ -4270,8 +4268,7 @@ msgstr[0] "月\n"
 #: src/metabase/api/table.clj
 msgid "Year"
 msgid_plural "Years"
-msgstr[0] "年\n"
-"年"
+msgstr[0] "年"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:152
 msgid "Past 7 Days"
@@ -4492,6 +4489,7 @@ msgstr "このクエスチョンは{0} {1}にメールされません"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:93
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:375
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:439
 msgid "{0} address"
 msgid_plural "{0} addresses"
 msgstr[0] "{0}アドレス"
@@ -4572,33 +4570,34 @@ msgid "Choose questions you'd like to send in this pulse"
 msgstr "このパルス内で送信したい質問を選択する"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:27
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:60
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:57
 msgid "Emails"
 msgstr "メール"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:28
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:61
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:58
 msgid "Slack messages"
 msgstr "Slackメッセージ"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:220
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:598
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:679
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:710
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:805
 msgid "Sent"
 msgstr "送信しました"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:221
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:599
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:680
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:711
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:806
 msgid "{0} will be sent at"
 msgstr "{0}が送信されます"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:223
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:601
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:682
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:713
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:808
 msgid "Messages"
 msgstr "メッセージ"
 
+#: frontend/src/metabase/components/SendTestEmail.jsx:28
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:239
 msgid "Send email now"
 msgstr "今すぐメールを送信する"
@@ -4607,10 +4606,12 @@ msgstr "今すぐメールを送信する"
 msgid "Send to {0} now"
 msgstr "今すぐ{0}に送信する"
 
+#: frontend/src/metabase/components/SendTestEmail.jsx:29
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:242
 msgid "Sending…"
 msgstr "送信中..."
 
+#: frontend/src/metabase/components/SendTestEmail.jsx:30
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:243
 msgid "Sending failed"
 msgstr "送信に失敗しました"
@@ -4619,6 +4620,7 @@ msgstr "送信に失敗しました"
 msgid "Didn’t send because the pulse has no results."
 msgstr "パルスの結果が存在しないため送信できませんでした"
 
+#: frontend/src/metabase/components/SendTestEmail.jsx:31
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:247
 msgid "Pulse sent"
 msgstr "パルスが送信されました"
@@ -4710,7 +4712,7 @@ msgstr "このクエリの結果を分析する"
 msgid "Count of rows by time"
 msgstr "時間ごとの行数"
 
-#: frontend/src/metabase/modes/components/drill/PivotByDrill.jsx:52
+#: frontend/src/metabase/modes/components/drill/PivotByDrill.jsx:53
 msgid "Break out by {0}"
 msgstr "{0}ごとに分割する"
 
@@ -4756,7 +4758,7 @@ msgstr "分布"
 msgid "View details"
 msgstr "詳細を見る"
 
-#: frontend/src/metabase/modes/components/drill/QuickFilterDrill.jsx:57
+#: frontend/src/metabase/modes/components/drill/QuickFilterDrill.jsx:59
 msgid "View this {0}'s {1}"
 msgstr "{0}の{1}を見る"
 
@@ -4768,19 +4770,19 @@ msgstr "昇順"
 msgid "Descending"
 msgstr "降順"
 
-#: frontend/src/metabase/modes/components/drill/SummarizeColumnByTimeDrill.js:43
+#: frontend/src/metabase/modes/components/drill/SummarizeColumnByTimeDrill.js:45
 msgid "over time"
 msgstr "時間とともに"
 
-#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:22
+#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:24
 msgid "Avg"
 msgstr "平均"
 
-#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:34
+#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:29
 msgid "Distincts"
 msgstr "Distinct"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.jsx:55
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.jsx:57
 msgid "View this {0}"
 msgid_plural "View these {0}"
 msgstr[0] "この{0}を見る"
@@ -4992,7 +4994,7 @@ msgstr "通常"
 msgid "Pick a segment or table"
 msgstr "セグメントまたはテーブルを選ぶ"
 
-#: frontend/src/metabase/entities/databases/forms.js:261
+#: frontend/src/metabase/entities/databases/forms.js:270
 #: frontend/src/metabase/query_builder/components/DataSelector.jsx:70
 msgid "Select a database"
 msgstr "データベースを選択する"
@@ -5019,7 +5021,7 @@ msgid "Learn more about nested queries"
 msgstr "ネストしたクエリについてもっと調べる"
 
 #: frontend/src/metabase/query_builder/components/DataSelector.jsx:951
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:40
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:12
 msgid "Fields"
 msgstr "フィールド"
 
@@ -5098,7 +5100,7 @@ msgstr "データ"
 msgid "Filtered by"
 msgstr "フィルターされた"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:75
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:92
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:357
 msgid "View"
 msgstr "閲覧"
@@ -5249,7 +5251,7 @@ msgid "Showing {0} {1}"
 msgstr "{0} {1}を表示する"
 
 #. 実験中という表現より実行中という表現のほうが近いかと思いました。
-#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:162
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:164
 #, fuzzy
 msgid "Doing science"
 msgstr "実行中"
@@ -5290,27 +5292,27 @@ msgstr "申し訳ありません、問題が発生しました"
 msgid "Group time by"
 msgstr "で時間をグループ化する"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:50
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:51
 msgid "Your question took too long"
 msgstr "質問に時間がかかりすぎました"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:51
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:52
 msgid "We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know."
 msgstr "データベースから時間内に回答を得られなかったため、動作を終了しました。時間をおいて再度お試しいただくか、問題が続く場合は管理者にメールでお問い合わせください。"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:60
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:61
 msgid "We're experiencing server issues"
 msgstr "サーバーの問題が発生しています"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:61
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:62
 msgid "Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin."
 msgstr "数分後にページを再読み込みしてください。問題が続く場合は、管理者へお問い合わせください。"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:95
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:106
 msgid "There was a problem with your question"
 msgstr "質問で問題が発生しました"
 
-#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:96
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:107
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "これは無効な選択または無効な入力値であるために発生することがあります。 入力を再度確認して、クエリを再試行してください。"
 
@@ -5425,7 +5427,7 @@ msgstr "{0}のローデータを見る"
 msgid "More"
 msgstr "さらに"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:216
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:248
 msgid "Invalid expression"
 msgstr "無効な表現"
 
@@ -5443,7 +5445,7 @@ msgstr "これは、スプレッドシートプログラムで数式を書くよ
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:111
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:281
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:353
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:70
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:73
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
 msgid "Learn more"
@@ -5801,7 +5803,7 @@ msgstr "このデータベースに関して知っておくべきこと"
 msgid "Databases and tables"
 msgstr "データベースとテーブル"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:61
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:71
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:28
 #: frontend/src/metabase/reference/databases/FieldSidebar.jsx:38
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:173
@@ -6182,14 +6184,14 @@ msgid "Login"
 msgstr "ログイン"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableWithSearch.jsx:20
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:390
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:400
 #: frontend/src/metabase/containers/ItemPicker.jsx:129
-#: frontend/src/metabase/nav/containers/Navbar.jsx:157
+#: frontend/src/metabase/nav/containers/Navbar.jsx:153
 #: frontend/src/metabase/routes.jsx:197
 msgid "Search"
 msgstr "検索"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:548
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:560
 #: frontend/src/metabase/routes.jsx:216
 msgid "Dashboard"
 msgstr "ダッシュボード"
@@ -6551,7 +6553,7 @@ msgid "Unset"
 msgstr "解除する"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTable.jsx:116
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:284
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:149
 msgid "Rows {0}-{1} of {2}"
 msgstr "{2}の行{0}〜{1}"
 
@@ -6567,6 +6569,7 @@ msgstr "ビジュアライゼーションが見つかりませんでした"
 msgid "Could not display this chart with this data."
 msgstr "このデータではチャートが表示できません"
 
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:541
 msgid "No results!"
 msgstr "結果が見つかりませんでした"
@@ -6756,13 +6759,13 @@ msgstr "{0}のビジュアライゼーションがありません"
 
 #: frontend/src/metabase/visualizations/lib/warnings.js:25
 msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed."
-msgstr "「{0}」は属性のないフィールドです。X軸上に複数の値がある場合、値は合計値となります。"
+msgstr "「{0}」は集約されていないフィールドです。X軸上に複数の値がある場合、値は合計値となります。"
 
-#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:93
+#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:96
 msgid "This chart type requires at least 2 columns."
 msgstr "このチャートタイプでは最低2列が必要です"
 
-#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:98
+#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:101
 msgid "This chart type doesn't support more than {0} series of data."
 msgstr "このチャートタイプは、{0}個以上のデータをサポートしていません。"
 
@@ -7130,15 +7133,15 @@ msgstr "最小不透明度"
 msgid "Max Zoom"
 msgstr "最大ズーム"
 
-#: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:234
+#: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:239
 msgid "No relationships found."
 msgstr "関係は見つかりませんでした"
 
-#: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:272
+#: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:277
 msgid "via {0}"
 msgstr "{0}経由"
 
-#: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:349
+#: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:354
 msgid "This {0} is connected to:"
 msgstr "この{0}は接続していません:"
 
@@ -7150,6 +7153,8 @@ msgstr "オブジェクト詳細"
 msgid "object"
 msgstr "オブジェクト"
 
+#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:140
+#: frontend/src/metabase/visualizations/lib/chart_values.js:114
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:374
 msgid "Total"
 msgstr "合計"
@@ -7198,7 +7203,7 @@ msgstr "進行状況のビジュアライゼーションには数値が必要で
 msgid "Progress"
 msgstr "プログレス"
 
-#: frontend/src/metabase/entities/collections.js:109
+#: frontend/src/metabase/entities/collections.js:124
 #: frontend/src/metabase/entities/snippet-collections.js:87
 #: frontend/src/metabase/visualizations/visualizations/Map.jsx:256
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:68
@@ -7573,21 +7578,18 @@ msgstr "ビニングしない"
 #: frontend/src/metabase/lib/query_time.js:196 src/metabase/api/table.clj
 msgid "Day"
 msgid_plural "Days"
-msgstr[0] "日\n"
-"日"
+msgstr[0] "日"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
 #: frontend/src/metabase/lib/query_time.js:192 src/metabase/api/table.clj
 msgid "Minute"
 msgid_plural "Minutes"
-msgstr[0] "分\n"
-"分"
+msgstr[0] "分"
 
 #: frontend/src/metabase/lib/query_time.js:194 src/metabase/api/table.clj
 msgid "Hour"
 msgid_plural "Hours"
-msgstr[0] "時間\n"
-"時間"
+msgstr[0] "時間"
 
 #: frontend/src/metabase/lib/query_time.js:202 src/metabase/api/table.clj
 msgid "Quarter"
@@ -7786,42 +7788,52 @@ msgid "Can''t create dashboard for {0}"
 msgstr "{0}のダッシュボードが作成できません"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "{0}st"
 msgstr "{0}番目"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "{0}nd"
 msgstr "{0}番目"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "{0}rd"
 msgstr "{0}番目"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "{0}th"
 msgstr "{0}番目"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "at {0}"
 msgstr "{0}で"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "on {0}"
 msgstr "{0}で"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "in {0} week - {1}"
 msgstr "{0}週 - {1}"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "in {0}"
 msgstr "{0}で"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "in Q{0} - {1}"
 msgstr "Q{0} - {1}で"
 
 #: src/metabase/automagic_dashboards/core.clj
+#: test/metabase/automagic_dashboards/core_test.clj
 msgid "Q{0}"
 msgstr "Ｑ{0}"
 
@@ -8097,7 +8109,7 @@ msgstr "BigQueryステートメントをパラメーター化することはで�
 msgid "Failed to set timezone:"
 msgstr "タイムゾーンの設定に失敗しました:"
 
-#: src/metabase/driver/googleanalytics.clj
+#: modules/drivers/googleanalytics/src/metabase/driver/googleanalytics.clj
 msgid "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
 msgstr "Google Analytics APIを有効化する必要があります。こちらのリンクを利用しGoogle Developers Consoleにアクセスしてください: {0}"
 
@@ -9079,7 +9091,7 @@ msgstr "記憶する"
 msgid "X-ray this schema"
 msgstr "このスキーマを自動探査(X-ray)する"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:258
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:188
 msgid "Edit the permissions for this collection"
 msgstr "このコレクションの権限を編集する"
 
@@ -9137,11 +9149,11 @@ msgstr "検索結果が見つかりませんでした"
 msgid "No metrics"
 msgstr "メトリクスがありません"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:41
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:13
 msgid "Aggregations"
 msgstr "集約"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:42
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:14
 msgid "Operators"
 msgstr "オペレーター"
 
@@ -9175,11 +9187,11 @@ msgstr "権限を付与できませんでした: {0}"
 msgid "Cannot decrypt encrypted string. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?"
 msgstr "暗号化された文字列を復号化できません。 MB_ENCRYPTION_SECRET_KEYを変更または設定しましたか？"
 
-#: frontend/src/metabase/entities/collections.js:167
+#: frontend/src/metabase/entities/collections.js:182
 msgid "All personal collections"
 msgstr "全てのパーソナルコレクション"
 
-#: src/metabase/driver/common.clj
+#: src/metabase/driver/common.clj test/metabase/public_settings_test.clj
 msgid "Host"
 msgstr "ホスト"
 
@@ -9350,7 +9362,7 @@ msgstr "ラベル"
 msgid "Add members"
 msgstr "メンバーを追加する"
 
-#: frontend/src/metabase/entities/collections.js:116
+#: frontend/src/metabase/entities/collections.js:131
 msgid "Collection it's saved in"
 msgstr "保存先のコレクション"
 
@@ -9366,6 +9378,7 @@ msgstr "管理者"
 msgid "MetaBot"
 msgstr "MetaBot"
 
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:44
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
 msgstr "共有"
@@ -9391,6 +9404,10 @@ msgstr "共有"
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:72
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:85
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:98
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:23
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:29
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:35
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:41
 msgid "Display"
 msgstr "表示"
 
@@ -9406,7 +9423,6 @@ msgid "Axes"
 msgstr "軸"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:219
-#: frontend/src/metabase/modes/components/drill/FormatAction.jsx:27
 #: frontend/src/metabase/visualizations/lib/settings/column.js:62
 msgid "Formatting"
 msgstr "書式"
@@ -9431,11 +9447,11 @@ msgstr "注意喚起:"
 msgid "{0} without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost."
 msgstr "サンプルデータセットのない{0}では、クエリビルダーのチュートリアルは機能しません。 サンプルデータセットはいつでも復元できますが、このデータを使用して保存した質問は失われます。"
 
-#: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:33
+#: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:34
 msgid "X-ray"
 msgstr "自動探査(X-ray)"
 
-#: frontend/src/metabase/modes/components/drill/CompareToRestDrill.js:34
+#: frontend/src/metabase/modes/components/drill/CompareToRestDrill.js:35
 msgid "Compare to the rest"
 msgstr "残りと比較する"
 
@@ -9454,7 +9470,7 @@ msgstr "あなたのチームの最も重要なダッシュボードがここに
 
 #: frontend/src/metabase/containers/Overworld.jsx:396
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
-msgstr "他の人も閲覧できるようこの場所に表示させるため、ダッシュボードを{0}でピン留めする"
+msgstr "ダッシュボードを{0}でピン留めすると、この場所に表示されて全員と共有されます。"
 
 #: src/metabase/db/liquibase.clj
 msgid "Unable to release the Liquibase lock after a migration failure"
@@ -9481,11 +9497,11 @@ msgid "Field Type"
 msgstr "フィールドタイプ"
 
 #: frontend/src/metabase/admin/routes.jsx:118
-#: frontend/src/metabase/nav/containers/Navbar.jsx:267
+#: frontend/src/metabase/nav/containers/Navbar.jsx:241
 msgid "Troubleshooting"
 msgstr "トラブルシューティング"
 
-#: frontend/src/metabase/admin/settings/selectors.js:104
+#: frontend/src/metabase/admin/settings/selectors.js:94
 msgid "Enable X-ray features"
 msgstr "自動探査(X-ray)機能を有効化"
 
@@ -9497,15 +9513,15 @@ msgstr "書式オプション"
 msgid "Task details"
 msgstr "タスク詳細"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:29
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:37
 msgid "Troubleshooting logs"
 msgstr "トラブルシューティングログ"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:31
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:39
 msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
 msgstr "何かの原因究明をしようとしていますか？このセクションではMetabaseのバックグラウンドタスクのログを表示しています。これを見れば何が起こっているかを知る助けになるでしょう。"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:56
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:65
 msgid "Task"
 msgstr "タスク"
 
@@ -9513,15 +9529,15 @@ msgstr "タスク"
 msgid "DB ID"
 msgstr "データベースID"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:58
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:68
 msgid "Started at"
 msgstr "に開始"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:59
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:69
 msgid "Ended at"
 msgstr "に終了"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:60
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:70
 msgid "Duration (ms)"
 msgstr "実行時間(ms)"
 
@@ -9531,7 +9547,7 @@ msgid "Currency"
 msgstr "通貨"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:161
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:218
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:221
 msgid "Pick a user or channel..."
 msgstr "ユーザーかチャンネルを選ぶ..."
 
@@ -9868,12 +9884,12 @@ msgstr "これらの間隔を無視: {0}"
 msgid "WARNING: Don't know how to negate: {0}"
 msgstr "警告: 無効にする方法がわからない: {0}"
 
-#: src/metabase/driver/druid/query_processor.clj
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
 msgid "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause."
 msgstr "Druid によるソートは、1つ以上のブレークアウト列があるクエリでのみ許可されます。 :order-by 句を無視します。"
 
 #. TODO - this is not really true, is it
-#: src/metabase/driver/druid/query_processor.clj
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause."
 msgstr "警告: 集計のないクエリには :fields を指定することだけが意味があります。句を無視します。"
 
@@ -9897,15 +9913,15 @@ msgstr "クライアントは切断しました。クエリをキャンセルし
 msgid "Setting timezone with statement: {0}"
 msgstr "ステートメントでタイムゾーンを設定: {0}"
 
-#: src/metabase/driver/googleanalytics/query_processor.clj
+#: modules/drivers/googleanalytics/src/metabase/driver/googleanalytics/query_processor.clj
 msgid "Multiple date filters are not supported"
 msgstr "複数の日付フィルターはサポートされていません"
 
-#: src/metabase/driver/googleanalytics/query_processor.clj
+#: modules/drivers/googleanalytics/src/metabase/driver/googleanalytics/query_processor.clj
 msgid ":not is not yet implemented"
 msgstr ":not はまだ実装されていません"
 
-#: src/metabase/driver/googleanalytics/query_processor.clj
+#: modules/drivers/googleanalytics/src/metabase/driver/googleanalytics/query_processor.clj
 msgid "Only one Google Analytics segment allowed at a time."
 msgstr "同時に複数のGoogle Analyticsセグメントは利用できません。"
 
@@ -9925,11 +9941,11 @@ msgstr "`{0}` にメール添付のための一時ファイルを作成できま
 msgid "Error preprocessing query:"
 msgstr "クエリ処理に失敗:"
 
-#: src/metabase/mbql/normalize.clj
+#: backend/mbql/src/metabase/mbql/normalize.clj
 msgid "Illegal filter clause: {0}"
 msgstr "不正なフィルター条件: {0}"
 
-#: src/metabase/mbql/normalize.clj
+#: backend/mbql/src/metabase/mbql/normalize.clj
 msgid "Invalid clause:"
 msgstr "不正な条件:"
 
@@ -9937,11 +9953,13 @@ msgstr "不正な条件:"
 msgid "Error: query's source query has not been resolved. You probably need to `preprocess` the query first."
 msgstr "エラー: クエリに使われているソースクエリを特定できません。恐らく初めに事前処理する必要があります。"
 
-#: src/metabase/mbql/util.clj
+#. failing that throw an Exception with detailed info about what we tried and what the actual expressions
+#. were
+#: backend/mbql/src/metabase/mbql/util.clj
 msgid "No expression named ''{0}''"
 msgstr "\"{0}\" という名前はありません"
 
-#: src/metabase/mbql/util.clj
+#: backend/mbql/src/metabase/mbql/util.clj
 msgid "No aggregation at index: {0}"
 msgstr "{0} のインデックスに集合はありません"
 
@@ -10184,10 +10202,10 @@ msgstr "ソースごとのユーザー"
 msgid "The top external pages that brought users to your site"
 msgstr "ユーザーを最も呼び込んでいる外部ページ"
 
-#: resources/automagic_dashboards/comparison/GenericField.yaml
-#: resources/automagic_dashboards/comparison/Country.yaml
 #: resources/automagic_dashboards/comparison/State.yaml
 #: resources/automagic_dashboards/comparison/FK.yaml
+#: resources/automagic_dashboards/comparison/Country.yaml
+#: resources/automagic_dashboards/comparison/GenericField.yaml
 msgid "How [[this]] is distributed and more."
 msgstr "[[this]]がどのように分布しているのかなど。"
 
@@ -10285,13 +10303,13 @@ msgstr "時間帯ごとのイベント"
 msgid "[[Singleton]]"
 msgstr "[[Singleton]]"
 
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
+#: resources/automagic_dashboards/field/Country.yaml
 msgid "Top 5 [[this]]"
 msgstr "[[this]] の上位5つ"
 
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
+#: resources/automagic_dashboards/field/Country.yaml
 msgid "Bottom 5 [[this]]"
 msgstr "[[this]] の下位5つ"
 
@@ -10304,10 +10322,10 @@ msgid "Per [[GenericCategoryLarge]]"
 msgstr "[[GenericCategoryLarge]] ごと"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
-#: resources/automagic_dashboards/field/Number.yaml
-#: resources/automagic_dashboards/field/GenericField.yaml
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
+#: resources/automagic_dashboards/field/Number.yaml
+#: resources/automagic_dashboards/field/Country.yaml
+#: resources/automagic_dashboards/field/GenericField.yaml
 msgid "Null values"
 msgstr "Null値"
 
@@ -10335,8 +10353,8 @@ msgstr "季節ごとの比較"
 msgid "Average income per transaction"
 msgstr "トランザクションごとの平均収益"
 
-#: resources/automagic_dashboards/metric/GenericMetric.yaml
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
+#: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per country"
 msgstr "国ごとの [[this]]"
 
@@ -10460,10 +10478,10 @@ msgstr "[[this]]の概要とそれが時間、場所、カテゴリの違いに�
 msgid "Average income per state"
 msgstr "州ごとの平均収益"
 
-#: resources/automagic_dashboards/field/Number.yaml
-#: resources/automagic_dashboards/field/GenericField.yaml
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
+#: resources/automagic_dashboards/field/Number.yaml
+#: resources/automagic_dashboards/field/Country.yaml
+#: resources/automagic_dashboards/field/GenericField.yaml
 msgid "[[this]] by [[GenericCategoryMedium]]"
 msgstr "[[GenericCategoryMedium]] 別の [[this]]"
 
@@ -10640,13 +10658,13 @@ msgid "How [[GenericTable]] are distributed across this time field, and if it ha
 msgstr "[[GenericTable]]がこの時間フィールドに対してどのように分布しているのか、そして何らかの季節性があるのか。"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
-#: resources/automagic_dashboards/field/Number.yaml
-#: resources/automagic_dashboards/field/GenericField.yaml
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
+#: resources/automagic_dashboards/field/Number.yaml
+#: resources/automagic_dashboards/field/Country.yaml
+#: resources/automagic_dashboards/field/GenericField.yaml
 #: resources/automagic_dashboards/table/TransactionTable.yaml
-#: resources/automagic_dashboards/table/UserTable.yaml
 #: resources/automagic_dashboards/table/EventTable.yaml
+#: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Overview"
 msgstr "概要"
 
@@ -10755,8 +10773,8 @@ msgstr "[[this]] を詳しく見てみましょう"
 msgid "Heres a closer look at your [[this]] field"
 msgstr "[[this]] フィールドを詳しく見てみましょう"
 
-#: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 #: resources/automagic_dashboards/table/GenericTable.yaml
+#: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Summary"
 msgstr "要約"
 
@@ -10820,10 +10838,10 @@ msgstr "ソースごとの売上"
 msgid "Average income per country"
 msgstr "国別の平均収益"
 
-#: resources/automagic_dashboards/comparison/GenericField.yaml
-#: resources/automagic_dashboards/comparison/Country.yaml
 #: resources/automagic_dashboards/comparison/State.yaml
 #: resources/automagic_dashboards/comparison/FK.yaml
+#: resources/automagic_dashboards/comparison/Country.yaml
+#: resources/automagic_dashboards/comparison/GenericField.yaml
 msgid "How [[this]] is distributed"
 msgstr "どのように[[this]]が分布しているか"
 
@@ -10844,17 +10862,17 @@ msgid "Count of [[GenericCategoryMedium]] by [[this]]"
 msgstr "[[this]]による[[GenericCategoryMedium]]の数"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
-#: resources/automagic_dashboards/field/Number.yaml
-#: resources/automagic_dashboards/field/GenericField.yaml
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
-#: resources/automagic_dashboards/comparison/GenericField.yaml
-#: resources/automagic_dashboards/comparison/Country.yaml
+#: resources/automagic_dashboards/field/Number.yaml
+#: resources/automagic_dashboards/field/Country.yaml
+#: resources/automagic_dashboards/field/GenericField.yaml
+#: resources/automagic_dashboards/table/GenericTable.yaml
+#: resources/automagic_dashboards/table/TransactionTable.yaml
+#: resources/automagic_dashboards/table/UserTable.yaml
 #: resources/automagic_dashboards/comparison/State.yaml
 #: resources/automagic_dashboards/comparison/FK.yaml
-#: resources/automagic_dashboards/table/TransactionTable.yaml
-#: resources/automagic_dashboards/table/GenericTable.yaml
-#: resources/automagic_dashboards/table/UserTable.yaml
+#: resources/automagic_dashboards/comparison/Country.yaml
+#: resources/automagic_dashboards/comparison/GenericField.yaml
 msgid "A look at your [[this]]"
 msgstr "あなたの[[this]]の概要"
 
@@ -10920,10 +10938,10 @@ msgid "Transactions per source over time"
 msgstr "ソースごとのトランザクション推移"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
-#: resources/automagic_dashboards/field/Number.yaml
-#: resources/automagic_dashboards/field/GenericField.yaml
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
+#: resources/automagic_dashboards/field/Number.yaml
+#: resources/automagic_dashboards/field/Country.yaml
+#: resources/automagic_dashboards/field/GenericField.yaml
 msgid "How the [[this]] is distributed"
 msgstr "[[this]]がどのように分布しているか"
 
@@ -10952,9 +10970,9 @@ msgstr "これらのイベントがどこで起きているか"
 msgid "Which US states are bringing you the most business."
 msgstr "どの米国州が最も大きな業績をもたらしているか"
 
-#: resources/automagic_dashboards/metric/GenericMetric.yaml
 #: resources/automagic_dashboards/field/Number.yaml
 #: resources/automagic_dashboards/table/GenericTable.yaml
+#: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How they compare across time"
 msgstr "時間をかけて比較する方法"
 
@@ -11059,8 +11077,8 @@ msgstr "国別セッション"
 msgid "Some interesting metrics about your GA stats to get you started."
 msgstr "開始するためのGA統計に関する興味深いメトリクス。"
 
-#: resources/automagic_dashboards/metric/GenericMetric.yaml
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
+#: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per state"
 msgstr "州ごとの [[this]]"
 
@@ -11143,10 +11161,10 @@ msgstr "ページ別の開始されたセッション"
 
 #: frontend/src/metabase/lib/schema_metadata.js:534
 #: resources/automagic_dashboards/field/DateTime.yaml
-#: resources/automagic_dashboards/field/Number.yaml
-#: resources/automagic_dashboards/field/GenericField.yaml
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
+#: resources/automagic_dashboards/field/Number.yaml
+#: resources/automagic_dashboards/field/Country.yaml
+#: resources/automagic_dashboards/field/GenericField.yaml
 msgid "Distinct values"
 msgstr "重複のない値"
 
@@ -11209,10 +11227,10 @@ msgid "Events per [[GenericCategoryLarge]]"
 msgstr "[[GenericCategoryLarge]]ごとのイベント"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
-#: resources/automagic_dashboards/field/Number.yaml
-#: resources/automagic_dashboards/field/GenericField.yaml
-#: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/State.yaml
+#: resources/automagic_dashboards/field/Number.yaml
+#: resources/automagic_dashboards/field/Country.yaml
+#: resources/automagic_dashboards/field/GenericField.yaml
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "How they compare by distribution"
 msgstr "分布による比較"
@@ -11333,11 +11351,11 @@ msgstr "LDAPサーバーへの接続に問題が起こりました。ローカ�
 msgid "BigQuery statements can''t be parameterized!"
 msgstr "BigQueryステートメントはパラメーター化できません！"
 
-#: src/metabase/driver/druid/query_processor.clj
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."
 msgstr "警告: Druid は時系列クエリで limitSpec を許可しません。 LIMIT 句を無視します。"
 
-#: src/metabase/driver/snowflake.clj
+#: modules/drivers/snowflake/src/metabase/driver/snowflake.clj
 msgid "Invalid Snowflake connection details: missing DB name."
 msgstr "無効なSnowflakeへの接続の詳細：データベース名が指定されていません"
 
@@ -11385,7 +11403,7 @@ msgstr "[Metabase] Metabaseの改善にご協力ください"
 msgid "[Metabase] Tell us how things are going."
 msgstr "[Metabase] 感想をお聞かせください"
 
-#: src/metabase/mbql/util.clj
+#: backend/mbql/src/metabase/mbql/util.clj
 msgid "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."
 msgstr "エラー：クエリのソースクエリは解決されていません。おそらく最初にクエリを「前処理」する必要があります。"
 
@@ -11405,6 +11423,7 @@ msgstr "`query-caching-max-kb`を{0}に設定するのに失敗しました。"
 msgid "Values greater than {1} are not allowed."
 msgstr "{1} より大きな値は指定できません。"
 
+#: src/metabase/driver/sql_jdbc/connection.clj
 #: src/metabase/query_processor/store.clj
 msgid "Database {0} does not exist."
 msgstr "データベース {0} は存在しません。"
@@ -11498,15 +11517,15 @@ msgstr "タスク"
 msgid "Jobs"
 msgstr "ジョブ"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:735
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:549
 msgid "Duplicated {0}"
 msgstr "重複した{0}"
 
-#: frontend/src/metabase/components/EntityItem.jsx:57
+#: frontend/src/metabase/components/EntityItem.jsx:61
 msgid "Duplicate this item"
 msgstr "このアイテムを複製する"
 
-#: frontend/src/metabase/components/EntityItem.jsx:63
+#: frontend/src/metabase/components/EntityItem.jsx:67
 msgid "Archive this item"
 msgstr "このアイテムをアーカイブする"
 
@@ -11518,7 +11537,7 @@ msgstr "ダッシュボードを複製する"
 msgid "Duplicate \"{0}\""
 msgstr "“{0}”を複製"
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:319
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:318
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:21
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:26
 msgid "Duplicate"
@@ -11571,50 +11590,42 @@ msgstr[0] "デフォルトの期間\n"
 #: frontend/src/metabase/lib/query_time.js:206
 msgid "Minute of hour"
 msgid_plural "Minutes of hour"
-msgstr[0] "時間通算分数\n"
-"時間通算分数"
+msgstr[0] "時間毎の分"
 
 #: frontend/src/metabase/lib/query_time.js:208
 msgid "Hour of day"
 msgid_plural "Hours of day"
-msgstr[0] "日間通算時間\n"
-"日間通算時間"
+msgstr[0] "日毎の時間"
 
 #: frontend/src/metabase/lib/query_time.js:210
 msgid "Day of week"
 msgid_plural "Days of week"
-msgstr[0] "週間通算日数\n"
-"週間通算日数"
+msgstr[0] "曜日"
 
 #: frontend/src/metabase/lib/query_time.js:212
 msgid "Day of month"
 msgid_plural "Days of month"
-msgstr[0] "月間通算日数\n"
-"月間通算日数"
+msgstr[0] "月毎の日"
 
 #: frontend/src/metabase/lib/query_time.js:214
 msgid "Day of year"
 msgid_plural "Days of year"
-msgstr[0] "年間通算日数\n"
-"年間通算日数"
+msgstr[0] "年毎の日"
 
 #: frontend/src/metabase/lib/query_time.js:216
 msgid "Week of year"
 msgid_plural "Weeks of year"
-msgstr[0] "年間通算週数\n"
-"年間通算週数"
+msgstr[0] "年毎の週"
 
 #: frontend/src/metabase/lib/query_time.js:218
 msgid "Month of year"
 msgid_plural "Months of year"
-msgstr[0] "年間通算月数\n"
-"年間通算月数"
+msgstr[0] "年毎の月"
 
 #: frontend/src/metabase/lib/query_time.js:220
 msgid "Quarter of year"
 msgid_plural "Quarters of year"
-msgstr[0] "年間四半期数\n"
-"年間四半期数"
+msgstr[0] "年毎の四半期"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.js:285
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:65
@@ -12133,9 +12144,9 @@ msgstr "これが[[this]]の人々の概要です"
 msgid "[[CreateTimestamp]] by quarter of the year"
 msgstr "四半期別の [[CreateTimestamp]]"
 
-#: resources/automagic_dashboards/metric/GenericMetric.yaml
 #: resources/automagic_dashboards/field/Number.yaml
 #: resources/automagic_dashboards/table/GenericTable.yaml
+#: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How they compare across location"
 msgstr "場所を超えて比較する方法"
 
@@ -12164,12 +12175,12 @@ msgstr "曜日別の [[CreateTimestamp]]"
 msgid "Here's an overview of your [[this]] data from Google Analytics"
 msgstr "Google Analyticsから得られた[[this]]のデータの概要です"
 
-#: resources/automagic_dashboards/field/GenericField.yaml
 #: resources/automagic_dashboards/field/State.yaml
-#: resources/automagic_dashboards/comparison/GenericField.yaml
-#: resources/automagic_dashboards/comparison/Country.yaml
+#: resources/automagic_dashboards/field/GenericField.yaml
 #: resources/automagic_dashboards/comparison/State.yaml
 #: resources/automagic_dashboards/comparison/FK.yaml
+#: resources/automagic_dashboards/comparison/Country.yaml
+#: resources/automagic_dashboards/comparison/GenericField.yaml
 msgid "Here's an overview of your [[this]]"
 msgstr "[[this]]の概要です"
 
@@ -12239,11 +12250,11 @@ msgstr "{0}を再有効化しますか？"
 msgid "We couldn’t send them an email invitation, so make sure to tell them to log in using {0} and this password we’ve generated for them:"
 msgstr "メールによる招待を送ることに失敗したので、{0}と自動で生成したこのパスワードを利用してログインするように招待者に伝えてください。"
 
-#: frontend/src/metabase/entities/collections.js:24
+#: frontend/src/metabase/entities/collections.js:29
 msgid "collection"
 msgstr "コレクション"
 
-#: frontend/src/metabase/entities/collections.js:25
+#: frontend/src/metabase/entities/collections.js:30
 msgid "collections"
 msgstr "コレクション"
 
@@ -12396,8 +12407,9 @@ msgstr "ここにあなたの最新{0}個のカードがあります："
 msgid "Could you be a little more specific, or use the ID? I found these cards with names that matched:"
 msgstr "もう少し細かく、またはIDを使っていただけますか？私はこれらの名前が一致したカードを見つけました："
 
+#. Searching by ID
 #: src/metabase/driver/common/parameters/values.clj
-#: src/metabase/metabot/command.clj
+#: src/metabase/metabot/command.clj test/metabase/metabot/command_test.clj
 msgid "Card {0} not found."
 msgstr "カード {0} が見つかりません"
 
@@ -12509,7 +12521,7 @@ msgstr "これをアーカイブしますか？"
 msgid "Learn about our data"
 msgstr "データについて学ぶ"
 
-#: frontend/src/metabase/entities/databases/forms.js:22
+#: frontend/src/metabase/entities/databases/forms.js:26
 msgid "Use DNS SRV when connecting"
 msgstr "接続時にDNS SRVを使用する"
 
@@ -12519,7 +12531,7 @@ msgid "Using this option requires that provided host is a FQDN.  If connecting t
 "leave this disabled."
 msgstr "このオプションを使用するには、提供されたホストがFQDNである必要があります。 Atlasクラスターに接続する場合は、このオプションを有効にする必要があります。 これが何を意味するのかわからない場合は、これを無効のままにします。"
 
-#: frontend/src/metabase/entities/databases/forms.js:274
+#: frontend/src/metabase/entities/databases/forms.js:283
 msgid "Automatically run queries when doing simple filtering and summarizing"
 msgstr "簡単なフィルタリングと要約を行うときに自動的にクエリを実行する"
 
@@ -12531,7 +12543,7 @@ msgstr "これを有効にすることにより、ユーザ―がテーブルや
 msgid "Learn about this database"
 msgstr "このデータベースについて詳細を見る"
 
-#: frontend/src/metabase/dashboard/containers/ArchiveDashboardModal.jsx:53
+#: frontend/src/metabase/dashboard/containers/ArchiveDashboardModal.jsx:51
 msgid "Archive this dashboard?"
 msgstr "このダッシュボードをアーカイブしますか？"
 
@@ -12551,7 +12563,6 @@ msgstr "コラムの全ての値の累積和。\\n例：時間経過ごとの総
 msgid "Additive count of the number of rows.\\ne.x. total number of sales over time."
 msgstr "行数の累積和。\\n例：時間経過ごとの売上総数の変化"
 
-#: frontend/src/metabase/modes/components/drill/ColumnFilterDrill.jsx:42
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:47
 #: frontend/src/metabase/query_builder/components/view/QuestionFilters.jsx:98
 msgid "Filter"
@@ -12566,7 +12577,7 @@ msgstr[0] "レコード"
 msgid "Browse Data"
 msgstr "データを見る"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:402
+#: frontend/src/metabase/nav/containers/Navbar.jsx:358
 msgid "Write SQL"
 msgstr "SQLを書く"
 
@@ -12598,7 +12609,7 @@ msgstr "カスタム…"
 msgid "Add grouping"
 msgstr "グルーピングを追加する"
 
-#: frontend/src/metabase/query_builder/components/LimitPopover.jsx:14
+#: frontend/src/metabase/query_builder/components/LimitPopover.jsx:16
 msgid "Pick a limit"
 msgstr "限界を選ぶ"
 
@@ -12725,7 +12736,7 @@ msgstr "フィルターを表示する"
 msgid "Started from"
 msgstr "から開始"
 
-#: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:21
+#: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:22
 msgid "{0} row"
 msgid_plural "{0} rows"
 msgstr[0] "{0}行"
@@ -12734,15 +12745,15 @@ msgstr[0] "{0}行"
 msgid "Show all rows"
 msgstr "全ての行を表示する"
 
-#: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:30
+#: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:34
 msgid "Show {0}"
 msgstr "{0}を表示する"
 
-#: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:35
+#: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:40
 msgid "Showing first {0}"
 msgstr "最初の{0}を表示しています"
 
-#: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:36
+#: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:43
 msgid "Showing {0}"
 msgstr "{0}を表示しています"
 
@@ -12821,19 +12832,19 @@ msgstr "不明なセグメント"
 msgid "Unknown Filter"
 msgstr "不明なフィルター"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.js:25
+#: frontend/src/metabase-lib/lib/queries/structured/Join.js:27
 msgid "Left outer join"
 msgstr "左外部結合"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.js:26
+#: frontend/src/metabase-lib/lib/queries/structured/Join.js:28
 msgid "Right outer join"
 msgstr "右外部結合"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.js:27
+#: frontend/src/metabase-lib/lib/queries/structured/Join.js:29
 msgid "Inner join"
 msgstr "内部結合"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.js:28
+#: frontend/src/metabase-lib/lib/queries/structured/Join.js:30
 msgid "Full outer join"
 msgstr "完全外部結合"
 
@@ -13222,7 +13233,7 @@ msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "含めたい列を選ぶ"
 
-#: frontend/src/metabase/entities/databases/forms.js:275
+#: frontend/src/metabase/entities/databases/forms.js:284
 msgid "When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "これを有効にすることにより、ユーザーがチャートやテーブルを見るときに要約やフィルターボタンを利用して簡単な探索を行った場合に、Metabaseが自動的にクエリを実行するようになります。このデータベースへのクエリが遅い場合は、この設定を無効にすることができます。この設定によってドリルスルーやSQLクエリが影響を受けることはありません。"
 
@@ -13264,11 +13275,11 @@ msgstr "例外がハンドリングされていません。ミドルウェアで
 msgid "Diagnostic Info"
 msgstr "診断情報"
 
-#: frontend/src/metabase/admin/tasks/containers/Logs.jsx:123
+#: frontend/src/metabase/admin/tasks/containers/Logs.jsx:126
 msgid "Select Metabase process:"
 msgstr "Metabaseプロセスを選択："
 
-#: frontend/src/metabase/admin/tasks/containers/Logs.jsx:133
+#: frontend/src/metabase/admin/tasks/containers/Logs.jsx:136
 msgid "All Metabase processes"
 msgstr "全てのMetabaseのプロセス"
 
@@ -13284,11 +13295,11 @@ msgstr "Googleへのログインに問題が発生しました。管理者に連
 msgid "Sign in with email"
 msgstr "メールアドレスでサインインする"
 
-#: frontend/src/metabase/entities/databases/forms.js:23
+#: frontend/src/metabase/entities/databases/forms.js:27
 msgid "Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled."
 msgstr "このオプションを使うには与えられたホスト名がFQDNである必要があります。Atlasクラスタに接続する場合、このオプションを有効にする必要があるでしょう。もしもこれが意味するところが分からない場合は、無効のままにしてください。"
 
-#: frontend/src/metabase/entities/databases/forms.js:283
+#: frontend/src/metabase/entities/databases/forms.js:292
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "デフォルトでMetabaseはフィールド値を毎時の軽量なバッチと日次の重いスキャンで同期しています。大きなデータベースと接続する場合はこの機能をONとし、いつどのくらいの頻度でフィールド値がスキャンされるのかを確認することをオススメします。"
 
@@ -13316,7 +13327,7 @@ msgstr "この部分を隠しますか？"
 msgid "\"Our Data\" won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation."
 msgstr "「私たちのデータ」はユーザーのホームページに表示されなくなりますが、メインナビゲーションの[データの参照]をクリックすると、いつでもデータベースやテーブルを参照できます。"
 
-#: frontend/src/metabase/entities/collections.js:95
+#: frontend/src/metabase/entities/collections.js:110
 msgid "My new fantastic collection"
 msgstr "新しい私の素晴らしいコレクション"
 
@@ -13344,15 +13355,15 @@ msgstr "削除時間"
 msgid "Deletion date"
 msgstr "削除日"
 
-#: frontend/src/metabase/lib/core.js:298
+#: frontend/src/metabase/lib/core.js:313
 msgid "Only in detail views"
 msgstr "詳細ビューのみ"
 
-#: frontend/src/metabase/lib/core.js:303
+#: frontend/src/metabase/lib/core.js:318
 msgid "Do not include"
 msgstr "含めないでください"
 
-#: frontend/src/metabase/lib/core.js:304
+#: frontend/src/metabase/lib/core.js:319
 msgid "This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries."
 msgstr "このフィールドはGUIのインターフェースで作られた質問では見ることも選択することもできません。SQLやネイティブクエリではアクセスすることができます。"
 
@@ -13372,7 +13383,7 @@ msgstr "最低{0}文字でなければなりません"
 msgid "Must be at least {0} characters long"
 msgstr "最低{0}文字でなければなりません"
 
-#: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:82
+#: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:69
 msgid "Name (required)"
 msgstr "名前（必須）"
 
@@ -13392,7 +13403,7 @@ msgstr "(⌘ + enter)"
 msgid "(Ctrl + enter)"
 msgstr "(Ctrl + enter)"
 
-#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:149
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:151
 msgid "Here's where your results will appear"
 msgstr "ここにあなたの結果が現れます"
 
@@ -13424,7 +13435,7 @@ msgstr "このメトリクスがどのように計算されたか"
 msgid "Table this is based on"
 msgstr "これが基づいているテーブル"
 
-#: frontend/src/metabase/visualizations/lib/renderer_utils.js:276
+#: frontend/src/metabase/visualizations/lib/renderer_utils.js:346
 msgid "(empty)"
 msgstr "（空）"
 
@@ -13529,7 +13540,7 @@ msgstr "ドライバの名前空間のロードに失敗しました"
 msgid "Could not load {0} driver."
 msgstr "{0}のドライバをロードできませんでした。"
 
-#: src/metabase/driver/sql/parameters/substitute.clj
+#: modules/drivers/mongo/src/metabase/driver/mongo/parameters.clj
 msgid "Cannot run query: missing required parameters: {0}"
 msgstr "クエリを実行できません：必須のパラメタ{0}が指定されていません"
 
@@ -13784,7 +13795,7 @@ msgstr "セキュリティ上の理由で、パスワードリセットのリン
 msgid "Save new password"
 msgstr "新しいパスワードを保存する"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:514
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:524
 msgid "No matching result"
 msgstr "合致する結果がありません"
 
@@ -13800,32 +13811,32 @@ msgstr "一部のデータベースインストールには、SSH踏み台イン
 msgid "We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data."
 msgstr "このデータを使用するクエリの多くまたはほとんどのクエリでタイムゾーンキャストを手動で実行している場合を除いて、これをオフのままにすることをお勧めします。"
 
-#: frontend/src/metabase/entities/databases/forms.js:128
+#: frontend/src/metabase/entities/databases/forms.js:137
 msgid "{0} to get an auth code."
 msgstr "認証コードを取得するための{0}"
 
-#: frontend/src/metabase/entities/databases/forms.js:136
+#: frontend/src/metabase/entities/databases/forms.js:145
 #: src/metabase/models/collection.clj
 msgid "or"
 msgstr "か"
 
-#: frontend/src/metabase/entities/databases/forms.js:39
-#: frontend/src/metabase/entities/databases/forms.js:227
-#: frontend/src/metabase/entities/databases/forms.js:267
+#: frontend/src/metabase/entities/databases/forms.js:48
+#: frontend/src/metabase/entities/databases/forms.js:236
+#: frontend/src/metabase/entities/databases/forms.js:276
 #: frontend/src/metabase/entities/users/forms.js:59
 #: frontend/src/metabase/lib/validate.js:6
 msgid "required"
 msgstr "必須"
 
-#: frontend/src/metabase/entities/databases/forms.js:258
+#: frontend/src/metabase/entities/databases/forms.js:267
 msgid "Database type"
 msgstr "データベースのタイプ"
 
-#: frontend/src/metabase/entities/databases/forms.js:292
+#: frontend/src/metabase/entities/databases/forms.js:308
 msgid "This is a lightweight process that checks for updates to this database’s schema. In most cases, you should be fine leaving this set to sync hourly."
 msgstr "これはこのデータベースのスキーマの更新をチェックする軽量なプロセスです。ほとんどの場合この設定を毎時同期のままにしておいて問題がないはずです。"
 
-#: frontend/src/metabase/entities/databases/forms.js:300
+#: frontend/src/metabase/entities/databases/forms.js:316
 msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
 msgstr "Metabaseはこのデータベースの各フィールドの値をスキャンし、ダッシュボードや質問にチェックボックスのフィルタを有効にすることができます。特にとても大きなデータベースと接続する場合、これはある程度リソースを食う処理になる可能性があります。"
 
@@ -13863,16 +13874,18 @@ msgstr "数値"
 #: frontend/src/metabase/lib/core.js:209 frontend/src/metabase/lib/core.js:214
 #: frontend/src/metabase/lib/core.js:219 frontend/src/metabase/lib/core.js:224
 #: frontend/src/metabase/lib/core.js:229 frontend/src/metabase/lib/core.js:234
+#: frontend/src/metabase/lib/core.js:239 frontend/src/metabase/lib/core.js:244
+#: frontend/src/metabase/lib/core.js:249
 msgid "Date and Time"
 msgstr "日付と時間"
 
-#: frontend/src/metabase/lib/core.js:241 frontend/src/metabase/lib/core.js:246
-#: frontend/src/metabase/lib/core.js:251
+#: frontend/src/metabase/lib/core.js:256 frontend/src/metabase/lib/core.js:261
+#: frontend/src/metabase/lib/core.js:266
 msgid "Categorical"
 msgstr "カテゴリ値"
 
-#: frontend/src/metabase/lib/core.js:258 frontend/src/metabase/lib/core.js:263
-#: frontend/src/metabase/lib/core.js:268
+#: frontend/src/metabase/lib/core.js:273 frontend/src/metabase/lib/core.js:278
+#: frontend/src/metabase/lib/core.js:283
 msgid "URLs"
 msgstr "URL"
 
@@ -14324,41 +14337,41 @@ msgstr "テキストの文字列をすべて大文字で返します。"
 msgid "The column with values to convert to upper case."
 msgstr "大文字に変換する値のあるコラム。"
 
-#: frontend/src/metabase/lib/settings.js:195
+#: frontend/src/metabase/lib/settings.js:199
 msgid "must be {0} and include {1}."
 msgstr "{0}でありかつ{1}を含めなければならない。"
 
-#: frontend/src/metabase/lib/settings.js:197
+#: frontend/src/metabase/lib/settings.js:201
 msgid "must be {0}."
 msgstr "{0}でなければならない。"
 
-#: frontend/src/metabase/lib/settings.js:199
+#: frontend/src/metabase/lib/settings.js:203
 msgid "must include {0}."
 msgstr "{0}を含めなければならない。"
 
-#: frontend/src/metabase/lib/settings.js:212
+#: frontend/src/metabase/lib/settings.js:216
 msgid "at least {0} character long"
 msgid_plural "at least {0} characters long"
 msgstr[0] "最低{0}文字"
 
-#: frontend/src/metabase/lib/settings.js:221
+#: frontend/src/metabase/lib/settings.js:225
 msgid "{0} lower case letter"
 msgid_plural "{0} lower case letters"
 msgstr[0] "{0}個の小文字\n"
 "{0}個の小文字"
 
-#: frontend/src/metabase/lib/settings.js:230
+#: frontend/src/metabase/lib/settings.js:234
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
 msgstr[0] "{0}個の大文字\n"
 "{0}個の大文字"
 
-#: frontend/src/metabase/lib/settings.js:239
+#: frontend/src/metabase/lib/settings.js:243
 msgid "{0} number"
 msgid_plural "{0} numbers"
 msgstr[0] "{0}個の数"
 
-#: frontend/src/metabase/lib/settings.js:244
+#: frontend/src/metabase/lib/settings.js:248
 msgid "{0} special character"
 msgid_plural "{0} special characters"
 msgstr[0] "{0}個の特殊文字\n"
@@ -14368,7 +14381,7 @@ msgstr[0] "{0}個の特殊文字\n"
 msgid "must be a valid email address"
 msgstr "有効なメールアドレスでなければなりません"
 
-#: frontend/src/metabase/lib/validate.js:10
+#: frontend/src/metabase/lib/validate.js:10 test/metabase/util/i18n_test.clj
 msgid "must be {0} characters or less"
 msgstr "{0}文字以下でなければならない"
 
@@ -14381,7 +14394,7 @@ msgid "Powered by {0}"
 msgstr "{0}提供"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:195
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:574
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:686
 msgid "To:"
 msgstr "To:"
 
@@ -14525,6 +14538,7 @@ msgstr "GoogleのAuth Tokenが誤っているようです。"
 msgid "Double check that it matches in Google and Metabase."
 msgstr "それがGoogleとMetabaseで一致するかを再確認してください。"
 
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:307
 #: src/metabase/api/table.clj
 msgid "Everything else"
 msgstr "そのほかの全て"
@@ -14620,10 +14634,12 @@ msgstr "{0}のトランザクション分離レベルを{1}に設定するのに
 msgid "Error setting connection to read-only"
 msgstr "コネクションを読み取り専用に設定することに失敗しました"
 
+#: modules/drivers/redshift/src/metabase/driver/redshift.clj
 #: src/metabase/driver/sql_jdbc/execute.clj
 msgid "Error setting default holdability for connection"
 msgstr "デフォルトのコネクション保持機能の設定に失敗しました"
 
+#: modules/drivers/oracle/src/metabase/driver/oracle.clj
 #: src/metabase/driver/sql_jdbc/execute.clj
 msgid "Error setting result set fetch direction to FETCH_FORWARD"
 msgstr "結果セットのフェッチ方向をFETCH_FORWARDに設定中にエラーが発生しました"
@@ -14854,15 +14870,15 @@ msgstr "HTTPSが適切に設定されていないようです"
 msgid "Redirect to HTTPS"
 msgstr "HTTPSにリダイレクト"
 
-#: frontend/src/metabase/admin/settings/selectors.js:219
+#: frontend/src/metabase/admin/settings/selectors.js:209
 msgid "Localization"
 msgstr "ローカライゼーション"
 
-#: frontend/src/metabase/admin/settings/selectors.js:222
+#: frontend/src/metabase/admin/settings/selectors.js:212
 msgid "Instance language"
 msgstr "インスタンス言語"
 
-#: frontend/src/metabase/admin/settings/selectors.js:252
+#: frontend/src/metabase/admin/settings/selectors.js:253
 msgid "Localization options"
 msgstr "ローカライゼーションオプション"
 
@@ -14894,35 +14910,35 @@ msgstr "BigQueryへの接続には、OAuthアプリケーションではなく{0
 msgid "Connect to a Service Account instead"
 msgstr "代わりにサービスアカウントに接続してください"
 
-#: frontend/src/metabase/entities/databases/forms.js:44
+#: frontend/src/metabase/entities/databases/forms.js:53
 msgid "invalid JSON"
 msgstr "無効なJSON"
 
-#: frontend/src/metabase/entities/databases/forms.js:50
+#: frontend/src/metabase/entities/databases/forms.js:59
 msgid "SSH private key"
 msgstr "SSH秘密鍵"
 
-#: frontend/src/metabase/entities/databases/forms.js:51
+#: frontend/src/metabase/entities/databases/forms.js:60
 msgid "Paste the contents of your ssh private key here"
 msgstr "ここにSSH秘密鍵の内容を貼り付けます"
 
-#: frontend/src/metabase/entities/databases/forms.js:55
+#: frontend/src/metabase/entities/databases/forms.js:64
 msgid "Passphrase for the SSH private key"
 msgstr "SSH秘密鍵のパスフレーズ"
 
-#: frontend/src/metabase/entities/databases/forms.js:58
+#: frontend/src/metabase/entities/databases/forms.js:67
 msgid "SSH Authentication"
 msgstr "SSH認証"
 
-#: frontend/src/metabase/entities/databases/forms.js:60
+#: frontend/src/metabase/entities/databases/forms.js:69
 msgid "SSH Key"
 msgstr "SSHキー"
 
-#: frontend/src/metabase/entities/databases/forms.js:65
+#: frontend/src/metabase/entities/databases/forms.js:74
 msgid "Server SSL certificate chain"
 msgstr "サーバーSSL証明書チェーン"
 
-#: frontend/src/metabase/entities/databases/forms.js:66
+#: frontend/src/metabase/entities/databases/forms.js:75
 msgid "Paste the contents of the server's SSL certificate chain here"
 msgstr "サーバーのSSL証明書チェーンの内容をここに貼り付けます"
 
@@ -15032,10 +15048,12 @@ msgid "A snippet with that name already exists. Please pick a different name."
 msgstr "その名前のスニペットはすでに存在しています。別の名前を選択してください。"
 
 #: src/metabase/api/query_description.clj
+#: test/metabase/api/query_description_test.clj
 msgid "[Unknown Metric]"
 msgstr "[不明なメトリクス]"
 
 #: src/metabase/api/query_description.clj
+#: test/metabase/api/query_description_test.clj
 msgid "[Unknown Segment]"
 msgstr "[不明なセグメント]"
 
@@ -15295,7 +15313,7 @@ msgstr "ユーザ属性設定（任意）"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:27
 msgid "Using {0}"
-msgstr "0}を使用して"
+msgstr "{0}を使用して"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:69
 #: enterprise/frontend/src/metabase-enterprise/auth/index.js:28
@@ -15362,56 +15380,56 @@ msgid "SAML Identity Provider URL"
 msgstr "SAML認証情報プロバイダのURL"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:124
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:98
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:105
 msgid "SAML Identity Provider Certificate"
 msgstr "SAML認証情報プロバイダ証明書"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:131
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:104
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:111
 msgid "SAML Application Name"
 msgstr "SAMLアプリケーション名"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:136
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:140
 msgid "Sign SSO requests (optional)"
 msgstr "サインSSOリクエスト（オプション"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:139
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:109
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:143
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:116
 msgid "SAML Keystore Path"
 msgstr "SAML Keystore Path"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:143
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:114
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:147
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:121
 msgid "SAML Keystore Password"
 msgstr "SAML Keystore Password"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:145
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:149
 msgid "Shh..."
 msgstr "静かに。。。"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:149
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:120
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:153
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:127
 msgid "SAML Keystore Alias"
 msgstr "SAML Keystore Alias"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:155
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:159
 msgid "Synchronize group membership with your SSO"
 msgstr "SSOとグループメンバー情報を同期する"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:157
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:161
 msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "これを有効にするためには、ユーザが所属するSSOグループに基づきどのグループに追加されるべきなのかをMetabaseに伝えるためのマッピングを作る必要があります。"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:173
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:174
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:145
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:225
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:178
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:152
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:232
 msgid "Group Name"
 msgstr "グループ名"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:180
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:151
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:184
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:158
 msgid "Group attribute name"
 msgstr "グループ属性名"
 
@@ -15459,15 +15477,15 @@ msgstr "ドキュメント"
 msgid "SAML Identity Provider URI"
 msgstr "SAML認証情報プロバイダURI"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:189
 msgid "JWT Authentication"
 msgstr "JWT認証"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:188
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:195
 msgid "JWT Identity Provider URI"
 msgstr "JWT認証情報プロバイダURI"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:204
 msgid "String used by the JWT signing key"
 msgstr "JWT 署名鍵で使用される文字列"
 
@@ -15790,7 +15808,7 @@ msgstr "このフォルダにスニペットを表示または挿入できませ
 msgid "Also change sub-folders"
 msgstr "サブフォルダも変更する"
 
-#: frontend/src/metabase/admin/settings/selectors.js:238
+#: frontend/src/metabase/admin/settings/selectors.js:239
 msgid "First day of the week"
 msgstr "週の最初の曜日"
 
@@ -15811,8 +15829,8 @@ msgid "Open the Metabase actions menu"
 msgstr "Metabaseアクションメニューを開く"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:45
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:364
-#: frontend/src/metabase/lib/click-behavior.js:151
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:370
+#: frontend/src/metabase/lib/click-behavior.js:167
 msgid "Do nothing"
 msgstr "何もしない"
 
@@ -15821,107 +15839,107 @@ msgid "Go to a custom destination"
 msgstr "カスタムの目的地に移動する"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:50
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:361
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:367
 msgid "Update a dashboard filter"
 msgstr "ダッシュボードのフィルタを更新する"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:151
 msgid "{0} updates {1} filter"
 msgid_plural "{0} updates {1} filters"
-msgstr[0] "0} 更新 {1} フィルタ"
+msgstr[0] "{0} 更新 {1} フィルタ"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:157
 msgid "{0} goes to {1}"
 msgstr "{0}は{1}に移動します"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:336
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:342
 msgid "On-click behavior for each column"
 msgstr "各カラムにおけるon-click時の挙動"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:360
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:366
 msgid "Go to custom destination"
 msgstr "カスタム目的地に移動"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:363
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:369
 msgid "Open the actions menu"
 msgstr "アクションメニューを開く"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:392
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:414
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:402
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:424
 msgid "Click behavior for {0}"
-msgstr "0}のクリック動作"
+msgstr "{0}の動作を選んでください"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:530
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:546
 msgid "Pick one or more filters to update"
 msgstr "更新する1つ以上のフィルターを選択します"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:549
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:561
 msgid "Saved question"
 msgstr "保存された質問"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:555
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:567
 msgid "Link to"
 msgstr "リンク"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:613
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:625
 msgid "Enter a URL to link to"
 msgstr "リンク先のURLを入力してください"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:616
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:628
 msgid "You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}"
 msgstr "カラムまたはダッシュボードのフィルタへの値はその名前を利用して入れることができます（例：{{some_column}}）"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:620
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:632
 msgid "e.g. http://acme.com/id/{{user_id}}"
 msgstr "すなわち、http://acme.com/id/{{user_id}}"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:707
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:726
 msgid "Pick a dashboard..."
 msgstr "ダッシュボードを選んでください..."
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:709
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:728
 msgid "Pick a question..."
 msgstr "質問を選んでください..."
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:740
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:759
 msgid "Pick a dashboard to link to"
 msgstr "リンクを貼るダッシュボードを選んでください"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:741
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:760
 msgid "Pick a question to link to"
 msgstr "リンクする質問を選択してください"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:769
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:788
 msgid "Pass values to this dashboard's filters (optional)"
 msgstr "このダッシュボードのフィルタに値を渡してください（任意）"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:770
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:789
 msgid "Pass values to this question's variables (optional)"
 msgstr "この質問の変数に値を渡してください（任意）"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:771
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:790
 msgid "Pass values to filter this question (optional)"
 msgstr "この質問に値を渡してください（任意）"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:814
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:850
 #: frontend/src/metabase/dashboard/components/ClickMappings.jsx:154
 msgid "Dashboard filters"
 msgstr "ダッシュボードフィルタ"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:821
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:857
 #: frontend/src/metabase/dashboard/components/ClickMappings.jsx:156
 msgid "User attributes"
 msgstr "ユーザ属性"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:826
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:817
 msgid "Customize link text (optional)"
 msgstr "リンクテキストのカスタマイズ（任意）"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:829
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:820
 msgid "E.x. Details for {{Column Name}}"
 msgstr "E.x. {{Column Name}}の詳細"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:841
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:864
 msgid "Values you can reference"
 msgstr "参照できる値"
 
@@ -15966,44 +15984,44 @@ msgstr "利用可能なカラム"
 msgid "user attribute"
 msgstr "ユーザ属性"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:214
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:216
 msgid "Text card"
 msgstr "テキストカード"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:271
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:277
 msgid "Click behavior"
 msgstr "挙動をクリックします。"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:298
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:315
 msgid "Visualization options"
 msgstr "可視化のオプション"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:335
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:352
 msgid "Edit series"
 msgstr "系列の編集"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:335
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:352
 msgid "Add series"
 msgstr "系列の追加"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:383
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:406
 msgid "On click"
 msgstr "クリック時"
 
-#: frontend/src/metabase/dashboard/components/DashboardDetailsModal.jsx:25
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:301
+#: frontend/src/metabase/dashboard/components/DashboardDetailsModal.jsx:34
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:300
 msgid "Change title and description"
 msgstr "タイトルと説明を変更する"
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:150
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:153
 msgid "You've updated embedded params and will need to update your embed code."
 msgstr "埋め込みパラメータを更新したので、埋め込みコードを更新する必要があります。"
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:205
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:204
 msgid "Add question"
 msgstr "質問を追加する"
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:388
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:376
 msgid "You're editing this dashboard."
 msgstr "あなたはこのダッシュボードを編集中です。"
 
@@ -16032,32 +16050,32 @@ msgstr "短く楽しい何か"
 msgid "Folder this should be in"
 msgstr "これが入っているはずのフォルダ"
 
-#: frontend/src/metabase/lib/click-behavior.js:150
+#: frontend/src/metabase/lib/click-behavior.js:166
 msgid "Open the action menu"
 msgstr "アクションメニューを開く"
 
-#: frontend/src/metabase/lib/click-behavior.js:159
+#: frontend/src/metabase/lib/click-behavior.js:175
 msgid "{0} column has custom behavior"
 msgid_plural "{0} columns have custom behavior"
 msgstr[0] "0} カラムのカスタム動作"
 
-#: frontend/src/metabase/lib/click-behavior.js:172
+#: frontend/src/metabase/lib/click-behavior.js:188
 msgid "Go to..."
 msgstr "進め..."
 
-#: frontend/src/metabase/lib/click-behavior.js:174
+#: frontend/src/metabase/lib/click-behavior.js:190
 msgid "Go to dashboard"
 msgstr "ダッシュボードを見る"
 
-#: frontend/src/metabase/lib/click-behavior.js:176
+#: frontend/src/metabase/lib/click-behavior.js:192
 msgid "Go to question"
 msgstr "質問を見る"
 
-#: frontend/src/metabase/lib/click-behavior.js:177
+#: frontend/src/metabase/lib/click-behavior.js:193
 msgid "Go to url"
 msgstr "urlに移動します。"
 
-#: frontend/src/metabase/lib/click-behavior.js:180
+#: frontend/src/metabase/lib/click-behavior.js:196
 msgid "Filter this dashboard"
 msgstr "このダッシュボードをフィルタする"
 
@@ -16411,15 +16429,15 @@ msgstr "ユーザ名またはメールアドレスを入力してください"
 msgid "New snippet"
 msgstr "新しいスニペット"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:317
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:311
 msgid "{0}:00 PM"
 msgstr "午後{0}:00"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:319
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:313
 msgid "12:00 AM"
 msgstr "午前12:00"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:321
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:315
 msgid "{0}:00 AM"
 msgstr "午前{0}:00"
 
@@ -16439,7 +16457,7 @@ msgstr "{1}の{0}に週次"
 msgid "Monthly on the {0} {1} at {2}"
 msgstr "{0} {1}の{2}に月次"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:439
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:475
 msgid "Delete this subscription"
 msgstr "この購読を削除する"
 
@@ -16447,44 +16465,45 @@ msgstr "この購読を削除する"
 msgid "Subscriptions"
 msgstr "購読"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:502
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:59
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:571
 msgid "Create a dashboard subscription"
 msgstr "ダッシュボードの購読を作成する"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:517
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:599
 msgid "Email it"
 msgstr "メールで送る"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:520
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:609
 msgid "You can send this dashboard regularly to users or email addresses."
 msgstr "このダッシュボードは、ユーザーまたは電子メールアドレスに定期的に送信できます。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:536
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:635
 msgid "Send it to Slack"
 msgstr "Slackに送信"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:539
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:645
 msgid "Pick a channel and a schedule, and Metabase will do the rest."
 msgstr "チャネルとスケジュールを選択すると、残りは Metabase が行います。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:569
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:681
 msgid "Email this dashboard"
 msgstr "このダッシュボードにメールを送信"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:605
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:686
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:725
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:812
 msgid "Don't send if there aren't results"
 msgstr "結果がない場合は送信しないでください"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:613
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:733
 msgid "Attach results"
 msgstr "結果を付ける"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:618
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:738
 msgid "Attachments can contain up to 2,000 rows of data."
 msgstr "添付ファイルには、最大2,000行のデータを含めることができます。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:665
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:791
 msgid "Send this dashboard to Slack"
 msgstr "このダッシュボードをSlackに送る"
 
@@ -16550,7 +16569,7 @@ msgstr "{0}は{1}アカウントを作成しました"
 
 #: src/metabase/email/messages.clj
 msgid "{0} accepted their {1} invite"
-msgstr "0}が{1}の招待を受け入れた"
+msgstr "{0}が{1}の招待を受け入れました"
 
 #: src/metabase/email/messages.clj
 msgid "[{0}] Password Reset Request"
@@ -16572,10 +16591,12 @@ msgstr "[{0}] どうなっているのか教えてください。"
 msgid "Error starting events listener"
 msgstr "イベントリスナ開始時のエラー"
 
+#: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
 #: src/metabase/integrations/ldap.clj
 msgid "Should we sync user attributes when someone logs in via LDAP?"
 msgstr "LDAPを通してログインが行われた場合にユーザ属性情報を同期するべきですか？"
 
+#: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
 #: src/metabase/integrations/ldap.clj
 msgid "Comma-separated list of user attributes to skip syncing for LDAP users."
 msgstr "LDAPユーザの同期をスキップするためのカンマ切りされたユーザ属性情報のリスト。"
@@ -16768,3 +16789,845 @@ msgstr "データベース{0}に対するフィールド値アップデートタ
 #: src/metabase/task/sync_databases.clj
 msgid "Skipping update, automatic Field value updates are disabled for Database {0}."
 msgstr "アップデートをスキップしています：データベース{0}の自動フィールド値アップデートは無効化されています。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:135
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:98
+msgid "SAML Identity Provider Issuer"
+msgstr "SAML Identity Provider 発行者"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:90
+msgid "SAML Identity Provider SSO URL"
+msgstr "SAML Identity Provider SSO URL"
+
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
+msgid "DB Name"
+msgstr "DB名"
+
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:67
+msgid "DB Engine"
+msgstr "DBエンジン"
+
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:83
+msgid "Unknown name"
+msgstr "不明な名前"
+
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:84
+msgid "Unknown engine"
+msgstr "不明なエンジン"
+
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:202
+msgid "Edit collection"
+msgstr "エディットコレクション"
+
+#: frontend/src/metabase/collections/containers/CollectionContent.jsx:239
+msgid "Pinned items"
+msgstr "ピン留めされたアイテム"
+
+#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:103
+msgid "Other users' personal collections"
+msgstr "他のユーザーの個人コレクション"
+
+#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:114
+msgid "View archive"
+msgstr "アーカイブを見る"
+
+#: frontend/src/metabase/collections/utils.js:14
+msgid "Your personal collection"
+msgstr "あなたの個人的なコレクション"
+
+#: frontend/src/metabase/components/CollectionEmptyState.jsx:41
+msgid "Nothing to see yet."
+msgstr "まだ見るべきものは何もありません。"
+
+#: frontend/src/metabase/components/CollectionEmptyState.jsx:42
+msgid "Use collections to organize and group dashboards and questions for your team or yourself"
+msgstr "コレクションを使用して、チームや自分自身のためにダッシュボードや質問を整理したりグループ化したりすることができます。"
+
+#: frontend/src/metabase/components/EntityItem.jsx:48
+msgid "Unpin this item"
+msgstr "このアイテムのピンを外す"
+
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:113
+msgid "Available filters"
+msgstr "利用可能なフィルタ"
+
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:118
+msgid "Available variables"
+msgstr "使用可能な変数"
+
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:123
+msgid "Available columns"
+msgstr "利用可能なカラム"
+
+#: frontend/src/metabase/entities/databases/forms.js:22
+msgid "Include User ID and query hash in queries"
+msgstr "ユーザーIDとクエリハッシュをクエリに含める"
+
+#: frontend/src/metabase/entities/databases/forms.js:23
+msgid "When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs."
+msgstr "オンにすると、このデータベース上のクエリにMetabase User IDとクエリハッシュが付加され、監査やデバッグに役立ちます。しかし、これにより、各クエリが別個に見えるようになり、BigQueryがキャッシュされた結果を返すことができなくなるため、コストが増加する可能性があります。"
+
+#: frontend/src/metabase/entities/databases/forms.js:298
+msgid "Periodically refingerprint tables"
+msgstr "定期的にテーブルの再印刷を行う"
+
+#: frontend/src/metabase/entities/databases/forms.js:299
+msgid "When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter."
+msgstr "このデータベースと同期すると、Metabaseはフィールドの値のサブセットをスキャンして統計を収集し、チャートのビンディング動作を改善したり、Metabaseインスタンスを一般的にスマートにしたりすることができます。"
+
+#: frontend/src/metabase/lib/core.js:213
+msgid "Updated date"
+msgstr "更新日"
+
+#: frontend/src/metabase/lib/core.js:218
+msgid "Updated time"
+msgstr "更新時間"
+
+#: frontend/src/metabase/lib/core.js:223
+msgid "Updated timestamp"
+msgstr "更新されたタイムスタンプ"
+
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:460
+msgid "Type of interval like \"day\", \"month\", \"year\"."
+msgstr "日」「月」「年」のような間隔のタイプ。"
+
+#: frontend/src/metabase/modes/components/drill/ColumnFilterDrill.jsx:42
+msgid "Filter by this column"
+msgstr "このカラムでフィルタリング"
+
+#: frontend/src/metabase/modes/components/drill/FormatAction.jsx:28
+msgid "Column formatting"
+msgstr "カラムの書式設定"
+
+#: frontend/src/metabase/modes/components/drill/SortAction.jsx:43
+msgid "Sort ascending"
+msgstr "昇順ソート"
+
+#: frontend/src/metabase/modes/components/drill/SortAction.jsx:53
+msgid "Sort descending"
+msgstr "降順ソート"
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:343
+msgid "Browse data"
+msgstr "データの閲覧"
+
+#: frontend/src/metabase/query_builder/components/LimitPopover.jsx:41
+msgid "Show maximum (first {0})"
+msgstr "最大値（最初の{0}）を表示"
+
+#: frontend/src/metabase/query_builder/components/VisualizationError.jsx:72
+msgid "There was a problem with this visualization"
+msgstr "この可視化には問題がありました"
+
+#: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:27
+msgid "Showing first {0} rows"
+msgstr "最初の {0} 行の表示"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:343
+msgid "first"
+msgstr "第一"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:345
+msgid "last"
+msgstr "已むに已まれぬ"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:356
+msgid "Emailed "
+msgstr "電子メールで送信された "
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:358
+msgid "Sent to "
+msgstr "送信先 "
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:360
+msgid "Sent "
+msgstr "送信された "
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:365
+msgid "hourly"
+msgstr "刻々"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:369
+msgid "daily at {0}"
+msgstr "0}で毎日"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:375
+msgid "{0} at {1}"
+msgstr "{0} at {1}で"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:382
+msgid "monthly on the {0} {1} at {2}"
+msgstr "毎月 {0} {1} at {2} で"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:398
+msgid " and {0} other"
+msgid_plural " and {0} others"
+msgstr[0] "と{0}その他"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:437
+msgid "This dashboard will no longer be emailed to {0} {1}"
+msgstr "このダッシュボードは、{0} {1}に電子メールで送信されなくなります。"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:448
+msgid "Slack channel {0} will no longer get this dashboard {1}"
+msgstr "Slackチャンネル{0}はこのダッシュボード{1}を取得できなくなります。"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:457
+msgid "Channel {0} will no longer receive this dashboard {1}"
+msgstr "チャンネル{0}はこのダッシュボード{1}を受信しなくなります。"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:513
+msgid "Schedules"
+msgstr "スケジュール"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:515
+msgid "Set up a new schedule"
+msgstr "新しいスケジュールを設定する"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:523
+msgid "Close"
+msgstr "クローズ"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:603
+msgid "You'll need to {0} first."
+msgstr "先に{0}が必要です。"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:639
+msgid "First, you'll have to {0}."
+msgstr "まず、{0}にしてください。"
+
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:147
+msgid "Rows {0}-{1} of first {2}"
+msgstr "最初の{2}の{0}-{1}の行"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:123
+msgid "Drag fields here"
+msgstr "ドラッグフィールドはこちら"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:355
+msgid "Percentage"
+msgstr "割合"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:19
+msgid "Totals for {0}"
+msgstr "0}の合計"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:20
+msgid "Grand totals"
+msgstr "総計"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:21
+msgid "Row totals"
+msgstr "行の合計"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:28
+msgid "Fields to use for the table rows"
+msgstr "テーブルの行に使用するフィールド"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:33
+msgid "Fields to use for the table columns"
+msgstr "テーブルのカラムに使用するフィールド"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:38
+msgid "Fields to use for the table values"
+msgstr "テーブルの値に使用するフィールド"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:63
+msgid "Pivot tables can only be used with aggregated queries."
+msgstr "ピボットテーブルは、集約されたクエリでのみ使用できます。"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:44
+msgid "Pivot Table"
+msgstr "ピボットテーブル"
+
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:15
+msgid "Waterfall"
+msgstr "ウォーターフォール"
+
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:18
+msgid "waterfall chart"
+msgstr "瀧図"
+
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:24
+msgid "Increase color"
+msgstr "色を増やす"
+
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:30
+msgid "Decrease color"
+msgstr "色を減らす"
+
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:36
+msgid "Show total"
+msgstr "合計を表示"
+
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:42
+msgid "Total color"
+msgstr "総色"
+
+#: enterprise/backend/src/metabase_enterprise/audit/query_processor/middleware/handle_audit_queries.clj
+msgid "Unable to run internal query function: cannot resolve {0}"
+msgstr "内部クエリ関数を実行できません。"
+
+#: enterprise/backend/src/metabase_enterprise/audit/query_processor/middleware/handle_audit_queries.clj
+msgid "Audit App queries are not enabled on this instance."
+msgstr "このインスタンスでは、Audit App クエリは有効になっていません。"
+
+#: enterprise/backend/src/metabase_enterprise/audit/query_processor/middleware/handle_audit_queries.clj
+msgid "Invalid internal query function: {0} is not marked as an ^:internal-query-fn"
+msgstr "無効な内部クエリ関数です。0} が ^:internal-query-fn としてマークされていません。"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/api/gtap.clj
+msgid "Error: sandboxing is not enabled for this instance."
+msgstr "エラー: このインスタンスではサンドボックス化が有効になっていません。"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/api/gtap.clj
+msgid "Please check you have set a valid Enterprise token and try again."
+msgstr "有効なEnterpriseトークンが設定されていることを確認してから、再度お試しください。"
+
+#. If the current permissions are nil, then we would return false which could give a potentially segmented user
+#. access they shouldn't have. If we don't have permissions, we can't determine whether they are segmented, so
+#. throw.
+#: enterprise/backend/src/metabase_enterprise/sandbox/api/util.clj
+msgid "No permissions found for current user"
+msgstr "現在のユーザーのパーミッションが見つかりません"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/query_processor/middleware/column_level_perms_check.clj
+msgid "User ''{0}'' attempted to access an inaccessible field. Accessible fields {1}, fields in query {2}"
+msgstr "ユーザー ''{0}'' がアクセスできないフィールドにアクセスしようとしました。アクセス可能なフィールド {1}, クエリ内のフィールド {2}"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/query_processor/middleware/column_level_perms_check.clj
+msgid "User not able to query field"
+msgstr "ユーザーがフィールドを照会できない"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/query_processor/middleware/row_level_restrictions.clj
+msgid "Found more than one group table access policy for user ''{0}''"
+msgstr "ユーザー ''{0}'' のグループテーブルアクセスポリシーが複数見つかりました。"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/query_processor/middleware/row_level_restrictions.clj
+msgid "Query requires user attribute `{0}`"
+msgstr "クエリはユーザ属性 `{0}` を必要とします。"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/cmd.clj
+msgid "invalid --mode value"
+msgstr "無効な --モード値"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/cmd.clj
+msgid "invalid --on-error value"
+msgstr "無効なエラー値"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/cmd.clj
+msgid "invalid context seed value"
+msgstr "無効なコンテキストシード値"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/cmd.clj
+msgid "Dump was produced using a different version of Metabase. Things may break!"
+msgstr "ダンプは別バージョンのMetabaseを使って作成しました。物事が壊れるかもしれません。"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/cmd.clj
+msgid "Error loading dump: {0}"
+msgstr "ダンプの読み込みエラー。{0}"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/cmd.clj
+msgid "{0} is not a valid user"
+msgstr "0} は有効なユーザではありません。"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/dump.clj
+msgid "Error dumping {0}"
+msgstr "エラーダンピング{0}。"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/load.clj
+msgid "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."
+msgstr "管理者ユーザーが見つかりませんでした。ロードされたすべてのエンティティの所有者として行動するためには、少なくとも1人の管理者ユーザーが必要です。"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/load.clj
+msgid "Error loading dependencies: reference to an unknown entity {0}"
+msgstr "依存関係の読み込みエラー: 未知のエンティティへの参照 {0}。"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/names.clj
+msgid "Can''t resolve {0} in fully qualified name {1}"
+msgstr "Can''t resolve {0} in fully qualified name {1}."
+
+#: enterprise/backend/src/metabase_enterprise/serialization/upsert.clj
+msgid "Model {0} does not support upsert"
+msgstr "モデル{0}はアップサートをサポートしていません。"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/upsert.clj
+msgid "Error inserting {0}"
+msgstr "0}を挿入するとエラーになります。"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/upsert.clj
+msgid "Inserting {0}"
+msgstr "0}を挿入する"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/upsert.clj
+msgid "{0} already exists -- skipping"
+msgstr "0} は既に存在している -- スキップ"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/upsert.clj
+msgid "Skipping {0} (nothing to update)"
+msgstr "スキップ {0} (更新するものがない)"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/upsert.clj
+msgid "Updating {0}"
+msgstr "0}を更新する"
+
+#: enterprise/backend/src/metabase_enterprise/serialization/upsert.clj
+msgid "Error updating {0}"
+msgstr "エラー更新{0}。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/api/sso.clj
+msgid "SSO has not been enabled and/or configured"
+msgstr "SSOが有効化されていない、または設定されていない"
+
+#: enterprise/backend/src/metabase_enterprise/sso/api/sso.clj
+msgid "SSO requires a valid token"
+msgstr "SSO は有効なトークンを必要とします。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/api/sso.clj
+msgid "Error returning SSO entry point"
+msgstr "SSOエントリーポイントを返すエラー"
+
+#: enterprise/backend/src/metabase_enterprise/sso/api/sso.clj
+msgid "Error logging in"
+msgstr "エラーロギング"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/jwt.clj
+msgid "Can't create new JWT user when JWT is not configured"
+msgstr "JWTが設定されていない場合、新しいJWTユーザーを作成できない"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/jwt.clj
+msgid "JWT SSO has not been enabled and/or configured"
+msgstr "JWT SSO が有効になっていない、または設定されていない"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "Invalid SAML configuration: could not find user email."
+msgstr "無効な SAML 構成: ユーザの電子メールが見つかりませんでした。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "We tried looking for {0}, but couldn't find the attribute."
+msgstr "0}を探してみましたが、属性が見つかりませんでした。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "Please make sure your SAML IdP is properly configured."
+msgstr "SAML IdP が適切に構成されていることを確認してください。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "SAML has not been enabled and/or configured"
+msgstr "SAML が有効化されていない、または構成されていない"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "Warning: expected `redirect` param, but none is present"
+msgstr "警告: `redirect` パラメータが期待されていますが、存在しません。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "Error generating SAML request"
+msgstr "SAMLリクエストの生成エラー"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "Unable to log in: SAML IdP certificate is not set."
+msgstr "ログインできません。SAML IdP 証明書が設定されていません。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "SAML response validation failed"
+msgstr "SAML レスポンスの検証に失敗しました。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "Unable to log in: SAML response validation failed"
+msgstr "ログインできません。SAML レスポンスの検証に失敗しました。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/saml.clj
+msgid "Unable to log in: SAML info does not contain user attributes."
+msgstr "ログインできません。SAML 情報にユーザー属性が含まれていません。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Enable SAML authentication."
+msgstr "SAML 認証を有効にする。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+"using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml"
+msgstr "これは、ユーザが ID プロバイダにログインするための URL です。どの IdP を利用しているかによって異なります。\n"
+"を使用している場合、通常は https://your-org-name.example.com か https://example.com/app/my_saml_app/abc123/sso/saml のようになります。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Error parsing SAML identity provider certificate"
+msgstr "SAML ID プロバイダ証明書の解析エラー"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Invalid identity provider certificate. Certificate should be a base-64 encoded string."
+msgstr "無効な ID プロバイダ証明書です。証明書はベース64にエンコードされた文字列でなければなりません。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+"open it in a text editor, then copy and paste the certificate's contents here."
+msgstr "ID プロバイダのエンコードされた証明書です。IdPによっては、これをダウンロードする必要があるかもしれません。\n"
+"テキストエディタで開いて、証明書の内容をコピーしてここに貼り付けてください。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending\n"
+"on your IdP, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v"
+msgstr "IdP の一意の識別子です。Entity ID または単に「Issuer」と呼ばれることが多い。識別情報の内容によっては\n"
+"IdP の場合、通常は http://www.example.com/141xkex604w0Q5PN724v のようになります。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "This application name will be used for requests to the Identity Provider"
+msgstr "このアプリケーション名は、Identity Provider へのリクエストに使用される。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Absolute path to the Keystore file to use for signing SAML requests"
+msgstr "SAML リクエストの署名に使用する Keystore ファイルへの絶対パス"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Password for opening the keystore"
+msgstr "キーストアを開くためのパスワード"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Alias for the key that Metabase should use for signing SAML requests"
+msgstr "MetabaseがSAMLリクエストの署名に使用するキーのエイリアス。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "SAML attribute for the user''s email address"
+msgstr "ユーザのメールアドレスのSAML属性"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "SAML attribute for the user''s first name"
+msgstr "ユーザの名前のSAML属性"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "SAML attribute for the user''s last name"
+msgstr "ユーザの姓のSAML属性"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Enable group membership synchronization with SAML."
+msgstr "SAML でグループ・メンバーシップの同期を有効にする。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "SAML attribute for group syncing"
+msgstr "グループ同期用の SAML 属性"
+
+#. Should be in the form: {"groupName": [1, 2, 3]} where keys are SAML groups and values are lists of MB groups IDs
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "JSON containing SAML to Metabase group mappings."
+msgstr "SAMLからMetabaseグループへのマッピングを含むJSON。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Enable JWT based authentication"
+msgstr "JWTベースの認証を有効にする"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "URL of JWT based login page"
+msgstr "JWTベースのログインページのURL"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "String used to seed the private key used to validate JWT messages"
+msgstr "JWT メッセージの検証に使用する秘密鍵のシードに使用する文字列"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Key to retrieve the JWT user's email address"
+msgstr "JWTユーザーのメールアドレスを取得するためのキー"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Key to retrieve the JWT user's first name"
+msgstr "JWTユーザーのファーストネームを取得するためのキー"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Key to retrieve the JWT user's last name"
+msgstr "JWTユーザーの姓を取得するためのキー"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Key to retrieve the JWT user's groups"
+msgstr "JWTユーザーのグループを取得するためのキー"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Enable group membership synchronization with JWT."
+msgstr "JWTとのグループメンバーシップ同期を有効にします。"
+
+#. Should be in the form: {"groupName": [1, 2, 3]} where keys are JWT groups and values are lists of MB groups IDs
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "JSON containing JWT to Metabase group mappings."
+msgstr "JWTからMetabaseグループへのマッピングを含むJSON。"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
+msgid "Should new email notifications be sent to admins, for all new SSO users?"
+msgstr "新しいメール通知は、すべての新しいSSOユーザーのために、管理者に送信する必要がありますか？"
+
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_utils.clj
+msgid "New SSO user created: {0} ({1})"
+msgstr "新しいSSOユーザが作成されました。{0} ({1})"
+
+#: modules/drivers/bigquery/src/metabase/driver/bigquery/query_processor.clj
+msgid "Cannot convert a {0} to a {1}"
+msgstr "0}を{1}に変換できません。"
+
+#: modules/drivers/bigquery/src/metabase/driver/bigquery/query_processor.clj
+msgid "Cannot extract {0} from a TIME field"
+msgstr "TIME フィールドから {0} を抽出できません。"
+
+#: modules/drivers/bigquery/src/metabase/driver/bigquery/query_processor.clj
+msgid "Cannot extract {0} from a DATE field"
+msgstr "DATEフィールドから{0}を抽出できません。"
+
+#: modules/drivers/bigquery/src/metabase/driver/bigquery/query_processor.clj
+msgid "Cannot extract {0} from a DATETIME or TIMESTAMP"
+msgstr "DATETIME または TIMESTAMP から {0} を抽出できません。"
+
+#. trying to add an `hour` to a `date` or a `year` to a `time` is something we shouldn't be allowing in the UI in
+#. the first place
+#: modules/drivers/bigquery/src/metabase/driver/bigquery/query_processor.clj
+msgid "Invalid query: you cannot add a {0} to a {1} column."
+msgstr "無効なクエリ: {1} 列に {0} を追加することはできません。"
+
+#: modules/drivers/bigquery/src/metabase/driver/bigquery/query_processor.clj
+msgid "It doesn''t make sense to convert between DATEs and TIMEs!"
+msgstr "DATEとTIMEの間で変換するのは意味がありません。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/client.clj
+msgid "Druid request error [{0}]: {1}"
+msgstr "ドルイドのリクエストエラー[{0}]: {1}: {1}。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/client.clj
+msgid "Failed to parse Druid response body: {0}"
+msgstr "Druidのレスポンスボディの解析に失敗しました。{0}"
+
+#: modules/drivers/druid/src/metabase/driver/druid/client.clj
+msgid "Error running query:"
+msgstr "クエリの実行中にエラーが発生しました。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/client.clj
+msgid "Client closed connection, no queryId found, can't cancel query"
+msgstr "クライアントが接続を終了しましたが、queryIdが見つかりませんでした。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/client.clj
+msgid "Client closed connection, canceling Druid queryId {0}"
+msgstr "クライアントが接続を切断し、Druid queryId {0}をキャンセルしました。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/client.clj
+msgid "Canceling Druid query with ID {0}"
+msgstr "ID {0}でドルイドのクエリをキャンセルする"
+
+#: modules/drivers/druid/src/metabase/driver/druid/client.clj
+msgid "Failed to cancel Druid query with queryId {0}"
+msgstr "queryId {0} での Druid クエリのキャンセルに失敗しました。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/execute.clj
+msgid "Don''t know how to retrieve results for columns {0}"
+msgstr "列{0}の結果を取得する方法がわかりません。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/execute.clj
+msgid "Error post-processing Druid query results"
+msgstr "Druidのクエリ結果の後処理エラー"
+
+#: modules/drivers/druid/src/metabase/driver/druid/execute.clj
+msgid "Error reducing Druid query results"
+msgstr "エラーによるDruidのクエリ結果の縮小"
+
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
+msgid "WARNING: Don't know how to combine these intervals into a single interval."
+msgstr "警告：これらの間隔を1つの間隔に結合する方法がわからない。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
+msgid "Ignoring intervals: {0}"
+msgstr "間隔を無視しています。{0}"
+
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
+msgid "Error creating aggregation clause"
+msgstr "集約節の作成エラー"
+
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
+msgid "Expected :aggregation-options, constant, or expression."
+msgstr "期待される :集約オプション、定数、または式。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
+msgid "grouped timeseries queries can only be sorted by the ''timestamp'' column."
+msgstr "グループ化された時系列クエリは''timestamp''カラムでのみソートすることができます。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
+msgid "scan queries can only be sorted if they include the ''timestamp'' column."
+msgstr "スキャンクエリは、''timestamp''カラムが含まれている場合にのみソートすることができます。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
+msgid "scan queries can only be sorted by the ''timestamp'' column."
+msgstr "スキャンクエリは''timestamp''カラムでのみソートできます。"
+
+#: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
+msgid "Error generating Druid query"
+msgstr "ドルイドのクエリを生成するエラー"
+
+#: modules/drivers/google/src/metabase/driver/google.clj
+msgid "Fetching Google access/refresh tokens with auth-code {0}..."
+msgstr "Google のアクセス/リフレッシュトークンを auth-code {0} で取得しています..."
+
+#: modules/drivers/googleanalytics/src/metabase/driver/googleanalytics/query_processor.clj
+msgid "Multiple date filters are not supported in filters: "
+msgstr "複数の日付フィルタはフィルタではサポートされていません。 "
+
+#: modules/drivers/mongo/src/metabase/driver/mongo/execute.clj
+msgid "Unexpected columns in results: {0}"
+msgstr "結果に予期しない列がありました。{0}"
+
+#: modules/drivers/mongo/src/metabase/driver/mongo/execute.clj
+msgid "Unable to parse query: {0}"
+msgstr "クエリを解析できません。{0}"
+
+#: modules/drivers/mongo/src/metabase/driver/mongo/parameters.clj
+msgid "Don''t know how to substitute {0} {1}"
+msgstr "Don't't know how to replace {0} {1}."
+
+#: modules/drivers/mongo/src/metabase/driver/mongo/parameters.clj
+msgid "Substituted {0} -> {1}"
+msgstr "置換{0}→{1}の場合"
+
+#: modules/drivers/mongo/src/metabase/driver/mongo/query_processor.clj
+msgid "Don''t know how to handle aggregation {0}"
+msgstr "Don't know how to handle aggregation {0}."
+
+#: modules/drivers/mongo/src/metabase/driver/mongo/util.clj
+msgid "Using DNS SRV requires a FQDN for host"
+msgstr "DNS SRVを使用するには、ホストにFQDNが必要です。"
+
+#: modules/drivers/mongo/src/metabase/driver/mongo/util.clj
+msgid "No database name specified in URI. Monger requires a database to be explicitly configured."
+msgstr "URI にデータベース名が指定されていません。Monger はデータベースを明示的に構成する必要があります。"
+
+#: modules/drivers/mongo/src/metabase/driver/mongo/util.clj
+msgid "Opened new MongoDB connection."
+msgstr "新しいMongoDB接続をオープンしました。"
+
+#: modules/drivers/mongo/src/metabase/driver/mongo/util.clj
+msgid "Closed MongoDB connection."
+msgstr "MongoDB 接続が閉じられました。"
+
+#: modules/drivers/presto/src/metabase/driver/presto.clj
+msgid "fetch-next-page w/ URI"
+msgstr "次のページをURI付きで取得"
+
+#: modules/drivers/presto/src/metabase/driver/presto.clj
+msgid "Error running query."
+msgstr "クエリの実行中にエラーが発生しました。"
+
+#: modules/drivers/presto/src/metabase/driver/presto.clj
+msgid "Client connection closed, no query-id found, can't cancel query"
+msgstr "クライアントの接続が閉じられています。"
+
+#: modules/drivers/presto/src/metabase/driver/presto.clj
+msgid "Error canceling query with ID {0}"
+msgstr "ID {0} でクエリをキャンセルするエラーが発生しました。"
+
+#: modules/drivers/snowflake/src/metabase/driver/snowflake.clj
+msgid "Error executing query"
+msgstr "クエリの実行エラー"
+
+#: modules/drivers/vertica/src/metabase/driver/vertica.clj
+msgid "Failed to fetch materialized views for this database"
+msgstr "このデータベースのマテリアライズド・ビューの取得に失敗しました。"
+
+#. if there's still not a Card, throw an Exception!
+#: src/metabase/api/alert.clj src/metabase/models/pulse.clj
+msgid "Invalid Alert: Alert does not have a Card associated with it"
+msgstr "無効なアラート：アラートにはカードが付いていない"
+
+#: src/metabase/api/database.clj
+msgid "Error determining whether Database supports nested queries"
+msgstr "データベースがネストされたクエリをサポートしているかどうかを判断するエラー"
+
+#: src/metabase/api/embed.clj
+msgid "Invalid query params: could not determine slug for parameter with ID {0}"
+msgstr "無効なクエリ・パラメータ: ID {0} のパラメータのスラッグを決定できませんでした。"
+
+#: src/metabase/api/embed.clj
+msgid "Cannot search for values: {0} is not an enabled parameter."
+msgstr "値を検索できません。0} は有効なパラメータではありません。"
+
+#: src/metabase/api/embed.clj
+msgid "You can''t specify a value for {0} if it's already set in the JWT."
+msgstr "JWTで既に{0}が設定されている場合は、値を指定することはできません。"
+
+#: src/metabase/driver/sql/query_processor.clj
+msgid "Error compiling HoneySQL form"
+msgstr "HoneySQLフォームのコンパイルエラー"
+
+#: src/metabase/driver/sql_jdbc/connection.clj
+msgid "Not a valid Database/Database ID/JDBC spec"
+msgstr "有効なデータベース/データベースID/JDBC仕様ではありません。"
+
+#: src/metabase/metabot/command.clj
+msgid "You don''t have any cards yet."
+msgstr "まだカードを持っていないんですね。"
+
+#: src/metabase/metabot/command.clj
+msgid "Here are your {0} most recent cards:"
+msgstr "あなたの{0}最新のカードを紹介します。"
+
+#: src/metabase/models/pulse.clj
+msgid "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`."
+msgstr "値は、キー `{0}`, `{1}`, `{2}`, `{3}` を持つマップでなければなりません。"
+
+#: src/metabase/plugins/jdbc_proxy.clj
+msgid "Not creating proxy JDBC driver for class {0} -- original driver was loaded by system ClassLoader"
+msgstr "クラス {0} 用のプロキシ JDBC ドライバが作成されていない -- オリジナルのドライバはシステムの ClassLoader によってロードされた"
+
+#: src/metabase/query_processor/middleware/cache.clj
+msgid "Query took {0} to run; minimum for cache eligibility is {1}"
+msgstr "クエリの実行に要する時間は{0}で、キャッシュの有効性の最小値は{1}です。"
+
+#: src/metabase/query_processor/middleware/resolve_joined_fields.clj
+msgid "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to wrap field references in explicit :joined-field clauses."
+msgstr "あいまいな結合で結合されたフィールドを解決できません: テーブル {0} (ID {1}) が複数回結合されました。フィールド参照を明示的な :jined-field 句で囲む必要があります。"
+
+#: test/metabase/metabot/command_test.clj
+msgid "I don''t know how to `overflow stack`. Here''s what I can do: `help`, `list`, `show`"
+msgstr "スタックをオーバーフローさせる方法がわかりません。以下は私ができることです。help`, `list`, `show`。"
+
+#: test/metabase/models/setting_test.clj
+msgid "Test setting - this only shows up in dev (1)"
+msgstr "テスト設定 - これはdev (1)でのみ表示されます。"
+
+#: test/metabase/models/setting_test.clj
+msgid "Test setting - this only shows up in dev (2)"
+msgstr "テスト設定 - これはdev (2)でのみ表示されます。"
+
+#: test/metabase/models/setting_test.clj
+msgid "Test setting - this only shows up in dev (3)"
+msgstr "テスト設定 - これはdev (3)でのみ表示されます。"
+
+#: test/metabase/models/setting_test.clj
+msgid "Test setting - this only shows up in dev (4)"
+msgstr "テスト設定 - これはdev (4)でのみ表示されます。"
+
+#: test/metabase/models/setting_test.clj
+msgid "Test setting - with i18n"
+msgstr "テスト設定 - i18nを使用した場合"
+
+#: test/metabase/models/setting_test.clj
+msgid "This is a sample sensitive Setting."
+msgstr "これはサンプルに敏感な設定です。"
+
+#: test/metabase/util/i18n_test.clj
+msgid "WOW"
+msgstr "畏れ多い"
+
+#: test/metabase/util/i18n_test.clj
+msgid "{0} {1}"
+msgstr "{0} {1}"
+
+#: test/metabase/util/i18n_test.clj
+msgid "{1}"
+msgstr "{1}"
+
+#:
+msgctxt "This is a new information message on the new pulse creation page."
+msgid "Pulses are being phased out"
+msgstr "豆類は淘汰されつつある"
+
+#:
+msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
+msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
+msgstr "代わりに{0}を設定できるようになりました。Pulses は将来のリリースで削除し、まだ持っているものは移行するようにします。"
+
+#:
+msgid "dashboard subscriptions"
+msgstr "ダッシュボード購読"
+
+#:
+msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
+msgstr "サブスクリプションの{0}チャートは、ダッシュボードと同じように表示されません。{1}"
