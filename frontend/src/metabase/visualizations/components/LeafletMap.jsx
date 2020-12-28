@@ -49,7 +49,7 @@ export default class LeafletMap extends Component {
 
       const mapTileUrl = MetabaseSettings.get("map-tile-server-url");
       const mapTileAttribution =
-        mapTileUrl.indexOf("openstreetmap.org") >= 0
+        new URL(mapTileUrl).host.indexOf("openstreetmap.org") >= 0
           ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
           : null;
 
