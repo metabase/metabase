@@ -1,7 +1,6 @@
 /*eslint-disable react/no-danger */
 
 import React, { Component } from "react";
-import RetinaImage from "react-retina-image";
 import styled from "styled-components";
 import { color, space, hover } from "styled-system";
 import cx from "classnames";
@@ -88,7 +87,14 @@ class BaseIcon extends Component {
       // eslint-disable-next-line no-unused-vars
       const { role, ...rest } = props;
       return (
-        <RetinaImage forceOriginalDimensions={false} src={icon.img} {...rest} />
+        <img
+          src={icon.img}
+          srcSet={`
+          ${icon.img}    1x,
+          ${icon.img}@2x 2x
+        `}
+          {...rest}
+        />
       );
     } else if (icon.svg) {
       return <svg {...props} dangerouslySetInnerHTML={{ __html: icon.svg }} />;
