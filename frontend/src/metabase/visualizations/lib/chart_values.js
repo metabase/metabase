@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { t } from "ttag";
 import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { moveToFront } from "metabase/lib/dom";
 import { isHistogramBar, xValueForWaterfallTotal } from "./renderer_utils";

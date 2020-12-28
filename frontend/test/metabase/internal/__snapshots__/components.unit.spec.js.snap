@@ -1111,7 +1111,7 @@ exports[`Select should render "default" correctly 1`] = `
     >
       <span>
         Entity Key
-
+        
       </span>
     </span>
     <svg
@@ -1150,11 +1150,11 @@ exports[`Select should render "kitchen_sink" correctly 1`] = `
     >
       <span>
         Entity Key
-        ,
+        , 
       </span>
       <span>
         Category
-
+        
       </span>
     </span>
     <svg
@@ -1193,11 +1193,11 @@ exports[`Select should render "multiple" correctly 1`] = `
     >
       <span>
         Entity Key
-        ,
+        , 
       </span>
       <span>
         Category
-
+        
       </span>
     </span>
     <svg
@@ -1236,7 +1236,7 @@ exports[`Select should render "search" correctly 1`] = `
     >
       <span>
         Entity Key
-
+        
       </span>
     </span>
     <svg
@@ -1275,7 +1275,7 @@ exports[`Select should render "sections" correctly 1`] = `
     >
       <span>
         Entity Key
-
+        
       </span>
     </span>
     <svg
