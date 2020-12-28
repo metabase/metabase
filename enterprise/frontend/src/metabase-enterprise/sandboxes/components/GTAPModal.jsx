@@ -18,7 +18,6 @@ import Radio from "metabase/components/Radio";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { GTAPApi } from "metabase/services";
-import RetinaImage from "react-retina-image";
 
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import QuestionLoader from "metabase/containers/QuestionLoader";
@@ -432,8 +431,12 @@ const TargetName = ({ gtap, target }: { gtap: GTAP, target: any }) => {
 
 const AttributeOptionsEmptyState = ({ title }) => (
   <div className="flex align-center rounded bg-slate-extra-light p2">
-    <RetinaImage
+    <img
       src="app/assets/img/attributes_illustration.png"
+      srcSet="
+        app/assets/img/attributes_illustration.png    1x,
+        app/assets/img/attributes_illustration@2x.png 2x,
+      "
       className="mr2"
     />
     <div>
