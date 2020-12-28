@@ -360,7 +360,7 @@ export default class NativeQuery extends AtomicQuery {
       for (const tag of tagsBySnippetId[snippet.id] || []) {
         if (tag["snippet-name"] !== snippet.name) {
           queryText = queryText.replace(
-            new RegExp(`\{\{\\s*${tag.name}\\s*\}\}`, "g"),
+            new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
             `{{snippet: ${snippet.name}}}`,
           );
         }

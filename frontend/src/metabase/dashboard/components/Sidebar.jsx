@@ -11,7 +11,7 @@ function Sidebar({ onClose, onCancel, closeIsDisabled, children }) {
       style={{ width: WIDTH }}
       className="flex flex-column border-left bg-white"
     >
-      <div className="flex flex-column flex-auto overflow-y-scroll">
+      <div className="flex flex-column flex-auto overflow-y-auto">
         {children}
       </div>
       {(onClose || onCancel) && (
