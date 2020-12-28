@@ -3,8 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import RetinaImage from "react-retina-image";
-
 export default class WhatsAPulse extends Component {
   static propTypes = {
     button: PropTypes.object,
@@ -16,11 +14,14 @@ export default class WhatsAPulse extends Component {
           {t`Help everyone on your team stay in sync with your data.`}
         </h2>
         <div className="mx4">
-          <RetinaImage
+          <img
             className="brand-hue"
             width={574}
             src="app/assets/img/pulse_empty_illustration.png"
-            forceOriginalDimensions={false}
+            srcSet="
+              app/assets/img/pulse_empty_illustration.png     1x,
+              app/assets/img/pulse_empty_illustration@2x.png  2x,
+            "
             style={{ maxWidth: "574px", width: "100%" }}
           />
         </div>

@@ -34,7 +34,6 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import _ from "underscore";
 import cx from "classnames";
 
-import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase-types/types/Dataset";
@@ -403,10 +402,13 @@ export default class Table extends Component {
             { "text-slate-light": isDashboard, "text-slate": !isDashboard },
           )}
         >
-          <RetinaImage
+          <img
             width={99}
             src="app/assets/img/hidden-field.png"
-            forceOriginalDimensions={false}
+            srcSet="
+              app/assets/img/hidden-field.png     1x,
+              app/assets/img/hidden-field@2x.png  2x
+            "
             className="mb2"
           />
           <span className="h4 text-bold">Every field is hidden right now</span>

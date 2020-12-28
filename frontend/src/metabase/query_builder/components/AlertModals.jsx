@@ -14,7 +14,6 @@ import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import RetinaImage from "react-retina-image";
 
 import User from "metabase/entities/users";
 
@@ -222,7 +221,13 @@ export class AlertEducationalScreen extends Component {
             className="relative flex align-center pr4"
             style={{ marginLeft: -80 }}
           >
-            <RetinaImage src="app/assets/img/alerts/education-illustration-01-raw-data.png" />
+            <img
+              src="app/assets/img/alerts/education-illustration-01-raw-data.png"
+              srcSet="
+                app/assets/img/alerts/education-illustration-01-raw-data.png    1x,
+                app/assets/img/alerts/education-illustration-01-raw-data@2x.png 2x,
+              "
+            />
             <p
               className="ml2 text-left"
               style={textStyle}
@@ -234,7 +239,13 @@ export class AlertEducationalScreen extends Component {
             className="relative flex align-center flex-reverse pl4"
             style={{ marginTop: -50, marginRight: -80 }}
           >
-            <RetinaImage src="app/assets/img/alerts/education-illustration-02-goal.png" />
+            <img
+              src="app/assets/img/alerts/education-illustration-02-goal.png"
+              srcSet="
+                app/assets/img/alerts/education-illustration-02-goal.png    1x,
+                app/assets/img/alerts/education-illustration-02-goal@2x.png 2x,
+              "
+            />
             <p
               className="mr2 text-right"
               style={textStyle}
@@ -246,7 +257,13 @@ export class AlertEducationalScreen extends Component {
             className="relative flex align-center"
             style={{ marginTop: -60, marginLeft: -55 }}
           >
-            <RetinaImage src="app/assets/img/alerts/education-illustration-03-progress.png" />
+            <img
+              src="app/assets/img/alerts/education-illustration-03-progress.png"
+              srcSet="
+                app/assets/img/alerts/education-illustration-03-progress.png    1x,
+                app/assets/img/alerts/education-illustration-03-progress@2x.png 2x,
+              "
+            />
             <p
               className="ml2 text-left"
               style={textStyle}
@@ -424,9 +441,13 @@ export class DeleteAlertSection extends Component {
 
 const AlertModalTitle = ({ text }) => (
   <div className="ml-auto mr-auto my4 pb2 text-centered">
-    <RetinaImage
+    <img
       className="mb3"
       src="app/assets/img/alerts/alert-bell-confetti-illustration.png"
+      srcSet="
+        app/assets/img/alerts/alert-bell-confetti-illustration.png    1x,
+        app/assets/img/alerts/alert-bell-confetti-illustration@2x.png 2x
+      "
     />
     <h1 className="text-dark">{text}</h1>
   </div>

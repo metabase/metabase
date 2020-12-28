@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import ReactRetinaImage from "react-retina-image";
 import { t } from "ttag";
 import SettingsInput from "./SettingInput";
 import cx from "classnames";
@@ -96,16 +95,19 @@ class EmbeddingLevel extends Component {
     const { onChangeSetting, settingValues } = this.props;
 
     const premiumToken = settingValues[PREMIUM_EMBEDDING_SETTING_KEY];
+    const imagePath = premiumToken ? "premium_embed_added" : "premium_embed";
 
     return (
       <div
         className="bordered rounded full text-centered"
         style={{ maxWidth: 820 }}
       >
-        <ReactRetinaImage
-          src={`app/assets/img/${
-            premiumToken ? "premium_embed_added" : "premium_embed"
-          }.png`}
+        <img
+          src={`app/assets/img/${imagePath}.png}`}
+          srcSet={`
+            app/assets/img/${imagePath}.png    1x,
+            app/assets/img/${imagePath}@2x.png 2x
+          `}
         />
         <div className="flex align-center justify-center">
           <PremiumEmbedding
