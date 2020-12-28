@@ -300,7 +300,8 @@ export default class CollectionContent extends React.Component {
                     return {
                       ...f,
                       name:
-                        collectionHasPins && unpinnedItems.length > 0
+                        //use unpinned here to make sure this doesn't change as we filter
+                        collectionHasPins && unpinned.length > 0
                           ? t`Everything else`
                           : t`Everything`,
                     };
