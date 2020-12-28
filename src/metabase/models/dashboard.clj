@@ -19,11 +19,7 @@
              [params :as params]
              [permissions :as perms]
              [pulse :refer [Pulse]]
-<<<<<<< HEAD
-             [pulse-card :refer [PulseCard]]
-=======
              [pulse-card :as pulse-card :refer [PulseCard]]
->>>>>>> master
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.query-processor.async :as qp.async]
@@ -78,30 +74,17 @@
     (assert-valid-parameters dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
-<<<<<<< HEAD
-(defn- post-update [dashboard]
-  ;; find any subscriptions for this dashboard and update the name to match
-  (let [affected (db/query
-                  {:select    [:p.id]
-=======
 (defn- post-update
   "Updates the pulses' names and syncs the PulseCards"
   [dashboard]
   (let [dashboard-id (:id dashboard)
         affected (db/query
                   {:select    [[:p.id :pulse_id] [:pc.card_id :card_id]]
->>>>>>> master
                    :modifiers [:distinct]
                    :from      [[Dashboard :d]]
                    :join      [[DashboardCard :dc] [:= :dc.dashboard_id :d.id]
                                [PulseCard :pc] [:= :pc.dashboard_card_id :dc.id]
                                [Pulse :p] [:= :p.id :pc.pulse_id]]
-<<<<<<< HEAD
-                   :where     [:= :d.id (:id dashboard)]})]
-    (when (seq affected)
-      (db/update-where! Pulse {:id [:in (map :id affected)]}
-                        :name (:name dashboard)))))
-=======
                    :where     [:= :d.id dashboard-id]})]
     (when-let [pulse-ids (seq (distinct (map :pulse_id affected)))]
       (let [correct-card-ids     (->> (db/query {:select [:dc.card_id]
@@ -132,7 +115,6 @@
           (db/update-where! Pulse {:id [:in pulse-ids]}
             :name (:name dashboard))
           (pulse-card/bulk-create! new-pulse-cards))))))
->>>>>>> master
 
 (u/strict-extend (class Dashboard)
   models/IModel
