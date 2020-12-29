@@ -317,9 +317,9 @@ describe("TokenField", () => {
     });
   });
 
-  describe.skip("when updateOnInputBlur is false", () => {
+  describe("when updateOnInputBlur is false", () => {
     beforeEach(() => {
-      component = mount(
+      render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
           multi
@@ -331,13 +331,14 @@ describe("TokenField", () => {
     });
 
     it("should not add freeform value immediately", () => {
-      focusAndType("yep");
-      expect(value()).toEqual([]);
+      fireEvent.change(input(), { target: { value: "yep" } });
+      expect(values().textContent).toBe("");
     });
+
     it("should not add freeform value when blurring", () => {
-      focusAndType("yep");
-      blur();
-      expect(value()).toEqual([]);
+      fireEvent.change(input(), { target: { value: "yep" } });
+      fireEvent.blur(input());
+      expect(values().textContent).toBe("");
     });
   });
 
