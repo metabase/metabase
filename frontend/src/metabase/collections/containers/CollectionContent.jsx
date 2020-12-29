@@ -230,7 +230,22 @@ export default class CollectionContent extends React.Component {
             </Flex>
           </Flex>
           {collectionHasPins && (
-            <PinnedItems items={pinned} collection={collection} />
+            <PinnedItems
+              items={pinned}
+              collection={collection}
+              onMove={selectedItems =>
+                this.setState({
+                  selectedItems,
+                  selectedAction: "move",
+                })
+              }
+              onCopy={selectedItems =>
+                this.setState({
+                  selectedItems,
+                  selectedAction: "copy",
+                })
+              }
+            />
           )}
           <Box className="relative">
             {showFilters ? (

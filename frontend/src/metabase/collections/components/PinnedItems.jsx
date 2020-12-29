@@ -34,7 +34,7 @@ const PinnedItem = ({ item, index, collection, onCopy, onMove }) => (
   </Link>
 );
 
-export default function PinnedItems({ items, collection }) {
+export default function PinnedItems({ items, collection, onMove, onCopy }) {
   if (items.length === 0) {
     return (
       <PinDropTarget pinIndex={1} hideUntilDrag>
@@ -69,18 +69,8 @@ export default function PinnedItems({ items, collection }) {
                 index={index}
                 item={item}
                 collection={collection}
-                onMove={selectedItems =>
-                  this.setState({
-                    selectedItems,
-                    selectedAction: "move",
-                  })
-                }
-                onCopy={selectedItems =>
-                  this.setState({
-                    selectedItems,
-                    selectedAction: "copy",
-                  })
-                }
+                onMove={onMove}
+                onCopy={onCopy}
               />
               <PinPositionDropTarget pinIndex={item.collection_position} left />
               <PinPositionDropTarget
