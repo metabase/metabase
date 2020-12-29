@@ -32,7 +32,7 @@
   "Add the grouping field and expression to the query"
   [query breakout bitmask]
   (-> query
-      (assoc-in [:query :breakout] (conj (seq breakout) [:expression "pivot-grouping"]))
+      (assoc-in [:query :breakout] (concat breakout [[:expression "pivot-grouping"]]))
       ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
       (update-in [:query :fields]
                  #(conj % [:expression "pivot-grouping"]))
