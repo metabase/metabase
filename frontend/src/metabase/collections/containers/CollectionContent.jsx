@@ -195,14 +195,14 @@ export default class CollectionContent extends React.Component {
               )}
             </Flex>
 
-            <Flex ml="auto">
+            <Flex ml="auto" align="bottom">
               {isAdmin && !collection.personal_owner_id && (
                 <Tooltip tooltip={t`Edit the permissions for this collection`}>
                   <Link
                     to={Urls.collectionPermissions(this.props.collectionId)}
                   >
                     <IconWrapper>
-                      <Icon name="lock" />
+                      <Icon name="lock" size={20} />
                     </IconWrapper>
                   </Link>
                 </Tooltip>
@@ -221,7 +221,7 @@ export default class CollectionContent extends React.Component {
                 <Tooltip tooltip={t`New collection`}>
                   <Link to={Urls.newCollection(this.props.collectionId)}>
                     <IconWrapper>
-                      <Icon name="folder" />
+                      <Icon name="new_folder" size={20} />
                     </IconWrapper>
                   </Link>
                 </Tooltip>
