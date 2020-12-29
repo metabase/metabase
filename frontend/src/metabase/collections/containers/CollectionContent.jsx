@@ -176,7 +176,8 @@ export default class CollectionContent extends React.Component {
             align="center"
             py={3}
             className={cx({
-              "border-bottom": !collectionHasPins && unpinnedItems.length > 0,
+              "border-bottom":
+                !showFilters && !collectionHasPins && unpinnedItems.length > 0,
             })}
           >
             <Flex align="center">
@@ -294,7 +295,7 @@ export default class CollectionContent extends React.Component {
               )}
             </PinDropTarget>
           )}
-          <Box className="relative" mt={1}>
+          <Box className="relative">
             {showFilters ? (
               <ItemTypeFilterBar
                 analyticsContext={ANALYTICS_CONTEXT}
