@@ -488,7 +488,7 @@ describe("TokenField", () => {
     });
   });
 
-  describe.skip("custom layoutRenderer", () => {
+  describe("custom layoutRenderer", () => {
     let layoutRenderer;
     beforeEach(() => {
       layoutRenderer = jest
@@ -499,7 +499,7 @@ describe("TokenField", () => {
             {optionsList}
           </div>
         ));
-      component = mount(
+      render(
         <TokenFieldWithStateAndDefaults
           options={["hello"]}
           layoutRenderer={layoutRenderer}
@@ -510,19 +510,18 @@ describe("TokenField", () => {
       let call = layoutRenderer.mock.calls.pop();
       expect(call[0].isFiltered).toEqual(false);
       expect(call[0].isAllSelected).toEqual(false);
-      focus();
-      type("blah");
+      fireEvent.change(input(), { target: { value: "blah" } });
       call = layoutRenderer.mock.calls.pop();
       expect(call[0].optionList).toEqual(undefined);
       expect(call[0].isFiltered).toEqual(true);
       expect(call[0].isAllSelected).toEqual(false);
     });
+
     it("should be called with isAllSelected=true when all options are selected", () => {
       let call = layoutRenderer.mock.calls.pop();
       expect(call[0].isFiltered).toEqual(false);
       expect(call[0].isAllSelected).toEqual(false);
-      focus();
-      keyDown(KEYCODE_ENTER);
+      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
       call = layoutRenderer.mock.calls.pop();
       expect(call[0].optionList).toEqual(undefined);
       expect(call[0].isFiltered).toEqual(false);
