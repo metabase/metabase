@@ -409,10 +409,10 @@ describe("TokenField", () => {
     );
   });
 
-  describe.skip("with multi=true", () => {
-    it("should prevent blurring on tab", () => {
-      const preventDefault = jest.fn();
-      component = mount(
+  describe("with multi=true", () => {
+    // Couldn't confirm that blur is prevented
+    xit("should prevent blurring on tab", () => {
+      render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
           // return null for empty string since it's not a valid
@@ -421,16 +421,17 @@ describe("TokenField", () => {
           multi
         />,
       );
-      focusAndType("asdf");
-      input().simulate("keydown", {
-        keyCode: KEYCODE_TAB,
-        preventDefault: preventDefault,
-      });
-      expect(preventDefault).toHaveBeenCalled();
+      fireEvent.change(input(), { target: { value: "asdf" } });
+      input().focus();
+      userEvent.tab();
+
+      // Instead of relying on `preventDefault` like the previous version of the test did,
+      // we're simply checking the values - onBlur would've set the value
+      expect(values().textContent).toBe("");
     });
+
     it('should paste "1,2,3" as multiple values', () => {
-      const preventDefault = jest.fn();
-      component = mount(
+      render(
         <TokenFieldWithStateAndDefaults
           // return null for empty string since it's not a valid
           parseFreeformValue={value => value || null}
@@ -438,15 +439,17 @@ describe("TokenField", () => {
           multi
         />,
       );
-      input().simulate("paste", {
+
+      fireEvent.paste(input(), {
         clipboardData: {
           getData: () => "1,2,3",
         },
-        preventDefault,
       });
-      expect(values()).toEqual(["1", "2", "3"]);
+      within(values()).getByText("1");
+      within(values()).getByText("2");
+      within(values()).getByText("3");
       // prevent pasting into <input>
-      expect(preventDefault).toHaveBeenCalled();
+      expect(input().value).toBe("");
     });
   });
 
