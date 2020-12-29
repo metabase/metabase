@@ -34,7 +34,7 @@ import {
   DatabaseBrowser,
   SchemaBrowser,
   TableBrowser,
-} from "metabase/components/BrowseApp";
+} from "metabase/browse/containers/BrowseApp";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
