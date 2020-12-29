@@ -1,5 +1,6 @@
 import _ from "underscore";
 import { getIn } from "icepick";
+import { t } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -103,10 +104,26 @@ export function multiLevelPivot(
 
   const valueColumns = valueColumnIndexes.map(index => columns[index]);
   const topIndex = getIndex(columnColumnTree, { valueColumns });
-  const leftIndex = getIndex(rowColumnTree, {});
+  if (topIndex.length > 1) {
+    const colNames = valueColumns.map(col => ({
+      value: col.display_name,
+      span: 1,
+    }));
+    topIndex.push([
+      [{ value: t`Row totals`, span: colNames.length }],
+      colNames,
+    ]);
+  }
+  const leftIndex = getIndex(rowColumnTree, {
+    showRowSubtotals: rowColumnTree.some(node => node.children.length > 0),
+    subtotalFormatter: leftIndexFormatters[0],
+  });
+  if (leftIndex.length > 1) {
+    leftIndex.push([[[{ value: t`Grand totals`, span: 1, isSubtotal: true }]]]);
+  }
 
-  const columnCount = getIndexCount(topIndex);
-  const rowCount = getIndexCount(leftIndex);
+  const columnCount = topIndex.length || 1;
+  const rowCount = leftIndex.length || 1;
   return {
     topIndex,
     leftIndex,
@@ -124,15 +141,6 @@ export function multiLevelPivot(
       rowColumnIndexes,
     }),
   };
-}
-
-function getIndexCount({ length }) {
-  return (
-    // we need at least one row/column
-    (length === 0 ? 1 : length) +
-    // if there are multiple rows/columns, add one for totals
-    (length > 1 ? 1 : 0)
-  );
 }
 
 function createRowSectionGetter({
@@ -235,7 +243,10 @@ function enumerate({ value, children }, path = []) {
   return children.flatMap(child => enumerate(child, pathWithValue));
 }
 
-function getIndex(values, { valueColumns = [], depth = 0 } = {}) {
+function getIndex(
+  values,
+  { subtotalFormatter, showRowSubtotals, valueColumns = [], depth = 0 } = {},
+) {
   if (values.length === 0) {
     if (valueColumns.length > 1 || (depth === 0 && valueColumns.length > 0)) {
       // if we have multiple value columns include their column names
@@ -253,7 +264,21 @@ function getIndex(values, { valueColumns = [], depth = 0 } = {}) {
     ).map(a => a.flat());
     const span =
       lowerLayers.length === 0 ? 1 : lowerLayers[lowerLayers.length - 1].length;
-    return [[{ value, span }], ...lowerLayers];
+    const val = [[{ value, span }], ...lowerLayers];
+    if (depth === 0 && subtotalFormatter) {
+      if (showRowSubtotals) {
+        const subtotal = {
+          value: t`Totals for ${subtotalFormatter(value)}`,
+          span: 1,
+          isSubtotal: true,
+        };
+        return [val, [[subtotal]]];
+      } else {
+        return [val];
+      }
+    }
+
+    return val;
   });
 }
 

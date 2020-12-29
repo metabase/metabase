@@ -163,9 +163,7 @@ export default class PivotTable extends Component {
       columnCount,
     } = pivoted;
     const topHeaderHeight =
-      topIndex.length === 0
-        ? CELL_HEIGHT
-        : topIndex[0].length * CELL_HEIGHT + 8; // the extravertical padding
+      topIndex.length === 0 ? CELL_HEIGHT : topIndex[0].length * CELL_HEIGHT;
     const leftHeaderWidth =
       leftIndex.length === 0
         ? 0
@@ -180,18 +178,15 @@ export default class PivotTable extends Component {
       return indexItem[indexItem.length - 1].length * CELL_WIDTH;
     }
 
-    // show row subtotals if the left index has multiple tiers
-    const showRowSubtotals = leftIndex.length > 0 && leftIndex[0].length > 1;
-
     function rowHeight({ index }) {
       if (leftIndex.length === 0 || index === leftIndex.length) {
         return CELL_HEIGHT;
       }
-      const indexItem = leftIndex[index];
-      return (
-        (indexItem[indexItem.length - 1].length + (showRowSubtotals ? 1 : 0)) *
-        CELL_HEIGHT
+      const span = leftIndex[index].reduce(
+        (sum, row) => row[0][0].span + sum,
+        0,
       );
+      return span * CELL_HEIGHT;
     }
 
     // Create three memoized cell renderers
@@ -199,26 +194,19 @@ export default class PivotTable extends Component {
 
     const topHeaderRenderer = _.memoize(
       ({ key, style, columnIndex }) => {
-        if (columnIndex === topIndex.length) {
-          return (
-            <div
-              key={key}
-              style={style}
-              className="flex-column justify-end px1 pt1"
-            >
-              <Cell value={t`Row totals`} width={valueIndexes.length} />
-            </div>
-          );
-        }
         const rows = topIndex[columnIndex];
         return (
-          <div key={key} style={style} className="flex-column px1 pt1">
+          <div
+            key={key}
+            style={style}
+            className="flex-column px1 border-bottom border-medium"
+          >
             {rows.map((row, index) => (
               <Flex style={{ height: CELL_HEIGHT }}>
                 {row.map(({ value, span }) => (
                   <div
                     style={{ width: CELL_WIDTH * span }}
-                    className={cx({
+                    className={cx("flex flex-column justify-center", {
                       "border-bottom": index < rows.length - 1,
                     })}
                   >
@@ -240,66 +228,50 @@ export default class PivotTable extends Component {
 
     const leftHeaderRenderer = _.memoize(
       ({ key, style, index }) => {
-        if (index === leftIndex.length) {
-          return (
-            <Cell
-              value={t`Grand totals`}
-              isSubtotal
-              key={key}
-              style={{
-                ...style,
-                paddingLeft: LEFT_HEADER_LEFT_SPACING,
-                width: leftHeaderWidth,
-              }}
-            />
-          );
-        }
         return (
           <div key={key} style={style} className="flex flex-column">
-            <div className="flex">
-              {leftIndex[index].map((col, index) => (
-                <div
-                  className="flex flex-column bg-light"
-                  style={{
-                    paddingLeft: index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
-                  }}
-                >
-                  {col.map(({ value, span = 1 }) => (
-                    <div
-                      style={{
-                        height: CELL_HEIGHT * span,
-                        width: LEFT_HEADER_CELL_WIDTH,
-                      }}
-                      className="px1"
-                    >
-                      <div
+            <div className="border-right border-medium">
+              {leftIndex[index].map(row => (
+                <div className="flex">
+                  {row.map((col, index) =>
+                    col[0].isSubtotal ? (
+                      <Cell
+                        value={col[0].value}
+                        isSubtotal
                         style={{
-                          height: CELL_HEIGHT,
-                          lineHeight: `${CELL_HEIGHT}px`,
-                          width: LEFT_HEADER_CELL_WIDTH,
+                          paddingLeft: LEFT_HEADER_LEFT_SPACING,
+                          width: leftHeaderWidth,
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="flex flex-column bg-light"
+                        style={{
+                          paddingLeft:
+                            index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
                         }}
                       >
-                        <Ellipsified>
-                          {leftIndexFormatters[index](value)}
-                        </Ellipsified>
+                        {col.map(({ value, span = 1, isSubtotal }) => (
+                          <div
+                            style={{
+                              height: CELL_HEIGHT * span,
+                              width: LEFT_HEADER_CELL_WIDTH,
+                            }}
+                          >
+                            <Cell
+                              value={leftIndexFormatters[index](value)}
+                              isSubtotal={isSubtotal}
+                              height={span}
+                              baseWidth={LEFT_HEADER_CELL_WIDTH}
+                            />
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               ))}
             </div>
-            {showRowSubtotals && (
-              <Cell
-                value={t`Totals for ${leftIndexFormatters[0](
-                  leftIndex[index][0][0].value,
-                )}`}
-                isSubtotal
-                style={{
-                  paddingLeft: LEFT_HEADER_LEFT_SPACING,
-                  width: leftHeaderWidth,
-                }}
-              />
-            )}
           </div>
         );
       },
@@ -338,7 +310,7 @@ export default class PivotTable extends Component {
     );
 
     return (
-      <div className="no-outline">
+      <div className="no-outline text-small">
         <ScrollSync>
           {({ onScroll, scrollLeft, scrollTop }) => (
             <div>
@@ -350,7 +322,7 @@ export default class PivotTable extends Component {
               >
                 {/* top left corner - displays left header columns */}
                 <div
-                  className="flex align-center border-right border-bottom border-medium bg-light"
+                  className="flex align-end border-right border-bottom border-medium bg-light"
                   style={{
                     // add left spacing unless the header width is 0
                     paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
@@ -366,7 +338,7 @@ export default class PivotTable extends Component {
                 {/* top header */}
                 <Grid
                   ref={e => (this.topGrid = e)}
-                  className="border-bottom border-medium scroll-hide-all text-medium"
+                  className="scroll-hide-all text-medium"
                   width={width - leftHeaderWidth}
                   height={topHeaderHeight}
                   rowCount={1}
@@ -382,7 +354,7 @@ export default class PivotTable extends Component {
                   ref={e => (this.leftList = e)}
                   width={leftHeaderWidth}
                   height={height - topHeaderHeight}
-                  className="scroll-hide-all text-dark border-right border-medium"
+                  className="scroll-hide-all text-dark"
                   rowCount={rowCount}
                   rowHeight={rowHeight}
                   rowRenderer={leftHeaderRenderer}
@@ -425,17 +397,17 @@ function Cell({
   baseHeight = CELL_HEIGHT,
   style,
   isBody = false,
+  className,
 }) {
   return (
     <div
       style={{
         width: baseWidth * width,
         height: baseHeight * height,
-        lineHeight: `${CELL_HEIGHT * height}px`,
-        borderTop: "1px solid white",
+        lineHeight: `${CELL_HEIGHT}px`,
         ...style,
       }}
-      className={cx({
+      className={cx(className, {
         "bg-medium text-bold": isSubtotal,
         "cursor-pointer": onClick,
       })}

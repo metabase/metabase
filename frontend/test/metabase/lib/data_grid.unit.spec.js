@@ -386,7 +386,7 @@ describe("data_grid", () => {
       expect(extractValues(getRowSection(1, 1))).toEqual([[null, null]]);
     });
 
-    it.only("should return subtotals in each section", () => {
+    it("should return subtotals in each section", () => {
       const cols = [D1, D2, M];
       const primaryGroup = 0;
       const subtotalOne = 2;
