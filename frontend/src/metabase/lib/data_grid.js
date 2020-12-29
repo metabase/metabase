@@ -105,6 +105,7 @@ export function multiLevelPivot(
   const valueColumns = valueColumnIndexes.map(index => columns[index]);
   const topIndex = getIndex(columnColumnTree, { valueColumns });
   if (topIndex.length > 1) {
+    // if there are multiple columns, we should add another for row totals
     const colNames = valueColumns.map(col => ({
       value: col.display_name,
       span: 1,
@@ -114,11 +115,15 @@ export function multiLevelPivot(
       colNames,
     ]);
   }
-  const leftIndex = getIndex(rowColumnTree, {
-    showRowSubtotals: rowColumnTree.some(node => node.children.length > 0),
-    subtotalFormatter: leftIndexFormatters[0],
-  });
+
+  const leftIndexWithoutSubtotals = getIndex(rowColumnTree, {});
+  const leftIndex = addSubtotalRowsToIndex(
+    leftIndexWithoutSubtotals,
+    leftIndexFormatters[0],
+  );
+
   if (leftIndex.length > 1) {
+    // if there are multiple rows, we should add another for grand totals
     leftIndex.push([
       [
         [
@@ -133,6 +138,7 @@ export function multiLevelPivot(
     ]);
   }
 
+  // we need at least one row/column, so convert zero length to 1
   const columnCount = topIndex.length || 1;
   const rowCount = leftIndex.length || 1;
   return {
@@ -279,21 +285,24 @@ function getIndex(
     ).map(a => a.flat());
     const span =
       lowerLayers.length === 0 ? 1 : lowerLayers[lowerLayers.length - 1].length;
-    const val = [[{ value, span }], ...lowerLayers];
-    if (depth === 0 && subtotalFormatter) {
-      if (showRowSubtotals) {
-        const subtotal = {
-          value: t`Totals for ${subtotalFormatter(value)}`,
-          span: 1,
-          isSubtotal: true,
-        };
-        return [val, [[subtotal]]];
-      } else {
-        return [val];
-      }
-    }
+    return [[{ value, span }], ...lowerLayers];
+  });
+}
 
-    return val;
+// This wraps all items in the left index to accomodate a possible "Totals for" row.
+// If there are multiple levels in the index, each gets a "Totals for" row
+function addSubtotalRowsToIndex(leftIndex, subtotalFormatter) {
+  const shouldAddSubtotalRows = leftIndex.some(val => val.length > 1);
+  return leftIndex.map(row => {
+    if (!shouldAddSubtotalRows) {
+      return [row];
+    }
+    const subtotal = {
+      value: t`Totals for ${subtotalFormatter(row[0][0].value)}`,
+      span: 1,
+      isSubtotal: true,
+    };
+    return [row, [[subtotal]]];
   });
 }
 

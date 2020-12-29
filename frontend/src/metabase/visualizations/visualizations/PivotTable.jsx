@@ -171,7 +171,7 @@ export default class PivotTable extends Component {
           leftIndex[0].length * LEFT_HEADER_CELL_WIDTH;
 
     function columnWidth({ index }) {
-      if (topIndex.length === 0 || index === topIndex.length) {
+      if (topIndex.length === 0) {
         return CELL_WIDTH;
       }
       const indexItem = topIndex[index];
@@ -179,7 +179,7 @@ export default class PivotTable extends Component {
     }
 
     function rowHeight({ index }) {
-      if (leftIndex.length === 0 || index === leftIndex.length) {
+      if (leftIndex.length === 0) {
         return CELL_HEIGHT;
       }
       const span = leftIndex[index].reduce(
