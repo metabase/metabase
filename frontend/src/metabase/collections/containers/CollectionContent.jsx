@@ -42,10 +42,11 @@ import CollectionSectionHeading from "metabase/collections/components/Collection
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 // import CollectionList from "metabase/components/CollectionList";
 
+import PinnedItems from "metabase/collections/components/PinnedItems";
+
 // drag-and-drop components
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 //import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget";
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 
@@ -228,72 +229,8 @@ export default class CollectionContent extends React.Component {
               )}
             </Flex>
           </Flex>
-          {collectionHasPins ? (
-            <Box pt={2} pb={3}>
-              <CollectionSectionHeading>{t`Pinned items`}</CollectionSectionHeading>
-              <PinDropTarget
-                pinIndex={pinned[pinned.length - 1].collection_position + 1}
-                noDrop
-                marginLeft={8}
-                marginRight={8}
-              >
-                {pinned.map((item, index) => (
-                  <Box w={[1]} className="relative" key={index}>
-                    <ItemDragSource item={item} collection={collection}>
-                      <PinnedItem
-                        key={`${item.model}:${item.id}`}
-                        index={index}
-                        item={item}
-                        collection={collection}
-                        onMove={selectedItems =>
-                          this.setState({
-                            selectedItems,
-                            selectedAction: "move",
-                          })
-                        }
-                        onCopy={selectedItems =>
-                          this.setState({
-                            selectedItems,
-                            selectedAction: "copy",
-                          })
-                        }
-                      />
-                      <PinPositionDropTarget
-                        pinIndex={item.collection_position}
-                        left
-                      />
-                      <PinPositionDropTarget
-                        pinIndex={item.collection_position + 1}
-                        right
-                      />
-                    </ItemDragSource>
-                  </Box>
-                ))}
-                {pinned.length % 2 === 1 ? (
-                  <Box w={1} className="relative">
-                    <PinPositionDropTarget
-                      pinIndex={
-                        pinned[pinned.length - 1].collection_position + 1
-                      }
-                    />
-                  </Box>
-                ) : null}
-              </PinDropTarget>
-            </Box>
-          ) : (
-            <PinDropTarget pinIndex={1} hideUntilDrag>
-              {({ hovered }) => (
-                <div
-                  className={cx(
-                    "p2 flex layout-centered",
-                    hovered ? "text-brand" : "text-light",
-                  )}
-                >
-                  <Icon name="pin" mr={1} />
-                  {t`Drag something here to pin it to the top`}
-                </div>
-              )}
-            </PinDropTarget>
+          {collectionHasPins && (
+            <PinnedItems items={pinned} collection={collection} />
           )}
           <Box className="relative">
             {showFilters ? (
@@ -448,25 +385,6 @@ export default class CollectionContent extends React.Component {
     );
   }
 }
-
-const PinnedItem = ({ item, index, collection, onCopy, onMove }) => (
-  <Link
-    key={index}
-    to={item.getUrl()}
-    className="hover-parent hover--visibility"
-    hover={{ color: color("brand") }}
-    data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
-  >
-    <NormalItem
-      item={item}
-      collection={collection}
-      onPin={() => item.setPinned(false)}
-      onMove={onMove}
-      onCopy={onCopy}
-      pinned
-    />
-  </Link>
-);
 
 const BulkActionControls = ({ onArchive, onMove }) => (
   <Box ml={1}>
