@@ -341,9 +341,9 @@ describe("TokenField", () => {
     });
   });
 
-  describe.skip("when updateOnInputBlur is true", () => {
+  describe("when updateOnInputBlur is true", () => {
     beforeEach(() => {
-      component = mount(
+      render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
           multi
@@ -355,13 +355,14 @@ describe("TokenField", () => {
     });
 
     it("should not add freeform value immediately", () => {
-      focusAndType("yep");
-      expect(value()).toEqual([]);
+      fireEvent.change(input(), { target: { value: "yep" } });
+      expect(values().textContent).toBe("");
     });
+
     it("should add freeform value when blurring", () => {
-      focusAndType("yep");
-      blur();
-      expect(value()).toEqual(["yep"]);
+      fireEvent.change(input(), { target: { value: "yep" } });
+      fireEvent.blur(input());
+      expect(values().textContent).toBe("yep");
     });
   });
 
@@ -447,6 +448,7 @@ describe("TokenField", () => {
       expect(preventDefault).toHaveBeenCalled();
     });
   });
+
   describe.skip("with multi=false", () => {
     it("should not prevent blurring on tab", () => {
       const preventDefault = jest.fn();
