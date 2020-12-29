@@ -5,7 +5,6 @@ import { t } from "ttag";
 import cx from "classnames";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
-import { assocIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -21,33 +20,20 @@ import Link from "metabase/components/Link";
 import Modal from "metabase/components/Modal";
 import PageHeading from "metabase/components/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
-import VirtualizedList from "metabase/components/VirtualizedList";
-
-import NormalItem from "metabase/collections/components/NormalItem";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import ItemTypeFilterBar, {
-  FILTERS as ITEM_TYPE_FILTERS,
-} from "metabase/collections/components/ItemTypeFilterBar";
-import CollectionEmptyState from "metabase/components/CollectionEmptyState";
-import CollectionSectionHeading from "metabase/collections/components/CollectionSectionHeading";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 // import CollectionList from "metabase/components/CollectionList";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 
 import PinnedItems from "metabase/collections/components/PinnedItems";
+import ItemList from "metabase/collections/components/ItemList";
 
 // drag-and-drop components
-import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 //import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
-
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
-
-const ROW_HEIGHT = 72;
 
 @Search.loadList({
   query: (state, props) => ({ collection: props.collectionId }),
@@ -156,12 +142,8 @@ export default class CollectionContent extends React.Component {
     const collectionHasPins = pinned.length > 0;
 
     const avaliableTypes = _.uniq(unpinned.map(u => u.model));
+
     const showFilters = unpinned.length > 5 && avaliableTypes.length > 1;
-    const everythingName =
-      collectionHasPins && unpinned.length > 0
-        ? t`Everything else`
-        : t`Everything`;
-    const filters = assocIn(ITEM_TYPE_FILTERS, [0, "name"], everythingName);
 
     return (
       <Box pt={2}>
@@ -240,87 +222,15 @@ export default class CollectionContent extends React.Component {
               }
             />
           )}
-          <Box className="relative">
-            {showFilters ? (
-              <ItemTypeFilterBar
-                analyticsContext={ANALYTICS_CONTEXT}
-                filters={filters}
-              />
-            ) : (
-              collectionHasPins &&
-              unpinnedItems.length > 0 && (
-                <CollectionSectionHeading>{t`Everything else`}</CollectionSectionHeading>
-              )
-            )}
-            {unpinnedItems.length > 0 && (
-              <PinDropTarget pinIndex={null} margin={8}>
-                <Box
-                  style={{
-                    position: "relative",
-                    height: ROW_HEIGHT * unpinnedItems.length,
-                  }}
-                >
-                  <VirtualizedList
-                    items={unpinnedItems}
-                    rowHeight={ROW_HEIGHT}
-                    renderItem={({ item, index }) => (
-                      <Box className="relative">
-                        <ItemDragSource
-                          item={item}
-                          selection={selection}
-                          collection={collection}
-                        >
-                          <NormalItem
-                            key={`${item.model}:${item.id}`}
-                            item={item}
-                            onPin={() => item.setPinned(true)}
-                            collection={collection}
-                            selection={selection}
-                            onToggleSelected={onToggleSelected}
-                            onMove={selectedItems =>
-                              this.setState({
-                                selectedItems,
-                                selectedAction: "move",
-                              })
-                            }
-                            onCopy={selectedItems =>
-                              this.setState({
-                                selectedItems,
-                                selectedAction: "copy",
-                              })
-                            }
-                          />
-                        </ItemDragSource>
-                      </Box>
-                    )}
-                    // needed in order to prevent an issue with content not fully rendering
-                    // due to the collection content scrolling layout
-                    useAutoSizerHeight={true}
-                  />
-                </Box>
-              </PinDropTarget>
-            )}
-            {!collectionHasPins && !unpinnedItems.length > 0 && (
-              <Box mt={"120px"}>
-                <CollectionEmptyState />
-              </Box>
-            )}
-          </Box>
-          {unpinned.length === 0 && (
-            <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-              {({ hovered }) => (
-                <Flex
-                  align="center"
-                  justify="center"
-                  py={2}
-                  m={2}
-                  color={hovered ? color("brand") : color("text-medium")}
-                >
-                  {t`Drag here to un-pin`}
-                </Flex>
-              )}
-            </PinDropTarget>
-          )}
+          <ItemList
+            items={unpinnedItems}
+            empty={unpinned.length === 0}
+            showFilters={showFilters}
+            selection={selection}
+            collection={collection}
+            onToggleSelected={onToggleSelected}
+            collectionHasPins={collectionHasPins}
+          />
         </Box>
         <BulkActions
           selected={selected}
