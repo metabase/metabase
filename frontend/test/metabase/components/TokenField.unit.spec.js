@@ -317,7 +317,7 @@ describe("TokenField", () => {
     });
   });
 
-  describe("when updateOnInputBlur is false", () => {
+  describe.skip("when updateOnInputBlur is false", () => {
     beforeEach(() => {
       component = mount(
         <TokenFieldWithStateAndDefaults
@@ -341,7 +341,7 @@ describe("TokenField", () => {
     });
   });
 
-  describe("when updateOnInputBlur is true", () => {
+  describe.skip("when updateOnInputBlur is true", () => {
     beforeEach(() => {
       component = mount(
         <TokenFieldWithStateAndDefaults
@@ -365,7 +365,7 @@ describe("TokenField", () => {
     });
   });
 
-  describe("key selection", () => {
+  describe.skip("key selection", () => {
     [
       ["keyCode", KEYCODE_TAB],
       ["keyCode", KEYCODE_ENTER],
@@ -407,7 +407,7 @@ describe("TokenField", () => {
     );
   });
 
-  describe("with multi=true", () => {
+  describe.skip("with multi=true", () => {
     it("should prevent blurring on tab", () => {
       const preventDefault = jest.fn();
       component = mount(
@@ -447,7 +447,7 @@ describe("TokenField", () => {
       expect(preventDefault).toHaveBeenCalled();
     });
   });
-  describe("with multi=false", () => {
+  describe.skip("with multi=false", () => {
     it("should not prevent blurring on tab", () => {
       const preventDefault = jest.fn();
       component = mount(
@@ -486,7 +486,7 @@ describe("TokenField", () => {
     });
   });
 
-  describe("custom layoutRenderer", () => {
+  describe.skip("custom layoutRenderer", () => {
     let layoutRenderer;
     beforeEach(() => {
       layoutRenderer = jest
