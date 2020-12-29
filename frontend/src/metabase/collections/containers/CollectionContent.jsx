@@ -5,7 +5,7 @@ import { t, msgid, ngettext } from "ttag";
 import cx from "classnames";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
-import { dissoc } from "icepick";
+import { dissoc, assocIn } from "icepick";
 
 import { entityTypeForObject } from "metabase/schema";
 
@@ -37,6 +37,9 @@ import BulkActionBar from "metabase/components/BulkActionBar";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
+import ItemTypeFilterBar, {
+  FILTERS as ITEM_TYPE_FILTERS,
+} from "metabase/collections/components/ItemTypeFilterBar";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 // import CollectionList from "metabase/components/CollectionList";
 
@@ -158,6 +161,14 @@ export default class CollectionContent extends React.Component {
 
     const collectionHasPins = pinned.length > 0;
 
+    const avaliableTypes = _.uniq(unpinned.map(u => u.model));
+    const showFilters = unpinned.length > 5 && avaliableTypes.length > 1;
+    const everythingName =
+      collectionHasPins && unpinned.length > 0
+        ? t`Everything else`
+        : t`Everything`;
+    const filters = assocIn(ITEM_TYPE_FILTERS, [0, "name"], everythingName);
+
     return (
       <Box pt={2}>
         <Box w={"80%"} ml="auto" mr="auto">
@@ -165,7 +176,8 @@ export default class CollectionContent extends React.Component {
             align="center"
             py={3}
             className={cx({
-              "border-bottom": !collectionHasPins && unpinnedItems.length > 0,
+              "border-bottom":
+                !showFilters && !collectionHasPins && unpinnedItems.length > 0,
             })}
           >
             <Flex align="center">
@@ -283,10 +295,17 @@ export default class CollectionContent extends React.Component {
               )}
             </PinDropTarget>
           )}
-          <Box className="relative" mt={1}>
-            {// if there are pins and we also have items show a heading for this section
-            collectionHasPins && unpinnedItems.length > 0 && (
-              <CollectionSectionHeading>{t`Everything else`}</CollectionSectionHeading>
+          <Box className="relative">
+            {showFilters ? (
+              <ItemTypeFilterBar
+                analyticsContext={ANALYTICS_CONTEXT}
+                filters={filters}
+              />
+            ) : (
+              collectionHasPins &&
+              unpinnedItems.length > 0 && (
+                <CollectionSectionHeading>{t`Everything else`}</CollectionSectionHeading>
+              )
             )}
             {unpinnedItems.length > 0 && (
               <PinDropTarget pinIndex={null} margin={8}>
