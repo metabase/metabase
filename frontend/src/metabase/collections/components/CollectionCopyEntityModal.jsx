@@ -44,4 +44,4 @@ function CollectionCopyEntityModal({
   );
 }
 
-export default withToast()(CollectionCopyEntityModal);
+export default withToast(CollectionCopyEntityModal);
