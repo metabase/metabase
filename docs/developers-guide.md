@@ -30,6 +30,7 @@ These are the set of tools which are required in order to complete any build of 
 4. [Leiningen (http://leiningen.org/)](http://leiningen.org/) - latest release
 
 On a most recent stable Ubuntu/Debian, the above tools can be installed by using:
+
 ```
 sudo apt install openjdk-11-jdk nodejs yarnpkg leiningen
 ```
@@ -120,7 +121,7 @@ All frontend tests are located in `frontend/test` directory. Run all frontend te
 yarn test
 ```
 
-which will run unit, integration and Cypress end-to-end tests in sequence.
+which will run unit and Cypress end-to-end tests in sequence.
 
 ### Cypress end-to-end tests
 
@@ -132,7 +133,7 @@ Cypress end-to-end tests use an enforced file naming convention `<test-suite-nam
 
 Unit tests are focused around isolated parts of business logic.
 
-Unit tests use an enforced file naming convention `<test-suite-name>.unit.spec.js` to separate them from end-to-end and integration tests.
+Unit tests use an enforced file naming convention `<test-suite-name>.unit.spec.js` to separate them from end-to-end tests.
 
 ```
 yarn test-unit # Run all tests at once
