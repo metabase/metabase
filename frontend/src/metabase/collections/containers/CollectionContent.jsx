@@ -5,19 +5,15 @@ import { t, msgid, ngettext } from "ttag";
 import cx from "classnames";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
-import { dissoc, assocIn } from "icepick";
-
-import { entityTypeForObject } from "metabase/schema";
+import { assocIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
-import withToast from "metabase/hoc/Toast";
 import listSelect from "metabase/hoc/ListSelect";
 
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
@@ -35,6 +31,7 @@ import VirtualizedList from "metabase/components/VirtualizedList";
 import BulkActionBar from "metabase/components/BulkActionBar";
 
 import NormalItem from "metabase/collections/components/NormalItem";
+import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -535,37 +532,3 @@ const CollectionEditMenu = ({ isRoot, isAdmin, collectionId, tooltip }) => {
     <EntityMenu items={items} triggerIcon="pencil" tooltip={tooltip} />
   ) : null;
 };
-
-@withToast
-class CollectionCopyEntityModal extends React.Component {
-  render() {
-    const { entityObject, onClose, onSaved, triggerToast } = this.props;
-
-    return (
-      <EntityCopyModal
-        entityType={entityTypeForObject(entityObject)}
-        entityObject={entityObject}
-        copy={async values => {
-          return entityObject.copy(dissoc(values, "id"));
-        }}
-        onClose={onClose}
-        onSaved={newEntityObject => {
-          triggerToast(
-            <div className="flex align-center">
-              {t`Duplicated ${entityObject.model}`}
-              <Link
-                className="link text-bold ml1"
-                to={Urls.modelToUrl(entityObject.model, newEntityObject.id)}
-              >
-                {t`See it`}
-              </Link>
-            </div>,
-            { icon: entityObject.model },
-          );
-
-          onSaved(newEntityObject);
-        }}
-      />
-    );
-  }
-}
