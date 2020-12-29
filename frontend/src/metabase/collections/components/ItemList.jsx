@@ -12,9 +12,10 @@ import ItemTypeFilterBar, {
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import CollectionSectionHeading from "metabase/collections/components/CollectionSectionHeading";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-const ROW_HEIGHT = 72;
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import { color } from "metabase/lib/colors";
+
+const ROW_HEIGHT = 72;
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 export default function ItemList({
@@ -25,6 +26,8 @@ export default function ItemList({
   onToggleSelected,
   collectionHasPins,
   showFilters,
+  onMove,
+  onCopy,
 }) {
   const everythingName =
     collectionHasPins && items.length > 0 ? t`Everything else` : t`Everything`;
@@ -67,18 +70,8 @@ export default function ItemList({
                       collection={collection}
                       selection={selection}
                       onToggleSelected={onToggleSelected}
-                      onMove={selectedItems =>
-                        this.setState({
-                          selectedItems,
-                          selectedAction: "move",
-                        })
-                      }
-                      onCopy={selectedItems =>
-                        this.setState({
-                          selectedItems,
-                          selectedAction: "copy",
-                        })
-                      }
+                      onMove={onMove}
+                      onCopy={onCopy}
                     />
                   </ItemDragSource>
                 </Box>

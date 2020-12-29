@@ -142,7 +142,6 @@ export default class CollectionContent extends React.Component {
     const collectionHasPins = pinned.length > 0;
 
     const avaliableTypes = _.uniq(unpinned.map(u => u.model));
-
     const showFilters = unpinned.length > 5 && avaliableTypes.length > 1;
 
     return (
@@ -230,6 +229,18 @@ export default class CollectionContent extends React.Component {
             collection={collection}
             onToggleSelected={onToggleSelected}
             collectionHasPins={collectionHasPins}
+            onMove={selectedItems =>
+              this.setState({
+                selectedItems,
+                selectedAction: "move",
+              })
+            }
+            onCopy={selectedItems =>
+              this.setState({
+                selectedItems,
+                selectedAction: "copy",
+              })
+            }
           />
         </Box>
         <BulkActions
