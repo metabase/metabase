@@ -3,17 +3,19 @@ import { Box, Flex } from "grid-styled";
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
+import { color } from "metabase/lib/colors";
+
+import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import VirtualizedList from "metabase/components/VirtualizedList";
 
-import NormalItem from "metabase/collections/components/NormalItem";
+import CollectionSectionHeading from "metabase/collections/components/CollectionSectionHeading";
 import ItemTypeFilterBar, {
   FILTERS as ITEM_TYPE_FILTERS,
 } from "metabase/collections/components/ItemTypeFilterBar";
-import CollectionEmptyState from "metabase/components/CollectionEmptyState";
-import CollectionSectionHeading from "metabase/collections/components/CollectionSectionHeading";
+import NormalItem from "metabase/collections/components/NormalItem";
+
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
-import { color } from "metabase/lib/colors";
 
 const ROW_HEIGHT = 72;
 
