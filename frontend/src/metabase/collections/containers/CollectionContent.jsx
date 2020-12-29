@@ -4,24 +4,18 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 
-import listSelect from "metabase/hoc/ListSelect";
-
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
-import Header from "metabase/collections/components/Header";
-
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-// import CollectionList from "metabase/components/CollectionList";
+import listSelect from "metabase/hoc/ListSelect";
 
 import BulkActions from "metabase/collections/components/BulkActions";
-
-import PinnedItems from "metabase/collections/components/PinnedItems";
+import Header from "metabase/collections/components/Header";
 import ItemList from "metabase/collections/components/ItemList";
+import PinnedItems from "metabase/collections/components/PinnedItems";
 
-// drag-and-drop components
-//import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 
 @Search.loadList({
