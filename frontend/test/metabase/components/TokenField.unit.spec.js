@@ -453,10 +453,10 @@ describe("TokenField", () => {
     });
   });
 
-  describe.skip("with multi=false", () => {
+  describe("with multi=false", () => {
     it("should not prevent blurring on tab", () => {
-      const preventDefault = jest.fn();
-      component = mount(
+      const spy = jest.fn();
+      render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
           // return null for empty string since it's not a valid
@@ -464,31 +464,27 @@ describe("TokenField", () => {
           updateOnInputChange
         />,
       );
-      focusAndType("asdf");
-      input().simulate("keydown", {
-        keyCode: KEYCODE_TAB,
-        preventDefault: preventDefault,
-      });
-      expect(preventDefault).not.toHaveBeenCalled();
+      fireEvent.change(input(), { target: { value: "asdf" } });
+      input().focus();
+      userEvent.tab();
+      expect(values().textContent).toBe("asdf");
     });
+
     it('should paste "1,2,3" as one value', () => {
-      const preventDefault = jest.fn();
-      component = mount(
+      render(
         <TokenFieldWithStateAndDefaults
           // return null for empty string since it's not a valid
           parseFreeformValue={value => value || null}
           updateOnInputChange
         />,
       );
-      input().simulate("paste", {
+      fireEvent.paste(input(), {
         clipboardData: {
           getData: () => "1,2,3",
         },
-        preventDefault,
       });
-      expect(values()).toEqual(["1,2,3"]);
-      // prevent pasting into <input>
-      expect(preventDefault).toHaveBeenCalled();
+      within(values()).getByText("1,2,3");
+      expect(input().value).toBe("");
     });
   });
 
