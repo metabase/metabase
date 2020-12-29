@@ -34,7 +34,7 @@ For emails, we can:
 
 ![Example dashboard subscription email](images/dashboard-subscriptions/example-email.png)
 
-You'll notice in the email that Metabase excludes any text cards on the dashboard, and that the charts look different - Metabase reformats the charts to make them more legible in email. Additionally, tables that exceed either 10 columns or 20 rows get the rest of their results, up to 2000 rows, included as an attachment. As a bonus, Metabase will toss in a random data quotation, like this one from the mathematician Andrejs Dunkels: "It's easy to lie with statistics. It's hard to tell the truth without statistics."
+You'll notice in the email that Metabase excludes any text cards on the dashboard, and that the charts look different - Metabase reformats the charts to make them more legible in email. Additionally, tables that exceed either 10 columns or 20 rows get the rest of their results, up to 2000 rows, included as an attachment.
 
 ### Slack subscription options
 

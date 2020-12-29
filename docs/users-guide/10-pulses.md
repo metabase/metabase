@@ -1,6 +1,6 @@
-## Dashboard subscriptions will replace pulses in a future release
+## Dashboard subscriptions will replace Pulses in a future release
 
-[Dashboard subscriptions](dashboard-subscriptions) will be replacing pulses in a future release of Metabase. When that happens, we'll provide a guide for migrating your pulses to dashboard subscriptions. So if you're thinking of setting up a pulse, try out a dashboard subscription instead.
+[Dashboard subscriptions](dashboard-subscriptions) will be replacing pulses in a future release of Metabase. When that happens, we'll provide help for migrating Pulses to dashboard subscriptions. So if you're thinking of setting up a Pulse, try out a dashboard subscription instead.
 
 ### How dashboard subscriptions differ from pulses
 
