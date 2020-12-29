@@ -107,7 +107,7 @@
                     :source "fields"}
                    (nth cols 6))))
 
-          (is (= [7 nil nil nil 18760 69540 "wheeee"] (last rows))))))))
+          (is (= [nil nil nil 18760 69540 7 "wheeee"] (last rows))))))))
 
 (deftest pivot-filter-dataset-test
   (mt/dataset sample-dataset
