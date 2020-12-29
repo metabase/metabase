@@ -156,10 +156,10 @@
           (is (= 6 (count (get-in result [:data :cols]))))
           (is (= 2273 (count rows)))
 
-          (is (= ["AK" "Affiliate" "Doohickey" 18 0 81] (first rows)))
-          (is (= ["MS" "Organic" "Gizmo" 16 0 42] (nth rows 445)))
-          (is (= ["ND" nil nil 589 6 2183] (nth rows 2250)))
-          (is (= [nil nil nil 18760 7 69540] (last rows))))))))
+          (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+          (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
+          (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
+          (is (= [nil nil nil 7 18760 69540] (last rows))))))))
 
 (deftest pivot-public-card-test
   (mt/dataset sample-dataset
@@ -173,7 +173,7 @@
             (is (= 6 (count (get-in result [:data :cols]))))
             (is (= 2273 (count rows)))
 
-            (is (= ["AK" "Affiliate" "Doohickey" 18 0 81] (first rows)))
-            (is (= ["CO" "Affiliate" "Gadget" 62 0 211] (nth rows 100)))
-            (is (= ["ND" nil nil 589 6 2183] (nth rows 2250)))
-            (is (= [nil nil nil 18760 7 69540] (last rows)))))))))
+            (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+            (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+            (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
+            (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
