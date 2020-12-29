@@ -12,7 +12,7 @@ To set up a subscription to a dashboard, click on the **sharing** icon (the one-
 
 ![Select dashboard subscriptions](images/dashboard-subscriptions/select-dashboard-subscription.png)
 
-Metabase will slide out a sidebar on the right, with an option set up a subscription via email or Slack:
+Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
 
 ![Set up a dashboard subscription with email or slack](images/dashboard-subscriptions/email-or-slack.png)
 
@@ -24,11 +24,11 @@ Let's say we want to email a dashboard. We'll click on the **Email it** option i
 
 For emails, we can:
 
-- **Add subscribers**. We can add subscribers to the dashboard by adding their email addresses.
-- **Determine frequency and timing**. Determine how often Metabase sends the dashboard (daily, weekly, or monthly) and what time of day Metabase sends the dashboard.
+- **Add subscribers**. Add email addresses to register subscribers.
+- **Determine frequency and timing**. Tell Metabase how often it should send the dashboard (daily, weekly, or monthly), and what time of day to send the dashboard.
 - **Send email now**, which is great for sending test emails.
-- **Skip updates without results**. If there are no results, we can tell Metabase to skip sending the dashboard at all.
-- **Attach results**. Tell Metabase if it should also attach results to the email (which will include up 2000 rows of data). You can choose between CSV and XLSX file formats.
+- **Skip updates without results**. If there are no results, we can tell Metabase to skip sending the email.
+- **Attach results**. Tell Metabase if it should also attach results to the email (which will include up to 2000 rows of data). You can choose between CSV and XLSX file formats.
 
 ### Email example
 
