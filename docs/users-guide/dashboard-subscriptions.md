@@ -26,7 +26,7 @@ For emails, we can:
 
 - **Add subscribers**. Add email addresses to register subscribers.
 - **Determine frequency and timing**. Tell Metabase how often it should send the dashboard (daily, weekly, or monthly), and what time of day to send the dashboard.
-- **Send email now**, which is great for sending test emails.
+- **Send email now** sends an email to all subscribers.
 - **Skip updates without results**. If there are no results, we can tell Metabase to skip sending the email.
 - **Attach results**. Tell Metabase if it should also attach results to the email (which will include up to 2000 rows of data). You can choose between CSV and XLSX file formats.
 
