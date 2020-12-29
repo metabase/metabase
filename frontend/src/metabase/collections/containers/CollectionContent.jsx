@@ -14,10 +14,8 @@ import listSelect from "metabase/hoc/ListSelect";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Modal from "metabase/components/Modal";
 import PageHeading from "metabase/components/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -72,8 +70,6 @@ export default class CollectionContent extends React.Component {
   state = {
     selectedItems: null,
     selectedAction: null,
-    // TODO - this should live somewhere else eventually
-    showDashboardModal: false,
   };
 
   handleBulkArchive = async () => {
@@ -253,14 +249,6 @@ export default class CollectionContent extends React.Component {
           selectedItems={selectedItems}
           selectedAction={selectedAction}
         />
-        {this.state.showDashboardModal && (
-          <Modal onClose={() => this.setState({ showDashboardModal: null })}>
-            <CreateDashboardModal
-              createDashboard={this.props.createDashboard}
-              onClose={() => this.setState({ modal: null })}
-            />
-          </Modal>
-        )}
         <ItemsDragLayer selected={selected} />
       </Box>
     );
