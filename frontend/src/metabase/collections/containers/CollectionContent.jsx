@@ -19,7 +19,6 @@ import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import Button from "metabase/components/Button";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-import EntityMenu from "metabase/components/EntityMenu";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -40,6 +39,7 @@ import ItemTypeFilterBar, {
 } from "metabase/collections/components/ItemTypeFilterBar";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import CollectionSectionHeading from "metabase/collections/components/CollectionSectionHeading";
+import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 // import CollectionList from "metabase/components/CollectionList";
 
 // drag-and-drop components
@@ -501,26 +501,3 @@ const SelectionControls = ({
   ) : (
     <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
   );
-
-const CollectionEditMenu = ({ isRoot, isAdmin, collectionId, tooltip }) => {
-  const items = [];
-  if (!isRoot) {
-    items.push({
-      title: t`Edit this collection`,
-      icon: "edit_document",
-      link: `/collection/${collectionId}/edit`,
-      event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Collection Click`,
-    });
-  }
-  if (!isRoot) {
-    items.push({
-      title: t`Archive this collection`,
-      icon: "view_archive",
-      link: `/collection/${collectionId}/archive`,
-      event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
-    });
-  }
-  return items.length > 0 ? (
-    <EntityMenu items={items} triggerIcon="pencil" tooltip={tooltip} />
-  ) : null;
-};
