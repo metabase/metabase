@@ -192,7 +192,7 @@ describe("TokenField", () => {
 
   describe("when updateOnInputChange is provided", () => {
     beforeEach(() => {
-      component = mount(
+      render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
           multi
@@ -204,112 +204,116 @@ describe("TokenField", () => {
     });
 
     it("should add freeform value immediately if updateOnInputChange is provided", () => {
-      focusAndType("yep");
-      expect(value()).toEqual(["yep"]);
+      fireEvent.change(input(), { target: { value: "yep" } });
+      within(values()).getByText("yep");
     });
 
-    it("should only add one option when filtered and clicked", async () => {
-      expect(value()).toEqual([]);
-      focusAndType("Do");
-      expect(value()).toEqual(["Do"]);
+    it("should only add one option when filtered and clicked", () => {
+      fireEvent.change(input(), { target: { value: "Do" } });
+      within(values()).getByText("Do");
 
-      clickOption(0);
-      expect(value()).toEqual(["Doohickey"]);
-      expect(input().props().value).toEqual("");
+      fireEvent.click(screen.getByText("Doohickey"));
+      within(values()).getByText("Doohickey");
+      expect(input().value).toEqual("");
     });
 
-    it("should only add one option when filtered and enter is pressed", async () => {
-      expect(value()).toEqual([]);
-      focusAndType("Do");
-      expect(value()).toEqual(["Do"]);
+    it("should only add one option when filtered and enter is pressed", () => {
+      fireEvent.change(input(), { target: { value: "Do" } });
+      within(values()).getByText("Do");
 
-      // press enter
-      keyDown(KEYCODE_ENTER);
-      expect(value()).toEqual(["Doohickey"]);
-      expect(input().props().value).toEqual("");
+      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      within(values()).getByText("Doohickey");
+      expect(input().value).toEqual("");
+
+      within(options()).getByText("Gadget");
+      within(options()).getByText("Gizmo");
+      within(options()).getByText("Widget");
     });
 
     it("shouldn't hide option matching input freeform value", () => {
-      expect(options()).toEqual(DEFAULT_OPTIONS);
-      focusAndType("Doohickey");
-      expect(value()).toEqual(["Doohickey"]);
-      expect(options()).toEqual(["Doohickey"]);
+      fireEvent.change(input(), { target: { value: "Doohickey" } });
+      within(values()).getByText("Doohickey");
+      within(options()).getByText("Doohickey");
     });
 
-    it("should commit after typing an option and hitting enter", () => {
-      expect(options()).toEqual(DEFAULT_OPTIONS);
-      focusAndType("Doohickey");
-      expect(value()).toEqual(["Doohickey"]);
-
-      keyDown(KEYCODE_ENTER);
-      expect(values()).toEqual(["Doohickey"]);
-      expect(options()).toEqual(["Gadget", "Gizmo", "Widget"]);
-    });
-
+    // This is messy and tricky to test with RTL
     it("should not commit empty freeform value", () => {
-      focusAndType("Doohickey");
-      focusAndType("");
-      blur();
-      expect(value()).toEqual([]);
-      expect(values()).toEqual([]);
+      fireEvent.change(input(), { target: { value: "Doohickey" } });
+      userEvent.clear(input());
+      fireEvent.change(input(), { target: { value: "" } });
+      input().blur();
+      expect(values().textContent).toBe("");
+      expect(input().value).toEqual("");
     });
 
     it("should hide the input but not clear the search after accepting an option", () => {
-      focusAndType("G");
-      expect(options()).toEqual(["Gadget", "Gizmo"]);
-      keyDown(KEYCODE_ENTER);
-      expect(options()).toEqual(["Gizmo"]);
-      expect(input().props().value).toEqual("");
-    });
+      fireEvent.change(input(), { target: { value: "G" } });
+      within(options()).getByText("Gadget");
+      within(options()).getByText("Gizmo");
 
-    it("should reset the search when focusing", () => {
-      focusAndType("G");
-      expect(options()).toEqual(["Gadget", "Gizmo"]);
-      keyDown(KEYCODE_ENTER);
-      expect(options()).toEqual(["Gizmo"]);
-      focus();
-      expect(options()).toEqual(["Doohickey", "Gizmo", "Widget"]);
+      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      within(options()).getByText("Gizmo");
+      expect(within(options()).queryByText("Doohickey")).toBeNull();
+      expect(within(options()).queryByText("Widget")).toBeNull();
+      expect(input().value).toEqual("");
+
+      // Reset search on focus (it was a separate test before)
+      input().focus();
+      within(options()).getByText("Doohickey");
+      within(options()).getByText("Widget");
     });
 
     it("should reset the search when adding the last option", () => {
-      focusAndType("G");
-      expect(options()).toEqual(["Gadget", "Gizmo"]);
-      keyDown(KEYCODE_ENTER);
-      expect(options()).toEqual(["Gizmo"]);
-      keyDown(KEYCODE_ENTER);
-      expect(options()).toEqual(["Doohickey", "Widget"]);
+      fireEvent.change(input(), { target: { value: "G" } });
+      within(options()).getByText("Gadget");
+      within(options()).getByText("Gizmo");
+
+      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      within(options()).getByText("Gizmo");
+
+      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      within(options()).getByText("Doohickey");
+      within(options()).getByText("Widget");
     });
 
     it("should hide the option if typed exactly then press enter", () => {
-      focusAndType("Gadget");
-      expect(options()).toEqual(["Gadget"]);
-      keyDown(KEYCODE_ENTER);
-      expect(values()).toEqual(["Gadget"]);
-      expect(options()).toEqual(["Doohickey", "Gizmo", "Widget"]);
+      fireEvent.change(input(), { target: { value: "Gadget" } });
+      within(options()).getByText("Gadget");
+      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      within(values()).getByText("Gadget");
+
+      within(options()).getByText("Doohickey");
+      within(options()).getByText("Gizmo");
+      within(options()).getByText("Widget");
     });
 
     it("should hide the option if typed partially then press enter", () => {
-      focusAndType("Gad");
-      expect(options()).toEqual(["Gadget"]);
-      keyDown(KEYCODE_ENTER);
-      expect(values()).toEqual(["Gadget"]);
-      expect(options()).toEqual(["Doohickey", "Gizmo", "Widget"]);
+      fireEvent.change(input(), { target: { value: "Gad" } });
+      within(options()).getByText("Gadget");
+      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      within(values()).getByText("Gadget");
+      within(options()).getByText("Doohickey");
+      within(options()).getByText("Gizmo");
+      within(options()).getByText("Widget");
     });
 
     it("should hide the option if typed exactly then clicked", () => {
-      focusAndType("Gadget");
-      expect(options()).toEqual(["Gadget"]);
-      clickOption(0);
-      expect(values()).toEqual(["Gadget"]);
-      expect(options()).toEqual(["Doohickey", "Gizmo", "Widget"]);
+      fireEvent.change(input(), { target: { value: "Gadget" } });
+      fireEvent.click(within(options()).getByText("Gadget"));
+
+      within(values()).getByText("Gadget");
+      within(options()).getByText("Doohickey");
+      within(options()).getByText("Gizmo");
+      within(options()).getByText("Widget");
     });
 
     it("should hide the option if typed partially then clicked", () => {
-      focusAndType("Gad");
-      expect(options()).toEqual(["Gadget"]);
-      clickOption(0);
-      expect(values()).toEqual(["Gadget"]);
-      expect(options()).toEqual(["Doohickey", "Gizmo", "Widget"]);
+      fireEvent.change(input(), { target: { value: "Gad" } });
+      fireEvent.click(within(options()).getByText("Gadget"));
+      within(values()).getByText("Gadget");
+      within(options()).getByText("Doohickey");
+      within(options()).getByText("Gizmo");
+      within(options()).getByText("Widget");
     });
   });
 
