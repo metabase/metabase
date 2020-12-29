@@ -26,9 +26,9 @@ For emails, we can:
 
 - **Add subscribers**. We can add subscribers to the dashboard by adding their email addresses.
 - **Determine frequency and timing**. Determine how often Metabase sends the dashboard (daily, weekly, or monthly) and what time of day Metabase sends the dashboard.
-- **Attach results**. Whether Metabase should also attach results to the email (which will include up 2000 rows of data). Note that Metabase will automatically attach results as a table for questions that do not translate
+- **Send email now**, which is great for sending test emails.
 - **Skip updates without results**. If there are no results, we can tell Metabase to skip sending the dashboard at all.
-- **Immediate gratification:** Or send an email right now, which is great for sending a test email.
+- **Attach results**. Tell Metabase if it should also attach results to the email (which will include up 2000 rows of data). You can choose between CSV and XLSX file formats.
 
 ### Email example
 
@@ -38,11 +38,11 @@ You'll notice in the email that Metabase excludes any text cards on the dashboar
 
 ### Slack subscription options
 
-For Slack subscriptions, you can set up a subscription for a single person using their Slack username, or for a channel (like #general).
+For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username.
 
 ![slack subscription options](images/dashboard-subscriptions/slack-subscription-options.png)
 
-You can specify how often Metabase sends a Slack message, and whether to send a message if the dashboard fails to return results.
+You can specify how often Metabase sends a Slack message (hourly, daily, weekly, or monthly), and whether to send a message if the dashboard fails to return results.
 
 ### Related reading
 
