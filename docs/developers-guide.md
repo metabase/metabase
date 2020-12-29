@@ -121,7 +121,7 @@ All frontend tests are located in `frontend/test` directory. Run all frontend te
 yarn test
 ```
 
-which will run unit, timezones and Cypress end-to-end tests in sequence.
+which will run unit and Cypress end-to-end tests in sequence.
 
 ### Cypress end-to-end tests
 
