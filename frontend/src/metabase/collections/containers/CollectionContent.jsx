@@ -24,7 +24,6 @@ import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import Button from "metabase/components/Button";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import EntityMenu from "metabase/components/EntityMenu";
-import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -34,6 +33,8 @@ import StackedCheckBox from "metabase/components/StackedCheckBox";
 import Tooltip from "metabase/components/Tooltip";
 import VirtualizedList from "metabase/components/VirtualizedList";
 import BulkActionBar from "metabase/components/BulkActionBar";
+
+import NormalItem from "metabase/collections/components/NormalItem";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -50,7 +51,8 @@ import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 
-const ANALYTICS_CONTEXT = "Collection Landing";
+import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+
 const ROW_HEIGHT = 72;
 
 @Search.loadList({
@@ -567,50 +569,3 @@ class CollectionCopyEntityModal extends React.Component {
     );
   }
 }
-
-export const NormalItem = ({
-  item,
-  collection = {},
-  selection = new Set(),
-  onToggleSelected,
-  onMove,
-  onCopy,
-  onPin,
-  pinned,
-}) => (
-  <Link
-    to={item.getUrl()}
-    data-metabase-event={`${ANALYTICS_CONTEXT};Item Click;${item.model}`}
-  >
-    <EntityItem
-      analyticsContext={ANALYTICS_CONTEXT}
-      variant="list"
-      showSelect={selection.size > 0}
-      selectable
-      item={item}
-      type={entityTypeForObject(item)}
-      name={item.getName()}
-      iconName={item.getIcon()}
-      iconColor={item.getColor()}
-      isFavorite={item.favorite}
-      onFavorite={
-        item.setFavorited ? () => item.setFavorited(!item.favorite) : null
-      }
-      onPin={collection.can_write && onPin && onPin}
-      onMove={
-        collection.can_write && item.setCollection ? () => onMove([item]) : null
-      }
-      onCopy={item.copy ? () => onCopy([item]) : null}
-      onArchive={
-        collection.can_write && item.setArchived
-          ? () => item.setArchived(true)
-          : null
-      }
-      selected={selection.has(item)}
-      onToggleSelected={() => {
-        onToggleSelected(item);
-      }}
-      pinned={pinned}
-    />
-  </Link>
-);
