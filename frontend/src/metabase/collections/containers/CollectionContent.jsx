@@ -15,8 +15,6 @@ import listSelect from "metabase/hoc/ListSelect";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
-import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
-
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -26,7 +24,6 @@ import Tooltip from "metabase/components/Tooltip";
 import VirtualizedList from "metabase/components/VirtualizedList";
 
 import NormalItem from "metabase/collections/components/NormalItem";
-import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -329,38 +326,17 @@ export default class CollectionContent extends React.Component {
           selected={selected}
           handleBulkArchive={this.handleBulkArchive}
           handleBulkMoveStart={this.handleBulkMoveStart}
+          handleBulkMove={this.handleBulkMove}
+          handleCloseModal={this.handleCloseModal}
           deselected={deselected}
+          selectedItems={selectedItems}
+          selectedAction={selectedAction}
         />
         {this.state.showDashboardModal && (
           <Modal onClose={() => this.setState({ showDashboardModal: null })}>
             <CreateDashboardModal
               createDashboard={this.props.createDashboard}
               onClose={() => this.setState({ modal: null })}
-            />
-          </Modal>
-        )}
-        {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
-          <Modal onClose={this.handleCloseModal}>
-            <CollectionCopyEntityModal
-              entityObject={selectedItems[0]}
-              onClose={this.handleCloseModal}
-              onSaved={newEntityObject => {
-                this.handleCloseModal();
-                this.handleBulkActionSuccess();
-              }}
-            />
-          </Modal>
-        )}
-        {!_.isEmpty(selectedItems) && selectedAction === "move" && (
-          <Modal onClose={this.handleCloseModal}>
-            <CollectionMoveModal
-              title={
-                selectedItems.length > 1
-                  ? t`Move ${selectedItems.length} items?`
-                  : t`Move "${selectedItems[0].getName()}"?`
-              }
-              onClose={this.handleCloseModal}
-              onMove={this.handleBulkMove}
             />
           </Modal>
         )}

@@ -6,7 +6,11 @@ import _ from "underscore";
 import { Grid, GridItem } from "metabase/components/Grid";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Button from "metabase/components/Button";
+import Modal from "metabase/components/Modal";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
+
+import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
+import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
@@ -45,7 +49,15 @@ const SelectionControls = ({
   );
 
 export default function BulkActions(props) {
-  const { selected, handleBulkArchive, handleBulkMoveStart } = props;
+  const {
+    selected,
+    selectedItems,
+    selectedAction,
+    handleBulkArchive,
+    handleBulkMoveStart,
+    handleCloseModal,
+    handleBulkMove,
+  } = props;
   return (
     <BulkActionBar showing={selected.length > 0}>
       {/* NOTE: these padding and grid sizes must be carefully matched
@@ -79,6 +91,31 @@ export default function BulkActions(props) {
           </GridItem>
         </Grid>
       </Box>
+      {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
+        <Modal onClose={handleCloseModal}>
+          <CollectionCopyEntityModal
+            entityObject={selectedItems[0]}
+            onClose={handleCloseModal}
+            onSaved={newEntityObject => {
+              this.handleCloseModal();
+              this.handleBulkActionSuccess();
+            }}
+          />
+        </Modal>
+      )}
+      {!_.isEmpty(selectedItems) && selectedAction === "move" && (
+        <Modal onClose={handleCloseModal}>
+          <CollectionMoveModal
+            title={
+              selectedItems.length > 1
+                ? t`Move ${selectedItems.length} items?`
+                : t`Move "${selectedItems[0].getName()}"?`
+            }
+            onClose={handleCloseModal}
+            onMove={handleBulkMove}
+          />
+        </Modal>
+      )}
     </BulkActionBar>
   );
 }
