@@ -119,7 +119,18 @@ export function multiLevelPivot(
     subtotalFormatter: leftIndexFormatters[0],
   });
   if (leftIndex.length > 1) {
-    leftIndex.push([[[{ value: t`Grand totals`, span: 1, isSubtotal: true }]]]);
+    leftIndex.push([
+      [
+        [
+          {
+            value: t`Grand totals`,
+            span: 1,
+            isSubtotal: true,
+            isGrandTotal: true,
+          },
+        ],
+      ],
+    ]);
   }
 
   const columnCount = topIndex.length || 1;
@@ -156,7 +167,7 @@ function createRowSectionGetter({
     values === undefined
       ? Array(valueFormatters.length).fill({ value: null })
       : values.map((v, i) => ({ value: valueFormatters[i](v) }));
-  const getSubtotals = (breakoutIndexes, values) =>
+  const getSubtotals = (breakoutIndexes, values, otherAttrs = {}) =>
     formatValues(
       getIn(
         subtotalValues,
@@ -166,7 +177,7 @@ function createRowSectionGetter({
           ),
         ),
       ),
-    ).map(value => ({ ...value, isSubtotal: true }));
+    ).map(value => ({ ...value, isSubtotal: true, ...otherAttrs }));
 
   const getter = (columnIndex, rowIndex) => {
     const rows =
@@ -184,12 +195,16 @@ function createRowSectionGetter({
       columnIndex === columnColumnTree.length && columnColumnTree.length > 0;
     // totals in the bottom right
     if (bottomRow && rightColumn) {
-      return [getSubtotals([], [])];
+      return [getSubtotals([], [], { isGrandTotal: true })];
     }
 
     // "grand totals" on the bottom
     if (bottomRow) {
-      return [columns.flatMap(col => getSubtotals(columnColumnIndexes, col))];
+      return [
+        columns.flatMap(col =>
+          getSubtotals(columnColumnIndexes, col, { isGrandTotal: true }),
+        ),
+      ];
     }
 
     // "row totals" on the right

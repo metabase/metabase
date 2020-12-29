@@ -229,49 +229,47 @@ export default class PivotTable extends Component {
     const leftHeaderRenderer = _.memoize(
       ({ key, style, index }) => {
         return (
-          <div key={key} style={style} className="flex flex-column">
-            <div className="border-right border-medium">
-              {leftIndex[index].map(row => (
-                <div className="flex">
-                  {row.map((col, index) =>
-                    col[0].isSubtotal ? (
-                      <Cell
-                        value={col[0].value}
-                        isSubtotal
-                        style={{
-                          paddingLeft: LEFT_HEADER_LEFT_SPACING,
-                          width: leftHeaderWidth,
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className="flex flex-column bg-light"
-                        style={{
-                          paddingLeft:
-                            index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
-                        }}
-                      >
-                        {col.map(({ value, span = 1, isSubtotal }) => (
-                          <div
-                            style={{
-                              height: CELL_HEIGHT * span,
-                              width: LEFT_HEADER_CELL_WIDTH,
-                            }}
-                          >
-                            <Cell
-                              value={leftIndexFormatters[index](value)}
-                              isSubtotal={isSubtotal}
-                              height={span}
-                              baseWidth={LEFT_HEADER_CELL_WIDTH}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ),
-                  )}
-                </div>
-              ))}
-            </div>
+          <div
+            key={key}
+            style={style}
+            className="flex flex-column border-right border-medium"
+          >
+            {leftIndex[index].map((row, rowIndex) => (
+              <div
+                className="flex"
+                style={{ height: row[0][0].span * CELL_HEIGHT }}
+              >
+                {row.map((col, index) =>
+                  col[0].isSubtotal ? (
+                    <Cell
+                      value={col[0].value}
+                      isSubtotal
+                      isGrandTotal={col[0].isGrandTotal}
+                      style={{
+                        paddingLeft: LEFT_HEADER_LEFT_SPACING,
+                        width: leftHeaderWidth,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="flex flex-column bg-light flex-basis-none flex-full"
+                      style={{
+                        paddingLeft: index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
+                      }}
+                    >
+                      {col.map(({ value, span = 1, isSubtotal }) => (
+                        <Cell
+                          value={leftIndexFormatters[index](value)}
+                          isSubtotal={isSubtotal}
+                          height={span}
+                          baseWidth={LEFT_HEADER_CELL_WIDTH}
+                        />
+                      ))}
+                    </div>
+                  ),
+                )}
+              </div>
+            ))}
           </div>
         );
       },
@@ -283,24 +281,27 @@ export default class PivotTable extends Component {
         const rows = getRowSection(columnIndex, rowIndex);
         return (
           <Flex flexDirection="column" key={key} style={style}>
-            {rows.map((row, index) => (
-              <Flex key={index}>
-                {row.map(({ value, isSubtotal, clicked }, index) => (
-                  <Cell
-                    key={index}
-                    value={value}
-                    isSubtotal={isSubtotal}
-                    isBody
-                    onClick={
-                      clicked &&
-                      (() =>
-                        this.props.onVisualizationClick({
-                          ...clicked,
-                          settings: this.props.settings,
-                        }))
-                    }
-                  />
-                ))}
+            {rows.map((row, rowIndex) => (
+              <Flex key={rowIndex}>
+                {row.map(
+                  ({ value, isSubtotal, isGrandTotal, clicked }, index) => (
+                    <Cell
+                      key={index}
+                      value={value}
+                      isSubtotal={isSubtotal}
+                      isGrandTotal={isGrandTotal}
+                      isBody
+                      onClick={
+                        clicked &&
+                        (() =>
+                          this.props.onVisualizationClick({
+                            ...clicked,
+                            settings: this.props.settings,
+                          }))
+                      }
+                    />
+                  ),
+                )}
               </Flex>
             ))}
           </Flex>
@@ -390,6 +391,7 @@ export default class PivotTable extends Component {
 function Cell({
   value,
   isSubtotal,
+  isGrandTotal,
   onClick,
   width = 1,
   height = 1,
@@ -402,15 +404,18 @@ function Cell({
   return (
     <div
       style={{
-        width: baseWidth * width,
-        height: baseHeight * height,
         lineHeight: `${CELL_HEIGHT}px`,
+        ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
       }}
-      className={cx(className, {
-        "bg-medium text-bold": isSubtotal,
-        "cursor-pointer": onClick,
-      })}
+      className={cx(
+        "flex-basis-none flex-full shrink-below-content-size",
+        className,
+        {
+          "bg-medium text-bold": isSubtotal,
+          "cursor-pointer": onClick,
+        },
+      )}
       onClick={onClick}
     >
       <div className="px1">
