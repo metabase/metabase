@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 import _ from "underscore";
-import { t, msgid, ngettext } from "ttag";
+import { t } from "ttag";
 import cx from "classnames";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
@@ -17,17 +17,13 @@ import Search from "metabase/entities/search";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
-import Button from "metabase/components/Button";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-import { Grid, GridItem } from "metabase/components/Grid";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Modal from "metabase/components/Modal";
 import PageHeading from "metabase/components/PageHeading";
-import StackedCheckBox from "metabase/components/StackedCheckBox";
 import Tooltip from "metabase/components/Tooltip";
 import VirtualizedList from "metabase/components/VirtualizedList";
-import BulkActionBar from "metabase/components/BulkActionBar";
 
 import NormalItem from "metabase/collections/components/NormalItem";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
@@ -41,6 +37,8 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import CollectionSectionHeading from "metabase/collections/components/CollectionSectionHeading";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 // import CollectionList from "metabase/components/CollectionList";
+
+import BulkActions from "metabase/collections/components/BulkActions";
 
 import PinnedItems from "metabase/collections/components/PinnedItems";
 
@@ -145,14 +143,12 @@ export default class CollectionContent extends React.Component {
       isAdmin,
       isRoot,
       selected,
+      deselected,
       selection,
       onToggleSelected,
       location,
     } = this.props;
     const { selectedItems, selectedAction } = this.state;
-
-    const collectionWidth = [1, 1 / 3];
-    const itemWidth = [1, 2 / 3];
 
     let unpinnedItems = unpinned;
 
@@ -329,39 +325,12 @@ export default class CollectionContent extends React.Component {
             </PinDropTarget>
           )}
         </Box>
-        <BulkActionBar showing={selected.length > 0}>
-          {/* NOTE: these padding and grid sizes must be carefully matched
-                   to the main content above to ensure the bulk checkbox lines up */}
-          <Box px={[2, 4]} py={1}>
-            <Grid>
-              <GridItem w={collectionWidth} />
-              <GridItem w={itemWidth} px={[1, 2]}>
-                <Flex align="center" justify="center" px={2}>
-                  <SelectionControls {...this.props} />
-                  <BulkActionControls
-                    onArchive={
-                      _.all(selected, item => item.setArchived)
-                        ? this.handleBulkArchive
-                        : null
-                    }
-                    onMove={
-                      _.all(selected, item => item.setCollection)
-                        ? this.handleBulkMoveStart
-                        : null
-                    }
-                  />
-                  <Box ml="auto">
-                    {ngettext(
-                      msgid`${selected.length} item selected`,
-                      `${selected.length} items selected`,
-                      selected.length,
-                    )}
-                  </Box>
-                </Flex>
-              </GridItem>
-            </Grid>
-          </Box>
-        </BulkActionBar>
+        <BulkActions
+          selected={selected}
+          handleBulkArchive={this.handleBulkArchive}
+          handleBulkMoveStart={this.handleBulkMoveStart}
+          deselected={deselected}
+        />
         {this.state.showDashboardModal && (
           <Modal onClose={() => this.setState({ showDashboardModal: null })}>
             <CreateDashboardModal
@@ -400,37 +369,3 @@ export default class CollectionContent extends React.Component {
     );
   }
 }
-
-const BulkActionControls = ({ onArchive, onMove }) => (
-  <Box ml={1}>
-    <Button
-      ml={1}
-      medium
-      disabled={!onArchive}
-      onClick={onArchive}
-      data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Archive Items`}
-    >{t`Archive`}</Button>
-    <Button
-      ml={1}
-      medium
-      disabled={!onMove}
-      onClick={onMove}
-      data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Move Items`}
-    >{t`Move`}</Button>
-  </Box>
-);
-
-const SelectionControls = ({
-  selected,
-  deselected,
-  onSelectAll,
-  onSelectNone,
-  size = 18,
-}) =>
-  deselected.length === 0 ? (
-    <StackedCheckBox checked onChange={onSelectNone} size={size} />
-  ) : selected.length === 0 ? (
-    <StackedCheckBox onChange={onSelectAll} size={size} />
-  ) : (
-    <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
-  );
