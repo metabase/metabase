@@ -83,9 +83,9 @@
           (is (= 6 (count (get-in result [:data :cols]))))
           (is (= 1192 (count rows)))
 
-          (is (= [0 "AK" "Affiliate" "Doohickey" 18 81] (first rows)))
-          (is (= [4 "WV" "Facebook" nil 45 292] (nth rows 1000)))
-          (is (= [7 nil nil nil 18760 69540] (last rows)))))
+          (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+          (is (= ["WV" "Facebook" nil 4 45 292] (nth rows 1000)))
+          (is (= [nil nil nil 7 18760 69540] (last rows)))))
 
       (testing "with an added expression"
         (let [query (-> (pivot-query)
