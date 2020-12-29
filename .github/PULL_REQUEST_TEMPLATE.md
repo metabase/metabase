@@ -4,7 +4,7 @@
 
 ### Tests
 
-- [ ] Run the frontend and Cypress end-to-end tests with `yarn lint && yarn flow && yarn test`)
+- [ ] Run the frontend and Cypress end-to-end tests with `yarn lint && yarn test`)
 - [ ] If there are changes to the backend codebase, run the backend tests with `lein test && lein lint && ./bin/reflection-linter`
 
 - [ ] Sign the [Contributor License Agreement](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform)
