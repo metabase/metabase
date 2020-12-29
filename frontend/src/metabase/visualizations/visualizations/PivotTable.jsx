@@ -196,30 +196,28 @@ export default class PivotTable extends Component {
       ({ key, style, columnIndex }) => {
         const rows = topIndex[columnIndex];
         return (
-          <div
-            key={key}
-            style={style}
-            className="flex-column px1 border-bottom border-medium"
-          >
-            {rows.map((row, index) => (
-              <Flex style={{ height: CELL_HEIGHT }}>
-                {row.map(({ value, span }) => (
-                  <div
-                    style={{ width: CELL_WIDTH * span }}
-                    className={cx("flex flex-column justify-center", {
-                      "border-bottom": index < rows.length - 1,
-                    })}
-                  >
-                    <Ellipsified>
-                      {index < topIndexFormatters.length
-                        ? topIndexFormatters[index](value)
-                        : value // Metric names don't have formatters
-                      }
-                    </Ellipsified>
-                  </div>
-                ))}
-              </Flex>
-            ))}
+          <div key={key} style={style} className="border-bottom border-medium">
+            <div className="flex flex-column px1 full-height justify-end">
+              {rows.map((row, index) => (
+                <Flex style={{ height: CELL_HEIGHT }}>
+                  {row.map(({ value, span }) => (
+                    <div
+                      style={{ width: CELL_WIDTH * span }}
+                      className={cx("flex flex-column justify-center", {
+                        "border-bottom": index < rows.length - 1,
+                      })}
+                    >
+                      <Ellipsified>
+                        {index < topIndexFormatters.length
+                          ? topIndexFormatters[index](value)
+                          : value // Metric names don't have formatters
+                        }
+                      </Ellipsified>
+                    </div>
+                  ))}
+                </Flex>
+              ))}
+            </div>
           </div>
         );
       },
@@ -323,10 +321,13 @@ export default class PivotTable extends Component {
               >
                 {/* top left corner - displays left header columns */}
                 <div
-                  className="flex align-end border-right border-bottom border-medium bg-light"
+                  className={cx("flex align-end bg-light", {
+                    "border-right border-bottom border-medium": leftHeaderWidth,
+                  })}
                   style={{
                     // add left spacing unless the header width is 0
                     paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
+                    height: topHeaderHeight,
                   }}
                 >
                   {rowIndexes.map(index => (
