@@ -39,6 +39,7 @@ import ItemTypeFilterBar, {
   FILTERS as ITEM_TYPE_FILTERS,
 } from "metabase/collections/components/ItemTypeFilterBar";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
+import CollectionSectionHeading from "metabase/collections/components/CollectionSectionHeading";
 // import CollectionList from "metabase/components/CollectionList";
 
 // drag-and-drop components
@@ -500,15 +501,6 @@ const SelectionControls = ({
   ) : (
     <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
   );
-
-const CollectionSectionHeading = ({ children }) => (
-  <h5
-    className="text-uppercase mb2"
-    style={{ color: color("text-medium"), fontWeight: 900 }}
-  >
-    {children}
-  </h5>
-);
 
 const CollectionEditMenu = ({ isRoot, isAdmin, collectionId, tooltip }) => {
   const items = [];
