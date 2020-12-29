@@ -1,5 +1,8 @@
 import React from "react";
+import { t } from "ttag";
+
 import EntityMenu from "metabase/components/EntityMenu";
+import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 export default function CollectionEditMenu({
   isRoot,
