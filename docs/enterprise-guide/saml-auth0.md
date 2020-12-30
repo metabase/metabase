@@ -1,33 +1,8 @@
-# Auth0 Walkthrough
+# Setting up SAML with Auth0
 
-Setup Metabase
-Metabase uses SAML protocol to connect Auth0. Since SAML is an Enterprise feature, you will need to either have an Enterprise license or download a trial key. 
+## Mapping Metabase Fields to Auth0
 
-> You can learn more about activating an enterprise trial metabase instance here.  You can download a docker container or run a .jar locally, or you can start a 2 week trial of our hosted feature and enter the trial token under Settings -> Admin -> Enterprise.
-
-
-
-Activate SAML in Metabase
-Once you have your enterprise edition of metabase up, login with an admin account.
-
-![Login Screen](images/saml-auth0/login.png)
-
-Once you are logged in as an administrator, navigate to Settings (⚙️) -> Admin
-
-
-In the Admin Dashboard, in the left navigation panel, select “Authentication”
-
-
-
-
-The Authentication Settings, you can select which SSO protocol you want to set up.  For Auth0, we’re going to use SAML protocol.  If you select “Configure” you’ll be taken to the SAML settings.
-
-![SSO Settings](images/saml-auth0/ssosettings.png)
-
-
-In the SAML Settings, you will see four different sections with settings you can configure.  You do not need to fill out every section to successfully link your Auth0 connection.  The first thing we need to change is we need “Activate” SAML by clicking on the button at the very top of the page.   If you don’t enable SAML, your SSO provider will not be connected, even if the settings are all correct.
-
-![SAML Switch](images/saml-auth0/samlswitch.png)
+If you 
 
 To continue setting up your Auth0 connection, we’ll need to log in to your Auth0 account in a new window or tab.
 
@@ -91,34 +66,24 @@ http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
 ![Auth0 SAML Mappings](images/saml-auth0/auth0samlmappings.png)
 
 
-Next, in the Auth0 Addon: SAML2 Web App popup, navigate to “Usage”.  
+## Mapping Auth0 Fields to Metabase
+Next, in the Auth0 Addon: SAML2 Web App popup, click on the **Usage** tab. 
 
 ![Auth0 SAML Usage Page](images/saml-auth0/auth0samlusage.png)
 
 
-In “Usage”, look for the “Identity Provider Login URL”. We’re going to copy this URL and go back to our Metabase tab. Under the section “Tell Metabase about your identity provider”, there is a field “SAML Identity Provider URL” where you want to paste the copied URL.
+In the popup's Usage tab, look for the **Identity Provider Login URL**. Let's copy this URL and return to our  Metabase. In the **Tell Metabase about your identity provider** section, paste the URL in the **SAML Identity Provider URL** field.
 
 
 ![Metabase SAML Settings with SAML ID](images/saml-auth0/mbsamlid.png)
 
-Back in the Auth0 tab, we’ll need to download the Auth0 certificate.  
-
-
-Once your certificate has downloaded, you’ll need to use a text editor to open it.  Then you need to copy the entire certificate. It’s okay to include the “Begin certificate” and “End certificate”.
-
-In your metabase settings, paste the certificate into the section “SAML Identity Provider Certificate”.  
+We'll return to our Auth0 tab, to download the Auth0 certificate. Once your certificate has downloaded, open it with a text editor and copy the entire certificate. It’s okay to include the “Begin certificate” and “End certificate”. Return to your Metabase browser tab and, paste the certificate into the section **SAML Identity Provider Certificate**. 
 
 ![Metabase SAML Settings with Certificate](images/saml-auth0/mbsamlcert.png)
 
 
-Now you have all of the necessary fields to connect to your Auth0 account to Metabase.  Scroll down to the bottom of the Metabase SAML settings and click “Save changes”.
-
-
-In your Auth0 app popup, navigate back to “Settings”, scroll down to the bottom and click “Enable”.
-
-
-
-You should now be able to log in to your Metabase instance with your Auth0 users.
+Scroll down to the bottom of the Metabase SAML settings and click **Save changes**. Next, we'll return to our Auth0 app popup, and, under the Settings tab, scroll down to the bottom and click **Enable**. 
+You should now be able to log in to your Metabase instance with your Auth0 users!
 
 
 
