@@ -7,14 +7,19 @@ import { t } from "ttag";
 
 import { color, lighten } from "metabase/lib/colors";
 
+import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import { DefaultSearchColor } from "metabase/nav/constants";
 
 const ActiveSearchColor = lighten(color("nav"), 0.1);
 
+import Search from "metabase/entities/search";
+
 const SearchWrapper = Flex.extend`
+  position: relative;
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
@@ -78,6 +83,7 @@ export default class SearchBar extends React.Component {
       ALLOWED_SEARCH_FOCUS_ELEMENTS.has(document.activeElement.tagName)
     ) {
       ReactDOM.findDOMNode(this.searchInput).focus();
+      this.setState({ active: true });
     }
   };
 
@@ -110,6 +116,32 @@ export default class SearchBar extends React.Component {
               }
             }}
           />
+          {active && (
+            <div className="absolute left right text-dark" style={{ top: 60 }}>
+              {searchText.length > 0 ? (
+                <Card>
+                  <h3>Results for</h3>
+                  <Search.ListLoader query={{ q: searchText }} wrapped reload>
+                    {({ list }) => {
+                      if (!list) {
+                        return "No results";
+                      }
+                      return (
+                        <ol>
+                          {list.map(l => (
+                            <li key={`${l.model}:${l.id}`}>
+                              <Link to={l.getUrl()}>{l.name}</Link>
+                            </li>
+                          ))}
+                        </ol>
+                      );
+                    }}
+                  </Search.ListLoader>
+                </Card>
+              ) : null}
+              <Card></Card>
+            </div>
+          )}
         </SearchWrapper>
       </OnClickOutsideWrapper>
     );
