@@ -131,7 +131,10 @@ export default class SearchBar extends React.Component {
                       return "No results";
                     }
                     return (
-                      <Card>
+                      <Card
+                        className="overflow-y-auto"
+                        style={{ maxHeight: 400 }}
+                      >
                         <ol>
                           {list.map(l => (
                             <li key={`${l.model}:${l.id}`}>
