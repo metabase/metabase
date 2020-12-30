@@ -72,6 +72,7 @@ const EntityItem = ({
   ].filter(action => action);
 
   let spacing;
+  let iconSize = 18;
 
   switch (variant) {
     case "list":
@@ -85,6 +86,7 @@ const EntityItem = ({
         px: 2,
         py: 1,
       };
+      iconSize = 12;
       break;
     default:
       spacing = {
@@ -141,12 +143,12 @@ const EntityItem = ({
           <Swapper
             startSwapped={selected}
             defaultElement={
-              <Icon name={iconName} color={"inherit"} size={18} />
+              <Icon name={iconName} color={"inherit"} size={iconSize} />
             }
-            swappedElement={<CheckBox checked={selected} size={18} />}
+            swappedElement={<CheckBox checked={selected} size={iconSize} />}
           />
         ) : (
-          <Icon name={iconName} color={"inherit"} size={18} />
+          <Icon name={iconName} color={"inherit"} size={iconSize} />
         )}
       </IconWrapper>
       <Box>
