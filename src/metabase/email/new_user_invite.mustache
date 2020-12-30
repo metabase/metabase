@@ -1,8 +1,5 @@
 {{> metabase/email/_header }}
   <div style="text-align: center;">
-    <div style="padding-bottom: 1em;">
-      <h2 style="font-weight: normal; color: #4C545B; line-height: 2rem;">{{invitorName}} wants you to join them on {{applicationName}}</h2>
-    </div>
     <div style="padding: 0.25em 0em .25em 0em; text-align: center; margin-left: auto; margin-right: auto; max-width: 400px; position: relative;">
       <table width="296" height="141" cellpadding="0" cellspacing="0" style="display:block;margin:0 auto;">
         <tr><td colspan="3"><img src="http://static.metabase.com/email_graph_top.png" width="296" height="73" style="display:block" /></td></tr>
@@ -12,14 +9,18 @@
           <td height="15" width="168"><img src="http://static.metabase.com/email_graph_right.png" width="168" height="15" style="display:block" /></td></tr>
         <tr><td colspan="3" height="46"><img src="http://static.metabase.com/email_graph_bottom.png" width="296" height="56" style="display:block" /></td></tr>
       </table>
-      <p style="line-height: 1.3rem; font-size: small">{{invitedName}}'s Happiness and Productivity Over&nbsp;Time</p>
+      <p style="line-height: 1.3rem; font-size: 12px; color: #949AAB;">{{invitedName}}'s happiness and productivity over time</p>
     </div>
-    <div style="max-width: 450px; margin-left: auto; margin-right: auto; line-height: 1.2rem;">
-      <p>{{applicationName}} is a simple and powerful analytics tool which lets <b>anyone</b> learn and <b>make decisions</b> from their company's data.</p>
-      <p>No technical knowledge required!</p>
+    <div>
+      <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{invitorName}} wants you to join them on {{applicationName}}</h2>
     </div>
-    <div style="padding: 1em 0 1em 0;">
-      <a style="display: inline-block; box-sizing: border-box; text-decoration: none; font-size: 1.063rem; padding: 0.8rem 2.25rem; background: #FBFCFD; border: 1px solid #ddd; color: #444; cursor: pointer; text-decoration: none; font-weight: bold; border-radius: 4px; background-color: #4990E2; border-color: #4990E2; color: #fff;" href="{{joinUrl}}">Join now</a>
+    <div style="max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5rem; color: #4C5773;">
+      <p>{{applicationName}} is a simple and powerful analtyics tool that lets you easily <strong>ask questions</strong> and <strong>get answers</strong> about your company’s data.
+    </div>
+    <div style="padding: 1.25em 0 1em 0;">
+      <a style="display: inline-block; box-sizing: border-box; text-decoration: none; font-size: 1rem; padding: 0.8rem 2.25rem; background: #FBFCFD; color: #444; cursor: pointer; text-decoration: none; font-weight: bold; border-radius: 6px; background-color: #509EE3; color: #fff;" href="{{joinUrl}}">Join now</a>
     </div>
   </div>
-{{> metabase/email/_footer }}
+</div>
+</body>
+</html>
