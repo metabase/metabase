@@ -80,6 +80,12 @@ const EntityItem = ({
         py: 2,
       };
       break;
+    case "small":
+      spacing = {
+        px: 2,
+        py: 1,
+      };
+      break;
     default:
       spacing = {
         py: 2,

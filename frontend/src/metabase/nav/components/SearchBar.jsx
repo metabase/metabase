@@ -9,6 +9,7 @@ import { color, lighten } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
+import EntityItem from "metabase/components/EntityItem";
 import Link from "metabase/components/Link";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
@@ -34,7 +35,8 @@ const SearchWrapper = Flex.extend`
 `;
 
 const SearchInput = styled.input`
-  ${space} background-color: transparent;
+  ${space};
+  background-color: transparent;
   width: 100%;
   border: none;
   color: white;
@@ -66,6 +68,10 @@ export default class SearchBar extends React.Component {
   componentWillReceiveProps(nextProps) {
     if (this.props.location.pathname !== nextProps.location.pathname) {
       this._updateSearchTextFromUrl(nextProps);
+    }
+    // deactivate search on navigation
+    if (this.props.location !== nextProps.location) {
+      this.setState({ active: false });
     }
   }
   _updateSearchTextFromUrl(props) {
@@ -119,27 +125,32 @@ export default class SearchBar extends React.Component {
           {active && (
             <div className="absolute left right text-dark" style={{ top: 60 }}>
               {searchText.length > 0 ? (
-                <Card>
-                  <h3>Results for</h3>
-                  <Search.ListLoader query={{ q: searchText }} wrapped reload>
-                    {({ list }) => {
-                      if (!list) {
-                        return "No results";
-                      }
-                      return (
+                <Search.ListLoader query={{ q: searchText }} wrapped reload>
+                  {({ list }) => {
+                    if (list.length === 0) {
+                      return "No results";
+                    }
+                    return (
+                      <Card>
                         <ol>
                           {list.map(l => (
                             <li key={`${l.model}:${l.id}`}>
-                              <Link to={l.getUrl()}>{l.name}</Link>
+                              <Link to={l.getUrl()}>
+                                <EntityItem
+                                  icon={l.getIcon()}
+                                  name={l.name}
+                                  item={l}
+                                  variant="small"
+                                />
+                              </Link>
                             </li>
                           ))}
                         </ol>
-                      );
-                    }}
-                  </Search.ListLoader>
-                </Card>
+                      </Card>
+                    );
+                  }}
+                </Search.ListLoader>
               ) : null}
-              <Card></Card>
             </div>
           )}
         </SearchWrapper>
