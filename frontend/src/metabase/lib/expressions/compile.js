@@ -76,21 +76,22 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     }
     return ["metric", metric.id];
   }
-  segmentExpression(ctx) {
-    const segmentName = this.visit(ctx.segmentName);
-    const segment = parseSegment(segmentName, this._options);
-    if (!segment) {
-      throw new Error(`Unknown Segment: ${segmentName}`);
-    }
-    return ["segment", segment.id];
-  }
   dimensionExpression(ctx) {
-    const dimensionName = this.visit(ctx.dimensionName);
-    const dimension = parseDimension(dimensionName, this._options);
-    if (!dimension) {
-      throw new Error(`Unknown Field: ${dimensionName}`);
+    const name = this.visit(ctx.dimensionName);
+    if (ctx.resolveAs === "segment") {
+      const segment = parseSegment(name, this._options);
+      if (!segment) {
+        throw new Error(`Unknown Segment: ${name}`);
+      }
+      return ["segment", segment.id];
+    } else {
+      // fallback
+      const dimension = parseDimension(name, this._options);
+      if (!dimension) {
+        throw new Error(`Unknown Field: ${name}`);
+      }
+      return dimension.mbql();
     }
-    return dimension.mbql();
   }
 
   identifier(ctx) {
