@@ -4,8 +4,9 @@ import memoize from "lodash.memoize";
 
 import {
   FILTER_OPERATORS,
-  BOOLEAN_BINARY_OPERATORS,
   BOOLEAN_UNARY_OPERATORS,
+  LOGICAL_AND_OPERATOR,
+  LOGICAL_OR_OPERATOR,
   AGGREGATION_FUNCTIONS,
   EXPRESSION_FUNCTIONS,
   MBQL_CLAUSES,
@@ -108,14 +109,24 @@ for (const clause of Array.from(BOOLEAN_UNARY_OPERATORS)) {
   createClauseToken(clause, { categories: [BooleanOperatorUnary] });
 }
 
-export const BooleanOperatorBinary = createToken({
-  name: "BooleanOperatorBinary",
+export const LogicalAndOperator = createToken({
+  name: "LogicalAndOperator",
   pattern: Lexer.NA,
   label: "boolean operator",
 });
 
-for (const clause of Array.from(BOOLEAN_BINARY_OPERATORS)) {
-  createClauseToken(clause, { categories: [BooleanOperatorBinary] });
+export const LogicalOrOperator = createToken({
+  name: "LogicalPrOperator",
+  pattern: Lexer.NA,
+  label: "boolean operator",
+});
+
+for (const clause of Array.from(LOGICAL_AND_OPERATOR)) {
+  createClauseToken(clause, { categories: [LogicalAndOperator] });
+}
+
+for (const clause of Array.from(LOGICAL_OR_OPERATOR)) {
+  createClauseToken(clause, { categories: [LogicalOrOperator] });
 }
 
 // FUNCTIONS
@@ -228,7 +239,8 @@ export const allTokens = [
   MultiplicativeOperator,
   FilterOperator,
   BooleanOperatorUnary,
-  BooleanOperatorBinary,
+  LogicalAndOperator,
+  LogicalOrOperator,
   // FUNCTIONS
   FunctionName,
   AggregationFunctionName,
