@@ -10,7 +10,6 @@ export class ExpressionVisitor {
       console.error(node);
       throw new Error(`ExpressionVisitor: missing ${node.name}`);
     }
-    this._delegate && this._delegate(node);
     return this[node.name](node.children, node);
   }
 
@@ -96,13 +95,14 @@ export function prettyPrint(cst) {
       this.indent = 0;
     }
     visit(node) {
+      console.log(
+        "  ".repeat(this.indent),
+        Array.isArray(node) ? node[0].name : node.name,
+      );
       ++this.indent;
       const result = super.visit(node);
       --this.indent;
       return result;
-    }
-    _delegate(node) {
-      console.log(Array(this.indent).join("  ") + node.name);
     }
   }
   new Formatter().visit(cst);
