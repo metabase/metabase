@@ -75,6 +75,13 @@ describe("TokenField", () => {
 
   const type = str => fireEvent.change(input(), { target: { value: str } });
 
+
+  const findWithinValues = collection =>
+    expect(values().textContent).toBe(collection.join(""));
+
+  const findWithinOptions = collection =>
+    expect(options().textContent).toBe(collection.join(""));
+
   it("should render with no options or values", () => {
     render(<TokenFieldWithStateAndDefaults />);
     expect(screen.queryByText("foo")).toBeNull();
@@ -85,8 +92,8 @@ describe("TokenField", () => {
     render(
       <TokenFieldWithStateAndDefaults value={["foo"]} options={["bar"]} />,
     );
-    within(values()).getByText("foo");
-    within(options()).getByText("bar");
+    findWithinValues(["foo"]);
+    findWithinOptions(["bar"]);
   });
 
   it("shouldn't show previous used option by default", () => {
@@ -105,7 +112,7 @@ describe("TokenField", () => {
         removeSelected={false}
       />,
     );
-    within(options()).getByText("foo");
+    findWithinOptions(["foo"]);
   });
 
   it("should filter correctly", () => {
@@ -118,7 +125,7 @@ describe("TokenField", () => {
     type("nope");
     expect(options()).toBeFalsy();
     type("bar");
-    within(options()).getByText("bar");
+    findWithinOptions(["bar"]);
   });
 
   it("should add freeform value if parseFreeformValue is provided", () => {
@@ -140,12 +147,11 @@ describe("TokenField", () => {
     render(
       <TokenFieldWithStateAndDefaults value={[]} options={["bar", "baz"]} />,
     );
-    within(options()).getByText("bar");
-    within(options()).getByText("baz");
+    findWithinOptions(["bar", "baz"]);
 
     fireEvent.click(screen.getByText("bar"));
-    within(values()).getByText("bar");
-    expect(within(options()).queryByText("bar")).toBeNull();
+    findWithinValues(["bar"]);
+    findWithinOptions(["baz"]);
   });
 
   it("should add option when filtered and clicked", () => {
@@ -154,7 +160,7 @@ describe("TokenField", () => {
     );
     type("ba");
     fireEvent.click(screen.getByText("bar"));
-    within(values()).getByText("bar");
+    findWithinValues(["bar"]);
   });
 
   // Not clear? and not possible to simulate with RTL
@@ -191,35 +197,32 @@ describe("TokenField", () => {
 
     it("should add freeform value immediately if updateOnInputChange is provided", () => {
       type("yep");
-      within(values()).getByText("yep");
+      findWithinValues(["yep"]);
     });
 
     it("should only add one option when filtered and clicked", () => {
       type("Do");
-      within(values()).getByText("Do");
+      findWithinValues(["Do"]);
 
       fireEvent.click(screen.getByText("Doohickey"));
-      within(values()).getByText("Doohickey");
+      findWithinValues(["Doohickey"]);
       expect(input().value).toEqual("");
     });
 
     it("should only add one option when filtered and enter is pressed", () => {
       type("Do");
-      within(values()).getByText("Do");
+      findWithinValues(["Do"]);
 
       fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
-      within(values()).getByText("Doohickey");
+      findWithinValues(["Doohickey"]);
       expect(input().value).toEqual("");
-
-      within(options()).getByText("Gadget");
-      within(options()).getByText("Gizmo");
-      within(options()).getByText("Widget");
+      findWithinOptions(["Gadget", "Gizmo", "Widget"]);
     });
 
     it("shouldn't hide option matching input freeform value", () => {
       type("Doohickey");
-      within(values()).getByText("Doohickey");
-      within(options()).getByText("Doohickey");
+      findWithinValues(["Doohickey"]);
+      findWithinOptions(["Doohickey"]);
     });
 
     // This is messy and tricky to test with RTL
@@ -234,72 +237,56 @@ describe("TokenField", () => {
 
     it("should hide the input but not clear the search after accepting an option", () => {
       type("G");
-      within(options()).getByText("Gadget");
-      within(options()).getByText("Gizmo");
+      findWithinOptions(["Gadget", "Gizmo"]);
 
       fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
-      within(options()).getByText("Gizmo");
-      expect(within(options()).queryByText("Doohickey")).toBeNull();
-      expect(within(options()).queryByText("Widget")).toBeNull();
+      findWithinOptions(["Gizmo"]);
       expect(input().value).toEqual("");
 
       // Reset search on focus (it was a separate test before)
       input().focus();
-      within(options()).getByText("Doohickey");
-      within(options()).getByText("Widget");
+      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
 
     it("should reset the search when adding the last option", () => {
       type("G");
-      within(options()).getByText("Gadget");
-      within(options()).getByText("Gizmo");
+      findWithinOptions(["Gadget", "Gizmo"]);
 
       fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
-      within(options()).getByText("Gizmo");
+      findWithinOptions(["Gizmo"]);
 
       fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
-      within(options()).getByText("Doohickey");
-      within(options()).getByText("Widget");
+      findWithinOptions(["Doohickey", "Widget"]);
     });
 
     it("should hide the option if typed exactly then press enter", () => {
       type("Gadget");
-      within(options()).getByText("Gadget");
+      findWithinOptions(["Gadget"]);
       fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
-      within(values()).getByText("Gadget");
-
-      within(options()).getByText("Doohickey");
-      within(options()).getByText("Gizmo");
-      within(options()).getByText("Widget");
+      findWithinValues(["Gadget"]);
+      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
 
     it("should hide the option if typed partially then press enter", () => {
       type("Gad");
-      within(options()).getByText("Gadget");
+      findWithinOptions(["Gadget"]);
       fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
-      within(values()).getByText("Gadget");
-      within(options()).getByText("Doohickey");
-      within(options()).getByText("Gizmo");
-      within(options()).getByText("Widget");
+      findWithinValues(["Gadget"]);
+      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
 
     it("should hide the option if typed exactly then clicked", () => {
       type("Gadget");
       fireEvent.click(within(options()).getByText("Gadget"));
-
-      within(values()).getByText("Gadget");
-      within(options()).getByText("Doohickey");
-      within(options()).getByText("Gizmo");
-      within(options()).getByText("Widget");
+      findWithinValues(["Gadget"]);
+      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
 
     it("should hide the option if typed partially then clicked", () => {
       type("Gad");
       fireEvent.click(within(options()).getByText("Gadget"));
-      within(values()).getByText("Gadget");
-      within(options()).getByText("Doohickey");
-      within(options()).getByText("Gizmo");
-      within(options()).getByText("Widget");
+      findWithinValues(["Gadget"]);
+      findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
   });
 
@@ -349,7 +336,7 @@ describe("TokenField", () => {
     it("should add freeform value when blurring", () => {
       type("yep");
       fireEvent.blur(input());
-      expect(values().textContent).toBe("yep");
+      findWithinValues(["yep"]);
     });
   });
 
@@ -435,9 +422,7 @@ describe("TokenField", () => {
           getData: () => "1,2,3",
         },
       });
-      within(values()).getByText("1");
-      within(values()).getByText("2");
-      within(values()).getByText("3");
+      findWithinValues(["1", "2", "3"]);
       // prevent pasting into <input>
       expect(input().value).toBe("");
     });
@@ -456,10 +441,11 @@ describe("TokenField", () => {
       type("asdf");
       input().focus();
       userEvent.tab();
-      expect(values().textContent).toBe("asdf");
+      findWithinValues(["asdf"]);
     });
 
     it('should paste "1,2,3" as one value', () => {
+      const DATA = "1,2,3";
       render(
         <TokenFieldWithStateAndDefaults
           // return null for empty string since it's not a valid
@@ -469,10 +455,10 @@ describe("TokenField", () => {
       );
       fireEvent.paste(input(), {
         clipboardData: {
-          getData: () => "1,2,3",
+          getData: () => DATA,
         },
       });
-      within(values()).getByText("1,2,3");
+      findWithinValues([DATA]);
       expect(input().value).toBe("");
     });
   });
