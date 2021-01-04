@@ -175,6 +175,15 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))))
 
+(defonce
+  ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition. This is called as part of the `pre-update` method for a Card.
+
+  For the OSS edition, there is no implementation for this function -- it is a no-op. For Metabase Enterprise Edition,
+  the implementation of this function is
+  `metabase-enterprise.sandbox.models.group-table-access-policy/update-card-check-gtaps` and is installed by that
+  namespace."} pre-update-check-sandbox-constraints
+  (atom identity))
+
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
@@ -198,7 +207,9 @@
     ;; make sure this Card doesn't have circular source query references if we're updating the query
     (when (:dataset_query changes)
       (check-for-circular-source-query-references changes))
-    (collection/check-collection-namespace Card (:collection_id changes))))
+    (collection/check-collection-namespace Card (:collection_id changes))
+    ;; additional checks (Enterprise Edition only)
+    (@pre-update-check-sandbox-constraints changes)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
