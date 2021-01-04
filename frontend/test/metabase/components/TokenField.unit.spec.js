@@ -136,7 +136,7 @@ describe("TokenField", () => {
     expect(input().value).toEqual("yep");
   });
 
-  it("should add option when clicked and hide it afterwards", () => {
+  it("should add clicked option to values and hide it in options list", () => {
     render(
       <TokenFieldWithStateAndDefaults value={[]} options={["bar", "baz"]} />,
     );
