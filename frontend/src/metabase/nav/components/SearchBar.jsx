@@ -43,7 +43,7 @@ const SearchInput = styled.input`
   }
 `;
 
-const SEARCH_FOCUS_ELEMENT_WHITELIST = new Set(["BODY", "A"]);
+const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
 export default class SearchBar extends React.Component {
   state = {
@@ -75,7 +75,7 @@ export default class SearchBar extends React.Component {
     const FORWARD_SLASH_KEY = 191;
     if (
       e.keyCode === FORWARD_SLASH_KEY &&
-      SEARCH_FOCUS_ELEMENT_WHITELIST.has(document.activeElement.tagName)
+      ALLOWED_SEARCH_FOCUS_ELEMENTS.has(document.activeElement.tagName)
     ) {
       ReactDOM.findDOMNode(this.searchInput).focus();
     }
