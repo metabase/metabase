@@ -8,8 +8,6 @@ import { delay } from "../../src/metabase/lib/promise";
 
 export const DEFAULT_DB_KEY = "/test_db_fixture.db";
 
-const e2eHost = process.env["E2E_HOST"];
-
 let testDbId = 0;
 const getDbFile = () =>
   path.join(os.tmpdir(), `metabase-test-${process.pid}-${testDbId++}.db`);
@@ -24,6 +22,7 @@ export const BackendResource = createSharedResource("BackendResource", {
   create({ dbKey = DEFAULT_DB_KEY }) {
     const dbFile = getDbFile();
     const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
+    const e2eHost = process.env["E2E_HOST"];
     if (e2eHost) {
       return {
         dbKey: absoluteDbKey,
