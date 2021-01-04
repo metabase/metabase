@@ -86,4 +86,31 @@
     :as           nil
     '{body :body} nil))
 
-;; Tests for AUTO-PARSE presently live in `metabase.api.common-test`
+(deftest auto-parse-test
+  (mt/are+ [args expected] (= expected
+                              (macroexpand-1 `(internal/auto-parse ~args '~'body)))
+    ;; when auto-parse gets an args form where arg is present in *autoparse-types*
+    ;; the appropriate let binding should be generated
+    '[id]
+    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)
+
+    ;; params not in *autoparse-types* should be ignored
+    '[id some-other-param]
+    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)
+
+    ;; make sure multiple autoparse params work correctly
+    '[id org_id]
+    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))
+                       org_id (clojure.core/when org_id (metabase.api.common.internal/parse-int org_id))] 'body)
+
+    ;; make sure it still works if no autoparse params are passed
+    '[some-other-param]
+    '(clojure.core/let [] 'body)
+
+    ;; should work with no params at all
+    '[]
+    '(clojure.core/let [] 'body)
+
+    ;; should work with some wacky binding form
+    '[id :as {body :body}]
+    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)))
