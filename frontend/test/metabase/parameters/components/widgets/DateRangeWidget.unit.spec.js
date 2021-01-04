@@ -9,13 +9,13 @@ describe("DateRangeWidget", () => {
       <DateRangeWidget value={"2018-12-01~2018-12-01"} setValue={setValue} />,
     );
     const NEXT = screen.getByRole("img", { name: /chevronright icon/i });
-    // There can be day 1 in the next month as well. We want to target this month's day 1 only.
-    const FIRST_DAY = screen.getAllByText("1")[0];
 
-    FIRST_DAY.click();
+    screen.getByText("December 2018");
+    fireEvent.click(screen.getByText("15"));
     fireEvent.click(NEXT);
-    FIRST_DAY.click();
+    screen.getByText("January 2019");
+    fireEvent.click(screen.getByText("26"));
 
-    expect(setValue).toHaveBeenCalledWith("2018-12-01~2019-01-01");
+    expect(setValue).toHaveBeenCalledWith("2018-12-15~2019-01-26");
   });
 });
