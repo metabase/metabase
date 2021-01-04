@@ -75,6 +75,8 @@ describe("TokenField", () => {
 
   const type = str => fireEvent.change(input(), { target: { value: str } });
 
+  const clickText = str => fireEvent.click(screen.getByText(str));
+
 
   const findWithinValues = collection =>
     expect(values().textContent).toBe(collection.join(""));
@@ -149,7 +151,7 @@ describe("TokenField", () => {
     );
     findWithinOptions(["bar", "baz"]);
 
-    fireEvent.click(screen.getByText("bar"));
+    clickText("bar");
     findWithinValues(["bar"]);
     findWithinOptions(["baz"]);
   });
@@ -159,7 +161,7 @@ describe("TokenField", () => {
       <TokenFieldWithStateAndDefaults value={[]} options={["foo", "bar"]} />,
     );
     type("ba");
-    fireEvent.click(screen.getByText("bar"));
+    clickText("bar");
     findWithinValues(["bar"]);
   });
 
@@ -204,7 +206,7 @@ describe("TokenField", () => {
       type("Do");
       findWithinValues(["Do"]);
 
-      fireEvent.click(screen.getByText("Doohickey"));
+      clickText("Doohickey");
       findWithinValues(["Doohickey"]);
       expect(input().value).toEqual("");
     });
