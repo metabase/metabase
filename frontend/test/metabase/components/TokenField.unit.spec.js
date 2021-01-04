@@ -73,6 +73,8 @@ describe("TokenField", () => {
     return screen.getAllByRole("list")[1];
   };
 
+  const type = str => fireEvent.change(input(), { target: { value: str } });
+
   it("should render with no options or values", () => {
     render(<TokenFieldWithStateAndDefaults />);
     expect(screen.queryByText("foo")).toBeNull();
@@ -113,9 +115,9 @@ describe("TokenField", () => {
         options={["bar", "baz"]}
       />,
     );
-    fireEvent.change(input(), { target: { value: "nope" } });
+    type("nope");
     expect(options()).toBeFalsy();
-    fireEvent.change(input(), { target: { value: "bar" } });
+    type("bar");
     within(options()).getByText("bar");
   });
 
@@ -130,7 +132,7 @@ describe("TokenField", () => {
     userEvent.type(input(), "yep");
     expect(input().value).toEqual("");
 
-    fireEvent.change(input(), { target: { value: "yep" } });
+    type("yep");
     expect(input().value).toEqual("yep");
   });
 
@@ -150,7 +152,7 @@ describe("TokenField", () => {
     render(
       <TokenFieldWithStateAndDefaults value={[]} options={["foo", "bar"]} />,
     );
-    fireEvent.change(input(), { target: { value: "ba" } });
+    type("ba");
     fireEvent.click(screen.getByText("bar"));
     within(values()).getByText("bar");
   });
@@ -159,7 +161,7 @@ describe("TokenField", () => {
   xit("should type a character that's on the comma key", () => {
     render(<TokenFieldWithStateAndDefaults value={[]} options={["fooбar"]} />);
 
-    fireEvent.change(input(), { target: { value: "foo" } });
+    type("foo");
     screen.debug();
 
     input().focus();
@@ -188,12 +190,12 @@ describe("TokenField", () => {
     });
 
     it("should add freeform value immediately if updateOnInputChange is provided", () => {
-      fireEvent.change(input(), { target: { value: "yep" } });
+      type("yep");
       within(values()).getByText("yep");
     });
 
     it("should only add one option when filtered and clicked", () => {
-      fireEvent.change(input(), { target: { value: "Do" } });
+      type("Do");
       within(values()).getByText("Do");
 
       fireEvent.click(screen.getByText("Doohickey"));
@@ -202,7 +204,7 @@ describe("TokenField", () => {
     });
 
     it("should only add one option when filtered and enter is pressed", () => {
-      fireEvent.change(input(), { target: { value: "Do" } });
+      type("Do");
       within(values()).getByText("Do");
 
       fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
@@ -215,23 +217,23 @@ describe("TokenField", () => {
     });
 
     it("shouldn't hide option matching input freeform value", () => {
-      fireEvent.change(input(), { target: { value: "Doohickey" } });
+      type("Doohickey");
       within(values()).getByText("Doohickey");
       within(options()).getByText("Doohickey");
     });
 
     // This is messy and tricky to test with RTL
     it("should not commit empty freeform value", () => {
-      fireEvent.change(input(), { target: { value: "Doohickey" } });
+      type("Doohickey");
       userEvent.clear(input());
-      fireEvent.change(input(), { target: { value: "" } });
+      type("");
       input().blur();
       expect(values().textContent).toBe("");
       expect(input().value).toEqual("");
     });
 
     it("should hide the input but not clear the search after accepting an option", () => {
-      fireEvent.change(input(), { target: { value: "G" } });
+      type("G");
       within(options()).getByText("Gadget");
       within(options()).getByText("Gizmo");
 
@@ -248,7 +250,7 @@ describe("TokenField", () => {
     });
 
     it("should reset the search when adding the last option", () => {
-      fireEvent.change(input(), { target: { value: "G" } });
+      type("G");
       within(options()).getByText("Gadget");
       within(options()).getByText("Gizmo");
 
@@ -261,7 +263,7 @@ describe("TokenField", () => {
     });
 
     it("should hide the option if typed exactly then press enter", () => {
-      fireEvent.change(input(), { target: { value: "Gadget" } });
+      type("Gadget");
       within(options()).getByText("Gadget");
       fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
       within(values()).getByText("Gadget");
@@ -272,7 +274,7 @@ describe("TokenField", () => {
     });
 
     it("should hide the option if typed partially then press enter", () => {
-      fireEvent.change(input(), { target: { value: "Gad" } });
+      type("Gad");
       within(options()).getByText("Gadget");
       fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
       within(values()).getByText("Gadget");
@@ -282,7 +284,7 @@ describe("TokenField", () => {
     });
 
     it("should hide the option if typed exactly then clicked", () => {
-      fireEvent.change(input(), { target: { value: "Gadget" } });
+      type("Gadget");
       fireEvent.click(within(options()).getByText("Gadget"));
 
       within(values()).getByText("Gadget");
@@ -292,7 +294,7 @@ describe("TokenField", () => {
     });
 
     it("should hide the option if typed partially then clicked", () => {
-      fireEvent.change(input(), { target: { value: "Gad" } });
+      type("Gad");
       fireEvent.click(within(options()).getByText("Gadget"));
       within(values()).getByText("Gadget");
       within(options()).getByText("Doohickey");
@@ -315,12 +317,12 @@ describe("TokenField", () => {
     });
 
     it("should not add freeform value immediately", () => {
-      fireEvent.change(input(), { target: { value: "yep" } });
+      type("yep");
       expect(values().textContent).toBe("");
     });
 
     it("should not add freeform value when blurring", () => {
-      fireEvent.change(input(), { target: { value: "yep" } });
+      type("yep");
       fireEvent.blur(input());
       expect(values().textContent).toBe("");
     });
@@ -340,12 +342,12 @@ describe("TokenField", () => {
     });
 
     it("should not add freeform value immediately", () => {
-      fireEvent.change(input(), { target: { value: "yep" } });
+      type("yep");
       expect(values().textContent).toBe("");
     });
 
     it("should add freeform value when blurring", () => {
-      fireEvent.change(input(), { target: { value: "yep" } });
+      type("yep");
       fireEvent.blur(input());
       expect(values().textContent).toBe("yep");
     });
@@ -369,7 +371,7 @@ describe("TokenField", () => {
         );
 
         // limit our options by typing
-        fireEvent.change(input(), { target: { value: "G" } });
+        type("G");
         screen.debug();
 
         // the initially selected option should be the first option
@@ -409,7 +411,7 @@ describe("TokenField", () => {
           multi
         />,
       );
-      fireEvent.change(input(), { target: { value: "asdf" } });
+      type("asdf");
       input().focus();
       userEvent.tab();
 
@@ -451,7 +453,7 @@ describe("TokenField", () => {
           updateOnInputChange
         />,
       );
-      fireEvent.change(input(), { target: { value: "asdf" } });
+      type("asdf");
       input().focus();
       userEvent.tab();
       expect(values().textContent).toBe("asdf");
@@ -497,7 +499,7 @@ describe("TokenField", () => {
       let call = layoutRenderer.mock.calls.pop();
       expect(call[0].isFiltered).toEqual(false);
       expect(call[0].isAllSelected).toEqual(false);
-      fireEvent.change(input(), { target: { value: "blah" } });
+      type("blah");
       call = layoutRenderer.mock.calls.pop();
       expect(call[0].optionList).toEqual(undefined);
       expect(call[0].isFiltered).toEqual(true);
