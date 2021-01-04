@@ -1,5 +1,6 @@
 import _ from "underscore";
 import { getIn } from "icepick";
+import { t } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -103,10 +104,43 @@ export function multiLevelPivot(
 
   const valueColumns = valueColumnIndexes.map(index => columns[index]);
   const topIndex = getIndex(columnColumnTree, { valueColumns });
-  const leftIndex = getIndex(rowColumnTree, {});
+  if (topIndex.length > 1) {
+    // if there are multiple columns, we should add another for row totals
+    const colNames = valueColumns.map(col => ({
+      value: col.display_name,
+      span: 1,
+    }));
+    topIndex.push([
+      [{ value: t`Row totals`, span: colNames.length }],
+      colNames,
+    ]);
+  }
 
-  const columnCount = getIndexCount(topIndex);
-  const rowCount = getIndexCount(leftIndex);
+  const leftIndexWithoutSubtotals = getIndex(rowColumnTree, {});
+  const leftIndex = addSubtotalRowsToIndex(
+    leftIndexWithoutSubtotals,
+    leftIndexFormatters[0],
+  );
+
+  if (leftIndex.length > 1) {
+    // if there are multiple rows, we should add another for grand totals
+    leftIndex.push([
+      [
+        [
+          {
+            value: t`Grand totals`,
+            span: 1,
+            isSubtotal: true,
+            isGrandTotal: true,
+          },
+        ],
+      ],
+    ]);
+  }
+
+  // we need at least one row/column, so convert zero length to 1
+  const columnCount = topIndex.length || 1;
+  const rowCount = leftIndex.length || 1;
   return {
     topIndex,
     leftIndex,
@@ -126,15 +160,6 @@ export function multiLevelPivot(
   };
 }
 
-function getIndexCount({ length }) {
-  return (
-    // we need at least one row/column
-    (length === 0 ? 1 : length) +
-    // if there are multiple rows/columns, add one for totals
-    (length > 1 ? 1 : 0)
-  );
-}
-
 function createRowSectionGetter({
   valuesByKey,
   columnColumnTree,
@@ -148,7 +173,7 @@ function createRowSectionGetter({
     values === undefined
       ? Array(valueFormatters.length).fill({ value: null })
       : values.map((v, i) => ({ value: valueFormatters[i](v) }));
-  const getSubtotals = (breakoutIndexes, values) =>
+  const getSubtotals = (breakoutIndexes, values, otherAttrs = {}) =>
     formatValues(
       getIn(
         subtotalValues,
@@ -158,7 +183,7 @@ function createRowSectionGetter({
           ),
         ),
       ),
-    ).map(value => ({ ...value, isSubtotal: true }));
+    ).map(value => ({ ...value, isSubtotal: true, ...otherAttrs }));
 
   const getter = (columnIndex, rowIndex) => {
     const rows =
@@ -176,12 +201,16 @@ function createRowSectionGetter({
       columnIndex === columnColumnTree.length && columnColumnTree.length > 0;
     // totals in the bottom right
     if (bottomRow && rightColumn) {
-      return [getSubtotals([], [])];
+      return [getSubtotals([], [], { isGrandTotal: true })];
     }
 
     // "grand totals" on the bottom
     if (bottomRow) {
-      return [columns.flatMap(col => getSubtotals(columnColumnIndexes, col))];
+      return [
+        columns.flatMap(col =>
+          getSubtotals(columnColumnIndexes, col, { isGrandTotal: true }),
+        ),
+      ];
     }
 
     // "row totals" on the right
@@ -235,7 +264,10 @@ function enumerate({ value, children }, path = []) {
   return children.flatMap(child => enumerate(child, pathWithValue));
 }
 
-function getIndex(values, { valueColumns = [], depth = 0 } = {}) {
+function getIndex(
+  values,
+  { subtotalFormatter, showRowSubtotals, valueColumns = [], depth = 0 } = {},
+) {
   if (values.length === 0) {
     if (valueColumns.length > 1 || (depth === 0 && valueColumns.length > 0)) {
       // if we have multiple value columns include their column names
@@ -254,6 +286,23 @@ function getIndex(values, { valueColumns = [], depth = 0 } = {}) {
     const span =
       lowerLayers.length === 0 ? 1 : lowerLayers[lowerLayers.length - 1].length;
     return [[{ value, span }], ...lowerLayers];
+  });
+}
+
+// This wraps all items in the left index to accomodate a possible "Totals for" row.
+// If there are multiple levels in the index, each gets a "Totals for" row
+function addSubtotalRowsToIndex(leftIndex, subtotalFormatter) {
+  const shouldAddSubtotalRows = leftIndex.some(val => val.length > 1);
+  return leftIndex.map(row => {
+    if (!shouldAddSubtotalRows) {
+      return [row];
+    }
+    const subtotal = {
+      value: t`Totals for ${subtotalFormatter(row[0][0].value)}`,
+      span: 1,
+      isSubtotal: true,
+    };
+    return [row, [[subtotal]]];
   });
 }
 
