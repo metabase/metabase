@@ -20,7 +20,7 @@ import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 
 import ProfileLink from "metabase/nav/components/ProfileLink";
-import SearchBar from "metabase/nav/containers/SearchBar";
+import SearchBar from "metabase/nav/components/SearchBar";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
