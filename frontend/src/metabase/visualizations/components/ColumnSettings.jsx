@@ -22,8 +22,8 @@ type Props = {
   value: Settings,
   onChange: (settings: Settings) => void,
   column: any,
-  whitelist?: Set<SettingId>,
-  blacklist?: Set<SettingId>,
+  allowlist?: Set<SettingId>,
+  denylist?: Set<SettingId>,
   inheritedSettings?: Settings,
 };
 
@@ -31,8 +31,8 @@ const ColumnSettings = ({
   value,
   onChange,
   column,
-  whitelist,
-  blacklist,
+  allowlist,
+  denylist,
   inheritedSettings = {},
 }: Props) => {
   const storedSettings = value || {};
@@ -65,8 +65,8 @@ const ColumnSettings = ({
     { series },
   ).filter(
     widget =>
-      (!whitelist || whitelist.has(widget.id)) &&
-      (!blacklist || !blacklist.has(widget.id)),
+      (!allowlist || allowlist.has(widget.id)) &&
+      (!denylist || !denylist.has(widget.id)),
   );
 
   return (
