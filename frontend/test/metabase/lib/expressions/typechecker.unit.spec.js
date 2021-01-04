@@ -2,6 +2,10 @@ import { parse } from "metabase/lib/expressions/parser";
 import { ExpressionVisitor } from "metabase/lib/expressions/visitor";
 import { parseIdentifierString } from "metabase/lib/expressions/index";
 
+// Since the type checking is inserted as the last stage in the expression parser,
+// the whole tests must continue to pass (i.e. none of them should thrown
+// an exception) to assert that type checker works correctly.
+
 describe("type-checker", () => {
   function parseSource(source, startRule) {
     let cst = null;
@@ -96,7 +100,7 @@ describe("type-checker", () => {
       expect(filter("Contains([GI],'Joe')").dimensions).toEqual(["GI"]);
     });
 
-    it.skip("should resolve dimensions and segments correctly", () => {
+    it("should resolve dimensions and segments correctly", () => {
       expect(filter("[A] OR [B]>0").segments).toEqual(["A"]);
       expect(filter("[A] OR [B]>0").dimensions).toEqual(["B"]);
       expect(filter("[X]=4 AND NOT [Y]").segments).toEqual(["Y"]);

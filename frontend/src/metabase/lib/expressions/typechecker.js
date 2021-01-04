@@ -1,8 +1,6 @@
 import { ExpressionVisitor } from "./visitor";
 
-export function typeCheck(cst, startRule) {
-  const rootType = startRule || "expression";
-
+export function typeCheck(cst, rootType) {
   class TypeChecker extends ExpressionVisitor {
     constructor() {
       super();
