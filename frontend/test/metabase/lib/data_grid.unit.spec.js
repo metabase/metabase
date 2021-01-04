@@ -16,6 +16,19 @@ const D2 = {
 };
 const M = { name: "M", display_name: "Metric", base_type: TYPE.Integer };
 
+const GRAND_TOTALS_ROW = [
+  [
+    [
+      {
+        isGrandTotal: true,
+        isSubtotal: true,
+        span: 1,
+        value: "Grand totals",
+      },
+    ],
+  ],
+];
+
 function makeData(rows) {
   return {
     rows: rows,
@@ -152,21 +165,22 @@ describe("data_grid", () => {
       );
       expect(topIndex).toEqual([
         [
-          [{ value: "a", span: 3 }],
+          [{ span: 3, value: "a" }],
           [
-            { value: "x", span: 1 },
-            { value: "y", span: 1 },
-            { value: "z", span: 1 },
+            { span: 1, value: "x" },
+            { span: 1, value: "y" },
+            { span: 1, value: "z" },
           ],
         ],
         [
-          [{ value: "b", span: 3 }],
+          [{ span: 3, value: "b" }],
           [
-            { value: "x", span: 1 },
-            { value: "y", span: 1 },
-            { value: "z", span: 1 },
+            { span: 1, value: "x" },
+            { span: 1, value: "y" },
+            { span: 1, value: "z" },
           ],
         ],
+        [[{ span: 1, value: "Row totals" }], [{ span: 1, value: "Metric" }]],
       ]);
       expect(leftIndex).toEqual([]);
       expect(rowCount).toEqual(1);
@@ -181,21 +195,28 @@ describe("data_grid", () => {
       );
       expect(leftIndex).toEqual([
         [
-          [{ value: "a", span: 3 }],
           [
-            { value: "x", span: 1 },
-            { value: "y", span: 1 },
-            { value: "z", span: 1 },
+            [{ value: "a", span: 3 }],
+            [
+              { value: "x", span: 1 },
+              { value: "y", span: 1 },
+              { value: "z", span: 1 },
+            ],
           ],
+          [[{ isSubtotal: true, span: 1, value: "Totals for a" }]],
         ],
         [
-          [{ value: "b", span: 3 }],
           [
-            { value: "x", span: 1 },
-            { value: "y", span: 1 },
-            { value: "z", span: 1 },
+            [{ value: "b", span: 3 }],
+            [
+              { value: "x", span: 1 },
+              { value: "y", span: 1 },
+              { value: "z", span: 1 },
+            ],
           ],
+          [[{ isSubtotal: true, span: 1, value: "Totals for b" }]],
         ],
+        GRAND_TOTALS_ROW,
       ]);
       expect(topIndex).toEqual([[[{ value: "Metric", span: 1 }]]]);
       expect(rowCount).toEqual(3);
@@ -215,12 +236,14 @@ describe("data_grid", () => {
         [2],
       );
       expect(leftIndex).toEqual([
-        [[{ value: "x", span: 1 }]],
-        [[{ value: "y", span: 1 }]],
+        [[[{ value: "x", span: 1 }]]],
+        [[[{ value: "y", span: 1 }]]],
+        GRAND_TOTALS_ROW,
       ]);
       expect(topIndex).toEqual([
         [[{ value: "a", span: 1 }]],
         [[{ value: "b", span: 1 }]],
+        [[{ span: 1, value: "Row totals" }], [{ value: "Metric", span: 1 }]],
       ]);
       expect(extractValues(getRowSection(0, 0))).toEqual([["1"]]);
       expect(extractValues(getRowSection(1, 1))).toEqual([[null]]);
@@ -231,8 +254,8 @@ describe("data_grid", () => {
         [
           D1,
           D2,
-          { name: "M1", display_name: "Metric", base_type: TYPE.Integer },
-          { name: "M2", display_name: "Metric", base_type: TYPE.Integer },
+          { name: "M1", display_name: "Metric 1", base_type: TYPE.Integer },
+          { name: "M2", display_name: "Metric 2", base_type: TYPE.Integer },
         ],
       );
 
@@ -245,10 +268,10 @@ describe("data_grid", () => {
       expect(topIndex).toEqual([
         [
           [{ value: "a", span: 2 }],
-          [{ value: "Metric", span: 1 }, { value: "Metric", span: 1 }],
+          [{ value: "Metric 1", span: 1 }, { value: "Metric 2", span: 1 }],
         ],
       ]);
-      expect(leftIndex).toEqual([[[{ value: "b", span: 1 }]]]);
+      expect(leftIndex).toEqual([[[[{ value: "b", span: 1 }]]]]);
       expect(extractValues(getRowSection(0, 0))).toEqual([["1", "2"]]);
     });
     it("should work with three levels of row grouping", () => {
@@ -281,25 +304,32 @@ describe("data_grid", () => {
       expect(topIndex).toEqual([[[{ span: 1, value: "Metric" }]]]);
       expect(leftIndex).toEqual([
         [
-          [{ span: 4, value: "a1" }],
-          [{ span: 2, value: "b1" }, { span: 2, value: "b2" }],
           [
-            { span: 1, value: "c1" },
-            { span: 1, value: "c2" },
-            { span: 1, value: "c1" },
-            { span: 1, value: "c2" },
+            [{ span: 4, value: "a1" }],
+            [{ span: 2, value: "b1" }, { span: 2, value: "b2" }],
+            [
+              { span: 1, value: "c1" },
+              { span: 1, value: "c2" },
+              { span: 1, value: "c1" },
+              { span: 1, value: "c2" },
+            ],
           ],
+          [[{ isSubtotal: true, span: 1, value: "Totals for a1" }]],
         ],
         [
-          [{ span: 4, value: "a2" }],
-          [{ span: 2, value: "b1" }, { span: 2, value: "b2" }],
           [
-            { span: 1, value: "c1" },
-            { span: 1, value: "c2" },
-            { span: 1, value: "c1" },
-            { span: 1, value: "c2" },
+            [{ span: 4, value: "a2" }],
+            [{ span: 2, value: "b1" }, { span: 2, value: "b2" }],
+            [
+              { span: 1, value: "c1" },
+              { span: 1, value: "c2" },
+              { span: 1, value: "c1" },
+              { span: 1, value: "c2" },
+            ],
           ],
+          [[{ isSubtotal: true, span: 1, value: "Totals for a2" }]],
         ],
+        GRAND_TOTALS_ROW,
       ]);
     });
     it("should format values", () => {
@@ -386,7 +416,7 @@ describe("data_grid", () => {
       expect(extractValues(getRowSection(1, 1))).toEqual([[null, null]]);
     });
 
-    it.only("should return subtotals in each section", () => {
+    it("should return subtotals in each section", () => {
       const cols = [D1, D2, M];
       const primaryGroup = 0;
       const subtotalOne = 2;

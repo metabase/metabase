@@ -9,9 +9,11 @@ In Metabase, an answer to a question can be visualized in a number of ways:
 - [Progress bar](#progress-bars)
 - [Gauge](#gauges)
 - [Table](#tables)
+- [Pivot table](#pivot-table)
 - [Line chart](#line-bar-and-area-charts)
 - [Bar chart](#line-bar-and-area-charts)
 - [Combo chart](#line-plus-bar-charts)
+- [Waterfall chart](#waterfall-charts)
 - [Row chart](#row-charts)
 - [Area chart](#line-bar-and-area-charts)
 - [Scatterplot or bubble chart](#scatterplots-and-bubble-charts)
@@ -140,13 +142,39 @@ If your table is a result that contains one numeric column and two grouping colu
 
 ![Pivot table](images/visualizations/pivot.png)
 
+This auto-pivoting is distinct from the pivot table visualization, which we cover next.
+
+### Pivot tables
+
+Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions. 
+
+For a given query result, you can assign fields to one of three "buckets":
+
+- Fields to use for the table rows
+- Fields to use for the table columns
+- Fields to use for the table values 
+
+Let's say we ask the following question in the notebook editor:
+
+![Pivot table notebook](images/visualizations/pivot-table-notebook.png)
+
+From the `Orders` table, we've summarized by the count of orders and the average order total, and grouped by `User → State`, `Product → Category`, and `Created At` binned by year. Here's our question visualized as a pivot table:
+
+![Pivot table options](images/visualizations/pivot-table-options.png)
+
+We've assigned the fields `User → State` and `Product → Category` to table rows, and assigned the `Created At` field to generate our columns: the years 2016, 2017, and so on. We can drag and drop dimensions between the row and column buckets, and add aggregations to the table values bucket. For example, if we assign a field to the columns bucket, Metabase will pivot that field and render each unique value of that field as a column heading.
+
+You can put multiple fields in the "rows" and "columns" buckets, but note that the order of the fields changes how Metabase displays the table: each additional field will nest within the previous field. 
+
+Where it makes sense, Metabase will automatically include subtotals for grouped rows. For example, as in the image above, because we've grouped our rows first by `State`, then by `Product->Category`, Metabase will list each `Product->Category` (like Gizmo) for each `State`, and aggregate the metric(s) for that subgroup. For orders placed in Wisconsin, Metabase would sum the count of orders for each category, and find the average order total across all product categories in that state. 
+
 ### Line, bar, and area charts
 
 **Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year).
 
 ![Bar chart](images/visualizations/bar.png)
 
-Learn more about [Bar charts](https://www.metabase.com/blog/bar-chart/index.html).
+Learn more about [Bar charts](https://www.metabase.com/learn/basics/visualizing-data/bar-charts.html).
 
 **Area charts** are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
 
@@ -184,17 +212,15 @@ If you're trying to group a number by a column that has a lot of possible values
 
 #### Histograms
 
-If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/blog/histograms/index.html)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
+If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/learn/basics/visualizing-data/histograms.html)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
 
-![Histogram](images/histogram.png)
+![Histogram](images/visualizations/histogram.png)
 
 By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the area to the right of the column you're grouping by:
 
 ![Binning options](images/notebook/histogram-bins.png)
 
-Learn more about histograms(https://www.metabase.com/blog/histograms/index.html).
-
-
+[Learn more about histograms](https://www.metabase.com/learn/basics/visualizing-data/histograms.html).
 
 #### Options for line, bar, and area charts
 
@@ -226,6 +252,16 @@ There are three main ways to configure axes:
 **Labels**
 
 Here's where you can choose to hide the **label** for your x- or y-axis. You can also customize the text for your axes labels here.
+
+### Waterfall charts
+
+Waterfall charts are a kind of bar chart useful for visualizing results that contain both positive and negative values. Each bar on a waterfall chart shows either an increase or decrease, with a final bar on the right of the chart that represents the total value.
+
+![Waterfall chart](images/visualizations/waterfall-chart.png)
+
+In the example above, the waterfall chart displays "Profit" for each "Product:" apples, bananas, oranges, peaches, and mangos. From left to right, each bar indicates the change in total. The products with green bars indicate positive values (they made a profit). Peaches, however, lost money, indicated by a red bar, which signals a negative value. The bar at the end shows the total profit of all products combined. You can show values on each bar, and change the colors for increases and decreases.
+
+For waterfall charts, you'll want a query that is a single metric grouped by a single dimension: by time or category.
 
 ### Scatterplots and bubble charts
 
@@ -270,7 +306,7 @@ When you open up the Map options, you can manually switch between a region map (
 
 Metabase also allows administrators to add custom region maps via GeoJSON files through the Metabase **Admin Panel**.
 
-Learn more about [visualizing data with maps](https://www.metabase.com/blog/map-visualization/index.html).
+Learn more about [visualizing data with maps](https://www.metabase.com/learn/basics/visualizing-data/maps.html).
 
 ---
 

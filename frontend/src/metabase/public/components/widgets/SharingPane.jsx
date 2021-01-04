@@ -2,7 +2,6 @@
 
 import React, { Component } from "react";
 import { t } from "ttag";
-import RetinaImage from "react-retina-image";
 import Icon from "metabase/components/Icon";
 import Toggle from "metabase/components/Toggle";
 import CopyWidget from "metabase/components/CopyWidget";
@@ -145,10 +144,13 @@ export default class SharingPane extends Component {
             disabled: !resource.public_uuid,
           })}
         >
-          <RetinaImage
+          <img
             width={98}
             src="app/assets/img/simple_embed.png"
-            forceOriginalDimensions={false}
+            srcSet="
+              app/assets/img/simple_embed.png     1x,
+              app/assets/img/simple_embed.png@2x  2x
+            "
           />
           <div className="ml2">
             <h3 className="text-green mb1">{t`Public embed`}</h3>
@@ -163,10 +165,13 @@ export default class SharingPane extends Component {
             })}
             onClick={() => onChangeEmbedType("application")}
           >
-            <RetinaImage
+            <img
               width={100}
               src="app/assets/img/secure_embed.png"
-              forceOriginalDimensions={false}
+              srcSet="
+                app/assets/img/secure_embed.png     1x,
+                app/assets/img/secure_embed@2x.png  2x
+              "
             />
             <div className="ml2">
               <h3 className="text-purple mb1">{t`Embed this ${resourceType} in an application`}</h3>

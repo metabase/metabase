@@ -833,14 +833,6 @@ jobs:
           command: run test-unit
           skip-key: unit
 
-  fe-tests-integration:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend integration tests
-          command: run test-integration
-          skip-key: integration
-
   fe-tests-timezones:
     executor: node
     steps:
@@ -1338,9 +1330,6 @@ workflows:
           requires:
             - fe-deps
       - fe-tests-unit:
-          requires:
-            - fe-deps
-      - fe-tests-integration:
           requires:
             - fe-deps
       - fe-tests-timezones:

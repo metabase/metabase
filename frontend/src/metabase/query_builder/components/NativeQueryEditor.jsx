@@ -549,7 +549,7 @@ export default class NativeQueryEditor extends Component {
       }
     } else {
       dataSelectors = (
-        <span className="p2 text-medium">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>
+        <span className="ml2 p2 text-medium">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>
       );
     }
 

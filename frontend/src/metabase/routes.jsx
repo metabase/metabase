@@ -29,12 +29,11 @@ import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp";
 
-import {
-  BrowseApp,
-  DatabaseBrowser,
-  SchemaBrowser,
-  TableBrowser,
-} from "metabase/components/BrowseApp";
+/* Browse data */
+import BrowseApp from "metabase/browse/components/BrowseApp";
+import DatabaseBrowser from "metabase/browse/containers/DatabaseBrowser";
+import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
+import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
