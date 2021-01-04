@@ -25,6 +25,7 @@ import {
 } from "./lexer";
 
 import { isExpressionType, getFunctionArgType } from ".";
+import { typeCheck } from "./typechecker";
 
 export class ExpressionParser extends CstParser {
   constructor(config = {}) {
@@ -457,6 +458,7 @@ export function parse({
   if (parserErrors.length > 0 && !recover) {
     throw parserErrors;
   }
+  typeCheck(cst, startRule || "expression");
   const parserRecovered = !!(cst && parserErrors.length > 0);
 
   return {
