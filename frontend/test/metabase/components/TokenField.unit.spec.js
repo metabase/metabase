@@ -77,6 +77,8 @@ describe("TokenField", () => {
 
   const clickText = str => fireEvent.click(screen.getByText(str));
 
+  const inputKeydown = keyCode =>
+    fireEvent.keyDown(input(), { keyCode: keyCode });
 
   const findWithinValues = collection =>
     expect(values().textContent).toBe(collection.join(""));
@@ -215,7 +217,7 @@ describe("TokenField", () => {
       type("Do");
       findWithinValues(["Do"]);
 
-      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      inputKeydown(KEYCODE_ENTER);
       findWithinValues(["Doohickey"]);
       expect(input().value).toEqual("");
       findWithinOptions(["Gadget", "Gizmo", "Widget"]);
@@ -241,7 +243,7 @@ describe("TokenField", () => {
       type("G");
       findWithinOptions(["Gadget", "Gizmo"]);
 
-      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      inputKeydown(KEYCODE_ENTER);
       findWithinOptions(["Gizmo"]);
       expect(input().value).toEqual("");
 
@@ -254,17 +256,17 @@ describe("TokenField", () => {
       type("G");
       findWithinOptions(["Gadget", "Gizmo"]);
 
-      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      inputKeydown(KEYCODE_ENTER);
       findWithinOptions(["Gizmo"]);
 
-      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      inputKeydown(KEYCODE_ENTER);
       findWithinOptions(["Doohickey", "Widget"]);
     });
 
     it("should hide the option if typed exactly then press enter", () => {
       type("Gadget");
       findWithinOptions(["Gadget"]);
-      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      inputKeydown(KEYCODE_ENTER);
       findWithinValues(["Gadget"]);
       findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
@@ -272,7 +274,7 @@ describe("TokenField", () => {
     it("should hide the option if typed partially then press enter", () => {
       type("Gad");
       findWithinOptions(["Gadget"]);
-      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      inputKeydown(KEYCODE_ENTER);
       findWithinValues(["Gadget"]);
       findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
@@ -366,7 +368,7 @@ describe("TokenField", () => {
         // the initially selected option should be the first option
         // expect(component.state().selectedOptionValue).toBe(DEFAULT_OPTIONS[1]);
 
-        fireEvent.keyDown(input(), { keyCode: KEYCODE_DOWN });
+        inputKeydown(KEYCODE_DOWN);
         screen.debug();
 
         // input().simulate("keydown", {
@@ -498,7 +500,7 @@ describe("TokenField", () => {
       let call = layoutRenderer.mock.calls.pop();
       expect(call[0].isFiltered).toEqual(false);
       expect(call[0].isAllSelected).toEqual(false);
-      fireEvent.keyDown(input(), { keyCode: KEYCODE_ENTER });
+      inputKeydown(KEYCODE_ENTER);
       call = layoutRenderer.mock.calls.pop();
       expect(call[0].optionList).toEqual(undefined);
       expect(call[0].isFiltered).toEqual(false);
