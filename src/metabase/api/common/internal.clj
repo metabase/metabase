@@ -113,7 +113,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn parse-int
-  "Parse VALUE (presumabily a string) as an Integer, or throw a 400 exception. Used to automatically to parse `id`
+  "Parse `value` (presumabily a string) as an Integer, or throw a 400 exception. Used to automatically to parse `id`
   parameters in `defendpoint` functions."
   [^String value]
   (try (Integer/parseInt value)
@@ -170,7 +170,7 @@
        (map second)
        (map keyword)))
 
-(defn typify-args
+(defn- typify-args
   "Given a sequence of keyword `args`, return a sequence of `[:arg pattern :arg pattern ...]` for args that have
   matching types."
   [args]
@@ -178,11 +178,11 @@
        (mapcat route-param-regex)
        (filterv identity)))
 
-(defn typify-route
+(defn add-route-param-regexes
   "Expand a `route` string like \"/:id\" into a Compojure route form that uses regexes to match parameters whose name
   matches a regex from `auto-parse-arg-name-patterns`.
 
-    (typify-route \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]"
+    (add-route-param-regexes \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]"
   [route]
   (if (vector? route)
     route
