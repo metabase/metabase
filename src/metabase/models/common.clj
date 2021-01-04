@@ -70,6 +70,7 @@
    "Europe/Belgrade"
    "Europe/Berlin"
    "Europe/Brussels"
+   "Europe/Budapest"
    "Europe/Helsinki"
    "Europe/Istanbul"
    "Europe/London"
