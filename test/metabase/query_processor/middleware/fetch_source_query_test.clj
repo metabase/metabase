@@ -107,8 +107,7 @@
                                   :source-query    {:source-table (mt/id :venues)
                                                     :limit        100}
                                   :source-metadata nil}}
-                  (for [col (qp/query->expected-cols (mt/mbql-query :venues))]
-                    (assoc col :field_ref [:field-literal (:name col) (:base_type col)])))
+                  (qp/query->expected-cols (mt/mbql-query :venues)))
                  (assoc-in [:query :source-query :source-metadata]
                            (mt/derecordize (qp/query->expected-cols (mt/mbql-query :venues))))
                  (assoc :info {:card-id (u/get-id card-2)}))
