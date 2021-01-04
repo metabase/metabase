@@ -193,18 +193,18 @@
               (is (= 6 (count (get-in result [:data :cols]))))
               (is (= 2273 (count rows)))
 
-              (is (= ["AK" "Affiliate" "Doohickey" 18 81 0] (first rows)))
-              (is (= ["CO" "Affiliate" "Gadget" 62 211 0] (nth rows 100)))
-              (is (= ["ND" nil nil 589 2183 6] (nth rows 2250)))
-              (is (= [nil nil nil 18760 69540 7] (last rows))))))))))
+              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+              (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+              (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
+              (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
 
 (defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
   `(let [dashboard-settings# (merge
-                              {:parameters [{:id      "_PEOPLE_ID_"
-                                             :name    "People ID"
-                                             :slug    "people_id"
-                                             :type    "id"
-                                             :target  [:dimension (mt/id :people :id)]
+                              {:parameters [{:id      "_STATE_"
+                                             :name    "State"
+                                             :slug    "state"
+                                             :type    "string"
+                                             :target  [:dimension [:fk-> (mt/id :orders :user_id) (mt/id :people :state)]]
                                              :default nil}]}
                               (shared-obj)
                               ~dashboard)]
@@ -236,16 +236,35 @@
   (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
       (testing "GET /api/advanced_computation/public/pivot/dashboard/:uuid/card/:card-id"
-        (mt/with-temporary-setting-values [enable-public-sharing true]
-          (with-temp-pivot-public-dashboard-and-card [dash card]
-            (let [result (http/client :get 202 (dashcard-url dash card))
-                  rows   (mt/rows result)]
-              (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
-              (is (= "completed" (:status result)))
-              (is (= 6 (count (get-in result [:data :cols]))))
-              (is (= 2273 (count rows)))
+        (testing "without parameters"
+          (mt/with-temporary-setting-values [enable-public-sharing true]
+            (with-temp-pivot-public-dashboard-and-card [dash card]
+              (let [result (http/client :get 202 (dashcard-url dash card))
+                    rows   (mt/rows result)]
+                (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                (is (= "completed" (:status result)))
+                (is (= 6 (count (get-in result [:data :cols]))))
+                (is (= 2273 (count rows)))
 
-              (is (= ["AK" "Affiliate" "Doohickey" 18 81 0] (first rows)))
-              (is (= ["CO" "Affiliate" "Gadget" 62 211 0] (nth rows 100)))
-              (is (= ["ND" nil nil 589 2183 6] (nth rows 2250)))
-              (is (= [nil nil nil 18760 69540 7] (last rows))))))))))
+                (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+                (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+                (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
+                (is (= [nil nil nil 7 18760 69540] (last rows)))))))
+
+        (testing "with parameters"
+          (mt/with-temporary-setting-values [enable-public-sharing true]
+            (with-temp-pivot-public-dashboard-and-card [dash card]
+              (let [result (http/client :get 202 (dashcard-url dash card)
+                                        :parameters (json/encode [{:name   "State"
+                                                                   :slug   :state
+                                                                   :target [:dimension [:fk-> (mt/id :orders :user_id) (mt/id :people :state)]]
+                                                                   :value  ["CA" "WA"]}]))
+                    rows   (mt/rows result)]
+                (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                (is (= "completed" (:status result)))
+                (is (= 6 (count (get-in result [:data :cols]))))
+                (is (= 131 (count rows)))
+
+                (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
+                (is (= [nil "Twitter" "Widget" 1 77 270] (nth rows 100)))
+                (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))
