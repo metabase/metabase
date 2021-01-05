@@ -78,7 +78,7 @@
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
-  (u/minutes->ms 4)) ; 4 minutes
+  (u/minutes->ms 9)) ; 9 minutes - Redshift is slow. Set to 9 minutes because Circle CI will timeout at 10 minutes.
 
 (def ^:private sync-timeout-ms
   "Max amount of time to wait for sync to complete."

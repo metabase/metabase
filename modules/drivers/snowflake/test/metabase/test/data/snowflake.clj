@@ -136,7 +136,7 @@
 
 (defmethod load-data/load-data! :snowflake
   [& args]
-  (apply load-data/load-data-add-ids! args))
+  (apply load-data/load-data-add-ids-chunked! args))
 
 (defmethod tx/aggregate-column-info :snowflake
   ([driver ag-type]
