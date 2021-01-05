@@ -126,7 +126,7 @@
   (for [collection collections
         :when      (contains? (set collection-ids-to-keep) (:id collection))]
     (cond-> (select-keys collection [:name :children])
-      (:children collection) (update :children collection-tree-names-only))))
+      (:children collection) (update :children (partial collection-tree-names-only collection-ids-to-keep)))))
 
 (deftest collection-tree-test
   (testing "GET /api/collection/tree"
