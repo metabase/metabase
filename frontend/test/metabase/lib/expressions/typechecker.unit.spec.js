@@ -41,11 +41,13 @@ describe("type-checker", () => {
       metricExpression(ctx) {
         this.metrics.push(this.visit(ctx.metricName));
       }
-      segmentExpression(ctx) {
-        this.segments.push(this.visit(ctx.segmentName));
-      }
       dimensionExpression(ctx) {
-        this.dimensions.push(this.visit(ctx.dimensionName));
+        const name = this.visit(ctx.dimensionName);
+        if (ctx.resolveAs === "segment") {
+          this.segments.push(name);
+        } else {
+          this.dimensions.push(name);
+        }
       }
     }
     const tree = parseSource(source, startRule);

@@ -141,7 +141,7 @@ export function suggest({
         (isExpressionType(expectedType, "expression") ||
           isExpressionType(expectedType, "boolean"));
       const isSegment =
-        parentRule === "segmentExpression" &&
+        parentRule === "dimensionExpression" &&
         isExpressionType(expectedType, "boolean");
       const isMetric =
         parentRule === "metricExpression" &&
@@ -526,7 +526,6 @@ const ALL_RULES = [
   "functionExpression",
   "caseExpression",
   "metricExpression",
-  "segmentExpression",
   "dimensionExpression",
   "identifier",
   "identifierString",
