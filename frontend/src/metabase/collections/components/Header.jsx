@@ -7,7 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import PageHeading from "metabase/components/PageHeading";
+import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 
