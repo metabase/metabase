@@ -29,7 +29,7 @@ import User from "metabase/entities/users";
 import { push, goBack } from "react-router-redux";
 import { connect } from "react-redux";
 
-import { cleanPulse, createChannel } from "metabase/lib/pulse";
+import { cleanPulse, createChannel, pulseIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
 
 import {
@@ -709,6 +709,7 @@ class SharingSidebar extends React.Component {
           onClose={this.handleSave}
           onCancel={onCancel}
           className="text-dark"
+          closeIsDisabled={!pulseIsValid(pulse, formInput.channels)}
         >
           <div className="pt4 px4 flex align-center">
             <Icon name="mail" className="mr1" size={21} />
