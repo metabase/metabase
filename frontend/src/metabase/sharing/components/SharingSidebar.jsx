@@ -506,7 +506,6 @@ class SharingSidebar extends React.Component {
   // onCancel from props and either call that or reset back a screen
   onCancel = () => {
     const { onCancel } = this.props;
-    console.log("do we get here?", this.state.returnMode);
     if (this.state.returnMode && this.state.editingMode !== "unknown") {
       // set the current mode back to what it should be
       this.setState({
