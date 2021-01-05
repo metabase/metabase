@@ -7,7 +7,7 @@ the [Metabase Commercial License](https://www.metabase.com/license/commercial/),
 fully-paid-up license from Metabase. Access to files in this directory and its subdirectories does not constitute
 permission to use this code or Metabase Enterprise Edition features.
 
-Unless otherwise noted, all files Copyright © 2020 Metabase, Inc.
+Unless otherwise noted, all files Copyright © 2021 Metabase, Inc.
 
 ## Running it
 
