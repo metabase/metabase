@@ -5,7 +5,7 @@
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.pulse :as models.pulse]
@@ -765,7 +765,46 @@
                    :fallback               "Test card 2"}]}
                 (thunk->boolean slack-data)))
          (testing "attachments"
-           (is (true? (every? produces-bytes? (:attachments slack-data))))))))))
+           (is (true? (every? produces-bytes? (:attachments slack-data)))))))))
+  (testing "Basic slack test, 2 cards, 1 recipient channel as a dashboard subscription"
+    (mt/with-temp* [Card          [{card-id-1 :id}     (checkins-query-card {:breakout [!hour.date]})]
+                    Card          [{card-id-2 :id}     (-> {:breakout [[:datetime-field (mt/id :checkins :date) "minute"]]}
+                                                           checkins-query-card
+                                                           (assoc :name "Test card 2"))]
+                    Pulse         [{pulse-id :id}      {:name          "Pulse Name"
+                                                        :skip_if_empty false}]
+                    Dashboard     [{dashboard-id :id}  {:name "Aviary Analytics"}]
+                    DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1}]
+                    DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-2}]
+                    PulseCard     [_                   {:pulse_id          pulse-id
+                                                        :card_id           card-id-1
+                                                        :dashboard_card_id dashcard-id-1
+                                                        :position          0}]
+                    PulseCard     [_                   {:pulse_id          pulse-id
+                                                        :card_id           card-id-2
+                                                        :dashboard_card_id dashcard-id-2
+                                                        :position          1}]
+                    PulseChannel  [{pc-id :id}         {:pulse_id     pulse-id
+                                                        :channel_type "slack"
+                                                        :details      {:channel "#general"}}]]
+      (slack-test-setup
+       (let [[slack-data] (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))]
+         (is (= {:channel-id "#general",
+                 :message    "Pulse Name", ;; No "Pulse: " prefix
+                 :attachments
+                 [{:title                  card-name,
+                   :attachment-bytes-thunk true,
+                   :title_link             (str "https://metabase.com/testmb/question/" card-id-1),
+                   :attachment-name        "image.png",
+                   :channel-id             "FOO",
+                   :fallback               card-name}
+                  {:title                  "Test card 2",
+                   :attachment-bytes-thunk true
+                   :title_link             (str "https://metabase.com/testmb/question/" card-id-2),
+                   :attachment-name        "image.png",
+                   :channel-id             "FOO",
+                   :fallback               "Test card 2"}]}
+                (thunk->boolean slack-data))))))))
 
 (deftest multi-channel-test
   (testing "Test with a slack channel and an email"
