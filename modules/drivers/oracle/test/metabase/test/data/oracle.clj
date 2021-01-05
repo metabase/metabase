@@ -97,7 +97,7 @@
 
 (defmethod load-data/load-data! :oracle
   [driver dbdef tabledef]
-  (load-data/load-data-add-ids! driver dbdef tabledef))
+  (load-data/load-data-add-ids-chunked! driver dbdef tabledef))
 
 (defmethod tx/has-questionable-timezone-support? :oracle [_] true)
 
@@ -146,7 +146,7 @@
    (non-session-schemas)))
 
 
-;;; Clear out the sesion schema before and after tests run
+;;; Clear out the session schema before and after tests run
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (defn- execute! [format-string & args]
   (let [sql (apply format format-string args)]

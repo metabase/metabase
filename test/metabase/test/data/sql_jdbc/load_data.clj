@@ -148,6 +148,10 @@
   "Implementation of `load-data!`. Insert all rows at once; add IDs."
   (make-load-data-fn load-data-add-ids))
 
+(def load-data-add-ids-chunked!
+  "Implementation of `load-data!`. Insert rows in chunks of 200 at a time; add IDs."
+  (make-load-data-fn load-data-add-ids load-data-chunked))
+
 (def load-data-one-at-a-time-add-ids!
   "Implementation of `load-data!` that inserts rows one at a time, but adds IDs."
   (make-load-data-fn load-data-add-ids load-data-one-at-a-time))
