@@ -10,7 +10,7 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 const customFormulas = [
   {
@@ -374,6 +374,34 @@ describe("scenarios > question > custom columns", () => {
         .click();
 
       cy.findByText(CC_NAME);
+    });
+  });
+
+  it.skip("should handle identical custom column and table column names (metabase#14255)", () => {
+    // Uppercase is important for this reproduction on H2
+    const CC_NAME = "CATEGORY";
+
+    cy.request("POST", "/api/card", {
+      name: "14255",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            [CC_NAME]: ["concat", ["field-id", PRODUCTS.CATEGORY], "2"],
+          },
+          aggregation: [["count"]],
+          breakout: [["expression", CC_NAME]],
+        },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.findByText(CC_NAME);
+      cy.findByText("Gizmo2");
     });
   });
 });
