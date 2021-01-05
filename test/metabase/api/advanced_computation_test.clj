@@ -11,6 +11,13 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(def ^:private applicable-drivers
+  ;; Redshift takes A LONG TIME to insert the sample-dataset, so do not
+  ;; run these tests against Redshift (for now?)
+  ;;TODO: refactor Redshift testing to support a bulk COPY or something
+  ;; other than INSERT INTO statements
+  (disj (mt/normal-drivers-with-feature :expressions :left-join) :redshift))
+
 (defn- pivot-query
   []
   (-> (mt/mbql-query orders
@@ -73,7 +80,7 @@
          ~@body))))
 
 (deftest pivot-dataset-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
       (testing "POST /api/advanced_computation/pivot/dataset"
         (testing "Run a pivot table"
@@ -111,7 +118,7 @@
             (is (= [nil nil nil "wheeee" 7 18760 69540] (last rows)))))))))
 
 (deftest pivot-filter-dataset-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
       (testing "POST /api/advanced_computation/pivot/dataset"
         (testing "Run a pivot table"
@@ -129,7 +136,7 @@
             (is (= [nil nil 3 7562] (last rows)))))))))
 
 (deftest pivot-parameter-dataset-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
       (testing "POST /api/advanced_computation/pivot/dataset"
         (testing "Run a pivot table"
@@ -147,7 +154,7 @@
             (is (= [nil nil 3 2009] (last rows)))))))))
 
 (deftest pivot-card-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
       (testing "POST /api/advanced_computation/pivot/card/id"
         (with-temp-pivot-card [_ card]
@@ -164,7 +171,7 @@
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
 (deftest pivot-public-card-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
       (testing "GET /api/advanced_computation/public/pivot/card/:uuid/query"
         (mt/with-temporary-setting-values [enable-public-sharing true]

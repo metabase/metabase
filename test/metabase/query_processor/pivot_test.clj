@@ -5,8 +5,15 @@
             [metabase.query-processor.pivot :as sut]
             [metabase.test :as mt]))
 
+(def ^:private applicable-drivers
+  ;; Redshift takes A LONG TIME to insert the sample-dataset, so do not
+  ;; run these tests against Redshift (for now?)
+  ;;TODO: refactor Redshift testing to support a bulk COPY or something
+  ;; other than INSERT INTO statements
+  (disj (mt/normal-drivers-with-feature :expressions :left-join) :redshift))
+
 (deftest generate-queries-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
       (let [request {:database   (mt/db)
                      :query      {:source-table (mt/$ids $$orders)
