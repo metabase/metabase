@@ -25,18 +25,20 @@
 
 
 (def ^:private CronHour
-  (s/constrained s/Int (fn [n]
-                         (and (>= n 0)
-                              (<= n 23)))))
+  (s/constrained s/Int (fn [n] (<= 0 n 23))))
+
+(def ^:private CronMinute
+  (s/constrained s/Int (fn [n] (<= 0 n 59))))
 
 (def ScheduleMap
   "Schema for a frontend-parsable schedule map. Used for Pulses and DB scheduling."
   (su/with-api-error-message
       (s/named
-       {(s/optional-key :schedule_day)   (s/maybe (s/enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"))
-        (s/optional-key :schedule_frame) (s/maybe (s/enum "first" "mid" "last"))
-        (s/optional-key :schedule_hour)  (s/maybe CronHour)
-        :schedule_type                   (s/enum "hourly" "daily" "weekly" "monthly")}
+        {(s/optional-key :schedule_day)    (s/maybe (s/enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"))
+         (s/optional-key :schedule_frame)  (s/maybe (s/enum "first" "mid" "last"))
+         (s/optional-key :schedule_hour)   (s/maybe CronHour)
+         (s/optional-key :schedule_minute) (s/maybe CronMinute)
+         :schedule_type                    (s/enum "hourly" "daily" "weekly" "monthly")}
        "Expanded schedule map")
     "value must be a valid schedule map. See schema in metabase.util.cron for details."))
 
@@ -82,9 +84,10 @@
 
 (s/defn ^{:style/indent 0} schedule-map->cron-string :- CronScheduleString
   "Convert the frontend schedule map into a cron string."
-  [{day-of-week :schedule_day, frame :schedule_frame, hour :schedule_hour, schedule-type :schedule_type} :- ScheduleMap]
+  [{day-of-week :schedule_day, hour :schedule_hour, minute :schedule_minute,
+    frame :schedule_frame,  schedule-type :schedule_type} :- ScheduleMap]
   (cron-string (case (keyword schedule-type)
-                 :hourly  {}
+                 :hourly  {:minutes minute}
                  :daily   {:hours hour}
                  :weekly  {:hours       hour
                            :day-of-week (day-of-week->cron day-of-week)
@@ -116,10 +119,10 @@
     (= day-of-month "L")               "last"
     :else                              nil))
 
-(defn- cron->hour [hours]
-  (when (and hours
-             (not= hours "*"))
-    (Integer/parseInt hours)))
+(defn- cron->digit [digit]
+  (when (and digit
+             (not= digit "*"))
+    (Integer/parseInt digit)))
 
 (defn- cron->schedule-type [hours day-of-month day-of-week]
   (cond
@@ -137,11 +140,12 @@
 (s/defn ^{:style/indent 0} cron-string->schedule-map :- ScheduleMap
   "Convert a normal `cron-string` into the expanded ScheduleMap format used by the frontend."
   [cron-string :- CronScheduleString]
-  (let [[_ _ hours day-of-month _ day-of-week _] (str/split cron-string #"\s+")]
-    {:schedule_day   (cron->day-of-week day-of-week)
-     :schedule_frame (cron-day-of-week+day-of-month->frame day-of-week day-of-month)
-     :schedule_hour  (cron->hour hours)
-     :schedule_type  (cron->schedule-type hours day-of-month day-of-week)}))
+  (let [[_ mins hours day-of-month _ day-of-week _] (str/split cron-string #"\s+")]
+    {:schedule_minute (cron->digit mins)
+     :schedule_day    (cron->day-of-week day-of-week)
+     :schedule_frame  (cron-day-of-week+day-of-month->frame day-of-week day-of-month)
+     :schedule_hour   (cron->digit hours)
+     :schedule_type   (cron->schedule-type hours day-of-month day-of-week)}))
 
 (s/defn describe-cron-string :- su/NonBlankString
   "Return a human-readable description of a cron expression, localized for the current User."

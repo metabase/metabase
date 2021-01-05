@@ -84,22 +84,25 @@
                                              :schedule_frame nil
                                              :schedule_hour  0
                                              :schedule_type  "daily"}
-                        :metadata_sync      {:schedule_day   nil
-                                             :schedule_frame nil
-                                             :schedule_hour  nil
-                                             :schedule_type  "hourly"}}))
+                        :metadata_sync      {:schedule_day    nil
+                                             :schedule_frame  nil
+                                             :schedule_hour   nil
+                                             :schedule_type   "hourly"
+                                             :schedule_minute 50}}))
 
 (deftest get-database-test
   (testing "GET /api/database/:id"
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
-        (is (= (add-schedules (-> (db-details)
-                                  (dissoc :details)))
-               ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id))))))
+        (is (= (-> (db-details)
+                   (dissoc :details :schedules))
+               (-> ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id)))
+                   (dissoc :schedules)))))
 
       (testing "Superusers should see DB details"
-        (is (= (add-schedules (db-details))
-               ((mt/user->client :crowberto) :get 200 (format "database/%d" (mt/id)))))))
+        (is (= (db-details)
+               (-> ((mt/user->client :crowberto) :get 200 (format "database/%d" (mt/id)))
+                   (dissoc :schedules))))))
 
     (mt/with-temp* [Database [db {:name "My DB", :engine ::test-driver}]
                     Table    [t1 {:name "Table 1", :db_id (:id db)}]
@@ -153,6 +156,8 @@
     (testing "Check that we can create a Database"
       (is (schema= (merge
                     (m/map-vals s/eq (mt/object-defaults Database))
+                    {:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"
+                     :cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"}
                     {:created_at java.time.temporal.Temporal
                      :engine     (s/eq ::test-driver)
                      :id         su/IntGreaterThanZero
@@ -548,16 +553,18 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private schedule-map-for-last-friday-at-11pm
-  {:schedule_day   "fri"
-   :schedule_frame "last"
-   :schedule_hour  23
-   :schedule_type  "monthly"})
+  {:schedule_minute 0
+   :schedule_day    "fri"
+   :schedule_frame  "last"
+   :schedule_hour   23
+   :schedule_type   "monthly"})
 
 (def ^:private schedule-map-for-hourly
-  {:schedule_day   nil
-   :schedule_frame nil
-   :schedule_hour  nil
-   :schedule_type  "hourly"})
+  {:schedule_minute 0
+   :schedule_day    nil
+   :schedule_frame  nil
+   :schedule_hour   nil
+   :schedule_type   "hourly"})
 
 (deftest create-new-db-with-custom-schedules-test
   (testing "Can we create a NEW database and give it custom schedules?"
@@ -566,7 +573,7 @@
                       ((mt/user->client :crowberto) :post 200 "database"
                        {:name      db-name
                         :engine    (u/qualified-name ::test-driver)
-                        :details   {:db "my_db"}
+                        :details   {:db "my_db" :let-user-control-scheduling true}
                         :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
                                     :metadata_sync      schedule-map-for-hourly}}))]
              (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
