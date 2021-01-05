@@ -4,7 +4,7 @@
              [string :as str]
              [test :refer :all]]
             [metabase
-             [models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet Permissions PermissionsGroup
+             [models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
                              PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
              [test :as mt]
              [util :as u]]
@@ -119,6 +119,15 @@
 ;;; |                                              GET /collection/tree                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- collection-tree-names-only
+  "Keep just the names of Collections in `collection-ids-to-keep` in the response returned by the Collection tree
+  endpoint."
+  [collection-ids-to-keep collections]
+  (for [collection collections
+        :when      (contains? (set collection-ids-to-keep) (:id collection))]
+    (cond-> (select-keys collection [:name :children])
+      (:children collection) (update :children (partial collection-tree-names-only collection-ids-to-keep)))))
+
 (deftest collection-tree-test
   (testing "GET /api/collection/tree"
     (with-collection-hierarchy [a b c d e f g]
@@ -126,21 +135,15 @@
                                          [a b c d e f g])))
             response (mt/user-http-request :rasta :get 200 "collection/tree")]
         (testing "Make sure overall tree shape of the response is as is expected"
-          (letfn [(collection-names [collections]
-                    (for [collection collections
-                          :when      (contains? ids (:id collection))]
-                      (cond-> (select-keys collection [:name :children])
-                        (:children collection) (update :children collection-names))))]
-            (testing "GET /api/collection/tree"
-              (is (= [{:name     "A"
-                       :children [{:name "B"}
-                                  {:name     "C"
-                                   :children [{:name     "D"
-                                               :children [{:name "E"}]}
-                                              {:name     "F"
-                                               :children [{:name "G"}]}]}]}
-                      {:name "Rasta Toucan's Personal Collection"}]
-                     (collection-names response))))))
+          (is (= [{:name     "A"
+                   :children [{:name "B"}
+                              {:name     "C"
+                               :children [{:name     "D"
+                                           :children [{:name "E"}]}
+                                          {:name     "F"
+                                           :children [{:name "G"}]}]}]}
+                  {:name "Rasta Toucan's Personal Collection"}]
+                 (collection-tree-names-only ids response))))
         (testing "Make sure each Collection comes back with the expected keys"
           (is (= {:description       nil
                   :archived          false
@@ -154,6 +157,24 @@
                  (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
                           %)
                        response))))))))
+
+(deftest collection-tree-child-permissions-test
+  (testing "GET /api/collection/tree"
+    (testing "Tree endpoint should still return Collections if we don't have perms for the parent Collection (#14114)"
+      ;; Create a hierarchy like:
+      ;;
+      ;; + Our analytics (Revoke permissions to All Users)
+      ;; +--+ Parent collection (Revoke permissions to All Users)
+      ;;    +--+ Child collection (Give All Users group Curate access)
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp* [Collection [parent-collection {:name "Parent"}]
+                        Collection [child-collection  {:name "Child", :location (format "/%d/" (:id parent-collection))}]]
+          (perms/revoke-collection-permissions! (group/all-users) parent-collection)
+          (perms/grant-collection-readwrite-permissions! (group/all-users) child-collection)
+          (is (= [{:name "Child"}]
+                 (collection-tree-names-only (map :id [parent-collection child-collection])
+                                             (mt/user-http-request :rasta :get 200 "collection/tree")))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |

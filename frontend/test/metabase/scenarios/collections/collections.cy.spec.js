@@ -289,7 +289,7 @@ describe("scenarios > collection_defaults", () => {
       signInAsAdmin();
     });
 
-    it.skip("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
+    it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
       // Create Parent collection within `Our analytics`
       cy.request("POST", "/api/collection", {
         name: "Parent",
