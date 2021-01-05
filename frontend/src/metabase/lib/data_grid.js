@@ -219,7 +219,7 @@ function createRowSectionGetter({
         rowColumnIndexes.length > 1
           ? [
               columns.flatMap(col =>
-                getSubtotals(rowColumnIndexes.slice(0, -1), [rows[0][0]]),
+                getSubtotals(rowColumnIndexes.slice(0, 1), [rows[0][0]]),
               ),
             ]
           : [];
