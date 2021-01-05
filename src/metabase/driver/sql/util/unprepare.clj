@@ -17,7 +17,7 @@
 (defmulti unprepare-value
   "Convert a single argument to appropriate raw SQL for splicing directly into a SQL query. Dispatches on both driver
   and the class of `value`."
-  {:arglists '([driver value])}
+  {:arglists '(^String [driver value])}
   (fn [driver value]
     [(driver/the-initialized-driver driver) (class value)])
   :hierarchy #'driver/hierarchy)

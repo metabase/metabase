@@ -309,7 +309,7 @@
 (s/defn ^:private value-for-tag :- ParsedParamValue
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
-  [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
+  [tag :- TagParam params :- (s/maybe [i/ParamValue])]
   (try
     (parse-value-for-type (:type tag) (parse-tag tag params))
     (catch Throwable e
