@@ -24,7 +24,7 @@
                               :type/Decimal        "NUMERIC"
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
-                              :type/Text           "VARCHAR(254)"
+                              :type/Text           "VARCHAR(1024)"
                               :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
