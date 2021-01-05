@@ -1004,32 +1004,39 @@
                               :children [{:name \"G\"}]}]}]}
      {:name \"H\"}]"
   [collections]
-  (transduce
-   identity
-   (fn ->tree
-     ;; 1. We'll use a map representation to start off with to make building the tree easier. Keyed by Collection ID
-     ;; e.g.
-     ;;
-     ;; {1 {:name "A"
-     ;;     :children {2 {:name "B"}, ...}}}
-     ([] {})
-     ;; 2. For each as we come across it, put it in the correct location in the tree. Convert it's `:location` (e.g.
-     ;; `/1/`) plus its ID to a key path e.g. `[1 :children 2]`
-     ([m collection]
-      (let [path (interpose :children (concat (location-path->ids (:location collection))
-                                              [(:id collection)]))]
-        (assoc-in m path collection)))
-     ;; 3. Once we've build the entire tree structure, go in and convert each ID->Collection map into a flat sequence,
-     ;; sorted by the lowercased Collection name. Do this recursively for the `:children` of each Collection e.g.
-     ;;
-     ;; {1 {:name "A"
-     ;;     :children {2 {:name "B"}, ...}}}
-     ;; ->
-     ;; [{:name "A"
-     ;;   :children [{:name "B"}, ...]}]
-     ([m]
-      (let [vs (for [v (vals m)]
-                 (cond-> v
-                   (:children v) (update :children ->tree)))]
-        (sort-by (comp (fnil u/lower-case-en "") :name) vs))))
-   collections))
+  (let [all-visible-ids (set (map :id collections))]
+    (transduce
+     identity
+     (fn ->tree
+       ;; 1. We'll use a map representation to start off with to make building the tree easier. Keyed by Collection ID
+       ;; e.g.
+       ;;
+       ;; {1 {:name "A"
+       ;;     :children {2 {:name "B"}, ...}}}
+       ([] {})
+       ;; 2. For each as we come across it, put it in the correct location in the tree. Convert it's `:location` (e.g.
+       ;; `/1/`) plus its ID to a key path e.g. `[1 :children 2]`
+       ;;
+       ;; If any ancestor Collections are not present in `collections`, just remove their IDs from the path,
+       ;; effectively "pulling" a Collection up to a higher level. e.g. if we have A > B > C and we can't see B then
+       ;; the tree should come back as A > C.
+       ([m collection]
+        (let [path (as-> (location-path->ids (:location collection)) ids
+                     (filter all-visible-ids ids)
+                     (concat ids [(:id collection)])
+                     (interpose :children ids))]
+          (assoc-in m path collection)))
+       ;; 3. Once we've build the entire tree structure, go in and convert each ID->Collection map into a flat sequence,
+       ;; sorted by the lowercased Collection name. Do this recursively for the `:children` of each Collection e.g.
+       ;;
+       ;; {1 {:name "A"
+       ;;     :children {2 {:name "B"}, ...}}}
+       ;; ->
+       ;; [{:name "A"
+       ;;   :children [{:name "B"}, ...]}]
+       ([m]
+        (let [vs (for [v (vals m)]
+                   (cond-> v
+                     (:children v) (update :children ->tree)))]
+          (sort-by (comp (fnil u/lower-case-en "") :name) vs))))
+     collections)))
