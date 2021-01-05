@@ -148,6 +148,8 @@ const mapDispatchToProps = {
 class SharingSidebar extends React.Component {
   state = {
     editingMode: "unknown",
+    // use this to know where to go "back" to
+    returnMode: undefined,
   };
 
   static propTypes = {
@@ -288,7 +290,10 @@ class SharingSidebar extends React.Component {
   };
 
   createSubscription = () => {
-    this.setState({ editingMode: "new-pulse" });
+    this.setState({
+      editingMode: "new-pulse",
+      returnMode: this.state.editingMode,
+    });
     this.props.setEditingPulse(null, null);
   };
 
@@ -296,6 +301,7 @@ class SharingSidebar extends React.Component {
     this.setPulse(pulse);
     this.setState({
       editingMode: "add-edit-" + channelType,
+      returnMode: this.state.editingMode,
     });
   };
 
@@ -496,9 +502,25 @@ class SharingSidebar extends React.Component {
     this.setState({ editingMode: "unknown" });
   };
 
+  // Because you can navigate down the sidebar, we need to wrap
+  // onCancel from props and either call that or reset back a screen
+  onCancel = () => {
+    const { onCancel } = this.props;
+    console.log("do we get here?", this.state.returnMode);
+    if (this.state.returnMode && this.state.editingMode !== "unknown") {
+      // set the current mode back to what it should be
+      this.setState({
+        editingMode: this.state.returnMode,
+        returnMode: undefined,
+      });
+    } else {
+      onCancel();
+    }
+  };
+
   render() {
     const { editingMode } = this.state;
-    const { pulse, formInput, pulseList, onCancel } = this.props;
+    const { pulse, formInput, pulseList } = this.props;
 
     const caveatMessage = (
       <Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${(
@@ -539,7 +561,7 @@ class SharingSidebar extends React.Component {
                   name="close"
                   className="text-light bg-light-hover rounded p1 cursor-pointer"
                   size={22}
-                  onClick={onCancel}
+                  onClick={this.onCancel}
                 />
               </Tooltip>
             </Flex>
@@ -584,7 +606,7 @@ class SharingSidebar extends React.Component {
       const slackSpec = formInput.channels.slack;
 
       return (
-        <Sidebar onCancel={onCancel}>
+        <Sidebar onCancel={this.onCancel}>
           <div className="mt2 pt2 px4">
             <Heading>{t`Create a dashboard subscription`}</Heading>
           </div>
@@ -597,7 +619,10 @@ class SharingSidebar extends React.Component {
               })}
               onClick={() => {
                 if (emailSpec.configured) {
-                  this.setState({ editingMode: "add-edit-email" });
+                  this.setState({
+                    editingMode: "add-edit-email",
+                    returnMode: this.state.editingMode,
+                  });
                   this.addChannel("email");
                 }
               }}
@@ -644,7 +669,10 @@ class SharingSidebar extends React.Component {
               })}
               onClick={() => {
                 if (slackSpec.configured) {
-                  this.setState({ editingMode: "add-edit-slack" });
+                  this.setState({
+                    editingMode: "add-edit-slack",
+                    returnMode: this.state.editingMode,
+                  });
                   this.addChannel("slack");
                 }
               }}
@@ -707,7 +735,7 @@ class SharingSidebar extends React.Component {
       return (
         <Sidebar
           onClose={this.handleSave}
-          onCancel={onCancel}
+          onCancel={this.onCancel}
           className="text-dark"
         >
           <div className="pt4 px4 flex align-center">
@@ -807,7 +835,7 @@ class SharingSidebar extends React.Component {
       return (
         <Sidebar
           onClose={this.handleSave}
-          onCancel={onCancel}
+          onCancel={this.onCancel}
           className="text-dark"
         >
           <div className="pt4 flex align-center px4 mb3">
