@@ -147,7 +147,7 @@ const mapDispatchToProps = {
 )
 class SharingSidebar extends React.Component {
   state = {
-    editingMode: "unknown",
+    editingMode: undefined,
     // use this to know where to go "back" to
     returnMode: undefined,
   };
@@ -206,7 +206,7 @@ class SharingSidebar extends React.Component {
     const { pulseList } = this.props;
     const { editingMode } = this.state;
 
-    if ("unknown" === editingMode) {
+    if (editingMode === undefined) {
       if (pulseList && pulseList.length > 0) {
         this.setState({ editingMode: "list-pulses" });
       } else {
@@ -499,14 +499,14 @@ class SharingSidebar extends React.Component {
   handleArchive = async () => {
     await this.props.setPulseArchived(this.props.pulse, true);
     await this.props.fetchPulsesByDashboardId(this.props.dashboard.id);
-    this.setState({ editingMode: "unknown" });
+    this.setState({ editingMode: undefined });
   };
 
   // Because you can navigate down the sidebar, we need to wrap
   // onCancel from props and either call that or reset back a screen
   onCancel = () => {
     const { onCancel } = this.props;
-    if (this.state.returnMode && this.state.editingMode !== "unknown") {
+    if (this.state.returnMode) {
       // set the current mode back to what it should be
       this.setState({
         editingMode: this.state.returnMode,
