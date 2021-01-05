@@ -250,13 +250,6 @@ export class ExpressionParser extends CstParser {
       ]);
     });
 
-    $.RULE("segmentExpression", () => {
-      $.OR([
-        { ALT: () => $.SUBRULE($.identifierString, { LABEL: "segmentName" }) },
-        { ALT: () => $.SUBRULE($.identifier, { LABEL: "segmentName" }) },
-      ]);
-    });
-
     $.RULE("dimensionExpression", () => {
       $.OR([
         {
@@ -326,13 +319,6 @@ export class ExpressionParser extends CstParser {
                 LABEL: "expression",
               }),
           },
-          {
-            GATE: () => isExpressionType("boolean", returnType),
-            ALT: () =>
-              $.SUBRULE($.segmentExpression, {
-                LABEL: "expression",
-              }),
-          },
           // expressions
           {
             GATE: () =>
@@ -347,7 +333,8 @@ export class ExpressionParser extends CstParser {
           {
             GATE: () =>
               isExpressionType("string", returnType) ||
-              isExpressionType("number", returnType),
+              isExpressionType("number", returnType) ||
+              isExpressionType("boolean", returnType),
             ALT: () =>
               $.SUBRULE($.dimensionExpression, {
                 LABEL: "expression",
