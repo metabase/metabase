@@ -793,14 +793,6 @@ exports[`ModalContent should render "default" correctly 1`] = `
 </div>
 `;
 
-exports[`PageHeading should render "normal" correctly 1`] = `
-<h1
-  className="PageHeading-sc-5mtbjo-0 bnzsQf"
->
-  Hello World
-</h1>
-`;
-
 exports[`Position should render "Absolute" correctly 1`] = `
 <div
   className="yz785l-0-Position-kiwZOl ewxBZI sc-bdVaJa bTKLQy"
