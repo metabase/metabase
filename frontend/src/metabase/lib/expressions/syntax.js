@@ -132,13 +132,8 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     const metricName = this.visit(ctx.metricName);
     return syntaxNode("metric", metricName);
   }
-  segmentExpression(ctx) {
-    const segmentName = this.visit(ctx.segmentName);
-    return syntaxNode("segment", segmentName);
-  }
   dimensionExpression(ctx) {
-    const dimensionName = this.visit(ctx.dimensionName);
-    return syntaxNode("dimension", dimensionName);
+    return syntaxNode(ctx.resolveAs, this.visit(ctx.dimensionName));
   }
 
   identifier(ctx) {
