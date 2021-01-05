@@ -37,6 +37,15 @@ export const GTAPApi = {
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
+  function canonicalFieldRef(ref) {
+    // Field refs between the query and setting might differ slightly.
+    // This function trims binned dimensions to just the field-id
+    if (ref[0] === "binning-strategy") {
+      return ref.slice(0, 2);
+    }
+    return ref;
+  }
+
   function wrap(api) {
     return (params: ?Data, ...rest: any) => {
       const question = new Question(card, new Metadata());
@@ -46,7 +55,11 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
         setting,
         fieldRefs =>
           fieldRefs
-            .map(field_ref => breakout.findIndex(b => _.isEqual(b, field_ref)))
+            .map(field_ref =>
+              breakout.findIndex(b =>
+                _.isEqual(canonicalFieldRef(b), canonicalFieldRef(field_ref)),
+              ),
+            )
             .filter(index => index !== -1),
       );
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
