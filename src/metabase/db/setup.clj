@@ -12,12 +12,14 @@
              [connection :as mdb.connection]
              [liquibase :as liquibase]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
              [i18n :refer [trs]]
              [schema :as su]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import liquibase.exception.LockException))
 
 (defn- print-migrations-and-quit-if-needed!
@@ -125,9 +127,12 @@
   ;; TODO -- check whether we can remove the circular ref busting here.
   (when-not *disable-data-migrations*
     (classloader/require 'metabase.db.migrations)
-    (mdb.connection/with-application-db db-type jdbc-spec
+    (binding [db/*db-connection*      jdbc-spec
+              db/*quoting-style*      (mdb.connection/quoting-style db-type)
+              setting/*disable-cache* true]
       ((resolve 'metabase.db.migrations/run-all!)))))
 
+;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing; use `setup-db!`
   instead, which can be called more than once without issue and is thread-safe."

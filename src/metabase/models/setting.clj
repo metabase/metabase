@@ -165,7 +165,9 @@
     (when (seq v)
       v)))
 
-(def ^:private ^:dynamic *disable-cache* false)
+(def ^:dynamic *disable-cache*
+  "Whether to completely disable the Settings cache. Only do this if you have a good reason."
+  false)
 
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
@@ -331,7 +333,8 @@
           :else
           (set-new-setting! setting-name new-value))
         ;; update cached value
-        (cache/update-cache! setting-name new-value)
+        (when-not *disable-cache*
+          (cache/update-cache! setting-name new-value))
         ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out
         ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
         ;; cause other instances to do needless reloading of the cache from the DB)

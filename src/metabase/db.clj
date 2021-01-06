@@ -39,43 +39,43 @@
  [mdb.connection
   db-type
   jdbc-spec
-  quoting-style
-  with-application-db])
-
-(defn ^:deprecated migrate!
-  "Migrate the application database."
-  ([]
-   (migrate! :up))
-
-  ([direction]
-   (mdb.setup/migrate! (mdb.connection/jdbc-spec) direction))
-
-  ([jdbc-spec direction]
-   (mdb.setup/migrate! jdbc-spec direction)))
+  quoting-style])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         ^^^^^ OLD STUFF (REMOVE) ^^^^^                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defonce ^:private db-setup-finished?
+(defonce ^:private global-db-is-set-up-atom
   (atom false))
 
-(defn db-is-setup?
+(defn- db-is-set-up-atom []
+  (or mdb.connection/*db-is-set-up-atom*
+      global-db-is-set-up-atom))
+
+(defn db-is-set-up?
   "True if the Metabase DB is setup and ready."
-  ^Boolean []
-  @db-setup-finished?)
+  []
+  @(db-is-set-up-atom))
 
 (defn setup-db!
-  "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
-  database migrations. If DB is already set up, this function will no-op. Thread-safe."
+  "Set up the Metabase application database if needed. Connection information is determined by environment variables --
+  see `metabase.db.env`. This performs the following steps:
+
+  1. Check that we can connect to the application database given the connection details
+  2. Run Liquibase schema migrations, and Clojure-land data migrations
+  3. Create a connection pool, and set it as the default Toucan connection
+
+  This function is thread-safe."
   []
-  (when-not @db-setup-finished?
-    (locking db-setup-finished?
-      (when-not @db-setup-finished?
-        (let [db-type       (mdb.connection/db-type)
-              jdbc-spec     (mdb.connection/jdbc-spec)
-              auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type jdbc-spec auto-migrate?)
-          (mdb.connection-pool-setup/create-connection-pool! db-type jdbc-spec))
-        (reset! db-setup-finished? true))))
+  (let [setup-atom (db-is-set-up-atom)]
+    (when-not @setup-atom
+      (locking setup-atom
+        (when-not @setup-atom
+          (let [db-type       (mdb.connection/db-type)
+                jdbc-spec     (mdb.connection/jdbc-spec)
+                auto-migrate? (config/config-bool :mb-db-automigrate)]
+            ;; verify the DB connection and run migrations
+            (mdb.setup/setup-db! db-type jdbc-spec auto-migrate?)
+            (mdb.connection-pool-setup/create-connection-pool! db-type jdbc-spec))
+          (reset! setup-atom true)))))
   :done)

@@ -7,7 +7,6 @@
             [colorize.core :as color]
             [honeysql.format :as hformat]
             [metabase
-             [db :as mdb]
              [models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard
                              DashboardCardSeries DashboardFavorite Database Dependency Dimension Field FieldValues
                              Metric MetricImportantField NativeQuerySnippet Permissions PermissionsGroup
@@ -18,8 +17,7 @@
              [connection :as mdb.conn]
              [migrations :refer [DataMigrations]]
              [setup :as mdb.setup]]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
+            [metabase.util.i18n :refer [trs]])
   (:import java.sql.SQLException))
 
 (defn- println-ok []
@@ -125,7 +123,8 @@
             :let                            [fragment (table-select-fragments (str/lower-case (name table-name)))
                                              sql      (str "SELECT * FROM "
                                                            (name table-name)
-                                                           (when fragment (str " " fragment)))]]
+                                                           (when fragment (str " " fragment)))
+                                             results (jdbc/reducible-query source-conn sql)]]
       (transduce
        (partition-all chunk-size)
        (fn
@@ -144,14 +143,15 @@
                                 e)))))
           (+ cnt (count chunk))))
        0
-       (jdbc/reducible-query source-conn sql)))))
+       results))))
 
 (defn- assert-db-empty
   "Make sure [target] application DB is empty before we start copying data."
-  [db-type jdbc-spec]
-  (mdb/with-application-db db-type jdbc-spec
-    ;; check that there are no permissions groups yet -- the default ones normally get created during data migrations
-    (when (pos? (db/count PermissionsGroup))
+  [jdbc-spec]
+  ;; check that there are no permissions groups yet -- the default ones normally get created during data migrations
+  (let [[{:keys [cnt]}] (jdbc/query jdbc-spec "SELECT count(*) AS \"cnt\" FROM permissions_group;")]
+    (assert (integer? cnt))
+    (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")
                       {})))))
 
@@ -262,7 +262,7 @@
     (mdb.setup/setup-db! target-db-type target-jdbc-spec true))
   ;; make sure target DB is empty
   (step (trs "Testing if target DB is already populated...")
-    (assert-db-empty target-db-type target-jdbc-spec))
+    (assert-db-empty target-jdbc-spec))
   ;; create a transaction and load the data.
   (jdbc/with-db-transaction [target-conn target-jdbc-spec]
     ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
