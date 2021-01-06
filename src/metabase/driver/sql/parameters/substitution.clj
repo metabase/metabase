@@ -103,43 +103,44 @@
   (fn [driver v] [(driver/the-initialized-driver driver) (class v)])
   :hierarchy #'driver/hierarchy)
 
-(defn- create-replacement-snippet [nil-or-obj]
-  (let [{:keys [sql-string param-values]} (->prepared-substitution driver/*driver* nil-or-obj)]
+(defn- create-replacement-snippet
+  [driver nil-or-obj]
+  (let [{:keys [sql-string param-values]} (->prepared-substitution driver nil-or-obj)]
     {:replacement-snippet     sql-string
      :prepared-statement-args param-values}))
 
 (defmethod ->replacement-snippet-info [:sql nil]
-  [_ this]
-  (create-replacement-snippet this))
+  [driver this]
+  (create-replacement-snippet driver this))
 
 (defmethod ->replacement-snippet-info [:sql Object]
-  [_ this]
-  (create-replacement-snippet (str this)))
+  [driver this]
+  (create-replacement-snippet driver (str this)))
 
 (defmethod ->replacement-snippet-info [:sql Number]
-  [_ this]
-  (create-replacement-snippet this))
+  [driver this]
+  (create-replacement-snippet driver this))
 
 (defmethod ->replacement-snippet-info [:sql Boolean]
-  [_ this]
-  (create-replacement-snippet this))
+  [driver this]
+  (create-replacement-snippet driver this))
 
 (defmethod ->replacement-snippet-info [:sql Keyword]
-  [_ this]
+  [driver this]
   (if (= this i/no-value)
     {:replacement-snippet ""}
-    (create-replacement-snippet this)))
+    (create-replacement-snippet driver this)))
 
 (defmethod ->replacement-snippet-info [:sql SqlCall]
-  [_ this]
-  (create-replacement-snippet this))
+  [driver this]
+  (create-replacement-snippet driver this))
 
 (defmethod ->replacement-snippet-info [:sql UUID]
-  [_ this]
+  [driver this]
   {:replacement-snippet (format "CAST('%s' AS uuid)" (str this))})
 
 (defmethod ->replacement-snippet-info [:sql CommaSeparatedNumbers]
-  [_ {:keys [numbers]}]
+  [driver {:keys [numbers]}]
   {:replacement-snippet (str/join ", " numbers)})
 
 (defmethod ->replacement-snippet-info [:sql MultipleValues]
@@ -158,7 +159,7 @@
 
 (defmethod ->replacement-snippet-info [:sql Date]
   [driver {:keys [s]}]
-  (create-replacement-snippet (maybe-parse-temporal-literal s)))
+  (create-replacement-snippet driver (maybe-parse-temporal-literal s)))
 
 (defn- prepared-ts-subs [driver operator date-str]
   (let [{:keys [sql-string param-values]} (->prepared-substitution driver (maybe-parse-temporal-literal date-str))]
