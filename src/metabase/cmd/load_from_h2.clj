@@ -21,41 +21,16 @@
             [colorize.core :as color]
             [metabase
              [db :as mdb]
+             [models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard
+                             DashboardCardSeries DashboardFavorite Database Dependency Dimension Field FieldValues
+                             Metric MetricImportantField NativeQuerySnippet Permissions PermissionsGroup
+                             PermissionsGroupMembership PermissionsRevision Pulse PulseCard PulseChannel
+                             PulseChannelRecipient Revision Segment Session Setting Table User ViewLog]]
              [util :as u]]
-            [metabase.db.migrations :refer [DataMigrations]]
-            [metabase.models
-             [activity :refer [Activity]]
-             [card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
-             [collection :refer [Collection]]
-             [collection-revision :refer [CollectionRevision]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [dashboard-favorite :refer [DashboardFavorite]]
-             [database :refer [Database]]
-             [dependency :refer [Dependency]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [field-values :refer [FieldValues]]
-             [metric :refer [Metric]]
-             [metric-important-field :refer [MetricImportantField]]
-             [native-query-snippet :refer [NativeQuerySnippet]]
-             [permissions :refer [Permissions]]
-             [permissions-group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [permissions-revision :refer [PermissionsRevision]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]
-             [revision :refer [Revision]]
-             [segment :refer [Segment]]
-             [session :refer [Session]]
-             [setting :refer [Setting]]
-             [table :refer [Table]]
-             [user :refer [User]]
-             [view-log :refer [ViewLog]]]
+            [metabase.db
+             [env :as mdb.env]
+             [migrations :refer [DataMigrations]]
+             [spec :as db.spec]]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import java.sql.SQLException))
@@ -114,8 +89,8 @@
     (str "file:" (.getAbsolutePath (io/file connection-string-or-filename)))))
 
 (defn- h2-details [h2-connection-string-or-nil]
-  (let [h2-filename (add-file-prefix-if-needed (or h2-connection-string-or-nil @metabase.db/db-file))]
-    (mdb/jdbc-spec {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
+  (let [h2-filename (add-file-prefix-if-needed (or h2-connection-string-or-nil @mdb.env/db-file))]
+    (db.spec/h2 {:db (str h2-filename ";IFEXISTS=TRUE")})))
 
 
 ;;; ------------------------------------------- Fetching & Inserting Rows --------------------------------------------
@@ -237,7 +212,7 @@
   "Transfer data from existing H2 database to the newly created (presumably MySQL or Postgres) DB specified by env
   vars. Intended as a tool for upgrading from H2 to a 'real' Database.
 
-  Defaults to using `@metabase.db/db-file` as the connection string."
+  Defaults to using `@metabase.db.env/db-file` as the connection string."
   [h2-connection-string-or-nil]
   (mdb/setup-db!)
 

@@ -184,11 +184,15 @@
   (let [details-with-tunnel (ssh/include-ssh-tunnel details)]
     (connection-details->spec driver details-with-tunnel)))
 
+(defn can-connect-with-spec?
+  "Can we connect to a JDBC database with `clojure.java.jdbc` `jdbc-spec` and run a simple query?"
+  [jdbc-spec]
+  (let [[first-row] (jdbc/query jdbc-spec ["SELECT 1"])
+        [result]    (vals first-row)]
+    (= 1 result)))
+
 (defn can-connect?
   "Default implementation of `driver/can-connect?` for SQL JDBC drivers. Checks whether we can perform a simple `SELECT
   1` query."
   [driver details]
-  (let [spec        (details->connection-spec-for-testing-connection driver details)
-        [first-row] (jdbc/query spec ["SELECT 1"])
-        [result]    (vals first-row)]
-    (= 1 result)))
+  (can-connect-with-spec? (details->connection-spec-for-testing-connection driver details)))

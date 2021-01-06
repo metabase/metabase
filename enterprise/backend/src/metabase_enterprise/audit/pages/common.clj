@@ -86,6 +86,7 @@
           form))
       (dissoc query :with)))))
 
+;; TODO - fixme
 (def ^:private ^{:arglists '([])} application-db-default-timezone
   ;; cache the application DB's default timezone for an hour. I don't expect this information to change *ever*,
   ;; really, but it seems like it is possible that it *could* change. Determining this for every audit query seems

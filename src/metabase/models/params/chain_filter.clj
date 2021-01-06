@@ -68,11 +68,11 @@
              [core :as hsql]
              [format :as hformat]]
             [metabase
-             [db :as mdb]
              [models :refer [Database Dimension Field FieldValues Table]]
              [query-processor :as qp]
              [types :as types]
              [util :as u]]
+            [metabase.db.util :as mdb.u]
             [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
@@ -504,8 +504,8 @@
                                                                    [Field :dest] [:= :dest.table_id :table.id]]
                                                        :where     [:and
                                                                    [:= :source.id field-id]
-                                                                   (mdb/isa :source.special_type :type/PK)
-                                                                   (mdb/isa :dest.special_type :type/Name)]
+                                                                   (mdb.u/isa :source.special_type :type/PK)
+                                                                   (mdb.u/isa :dest.special_type :type/Name)]
                                                        :limit     1})]}
                                             :ids]]
                                   :limit  1})]

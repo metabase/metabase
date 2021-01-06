@@ -1,5 +1,5 @@
 (ns metabase.db.spec
-  "Functions for creating JDBC DB specs for a given engine.
+  "Functions for creating JDBC DB specs for a given driver.
   Only databases that are supported as application DBs should have functions in this namespace;
   otherwise, similar functions are only needed by drivers, and belong in those namespaces.")
 

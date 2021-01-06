@@ -5,7 +5,8 @@
             [metabase.cmd.dump-to-h2 :as dump-to-h2]
             [metabase.db :as mdb]
             [metabase.util.files :as u.files]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.db.setup :as mdb.setup]))
 
 (deftest path-test
   (testing "works without file: schema"
@@ -46,8 +47,7 @@
           file-contents {tmp-h2-db    "Not really an H2 DB"
                          tmp-h2-db-mv "Not really another H2 DB"}]
      ;; keep setup-db!/setup-db!* from changing connection state
-      (with-redefs [mdb/setup-db!  (constantly nil)
-                    mdb/setup-db!* (constantly nil)]
+      (with-redefs [mdb.setup/setup-db! (constantly nil)]
        (try
          (doseq [[filename contents] file-contents]
            (spit filename contents))

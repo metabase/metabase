@@ -2,11 +2,10 @@
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require [clojure.test :refer :all]
             [metabase
-             [db :as mdb]
              [query-processor :as qp]
              [test :as mt]
              [util :as u]]
-            [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.db.util :as mdb.u]
             [metabase.models
              [field :as field :refer [Field]]
              [table :refer [Table]]]
@@ -37,7 +36,7 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb/isa :special_type :type/PK)]
+            [:not (mdb.u/isa :special_type :type/PK)]
             [:= :special_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not= :base_type "type/Structured"]
@@ -52,7 +51,7 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb/isa :special_type :type/PK)]
+            [:not (mdb.u/isa :special_type :type/PK)]
             [:= :special_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not= :base_type "type/Structured"]
@@ -72,7 +71,7 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb/isa :special_type :type/PK)]
+              [:not (mdb.u/isa :special_type :type/PK)]
               [:= :special_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not= :base_type "type/Structured"]
@@ -93,7 +92,7 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb/isa :special_type :type/PK)]
+              [:not (mdb.u/isa :special_type :type/PK)]
               [:= :special_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not= :base_type "type/Structured"]
@@ -119,7 +118,7 @@
     (is (= {:where [:and
                     [:= :active true]
                     [:or
-                     [:not (mdb/isa :special_type :type/PK)]
+                     [:not (mdb.u/isa :special_type :type/PK)]
                      [:= :special_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
                     [:not= :base_type "type/Structured"]]}

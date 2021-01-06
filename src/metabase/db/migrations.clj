@@ -5,15 +5,17 @@
   thus, all of these migrations need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
-     CREATE TABLE ...               -- Bad"
+     CREATE TABLE ...               -- Bad
+
+  TODO -- consider renaming this namespace to `metabase.db.data-migrations` to better clarify its purpose."
   (:require [cemerick.friend.credentials :as creds]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.db.util :as mdb.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
@@ -249,7 +251,7 @@
 ;; their behavior doesn't suddenly change.
 (defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
   (db/update-where! Field {:has_field_values nil
-                           :special_type     (mdb/isa :type/Category)
+                           :special_type     (mdb.u/isa :type/Category)
                            :active           true}
     :has_field_values "list"))
 

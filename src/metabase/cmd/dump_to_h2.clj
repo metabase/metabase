@@ -16,10 +16,10 @@
              [db :as mdb]
              [util :as u]]
             [metabase.cmd.load-from-h2 :refer [entities]]
+            [metabase.db.setup :as mdb.setup]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import java.sql.SQLException))
-
 
 (defn- println-ok [] (println (color/green "[OK]")))
 
@@ -99,7 +99,7 @@
   "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
   tool for migrating from one instance to another using H2 as serialization target.
 
-  Defaults to using `@metabase.db/db-file` as the connection string.
+  Defaults to using `@metabase.db.env/db-file` as the connection string.
 
   Target H2 DB will be deleted if it exists, unless `keep-existing?` is truthy."
   [h2-filename & [{:keys [keep-existing?]
@@ -115,8 +115,7 @@
 
     (println "Dumping from configured Metabase db to H2 file" h2-filename)
 
-    (mdb/setup-db!* (get-target-db-conn h2-filename) true)
-    (mdb/setup-db!)
+    (mdb.setup/setup-db! :h2 (get-target-db-conn h2-filename) true)
 
     (if (= :h2 (mdb/db-type))
       (println (u/format-color 'yellow (trs "Don't need to migrate, just use the existing H2 file")))

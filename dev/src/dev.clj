@@ -7,11 +7,12 @@
              [db :as mdb]
              [driver :as driver]
              [handler :as handler]
-             [plugins :as pluguns]
+             [plugins :as plugins]
              [server :as server]
              [test :as mt]
              [util :as u]]
             [metabase.api.common :as api-common]
+            [metabase.core.initialization-status :as init-status]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test.data.impl :as data.impl]))
@@ -28,10 +29,10 @@
   []
   (when-not @initialized?
     (init!))
-  (metabase.server/start-web-server! #'metabase.handler/app)
-  (metabase.db/setup-db!)
-  (metabase.plugins/load-plugins!)
-  (metabase.core.initialization-status/set-complete!))
+  (server/start-web-server! #'metabase.handler/app)
+  (mdb/setup-db!)
+  (plugins/load-plugins!)
+  (init-status/set-complete!))
 
 (defn stop!
   []
