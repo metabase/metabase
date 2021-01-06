@@ -1,13 +1,11 @@
-(ns metabase.db.migrations
+(ns metabase.db.data-migrations
   "Clojure-land data migration definitions and fns for running them.
   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
   H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
   thus, all of these migrations need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
-     CREATE TABLE ...               -- Bad
-
-  TODO -- consider renaming this namespace to `metabase.db.data-migrations` to better clarify its purpose."
+     CREATE TABLE ...               -- Bad"
   (:require [cemerick.friend.credentials :as creds]
             [clojure.string :as str]
             [clojure.tools.logging :as log]

@@ -31,6 +31,7 @@
    (let [h2-filename  (or h2-filename "metabase_dump.h2")
          h2-jdbc-spec (copy.h2/h2-jdbc-spec h2-filename)]
      (println "Dumping from configured Metabase db to H2 file" h2-filename)
-     (copy.h2/delete-existing-h2-database-files! h2-filename keep-existing?)
+     (when-not keep-existing?
+       (copy.h2/delete-existing-h2-database-files! h2-filename))
      (copy/copy!  (mdb.conn/db-type) (mdb.conn/jdbc-spec) :h2 h2-jdbc-spec)
      (println "Dump complete"))))

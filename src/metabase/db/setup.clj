@@ -126,11 +126,13 @@
   [db-type jdbc-spec]
   ;; TODO -- check whether we can remove the circular ref busting here.
   (when-not *disable-data-migrations*
-    (classloader/require 'metabase.db.migrations)
-    (binding [db/*db-connection*      jdbc-spec
-              db/*quoting-style*      (mdb.connection/quoting-style db-type)
-              setting/*disable-cache* true]
-      ((resolve 'metabase.db.migrations/run-all!)))))
+    (classloader/require 'metabase.db.data-migrations)
+    (binding [mdb.connection/*db-type*   db-type
+              mdb.connection/*jdbc-spec* jdbc-spec
+              db/*db-connection*         jdbc-spec
+              db/*quoting-style*         (mdb.connection/quoting-style db-type)
+              setting/*disable-cache*    true]
+      ((resolve 'metabase.db.data-migrations/run-all!)))))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (defn setup-db!

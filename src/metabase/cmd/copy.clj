@@ -7,7 +7,11 @@
             [colorize.core :as color]
             [honeysql.format :as hformat]
             [metabase
-             [models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard DashboardCardSeries DashboardFavorite Database Dependency Dimension Field FieldValues Metric MetricImportantField NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard PulseChannel PulseChannelRecipient Revision Segment Session Setting Table User ViewLog]]
+             [models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard
+                             DashboardCardSeries DashboardFavorite Database Dependency Dimension Field FieldValues
+                             Metric MetricImportantField NativeQuerySnippet Permissions PermissionsGroup
+                             PermissionsGroupMembership PermissionsRevision Pulse PulseCard PulseChannel
+                             PulseChannelRecipient Revision Segment Session Setting Table User ViewLog]]
              [util :as u]]
             [metabase.db
              [connection :as mdb.conn]
@@ -256,14 +260,16 @@
    target-db-type   :- (s/enum :h2 :postgres :mysql)
    target-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)]
   ;; make sure the source database is up-do-date
-  (mdb.setup/setup-db! source-db-type source-jdbc-spec true)
+  (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
+    (mdb.setup/setup-db! source-db-type source-jdbc-spec true))
   ;; make sure the dest DB is up-to-date
   ;;
   ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
-  (binding [mdb.setup/*disable-data-migrations* true]
-    (mdb.setup/setup-db! target-db-type target-jdbc-spec true))
+  (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
+    (binding [mdb.setup/*disable-data-migrations* true]
+      (mdb.setup/setup-db! target-db-type target-jdbc-spec true)))
   ;; make sure target DB is empty
-  (step (trs "Testing if target {0} DB is already populated..." (name target-db-type))
+  (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
     (assert-db-empty target-jdbc-spec))
   ;; create a transaction and load the data.
   (jdbc/with-db-transaction [target-conn target-jdbc-spec]
