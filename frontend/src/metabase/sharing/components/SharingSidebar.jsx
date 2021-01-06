@@ -37,7 +37,6 @@ import {
   getEditingPulse,
   getPulseCardPreviews,
   getPulseFormInput,
-  getPulseList,
 } from "metabase/pulse/selectors";
 
 import { getUser } from "metabase/selectors/user";
@@ -123,7 +122,6 @@ const mapStateToProps = (state, props) => ({
     state,
     props,
   ),
-  pulseList: getPulseList(state, props),
 });
 
 const mapDispatchToProps = {
@@ -162,7 +160,6 @@ class SharingSidebar extends React.Component {
     onChangeLocation: PropTypes.func.isRequired,
     pulse: PropTypes.object.isRequired,
     pulseId: PropTypes.number,
-    pulseList: PropTypes.array.isRequired,
     saveEditingPulse: PropTypes.func.isRequired,
     setEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
@@ -192,7 +189,6 @@ class SharingSidebar extends React.Component {
   }
 
   componentDidMount() {
-    //TODO: if these don't finish before we render, we render the wrong thing. help?
     this.props.fetchPulseFormInput();
 
     this.props.setEditingPulse(
@@ -503,7 +499,7 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const { pulse, pulses, formInput, pulseList } = this.props;
+    const { pulse, pulses, formInput } = this.props;
 
     const caveatMessage = (
       <Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${(
@@ -520,7 +516,7 @@ class SharingSidebar extends React.Component {
     );
 
     // protect from empty values that will mess this up
-    if (formInput === null || pulse === null || pulseList === null) {
+    if (formInput === null || pulse === null) {
       return <Sidebar />;
     }
 
