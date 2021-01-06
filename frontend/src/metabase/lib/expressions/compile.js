@@ -36,6 +36,25 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     return this.visit(ctx.expression);
   }
 
+  booleanExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+  logicalOrExpression(ctx) {
+    return this._collapseOperators(ctx.operands, ctx.operators);
+  }
+  logicalAndExpression(ctx) {
+    return this._collapseOperators(ctx.operands, ctx.operators);
+  }
+  booleanUnaryExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+  logicalNotExpression(ctx) {
+    return ["not", this.visit(ctx.operands[0])];
+  }
+  relationalExpression(ctx) {
+    return this._collapseOperators(ctx.operands, ctx.operators);
+  }
+
   additionExpression(ctx) {
     return this._collapseOperators(ctx.operands, ctx.operators);
   }
@@ -109,22 +128,6 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
   parenthesisExpression(ctx) {
     return this.visit(ctx.expression);
-  }
-
-  // FILTERS
-  booleanExpression(ctx) {
-    return this._collapseOperators(ctx.operands, ctx.operators);
-  }
-
-  comparisonExpression(ctx) {
-    return [
-      ctx.operators[0].image.toLowerCase(),
-      this.visit(ctx.operands[0]),
-      this.visit(ctx.operands[1]),
-    ];
-  }
-  booleanUnaryExpression(ctx) {
-    return [ctx.operators[0].image.toLowerCase(), this.visit(ctx.operands[0])];
   }
 
   // HELPERS:
