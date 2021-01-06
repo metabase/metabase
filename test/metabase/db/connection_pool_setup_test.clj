@@ -3,12 +3,15 @@
             [metabase
              [connection-pool :as connection-pool]
              [test :as mt]]
-            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]))
+            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
+            [metabase.test.fixtures :as fixtures]))
 
-(deftest create-connection-pool!-test
+(use-fixtures :once (fixtures/initialize :db))
+
+(deftest connection-pool-spec-test
   (testing "Should be able to create a connection pool"
     (letfn [(test* [spec]
-              (let [{:keys [datasource]} (mdb.connection-pool-setup/create-connection-pool! :h2 spec)]
+              (let [{:keys [datasource], :as spec} (#'mdb.connection-pool-setup/connection-pool-spec spec)]
                 (try
                   (is (instance? javax.sql.DataSource datasource))
                   (finally
