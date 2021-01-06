@@ -4,23 +4,21 @@
             [flatland.ordered.map :as ordered-map]
             [metabase.cmd.dump-to-h2 :as dump-to-h2]
             [metabase.db :as mdb]
+            [metabase.db.setup :as mdb.setup]
             [metabase.util.files :as u.files]
-            [toucan.db :as db]
-            [metabase.db.setup :as mdb.setup]))
+            [toucan.db :as db]))
 
 (deftest path-test
   (testing "works without file: schema"
     (is (= {:classname   "org.h2.Driver"
             :subprotocol "h2"
-            :subname     "file:/path/to/metabase.db"
-            :type        :h2}
+            :subname     "file:/path/to/metabase.db"}
            (#'dump-to-h2/h2-details "/path/to/metabase.db"))))
 
   (testing "works with file: schema"
     (is (= {:classname "org.h2.Driver"
             :subprotocol "h2"
-            :subname     "file:/path/to/metabase.db"
-            :type        :h2}
+            :subname     "file:/path/to/metabase.db"}
            (#'dump-to-h2/h2-details "file:/path/to/metabase.db")))))
 
 (deftest casing-corner-cases-test
