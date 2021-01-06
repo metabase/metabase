@@ -57,9 +57,11 @@
    (mdb.setup/migrate! jdbc-spec direction)))
 
 (def ^:dynamic ^:deprecated *allow-potentailly-unsafe-connections*
+  "DEPRECATED/NO LONGER USED (REMOVE ME!)"
   false)
 
 (defn ^:deprecated db-connection-details
+  "DEPRECATED - USE `metabase.db.connection/jdbc-spec` INSTEAD"
   []
   @mdb.env/db-connection-details)
 

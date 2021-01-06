@@ -6,9 +6,8 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util.date-2 :as u.date]
-            [metabase.db.connection :as mdb.connection])
+            [metabase.db.connection :as mdb.connection]
+            [metabase.util.date-2 :as u.date])
   (:import java.io.BufferedReader
            [java.sql PreparedStatement ResultSet ResultSetMetaData Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset]))

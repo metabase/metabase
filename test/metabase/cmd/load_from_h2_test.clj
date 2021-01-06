@@ -13,15 +13,13 @@
   (testing "works without file: schema"
     (is (= {:classname   "org.h2.Driver"
             :subprotocol "h2"
-            :subname     "file:/path/to/metabase.db;IFEXISTS=TRUE"
-            :type        :h2}
+            :subname     "file:/path/to/metabase.db;IFEXISTS=TRUE"}
            (#'load-from-h2/h2-details "/path/to/metabase.db"))))
 
   (testing "works with file: schema"
     (is (= {:classname "org.h2.Driver"
             :subprotocol "h2"
-            :subname     "file:/path/to/metabase.db;IFEXISTS=TRUE"
-            :type        :h2}
+            :subname     "file:/path/to/metabase.db;IFEXISTS=TRUE"}
            (#'load-from-h2/h2-details "file:/path/to/metabase.db")))))
 
 (deftest all-models-accounted-for-test

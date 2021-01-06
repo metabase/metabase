@@ -41,6 +41,9 @@
             db/*quoting-style* (quoting-style db-type)]
     (f)))
 
-(defmacro with-application-db {:style/indent 2}
+(defmacro with-application-db
+  "Execute `body` with the Metabase application DB temporarily rebound to a DB of `db-type` with JDBC spec. This does
+  not create a connection pool for the application DB -- do that yourself if you really need one."
+  {:style/indent 2}
   [db-type jdbc-spec & body]
   `(do-with-application-db ~db-type ~jdbc-spec (fn ~'with-application-db* [] ~@body)))

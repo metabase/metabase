@@ -16,7 +16,9 @@
              [db :as mdb]
              [util :as u]]
             [metabase.cmd.load-from-h2 :refer [entities]]
-            [metabase.db.setup :as mdb.setup]
+            [metabase.db
+             [setup :as mdb.setup]
+             [spec :as db.spec]]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import java.sql.SQLException))
@@ -33,7 +35,7 @@
 
 (defn- h2-details [h2-connection-string-or-nil]
   (let [h2-filename (add-file-prefix-if-needed h2-connection-string-or-nil)]
-    (mdb/jdbc-spec {:type :h2, :db h2-filename})))
+    (db.spec/h2 {:db h2-filename})))
 
 
 ;;; ------------------------------------------- Fetching & Inserting Rows --------------------------------------------
