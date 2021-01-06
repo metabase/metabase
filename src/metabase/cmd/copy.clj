@@ -107,11 +107,11 @@
 
 (defn- insert-chunk!
   "Insert of `chunk` of rows into the target database table with `table-name`."
-  [target-db-type target-db-conn table-name chunk]
+  [target-db-type target-db-conn table-name chunkk]
   (print (color/blue \.))
   (flush)
   (try
-    (let [{:keys [cols vals]} (objects->colums+values target-db-type chunk)]
+    (let [{:keys [cols vals]} (objects->colums+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn table-name cols vals {:transaction? false}))
     (catch SQLException e
       (jdbc/print-sql-exception-chain e)
@@ -134,12 +134,12 @@
          ([cnt]
           (when (pos? cnt)
             (println (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
-         ([cnt chunk]
-          (when (seq chunk)
+         ([cnt chunkk]
+          (when (seq chunkk)
             (when (zero? cnt)
               (print (u/colorize 'blue (trs "Copying instances of {0}..." (name entity)))))
             (try
-              (insert-chunk! target-db-type target-db-conn table-name chunk)
+              (insert-chunk! target-db-type target-db-conn table-name chunkk)
               (catch Throwable e
                 (throw (ex-info (trs "Error copying instances of {0}" (name entity))
                                 {:entity (name entity)}
