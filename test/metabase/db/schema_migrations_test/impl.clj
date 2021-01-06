@@ -54,8 +54,7 @@
   ;; don't use the usual implementation of `tx/dbdef->connection-details` because it creates a spec that only connects
   ;; to with `USER=GUEST` which doesn't let us run DDL statements
   (let [connection-details {:db "mem:schema-migrations-test-db"}
-        jdbc-spec          (binding [mdb/*allow-potentailly-unsafe-connections* true]
-                             (sql-jdbc.conn/connection-details->spec driver connection-details))]
+        jdbc-spec          (sql-jdbc.conn/connection-details->spec driver connection-details)]
     (f jdbc-spec)))
 
 (defn- do-with-temp-empty-app-db [driver f]

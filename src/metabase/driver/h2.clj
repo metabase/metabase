@@ -3,7 +3,6 @@
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase
-             [db :as mdb]
              [driver :as driver]
              [util :as u]]
             [metabase.db
@@ -295,9 +294,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
-               details
-               (update details :db connection-string-set-safe-options))))
+  (dbspec/h2 (update details :db connection-string-set-safe-options)))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]

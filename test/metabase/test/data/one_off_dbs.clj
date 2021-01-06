@@ -3,11 +3,9 @@
   infamous `blueberries_consumed` database, used by sync tests in several different namespaces."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [metabase
-             [db :as mdb]
-             [sync :as sync]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models.database :refer [Database]]
+            [metabase.sync :as sync]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -23,12 +21,11 @@
   "Impl for `with-blank-db` macro; prefer that to using this directly."
   [f]
   (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
-    (binding [mdb/*allow-potentailly-unsafe-connections* true]
-      (tt/with-temp Database [db {:engine :h2, :details details}]
-        (data/with-db db
-          (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :h2 details)]
-            (binding [*conn* conn]
-              (f))))))))
+    (tt/with-temp Database [db {:engine :h2, :details details}]
+      (data/with-db db
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :h2 details)]
+          (binding [*conn* conn]
+            (f)))))))
 
 (defmacro with-blank-db
   "An empty canvas upon which you may paint your dreams.

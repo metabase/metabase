@@ -55,10 +55,6 @@
   ([jdbc-spec direction]
    (mdb.setup/migrate! jdbc-spec direction)))
 
-(def ^:dynamic ^:deprecated *allow-potentailly-unsafe-connections*
-  "DEPRECATED/NO LONGER USED (REMOVE ME!)"
-  false)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         ^^^^^ OLD STUFF (REMOVE) ^^^^^                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
