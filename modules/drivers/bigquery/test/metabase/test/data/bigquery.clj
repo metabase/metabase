@@ -15,7 +15,9 @@
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import com.google.api.client.util.DateTime
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableDataInsertAllResponse TableFieldSchema TableReference TableSchema]))
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table
+            TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableDataInsertAllResponse TableFieldSchema
+            TableReference TableSchema]))
 
 (sql.tx/add-test-extensions! :bigquery)
 

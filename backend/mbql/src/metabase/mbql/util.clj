@@ -2,15 +2,13 @@
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
   (:require [clojure.string :as str]
-            [java-time
-             [amount :as t.amount]
-             [core :as t.core]]
+            [java-time.amount :as t.amount]
+            [java-time.core :as t.core]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [metabase.mbql.util.match :as mbql.match]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (defn qualified-name

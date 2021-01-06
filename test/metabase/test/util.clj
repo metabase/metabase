@@ -8,9 +8,9 @@
             [colorize.core :as colorize]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.models
-             :refer
-             [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table TaskHistory User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
+                                     NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
+                                     Revision Segment Table TaskHistory User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
