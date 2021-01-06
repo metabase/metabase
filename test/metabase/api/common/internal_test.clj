@@ -1,136 +1,116 @@
 (ns metabase.api.common.internal-test
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.api.common.internal :refer :all]
-            [metabase.util :as u]))
+            [metabase
+             [test :as mt]
+             [util :as u]]
+            [metabase.api.common.internal :as internal :refer :all]))
 
-;;; TESTS FOR ROUTE-FN-NAME
+(deftest route-fn-name-test
+  (mt/are+ [method route expected] (= expected
+                                      (internal/route-fn-name method route))
+    'GET "/"                    'GET_
+    'GET "/:id/cards"           'GET_:id_cards
+    ;; check that internal/route-fn-name can handle routes with regex conditions
+    'GET ["/:id" :id #"[0-9]+"] 'GET_:id))
 
-(expect 'GET_
-  (route-fn-name 'GET "/"))
+(deftest arg-type-test
+  (mt/are+ [param expected] (= expected
+                               (internal/arg-type param))
+    :fish    nil
+    :id      :int
+    :card-id :int))
 
-(expect 'GET_:id_cards
-  (route-fn-name 'GET "/:id/cards"))
+(defmacro ^:private no-route-regexes
+  "`clojure.data/diff` doesn't think two regexes with the same exact pattern are equal. so in order to make sure we're
+  getting back the right output we'll just change them to strings, e.g.
 
-;; check that route-fn-name can handle routes with regex conditions
-(expect 'GET_:id
-  (route-fn-name 'GET ["/:id" :id #"[0-9]+"]))
-
-;;; TESTS FOR ARG-TYPE
-
-(expect nil
-  (arg-type :fish))
-
-(expect :int
-  (arg-type :id))
-
-(expect :int
-  (arg-type :card-id))
-
-
-;;; TESTS FOR ROUTE-PARAM-REGEX
-
-;; expectations (internally, `clojure.data/diff`) doesn't think two regexes with the same exact pattern are equal.
-;; so in order to make sure we're getting back the right output we'll just change them to strings, e.g. `#"[0-9]+" -> "#[0-9]+"`
-(defmacro no-regex [& body]
+    #\"[0-9]+\" -> \"#[0-9]+\""
+  {:style/indent 0}
+  [& body]
   `(binding [*auto-parse-types* (m/map-vals #(update % :route-param-regex (partial str "#"))
-                                            *auto-parse-types*) ]
+                                            *auto-parse-types*)]
      ~@body))
 
-(expect nil
-  (no-regex (route-param-regex :fish)))
+(deftest route-param-regex-test
+  (no-route-regexes
+    (mt/are+ [param expected] (= expected
+                                 (internal/route-param-regex param))
+      :fish    nil
+      :id      [:id "#[0-9]+"]
+      :card-id [:card-id "#[0-9]+"])))
 
-(expect [:id "#[0-9]+"]
-  (no-regex (route-param-regex :id)))
+(deftest route-arg-keywords-test
+  (no-route-regexes
+    (mt/are+ [route expected] (= expected
+                                 (internal/route-arg-keywords route))
+      "/"             []
+      "/:id"          [:id]
+      "/:id/card"     [:id]
+      "/:id/etc/:org" [:id :org]
+      "/:card-id"     [:card-id])))
 
-(expect [:card-id "#[0-9]+"]
-  (no-regex (route-param-regex :card-id)))
+(deftest type-args-test
+  (no-route-regexes
+    (mt/are+ [args expected] (= expected
+                                (#'internal/typify-args args))
+      []             []
+      [:fish]        []
+      [:fish :fry]   []
+      [:id]          [:id "#[0-9]+"]
+      [:id :fish]    [:id "#[0-9]+"]
+      [:id :card-id] [:id "#[0-9]+" :card-id "#[0-9]+"])))
 
+(deftest add-route-param-regexes-test
+  (no-route-regexes
+    (mt/are+ [route expected] (= expected
+                                 (internal/add-route-param-regexes route))
+      "/"                                    "/"
+      "/:id"                                 ["/:id" :id "#[0-9]+"]
+      "/:id/card"                            ["/:id/card" :id "#[0-9]+"]
+      "/:card-id"                            ["/:card-id" :card-id "#[0-9]+"]
+      "/:fish"                               "/:fish"
+      "/:id/tables/:card-id"                 ["/:id/tables/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
+      ;; don't try to typify route that's already typified
+      ["/:id/:crazy-id" :crazy-id "#[0-9]+"] ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
+      ;; Check :uuid args
+      "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)])))
 
-;;; TESTS FOR ROUTE-ARG-KEYWORDS
+(deftest let-form-for-arg-test
+  (mt/are+ [arg expected] (= expected
+                             (internal/let-form-for-arg arg))
+    'id           '[id (clojure.core/when id (metabase.api.common.internal/parse-int id))]
+    'org_id       '[org_id (clojure.core/when org_id (metabase.api.common.internal/parse-int org_id))]
+    'fish         nil
+    ;; make sure we don't try to generate let forms for any fancy destructuring
+    :as           nil
+    '{body :body} nil))
 
-(expect []
-  (no-regex (route-arg-keywords "/")))
+(deftest auto-parse-test
+  (mt/are+ [args expected] (= expected
+                              (macroexpand-1 `(internal/auto-parse ~args '~'body)))
+    ;; when auto-parse gets an args form where arg is present in *autoparse-types*
+    ;; the appropriate let binding should be generated
+    '[id]
+    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)
 
-(expect [:id]
-  (no-regex (route-arg-keywords "/:id")))
+    ;; params not in *autoparse-types* should be ignored
+    '[id some-other-param]
+    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)
 
-(expect [:id]
-  (no-regex (route-arg-keywords "/:id/card")))
+    ;; make sure multiple autoparse params work correctly
+    '[id org_id]
+    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))
+                       org_id (clojure.core/when org_id (metabase.api.common.internal/parse-int org_id))] 'body)
 
-(expect [:id :org]
-  (no-regex (route-arg-keywords "/:id/etc/:org")))
+    ;; make sure it still works if no autoparse params are passed
+    '[some-other-param]
+    '(clojure.core/let [] 'body)
 
-(expect [:card-id]
-  (no-regex (route-arg-keywords "/:card-id")))
+    ;; should work with no params at all
+    '[]
+    '(clojure.core/let [] 'body)
 
-
-;;; TESTS FOR TYPE-ARGS
-
-(expect []
-  (no-regex (typify-args [])))
-
-(expect []
-  (no-regex (typify-args [:fish])))
-
-(expect []
-  (no-regex (typify-args [:fish :fry])))
-
-(expect [:id "#[0-9]+"]
-  (no-regex (typify-args [:id])))
-
-(expect [:id "#[0-9]+"]
-  (no-regex (typify-args [:id :fish])))
-
-(expect [:id "#[0-9]+" :card-id "#[0-9]+"]
-  (no-regex (typify-args [:id :card-id])))
-
-
-;;; TESTS FOR TYPE-ROUTE
-
-(expect "/"
-  (no-regex (typify-route "/")))
-
-(expect ["/:id" :id "#[0-9]+"]
-  (no-regex (typify-route "/:id")))
-
-(expect ["/:id/card" :id "#[0-9]+"]
-  (no-regex (typify-route "/:id/card")))
-
-(expect ["/:card-id" :card-id "#[0-9]+"]
-  (no-regex (typify-route "/:card-id")))
-
-(expect "/:fish"
-  (no-regex (typify-route "/:fish")))
-
-(expect ["/:id/tables/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
-  (no-regex (typify-route "/:id/tables/:card-id")))
-
-;; don't try to typify route that's already typified
-(expect ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
-  (no-regex (typify-route ["/:id/:crazy-id" :crazy-id "#[0-9]+"])))
-
-;; Check :uuid args
-(expect ["/:uuid/toucans" :uuid (str \# u/uuid-regex)]
-  (no-regex (typify-route "/:uuid/toucans")))
-
-
-;; TESTS FOR LET-FORM-FOR-ARG
-
-(expect '[id (clojure.core/when id (metabase.api.common.internal/parse-int id))]
-  (let-form-for-arg 'id))
-
-(expect '[org_id (clojure.core/when org_id (metabase.api.common.internal/parse-int org_id))]
-  (let-form-for-arg 'org_id))
-
-(expect nil
-  (let-form-for-arg 'fish))
-
-;; make sure we don't try to generate let forms for any fancy destructuring
-(expect nil
-  (let-form-for-arg :as))
-
-(expect nil
-  (let-form-for-arg '{body :body}))
-
-;; Tests for AUTO-PARSE presently live in `metabase.api.common-test`
+    ;; should work with some wacky binding form
+    '[id :as {body :body}]
+    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)))
