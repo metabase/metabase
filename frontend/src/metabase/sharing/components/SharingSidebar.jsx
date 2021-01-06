@@ -26,7 +26,6 @@ import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
 
-import { push, goBack } from "react-router-redux";
 import { connect } from "react-redux";
 
 import { cleanPulse, createChannel, pulseIsValid } from "metabase/lib/pulse";
@@ -35,7 +34,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   getPulseId,
   getEditingPulse,
-  getPulseCardPreviews,
   getPulseFormInput,
 } from "metabase/pulse/selectors";
 
@@ -46,7 +44,6 @@ import {
   updateEditingPulse,
   saveEditingPulse,
   fetchPulseFormInput,
-  fetchPulseCardPreview,
   testPulse,
 } from "metabase/pulse/actions";
 
@@ -115,7 +112,6 @@ const getEditingPulseWithDefaults = (state, props) => {
 const mapStateToProps = (state, props) => ({
   pulseId: getPulseId(state, props),
   pulse: getEditingPulseWithDefaults(state, props),
-  cardPreviews: getPulseCardPreviews(state, props),
   formInput: getPulseFormInput(state, props),
   user: getUser(state),
   initialCollectionId: Collections.selectors.getInitialCollectionId(
@@ -129,11 +125,8 @@ const mapDispatchToProps = {
   updateEditingPulse,
   saveEditingPulse,
   fetchPulseFormInput,
-  fetchPulseCardPreview,
   setPulseArchived: Pulses.actions.setArchived,
   testPulse,
-  onChangeLocation: push,
-  goBack,
 };
 
 @Pulses.loadList({
@@ -155,9 +148,7 @@ class SharingSidebar extends React.Component {
     dashboard: PropTypes.object.isRequired,
     fetchPulseFormInput: PropTypes.func.isRequired,
     formInput: PropTypes.object.isRequired,
-    goBack: PropTypes.func,
     initialCollectionId: PropTypes.number,
-    onChangeLocation: PropTypes.func.isRequired,
     pulse: PropTypes.object.isRequired,
     pulseId: PropTypes.number,
     saveEditingPulse: PropTypes.func.isRequired,
