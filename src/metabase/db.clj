@@ -40,9 +40,7 @@
   db-type
   jdbc-spec
   quoting-style
-  with-application-db]
- [mdb.setup
-  *disable-data-migrations*])
+  with-application-db])
 
 (defn ^:deprecated migrate!
   "Migrate the application database."

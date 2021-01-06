@@ -1,27 +1,14 @@
-(ns metabase.cmd.dump-and-load-common-test
+(ns metabase.cmd.copy-test
   (:require [clojure.test :refer :all]
             [flatland.ordered.map :as ordered-map]
-            [metabase.cmd.dump-and-load-common :as common]
+            [metabase.cmd.copy :as copy]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [toucan.models :as models]))
 
-(deftest h2-jdbc-spec-test
-  (testing "works without file: schema"
-    (is (= {:classname   "org.h2.Driver"
-            :subprotocol "h2"
-            :subname     "file:/path/to/metabase.db"}
-           (common/h2-jdbc-spec "/path/to/metabase.db"))))
-
-  (testing "works with file: schema"
-    (is (= {:classname "org.h2.Driver"
-            :subprotocol "h2"
-            :subname     "file:/path/to/metabase.db"}
-           (common/h2-jdbc-spec "file:/path/to/metabase.db")))))
-
 (deftest casing-corner-cases-test
   (testing "objects->colums+values property handles columns with weird casing: `sizeX` and `sizeY`"
-    (let [cols+vals (-> (#'common/objects->colums+values
+    (let [cols+vals (-> (#'copy/objects->colums+values
                          :postgres
                          ;; using ordered-map so the results will be in a predictable order
                          [(ordered-map/ordered-map
@@ -36,7 +23,7 @@
 
 (deftest all-models-accounted-for-test
   ;; This fetches the `metabase.cmd.load-from-h2/entities` and compares it all existing entities
-  (let [migrated-model-names (set (map :name common/entities))
+  (let [migrated-model-names (set (map :name copy/entities))
         ;; Models that should *not* be migrated in `load-from-h2`.
         models-to-exclude    #{"TaskHistory" "Query" "QueryCache" "QueryExecution"}
         all-model-names      (set (for [ns       u/metabase-namespace-symbols

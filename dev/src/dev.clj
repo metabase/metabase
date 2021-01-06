@@ -53,6 +53,10 @@
 
   ([a-namespace]
    (doseq [[symb] (ns-interns a-namespace)]
+     (ns-unmap a-namespace symb))
+   (doseq [[symb varr] (ns-refers a-namespace)
+         :when (not (= (the-ns (:ns (meta varr)))
+                       (the-ns 'clojure.core)))]
      (ns-unmap a-namespace symb))))
 
 (defn ns-unalias-all

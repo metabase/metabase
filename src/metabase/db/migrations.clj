@@ -202,11 +202,11 @@
 ;; specified. Other areas of the application expect that site-url will always include http/https. This migration
 ;; ensures that if we have a site-url stored it has the current defaulting logic applied to it
 (defmigration ^{:author "senior", :added "0.25.1"} ensure-protocol-specified-in-site-url
-  (let [stored-site-url (db/select-one-field :value Setting :key "site-url")
-        defaulted-site-url (public-settings/site-url stored-site-url)]
-    (when (and stored-site-url
-               (not= stored-site-url defaulted-site-url))
-      (setting/set! "site-url" stored-site-url))))
+  (when-let [stored-site-url (db/select-one-field :value Setting :key "site-url")]
+    (let [defaulted-site-url (public-settings/site-url stored-site-url)]
+      (when (and stored-site-url
+                 (not= stored-site-url defaulted-site-url))
+        (setting/set! "site-url" stored-site-url)))))
 
 ;; There was a bug (#5998) preventing database_id from being persisted with native query type cards. This migration
 ;; populates all of the Cards missing those database ids

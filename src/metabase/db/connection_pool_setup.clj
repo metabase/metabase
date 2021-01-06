@@ -37,6 +37,7 @@
   "Create a connection pool for the application DB and set it as the default Toucan connection. This is normally called
   once during start up; calling it a second time (e.g. from the REPL) will "
   [db-type jdbc-spec]
+  (println "CREATE POOL -->" (pr-str jdbc-spec)) ; NOCOMMIT
   (db/set-default-quoting-style! (mdb.connection/quoting-style db-type))
   ;; REPL usage only: kill the old pool if one exists
   (u/ignore-exceptions
