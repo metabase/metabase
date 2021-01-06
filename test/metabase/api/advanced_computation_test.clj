@@ -1,10 +1,15 @@
 (ns metabase.api.advanced-computation-test
   "Unit tests for /api/advanced_computation endpoints."
-  (:require [clojure.test :refer :all]
+  (:require [buddy.sign.jwt :as jwt]
+            [cheshire.core :as json]
+            [clojure.test :refer :all]
+            [crypto.random :as crypto-random]
+            [metabase.api.embed-test :as embed-test]
             [metabase.http-client :as http]
             [metabase.models :refer [Card Dashboard DashboardCard]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
   (:import java.util.UUID))
@@ -268,3 +273,109 @@
                 (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
                 (is (= [nil "Twitter" "Widget" 1 77 270] (nth rows 100)))
                 (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))
+
+(defn random-embedding-secret-key [] (crypto-random/hex 32))
+
+(def ^:dynamic *secret-key* nil)
+
+(defn sign [claims] (jwt/sign claims *secret-key*))
+
+(defn do-with-new-secret-key [f]
+  (binding [*secret-key* (random-embedding-secret-key)]
+    (tu/with-temporary-setting-values [embedding-secret-key *secret-key*]
+      (f))))
+
+(defmacro with-new-secret-key {:style/indent 0} [& body]
+  `(do-with-new-secret-key (fn [] ~@body)))
+
+(defmacro with-embedding-enabled-and-new-secret-key {:style/indent 0} [& body]
+  `(tu/with-temporary-setting-values [~'enable-embedding true]
+     (with-new-secret-key
+       ~@body)))
+
+(defmacro with-temp-card {:style/indent 1} [[card-binding & [card]] & body]
+  `(mt/with-temp Card [~card-binding (merge (pivot-card) ~card)]
+     ~@body))
+
+(defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
+  (sign (merge {:resource {:question (u/get-id card-or-id)}
+                :params   {}}
+               additional-token-params)))
+
+(defn- card-query-url [card response-format & [additional-token-params]]
+  (str "advanced_computation/public/pivot/embed/card/"
+       (card-token card additional-token-params)
+       "/query"
+       response-format))
+
+(deftest embed-query-test
+  (mt/test-drivers applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "GET /api/advanced_computation/public/pivot/embed/card/:token/query"
+        (testing "check that the endpoint doesn't work if embedding isn't enabled"
+          (tu/with-temporary-setting-values [enable-embedding false]
+            (with-new-secret-key
+              (with-temp-card [card]
+                (is (= "Embedding is not enabled."
+                       (http/client :get 400 (card-query-url card ""))))))))
+
+        (with-embedding-enabled-and-new-secret-key
+          (let [expected-status 202]
+            (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
+              (with-temp-card [card {:enable_embedding true}]
+                (let [result (http/client :get expected-status (card-query-url card "") {:request-options nil})
+                      rows   (mt/rows result)]
+                  (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                  (is (= "completed" (:status result)))
+                  (is (= 6 (count (get-in result [:data :cols]))))
+                  (is (= 2273 (count rows)))))))
+
+          (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
+            (with-temp-card [card]
+              (is (= "Embedding is not enabled for this object."
+                     (http/client :get 400 (card-query-url card ""))))))
+
+          (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
+                        "signed with the wrong key")
+            (with-temp-card [card {:enable_embedding true}]
+              (is (= "Message seems corrupt or manipulated."
+                     (http/client :get 400 (with-new-secret-key (card-query-url card ""))))))))))))
+
+(defn- preview-embed-card-query-url [card & [additional-token-params]]
+  (str "advanced_computation/public/pivot/preview_embed/card/"
+       (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))
+       "/query"))
+
+;; (deftest preview-embed-card-test
+;;   (mt/test-drivers applicable-drivers
+;;     (mt/dataset sample-dataset
+;;       (testing "GET /api/advanced_computation/public/pivot/preview_embed/card/:token/query"
+;;         (testing "check that the endpoint doesn't work if embedding isn't enabled"
+;;           (tu/with-temporary-setting-values [enable-embedding false]
+;;             (with-new-secret-key
+;;               (with-temp-card [card]
+;;                 (is (= "Embedding is not enabled."
+;;                        (mt/user-http-request :crowberto :get 400 (preview-embed-card-query-url card))))))))
+
+;;         (with-embedding-enabled-and-new-secret-key
+;;           (let [expected-status 202]
+;;             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
+;;               (with-temp-card [card {:enable_embedding true}]
+;;                 (let [result (mt/user-http-request :crowberto :get 202 (preview-embed-card-query-url card))
+;;                       _ (clojure.pprint/pprint result)
+;;                       rows   (mt/rows result)]
+;;                   (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+;;                   (is (= "completed" (:status result)))
+;;                   (is (= 6 (count (get-in result [:data :cols]))))
+;;                   (is (= 2273 (count rows)))))))
+
+;;           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
+;;             (with-temp-card [card]
+;;               (is (= "Embedding is not enabled for this object."
+;;                      (mt/user-http-request :crowberto :get 400 (preview-embed-card-query-url card))))))
+
+;;           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
+;;                         "signed with the wrong key")
+;;             (with-temp-card [card]
+;;               (is (= "Message seems corrupt or manipulated."
+;;                      (mt/user-http-request :crowberto :get 400 (with-new-secret-key (preview-embed-card-query-url card))))))))))))

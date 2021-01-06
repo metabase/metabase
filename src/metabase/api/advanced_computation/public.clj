@@ -39,6 +39,7 @@
            :context    :public-question
            :run        (fn [query info]
                          (qp.streaming/streaming-response [{:keys [reducedf], :as context} export-format]
+                           (advcomp-common/check-query-type :query query)
                            (let [context  (assoc context :reducedf (api.public/public-reducedf reducedf))
                                  in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
                                             (advcomp-common/run-query context query info))

@@ -72,7 +72,7 @@
   (context "/activity"                    [] (+auth activity/routes))
   ;; order is important here! the /public version must appear first, otherwise
   ;; it does not apply.
-  (context "/advanced_computation/public" [] (+generic-exceptions advcomp-public/routes))
+  (context "/advanced_computation/public" [] (+message-only-exceptions advcomp-public/routes))
   (context "/advanced_computation"        [] (+auth advcomp-auth/routes))
   (context "/alert"                       [] (+auth alert/routes))
   (context "/automagic-dashboards"        [] (+auth magic/routes))

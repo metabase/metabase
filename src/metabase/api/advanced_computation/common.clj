@@ -5,7 +5,15 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.pivot :as pivot]
-            [metabase.query-processor.store :as qp.store]))
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util.i18n :refer [tru]]))
+
+(defn check-query-type
+  "Check that a query type is of a specific type, for example pivot tables require MBQL queries"
+  [expected-type query]
+  (let [found-type (:type query)]
+    (when (not= expected-type found-type)
+      (throw (ex-info (tru "Queries must be of type ''{0}'', found ''{1}''" expected-type found-type) {:type found-type})))))
 
 (defn- process-query-append-results
   "Reduce the results of a single `query` using `rf` and initial value `init`."
