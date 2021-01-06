@@ -51,7 +51,7 @@
                         available just in case).
 
   Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by
-  `metabase.db.migrations/run-all!`. (`setup-db!`, below, calls both this function and `run-all!`)."
+  `metabase.db.data-migrations/run-all!`. (`setup-db!`, below, calls both this function and `run-all!`)."
   [jdbc-spec direction]
   (jdbc/with-db-transaction [conn jdbc-spec]
     ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes

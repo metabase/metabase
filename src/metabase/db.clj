@@ -8,14 +8,14 @@
   * `metabase.db.connection-pool-setup` - functions for creating a connection pool for the application database and
     setting it as the default Toucan connection
 
+  * `metabase.db.data-migrations` - Clojure-land data migration definitions and functions for running them
+
   * `metabase.db.env` - functions for getting application database connection information from environment variables
 
   * `metabase.db.jdbc-protocols` - implementations of `clojure.java.jdbc` protocols for the Metabase application
     database
 
   * `metabase.db.liquibase` - high-level Clojure wrapper around relevant parts of the Liquibase API
-
-  * `metabase.db.migrations` - Clojure-land data migration definitions and functions for running them
 
   * `metabase.db.setup` - code related to setting up the application DB -- verifying the connection and running
     migrations

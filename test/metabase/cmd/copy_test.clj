@@ -28,7 +28,7 @@
         models-to-exclude    #{"TaskHistory" "Query" "QueryCache" "QueryExecution"}
         all-model-names      (set (for [ns       u/metabase-namespace-symbols
                                         :when    (or (re-find #"^metabase\.models\." (name ns))
-                                                     (= (name ns) "metabase.db.migrations"))
+                                                     (= (name ns) "metabase.db.data-migrations"))
                                         :when    (not (re-find #"test" (name ns)))
                                         [_ varr] (do (classloader/require ns)
                                                      (ns-interns ns))
