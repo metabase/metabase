@@ -243,13 +243,6 @@ export class ExpressionParser extends CstParser {
       $.CONSUME(RParen);
     });
 
-    $.RULE("metricExpression", () => {
-      $.OR([
-        { ALT: () => $.SUBRULE($.identifierString, { LABEL: "metricName" }) },
-        { ALT: () => $.SUBRULE($.identifier, { LABEL: "metricName" }) },
-      ]);
-    });
-
     $.RULE("dimensionExpression", () => {
       $.OR([
         {
@@ -296,14 +289,6 @@ export class ExpressionParser extends CstParser {
                 ARGS: [returnType],
               }),
           },
-          // aggregations
-          {
-            GATE: () => isExpressionType("aggregation", returnType),
-            ALT: () =>
-              $.SUBRULE($.metricExpression, {
-                LABEL: "expression",
-              }),
-          },
           // filters
           {
             GATE: () => isExpressionType("boolean", returnType),
@@ -334,7 +319,8 @@ export class ExpressionParser extends CstParser {
             GATE: () =>
               isExpressionType("string", returnType) ||
               isExpressionType("number", returnType) ||
-              isExpressionType("boolean", returnType),
+              isExpressionType("boolean", returnType) ||
+              isExpressionType("aggregation", returnType),
             ALT: () =>
               $.SUBRULE($.dimensionExpression, {
                 LABEL: "expression",
