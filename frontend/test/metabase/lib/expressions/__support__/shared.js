@@ -112,11 +112,18 @@ const aggregation = [
     "count-where aggregation with an arithmetic operation",
   ],
   // should not compile:
-  // ["Sum(Count)", undefined, "aggregation nested inside another aggregation"],
   ["Count([Total])", undefined, "invalid count arguments"],
   ["SumIf([Total] > 50, [Total])", undefined, "invalid sum-where arguments"],
   ["Count + Share((", undefined, "invalid share"],
 ];
+
+// Skipped for now: temporary, known regression
+/* eslint-disable no-unused-vars */
+const nested_aggregation = [
+  // should not compile:
+  ["Sum(Count)", undefined, "aggregation nested inside another aggregation"],
+];
+/* eslint-enable no-unused-vars */
 
 const filter = [
   ["[Total] < 10", ["<", total, 10], "filter operator"],
