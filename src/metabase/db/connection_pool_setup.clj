@@ -8,7 +8,10 @@
             [metabase.db
              [connection :as mdb.connection]
              [jdbc-protocols :as mdb.jdbc-protocols]]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import com.mchange.v2.c3p0.PoolBackedDataSource))
 
@@ -24,6 +27,12 @@
    (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
      {"maxPoolSize" max-pool-size})))
 
+(s/defn ^:private connection-pool-spec :- {:datasource javax.sql.DataSource, s/Keyword s/Any}
+  [jdbc-spec :- (s/cond-pre s/Str su/Map)]
+  (if (string? jdbc-spec)
+    {:datasource (connection-pool/pooled-data-source-from-url jdbc-spec application-db-connection-pool-props)}
+    (connection-pool/connection-pool-spec jdbc-spec application-db-connection-pool-props)))
+
 (defn create-connection-pool!
   "Create a connection pool for the application DB and set it as the default Toucan connection. This is normally called
   once during start up; calling it a second time (e.g. from the REPL) will "
@@ -35,7 +44,7 @@
       (log/trace "Closing old application DB connection pool")
       (.close pool)))
   (log/debug (trs "Set default db connection with connection pool..."))
-  (let [pool-spec (connection-pool/connection-pool-spec jdbc-spec application-db-connection-pool-props)]
+  (let [pool-spec (connection-pool-spec jdbc-spec)]
     (db/set-default-db-connection! pool-spec)
     (db/set-default-jdbc-options! {:read-columns mdb.jdbc-protocols/read-columns})
     pool-spec))

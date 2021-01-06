@@ -93,7 +93,7 @@
 
 (s/defn ^:private verify-db-connection
   "Test connection to application database with `jdbc-spec` and throw an exception if we have any troubles connecting."
-  [db-type :- s/Keyword jdbc-spec :- su/Map]
+  [db-type :- s/Keyword jdbc-spec :- (s/cond-pre s/Str su/Map)]
   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name db-type))))
   (classloader/require 'metabase.driver.util)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
