@@ -32,6 +32,24 @@ export class ExpressionVisitor {
     return this.visit(ctx.expression);
   }
 
+  booleanExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+  logicalOrExpression(ctx) {
+    return (ctx.operands || []).map(operand => this.visit(operand));
+  }
+  logicalAndExpression(ctx) {
+    return (ctx.operands || []).map(operand => this.visit(operand));
+  }
+  booleanUnaryExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+  logicalNotExpression(ctx) {
+    return (ctx.operands || []).map(operand => this.visit(operand));
+  }
+  relationalExpression(ctx) {
+    return (ctx.operands || []).map(operand => this.visit(operand));
+  }
   additionExpression(ctx) {
     return (ctx.operands || []).map(operand => this.visit(operand));
   }
@@ -49,7 +67,6 @@ export class ExpressionVisitor {
   dimensionExpression(ctx) {
     return this.visit(ctx.dimensionName);
   }
-
   identifier(ctx) {
     return (ctx.Identifier || []).map(id => id.image);
   }
@@ -62,22 +79,12 @@ export class ExpressionVisitor {
   numberLiteral(ctx) {
     return (ctx.NumberLiteral || []).map(id => id.image);
   }
+
   atomicExpression(ctx) {
     return this.visit(ctx.expression);
   }
   parenthesisExpression(ctx) {
     return this.visit(ctx.expression);
-  }
-
-  booleanExpression(ctx) {
-    return (ctx.operands || []).map(operand => this.visit(operand));
-  }
-
-  comparisonExpression(ctx) {
-    return (ctx.operands || []).map(operand => this.visit(operand));
-  }
-  booleanUnaryExpression(ctx) {
-    return (ctx.operands || []).map(operand => this.visit(operand));
   }
 }
 

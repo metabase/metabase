@@ -21,8 +21,9 @@ import {
 import {
   AdditiveOperator,
   AggregationFunctionName,
-  BooleanOperatorBinary,
   BooleanOperatorUnary,
+  LogicalAndOperator,
+  LogicalOrOperator,
   CLAUSE_TOKENS,
   Case,
   Comma,
@@ -226,7 +227,8 @@ export function suggest({
       }
     } else if (
       nextTokenType === BooleanOperatorUnary ||
-      nextTokenType === BooleanOperatorBinary ||
+      nextTokenType === LogicalAndOperator ||
+      nextTokenType === LogicalOrOperator ||
       nextTokenType === FilterOperator
     ) {
       if (isExpressionType(expectedType, "boolean")) {
@@ -533,8 +535,11 @@ const ALL_RULES = [
   "atomicExpression",
   "parenthesisExpression",
   "booleanExpression",
-  "comparisonExpression",
   "booleanUnaryExpression",
+  "relationalExpression",
+  "logicalAndExpression",
+  "logicalOrExpression",
+  "logicalNotExpression",
 ];
 
 const TYPE_RULES = new Set([
