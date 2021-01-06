@@ -3,10 +3,10 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
-  (:require [clojure
-             data
+  (:require [clojure data
              [test :refer :all]
              [walk :as walk]]
+            [clojure.tools.macro :as tools.macro]
             [java-time :as t]
             [medley.core :as m]
             [metabase
@@ -318,3 +318,24 @@
    (fn [toucan-model]
      (initialize/initialize-if-needed! :db)
      (db/resolve-model toucan-model))))
+
+(defn are+-message [expr arglist args]
+  (pr-str
+   (second
+    (macroexpand-1
+     (list
+      `tools.macro/symbol-macrolet
+      (vec (apply concat (map-indexed (fn [i arg]
+                                        [arg (nth args i)])
+                                      arglist)))
+      expr)))))
+
+(defmacro are+
+  "Like `clojure.test/are` but includes a message for easier test failure debugging. (Also this is somewhat more
+  efficient since it generates far less code ­ it uses `doseq` rather than repeating the entire test each time.)"
+  {:style/indent 2}
+  [argv expr & args]
+  `(doseq [args# ~(mapv vec (partition (count argv) args))
+           :let [~argv args#]]
+     (is ~expr
+         (are+-message '~expr '~argv args#))))

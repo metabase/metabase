@@ -8,6 +8,7 @@ const FormInputWidget = ({ placeholder, field }) => (
   <NumericInput
     className="Form-input full"
     placeholder={placeholder}
+    aria-labelledby={`${field.name}-label`}
     {...formDomOnlyProps(field)}
   />
 );
