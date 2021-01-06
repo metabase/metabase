@@ -2,7 +2,8 @@
   "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them."
   (:require [metabase.db.env :as mdb.env]))
 
-(def ^:dynamic ^:private *db-type*
+(def ^:dynamic *db-type*
+  "Bind this to override the default application DB type."
   nil)
 
 (defn db-type
@@ -11,7 +12,9 @@
   (or *db-type*
       @mdb.env/db-type))
 
-(def ^:dynamic ^:private *jdbc-spec* nil)
+(def ^:dynamic *jdbc-spec*
+  "Bind this to override the default application DB JDBC spec."
+  nil)
 
 (defn jdbc-spec
   "`clojure.java.jdbc` spec map for the application DB, using the details map derived from environment variables. This

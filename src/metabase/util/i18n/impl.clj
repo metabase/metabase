@@ -149,7 +149,6 @@
   (atom
    (fn []
      (when-let [db-is-set-up? (resolve 'metabase.db/db-is-set-up?)]
-       (println "(db-is-set-up?):" (db-is-set-up?)) ; NOCOMMIT
        (when (and (bound? db-is-set-up?)
                   (db-is-set-up?))
          (when-let [get-string (resolve 'metabase.models.setting/get-string)]

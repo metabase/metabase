@@ -7,17 +7,16 @@
             [colorize.core :as color]
             [honeysql.format :as hformat]
             [metabase
-             [models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard
-                             DashboardCardSeries DashboardFavorite Database Dependency Dimension Field FieldValues
-                             Metric MetricImportantField NativeQuerySnippet Permissions PermissionsGroup
-                             PermissionsGroupMembership PermissionsRevision Pulse PulseCard PulseChannel
-                             PulseChannelRecipient Revision Segment Session Setting Table User ViewLog]]
+             [models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard DashboardCardSeries DashboardFavorite Database Dependency Dimension Field FieldValues Metric MetricImportantField NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard PulseChannel PulseChannelRecipient Revision Segment Session Setting Table User ViewLog]]
              [util :as u]]
             [metabase.db
              [connection :as mdb.conn]
              [migrations :refer [DataMigrations]]
              [setup :as mdb.setup]]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
+            [schema.core :as s])
   (:import java.sql.SQLException))
 
 (defn- println-ok []
@@ -29,7 +28,7 @@
     (f)
     (catch Throwable e
       (println (u/colorize 'red "[FAIL]\n"))
-      (throw (ex-info (trs "ERROR in step {0}" msg)
+      (throw (ex-info (trs "ERROR {0}" msg)
                       {}
                       e))))
   (println-ok))
@@ -250,9 +249,12 @@
                                         seq-name (name table-name))]]
         (jdbc/db-query-with-resultset target-db-conn [sql] :val)))))
 
-(defn copy!
+(s/defn copy!
   "Copy data from a source application database into an empty destination application database."
-  [source-db-type source-jdbc-spec target-db-type target-jdbc-spec]
+  [source-db-type   :- (s/enum :h2 :postgres :mysql)
+   source-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)
+   target-db-type   :- (s/enum :h2 :postgres :mysql)
+   target-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)]
   ;; make sure the source database is up-do-date
   (mdb.setup/setup-db! source-db-type source-jdbc-spec true)
   ;; make sure the dest DB is up-to-date
@@ -261,7 +263,7 @@
   (binding [mdb.setup/*disable-data-migrations* true]
     (mdb.setup/setup-db! target-db-type target-jdbc-spec true))
   ;; make sure target DB is empty
-  (step (trs "Testing if target DB is already populated...")
+  (step (trs "Testing if target {0} DB is already populated..." (name target-db-type))
     (assert-db-empty target-jdbc-spec))
   ;; create a transaction and load the data.
   (jdbc/with-db-transaction [target-conn target-jdbc-spec]

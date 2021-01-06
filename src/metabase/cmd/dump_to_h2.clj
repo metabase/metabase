@@ -14,7 +14,7 @@
     lein run load-from-h2 '/path/to/metabase.db'"
   (:require [metabase.cmd.copy :as copy]
             [metabase.cmd.copy.h2 :as copy.h2]
-            [metabase.db.env :as mdb.env]))
+            [metabase.db.connection :as mdb.conn]))
 
 (defn dump-to-h2!
   "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
@@ -32,5 +32,5 @@
          h2-jdbc-spec (copy.h2/h2-jdbc-spec h2-filename)]
      (println "Dumping from configured Metabase db to H2 file" h2-filename)
      (copy.h2/delete-existing-h2-database-files! h2-filename keep-existing?)
-     (copy/copy!  @mdb.env/db-type @mdb.env/jdbc-spec :h2 h2-jdbc-spec)
+     (copy/copy!  (mdb.conn/db-type) (mdb.conn/jdbc-spec) :h2 h2-jdbc-spec)
      (println "Dump complete"))))

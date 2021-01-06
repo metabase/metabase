@@ -7,12 +7,16 @@
   There are two ways we specify JDBC connection information in Metabase code:
 
   1. As a 'connection details' map that is meant to be UI-friendly; this is the actual map we save when creating a
-     `Database` object and the one you can go edit from the admin page.
+     `Database` object and the one you can go edit from the admin page. For application DB code, this representation is
+     only used in this namespace.
 
   2. As a `clojure.java.jdbc` connection spec map. This is used internally by lower-level JDBC stuff. We have to
      convert the connections details maps to JDBC specs at some point; Metabase driver code normally handles this.
 
-  There are functions for fetching both types of connection details below."
+  There are functions for fetching both types of connection details below.
+
+  Normally you should use the equivalent functions in `metabase.db.connection` which can be overridden rather than
+  using this namespace directly."
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [metabase
