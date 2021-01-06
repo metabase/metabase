@@ -144,7 +144,7 @@ export function suggest({
         parentRule === "dimensionExpression" &&
         isExpressionType(expectedType, "boolean");
       const isMetric =
-        parentRule === "metricExpression" &&
+        parentRule === "dimensionExpression" &&
         isExpressionType(expectedType, "aggregation");
 
       if (isDimension) {
@@ -525,7 +525,6 @@ const ALL_RULES = [
   "multiplicationExpression",
   "functionExpression",
   "caseExpression",
-  "metricExpression",
   "dimensionExpression",
   "identifier",
   "identifierString",
