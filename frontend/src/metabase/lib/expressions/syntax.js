@@ -128,10 +128,6 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return this.functionExpression(ctx);
   }
 
-  metricExpression(ctx) {
-    const metricName = this.visit(ctx.metricName);
-    return syntaxNode("metric", metricName);
-  }
   dimensionExpression(ctx) {
     return syntaxNode(ctx.resolveAs, this.visit(ctx.dimensionName));
   }

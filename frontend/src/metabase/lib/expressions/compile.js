@@ -68,17 +68,15 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     return mbql;
   }
 
-  metricExpression(ctx) {
-    const metricName = this.visit(ctx.metricName);
-    const metric = parseMetric(metricName, this._options);
-    if (!metric) {
-      throw new Error(`Unknown Metric: ${metricName}`);
-    }
-    return ["metric", metric.id];
-  }
   dimensionExpression(ctx) {
     const name = this.visit(ctx.dimensionName);
-    if (ctx.resolveAs === "segment") {
+    if (ctx.resolveAs === "metric") {
+      const metric = parseMetric(name, this._options);
+      if (!metric) {
+        throw new Error(`Unknown Metric: ${name}`);
+      }
+      return ["metric", metric.id];
+    } else if (ctx.resolveAs === "segment") {
       const segment = parseSegment(name, this._options);
       if (!segment) {
         throw new Error(`Unknown Segment: ${name}`);
