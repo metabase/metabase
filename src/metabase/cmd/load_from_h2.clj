@@ -14,146 +14,41 @@
    mysql -u root -e 'DROP DATABASE IF EXISTS metabase; CREATE DATABASE metabase;'
    MB_DB_TYPE=mysql MB_DB_HOST=localhost MB_DB_PORT=3305 MB_DB_USER=root MB_DB_DBNAME=metabase lein run load-from-h2
    ```"
-  (:require [clojure.java
-             [io :as io]
-             [jdbc :as jdbc]]
-            [clojure.string :as str]
-            [colorize.core :as color]
+  (:require [clojure.java.jdbc :as jdbc]
             [metabase
-             [db :as mdb]
-             [models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard
-                             DashboardCardSeries DashboardFavorite Database Dependency Dimension Field FieldValues
-                             Metric MetricImportantField NativeQuerySnippet Permissions PermissionsGroup
-                             PermissionsGroupMembership PermissionsRevision Pulse PulseCard PulseChannel
-                             PulseChannelRecipient Revision Segment Session Setting Table User ViewLog]]
+             [models :refer [Session Setting]]
              [util :as u]]
+            [metabase.cmd.dump-and-load-common :as common]
             [metabase.db
+             [connection :as mdb.conn]
              [env :as mdb.env]
              [migrations :refer [DataMigrations]]
-             [spec :as db.spec]]
+             [setup :as mdb.setup]]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import java.sql.SQLException))
+            [toucan.db :as db]))
 
-(defn- println-ok [] (println (color/green "[OK]")))
-
-(defn- dispatch-on-db-type [& _] (mdb/db-type))
-
-;;; ------------------------------------------ Models to Migrate (in order) ------------------------------------------
-
-(def entities
-  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
-  instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
-  [Database
-   User
-   Setting
-   Dependency
-   Table
-   Field
-   FieldValues
-   Segment
-   Metric
-   MetricImportantField
-   Revision
-   ViewLog
-   Session
-   Collection
-   CollectionRevision
-   Dashboard
-   Card
-   CardFavorite
-   DashboardCard
-   DashboardCardSeries
-   Activity
-   Pulse
-   PulseCard
-   PulseChannel
-   PulseChannelRecipient
-   PermissionsGroup
-   PermissionsGroupMembership
-   Permissions
-   PermissionsRevision
-   DashboardFavorite
-   Dimension
-   NativeQuerySnippet
-   ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
-   ;; above this line)
-   DataMigrations])
-
-
-;;; --------------------------------------------- H2 Connection Options ----------------------------------------------
-
-(defn- add-file-prefix-if-needed [connection-string-or-filename]
-  (if (str/starts-with? connection-string-or-filename "file:")
-    connection-string-or-filename
-    (str "file:" (.getAbsolutePath (io/file connection-string-or-filename)))))
-
-(defn- h2-details [h2-connection-string-or-nil]
-  (let [h2-filename (add-file-prefix-if-needed (or h2-connection-string-or-nil @mdb.env/db-file))]
-    (db.spec/h2 {:db (str h2-filename ";IFEXISTS=TRUE")})))
-
-
-;;; ------------------------------------------- Fetching & Inserting Rows --------------------------------------------
-
-(defn- objects->colums+values
-  "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
-  statement, and a sequence of rows (as seqeunces)."
-  [objs]
-  ;; 1) `:sizeX` and `:sizeY` come out of H2 as `:sizex` and `:sizey` because of automatic lowercasing; fix the names
-  ;;    of these before putting into the new DB
-  ;;
-  ;; 2) Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers
-  (let [source-keys (keys (first objs))
-        dest-keys   (for [k source-keys]
-                      ((db/quote-fn) (name (case k
-                                             :sizex :sizeX
-                                             :sizey :sizeY
-                                             k))))]
-    {:cols dest-keys
-     :vals (for [row objs]
-             (map row source-keys))}))
-
-(def ^:private chunk-size 100)
-
-(defn- insert-chunk! [target-db-conn table-name chunkk]
-  (print (color/blue \.))
-  (flush)
-  (try
-    (let [{:keys [cols vals]} (objects->colums+values chunkk)]
-      (jdbc/insert-multi! target-db-conn table-name cols vals))
-    (catch SQLException e
-      (jdbc/print-sql-exception-chain e)
-      (throw e))))
-
-(defn- insert-entity! [target-db-conn {table-name :table, entity-name :name} objs]
-  (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) entity-name))
-  (flush)
-  ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into
-  ;; smaller chunks so connection stays alive
-  (doseq [chunk (partition-all chunk-size objs)]
-    (insert-chunk! target-db-conn table-name chunk))
-  (println-ok))
-
-(defn- load-data! [target-db-conn h2-connection-string-or-nil]
-  (jdbc/with-db-connection [h2-conn (h2-details h2-connection-string-or-nil)]
-    (doseq [{table-name :table, :as e} entities
-            :let                       [rows (jdbc/query h2-conn [(str "SELECT * FROM " (name table-name))])]
+(defn- load-data! [source-jdbc-spec target-db-type target-db-conn]
+  (jdbc/with-db-connection [source-conn source-jdbc-spec]
+    (doseq [{table-name :table, :as e} common/entities
+            :let                       [rows (jdbc/query source-conn [(str "SELECT * FROM " (name table-name))])]
             :when                      (seq rows)]
-      (insert-entity! target-db-conn e rows))))
+      (common/insert-entity! target-db-type target-db-conn e rows))))
 
 
 ;;; ---------------------------------------- Enabling / Disabling Constraints ----------------------------------------
 
 (defmulti ^:private disable-db-constraints!
-  {:arglists '([target-db-conn])}
-  dispatch-on-db-type)
+  {:arglists '([target-db-type dest-db-connection])}
+  (fn [db-type _]
+    db-type))
 
 (defmulti ^:private reenable-db-constraints!
-  {:arglists '([target-db-conn])}
-  dispatch-on-db-type)
+  {:arglists '([target-db-type dest-db-connection])}
+  (fn [db-type _]
+    db-type))
 
-
-(defmethod disable-db-constraints! :postgres [target-db-conn]
+(defmethod disable-db-constraints! :postgres
+  [_ target-db-conn]
   ;; make all of our FK constraints deferrable. This only works on Postgres 9.4+ (December 2014)! (There's no pressing
   ;; reason to turn these back on at the conclusion of this script. It makes things more complicated since it doesn't
   ;; work if done inside the same transaction.)
@@ -166,14 +61,16 @@
   ;; now enable constraint deferring for the duration of the transaction
   (jdbc/execute! target-db-conn ["SET CONSTRAINTS ALL DEFERRED"]))
 
-(defmethod reenable-db-constraints! :postgres [_]) ; no-op
 
+(defmethod reenable-db-constraints! :postgres [_ _]) ; no-op
 
-(defmethod disable-db-constraints! :mysql [target-db-conn]
+(defmethod disable-db-constraints! :mysql
+  [_ target-db-conn]
   (jdbc/execute! target-db-conn ["SET FOREIGN_KEY_CHECKS=0"]))
 
 ;; For MySQL we need to re-enable FK checks when we're done
-(defmethod reenable-db-constraints! :mysql [target-db-conn]
+(defmethod reenable-db-constraints! :mysql
+  [_ target-db-conn]
   (jdbc/execute! target-db-conn ["SET FOREIGN_KEY_CHECKS=1"]))
 
 
@@ -184,59 +81,60 @@
   #{Setting Session DataMigrations})
 
 (defmulti ^:private update-sequence-values!
-  {:arglists '([])}
-  dispatch-on-db-type)
+  {:arglists '([target-db-type target-jdbc-spec])}
+  (fn [target-db-type _]
+    target-db-type))
 
-(defmethod update-sequence-values! :mysql []) ; no-op
+(defmethod update-sequence-values! :mysql [_ _]) ; no-op
 
 ;; Update the sequence nextvals.
-(defmethod update-sequence-values! :postgres []
-  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-spec)]
+(defmethod update-sequence-values! :postgres
+  [_ target-jdbc-spec]
+  (jdbc/with-db-transaction [target-db-conn target-jdbc-spec]
     (println (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
-    (doseq [e     entities
+    (doseq [e     common/entities
             :when (not (contains? entities-without-autoinc-ids e))
             :let  [table-name (name (:table e))
                    seq-name   (str table-name "_id_seq")
                    sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val"
                                       seq-name (name table-name))]]
       (jdbc/db-query-with-resultset target-db-conn [sql] :val))
-    (println-ok)))
+    (common/println-ok)))
 
-(defn- mb-db-populated? [conn]
-  (binding [db/*db-connection* conn]
+(defn- mb-db-populated? [db-type conn]
+  (binding [db/*db-connection* conn
+            db/*quoting-style* (mdb.conn/quoting-style db-type)]
     (pos? (db/count Setting))))
 
-;;; --------------------------------------------------- Public Fns ---------------------------------------------------
+(defn load!
+  "Load data from a source (presumably H2) database with `source-jdbc-spec` into an empty target database with
+  `target-jdbc-spec`."
+  [source-jdbc-spec target-db-type target-jdbc-spec]
+  (assert (#{:postgres :mysql} target-db-type)
+          (trs "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."))
+  (mdb.setup/setup-db! target-db-type target-jdbc-spec true)
+  (jdbc/with-db-transaction [target-db-transaction-conn target-jdbc-spec]
+    (jdbc/db-set-rollback-only! target-db-transaction-conn)
+    (println (u/format-color 'blue "Testing if target DB is already populated..."))
+    (assert (not (mb-db-populated? target-db-type target-db-transaction-conn))
+            (trs "Target DB is already populated!"))
+    (common/println-ok)
+    (println (u/format-color 'blue "Temporarily disabling DB constraints..."))
+    (disable-db-constraints! target-db-type target-db-transaction-conn)
+    (common/println-ok)
+    (load-data! source-jdbc-spec target-db-type target-db-transaction-conn)
+    (println (u/format-color 'blue "Re-enabling DB constraints..."))
+    (reenable-db-constraints! target-db-type target-db-transaction-conn)
+    (common/println-ok)
+    (jdbc/db-unset-rollback-only! target-db-transaction-conn))
+  (update-sequence-values! target-db-type target-jdbc-spec))
 
 (defn load-from-h2!
-  "Transfer data from existing H2 database to the newly created (presumably MySQL or Postgres) DB specified by env
-  vars. Intended as a tool for upgrading from H2 to a 'real' Database.
+  "Transfer data from existing H2 database to a newly created (presumably MySQL or Postgres) DB. Intended as a tool for
+  upgrading from H2 to a 'real' database.
 
-  Defaults to using `@metabase.db.env/db-file` as the connection string."
-  [h2-connection-string-or-nil]
-  (mdb/setup-db!)
-
-  (assert (#{:postgres :mysql} (mdb/db-type))
-    (trs "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."))
-
-  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-spec)]
-    (jdbc/db-set-rollback-only! target-db-conn)
-
-    (println (u/format-color 'blue "Testing if target DB is already populated..."))
-    (assert (not (mb-db-populated? target-db-conn))
-      (trs "Target DB is already populated!"))
-    (println-ok)
-
-    (println (u/format-color 'blue "Temporarily disabling DB constraints..."))
-    (disable-db-constraints! target-db-conn)
-    (println-ok)
-
-    (load-data! target-db-conn h2-connection-string-or-nil)
-
-    (println (u/format-color 'blue "Re-enabling DB constraints..."))
-    (reenable-db-constraints! target-db-conn)
-    (println-ok)
-
-    (jdbc/db-unset-rollback-only! target-db-conn))
-
-  (update-sequence-values!))
+  Defaults to using `@metabase.db.env/db-file` as the source H2 database if `h2-filename` is `nil`."
+  ([h2-filename]
+   (let [h2-filename  (str (or h2-filename @mdb.env/db-file) ";IFEXISTS=TRUE")
+         h2-jdbc-spec (common/h2-jdbc-spec h2-filename)]
+     (load! h2-jdbc-spec @mdb.env/db-type @mdb.env/jdbc-spec))))
