@@ -1,8 +1,4 @@
-import {
-  restore,
-  signInAsAdmin,
-  createNativeQuestion,
-} from "__support__/cypress";
+import { restore, signInAsAdmin } from "__support__/cypress";
 
 describe("scenarios > visualizations > rows", () => {
   beforeEach(() => {
