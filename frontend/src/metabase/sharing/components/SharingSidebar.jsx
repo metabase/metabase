@@ -267,7 +267,7 @@ class SharingSidebar extends React.Component {
 
     await this.props.saveEditingPulse();
 
-    this.setState({ editingMode: "list-pulses" });
+    this.setState({ editingMode: undefined });
   };
 
   createSubscription = () => {
