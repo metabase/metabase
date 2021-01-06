@@ -28,7 +28,6 @@
             [metabase.db
              [connection :as mdb.connection]
              [connection-pool-setup :as mdb.connection-pool-setup]
-             [env :as mdb.env]
              [setup :as mdb.setup]]
             [potemkin :as p]))
 
@@ -59,11 +58,6 @@
 (def ^:dynamic ^:deprecated *allow-potentailly-unsafe-connections*
   "DEPRECATED/NO LONGER USED (REMOVE ME!)"
   false)
-
-(defn ^:deprecated db-connection-details
-  "DEPRECATED - USE `metabase.db.connection/jdbc-spec` INSTEAD"
-  []
-  @mdb.env/db-connection-details)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         ^^^^^ OLD STUFF (REMOVE) ^^^^^                                         |

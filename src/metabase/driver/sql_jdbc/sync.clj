@@ -13,6 +13,7 @@
   active-tables
   column->special-type
   database-type->base-type
+  db-default-timezone
   excluded-schemas
   fallback-metadata-query
   have-select-privilege?]

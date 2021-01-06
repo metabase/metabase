@@ -134,10 +134,7 @@
   [db-type jdbc-spec auto-migrate?]
   (u/profile (trs "Database setup")
     (u/with-us-locale
-      (println "VERIFY CONNECTION") ; NOCOMMIT
       (verify-db-connection db-type jdbc-spec)
-      (println "SCHEMA MIGRATIONS") ; NOCOMMIT
       (run-schema-migrations! jdbc-spec auto-migrate?)
-      (println "DATA MIGRATIONS") ; NOCOMMIT
       (run-data-migrations! db-type jdbc-spec)))
   :done)

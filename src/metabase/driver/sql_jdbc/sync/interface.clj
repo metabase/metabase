@@ -54,3 +54,18 @@
   {:arglists '([driver schema table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defmulti db-default-timezone
+  "JDBC-specific version of of `metabase.driver/db-default-timezone` that takes a `clojure.java.jdbc` connection spec
+  rather than a set of DB details. If an implementation of this method is provided, it will be used automatically in
+  the default `:sql-jdbc` implementation of `metabase.driver/db-default-timezone`.
+
+  This exists so we can reuse this code with the application database without having to create a new Connection pool
+  for the application DB."
+  {:arglists '([driver jdbc-spec])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod db-default-timezone :sql-jdbc
+  [_ _]
+  nil)
