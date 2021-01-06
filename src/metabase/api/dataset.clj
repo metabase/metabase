@@ -4,24 +4,19 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
             [metabase.api.common :as api]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models
-             [card :refer [Card]]
-             [database :as database :refer [Database]]
-             [query :as query]]
-            [metabase.query-processor
-             [streaming :as qp.streaming]
-             [util :as qputil]]
-            [metabase.query-processor.middleware
-             [constraints :as qp.constraints]
-             [permissions :as qp.perms]]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.database :as database :refer [Database]]
+            [metabase.models.query :as query]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------

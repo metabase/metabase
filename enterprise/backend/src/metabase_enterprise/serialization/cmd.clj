@@ -1,26 +1,22 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
-            [metabase-enterprise.serialization
-             [dump :as dump]
-             [load :as load]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
-             [field :as field :refer [Field]]
-             [metric :refer [Metric]]
-             [pulse :refer [Pulse]]
-             [segment :refer [Segment]]
-             [table :refer [Table]]
-             [user :refer [User]]]
-            [metabase.util
-             [i18n :refer [deferred-trs trs]]
-             [schema :as su]]
+            [metabase-enterprise.serialization.dump :as dump]
+            [metabase-enterprise.serialization.load :as load]
+            [metabase.db :as mdb]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.user :refer [User]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-trs trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 

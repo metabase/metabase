@@ -1,9 +1,8 @@
 (ns metabase.pulse.render.table-test
   (:require [expectations :refer [expect]]
-            [metabase.pulse.render
-             [color :as color]
-             [table :as table]
-             [test-util :as render.tu]]
+            [metabase.pulse.render.color :as color]
+            [metabase.pulse.render.table :as table]
+            [metabase.pulse.render.test-util :as render.tu]
             [metabase.test.util :as tu]))
 
 (defn- query-results->header+rows

@@ -1,11 +1,9 @@
 (ns metabase.query-processor.middleware.resolve-referenced-test
   (:require [clojure.test :refer :all]
-            [metabase.models
-             [card :refer [Card]]
-             [database :refer [Database]]]
-            [metabase.query-processor.middleware
-             [parameters-test :refer [card-template-tags]]
-             [resolve-referenced :as referenced]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.database :refer [Database]]
+            [metabase.query-processor.middleware.parameters-test :refer [card-template-tags]]
+            [metabase.query-processor.middleware.resolve-referenced :as referenced]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
             [toucan.db :as db])

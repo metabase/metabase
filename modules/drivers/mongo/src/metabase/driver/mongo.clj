@@ -1,30 +1,25 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [cheshire
-             [core :as json]
-             [generate :as json.generate]]
+  (:require [cheshire.core :as json]
+            [cheshire.generate :as json.generate]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.mongo
-             [execute :as execute]
-             [parameters :as parameters]
-             [query-processor :as qp]
-             [util :refer [with-mongo-connection]]]
+            [metabase.driver.mongo.execute :as execute]
+            [metabase.driver.mongo.parameters :as parameters]
+            [metabase.driver.mongo.query-processor :as qp]
+            [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
-            [monger
-             [collection :as mc]
-             [command :as cmd]
-             [conversion :as m.conversion]
-             [db :as mdb]]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util :as u]
+            [monger.collection :as mc]
+            [monger.command :as cmd]
+            [monger.conversion :as m.conversion]
+            [monger.db :as mdb]
             [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB

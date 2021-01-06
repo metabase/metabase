@@ -1,8 +1,7 @@
 (ns metabase.query-processor-test.string-extracts-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor-test :refer :all]
-             [test :as mt]]
+            [metabase.query-processor-test :refer :all]
+            [metabase.test :as mt]
             [metabase.test.data :as data]))
 
 (defn- test-string-extract

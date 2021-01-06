@@ -1,23 +1,20 @@
 (ns metabase.pulse-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]
-             [walk :as walk]]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase
-             [models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
-             [pulse :as pulse]
-             [test :as mt]
-             [util :as u]]
             [metabase.integrations.slack :as slack]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as group]
-             [pulse :as models.pulse]]
+            [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.pulse :as models.pulse]
+            [metabase.pulse :as pulse]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.test-util :as pulse.tu]
             [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
 

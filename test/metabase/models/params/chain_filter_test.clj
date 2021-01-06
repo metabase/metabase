@@ -1,9 +1,8 @@
 (ns metabase.models.params.chain-filter-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Dimension FieldValues]]
-             [test :as mt]]
-            [metabase.models.params.chain-filter :as chain-filter]))
+            [metabase.models :refer [Dimension FieldValues]]
+            [metabase.models.params.chain-filter :as chain-filter]
+            [metabase.test :as mt]))
 
 (defmacro chain-filter [field field->value & options]
   `(chain-filter/chain-filter

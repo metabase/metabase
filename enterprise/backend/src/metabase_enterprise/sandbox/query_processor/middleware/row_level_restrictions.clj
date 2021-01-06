@@ -2,26 +2,21 @@
   (:require [clojure.tools.logging :as log]
             [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.models
-             [card :refer [Card]]
-             [field :refer [Field]]
-             [permissions :as perms]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [table :refer [Table]]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [store :as qp.store]]
-            [metabase.query-processor.middleware
-             [annotate :as annotate]
-             [fetch-source-query :as fetch-source-query]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 

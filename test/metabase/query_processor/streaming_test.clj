@@ -5,11 +5,10 @@
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.async.streaming-response :as streaming-response]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [toucan.db :as db])
   (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]

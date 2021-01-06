@@ -3,12 +3,10 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
-            [metabase.driver.sql-jdbc.sync
-             [common :as common]
-             [interface :as i]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync.common :as common]
+            [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))

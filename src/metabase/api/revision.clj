@@ -1,12 +1,10 @@
 (ns metabase.api.revision
   (:require [compojure.core :refer [GET POST]]
-            [metabase.api
-             [card :as card-api]
-             [common :as api]]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [revision :as revision :refer [Revision]]]
+            [metabase.api.card :as card-api]
+            [metabase.api.common :as api]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.revision :as revision :refer [Revision]]
             [schema.core :as s]
             [toucan.db :as db]))
 

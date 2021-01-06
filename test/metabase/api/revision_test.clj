@@ -1,10 +1,9 @@
 (ns metabase.api.revision-test
   (:require [expectations :refer :all]
-            [metabase.models
-             [card :refer [Card serialize-instance]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [revision :refer [push-revision! Revision revisions]]]
+            [metabase.models.card :refer [Card serialize-instance]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.revision :refer [push-revision! Revision revisions]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [toucan.db :as db]

@@ -1,16 +1,14 @@
 (ns metabase.util.stats-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [email :as email]
-             [util :as u]]
+            [metabase.email :as email]
             [metabase.integrations.slack :as slack]
-            [metabase.models
-             [card :refer [Card]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [query-execution :refer [QueryExecution]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.pulse-channel :refer [PulseChannel]]
+            [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [metabase.util.stats :as stats-util :refer :all]
             [schema.core :as s]
             [toucan.db :as db]

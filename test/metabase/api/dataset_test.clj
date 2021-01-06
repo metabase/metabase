@@ -1,32 +1,26 @@
 (ns metabase.api.dataset-test
   "Unit tests for /api/dataset endpoints."
-  (:require [cheshire
-             [core :as json]
-             [generate :as generate]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [cheshire.core :as json]
+            [cheshire.generate :as generate]
             [clojure.data.csv :as csv]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
-            [metabase
-             [http-client :as http-client]
-             [query-processor-test :as qp.test]
-             [test :as mt]
-             [util :as u]]
+            [metabase.http-client :as http-client]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models
-             [card :refer [Card]]
-             [permissions :as perms]
-             [permissions-group :as group]
-             [query-execution :refer [QueryExecution]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [users :as test-users]]
+            [metabase.test :as mt]
+            [metabase.test.data.dataset-definitions :as defs]
+            [metabase.test.data.users :as test-users]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator))

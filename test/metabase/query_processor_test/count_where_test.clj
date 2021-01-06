@@ -1,14 +1,11 @@
 (ns metabase.query-processor-test.count-where-test
-  (:require [metabase
-             [query-processor-test :refer :all]
-             [test :as mt]]
-            [metabase.models
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+  (:require [metabase.models.metric :refer [Metric]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.query-processor-test :refer :all]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
+            [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
 
 (datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations)

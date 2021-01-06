@@ -1,13 +1,11 @@
 (ns metabase.middleware.json
   "Middleware related to parsing JSON requests and generating JSON responses."
-  (:require [cheshire
-             [core :as json]
-             [generate :as json.generate]]
+  (:require [cheshire.core :as json]
+            [cheshire.generate :as json.generate]
             [metabase.util.date-2 :as u.date]
             [ring.middleware.json :as ring.json]
-            [ring.util
-             [io :as rui]
-             [response :as rr]])
+            [ring.util.io :as rui]
+            [ring.util.response :as rr])
   (:import com.fasterxml.jackson.core.JsonGenerator
            [java.io BufferedWriter OutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets

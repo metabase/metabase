@@ -1,21 +1,18 @@
 (ns metabase.models.field-values-test
   "Tests for specific behavior related to FieldValues and functions in the `metabase.models.field-values` namespace."
   (:require [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
             [clojure.java.jdbc :as jdbc]
-            [metabase
-             [db :as mdb]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.db :as mdb]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [field-values :as field-values :refer :all]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :as field-values :refer :all]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (deftest field-should-have-field-values?-test

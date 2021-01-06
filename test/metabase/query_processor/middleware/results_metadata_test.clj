@@ -1,24 +1,21 @@
 (ns metabase.query-processor.middleware.results-metadata-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [permissions :as perms]
-             [permissions-group :as group]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.util :as qputil]
             [metabase.sync.analyze.query-results :as qr]
+            [metabase.test :as mt]
             [metabase.test.data.users :as users]
             [metabase.test.mock.util :as mutil]
             [metabase.test.util :as tu]
-            [metabase.util
-             [encryption :as encrypt]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.encryption :as encrypt]
+            [metabase.util.schema :as su]
             [toucan.db :as db]))
 
 (defn- card-metadata [card]

@@ -6,14 +6,12 @@
   (:require [clojure.tools.logging :as log]
             [metabase.mbql.predicates :as mbql.preds]
             [metabase.sync.analyze.classifiers.name :as classify-name]
-            [metabase.sync.analyze.fingerprint
-             [fingerprinters :as f]
-             [insights :as insights]]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.sync.analyze.fingerprint.insights :as insights]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [redux.core :as redux]
             [schema.core :as s]))
 

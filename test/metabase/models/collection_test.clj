@@ -1,22 +1,18 @@
 (ns metabase.models.collection-test
   (:refer-clojure :exclude [ancestors descendants])
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
-             [test :as mt]
-             [util :as u]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.api.common :refer [*current-user-permissions-set*]]
-            [metabase.models
-             [collection :as collection]
-             [permissions :as perms]]
+            [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 

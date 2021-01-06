@@ -1,17 +1,15 @@
 (ns metabase.query-processor.middleware.expand-macros-test
   (:require [expectations :refer [expect]]
-            [metabase
-             [query-processor-test :as qp.test]
-             [test :as mt]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.expand-macros :as expand-macros]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
+            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 (defn- mbql-query [inner-query]

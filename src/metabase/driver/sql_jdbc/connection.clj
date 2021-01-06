@@ -3,16 +3,14 @@
   multimethods for SQL JDBC drivers."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [connection-pool :as connection-pool]
-             [driver :as driver]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.connection-pool :as connection-pool]
+            [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [ssh :as ssh]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.ssh :as ssh]
             [toucan.db :as db]))
 
 (def ^:deprecated application-db-mock-id

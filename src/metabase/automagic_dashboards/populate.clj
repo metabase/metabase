@@ -5,9 +5,8 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.filters :as filters]
-            [metabase.models
-             [card :as card]
-             [collection :as collection]]
+            [metabase.models.card :as card]
+            [metabase.models.collection :as collection]
             [metabase.query-processor.util :as qp.util]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))

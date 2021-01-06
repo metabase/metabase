@@ -9,29 +9,26 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [db :as mdb]
-             [public-settings :as public-settings]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.db :as mdb]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [humanization :as humanization]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :as perm-group :refer [PermissionsGroup]]
-             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
-             [pulse :refer [Pulse]]
-             [setting :as setting :refer [Setting]]
-             [user :refer [User]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.humanization :as humanization]
+            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.setting :as setting :refer [Setting]]
+            [metabase.models.user :refer [User]]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [toucan
-             [db :as db]
-             [models :as models]])
+            [toucan.db :as db]
+            [toucan.models :as models])
   (:import java.util.UUID))
 
 ;;; # Migration Helpers

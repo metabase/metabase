@@ -392,7 +392,7 @@
    :check-namespace-decls
    [:linters-common
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :check-namespace-decls {:prefix-rewriting true}}]
+     :check-namespace-decls {:prefix-rewriting false}}]
 
    :cloverage
    [:test-common

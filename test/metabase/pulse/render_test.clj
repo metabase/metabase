@@ -1,11 +1,10 @@
 (ns metabase.pulse.render-test
   (:require [expectations :refer [expect]]
-            [metabase
-             [pulse :as pulse]
-             [query-processor :as qp]]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.pulse :as pulse]
             [metabase.pulse.render :as render]
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
             [toucan.util.test :as tt]))
 

@@ -4,41 +4,34 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [events :as events]
-             [public-settings :as public-settings]
-             [sample-data :as sample-data]
-             [util :as u]]
-            [metabase.api
-             [common :as api]
-             [table :as table-api]]
+            [metabase.api.common :as api]
+            [metabase.api.table :as table-api]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [database :as database :refer [Database protected-password]]
-             [field :refer [Field readable-fields-only]]
-             [field-values :refer [FieldValues]]
-             [interface :as mi]
-             [permissions :as perms]
-             [table :refer [Table]]]
-            [metabase.sync
-             [analyze :as analyze]
-             [field-values :as sync-field-values]
-             [sync-metadata :as sync-metadata]]
-            [metabase.util
-             [cron :as cron-util]
-             [i18n :refer [deferred-tru trs tru]]
-             [schema :as su]]
+            [metabase.events :as events]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.database :as database :refer [Database protected-password]]
+            [metabase.models.field :refer [Field readable-fields-only]]
+            [metabase.models.field-values :refer [FieldValues]]
+            [metabase.models.interface :as mi]
+            [metabase.models.permissions :as perms]
+            [metabase.models.table :refer [Table]]
+            [metabase.public-settings :as public-settings]
+            [metabase.sample-data :as sample-data]
+            [metabase.sync.analyze :as analyze]
+            [metabase.sync.field-values :as sync-field-values]
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.util :as u]
+            [metabase.util.cron :as cron-util]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import metabase.models.database.DatabaseInstance))
 
 (def DBEngineString

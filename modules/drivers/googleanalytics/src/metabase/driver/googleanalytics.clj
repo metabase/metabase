@@ -2,15 +2,13 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.google :as google]
-            [metabase.driver.googleanalytics
-             [client :as client]
-             [execute :as execute]
-             [metadata :as metadata]
-             [query-processor :as qp]]
+            [metabase.driver.googleanalytics.client :as client]
+            [metabase.driver.googleanalytics.execute :as execute]
+            [metabase.driver.googleanalytics.metadata :as metadata]
+            [metabase.driver.googleanalytics.query-processor :as qp]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]])
   (:import [com.google.api.services.analytics Analytics Analytics$Data$Ga$Get]
            [com.google.api.services.analytics.model Column Profile Profiles Webproperties Webproperty]

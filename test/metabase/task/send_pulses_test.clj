@@ -1,15 +1,13 @@
 (ns metabase.task.send-pulses-test
   (:require [expectations :refer :all]
-            [metabase
-             [email :as email]
-             [email-test :as et]
-             [pulse-test :refer [checkins-query-card]]]
-            [metabase.models
-             [card :refer [Card]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
+            [metabase.email :as email]
+            [metabase.email-test :as et]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.pulse-channel :refer [PulseChannel]]
+            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+            [metabase.pulse-test :refer [checkins-query-card]]
             [metabase.task.send-pulses :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.users :as users]

@@ -8,20 +8,17 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
-            [metabase.models
-             [interface :as i]
-             [permissions :as perms :refer [Permissions]]]
             [metabase.models.collection.root :as collection.root]
+            [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :as ui18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]])
+            [toucan.db :as db]
+            [toucan.models :as models])
   (:import metabase.models.collection.root.RootCollection))
 
 (comment collection.root/keep-me)

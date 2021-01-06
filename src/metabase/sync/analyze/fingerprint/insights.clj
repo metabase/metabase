@@ -1,17 +1,15 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
   (:require [java-time :as t]
-            [kixi.stats
-             [core :as stats]
-             [math :as math]]
+            [kixi.stats.core :as stats]
+            [kixi.stats.math :as math]
             [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.sync.util :as sync-util]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [trs]]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [trs]]
             [redux.core :as redux])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 

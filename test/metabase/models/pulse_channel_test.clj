@@ -1,15 +1,13 @@
 (ns metabase.models.pulse-channel-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.models
-             [pulse :as p :refer [Pulse]]
-             [pulse-channel :as pc :refer [PulseChannel]]
-             [pulse-channel-recipient :as pcr :refer [PulseChannelRecipient]]
-             [user :refer [User]]]
+            [metabase.models.pulse :as p :refer [Pulse]]
+            [metabase.models.pulse-channel :as pc :refer [PulseChannel]]
+            [metabase.models.pulse-channel-recipient :as pcr :refer [PulseChannelRecipient]]
+            [metabase.models.user :refer [User]]
             [metabase.test :as mt]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 ;; Test out our predicate functions
 

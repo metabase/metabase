@@ -7,10 +7,9 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 

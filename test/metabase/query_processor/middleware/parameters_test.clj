@@ -2,14 +2,12 @@
   "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
   SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.mbql.normalize :as normalize]
-            [metabase.models
-             [card :refer [Card]]
-             [native-query-snippet :refer [NativeQuerySnippet]]]
-            [metabase.query-processor.middleware.parameters :as parameters])
+            [metabase.models.card :refer [Card]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.query-processor.middleware.parameters :as parameters]
+            [metabase.test :as mt])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest move-top-level-params-to-inner-query-test

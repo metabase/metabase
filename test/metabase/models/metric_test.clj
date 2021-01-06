@@ -1,9 +1,8 @@
 (ns metabase.models.metric-test
   (:require [expectations :refer :all]
-            [metabase.models
-             [database :refer [Database]]
-             [metric :as metric :refer [Metric]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.metric :as metric :refer [Metric]]
+            [metabase.models.table :refer [Table]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer [fetch-user user->id]]
             [metabase.util :as u]

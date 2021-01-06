@@ -2,13 +2,11 @@
   "Additional tests for downloads (including XLSX) are in places like `metabase.query-processor.streaming-test`."
   (:require [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [test :as mt]]
-            [metabase.query-processor
-             [streaming :as qp.streaming]
-             [timezone :as qp.timezone]]
+            [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.test :as mt]
             [metabase.util.files :as u.files]))
 
 (defn- timestamps-in-xlsx-results

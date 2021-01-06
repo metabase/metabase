@@ -1,18 +1,17 @@
 (ns metabase.driver.sql.parameters.substitute-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [models :refer [Field]]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.parse :as parse]
             [metabase.driver.sql.parameters.substitute :as substitute]
             [metabase.mbql.normalize :as normalize]
+            [metabase.models :refer [Field]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.parameters.native :as native]
             [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.test :as mt]
             [metabase.test.data.datasets :as datasets]
             [metabase.util.schema :as su]
             [schema.core :as s]))

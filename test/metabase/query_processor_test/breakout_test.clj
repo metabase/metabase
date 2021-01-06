@@ -1,21 +1,18 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]
-             [util :as u]]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models
-             [card :refer [Card]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]]
-            [metabase.query-processor.middleware
-             [add-dimension-projections :as add-dim-projections]
-             [add-source-metadata :as add-source-metadata]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field :refer [Field]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
+            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
             [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test.data :as data]))
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.util :as u]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers)

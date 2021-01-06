@@ -2,9 +2,8 @@
   (:require [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (models/defmodel PulseCard :pulse_card)
 

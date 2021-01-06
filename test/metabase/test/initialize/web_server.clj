@@ -1,10 +1,9 @@
 (ns metabase.test.initialize.web-server
-  (:require [metabase
-             [config :as config]
-             [handler :as handler]
-             [server :as server]]
+  (:require [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
-            [metabase.models.setting :as setting]))
+            [metabase.handler :as handler]
+            [metabase.models.setting :as setting]
+            [metabase.server :as server]))
 
 (defn- test-handler
   ([request]

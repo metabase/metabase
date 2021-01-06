@@ -1,15 +1,13 @@
 (ns metabase.sync.sync-metadata.sync-timezone-test
   (:require [clj-time.core :as time]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
             [metabase.sync.util-test :as sut]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (defn- db-timezone [db-or-id]

@@ -2,12 +2,11 @@
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :refer [Card]]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]))
+            [metabase.driver :as driver]
+            [metabase.models :refer [Card]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (defn- run-count-query [query]
   (or (ffirst

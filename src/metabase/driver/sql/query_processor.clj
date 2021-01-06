@@ -3,31 +3,24 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]
-             [helpers :as h]]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
+            [honeysql.helpers :as h]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.models
-             [field :as field :refer [Field]]
-             [table :refer [Table]]]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [interface :as i]
-             [store :as qp.store]]
-            [metabase.query-processor.middleware
-             [annotate :as annotate]
-             [wrap-value-literals :as value-literal]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.interface :as i]
+            [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.middleware.wrap-value-literals :as value-literal]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])

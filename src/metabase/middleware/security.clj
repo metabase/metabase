@@ -3,11 +3,10 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [java-time :as t]
-            [metabase
-             [config :as config]
-             [public-settings :as public-settings]]
+            [metabase.config :as config]
             [metabase.middleware.util :as middleware.u]
             [metabase.models.setting :refer [defsetting]]
+            [metabase.public-settings :as public-settings]
             [metabase.util.i18n :as ui18n :refer [deferred-tru]]
             [ring.util.codec :refer [base64-encode]])
   (:import java.security.MessageDigest))

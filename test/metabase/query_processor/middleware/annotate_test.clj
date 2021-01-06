@@ -1,13 +1,12 @@
 (ns metabase.query-processor.middleware.annotate-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :refer [Field]]
-             [test :as mt]
-             [util :as u]]
+            [metabase.driver :as driver]
+            [metabase.models :refer [Field]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 

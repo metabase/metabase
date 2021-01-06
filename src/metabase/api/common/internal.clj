@@ -3,13 +3,11 @@
    These are primarily used as the internal implementation of `defendpoint`."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
             metabase.async.streaming-response
-            [metabase.util
-             [i18n :as ui18n :refer [tru]]
-             [schema :as su]]
+            [metabase.config :as config]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel

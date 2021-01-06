@@ -11,22 +11,19 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver.common.parameters :as i]
-            [metabase.models
-             [card :refer [Card]]
-             [field :refer [Field]]
-             [native-query-snippet :refer [NativeQuerySnippet]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util
-             [i18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
            java.text.NumberFormat
            java.util.UUID
-           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues ReferencedCardQuery
-            ReferencedQuerySnippet]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet]))
 
 (def ^:private ParamType
   (s/enum :number

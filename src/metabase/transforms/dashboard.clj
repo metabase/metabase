@@ -3,9 +3,8 @@
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.models.table :refer [Table]]
-            [metabase.transforms
-             [materialize :as materialize]
-             [specs :refer [transform-specs]]]
+            [metabase.transforms.materialize :as materialize]
+            [metabase.transforms.specs :refer [transform-specs]]
             [metabase.util :as u]
             [toucan.db :as db]))
 

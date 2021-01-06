@@ -3,9 +3,8 @@
             [java-time :as t]
             [metabase.email-test :refer [inbox with-fake-inbox]]
             [metabase.task.follow-up-emails :as follow-up-emails]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]))
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 

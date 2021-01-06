@@ -1,13 +1,11 @@
 (ns metabase.pulse.render.sparkline
   (:require [java-time :as t]
-            [metabase.pulse.render
-             [common :as common]
-             [image-bundle :as image-bundle]
-             [style :as style]]
+            [metabase.pulse.render.common :as common]
+            [metabase.pulse.render.image-bundle :as image-bundle]
+            [metabase.pulse.render.style :as style]
             [metabase.types :as types]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s])
   (:import [java.awt BasicStroke Color RenderingHints]
            java.awt.image.BufferedImage

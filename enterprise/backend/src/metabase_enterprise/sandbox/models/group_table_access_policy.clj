@@ -7,20 +7,17 @@
             [medley.core :as m]
             [metabase.mbql.normalize :as normalize]
             [metabase.middleware.session :as session]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [interface :as i]
-             [table :as table]]
+            [metabase.models.card :as card :refer [Card]]
+            [metabase.models.interface :as i]
+            [metabase.models.table :as table]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (models/defmodel GroupTableAccessPolicy :group_table_access_policy)
 

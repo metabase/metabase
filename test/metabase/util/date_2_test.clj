@@ -1,7 +1,6 @@
 (ns metabase.util.date-2-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [java-time :as t]
             [metabase.test :as mt]
             [metabase.test.util.timezone :as tu.timezone]

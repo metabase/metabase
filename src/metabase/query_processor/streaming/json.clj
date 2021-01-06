@@ -3,9 +3,8 @@
   response with all the metadata for `:api`."
   (:require [cheshire.core :as json]
             [java-time :as t]
-            [metabase.query-processor.streaming
-             [common :as common]
-             [interface :as i]]
+            [metabase.query-processor.streaming.common :as common]
+            [metabase.query-processor.streaming.interface :as i]
             [metabase.util.date-2 :as u.date])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets))

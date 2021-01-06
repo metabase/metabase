@@ -1,12 +1,11 @@
 (ns metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.mbql.normalize :as normalize]
-            [metabase.query-processor.middleware.parameters.mbql :as mbql-params]))
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
+            [metabase.test :as mt]))
 
 (defn- expand-parameters [query]
   (let [query (normalize/normalize query)]
