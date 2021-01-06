@@ -144,7 +144,7 @@
                 (throw (ex-info (trs "Error copying instances of {0}" (name entity))
                                 {:entity (name entity)}
                                 e)))))
-          (+ cnt (count chunk))))
+          (+ cnt (count chunkk))))
        0
        results))))
 
