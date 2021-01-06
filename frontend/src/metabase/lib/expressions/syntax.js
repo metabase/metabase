@@ -72,6 +72,44 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return this.visit(ctx.expression);
   }
 
+  booleanExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+  logicalOrExpression(ctx) {
+    return this._logicalExpression(ctx.operands, ctx.operators);
+  }
+  logicalAndExpression(ctx) {
+    return this._logicalExpression(ctx.operands, ctx.operators);
+  }
+  booleanUnaryExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+  logicalNotExpression(ctx) {
+    return syntaxNode(
+      "filter",
+      tokenNode(ctx.operators),
+      this.visit(ctx.operands),
+    );
+  }
+  relationalExpression(ctx) {
+    return this._logicalExpression(ctx.operands, ctx.operators);
+  }
+
+  _logicalExpression(operands = [], operators = []) {
+    const initial = [];
+    for (let i = 0; i < operands.length; i++) {
+      initial.push(this.visit(operands[i]));
+      if (i < operators.length) {
+        initial.push(tokenNode(operators[i]));
+      }
+    }
+    return initial.length === 0
+      ? null
+      : initial.length === 1
+      ? initial[0]
+      : syntaxNode("filter", ...initial);
+  }
+
   additionExpression(ctx) {
     return this._arithmeticExpression(ctx.operands, ctx.operators);
   }
@@ -157,26 +195,6 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
       tokenNode(ctx.LParen),
       this.visit(ctx.expression),
       tokenNode(ctx.RParen),
-    );
-  }
-
-  // FILTERS
-  booleanExpression(ctx) {
-    return this._arithmeticExpression(ctx.operands, ctx.operators);
-  }
-  comparisonExpression(ctx) {
-    return syntaxNode(
-      "filter",
-      this.visit(ctx.operands[0]),
-      tokenNode(ctx.operators),
-      this.visit(ctx.operands[1]),
-    );
-  }
-  booleanUnaryExpression(ctx) {
-    return syntaxNode(
-      "filter",
-      tokenNode(ctx.operators),
-      this.visit(ctx.operands),
     );
   }
 }
