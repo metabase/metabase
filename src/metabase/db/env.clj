@@ -48,10 +48,10 @@
      (let [db-file-name (config/config-str :mb-db-file)]
        (get-db-file db-file-name)))))
 
-(def ^:private jdbc-connection-regex
+(def ^:private ^:deprecated jdbc-connection-regex
   #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
 
-(defn- parse-connection-string
+(defn- ^:deprecated parse-connection-string
   "Parse a DB connection URI like
 
     postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory
