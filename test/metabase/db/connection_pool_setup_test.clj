@@ -1,6 +1,8 @@
 (ns metabase.db.connection-pool-setup-test
   (:require [clojure.test :refer :all]
-            [metabase.connection-pool :as connection-pool]
+            [metabase
+             [connection-pool :as connection-pool]
+             [test :as mt]]
             [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]))
 
 (deftest create-connection-pool!-test
@@ -13,7 +15,7 @@
                     (connection-pool/destroy-connection-pool! datasource)))))]
       (testing "from a jdbc-spec map"
         (test* {:subprotocol "h2"
-                :subname     "mem:test-db"
+                :subname     (format "mem:%s" (mt/random-name))
                 :classname   "org.h2.Driver"}))
       (testing "from a connection URL"
-        (test* "jdbc:h2:mem:test-db-2")))))
+        (test* (format "jdbc:h2:mem:%s" (mt/random-name)))))))

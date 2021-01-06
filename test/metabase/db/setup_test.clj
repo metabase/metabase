@@ -8,10 +8,10 @@
   (testing "Should be able to verify a DB connection"
     (testing "from a jdbc-spec map"
       (#'mdb.setup/verify-db-connection :h2 {:subprotocol "h2"
-                                             :subname     "mem:test-db"
+                                             :subname     (format "mem:%s" (mt/random-name))
                                              :classname   "org.h2.Driver"}))
     (testing "from a connection URL"
-      (#'mdb.setup/verify-db-connection :h2 "jdbc:h2:mem:test-db-2"))))
+      (#'mdb.setup/verify-db-connection :h2 (format "jdbc:h2:mem:%s" (mt/random-name))))))
 
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"
