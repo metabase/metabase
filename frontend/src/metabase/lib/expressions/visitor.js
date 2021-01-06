@@ -46,9 +46,6 @@ export class ExpressionVisitor {
     return (ctx.arguments || []).map(argument => this.visit(argument));
   }
 
-  metricExpression(ctx) {
-    return this.visit(ctx.metricName);
-  }
   dimensionExpression(ctx) {
     return this.visit(ctx.dimensionName);
   }

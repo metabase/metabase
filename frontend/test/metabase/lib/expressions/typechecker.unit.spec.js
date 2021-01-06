@@ -38,12 +38,11 @@ describe("type-checker", () => {
       identifierString(ctx) {
         return parseIdentifierString(ctx.IdentifierString[0].image);
       }
-      metricExpression(ctx) {
-        this.metrics.push(this.visit(ctx.metricName));
-      }
       dimensionExpression(ctx) {
         const name = this.visit(ctx.dimensionName);
-        if (ctx.resolveAs === "segment") {
+        if (ctx.resolveAs === "metric") {
+          this.metrics.push(name);
+        } else if (ctx.resolveAs === "segment") {
           this.segments.push(name);
         } else {
           this.dimensions.push(name);
