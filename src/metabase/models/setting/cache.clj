@@ -144,8 +144,8 @@
       (when (.tryLock restore-cache-lock)
         (try
           ;; don't try to restore the cache before the application DB is ready, it's not going to work...
-          (when-let [db-is-setup? (resolve 'metabase.db/db-is-setup?)]
-            (when (db-is-setup?)
+          (when-let [db-is-set-up? (resolve 'metabase.db/db-is-set-up?)]
+            (when (db-is-set-up?)
               (reset! last-update-check (System/currentTimeMillis))
               (when (cache-out-of-date?)
                 (restore-cache!))))
