@@ -15,7 +15,7 @@
              [util :as u]]
             [metabase.db
              [connection :as mdb.conn]
-             [migrations :refer [DataMigrations]]
+             [data-migrations :refer [DataMigrations]]
              [setup :as mdb.setup]]
             [metabase.util
              [i18n :refer [trs]]
