@@ -49,7 +49,6 @@ import {
   fetchPulseFormInput,
   fetchPulseCardPreview,
   testPulse,
-  fetchPulsesByDashboardId,
 } from "metabase/pulse/actions";
 
 import cx from "classnames";
@@ -137,10 +136,12 @@ const mapDispatchToProps = {
   testPulse,
   onChangeLocation: push,
   goBack,
-  fetchPulsesByDashboardId,
 };
 
-@User.loadList()
+@Pulses.loadList({
+  query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
+})
+@User.loadList({ loadingAndErrorWrapper: false })
 @connect(
   mapStateToProps,
   mapDispatchToProps,
@@ -155,7 +156,6 @@ class SharingSidebar extends React.Component {
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
     fetchPulseFormInput: PropTypes.func.isRequired,
-    fetchPulsesByDashboardId: PropTypes.func.isRequired,
     formInput: PropTypes.object.isRequired,
     goBack: PropTypes.func,
     initialCollectionId: PropTypes.number,
@@ -194,25 +194,11 @@ class SharingSidebar extends React.Component {
   componentDidMount() {
     //TODO: if these don't finish before we render, we render the wrong thing. help?
     this.props.fetchPulseFormInput();
-    this.props.fetchPulsesByDashboardId(this.props.dashboard.id);
 
     this.props.setEditingPulse(
       this.props.pulseId,
       this.props.initialCollectionId,
     );
-  }
-
-  componentDidUpdate() {
-    const { pulseList } = this.props;
-    const { editingMode } = this.state;
-
-    if (editingMode === undefined) {
-      if (pulseList && pulseList.length > 0) {
-        this.setState({ editingMode: "list-pulses" });
-      } else {
-        this.createSubscription();
-      }
-    }
   }
 
   onChannelPropertyChange(index, name, value) {
@@ -285,7 +271,6 @@ class SharingSidebar extends React.Component {
 
     await this.props.saveEditingPulse();
 
-    await this.props.fetchPulsesByDashboardId(dashboard.id);
     this.setState({ editingMode: "list-pulses" });
   };
 
@@ -498,7 +483,6 @@ class SharingSidebar extends React.Component {
 
   handleArchive = async () => {
     await this.props.setPulseArchived(this.props.pulse, true);
-    await this.props.fetchPulsesByDashboardId(this.props.dashboard.id);
     this.setState({ editingMode: undefined });
   };
 
@@ -519,7 +503,7 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const { pulse, formInput, pulseList } = this.props;
+    const { pulse, pulses, formInput, pulseList } = this.props;
 
     const caveatMessage = (
       <Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${(
@@ -540,7 +524,7 @@ class SharingSidebar extends React.Component {
       return <Sidebar />;
     }
 
-    if (editingMode === "list-pulses") {
+    if (!editingMode && pulses.length > 0) {
       return (
         <Sidebar>
           <div className="px4 pt3 flex justify-between align-center">
@@ -566,7 +550,7 @@ class SharingSidebar extends React.Component {
             </Flex>
           </div>
           <div className="my2 mx4">
-            {pulseList.map(pulse => (
+            {pulses.map(pulse => (
               <Card
                 flat
                 className="mb3 cursor-pointer bg-brand-hover"
@@ -600,7 +584,7 @@ class SharingSidebar extends React.Component {
       );
     }
 
-    if (editingMode === "new-pulse") {
+    if (editingMode === "new-pulse" || pulses.length === 0) {
       const emailSpec = formInput.channels.email;
       const slackSpec = formInput.channels.slack;
 
