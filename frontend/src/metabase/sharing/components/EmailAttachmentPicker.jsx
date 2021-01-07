@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
 import { t } from "ttag";
 
 import ButtonGroup from "metabase/components/ButtonGroup";
@@ -58,20 +59,8 @@ export default class EmailAttachmentPicker extends Component {
     return (
       (currentState.isEnabled || !newState.isEnabled) &&
       newState.selectedAttachmentType === currentState.selectedAttachmentType &&
-      this.setsEqual(newState.selectedCardIds, currentState.selectedCardIds)
+      _.isEqual(newState.selectedCardIds, currentState.selectedCardIds)
     );
-  }
-
-  setsEqual(as, bs) {
-    if (as.size !== bs.size) {
-      return false;
-    }
-    for (const a of as) {
-      if (!bs.has(a)) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /*
