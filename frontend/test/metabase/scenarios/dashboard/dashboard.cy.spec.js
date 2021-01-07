@@ -294,4 +294,64 @@ describe("scenarios > dashboard", () => {
       cy.contains(/revert/i);
     });
   });
+
+  describe("subscriptions", () => {
+    xit("should not allow creation if there are no dashboard cards", () => {
+      /* If a dashboard does not have any cards, the sharing popover should be disabled
+      I'm not sure if dashboard /1 will already have a card on it or not from the earlier tests?
+      if not this is fine, otherwise we should set up or visit a brand new dashboard with no cards
+      */
+      cy.visit("/dashboard/1");
+      /*
+        TODO
+        1. Check and see if the `.Icon-share` icon is disabled.
+      */
+    });
+    /* For now we'll assume that email and slack are set up */
+    describe("with email and slack set up", () => {
+      describe("with no existing subscriptions", () => {
+        xit("should allow creation of a new email subscription", () => {
+          /*
+          TODO - SETUP - We'll first need to make sure email is enabled
+          */
+          cy.visit("/dashboard/1");
+          cy.get(".Icon-share").click();
+          cy.findByText("Dashboard subscriptions").click();
+          cy.findByText("Create a dashboard subscription");
+          cy.findByText("Email it").click();
+          /* TODO -
+              I wasn't sure how to handle this
+              1. Next the user should select a recipient by clicking on the "Enter usernames or emails" recipient picker and selecting an instance user.
+          */
+          cy.findByText("Done").click();
+          cy.findByText("Emailed daily at 8:00 am");
+        });
+      });
+
+      describe("with existing subscriptions", () => {
+        xit("should show existing dashboard subscriptions", () => {
+          // not sure if there will already be a subscription in the db state
+          cy.visit("/dashboard/1");
+          cy.get(".Icon-share").click();
+          cy.findByText("Dashboard subscriptions").click();
+          cy.findByText("Emailed daily");
+        });
+      });
+    });
+    describe("with no channels set up", () => {
+      xit("should instructions to connect email or slack", () => {
+        /*
+        TODO - SETUP - We should turn off email and slack if they aren't already off
+        */
+
+        cy.visit("/dashboard/1");
+        cy.get(".Icon-share").click();
+        cy.findByText("Dashboard subscriptions").click();
+
+        // Look for the messaging about configuring slack and email
+        cy.findByText("configure Slack");
+        cy.findByText("configure Email");
+      });
+    });
+  });
 });
