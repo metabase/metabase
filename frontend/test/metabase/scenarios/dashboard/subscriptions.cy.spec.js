@@ -1,19 +1,16 @@
-import { restore, signInAsAdmin, USERS } from "__support__/cypress";
+import {
+  restore,
+  signInAsAdmin,
+  USERS,
+  setupDummySMTP,
+} from "__support__/cypress";
 const { admin } = USERS;
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
     signInAsAdmin();
-    // Dummy SMTP setup
-    cy.request("PUT", "/api/setting", {
-      "email-smtp-host": "smtp.foo.test",
-      "email-smtp-port": "587",
-      "email-smtp-security": "none",
-      "email-smtp-username": "nevermind",
-      "email-smtp-password": "it-is-secret-NOT",
-      "email-from-address": "nonexisting@metabase.test",
-    });
+    setupDummySMTP();
   });
 
   it.skip("should persist attachments for dashboard subscriptions (metabase#14117)", () => {
