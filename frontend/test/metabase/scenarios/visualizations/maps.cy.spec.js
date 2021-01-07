@@ -1,10 +1,18 @@
-import { signInAsNormalUser, restore, popover } from "__support__/cypress";
+import {
+  signInAsNormalUser,
+  signInAsAdmin,
+  restore,
+  popover,
+} from "__support__/cypress";
 
 describe("scenarios > visualizations > maps", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should display a pin map for a native query", () => {
+    signInAsNormalUser();
     // create a native query with lng/lat fields
     cy.visit("/question/new");
     cy.contains("Native query").click();
