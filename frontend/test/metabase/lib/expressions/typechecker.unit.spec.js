@@ -9,8 +9,11 @@ import { parseIdentifierString } from "metabase/lib/expressions/index";
 describe("type-checker", () => {
   function parseSource(source, startRule) {
     let cst = null;
+    let typeErrors = [];
     try {
-      cst = parse({ source, tokenVector: null, startRule }).cst;
+      const result = parse({ source, tokenVector: null, startRule });
+      cst = result.cst;
+      typeErrors = result.typeErrors;
     } catch (e) {
       let err = e;
       if (err.length && err.length > 0) {
@@ -21,7 +24,14 @@ describe("type-checker", () => {
       }
       throw err;
     }
-    return cst;
+    return { cst, typeErrors };
+  }
+
+  function validate(source) {
+    const { typeErrors } = parseSource(source, "expression");
+    if (typeErrors.length > 0) {
+      throw new Error(typeErrors[0].message);
+    }
   }
 
   function collect(source, startRule) {
@@ -49,9 +59,9 @@ describe("type-checker", () => {
         }
       }
     }
-    const tree = parseSource(source, startRule);
+    const { cst } = parseSource(source, startRule);
     const collector = new Collector();
-    collector.visit(tree);
+    collector.visit(cst);
     return collector;
   }
 
@@ -110,6 +120,13 @@ describe("type-checker", () => {
       expect(filter("[X]=4 AND NOT [Y]").dimensions).toEqual(["X"]);
       expect(filter("T OR Between([R],0,9)").segments).toEqual(["T"]);
       expect(filter("T OR Between([R],0,9)").dimensions).toEqual(["R"]);
+    });
+
+    it("should catch mismatched number of function parameters", () => {
+      expect(() => validate("CONTAINS()")).toThrow();
+      expect(() => validate("CONTAINS([Name])")).toThrow();
+      expect(() => validate("CONTAINS([Type],'X','Y')")).toThrow();
+      expect(() => validate("CONTAINS([Type],'P','Q','R')")).toThrow();
     });
   });
 

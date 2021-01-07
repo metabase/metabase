@@ -453,7 +453,7 @@ export function parse({
   if (parserErrors.length > 0 && !recover) {
     throw parserErrors;
   }
-  typeCheck(cst, startRule || "expression");
+  const { typeErrors } = typeCheck(cst, startRule || "expression");
   const parserRecovered = !!(cst && parserErrors.length > 0);
 
   return {
@@ -463,6 +463,7 @@ export function parse({
     parserRecovered,
     parserErrors,
     lexerErrors,
+    typeErrors,
   };
 }
 
