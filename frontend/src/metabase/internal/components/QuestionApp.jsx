@@ -31,16 +31,18 @@ export default class QuestionApp extends React.Component {
       );
     }
     return (
-      <QuestionAndResultLoader
-        questionHash={location.hash}
-        questionId={params.questionId ? parseInt(params.questionId) : null}
-      >
-        {({ rawSeries }) =>
-          rawSeries && (
-            <Visualization className="flex-full" rawSeries={rawSeries} />
-          )
-        }
-      </QuestionAndResultLoader>
+      <div style={{ height: 500 }}>
+        <QuestionAndResultLoader
+          questionHash={location.hash}
+          questionId={params.questionId ? parseInt(params.questionId) : null}
+        >
+          {({ rawSeries }) =>
+            rawSeries && (
+              <Visualization className="flex-full" rawSeries={rawSeries} />
+            )
+          }
+        </QuestionAndResultLoader>
+      </div>
     );
   }
 }

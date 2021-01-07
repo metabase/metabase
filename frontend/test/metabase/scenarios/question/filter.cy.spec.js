@@ -8,7 +8,7 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > question > filter", () => {
   beforeEach(() => {
@@ -401,5 +401,50 @@ describe("scenarios > question > filter", () => {
       cy.location("search").should("eq", `?${ID_FILTER.name}=1`);
       cy.findByText("Rustic Paper Wallet"); // Product ID 1, Gizmo
     });
+  });
+
+  it.skip("should not drop aggregated filters (metabase#11957)", () => {
+    const AGGREGATED_FILTER = "Count is less than or equal to 20";
+
+    cy.request("POST", "/api/card", {
+      name: "11957",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field-id", ORDERS.CREATED_AT], "2020-01-01"],
+            aggregation: [["count"]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+            ],
+          },
+          filter: ["<=", ["field-literal", "count", "type/Integer"], 20],
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+
+    // Test shows two filter collapsed - click on number 2 to expand and show filter names
+    cy.get(".Icon-filter")
+      .parent()
+      .contains("2")
+      .click();
+
+    cy.findByText(AGGREGATED_FILTER);
+
+    cy.findByText(/^Created At is after/i)
+      .parent()
+      .find(".Icon-close")
+      .click();
+
+    cy.log(
+      "**Removing or changing filters shouldn't remove aggregated filter**",
+    );
+    cy.findByText(AGGREGATED_FILTER);
   });
 });

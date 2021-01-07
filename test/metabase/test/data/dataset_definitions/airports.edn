@@ -3,21 +3,21 @@
 ;; Adapted from https://raw.githubusercontent.com/datasets/airport-codes/master/data/airport-codes.csv and
 ;; https://ourairports.com/help/data-dictionary.html
 ;;
-;; continent (TEXT name, TEXT iso-code)
+;; continent (INTEGER id, TEXT name, TEXT iso-code)
 ;; 6 rows
 ;;
-;; country (TEXT name, TEXT iso-code, INTEGER continent-id)
+;; country (INTEGER id, TEXT name, TEXT iso-code, INTEGER continent-id)
 ;; 147 rows
 ;;
-;; region (TEXT name, TEXT iso-code, INTEGER country-id)
+;; region (INTEGER id, TEXT name, TEXT iso-code, INTEGER country-id)
 ;; This is a subdivision of the country such as state.
 ;; 415 rows
 ;;
-;; municipality (TEXT name, INTEGER region-id)
+;; municipality (INTEGER id, TEXT name, INTEGER region-id)
 ;; This is the municipality the airport serves -- usually, but not always, a city
 ;; 577 rows
 ;;
-;; airport (TEXT name, TEXT code, DOUBLE latitude, DOUBLE longitude, INTEGER elevation-ft, INTEGER municipality-id)
+;; airport (INTEGER id, TEXT name, TEXT code, DOUBLE latitude, DOUBLE longitude, INTEGER elevation-ft, INTEGER municipality-id)
 ;; 601 rows
 [["continent"
   [{:field-name "name", :base-type :type/Text}
