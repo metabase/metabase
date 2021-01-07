@@ -179,14 +179,14 @@ class SharingSidebar extends React.Component {
     this.setPulse(newPulse);
   }
 
-  componentDidMount() {
-    this.props.fetchPulseFormInput();
+  componentDidMount = async () => {
+    await this.props.fetchPulseFormInput();
 
     this.props.setEditingPulse(
       this.props.pulseId,
       this.props.initialCollectionId,
     );
-  }
+  };
 
   onChannelPropertyChange(index, name, value) {
     const { pulse } = this.props;
@@ -507,7 +507,7 @@ class SharingSidebar extends React.Component {
     );
 
     // protect from empty values that will mess this up
-    if (formInput === null || pulse === null) {
+    if (!formInput.channels || !pulse) {
       return <Sidebar />;
     }
 
@@ -570,119 +570,6 @@ class SharingSidebar extends React.Component {
         </Sidebar>
       );
     }
-
-    if (editingMode === "new-pulse" || pulses.length === 0) {
-      const emailSpec = formInput.channels.email;
-      const slackSpec = formInput.channels.slack;
-
-      return (
-        <Sidebar onCancel={this.onCancel}>
-          <div className="mt2 pt2 px4">
-            <Heading>{t`Create a dashboard subscription`}</Heading>
-          </div>
-          <div className="my1 mx4">
-            <Card
-              flat
-              className={cx("mt1 mb3", {
-                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
-                  emailSpec.configured,
-              })}
-              onClick={() => {
-                if (emailSpec.configured) {
-                  this.setState({
-                    editingMode: "add-edit-email",
-                    returnMode: this.state.editingMode,
-                  });
-                  this.addChannel("email");
-                }
-              }}
-            >
-              <div className="px3 pt3 pb2">
-                <div className="flex align-center">
-                  <Icon
-                    name="mail"
-                    className={cx(
-                      "mr1",
-                      {
-                        "text-brand hover-child hover--inherit":
-                          emailSpec.configured,
-                      },
-                      { "text-light": !emailSpec.configured },
-                    )}
-                  />
-                  <h3
-                    className={cx({ "text-light": !emailSpec.configured })}
-                  >{t`Email it`}</h3>
-                </div>
-                <Text
-                  lineHeight={1.5}
-                  className={cx("text-medium", {
-                    "hover-child hover--inherit": emailSpec.configured,
-                  })}
-                >
-                  {!emailSpec.configured &&
-                    jt`You'll need to ${(
-                      <Link to="/admin/settings/email" className="link">
-                        set up email
-                      </Link>
-                    )} first.`}
-                  {emailSpec.configured &&
-                    t`You can send this dashboard regularly to users or email addresses.`}
-                </Text>
-              </div>
-            </Card>
-            <Card
-              flat
-              className={cx({
-                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
-                  slackSpec.configured,
-              })}
-              onClick={() => {
-                if (slackSpec.configured) {
-                  this.setState({
-                    editingMode: "add-edit-slack",
-                    returnMode: this.state.editingMode,
-                  });
-                  this.addChannel("slack");
-                }
-              }}
-            >
-              <div className="px3 pt3 pb2">
-                <div className="flex align-center mb1">
-                  <Icon
-                    name={slackSpec.configured ? "slack_colorized" : "slack"}
-                    size={24}
-                    className={cx("mr1", {
-                      "text-light": !slackSpec.configured,
-                      "hover-child hover--inherit": slackSpec.configured,
-                    })}
-                  />
-                  <h3
-                    className={cx({ "text-light": !slackSpec.configured })}
-                  >{t`Send it to Slack`}</h3>
-                </div>
-                <Text
-                  lineHeight={1.5}
-                  className={cx("text-medium", {
-                    "hover-child hover--inherit": slackSpec.configured,
-                  })}
-                >
-                  {!slackSpec.configured &&
-                    jt`First, you'll have to ${(
-                      <Link to="/admin/settings/slack" className="link">
-                        configure Slack
-                      </Link>
-                    )}.`}
-                  {slackSpec.configured &&
-                    t`Pick a channel and a schedule, and Metabase will do the rest.`}
-                </Text>
-              </div>
-            </Card>
-          </div>
-        </Sidebar>
-      );
-    }
-
     if (
       editingMode === "add-edit-email" &&
       (pulse.channels && pulse.channels.length > 0)
@@ -840,6 +727,118 @@ class SharingSidebar extends React.Component {
               />
             </div>
             {pulse.id != null && this.renderDeleteSubscription()}
+          </div>
+        </Sidebar>
+      );
+    }
+
+    if (editingMode === "new-pulse" || pulses.length === 0) {
+      const emailSpec = formInput.channels.email;
+      const slackSpec = formInput.channels.slack;
+
+      return (
+        <Sidebar onCancel={this.onCancel}>
+          <div className="mt2 pt2 px4">
+            <Heading>{t`Create a dashboard subscription`}</Heading>
+          </div>
+          <div className="my1 mx4">
+            <Card
+              flat
+              className={cx("mt1 mb3", {
+                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+                  emailSpec.configured,
+              })}
+              onClick={() => {
+                if (emailSpec.configured) {
+                  this.setState({
+                    editingMode: "add-edit-email",
+                    returnMode: editingMode,
+                  });
+                  this.addChannel("email");
+                }
+              }}
+            >
+              <div className="px3 pt3 pb2">
+                <div className="flex align-center">
+                  <Icon
+                    name="mail"
+                    className={cx(
+                      "mr1",
+                      {
+                        "text-brand hover-child hover--inherit":
+                          emailSpec.configured,
+                      },
+                      { "text-light": !emailSpec.configured },
+                    )}
+                  />
+                  <h3
+                    className={cx({ "text-light": !emailSpec.configured })}
+                  >{t`Email it`}</h3>
+                </div>
+                <Text
+                  lineHeight={1.5}
+                  className={cx("text-medium", {
+                    "hover-child hover--inherit": emailSpec.configured,
+                  })}
+                >
+                  {!emailSpec.configured &&
+                    jt`You'll need to ${(
+                      <Link to="/admin/settings/email" className="link">
+                        set up email
+                      </Link>
+                    )} first.`}
+                  {emailSpec.configured &&
+                    t`You can send this dashboard regularly to users or email addresses.`}
+                </Text>
+              </div>
+            </Card>
+            <Card
+              flat
+              className={cx({
+                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+                  slackSpec.configured,
+              })}
+              onClick={() => {
+                if (slackSpec.configured) {
+                  this.setState({
+                    editingMode: "add-edit-slack",
+                    returnMode: this.state.editingMode,
+                  });
+                  this.addChannel("slack");
+                }
+              }}
+            >
+              <div className="px3 pt3 pb2">
+                <div className="flex align-center mb1">
+                  <Icon
+                    name={slackSpec.configured ? "slack_colorized" : "slack"}
+                    size={24}
+                    className={cx("mr1", {
+                      "text-light": !slackSpec.configured,
+                      "hover-child hover--inherit": slackSpec.configured,
+                    })}
+                  />
+                  <h3
+                    className={cx({ "text-light": !slackSpec.configured })}
+                  >{t`Send it to Slack`}</h3>
+                </div>
+                <Text
+                  lineHeight={1.5}
+                  className={cx("text-medium", {
+                    "hover-child hover--inherit": slackSpec.configured,
+                  })}
+                >
+                  {!slackSpec.configured &&
+                    jt`First, you'll have to ${(
+                      <Link to="/admin/settings/slack" className="link">
+                        configure Slack
+                      </Link>
+                    )}.`}
+                  {slackSpec.configured &&
+                    t`Pick a channel and a schedule, and Metabase will do the rest.`}
+                </Text>
+              </div>
+            </Card>
           </div>
         </Sidebar>
       );
