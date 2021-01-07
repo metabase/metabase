@@ -37,23 +37,24 @@ describe("scenarios > dashboard > subscriptions", () => {
   describe("with email and slack set up", () => {
     beforeEach(() => {
       setupDummySMTP();
-      createEmailSubscription();
     });
 
     describe("with no existing subscriptions", () => {
       it("should allow creation of a new email subscription", () => {
+        createEmailSubscription();
         cy.findByText("Emailed daily at 8:00 AM");
       });
     });
 
     describe("with existing subscriptions", () => {
+      beforeEach(createEmailSubscription);
       it("should show existing dashboard subscriptions", () => {
         openDashboardSubscriptions();
         cy.findByText("Emailed daily at 8:00 AM");
       });
     });
 
-    it.skip("should persist attachments for dashboard subscriptions (metabase#14117)", () => {
+    it("should persist attachments for dashboard subscriptions (metabase#14117)", () => {
       assignRecipient();
       // This is extremely fragile
       // TODO: update test once changes from `https://github.com/metabase/metabase/pull/14121` are merged into `master`
