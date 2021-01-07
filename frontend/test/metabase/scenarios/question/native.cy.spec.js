@@ -10,8 +10,10 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { ORDERS } = SAMPLE_DATASET;
 
 describe("scenarios > question > native", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    signInAsNormalUser();
+  });
 
   it("lets you create and run a SQL question", () => {
     cy.visit("/question/new");
