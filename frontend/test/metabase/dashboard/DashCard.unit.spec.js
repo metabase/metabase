@@ -4,7 +4,6 @@ jest.unmock("metabase/components/ExplicitSize");
 
 import React from "react";
 import renderer from "react-test-renderer";
-// TODO: re-write using React Testing Library (Enzyme is removed!)
 import { render } from "@testing-library/react";
 import { assocIn } from "icepick";
 
@@ -47,18 +46,6 @@ describe.skip("DashCard", () => {
   it("should render slow card with Card--slow className", () => {
     const props = assocIn(DEFAULT_PROPS, ["slowCards", 1], true);
     const dashCard = render(<DashCard {...props} />);
-    expect(dashCard.hasClass("Card--recent")).toBe(false);
-    expect(dashCard.hasClass("Card--unmapped")).toBe(false);
     expect(dashCard.hasClass("Card--slow")).toBe(true);
-  });
-
-  // `.Card--recent` class doesn't have any influence on card's style nor behavior
-  // It was used to trigger 30s animation which will soon be removed
-  it("should render new card with Card--recent className", () => {
-    const props = assocIn(DEFAULT_PROPS, ["dashcard", "isAdded"], true);
-    const dashCard = render(<DashCard {...props} />);
-    expect(dashCard.hasClass("Card--recent")).toBe(true);
-    expect(dashCard.hasClass("Card--unmapped")).toBe(false);
-    expect(dashCard.hasClass("Card--slow")).toBe(false);
   });
 });
