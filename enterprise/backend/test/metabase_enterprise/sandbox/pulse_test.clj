@@ -3,16 +3,15 @@
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
-             [pulse :as pulse]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
             [metabase-enterprise.sandbox.test-util :as mt.tu]
             [metabase.email.messages :as messages]
+            [metabase.models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.pulse :as models.pulse]
-            [metabase.pulse.test-util :as pulse.tu]))
+            [metabase.pulse :as pulse]
+            [metabase.pulse.test-util :as pulse.tu]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (deftest sandboxed-pulse-test
   (testing "Pulses should get sent with the row-level restrictions of the User that created them."

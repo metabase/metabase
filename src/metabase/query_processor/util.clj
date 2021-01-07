@@ -1,8 +1,7 @@
 (ns metabase.query-processor.util
   "Utility functions used by the global query processor and middleware functions."
-  (:require [buddy.core
-             [codecs :as codecs]
-             [hash :as hash]]
+  (:require [buddy.core.codecs :as codecs]
+            [buddy.core.hash :as hash]
             [cheshire.core :as json]
             [clojure.string :as str]
             [metabase.driver :as driver]

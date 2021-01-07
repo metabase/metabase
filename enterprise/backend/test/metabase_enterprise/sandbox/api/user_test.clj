@@ -1,18 +1,15 @@
 (ns metabase-enterprise.sandbox.api.user-test
   "Tests that would logically be included in `metabase.api.user-test` but are separate as they are enterprise only."
   (:require [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase-enterprise.sandbox.test-util :as sandbox.tu]
-            [metabase.models
-             [card :refer [Card]]
-             [permissions-group :as perms-group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]))
+            [metabase.models.card :refer [Card]]
+            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 

@@ -12,9 +12,8 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (models/defmodel PermissionsGroup :permissions_group)
 

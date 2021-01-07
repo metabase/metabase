@@ -1,12 +1,11 @@
 (ns metabase.api.advanced-computation-test
   "Unit tests for /api/advanced_computation endpoints."
   (:require [clojure.test :refer :all]
-            [metabase
-             [http-client :as http]
-             [models :refer [Card]]
-             [test :as mt]
-             [util :as u]]
-            [metabase.test.fixtures :as fixtures])
+            [metabase.http-client :as http]
+            [metabase.models :refer [Card]]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u])
   (:import java.util.UUID))
 
 (use-fixtures :once (fixtures/initialize :db))

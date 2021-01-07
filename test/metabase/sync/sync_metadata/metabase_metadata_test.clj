@@ -1,17 +1,15 @@
 (ns metabase.sync.sync-metadata.metabase-metadata-test
   "Tests for the logic that syncs the `_metabase_metadata` Table."
   (:require [expectations :refer :all]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
             [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
             [metabase.test.mock.moviedb :as moviedb]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.util.test :as tt]))
 
 ;; Test that the `_metabase_metadata` table can be used to populate values for things like descriptions

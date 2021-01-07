@@ -3,22 +3,19 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.postgres :as postgres]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.sync :as sync]
             [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (defn- drop-if-exists-and-create-db!

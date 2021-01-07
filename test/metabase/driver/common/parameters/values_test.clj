@@ -1,17 +1,15 @@
 (ns metabase.driver.common.parameters.values-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :refer [Card Collection NativeQuerySnippet]]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.values :as values]
-            [metabase.models
-             [field :refer [map->FieldInstance]]
-             [permissions :as perms]
-             [permissions-group :as group]])
+            [metabase.models :refer [Card Collection NativeQuerySnippet]]
+            [metabase.models.field :refer [map->FieldInstance]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.util :as u])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest variable-value-test

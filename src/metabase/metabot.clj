@@ -1,9 +1,8 @@
 (ns metabase.metabot
   (:require [clojure.tools.logging :as log]
             [metabase.integrations.slack :as slack]
-            [metabase.metabot
-             [instance :as metabot.instance]
-             [websocket :as metabot.websocket]]
+            [metabase.metabot.instance :as metabot.instance]
+            [metabase.metabot.websocket :as metabot.websocket]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util.i18n :refer [deferred-trs trs]]))
 

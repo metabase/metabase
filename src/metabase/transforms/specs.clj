@@ -1,17 +1,14 @@
 (ns metabase.transforms.specs
   (:require [medley.core :as m]
             [metabase.domain-entities.specs :refer [FieldType MBQL]]
-            [metabase.mbql
-             [normalize :as mbql.normalize]
-             [schema :as mbql.schema]
-             [util :as mbql.u]]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.schema :as mbql.schema]
+            [metabase.mbql.util :as mbql.u]
             [metabase.util :as u]
-            [metabase.util
-             [schema :as su]
-             [yaml :as yaml]]
-            [schema
-             [coerce :as sc]
-             [core :as s]]))
+            [metabase.util.schema :as su]
+            [metabase.util.yaml :as yaml]
+            [schema.coerce :as sc]
+            [schema.core :as s]))
 
 (def ^:private Source s/Str)
 

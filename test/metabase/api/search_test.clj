@@ -1,17 +1,13 @@
 (ns metabase.api.search-test
-  (:require [clojure
-             [set :as set]
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [models :refer [Card CardFavorite Collection Dashboard DashboardFavorite Database Metric PermissionsGroup
-                             PermissionsGroupMembership Pulse Segment Table]]
-             [test :as mt]
-             [util :as u]]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.api.search :as api.search]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as group]]
+            [metabase.models :refer [Card CardFavorite Collection Dashboard DashboardFavorite Database Metric PermissionsGroup PermissionsGroupMembership Pulse Segment Table]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (def ^:private default-search-row

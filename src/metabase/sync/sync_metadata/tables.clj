@@ -1,17 +1,14 @@
 (ns metabase.sync.sync-metadata.tables
   "Logic for updating Metabase Table models from metadata fetched from a physical DB."
-  (:require [clojure
-             [data :as data]
-             [string :as str]]
+  (:require [clojure.data :as data]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.models
-             [humanization :as humanization]
-             [table :as table :refer [Table]]]
-            [metabase.sync
-             [fetch-metadata :as fetch-metadata]
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.models.humanization :as humanization]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.sync.fetch-metadata :as fetch-metadata]
+            [metabase.sync.interface :as i]
             [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]

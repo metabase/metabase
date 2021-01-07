@@ -2,10 +2,9 @@
   "Logic for initializing different components that need to be initialized when running tests."
   (:require [clojure.string :as str]
             [colorize.core :as colorize]
-            [metabase
-             [config :as config]
-             [util :as u]]
-            [metabase.plugins.classloader :as classloader]))
+            [metabase.config :as config]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.util :as u]))
 
 (defmulti ^:private do-initialization!
   "Perform component-specific initialization. This is guaranteed to only be called once."

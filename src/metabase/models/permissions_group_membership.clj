@@ -2,9 +2,8 @@
   (:require [metabase.models.permissions-group :as group]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [tru]]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
 

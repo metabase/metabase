@@ -1,10 +1,9 @@
 (ns metabase.middleware.auth-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase.middleware
-             [auth :as mw.auth]
-             [session :as mw.session]
-             [util :as middleware.u]]
+            [metabase.middleware.auth :as mw.auth]
+            [metabase.middleware.session :as mw.session]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models.session :refer [Session]]
             [metabase.test :as mt]
             [metabase.test.data.users :as test-users]

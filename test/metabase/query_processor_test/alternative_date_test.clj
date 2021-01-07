@@ -2,14 +2,13 @@
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]
-             [util :as u]]
+            [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]))
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (deftest special-type->unix-timestamp-unit-test
   (testing "every descendant of `:type/UNIXTimestamp` has a unit associated with it"

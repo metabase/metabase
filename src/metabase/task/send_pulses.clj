@@ -1,21 +1,17 @@
 (ns metabase.task.send-pulses
   "Tasks related to running `Pulses`."
-  (:require [clj-time
-             [core :as time]
-             [predicates :as timepr]]
+  (:require [clj-time.core :as time]
+            [clj-time.predicates :as timepr]
             [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite
-             [jobs :as jobs]
-             [triggers :as triggers]]
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [metabase
-             [pulse :as p]
-             [task :as task]]
-            [metabase.models
-             [pulse :as pulse]
-             [pulse-channel :as pulse-channel]
-             [setting :as setting]
-             [task-history :as task-history]]
+            [clojurewerkz.quartzite.triggers :as triggers]
+            [metabase.models.pulse :as pulse]
+            [metabase.models.pulse-channel :as pulse-channel]
+            [metabase.models.setting :as setting]
+            [metabase.models.task-history :as task-history]
+            [metabase.pulse :as p]
+            [metabase.task :as task]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 

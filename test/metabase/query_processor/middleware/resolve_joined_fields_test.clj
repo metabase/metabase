@@ -1,12 +1,10 @@
 (ns metabase.query-processor.middleware.resolve-joined-fields-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
-            [metabase.query-processor.middleware
-             [resolve-fields :as resolve-fields]
-             [resolve-joined-fields :as resolve-joined-fields]]
+            [metabase.driver :as driver]
+            [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
+            [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
             [metabase.query-processor.store :as qp.store]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]))
 
 (defn- wrap-joined-fields [query]

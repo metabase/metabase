@@ -1,17 +1,15 @@
 (ns metabase-enterprise.sandbox.test-util
   "Shared test utilities for multi-tenant tests."
   (:require [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.models
-             [card :refer [Card]]
-             [permissions :as perms]
-             [permissions-group :as perms-group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [table :refer [Table]]
-             [user :refer [User]]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.user :refer [User]]
+            [metabase.test.data :as data]
             [metabase.test.data.users :as users]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.util.test :as tt]))

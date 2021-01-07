@@ -1,8 +1,7 @@
 (ns metabase.driver.bigquery.params-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]))
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]))
 
 (deftest set-parameters-test
   (mt/test-driver :bigquery

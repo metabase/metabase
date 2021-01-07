@@ -1,9 +1,8 @@
 (ns metabase.query-processor-test.native-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]]))
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]))
 
 (deftest native-test
   (is (= {:rows

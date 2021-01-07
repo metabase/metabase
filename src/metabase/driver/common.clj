@@ -1,17 +1,15 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [core :as time]
-             [format :as tformat]]
+  (:require [clj-time.coerce :as tcoerce]
+            [clj-time.core :as time]
+            [clj-time.format :as tformat]
             [clojure.tools.logging :as log]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import java.text.SimpleDateFormat
            org.joda.time.DateTime

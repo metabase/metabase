@@ -1,13 +1,11 @@
 (ns metabase.query-processor.context.default
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [util :as u]]
-            [metabase.query-processor
-             [context :as context]
-             [error-type :as error-type]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]))
 
 (def query-timeout-ms

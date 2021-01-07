@@ -1,13 +1,12 @@
 (ns metabase.models.on-demand-test
   "Tests for On-Demand FieldValues updating behavior for Cards and Dashboards."
   (:require [expectations :refer :all]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :as dashboard :refer [Dashboard]]
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [field-values :as field-values]
-             [table :refer [Table]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :as field-values]
+            [metabase.models.table :refer [Table]]
             [metabase.test.data :as data]
             [metabase.util :as u]
             [toucan.db :as db]

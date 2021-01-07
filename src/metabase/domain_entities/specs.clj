@@ -1,12 +1,10 @@
 (ns metabase.domain-entities.specs
   (:require [medley.core :as m]
-            [metabase.mbql
-             [normalize :as mbql.normalize]
-             [util :as mbql.u]]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.util :as mbql.u]
             [metabase.util.yaml :as yaml]
-            [schema
-             [coerce :as sc]
-             [core :as s]]))
+            [schema.coerce :as sc]
+            [schema.core :as s]))
 
 (def MBQL
   "MBQL clause (ie. a vector starting with a keyword)"

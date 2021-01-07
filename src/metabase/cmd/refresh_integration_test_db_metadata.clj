@@ -1,13 +1,11 @@
 (ns metabase.cmd.refresh-integration-test-db-metadata
   (:require [clojure.java.io :as io]
             [environ.core :refer [env]]
-            [metabase
-             [db :as mdb]
-             [sample-data :as sample-data]
-             [sync :as sync]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]]
+            [metabase.db :as mdb]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.sample-data :as sample-data]
+            [metabase.sync :as sync]
             [toucan.db :as db]))
 
 (defn- test-fixture-db-path

@@ -4,9 +4,8 @@
             [metabase.cmd.load-from-h2 :as load-from-h2]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 ;; Make sure load-from-h2 works with or without `file:` prefix
 (deftest path-test

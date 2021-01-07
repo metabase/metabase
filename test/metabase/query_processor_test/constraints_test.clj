@@ -1,9 +1,8 @@
 (ns metabase.query-processor-test.constraints-test
   "Test for MBQL `:constraints`"
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]))
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]))
 
 (defn- mbql-query []
   (mt/mbql-query venues

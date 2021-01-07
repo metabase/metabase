@@ -2,9 +2,8 @@
   "Logic for inferring the special types of *Text* fields based on their TextFingerprints.
    These tests only run against Fields that *don't* have existing special types."
   (:require [clojure.tools.logging :as log]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 

@@ -1,13 +1,12 @@
 (ns metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
-  (:require [metabase
-             [driver :as driver]
-             [query-processor-test :as qp.test]
-             [test :as mt]
-             [util :as u]]
+  (:require [metabase.driver :as driver]
             [metabase.models.metric :refer [Metric]]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
+            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 ;; sum, *

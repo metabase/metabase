@@ -1,13 +1,11 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor-test :as qp.test]
-             [test :as mt]]
-            [metabase.models
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field :refer [Field]]
+            [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [toucan.db :as db]))
 

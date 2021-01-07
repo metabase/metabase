@@ -1,35 +1,30 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [test :refer :all]
-             [walk :as walk]]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [colorize.core :as colorize]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
-                             NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision
-                             Segment Table TaskHistory User]]
-             [task :as task]
-             [util :as u]]
-            [metabase.models
-             [collection :as collection]
-             [permissions :as perms]
-             [permissions-group :as group]
-             [setting :as setting]]
+            [metabase.driver :as driver]
+            [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
+                                     NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
+                                     Revision Segment Table TaskHistory User]]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
-            [metabase.test
-             [data :as data]
-             [initialize :as initialize]]
+            [metabase.task :as task]
+            [metabase.test.data :as data]
+            [metabase.test.initialize :as initialize]
             [metabase.test.util.log :as tu.log]
+            [metabase.util :as u]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as t.models]]
+            [toucan.db :as db]
+            [toucan.models :as t.models]
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale

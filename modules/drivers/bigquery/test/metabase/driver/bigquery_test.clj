@@ -1,13 +1,12 @@
 (ns metabase.driver.bigquery-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :refer [Field Table]]
-             [query-processor :as qp]
-             [sync :as sync]
-             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.driver.bigquery :as bigquery]
+            [metabase.models :refer [Field Table]]
+            [metabase.query-processor :as qp]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.data.bigquery :as bigquery.tx]
             [metabase.test.util :as tu]))
 

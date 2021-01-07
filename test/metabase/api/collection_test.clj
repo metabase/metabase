@@ -1,22 +1,17 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
-                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
-             [test :as mt]
-             [util :as u]]
-            [metabase.models
-             [collection :as collection]
-             [collection-test :as collection-test]
-             [permissions :as perms]
-             [permissions-group :as group]]
-            [metabase.models.collection
-             [graph :as graph]
-             [graph-test :as graph.test]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models.collection :as collection]
+            [metabase.models.collection-test :as collection-test]
+            [metabase.models.collection.graph :as graph]
+            [metabase.models.collection.graph-test :as graph.test]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
 

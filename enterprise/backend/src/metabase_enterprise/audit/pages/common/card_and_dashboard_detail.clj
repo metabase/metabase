@@ -1,13 +1,11 @@
 (ns metabase-enterprise.audit.pages.common.card-and-dashboard-detail
   "Common queries used by both Card (Question) and Dashboard detail pages."
   (:require [metabase-enterprise.audit.pages.common :as common]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [revision :as revision]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [schema :as su]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.revision :as revision]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def ^:private ModelName

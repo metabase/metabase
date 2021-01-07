@@ -2,17 +2,15 @@
   "Non-identifying fingerprinters for various field types."
   (:require [bigml.histogram.core :as hist]
             [java-time :as t]
-            [kixi.stats
-             [core :as stats]
-             [math :as math]]
+            [kixi.stats.core :as stats]
+            [kixi.stats.math :as math]
             [medley.core :as m]
             [metabase.models.field :as field]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [deferred-trs trs]]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [deferred-trs trs]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus

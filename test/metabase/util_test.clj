@@ -2,9 +2,8 @@
   "Tests for functions in `metabase.util`."
   (:require [clojure.test :refer :all]
             [flatland.ordered.map :refer [ordered-map]]
-            [metabase
-             [test :as mt]
-             [util :as u]]))
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (deftest decolorize-test
   (is (= "[31mmessage[0m"

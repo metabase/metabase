@@ -12,20 +12,17 @@
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.dates :as date-params]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [timezone :as qp.timezone]]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
            java.time.temporal.Temporal
            java.util.UUID
-           [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues
-            ReferencedCardQuery ReferencedQuerySnippet]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet]))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 

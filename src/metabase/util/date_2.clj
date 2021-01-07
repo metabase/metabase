@@ -6,9 +6,8 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [java-time.core :as t.core]
-            [metabase.util.date-2
-             [common :as common]
-             [parse :as parse]]
+            [metabase.util.date-2.common :as common]
+            [metabase.util.date-2.parse :as parse]
             [metabase.util.i18n :refer [tru]]
             [potemkin.types :as p.types]
             [schema.core :as s])

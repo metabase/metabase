@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.check-features
-  (:require [metabase
-             [driver :as driver]
-             [util :as u]]
+  (:require [metabase.driver :as driver]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
 ;; `assert-driver-supports` doesn't run check when `*driver*` is unbound (e.g., when used in the REPL)

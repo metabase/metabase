@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.cache.impl
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
-            [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [taoensso.nippy :as nippy])
   (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream EOFException FilterOutputStream InputStream OutputStream]

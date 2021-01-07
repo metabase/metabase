@@ -1,15 +1,13 @@
 (ns metabase.query-processor-test.timezones-test
-  (:require [clojure
-             [set :as set]
-             [test :refer :all]]
+  (:require [clojure.set :as set]
+            [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [models :refer [Field Table]]
-             [query-processor :as qp]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models :refer [Field Table]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [metabase.test.data.sql :as sql.tx]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]))

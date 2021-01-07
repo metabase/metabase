@@ -5,15 +5,13 @@
   (:require [clojure.tools.logging :as log]
             [metabase.api.common :as api]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models
-             [interface :as i]
-             [permissions :as perms]
-             [table :refer [Table]]]
+            [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 

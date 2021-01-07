@@ -5,14 +5,12 @@
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
             [medley.core :as m]
-            [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
-            [metabase.util
-             [i18n :as ui18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 

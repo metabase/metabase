@@ -5,12 +5,10 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :as ui18n :refer [trs]]]
+            [metabase.db :as mdb]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :as ui18n :refer [trs]]
             [toucan.db :as db])
   (:import java.util.concurrent.locks.ReentrantLock))
 

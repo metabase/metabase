@@ -1,16 +1,14 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
-            [metabase.pulse.render
-             [body :as body]
-             [common :as common]
-             [image-bundle :as image-bundle]
-             [png :as png]
-             [style :as style]]
+            [metabase.pulse.render.body :as body]
+            [metabase.pulse.render.common :as common]
+            [metabase.pulse.render.image-bundle :as image-bundle]
+            [metabase.pulse.render.png :as png]
+            [metabase.pulse.render.style :as style]
             [metabase.types :as types]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [urls :as urls]]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.urls :as urls]
             [schema.core :as s]))
 
 (def ^:private ^:const card-width 400)

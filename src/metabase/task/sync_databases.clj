@@ -1,24 +1,20 @@
 (ns metabase.task.sync-databases
   "Scheduled tasks for syncing metadata/analyzing and caching FieldValues for connected Databases."
   (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite
-             [conversion :as qc]
-             [jobs :as jobs]
-             [triggers :as triggers]]
+            [clojurewerkz.quartzite.conversion :as qc]
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
-            [metabase
-             [task :as task]
-             [util :as u]]
             [metabase.models.database :as database :refer [Database]]
-            [metabase.sync
-             [analyze :as analyze]
-             [field-values :as field-values]
-             [sync-metadata :as sync-metadata]]
-            [metabase.util
-             [cron :as cron-util]
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.sync.analyze :as analyze]
+            [metabase.sync.field-values :as field-values]
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.task :as task]
+            [metabase.util :as u]
+            [metabase.util.cron :as cron-util]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.database.DatabaseInstance

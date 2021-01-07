@@ -2,12 +2,11 @@
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [metric :refer [Metric]]
-                             [revision :refer [push-revision!]]
-                             [segment :refer [Segment]])))
-
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.revision :refer [push-revision!]]
+            [metabase.models.segment :refer [Segment]]))
 
 (def ^:const revisions-topics
   "The `Set` of event topics which are subscribed to for use in revision tracking."

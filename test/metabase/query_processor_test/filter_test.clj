@@ -1,11 +1,10 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]]))
+            [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]))
 
 (deftest and-test
   (mt/test-drivers (mt/normal-drivers)

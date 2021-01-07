@@ -1,10 +1,9 @@
 (ns metabase.models.permissions-group-membership-test
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [metabase.models
-             [permissions-group :as group]
-             [permissions-group-membership :as pgm :refer [PermissionsGroupMembership]]
-             [user :refer [User]]]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group-membership :as pgm :refer [PermissionsGroupMembership]]
+            [metabase.models.user :refer [User]]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [toucan.db :as db]

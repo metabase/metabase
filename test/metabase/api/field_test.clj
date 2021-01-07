@@ -2,18 +2,16 @@
   "Tests for `/api/field` endpoints."
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [models :refer [Database Field FieldValues Table]]
-             [test :as mt]
-             [util :as u]]
             [metabase.api.field :as field-api]
             [metabase.driver.util :as driver.u]
+            [metabase.models :refer [Database Field FieldValues Table]]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.timeseries-query-processor-test.util :as tqp.test]
+            [metabase.util :as u]
             [ring.util.codec :as codec]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 

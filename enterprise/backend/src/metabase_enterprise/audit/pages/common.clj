@@ -1,32 +1,25 @@
 (ns metabase-enterprise.audit.pages.common
   "Shared functions used by audit internal queries across different namespaces."
-  (:require [clojure
-             [string :as str]
-             [walk :as walk]]
-            [clojure.core
-             [async :as a]
-             [memoize :as memoize]]
+  (:require [clojure.core.async :as a]
+            [clojure.core.memoize :as memoize]
             [clojure.java.jdbc :as jdbc]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]
-             [helpers :as h]]
+            [clojure.string :as str]
+            [clojure.walk :as walk]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
+            [honeysql.helpers :as h]
             [medley.core :as m]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [util :as u]]
             [metabase-enterprise.audit.query-processor.middleware.handle-audit-queries :as qp.middleware.audit]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor
-             [context :as context]
-             [timezone :as qp.tz]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [urls :as urls]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.timezone :as qp.tz]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db]))
 

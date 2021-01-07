@@ -1,10 +1,9 @@
 (ns metabase.util.i18n
   "i18n functionality."
   (:require [cheshire.generate :as json-gen]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [metabase.util.i18n.impl :as impl]
             [potemkin :as p]
             [potemkin.types :as p.types]

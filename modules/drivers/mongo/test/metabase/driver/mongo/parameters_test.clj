@@ -1,16 +1,13 @@
 (ns metabase.driver.mongo.parameters-test
-  (:require [cheshire
-             [core :as json]
-             [generate :as json.generate]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [cheshire.core :as json]
+            [cheshire.generate :as json.generate]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.driver.common.parameters :as common.params]
-            [metabase.driver.mongo.parameters :as params])
+            [metabase.driver.mongo.parameters :as params]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
 (deftest ->utc-instant-test

@@ -1,14 +1,12 @@
 (ns metabase.models.params-test
   "Tests for the utility functions for dealing with parameters in `metabase.models.params`."
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Card Field]]
-             [test :as mt]]
             [metabase.api.public-test :as public-test]
+            [metabase.models :refer [Card Field]]
             [metabase.models.params :as params]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]
+            [metabase.test :as mt]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.util.test :as tt]))
 
 (deftest wrap-field-id-if-needed-test

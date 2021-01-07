@@ -1,32 +1,27 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [models :refer [Field]]
-             [util :as u]]
             [metabase.db.spec :as db.spec]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc
-             [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.util
-             [date-2 :as u.date]
-             [honeysql-extensions :as hx]
-             [ssh :as ssh]]
+            [metabase.models :refer [Field]]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.ssh :as ssh]
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]

@@ -1,13 +1,11 @@
 (ns metabase.query-processor-test.share-test
   "Tests for the `:share` aggregation."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor-test :refer :all]
-             [test :as mt]]
-            [metabase.models
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]]))
+            [metabase.driver :as driver]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.query-processor-test :refer :all]
+            [metabase.test :as mt]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)

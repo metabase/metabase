@@ -2,10 +2,9 @@
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
   (:require [clojure.java.jdbc :as jdbc]
             [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.honeysql-extensions :as hx]))
 

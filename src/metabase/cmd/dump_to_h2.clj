@@ -7,19 +7,16 @@
    Validate with:
   ```lein run load-from-h2 \"/path/to/h2\"```
    "
-  (:require [clojure.java
-             [io :as io]
-             [jdbc :as jdbc]]
+  (:require [clojure.java.io :as io]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [colorize.core :as color]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
             [metabase.cmd.load-from-h2 :refer [entities]]
+            [metabase.db :as mdb]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import java.sql.SQLException))
-
 
 (defn- println-ok [] (println (color/green "[OK]")))
 

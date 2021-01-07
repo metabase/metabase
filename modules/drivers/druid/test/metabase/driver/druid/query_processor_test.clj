@@ -4,15 +4,14 @@
             [clojure.test :refer :all]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [models :refer [Field Metric Table]]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.driver.druid.query-processor :as druid.qp]
+            [metabase.models :refer [Field Metric Table]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [metabase.timeseries-query-processor-test.util :as tqpt]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]))
 
 (defn- str->absolute-dt [s]

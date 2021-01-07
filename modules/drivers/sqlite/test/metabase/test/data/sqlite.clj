@@ -1,8 +1,7 @@
 (ns metabase.test.data.sqlite
-  (:require [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]
-             [sql-jdbc :as sql-jdbc.tx]]
+  (:require [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.execute :as execute]))
 
 (sql-jdbc.tx/add-test-extensions! :sqlite)

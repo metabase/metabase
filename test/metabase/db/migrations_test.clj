@@ -1,24 +1,21 @@
 (ns metabase.db.migrations-test
   "Tests to make sure the data migrations actually work as expected and don't break things. Shamefully, we have way less
   of these than we should... but that doesn't mean we can't write them for our new ones :)"
-  (:require [clojure
-             [set :as set]
-             [test :refer :all]]
+  (:require [clojure.set :as set]
+            [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.db.migrations :as migrations]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]
-             [user :refer [User]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.user :refer [User]]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [metabase.util.password :as u.password]
             [toucan.db :as db]))
 

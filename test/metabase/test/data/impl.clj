@@ -1,22 +1,19 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [sync :as sync]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :as field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [interface :as tx]]
+            [metabase.sync :as sync]
+            [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.impl.verify :as verify]
+            [metabase.test.data.interface :as tx]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.timezone :as tu.tz]
+            [metabase.util :as u]
             [potemkin :as p]
             [toucan.db :as db]))
 

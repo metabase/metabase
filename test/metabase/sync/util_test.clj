@@ -1,16 +1,12 @@
 (ns metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [expectations :refer [expect]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [sync :as sync]]
-            [metabase.models
-             [database :as mdb :refer [Database]]
-             [task-history :refer [TaskHistory]]]
+            [metabase.driver :as driver]
+            [metabase.models.database :as mdb :refer [Database]]
+            [metabase.models.task-history :refer [TaskHistory]]
+            [metabase.sync :as sync]
             [metabase.sync.util :as sync-util :refer :all]
             [metabase.test.util :as tu]
             [toucan.db :as db]
