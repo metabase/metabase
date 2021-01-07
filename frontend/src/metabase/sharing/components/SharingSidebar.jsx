@@ -139,9 +139,9 @@ const mapDispatchToProps = {
 )
 class SharingSidebar extends React.Component {
   state = {
-    editingMode: undefined,
+    editingMode: "list-pulses",
     // use this to know where to go "back" to
-    returnMode: undefined,
+    returnMode: [],
   };
 
   static propTypes = {
@@ -258,22 +258,27 @@ class SharingSidebar extends React.Component {
 
     await this.props.saveEditingPulse();
 
-    this.setState({ editingMode: undefined });
+    this.setState({ editingMode: "list-pulses" });
   };
 
   createSubscription = () => {
-    this.setState({
-      editingMode: "new-pulse",
-      returnMode: this.state.editingMode,
+    this.setState(({ editingMode, returnMode }) => {
+      return {
+        editingMode: "new-pulse",
+        returnMode: returnMode.concat([editingMode]),
+      };
     });
+
     this.props.setEditingPulse(null, null);
   };
 
   editPulse = (pulse, channelType) => {
     this.setPulse(pulse);
-    this.setState({
-      editingMode: "add-edit-" + channelType,
-      returnMode: this.state.editingMode,
+    this.setState(({ editingMode, returnMode }) => {
+      return {
+        editingMode: "add-edit-" + channelType,
+        returnMode: returnMode.concat([editingMode || "list-pulses"]),
+      };
     });
   };
 
@@ -470,18 +475,19 @@ class SharingSidebar extends React.Component {
 
   handleArchive = async () => {
     await this.props.setPulseArchived(this.props.pulse, true);
-    this.setState({ editingMode: undefined });
+    this.setState({ editingMode: "list-pulses", returnMode: [] });
   };
 
   // Because you can navigate down the sidebar, we need to wrap
   // onCancel from props and either call that or reset back a screen
   onCancel = () => {
     const { onCancel } = this.props;
-    if (this.state.returnMode) {
+    const { returnMode } = this.state;
+    if (returnMode.length) {
       // set the current mode back to what it should be
       this.setState({
-        editingMode: this.state.returnMode,
-        returnMode: undefined,
+        editingMode: returnMode[returnMode.length - 1],
+        returnMode: returnMode.slice(0, -1),
       });
     } else {
       onCancel();
@@ -511,7 +517,7 @@ class SharingSidebar extends React.Component {
       return <Sidebar />;
     }
 
-    if (!editingMode && pulses.length > 0) {
+    if (editingMode === "list-pulses" && pulses.length > 0) {
       return (
         <Sidebar>
           <div className="px4 pt3 flex justify-between align-center">
@@ -750,9 +756,11 @@ class SharingSidebar extends React.Component {
               })}
               onClick={() => {
                 if (emailSpec.configured) {
-                  this.setState({
-                    editingMode: "add-edit-email",
-                    returnMode: editingMode,
+                  this.setState(({ returnMode }) => {
+                    return {
+                      editingMode: "add-edit-email",
+                      returnMode: returnMode.concat([editingMode]),
+                    };
                   });
                   this.addChannel("email");
                 }
@@ -800,9 +808,11 @@ class SharingSidebar extends React.Component {
               })}
               onClick={() => {
                 if (slackSpec.configured) {
-                  this.setState({
-                    editingMode: "add-edit-slack",
-                    returnMode: this.state.editingMode,
+                  this.setState(({ returnMode }) => {
+                    return {
+                      editingMode: "add-edit-slack",
+                      returnMode: returnMode.concat([editingMode]),
+                    };
                   });
                   this.addChannel("slack");
                 }
