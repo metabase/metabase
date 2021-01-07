@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
 import { t } from "ttag";
 
 import ButtonGroup from "metabase/components/ButtonGroup";
@@ -10,8 +11,11 @@ import StackedCheckBox from "metabase/components/StackedCheckBox";
 import Toggle from "metabase/components/Toggle";
 
 export default class EmailAttachmentPicker extends Component {
+  DEFAULT_ATTACHMENT_TYPE = "csv";
+
   state = {
-    attachmentType: null,
+    isEnabled: false,
+    selectedAttachmentType: this.DEFAULT_ATTACHMENT_TYPE,
     selectedCardIds: new Set(),
   };
 
@@ -20,45 +24,77 @@ export default class EmailAttachmentPicker extends Component {
     setPulse: PropTypes.func.isRequired,
   };
 
-  DEFAULT_ATTACHMENT_TYPE = "csv";
+  componentDidMount() {
+    this.setState(this.calculateStateFromCards());
+  }
 
-  updateStateFromCards() {
+  componentDidUpdate() {
+    const newState = this.calculateStateFromCards();
+
+    newState.isEnabled = newState.isEnabled || this.state.isEnabled;
+    if (newState.selectedCardIds.size === 0) {
+      newState.selectedAttachmentType = this.state.selectedAttachmentType;
+    }
+
+    if (!this.shouldUpdateState(newState, this.state)) {
+      this.setState(newState);
+    }
+  }
+
+  calculateStateFromCards() {
     const { cards } = this.props;
-    const { attachmentType } = this.state;
-
     const selectedCards = cards.filter(card => {
       return card.include_csv || card.include_xls;
     });
 
-    if (!attachmentType && selectedCards.length > 0) {
-      this.setState({
-        attachmentType: this.attachmentTypeFor(selectedCards),
-        selectedCardIds: new Set(selectedCards.map(card => card.id)),
-      });
-      this.updatePulse();
-    }
+    return {
+      isEnabled: selectedCards.length > 0,
+      selectedAttachmentType:
+        this.attachmentTypeFor(selectedCards) || this.DEFAULT_ATTACHMENT_TYPE,
+      selectedCardIds: new Set(selectedCards.map(card => card.id)),
+    };
   }
 
-  componentDidMount() {
-    this.updateStateFromCards();
+  shouldUpdateState(newState, currentState) {
+    return (
+      (currentState.isEnabled || !newState.isEnabled) &&
+      newState.selectedAttachmentType === currentState.selectedAttachmentType &&
+      _.isEqual(newState.selectedCardIds, currentState.selectedCardIds)
+    );
   }
 
-  componentDidUpdate() {
-    this.updateStateFromCards();
+  /*
+   * Reaches into the parent component (via setPulse) to update its pulsecard's include_{csv,xls} values
+   * based on this component's state.
+   */
+  updatePulseCards(attachmentType, selectedCardIds) {
+    const { pulse, setPulse } = this.props;
+    const isXls = attachmentType === "xls",
+      isCsv = attachmentType === "csv";
+
+    this.setState({ selectedAttachmentType: attachmentType });
+
+    setPulse({
+      ...pulse,
+      cards: pulse.cards.map(card => {
+        card.include_csv = selectedCardIds.has(card.id) && isCsv;
+        card.include_xls = selectedCardIds.has(card.id) && isXls;
+        return card;
+      }),
+    });
   }
 
-  cardIds = () => {
+  cardIds() {
     return new Set(this.props.cards.map(card => card.id));
-  };
+  }
 
-  selectedCards = () => {
-    const { selectedCardIds } = this.state;
+  cardIdsToCards(cardIds) {
     const { pulse } = this.props;
 
-    return pulse.cards.filter(card => selectedCardIds.has(card.id));
-  };
+    return pulse.cards.filter(card => cardIds.has(card.id));
+  }
 
-  attachmentTypeFor = cards => {
+  attachmentTypeFor(cards) {
     if (cards.some(c => c.include_xls)) {
       return "xls";
     } else if (cards.some(c => c.include_csv)) {
@@ -66,94 +102,80 @@ export default class EmailAttachmentPicker extends Component {
     } else {
       return null;
     }
-  };
+  }
 
-  attachmentTypeValue = () => {
-    return this.attachmentTypeFor(this.selectedCards());
-  };
-
+  /*
+   * Called when the attachment type toggle (csv/xls) is clicked
+   */
   setAttachmentType = newAttachmentType => {
-    this.setState(({ selectedCardIds }) => {
-      return {
-        attachmentType: newAttachmentType,
-        selectedCardIds,
-      };
-    });
-    this.updatePulse();
+    this.updatePulseCards(newAttachmentType, this.state.selectedCardIds);
   };
 
-  updatePulse = () => {
-    const { pulse, setPulse } = this.props;
-    const { attachmentType } = this.state;
-
-    setPulse({
-      ...pulse,
-      cards: this.selectedCards().map(card => {
-        card.include_xls = attachmentType === "xls";
-        card.include_csv = attachmentType === "csv";
-        return card;
-      }),
-    });
-  };
-
-  setAttachmentTypeFromUserInput = () => {
-    const existingValue = this.attachmentTypeValue();
-    this.setAttachmentType(existingValue || this.DEFAULT_ATTACHMENT_TYPE);
-  };
-
+  /*
+   * Called when attachments are enabled/disabled at all
+   */
   toggleAttach = includeAttachment => {
-    if (includeAttachment) {
-      this.setAttachmentTypeFromUserInput();
-    } else {
-      this.setAttachmentType(null);
-    }
+    this.setState({ isEnabled: includeAttachment });
   };
 
-  areAllSelected = (allCards, selectedCardSet) => {
-    return allCards.length === selectedCardSet.size;
-  };
-
-  areOnlySomeSelected = (allCards, selectedCardSet) => {
-    return 0 < selectedCardSet.size && selectedCardSet.size < allCards.length;
-  };
-
-  onToggleCard = card => {
-    this.setState(({ selectedCardIds }) => {
+  /*
+   * Called on card selection
+   */
+  onToggleCard(card) {
+    this.setState(({ selectedAttachmentType, selectedCardIds }) => {
       const id = card.id;
+      const attachmentType =
+        this.attachmentTypeFor(this.cardIdsToCards(selectedCardIds)) ||
+        selectedAttachmentType;
+
       if (selectedCardIds.has(id)) {
         selectedCardIds.delete(id);
       } else {
         selectedCardIds.add(id);
-        this.setAttachmentTypeFromUserInput();
       }
 
-      this.updatePulse();
+      this.updatePulseCards(attachmentType, selectedCardIds);
+      return { selectedCardIds };
     });
-  };
+  }
 
+  /*
+   * Called when (de)select-all checkbox is clicked
+   */
   onToggleAll = () => {
     const { cards } = this.props;
 
-    this.setState(({ selectedCardIds }) => {
+    this.setState(({ selectedAttachmentType, selectedCardIds }) => {
+      const attachmentType =
+        this.attachmentTypeFor(this.cardIdsToCards(selectedCardIds)) ||
+        selectedAttachmentType;
+      let newSelectedCardIds = this.cardIds();
       if (this.areAllSelected(cards, selectedCardIds)) {
-        return { selectedCardIds: new Set() };
-      } else {
-        return { selectedCardIds: this.cardIds() };
+        newSelectedCardIds = new Set();
       }
-    });
 
-    this.updatePulse();
+      this.updatePulseCards(attachmentType, newSelectedCardIds);
+      return { selectedCardIds: newSelectedCardIds };
+    });
   };
+
+  areAllSelected(allCards, selectedCardSet) {
+    return allCards.length === selectedCardSet.size;
+  }
+
+  areOnlySomeSelected(allCards, selectedCardSet) {
+    return 0 < selectedCardSet.size && selectedCardSet.size < allCards.length;
+  }
 
   render() {
     const { cards } = this.props;
-    const { attachmentType, selectedCardIds } = this.state;
+    const { isEnabled, selectedAttachmentType, selectedCardIds } = this.state;
 
     return (
       <div>
-        <Toggle value={attachmentType != null} onChange={this.toggleAttach} />
+        <Toggle value={isEnabled} onChange={this.toggleAttach} />
 
-        {attachmentType != null && (
+        {isEnabled && (
           <div>
             <div className="my1 flex justify-between">
               <Label className="pt1">{t`File format`}</Label>
@@ -163,7 +185,7 @@ export default class EmailAttachmentPicker extends Component {
                   { name: ".xlsx", value: "xls" },
                 ]}
                 onChange={this.setAttachmentType}
-                value={attachmentType}
+                value={selectedAttachmentType}
               />
             </div>
             <div className="text-bold pt1 pb2 flex justify-between align-center">
