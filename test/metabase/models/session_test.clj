@@ -1,7 +1,7 @@
 (ns metabase.models.session-test
   (:require [expectations :refer [expect]]
-            [metabase.middleware.misc :as mw.misc]
             [metabase.models.session :as session :refer [Session]]
+            [metabase.server.middleware.misc :as mw.misc]
             [metabase.test.data.users :as test-users]
             [toucan.db :as db]
             [toucan.models :as t.models]))

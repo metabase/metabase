@@ -1,6 +1,6 @@
-(ns metabase.middleware.util-test
+(ns metabase.server.middleware.util-test
   (:require [expectations :refer [expect]]
-            [metabase.middleware.util :as mw.util]))
+            [metabase.server.middleware.util :as mw.util]))
 
 (defn- https? [headers]
   (mw.util/https-request? {:headers headers}))

@@ -1,8 +1,8 @@
-(ns metabase.middleware.ssl
+(ns metabase.server.middleware.ssl
   "Middleware for redirecting users to HTTPS sessions"
   (:require [clojure.string :as str]
-            [metabase.middleware.session :as mw.session]
             [metabase.public-settings :as public-settings]
+            [metabase.server.middleware.session :as mw.session]
             [ring.util.request :as req]
             [ring.util.response :as resp]))
 

@@ -1,6 +1,6 @@
-(ns metabase.middleware.ssl-test
+(ns metabase.server.middleware.ssl-test
   (:require [clojure.test :refer :all]
-            [metabase.middleware.ssl :as mw.ssl]
+            [metabase.server.middleware.ssl :as mw.ssl]
             [metabase.test.util :as tu]
             [ring.mock.request :as mock]
             [ring.util.response :as response]))

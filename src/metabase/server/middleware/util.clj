@@ -1,4 +1,4 @@
-(ns metabase.middleware.util
+(ns metabase.server.middleware.util
   "Ring middleware utility functions."
   (:require [clojure.string :as str]))
 

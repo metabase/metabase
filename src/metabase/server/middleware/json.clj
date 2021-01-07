@@ -1,4 +1,4 @@
-(ns metabase.middleware.json
+(ns metabase.server.middleware.json
   "Middleware related to parsing JSON requests and generating JSON responses."
   (:require [cheshire.core :as json]
             [cheshire.generate :as json.generate]

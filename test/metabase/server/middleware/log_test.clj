@@ -1,6 +1,6 @@
-(ns metabase.middleware.log-test
+(ns metabase.server.middleware.log-test
   (:require [clojure.test :refer :all]
-            [metabase.middleware.log :as log]))
+            [metabase.server.middleware.log :as log]))
 
 (deftest log-info-input-tests
   (testing "log-info handles nil status input"

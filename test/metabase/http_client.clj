@@ -7,7 +7,7 @@
             [clojure.tools.logging :as log]
             [java-time :as java-time]
             [metabase.config :as config]
-            [metabase.middleware.session :as mw.session]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
