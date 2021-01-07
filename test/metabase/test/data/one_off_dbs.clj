@@ -3,14 +3,12 @@
   infamous `blueberries_consumed` database, used by sync tests in several different namespaces."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [metabase
-             [db :as mdb]
-             [sync :as sync]]
+            [metabase.db :as mdb]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models.database :refer [Database]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.sync :as sync]
+            [metabase.test.data :as data]
+            [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
 
 (def ^:dynamic *conn*

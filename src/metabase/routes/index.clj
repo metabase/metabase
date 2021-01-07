@@ -10,9 +10,8 @@
             [metabase.core.initialization-status :as init-status]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
-            [metabase.util
-             [embed :as embed]
-             [i18n :as i18n :refer [trs]]]
+            [metabase.util.embed :as embed]
+            [metabase.util.i18n :as i18n :refer [trs]]
             [ring.util.response :as resp]
             [stencil.core :as stencil])
   (:import java.io.FileNotFoundException))

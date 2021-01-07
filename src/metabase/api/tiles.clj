@@ -2,16 +2,13 @@
   "`/api/tiles` endpoints."
   (:require [cheshire.core :as json]
             [compojure.core :refer [GET]]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
             [metabase.api.common :as api]
-            [metabase.mbql
-             [normalize :as normalize]
-             [util :as mbql.u]]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]])
+            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor :as qp]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su])
   (:import java.awt.Color
            java.awt.image.BufferedImage
            [java.io ByteArrayInputStream ByteArrayOutputStream]

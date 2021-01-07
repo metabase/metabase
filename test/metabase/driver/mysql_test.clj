@@ -1,25 +1,21 @@
 (ns metabase.driver.mysql-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.sync :as sync]
             [metabase.sync.analyze.fingerprint :as fingerprint]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.util.test :as tt])
   (:import [java.time ZonedDateTime ZoneId]
            java.time.format.DateTimeFormatter))

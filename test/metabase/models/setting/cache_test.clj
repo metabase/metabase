@@ -1,14 +1,12 @@
 (ns metabase.models.setting.cache-test
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [public-settings :as public-settings]
-             [test :as mt]]
-            [metabase.models
-             [setting :refer [Setting]]
-             [setting-test :as setting-test]]
+            [metabase.db :as mdb]
+            [metabase.models.setting :refer [Setting]]
+            [metabase.models.setting-test :as setting-test]
             [metabase.models.setting.cache :as cache]
+            [metabase.public-settings :as public-settings]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [toucan.db :as db]))
 

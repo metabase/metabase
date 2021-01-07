@@ -2,12 +2,10 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [schema :as su]]
-            [postal
-             [core :as postal]
-             [support :refer [make-props]]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
+            [postal.core :as postal]
+            [postal.support :refer [make-props]]
             [schema.core :as s])
   (:import javax.mail.Session))
 

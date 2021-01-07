@@ -1,11 +1,10 @@
 (ns metabase.metabot.events-test
   (:require [cheshire.core :as json]
             [expectations :refer [expect]]
-            [metabase.metabot
-             [command :as metabot.cmd]
-             [events :as metabot.events]
-             [slack :as metabot.slack]
-             [test-util :as metabot.test.u]]))
+            [metabase.metabot.command :as metabot.cmd]
+            [metabase.metabot.events :as metabot.events]
+            [metabase.metabot.slack :as metabot.slack]
+            [metabase.metabot.test-util :as metabot.test.u]))
 
 ;; check that things get parsed correctly
 (expect

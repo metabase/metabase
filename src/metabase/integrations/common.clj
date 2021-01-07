@@ -2,9 +2,8 @@
   "Shared functionality used by different integrations."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
-            [metabase.models
-             [permissions-group :as group]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))

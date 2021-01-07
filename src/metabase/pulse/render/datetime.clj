@@ -3,10 +3,9 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import java.time.Period
            java.time.temporal.Temporal))

@@ -11,9 +11,8 @@
             [metabase.driver.impl :as impl]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
             [toucan.db :as db])

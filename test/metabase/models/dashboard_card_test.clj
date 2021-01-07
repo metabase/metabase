@@ -1,10 +1,9 @@
 (ns metabase.models.dashboard-card-test
   (:require [expectations :refer :all]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer :all]
-             [dashboard-card-series :refer [DashboardCardSeries]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer :all]
+            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.test.data.users :refer :all]
             [toucan.db :as db]
             [toucan.util.test :as tt]))

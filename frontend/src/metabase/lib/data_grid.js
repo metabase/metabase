@@ -106,14 +106,16 @@ export function multiLevelPivot(
   const topIndex = getIndex(columnColumnTree, { valueColumns });
   if (topIndex.length > 1) {
     // if there are multiple columns, we should add another for row totals
-    const colNames = valueColumns.map(col => ({
-      value: col.display_name,
-      span: 1,
-    }));
-    topIndex.push([
-      [{ value: t`Row totals`, span: colNames.length }],
-      colNames,
-    ]);
+    const rowTotals = [{ value: t`Row totals`, span: valueColumns.length }];
+    if (valueColumns.length > 1) {
+      const colNames = valueColumns.map(col => ({
+        value: col.display_name,
+        span: 1,
+      }));
+      topIndex.push([rowTotals, colNames]);
+    } else {
+      topIndex.push([rowTotals]);
+    }
   }
 
   const leftIndexWithoutSubtotals = getIndex(rowColumnTree, {});
@@ -219,7 +221,7 @@ function createRowSectionGetter({
         rowColumnIndexes.length > 1
           ? [
               columns.flatMap(col =>
-                getSubtotals(rowColumnIndexes.slice(0, -1), [rows[0][0]]),
+                getSubtotals(rowColumnIndexes.slice(0, 1), [rows[0][0]]),
               ),
             ]
           : [];

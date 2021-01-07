@@ -1,8 +1,7 @@
 (ns metabase.junit
   "Formatter for JUnit test output for CI."
-  (:require [clojure
-             [pprint :as pp]
-             [string :as str]]
+  (:require [clojure.pprint :as pp]
+            [clojure.string :as str]
             [medley.core :as m]
             [metabase.util :as u]
             [pjstadig.print :as p]

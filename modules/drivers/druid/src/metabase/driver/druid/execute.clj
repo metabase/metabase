@@ -4,15 +4,13 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase.driver.druid.query-processor :as druid.qp]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]))
 
 (defn- resolve-timezone

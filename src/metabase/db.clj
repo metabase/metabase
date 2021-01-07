@@ -1,22 +1,18 @@
 (ns metabase.db
   "Application database definition, and setup logic, and helper functions for interacting with it."
-  (:require [clojure.java
-             [io :as io]
-             [jdbc :as jdbc]]
+  (:require [clojure.java.io :as io]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [metabase
-             [config :as config]
-             [connection-pool :as connection-pool]
-             [util :as u]]
-            [metabase.db
-             [jdbc-protocols :as db.jdbc-protocols]
-             [liquibase :as liquibase]
-             [spec :as db.spec]]
+            [metabase.config :as config]
+            [metabase.connection-pool :as connection-pool]
+            [metabase.db.jdbc-protocols :as db.jdbc-protocols]
+            [metabase.db.liquibase :as liquibase]
+            [metabase.db.spec :as db.spec]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])

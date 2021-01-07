@@ -3,14 +3,12 @@
   (:require [clojure.core.async :as a]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [server :as server]
-             [util :as u]]
-            [metabase.async
-             [streaming-response :as streaming-response]
-             [util :as async.u]]
+            [metabase.async.streaming-response :as streaming-response]
             [metabase.async.streaming-response.thread-pool :as streaming-response.thread-pool]
+            [metabase.async.util :as async.u]
             [metabase.middleware.util :as middleware.u]
+            [metabase.server :as server]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import clojure.core.async.impl.channels.ManyToManyChannel

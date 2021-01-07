@@ -5,14 +5,12 @@
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
             [medley.core :as m]
-            [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
-            [metabase.util
-             [i18n :as ui18n :refer [deferred-trs deferred-tru tru]]
-             [schema :as su]]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -225,6 +223,38 @@
 
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
+(defn- parse-defendpoint-args [[method route & more]]
+  (let [fn-name                (route-fn-name method route)
+        route                  (add-route-param-regexes route)
+        [docstr [args & more]] (u/optional string? more)
+        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)]
+    (when-not docstr
+      ;; Don't i18n this, it's dev-facing only
+      (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
+                  (ns-name *ns*) fn-name)))
+    {:method      method
+     :route       route
+     :fn-name     fn-name
+     ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+     ;; their API error messages
+     :docstr      (route-dox method route docstr args (m/map-vals eval arg->schema) body)
+     :args        args
+     :arg->schema arg->schema
+     :body        body}))
+
+(defmacro defendpoint*
+  "Impl macro for `defendpoint`; don't use this directly."
+  [{:keys [method route fn-name docstr args arg->schema original-body body]}]
+  {:pre [(or (string? route) (vector? route))]}
+  (require 'compojure.core)
+  `(def ~(vary-meta fn-name
+                    assoc
+
+                    :doc          docstr
+                    :is-endpoint? true)
+     (~(symbol "compojure.core" (name method)) ~route ~args
+      ~@body)))
+
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
 (defmacro defendpoint
@@ -245,50 +275,24 @@
 
    -  Generates a super-sophisticated Markdown-formatted docstring"
   {:arglists '([method route docstr? args schemas-map? & body])}
-  [method route & more]
-  {:pre [(or (string? route)
-             (vector? route))]}
-  (let [fn-name                (route-fn-name method route)
-        route                  (typify-route route)
-        [docstr [args & more]] (u/optional string? more)
-        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
-        validate-param-calls   (validate-params arg->schema)]
-    (when-not docstr
-      ;; Don't i18n this, it's dev-facing only
-      (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
-                  (ns-name *ns*) fn-name)))
-    `(def ~(vary-meta fn-name
-                      merge
-                      (meta method)
-                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-                      ;; their API error messages
-                      {:doc          (route-dox method route docstr args (m/map-vals eval arg->schema) body)
-                       :is-endpoint? true})
-       (~method ~route ~args
-        (auto-parse ~args
-          ~@validate-param-calls
-          (wrap-response-if-needed (do ~@body)))))))
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :body `((auto-parse ~args
+                                     ~@(validate-params arg->schema)
+                                     (wrap-response-if-needed
+                                      (do ~@body))))))))
 
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
   {:arglists '([method route docstr? args schemas-map? & body])}
-  [method route & more]
-  (let [fn-name                (route-fn-name method route)
-        route                  (typify-route route)
-        [docstr [args & more]] (u/optional string? more)
-        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
-        validate-param-calls   (validate-params arg->schema)]
-    (when-not docstr
-      (log/warn (deferred-trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
-    `(def ~(vary-meta fn-name assoc
-                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-                      ;; their API error messages
-                      :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
-                      :is-endpoint? true)
-       (~method ~route []
-        (fn ~args
-          ~@validate-param-calls
-          ~@body)))))
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :args []
+                           :body `((fn ~args
+                                     ~@(validate-params arg->schema)
+                                     ~@body))))))
 
 (defn- namespace->api-route-fns
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
@@ -344,9 +348,9 @@
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
 
 (defn read-check
-  "Check whether we can read an existing OBJ, or ENTITY with ID.
-   If the object doesn't exist, throw a 404; if we don't have proper permissions, throw a 403.
-   This will fetch the object if it was not already fetched, and returns OBJ if the check is successful."
+  "Check whether we can read an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
+  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
+  `obj` if the check is successful."
   {:style/indent 2}
   ([obj]
    (check-404 obj)

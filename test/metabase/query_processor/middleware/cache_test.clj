@@ -7,21 +7,18 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [public-settings :as public-settings]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.query-processor
-             [streaming :as qp.streaming]
-             [util :as qputil]]
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
+            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.util :as qputil]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [pretty.core :as pretty]))
 
 (use-fixtures :once (fixtures/initialize :db))

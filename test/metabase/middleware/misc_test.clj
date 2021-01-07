@@ -1,10 +1,9 @@
 (ns metabase.middleware.misc-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [public-settings :as public-settings]
-             [test :as mt]]
             [metabase.middleware.misc :as mw.misc]
+            [metabase.public-settings :as public-settings]
+            [metabase.test :as mt]
             [ring.mock.request :as ring.mock]))
 
 (deftest maybe-set-site-url-test

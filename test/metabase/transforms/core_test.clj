@@ -1,22 +1,17 @@
 (ns metabase.transforms.core-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
-            [metabase.domain-entities
-             [core :as de]
-             [specs :as de.specs]]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [table :as table :refer [Table]]]
-            [metabase.test
-             [domain-entities :refer :all]
-             [transforms :refer :all]]
-            [metabase.transforms
-             [core :as t]
-             [specs :as t.specs]]
+            [metabase.domain-entities.core :as de]
+            [metabase.domain-entities.specs :as de.specs]
+            [metabase.models.card :as card :refer [Card]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.test.domain-entities :refer :all]
+            [metabase.test.transforms :refer :all]
+            [metabase.transforms.core :as t]
+            [metabase.transforms.specs :as t.specs]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (def test-bindings

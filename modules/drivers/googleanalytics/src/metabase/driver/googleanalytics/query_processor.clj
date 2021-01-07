@@ -4,13 +4,11 @@
   (:require [clojure.string :as str]
             [java-time :as t]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :as ui18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def ^:private ^:const earliest-date "2005-01-01")

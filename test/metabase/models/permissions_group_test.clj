@@ -1,11 +1,10 @@
 (ns metabase.models.permissions-group-test
   (:require [expectations :refer :all]
-            [metabase.models
-             [database :refer [Database]]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :as perm-group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [user :refer [User]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.user :refer [User]]
             [metabase.test.data.users :as test-users]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]

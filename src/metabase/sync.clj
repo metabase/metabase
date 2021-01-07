@@ -8,12 +8,11 @@
 
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
-  (:require [metabase.sync
-             [analyze :as analyze]
-             [field-values :as field-values]
-             [interface :as i]
-             [sync-metadata :as sync-metadata]
-             [util :as sync-util]]
+  (:require [metabase.sync.analyze :as analyze]
+            [metabase.sync.field-values :as field-values]
+            [metabase.sync.interface :as i]
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.sync.util :as sync-util]
             [schema.core :as s])
   (:import java.time.temporal.Temporal))
 

@@ -2,19 +2,16 @@
   "Tests for Mongo driver."
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [query-processor-test :as qp.t :refer [rows]]
-             [test :as mt]]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver
-             [mongo :as mongo]
-             [util :as driver.u]]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
+            [metabase.driver :as driver]
+            [metabase.driver.mongo :as mongo]
+            [metabase.driver.util :as driver.u]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.t :refer [rows]]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [taoensso.nippy :as nippy]
             [toucan.db :as db])

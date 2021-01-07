@@ -1,13 +1,11 @@
 (ns metabase.server
-  (:require [clojure
-             [core :as core]
-             [string :as str]]
+  (:require [clojure.core :as core]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.server.protocols :as protocols]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [ring.adapter.jetty :as ring-jetty]
             [ring.util.servlet :as servlet])

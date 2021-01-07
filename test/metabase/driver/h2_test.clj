@@ -2,15 +2,14 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [models :refer [Database]]
-             [query-processor :as qp]
-             [test :as mt]]
+            [metabase.db :as mdb]
             [metabase.db.spec :as db.spec]
+            [metabase.driver :as driver]
             [metabase.driver.h2 :as h2]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models :refer [Database]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util.honeysql-extensions :as hx]))
 

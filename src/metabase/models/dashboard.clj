@@ -1,36 +1,31 @@
 (ns metabase.models.dashboard
-  (:require [clojure
-             [data :refer [diff]]
-             [set :as set]
-             [string :as str]]
-            [clojure.core.async :as a]
+  (:require [clojure.core.async :as a]
+            [clojure.data :refer [diff]]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [events :as events]
-             [public-settings :as public-settings]
-             [util :as u]]
             [metabase.automagic-dashboards.populate :as magic.populate]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [collection :as collection]
-             [dashboard-card :as dashboard-card :refer [DashboardCard]]
-             [field-values :as field-values]
-             [interface :as i]
-             [params :as params]
-             [permissions :as perms]
-             [pulse :refer [Pulse]]
-             [pulse-card :as pulse-card :refer [PulseCard]]
-             [revision :as revision]]
+            [metabase.events :as events]
+            [metabase.models.card :as card :refer [Card]]
+            [metabase.models.collection :as collection]
+            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+            [metabase.models.field-values :as field-values]
+            [metabase.models.interface :as i]
+            [metabase.models.params :as params]
+            [metabase.models.permissions :as perms]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
+            [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
-            [metabase.util
-             [i18n :as ui18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models]))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

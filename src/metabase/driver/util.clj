@@ -2,10 +2,9 @@
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream

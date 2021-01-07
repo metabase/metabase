@@ -18,17 +18,14 @@
   In the future, we plan to add more classifiers, including ML ones that run offline."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.sync.analyze.classifiers
-             [category :as category]
-             [name :as name]
-             [no-preview-display :as no-preview-display]
-             [text-fingerprint :as text-fingerprint]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync.analyze.classifiers.category :as category]
+            [metabase.sync.analyze.classifiers.name :as name]
+            [metabase.sync.analyze.classifiers.no-preview-display :as no-preview-display]
+            [metabase.sync.analyze.classifiers.text-fingerprint :as text-fingerprint]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))

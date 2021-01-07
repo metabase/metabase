@@ -5,10 +5,9 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.params :as params]
             [metabase.query-processor.error-type :as error-type]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import java.time.temporal.Temporal))
 

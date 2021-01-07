@@ -147,7 +147,6 @@ export default class DashCard extends Component {
         className={cx(
           "Card bordered rounded flex flex-column hover-parent hover--visibility",
           {
-            "Card--recent": dashcard.isAdded,
             "Card--slow": isSlow === "usually-slow",
           },
         )}

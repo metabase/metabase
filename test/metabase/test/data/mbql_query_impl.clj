@@ -1,8 +1,7 @@
 (ns metabase.test.data.mbql-query-impl
   "Internal implementation of `data/$ids` and `data/mbql-query` and related macros."
-  (:require [clojure
-             [string :as str]
-             [walk :as walk]]
+  (:require [clojure.string :as str]
+            [clojure.walk :as walk]
             [metabase.models.field :refer [Field]]
             [toucan.db :as db]))
 

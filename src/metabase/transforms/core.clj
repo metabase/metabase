@@ -1,24 +1,18 @@
 (ns metabase.transforms.core
   (:require [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [util :as u]]
-            [metabase.domain-entities
-             [core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
-             [specs :refer [domain-entity-specs DomainEntitySpec]]]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
-            [metabase.transforms
-             [materialize :as materialize]
-             [specs :refer [Step transform-specs TransformSpec]]]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
+            [metabase.domain-entities.specs :refer [domain-entity-specs DomainEntitySpec]]
+            [metabase.driver :as driver]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.transforms.materialize :as materialize]
+            [metabase.transforms.specs :refer [Step transform-specs TransformSpec]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 

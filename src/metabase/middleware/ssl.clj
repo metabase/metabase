@@ -3,9 +3,8 @@
   (:require [clojure.string :as str]
             [metabase.middleware.session :as mw.session]
             [metabase.public-settings :as public-settings]
-            [ring.util
-             [request :as req]
-             [response :as resp]]))
+            [ring.util.request :as req]
+            [ring.util.response :as resp]))
 
 (def no-redirect-https-uris
   "The set of URLs that should not be forced to redirect to their HTTPS equivalents"

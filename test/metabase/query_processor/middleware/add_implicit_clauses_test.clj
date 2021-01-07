@@ -4,9 +4,8 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]

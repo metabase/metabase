@@ -1,15 +1,12 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
-            [metabase.driver.sql-jdbc.sync
-             [describe-table :as describe-table]
-             [interface :as i]]
-            [metabase.models.table :refer [Table]]))
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.sync.describe-table :as describe-table]
+            [metabase.driver.sql-jdbc.sync.interface :as i]
+            [metabase.models.table :refer [Table]]
+            [metabase.test :as mt]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is

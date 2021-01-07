@@ -1,9 +1,8 @@
 (ns metabase.events.view-log-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Card Dashboard User ViewLog]]
-             [test :as mt]]
             [metabase.events.view-log :as view-log]
+            [metabase.models :refer [Card Dashboard User ViewLog]]
+            [metabase.test :as mt]
             [toucan.db :as db]))
 
 (deftest card-create-test

@@ -11,28 +11,6 @@
   height: 42.5px;
 }
 
-@keyframes icon-pulse {
-  0% {
-    box-shadow: 0 0 5px var(--color-shadow);
-  }
-  50% {
-    box-shadow: 0 0 5px var(--color-shadow);
-  }
-  100% {
-    box-shadow: 0 0 5px var(--color-shadow);
-  }
-}
-
-.Icon--pulse {
-  border-radius: 99px;
-  box-shadow: 0 0 5px var(--color-shadow);
-  padding: 0.75em;
-  animation-name: icon-pulse;
-  animation-duration: 2s;
-  animation-iteration-count: infinite;
-  animation-timing-function: linear;
-}
-
 @media screen and (--breakpoint-min-md) {
   .Logo .Icon {
     width: 66px;

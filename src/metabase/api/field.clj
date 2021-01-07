@@ -2,26 +2,22 @@
   (:require [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase
-             [query-processor :as qp]
-             [related :as related]
-             [util :as u]]
             [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
-            [metabase.models
-             [dimension :refer [Dimension]]
-             [field :as field :refer [Field]]
-             [field-values :as field-values :refer [FieldValues]]
-             [interface :as mi]
-             [permissions :as perms]
-             [table :refer [Table]]]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.field-values :as field-values :refer [FieldValues]]
+            [metabase.models.interface :as mi]
+            [metabase.models.permissions :as perms]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.related :as related]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import java.text.NumberFormat))
 
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------

@@ -2,15 +2,14 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [metabase
-             [db :as mdb]
-             [test :as mt]
-             [util :as u]]
+            [metabase.db :as mdb]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.util :as driver.u]
             [metabase.models.database :refer [Database]]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.util.log :as tu.log]))
+            [metabase.test.util.log :as tu.log]
+            [metabase.util :as u]))
 
 ;; ## TESTS FOR CAN-CONNECT?
 

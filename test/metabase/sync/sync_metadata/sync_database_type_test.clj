@@ -1,15 +1,13 @@
 (ns metabase.sync.sync-metadata.sync-database-type-test
   "Tests to make sure the newly added Field.database_type field gets populated, even for existing Fields."
   (:require [expectations :refer :all]
-            [metabase
-             [sync :as sync]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync :as sync]
             [metabase.sync.util-test :as sut]
             [metabase.test.data :as data]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 

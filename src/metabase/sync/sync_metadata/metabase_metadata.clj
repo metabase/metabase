@@ -7,17 +7,14 @@
   their database for an enhanced Metabase experience out-of-the box."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
-            [metabase.sync
-             [fetch-metadata :as fetch-metadata]
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync.fetch-metadata :as fetch-metadata]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))

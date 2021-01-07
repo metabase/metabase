@@ -1,28 +1,23 @@
 (ns metabase.driver.sparksql
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [clojure.java.jdbc :as jdbc]
-            [honeysql
-             [core :as hsql]
-             [helpers :as h]]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [clojure.string :as str]
+            [honeysql.core :as hsql]
+            [honeysql.helpers :as h]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
-            [metabase.driver.sql
-             [query-processor :as sql.qp]
-             [util :as sql.u]]
-            [metabase.driver.sql-jdbc
-             [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor
-             [store :as qp.store]
-             [util :as qputil]]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util :as qputil]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection ResultSet]))
 

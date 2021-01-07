@@ -2,13 +2,11 @@
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
-            [metabase.sync
-             [fetch-metadata :as fetch-metadata]
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.sync.fetch-metadata :as fetch-metadata]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))

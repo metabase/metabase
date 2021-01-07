@@ -1,12 +1,11 @@
 (ns metabase.middleware.misc
   "Misc Ring middleware."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [db :as mdb]
-             [public-settings :as public-settings]]
             [metabase.api.common :as api]
             metabase.async.streaming-response
+            [metabase.db :as mdb]
             [metabase.middleware.util :as middleware.u]
+            [metabase.public-settings :as public-settings]
             [metabase.util.i18n :refer [trs]])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            metabase.async.streaming_response.StreamingResponse))

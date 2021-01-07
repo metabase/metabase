@@ -1,7 +1,6 @@
 (ns metabase.test.data.druid
-  (:require [metabase.test.data
-             [impl :as tx.impl]
-             [interface :as tx]]))
+  (:require [metabase.test.data.impl :as tx.impl]
+            [metabase.test.data.interface :as tx]))
 
 (tx/add-test-extensions! :druid)
 

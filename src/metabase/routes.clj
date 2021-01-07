@@ -1,18 +1,15 @@
 (ns metabase.routes
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
-  (:require [compojure
-             [core :refer [context defroutes GET]]
-             [route :as route]]
-            [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.api
-             [dataset :as dataset-api]
-             [routes :as api]]
+  (:require [compojure.core :refer [context defroutes GET]]
+            [compojure.route :as route]
+            [metabase.api.dataset :as dataset-api]
+            [metabase.api.routes :as api]
             [metabase.core.initialization-status :as init-status]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings :as public-settings]
             [metabase.routes.index :as index]
+            [metabase.util :as u]
             [ring.util.response :as resp]))
 
 (u/ignore-exceptions (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))

@@ -2,17 +2,15 @@
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [medley.core :as m]
-            [metabase.models
-             [dimension :refer [Dimension]]
-             [field-values :as fv :refer [FieldValues]]
-             [humanization :as humanization]
-             [interface :as i]
-             [permissions :as perms]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field-values :as fv :refer [FieldValues]]
+            [metabase.models.humanization :as humanization]
+            [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms]
             [metabase.util :as u]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models]))
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 

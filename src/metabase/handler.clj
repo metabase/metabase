@@ -1,23 +1,20 @@
 (ns metabase.handler
   "Top-level Metabase Ring handler."
-  (:require [metabase
-             [config :as config]
-             [routes :as routes]]
-            [metabase.middleware
-             [auth :as mw.auth]
-             [exceptions :as mw.exceptions]
-             [json :as mw.json]
-             [log :as mw.log]
-             [misc :as mw.misc]
-             [security :as mw.security]
-             [session :as mw.session]
-             [ssl :as mw.ssl]]
+  (:require [metabase.config :as config]
+            [metabase.middleware.auth :as mw.auth]
+            [metabase.middleware.exceptions :as mw.exceptions]
+            [metabase.middleware.json :as mw.json]
+            [metabase.middleware.log :as mw.log]
+            [metabase.middleware.misc :as mw.misc]
+            [metabase.middleware.security :as mw.security]
+            [metabase.middleware.session :as mw.session]
+            [metabase.middleware.ssl :as mw.ssl]
             [metabase.plugins.classloader :as classloader]
-            [ring.middleware
-             [cookies :refer [wrap-cookies]]
-             [gzip :refer [wrap-gzip]]
-             [keyword-params :refer [wrap-keyword-params]]
-             [params :refer [wrap-params]]]))
+            [metabase.routes :as routes]
+            [ring.middleware.cookies :refer [wrap-cookies]]
+            [ring.middleware.gzip :refer [wrap-gzip]]
+            [ring.middleware.keyword-params :refer [wrap-keyword-params]]
+            [ring.middleware.params :refer [wrap-params]]))
 
 ;; required here because this namespace is not actually used anywhere but we need it to be loaded because it adds
 ;; impls for handling `core.async` channels as web server responses

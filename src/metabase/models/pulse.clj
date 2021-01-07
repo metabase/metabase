@@ -17,26 +17,22 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase
-             [events :as events]
-             [util :as u]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection]
-             [dashboard-card :as dashboard-card :refer [DashboardCard]]
-             [interface :as i]
-             [permissions :as perms]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :as pulse-channel :refer [PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
-            [metabase.util
-             [i18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.events :as events]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection]
+            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+            [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms]
+            [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
+            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 

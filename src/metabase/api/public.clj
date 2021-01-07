@@ -4,40 +4,33 @@
             [clojure.core.async :as a]
             [compojure.core :refer [GET]]
             [medley.core :as m]
-            [metabase
-             [db :as mdb]
-             [query-processor :as qp]
-             [util :as u]]
-            [metabase.api
-             [card :as card-api]
-             [common :as api]
-             [dashboard :as dashboard-api]
-             [dataset :as dataset-api]
-             [field :as field-api]]
+            [metabase.api.card :as card-api]
+            [metabase.api.common :as api]
+            [metabase.api.dashboard :as dashboard-api]
+            [metabase.api.dataset :as dataset-api]
+            [metabase.api.field :as field-api]
             [metabase.async.util :as async.u]
-            [metabase.mbql
-             [normalize :as normalize]
-             [util :as mbql.u]]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [params :as params]]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [streaming :as qp.streaming]]
+            [metabase.db :as mdb]
+            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.card :as card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.params :as params]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.util
-             [embed :as embed]
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.util :as u]
+            [metabase.util.embed :as embed]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)

@@ -1,21 +1,16 @@
 (ns metabase.metabot.command-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [test :as mt]
-             [util :as u]]
-            [metabase.metabot
-             [command :as metabot.cmd]
-             [test-util :as metabot.test.u]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [permissions :as perms]
-             [permissions-group :as group]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.metabot.command :as metabot.cmd]
+            [metabase.metabot.test-util :as metabot.test.u]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 

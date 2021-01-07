@@ -1,11 +1,10 @@
 (ns metabase.util.encryption
   "Utility functions for encrypting and decrypting strings using AES256 CBC + HMAC SHA512 and the
   `MB_ENCRYPTION_SECRET_KEY` env var."
-  (:require [buddy.core
-             [codecs :as codecs]
-             [crypto :as crypto]
-             [kdf :as kdf]
-             [nonce :as nonce]]
+  (:require [buddy.core.codecs :as codecs]
+            [buddy.core.crypto :as crypto]
+            [buddy.core.kdf :as kdf]
+            [buddy.core.nonce :as nonce]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :as env]

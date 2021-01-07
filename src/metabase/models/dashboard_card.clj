@@ -1,20 +1,17 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [metabase
-             [db :as mdb]
-             [events :as events]
-             [util :as u]]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [interface :as i]
-             [pulse-card :refer [PulseCard]]]
+            [metabase.db :as mdb]
+            [metabase.events :as events]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+            [metabase.models.interface :as i]
+            [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models]))
 
 (models/defmodel DashboardCard :report_dashboardcard)
 

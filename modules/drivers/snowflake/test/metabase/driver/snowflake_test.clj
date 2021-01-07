@@ -1,22 +1,19 @@
 (ns metabase.driver.snowflake-test
-  (:require [clojure
-             [set :as set]
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
-            [metabase
-             [driver :as driver]
-             [models :refer [Table]]
-             [query-processor :as qp]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.models :refer [Table]]
             [metabase.models.database :refer [Database]]
-            [metabase.test.data
-             [dataset-definitions :as dataset-defs]
-             [sql :as sql.tx]]
+            [metabase.query-processor :as qp]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
+            [metabase.test.data.dataset-definitions :as dataset-defs]
+            [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (deftest ddl-statements-test

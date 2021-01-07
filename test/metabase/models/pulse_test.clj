@@ -1,27 +1,24 @@
 (ns metabase.models.pulse-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.api.common :as api]
-            [metabase.models
-             [card :refer :all]
-             [collection :refer [Collection]]
-             [database :refer [Database]]
-             [interface :as mi]
-             [permissions :as perms]
-             [pulse :refer :all]
-             [pulse-card :refer :all]
-             [pulse-channel :refer :all]
-             [pulse-channel-recipient :refer :all]
-             [table :refer [Table]]]
+            [metabase.models.card :refer :all]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
+            [metabase.models.permissions :as perms]
+            [metabase.models.pulse :refer :all]
+            [metabase.models.pulse-card :refer :all]
+            [metabase.models.pulse-channel :refer :all]
+            [metabase.models.pulse-channel-recipient :refer :all]
+            [metabase.models.table :refer [Table]]
+            [metabase.test :as mt]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.util.test :as tt]))
 
 (defn- user-details

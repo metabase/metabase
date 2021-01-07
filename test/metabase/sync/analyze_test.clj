@@ -1,25 +1,20 @@
 (ns metabase.sync.analyze-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :as field :refer [Field]]
-             [table :refer [Table]]]
-            [metabase.sync
-             [analyze :as analyze]
-             [interface :as i]
-             [sync-metadata :as sync-metadata]]
-            [metabase.sync.analyze.classifiers
-             [category :as classifiers.category]
-             [name :as classifiers.name]
-             [no-preview-display :as classifiers.no-preview-display]
-             [text-fingerprint :as classify-text-fingerprint]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync.analyze :as analyze]
+            [metabase.sync.analyze.classifiers.category :as classifiers.category]
+            [metabase.sync.analyze.classifiers.name :as classifiers.name]
+            [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
+            [metabase.sync.analyze.classifiers.text-fingerprint :as classify-text-fingerprint]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.test
-             [data :as data]
-             [sync :as test.sync :refer [sync-survives-crash?]]]
+            [metabase.sync.interface :as i]
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 

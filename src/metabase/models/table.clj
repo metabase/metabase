@@ -1,21 +1,18 @@
 (ns metabase.models.table
   (:require [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [field-values :refer [FieldValues]]
-             [humanization :as humanization]
-             [interface :as i]
-             [metric :refer [Metric retrieve-metrics]]
-             [permissions :as perms :refer [Permissions]]
-             [segment :refer [retrieve-segments Segment]]]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :refer [FieldValues]]
+            [metabase.models.humanization :as humanization]
+            [metabase.models.interface :as i]
+            [metabase.models.metric :refer [Metric retrieve-metrics]]
+            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.segment :refer [retrieve-segments Segment]]
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 

@@ -7,9 +7,8 @@
   transformation from wrapping the value literals themselves."
   (:require [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as error-type]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (s/defn ^:private parse-value-for-base-type [v :- s/Str, base-type :- su/FieldType]

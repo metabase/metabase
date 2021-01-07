@@ -1,8 +1,7 @@
 (ns metabase.db.liquibase-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.db.liquibase :as liquibase]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test :as mt]))

@@ -1,8 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-referenced
   (:require [metabase.models.card :refer [Card]]
-            [metabase.query-processor.middleware
-             [resolve-fields :as qp.resolve-fields]
-             [resolve-source-table :as qp.resolve-tables]]
+            [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
+            [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-tables]
             [metabase.util.i18n :refer [deferred-tru]]
             [schema.core :as s]
             [toucan.db :as db]

@@ -1,12 +1,10 @@
 (ns metabase.pulse.test-util
-  (:require [metabase
-             [pulse :as pulse]
-             [query-processor-test :as qp.test]
-             [util :as u]]
-            [metabase.models
-             [pulse :as models.pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]]
+  (:require [metabase.models.pulse :as models.pulse :refer [Pulse]]
+            [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.pulse :as pulse]
+            [metabase.query-processor-test :as qp.test]
             [metabase.test.data.users :as users]
+            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 (defn send-pulse-created-by-user!

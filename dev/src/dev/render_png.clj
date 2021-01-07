@@ -1,12 +1,10 @@
 (ns dev.render-png
   "Improve feedback loop for dealing with png rendering code"
-  (:require [metabase
-             [pulse :as pulse]
-             [query-processor :as qp]]
-            [metabase.models
-             [card :as card]
-             [user :as user]]
+  (:require [metabase.models.card :as card]
+            [metabase.models.user :as user]
+            [metabase.pulse :as pulse]
             [metabase.pulse.render :as pulse-render]
+            [metabase.query-processor :as qp]
             [toucan.db :as tdb]))
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj

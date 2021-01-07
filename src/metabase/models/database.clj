@@ -2,21 +2,18 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [util :as u]]
             [metabase.api.common :refer [*current-user*]]
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [interface :as i]
-             [permissions :as perms]
-             [permissions-group :as perm-group]]
+            [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perm-group]
             [metabase.plugins.classloader :as classloader]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 

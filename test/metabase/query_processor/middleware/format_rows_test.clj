@@ -1,11 +1,10 @@
 (ns metabase.query-processor.middleware.format-rows-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [query-processor-test :as qp.test]
-             [test :as mt]]
-            [metabase.query-processor.middleware.format-rows :as format-rows]))
+            [metabase.driver :as driver]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.middleware.format-rows :as format-rows]
+            [metabase.test :as mt]))
 
 (driver/register! ::timezone-driver, :abstract? true)
 

@@ -1,11 +1,10 @@
 (ns metabase.driver.sparksql-test
   (:require [clojure.test :refer :all]
             honeysql.types
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql.query-processor :as sql.qp]))
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]))
 
 (comment honeysql.types/keep-me)
 

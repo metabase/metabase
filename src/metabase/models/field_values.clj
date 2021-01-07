@@ -2,13 +2,11 @@
   (:require [clojure.tools.logging :as log]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (def ^Integer category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`.

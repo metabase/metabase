@@ -6,19 +6,16 @@
   you can test a given piece of middleware without having to worry about putting things in the QP Store
   yourself (since this is usually done by other middleware in the first place)."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
-            [metabase.query-processor
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test.data :as data]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))

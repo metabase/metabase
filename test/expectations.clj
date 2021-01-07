@@ -1,11 +1,9 @@
 (ns ^:deprecated expectations
-  (:require [clojure
-             [data :as data]
-             [test :as t]]
+  (:require [clojure.data :as data]
+            [clojure.test :as t]
             [environ.core :as env]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.util :as u]
             [methodical.core :as m]))
 
 (alter-meta! *ns* assoc :deprecated true)
