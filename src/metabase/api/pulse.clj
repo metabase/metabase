@@ -34,7 +34,7 @@
   {archived     (s/maybe su/BooleanString)
    dashboard_id (s/maybe su/IntGreaterThanZero)}
   (as-> (pulse/retrieve-pulses {:archived?    (Boolean/parseBoolean archived)
-                                :dashboard_id dashboard_id}) <>
+                                :dashboard-id dashboard_id}) <>
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 

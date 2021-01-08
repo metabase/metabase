@@ -159,7 +159,7 @@
           (dissoc dashcard :actor_id))))))
 
 (defn delete-dashboard-card!
-  "Delete a DashboardCard`"
+  "Delete a DashboardCard."
   [dashboard-card user-id]
   {:pre [(map? dashboard-card)
          (integer? user-id)]}

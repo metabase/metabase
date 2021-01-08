@@ -44,7 +44,7 @@
   (merge
    (select-keys
     pulse
-    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :archived :skip_if_empty])
+    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :archived :skip_if_empty :dashboard_id])
    {:creator  (user-details (db/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
@@ -145,7 +145,8 @@
    :created_at          true
    :skip_if_empty       false
    :updated_at          true
-   :archived            false})
+   :archived            false
+   :dashboard_id        nil})
 
 (def ^:private daily-email-channel
   {:enabled       true
@@ -313,10 +314,10 @@
 (def ^:private default-put-card-ref-validation-error
   {:errors
    {:cards (str   "value may be nil, or if non-nil, value must be an array. "
-  "Each value must satisfy one of the following requirements: "
-  "1) value must be a map with the following keys "
-  "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` "
-  "2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.")}})
+                  "Each value must satisfy one of the following requirements: "
+                  "1) value must be a map with the following keys "
+                  "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` "
+                  "2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.")}})
 
 (deftest update-pulse-validation-test
   (testing "PUT /api/pulse/:id"

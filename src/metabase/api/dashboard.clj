@@ -317,7 +317,6 @@
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
-
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
@@ -331,7 +330,6 @@
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
     (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})))
-
 
 ;; TODO - we should use schema to validate the format of the Cards :D
 (api/defendpoint PUT "/:id/cards"
@@ -350,7 +348,6 @@
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
 
-
 (api/defendpoint DELETE "/:id/cards"
   "Remove a `DashboardCard` from a Dashboard."
   [id dashcardId]
@@ -358,15 +355,13 @@
   (api/check-not-archived (api/write-check Dashboard id))
   (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
     (api/check-500 (delete-dashboard-card! dashboard-card api/*current-user-id*))
-    {:success true})) ; TODO - why doesn't this return a 204 'No Content' response?
-
+    api/generic-204-no-content))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
   [id]
   (api/read-check Dashboard id)
   (revision/revisions+details Dashboard id))
-
 
 (api/defendpoint POST "/:id/revert"
   "Revert a Dashboard to a prior `Revision`."
