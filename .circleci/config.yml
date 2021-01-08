@@ -579,7 +579,7 @@ jobs:
           filename: .MIGRATIONS-LINTER-CHECKSUMS
           find-args: bin/lint-migrations-file -type f -name '*.clj' -or -name 'deps.edn'
       - run-on-change:
-          cache-key: check-migrations-{{ checksum ".MIGRATIONS-CHECKSUM" }}-{{ checksum ".MIGRATIONS-LINTER-CHECKSUMS" }}
+          checksum: '{{ checksum ".MIGRATIONS-CHECKSUM" }}-{{ checksum ".MIGRATIONS-LINTER-CHECKSUMS" }}'
           steps:
             - run:
                 name: Verify Liquibase Migrations
