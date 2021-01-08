@@ -411,6 +411,29 @@ describe("scenarios > collection_defaults", () => {
           cy.findByText("First collection");
         });
     });
+
+    it.skip("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
+      cy.request("POST", "/api/collection", {
+        name: "foo:bar",
+        color: "#509EE3",
+        parent_id: null,
+      }).then(({ body: { id: COLLECTION_ID } }) => {
+        // Move question #1 ("Orders") to newly created collection
+        cy.request("PUT", "/api/card/1", {
+          collection_id: COLLECTION_ID,
+        });
+        // Sanity check: make sure Orders is indeed inside new collection
+        cy.visit(`/collection/${COLLECTION_ID}`);
+        cy.findByText("Orders");
+      });
+
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      // Note: collection name's first letter is capitalized
+      cy.findByText(/foo:bar/i).click();
+      cy.findByText("Orders");
+    });
   });
 });
 
