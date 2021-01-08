@@ -496,7 +496,7 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const { pulse, pulses, formInput } = this.props;
+    const { pulse, pulses, formInput, user } = this.props;
 
     const caveatMessage = (
       <Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${(
@@ -748,14 +748,9 @@ class SharingSidebar extends React.Component {
             <Heading>{t`Create a dashboard subscription`}</Heading>
           </div>
           <div className="my1 mx4">
-            <Card
-              flat
-              className={cx("mt1 mb3", {
-                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
-                  emailSpec.configured,
-              })}
-              onClick={() => {
-                if (emailSpec.configured) {
+            {emailSpec.configured ? (
+              <EmailTrigger
+                onClick={() => {
                   this.setState(({ returnMode }) => {
                     return {
                       editingMode: "add-edit-email",
@@ -763,51 +758,14 @@ class SharingSidebar extends React.Component {
                     };
                   });
                   this.addChannel("email");
-                }
-              }}
-            >
-              <div className="px3 pt3 pb2">
-                <div className="flex align-center">
-                  <Icon
-                    name="mail"
-                    className={cx(
-                      "mr1",
-                      {
-                        "text-brand hover-child hover--inherit":
-                          emailSpec.configured,
-                      },
-                      { "text-light": !emailSpec.configured },
-                    )}
-                  />
-                  <h3
-                    className={cx({ "text-light": !emailSpec.configured })}
-                  >{t`Email it`}</h3>
-                </div>
-                <Text
-                  lineHeight={1.5}
-                  className={cx("text-medium", {
-                    "hover-child hover--inherit": emailSpec.configured,
-                  })}
-                >
-                  {!emailSpec.configured &&
-                    jt`You'll need to ${(
-                      <Link to="/admin/settings/email" className="link">
-                        set up email
-                      </Link>
-                    )} first.`}
-                  {emailSpec.configured &&
-                    t`You can send this dashboard regularly to users or email addresses.`}
-                </Text>
-              </div>
-            </Card>
-            <Card
-              flat
-              className={cx({
-                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
-                  slackSpec.configured,
-              })}
-              onClick={() => {
-                if (slackSpec.configured) {
+                }}
+              />
+            ) : user.is_superuser ? (
+              <EmailSetupTrigger />
+            ) : null}
+            {slackSpec.configured ? (
+              <SlackSubscriptionTrigger
+                onClick={() => {
                   this.setState(({ returnMode }) => {
                     return {
                       editingMode: "add-edit-slack",
@@ -815,40 +773,11 @@ class SharingSidebar extends React.Component {
                     };
                   });
                   this.addChannel("slack");
-                }
-              }}
-            >
-              <div className="px3 pt3 pb2">
-                <div className="flex align-center mb1">
-                  <Icon
-                    name={slackSpec.configured ? "slack_colorized" : "slack"}
-                    size={24}
-                    className={cx("mr1", {
-                      "text-light": !slackSpec.configured,
-                      "hover-child hover--inherit": slackSpec.configured,
-                    })}
-                  />
-                  <h3
-                    className={cx({ "text-light": !slackSpec.configured })}
-                  >{t`Send it to Slack`}</h3>
-                </div>
-                <Text
-                  lineHeight={1.5}
-                  className={cx("text-medium", {
-                    "hover-child hover--inherit": slackSpec.configured,
-                  })}
-                >
-                  {!slackSpec.configured &&
-                    jt`First, you'll have to ${(
-                      <Link to="/admin/settings/slack" className="link">
-                        configure Slack
-                      </Link>
-                    )}.`}
-                  {slackSpec.configured &&
-                    t`Pick a channel and a schedule, and Metabase will do the rest.`}
-                </Text>
-              </div>
-            </Card>
+                }}
+              />
+            ) : user.is_superuser ? (
+              <SlackSetupTrigger />
+            ) : null}
           </div>
         </Sidebar>
       );
@@ -856,6 +785,99 @@ class SharingSidebar extends React.Component {
 
     return <Sidebar />;
   }
+}
+
+function EmailSetupTrigger() {
+  return (
+    <Card flat className="mt1 mb3">
+      <div className="px3 pt3 pb2">
+        <div className="flex align-center">
+          <Icon name="mail" className="mr1 text-light" />
+          <h3 className={"text-light"}>{t`Email it`}</h3>
+        </div>
+        <Text lineHeight={1.5} className="text-medium">
+          {jt`You'll need to ${(
+            <Link to="/admin/settings/email" className="link">
+              set up email
+            </Link>
+          )} first.`}
+        </Text>
+      </div>
+    </Card>
+  );
+}
+
+function EmailTrigger({ onClick }) {
+  return (
+    <Card
+      flat
+      className="mt1 mb3 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit"
+      onClick={onClick}
+    >
+      <div className="px3 pt3 pb2">
+        <div className="flex align-center">
+          <Icon
+            name="mail"
+            className="mr1 text-brand hover-child hover--inherit"
+          />
+          <h3>{t`Email it`}</h3>
+        </div>
+        <Text
+          lineHeight={1.5}
+          className="text-medium hover-child hover--inherit"
+        >
+          {t`You can send this dashboard regularly to users or email addresses.`}
+        </Text>
+      </div>
+    </Card>
+  );
+}
+
+function SlackSetupTrigger() {
+  return (
+    <Card flat>
+      <div className="px3 pt3 pb2">
+        <div className="flex align-center mb1">
+          <Icon name={"slack"} size={24} className="mr1 text-light" />
+          <h3 className="text-light">{t`Send it to slack`}</h3>
+        </div>
+        <Text lineHeight={1.5} className="text-medium">
+          {jt`First, you'll have to ${(
+            <Link to="/admin/settings/slack" className="link">
+              configure Slack
+            </Link>
+          )}.`}
+        </Text>
+      </div>
+    </Card>
+  );
+}
+
+function SlackSubscriptionTrigger({ onClick }) {
+  return (
+    <Card
+      flat
+      className="cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit"
+      onClick={onClick}
+    >
+      <div className="px3 pt3 pb2">
+        <div className="flex align-center mb1">
+          <Icon
+            name={"slack_colorized"}
+            size={24}
+            className={"mr1 hover-child hover--inherit"}
+          />
+          <h3>{t`Send it to Slack`}</h3>
+        </div>
+        <Text
+          lineHeight={1.5}
+          className="text-medium hover-child hover--inherit"
+        >
+          {t`Pick a channel and a schedule, and Metabase will do the rest.`}
+        </Text>
+      </div>
+    </Card>
+  );
 }
 
 export default SharingSidebar;
