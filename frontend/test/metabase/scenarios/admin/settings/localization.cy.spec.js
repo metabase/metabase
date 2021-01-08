@@ -86,8 +86,6 @@ describe("scenarios > admin > permissions", () => {
   // This test is extremely tricky and fragile because it needs to test for the "past X weeks" to check if week starts on Sunday or Monday.
   // As the time goes by we're risking that past X weeks don't yield any result when applied to the sample dataset.
   // For that reason I've chosen the past 220 weeks (mid-October 2016). This should give us 3+ years to run this test without updates.
-  // If there is a week in sample dataset which doesn't have Sunday or Monday, that can potentially break this test.
-  // Going randomly through at least 10-15 different numbers, each week had both Sunday and Monday so we should be ok.
 
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
