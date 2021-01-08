@@ -447,12 +447,16 @@ function RowToggleIcon({
     updateSettings({ [COLLAPSED_ROWS_SETTING]: updatedValue });
   };
   return (
-    <Icon
-      name={isCollapsed ? "add" : "dash"}
-      className="cursor-pointer text-brand"
-      size={10}
+    <div
+      className={cx(
+        "flex align-center cursor-pointer bg-brand-hover text-light text-white-hover",
+        isCollapsed ? "bg-light" : "bg-medium",
+      )}
+      style={{ padding: "4px", borderRadius: "4px" }}
       onClick={update}
-    />
+    >
+      <Icon name={isCollapsed ? "add" : "dash"} size={8} />
+    </div>
   );
 }
 
