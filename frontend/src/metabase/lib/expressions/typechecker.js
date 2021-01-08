@@ -64,7 +64,7 @@ export function typeCheck(cst, rootType) {
       const clause = CLAUSE_TOKENS.get(functionToken);
       const name = functionToken.name;
       const expectedArgsLength = clause.args.length;
-      if (clause.args.length !== args.length) {
+      if (!clause.multiple && clause.args.length !== args.length) {
         const message = t`Function ${name} expects ${expectedArgsLength} arguments`;
         this.errors.push({ message });
       }
