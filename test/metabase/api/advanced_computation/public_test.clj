@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase.api.advanced-computation.common-test :as common]
             [metabase.api.embed-test :as embed-test]
+            [metabase.http-client :as http]
             [metabase.models :refer [Card Dashboard DashboardCard]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
@@ -25,7 +26,7 @@
       (testing "GET /api/advanced_computation/public/pivot/card/:uuid/query"
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-pivot-public-card [{uuid :public_uuid}]
-            (let [result (mt/user-http-request :rasta :get 202 (format "advanced_computation/public/pivot/card/%s/query" uuid))
+            (let [result (http/client :get 202 (format "advanced_computation/public/pivot/card/%s/query" uuid))
                   rows   (mt/rows result)]
               (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
               (is (= "completed" (:status result)))
@@ -78,7 +79,7 @@
         (testing "without parameters"
           (mt/with-temporary-setting-values [enable-public-sharing true]
             (with-temp-pivot-public-dashboard-and-card [dash card]
-              (let [result (mt/user-http-request :rasta :get 202 (dashcard-url dash card))
+              (let [result (http/client :get 202 (dashcard-url dash card))
                     rows   (mt/rows result)]
                 (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                 (is (= "completed" (:status result)))
@@ -93,11 +94,11 @@
         (testing "with parameters"
           (mt/with-temporary-setting-values [enable-public-sharing true]
             (with-temp-pivot-public-dashboard-and-card [dash card]
-              (let [result (mt/user-http-request :rasta :get 202 (dashcard-url dash card)
-                                                 :parameters (json/encode [{:name   "State"
-                                                                            :slug   :state
-                                                                            :target [:dimension [:fk-> (mt/id :orders :user_id) (mt/id :people :state)]]
-                                                                            :value  ["CA" "WA"]}]))
+              (let [result (http/client :get 202 (dashcard-url dash card)
+                                        :parameters (json/encode [{:name   "State"
+                                                                   :slug   :state
+                                                                   :target [:dimension [:fk-> (mt/id :orders :user_id) (mt/id :people :state)]]
+                                                                   :value  ["CA" "WA"]}]))
                     rows   (mt/rows result)]
                 (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                 (is (= "completed" (:status result)))
@@ -128,13 +129,13 @@
             (embed-test/with-new-secret-key
               (common/with-temp-card [card]
                 (is (= "Embedding is not enabled."
-                       (mt/user-http-request :rasta :get 400 (card-query-url card ""))))))))
+                       (http/client :get 400 (card-query-url card ""))))))))
 
         (embed-test/with-embedding-enabled-and-new-secret-key
           (let [expected-status 202]
             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
               (common/with-temp-card [card {:enable_embedding true}]
-                (let [result (mt/user-http-request :rasta :get expected-status (card-query-url card "") {:request-options nil})
+                (let [result (http/client :get expected-status (card-query-url card "") {:request-options nil})
                       rows   (mt/rows result)]
                   (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                   (is (= "completed" (:status result)))
@@ -144,10 +145,10 @@
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
             (common/with-temp-card [card]
               (is (= "Embedding is not enabled for this object."
-                     (mt/user-http-request :rasta :get 400 (card-query-url card ""))))))
+                     (http/client :get 400 (card-query-url card ""))))))
 
           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
                         "signed with the wrong key")
             (common/with-temp-card [card {:enable_embedding true}]
               (is (= "Message seems corrupt or manipulated."
-                     (mt/user-http-request :rasta :get 400 (embed-test/with-new-secret-key (card-query-url card ""))))))))))))
+                     (http/client :get 400 (embed-test/with-new-secret-key (card-query-url card ""))))))))))))
