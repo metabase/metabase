@@ -1,10 +1,13 @@
+import { t } from "ttag";
 import { ExpressionVisitor } from "./visitor";
+import { CLAUSE_TOKENS } from "./lexer";
 
 export function typeCheck(cst, rootType) {
   class TypeChecker extends ExpressionVisitor {
     constructor() {
       super();
       this.typeStack = [rootType];
+      this.errors = [];
     }
 
     expression(ctx) {
@@ -57,6 +60,14 @@ export function typeCheck(cst, rootType) {
     // TODO check for matching argument signature
     functionExpression(ctx) {
       const args = ctx.arguments || [];
+      const functionToken = ctx.functionName[0].tokenType;
+      const clause = CLAUSE_TOKENS.get(functionToken);
+      const name = functionToken.name;
+      const expectedArgsLength = clause.args.length;
+      if (clause.args.length !== args.length) {
+        const message = t`Function ${name} expects ${expectedArgsLength} arguments`;
+        this.errors.push({ message });
+      }
       return args.map(arg => {
         this.typeStack.unshift("expression");
         const result = this.visit(arg);
@@ -80,5 +91,7 @@ export function typeCheck(cst, rootType) {
       return super.dimensionExpression(ctx);
     }
   }
-  new TypeChecker().visit(cst);
+  const checker = new TypeChecker();
+  checker.visit(cst);
+  return { typeErrors: checker.errors };
 }
