@@ -1,11 +1,8 @@
 (ns metabase.api.advanced-computation-test
   "Unit tests for /api/advanced_computation endpoints."
-  (:require [buddy.sign.jwt :as jwt]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [crypto.random :as crypto-random]
             [metabase.api.embed-test :as embed-test]
-            [metabase.http-client :as http]
             [metabase.models :refer [Card Dashboard DashboardCard]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -191,7 +188,7 @@
       (testing "GET /api/advanced_computation/public/pivot/card/:uuid/query"
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-pivot-public-card [{uuid :public_uuid}]
-            (let [result (http/client :get 202 (format "advanced_computation/public/pivot/card/%s/query" uuid))
+            (let [result (mt/user-http-request :rasta :get 202 (format "advanced_computation/public/pivot/card/%s/query" uuid))
                   rows   (mt/rows result)]
               (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
               (is (= "completed" (:status result)))
@@ -244,7 +241,7 @@
         (testing "without parameters"
           (mt/with-temporary-setting-values [enable-public-sharing true]
             (with-temp-pivot-public-dashboard-and-card [dash card]
-              (let [result (http/client :get 202 (dashcard-url dash card))
+              (let [result (mt/user-http-request :rasta :get 202 (dashcard-url dash card))
                     rows   (mt/rows result)]
                 (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                 (is (= "completed" (:status result)))
@@ -259,11 +256,11 @@
         (testing "with parameters"
           (mt/with-temporary-setting-values [enable-public-sharing true]
             (with-temp-pivot-public-dashboard-and-card [dash card]
-              (let [result (http/client :get 202 (dashcard-url dash card)
-                                        :parameters (json/encode [{:name   "State"
-                                                                   :slug   :state
-                                                                   :target [:dimension [:fk-> (mt/id :orders :user_id) (mt/id :people :state)]]
-                                                                   :value  ["CA" "WA"]}]))
+              (let [result (mt/user-http-request :rasta :get 202 (dashcard-url dash card)
+                                                 :parameters (json/encode [{:name   "State"
+                                                                            :slug   :state
+                                                                            :target [:dimension [:fk-> (mt/id :orders :user_id) (mt/id :people :state)]]
+                                                                            :value  ["CA" "WA"]}]))
                     rows   (mt/rows result)]
                 (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                 (is (= "completed" (:status result)))
@@ -274,33 +271,22 @@
                 (is (= [nil "Twitter" "Widget" 1 77 270] (nth rows 100)))
                 (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))
 
-(defn random-embedding-secret-key [] (crypto-random/hex 32))
-
-(def ^:dynamic *secret-key* nil)
-
-(defn sign [claims] (jwt/sign claims *secret-key*))
-
-(defn do-with-new-secret-key [f]
-  (binding [*secret-key* (random-embedding-secret-key)]
-    (tu/with-temporary-setting-values [embedding-secret-key *secret-key*]
-      (f))))
-
-(defmacro with-new-secret-key {:style/indent 0} [& body]
-  `(do-with-new-secret-key (fn [] ~@body)))
-
-(defmacro with-embedding-enabled-and-new-secret-key {:style/indent 0} [& body]
-  `(tu/with-temporary-setting-values [~'enable-embedding true]
-     (with-new-secret-key
-       ~@body)))
-
 (defmacro with-temp-card {:style/indent 1} [[card-binding & [card]] & body]
   `(mt/with-temp Card [~card-binding (merge (pivot-card) ~card)]
      ~@body))
 
+(defmacro with-temp-dashcard {:style/indent 1} [[dashcard-binding {:keys [dash card dashcard]}] & body]
+  `(with-temp-card [card# ~card]
+     (mt/with-temp* [Dashboard     [dash# ~dash]
+                     DashboardCard [~dashcard-binding (merge {:card_id      (u/get-id card#)
+                                                              :dashboard_id (u/get-id dash#)}
+                                                             ~dashcard)]]
+       ~@body)))
+
 (defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
-  (sign (merge {:resource {:question (u/get-id card-or-id)}
-                :params   {}}
-               additional-token-params)))
+  (embed-test/sign (merge {:resource {:question (u/get-id card-or-id)}
+                           :params   {}}
+                          additional-token-params)))
 
 (defn- card-query-url [card response-format & [additional-token-params]]
   (str "advanced_computation/public/pivot/embed/card/"
@@ -314,16 +300,16 @@
       (testing "GET /api/advanced_computation/public/pivot/embed/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (tu/with-temporary-setting-values [enable-embedding false]
-            (with-new-secret-key
+            (embed-test/with-new-secret-key
               (with-temp-card [card]
                 (is (= "Embedding is not enabled."
-                       (http/client :get 400 (card-query-url card ""))))))))
+                       (mt/user-http-request :rasta :get 400 (card-query-url card ""))))))))
 
-        (with-embedding-enabled-and-new-secret-key
+        (embed-test/with-embedding-enabled-and-new-secret-key
           (let [expected-status 202]
             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
               (with-temp-card [card {:enable_embedding true}]
-                (let [result (http/client :get expected-status (card-query-url card "") {:request-options nil})
+                (let [result (mt/user-http-request :rasta :get expected-status (card-query-url card "") {:request-options nil})
                       rows   (mt/rows result)]
                   (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                   (is (= "completed" (:status result)))
@@ -333,49 +319,88 @@
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
             (with-temp-card [card]
               (is (= "Embedding is not enabled for this object."
-                     (http/client :get 400 (card-query-url card ""))))))
+                     (mt/user-http-request :rasta :get 400 (card-query-url card ""))))))
 
           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
                         "signed with the wrong key")
             (with-temp-card [card {:enable_embedding true}]
               (is (= "Message seems corrupt or manipulated."
-                     (http/client :get 400 (with-new-secret-key (card-query-url card ""))))))))))))
+                     (mt/user-http-request :rasta :get 400 (embed-test/with-new-secret-key (card-query-url card ""))))))))))))
 
 (defn- preview-embed-card-query-url [card & [additional-token-params]]
   (str "advanced_computation/public/pivot/preview_embed/card/"
        (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))
        "/query"))
 
-;; (deftest preview-embed-card-test
-;;   (mt/test-drivers applicable-drivers
-;;     (mt/dataset sample-dataset
-;;       (testing "GET /api/advanced_computation/public/pivot/preview_embed/card/:token/query"
-;;         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-;;           (tu/with-temporary-setting-values [enable-embedding false]
-;;             (with-new-secret-key
-;;               (with-temp-card [card]
-;;                 (is (= "Embedding is not enabled."
-;;                        (mt/user-http-request :crowberto :get 400 (preview-embed-card-query-url card))))))))
+(deftest preview-embed-query-test
+  (mt/test-drivers applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "GET /api/advanced_computation/public/pivot/preview_embed/card/:token/query"
+        (testing "successful preview"
+          (let [result (embed-test/with-embedding-enabled-and-new-secret-key
+                         (with-temp-card [card]
+                           (mt/user-http-request :crowberto :get 202 (preview-embed-card-query-url card))))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 2273 (count rows)))))
 
-;;         (with-embedding-enabled-and-new-secret-key
-;;           (let [expected-status 202]
-;;             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
-;;               (with-temp-card [card {:enable_embedding true}]
-;;                 (let [result (mt/user-http-request :crowberto :get 202 (preview-embed-card-query-url card))
-;;                       _ (clojure.pprint/pprint result)
-;;                       rows   (mt/rows result)]
-;;                   (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
-;;                   (is (= "completed" (:status result)))
-;;                   (is (= 6 (count (get-in result [:data :cols]))))
-;;                   (is (= 2273 (count rows)))))))
+        (testing "should fail if user is not an admin"
+          (is (= "You don't have permissions to do that."
+                 (embed-test/with-embedding-enabled-and-new-secret-key
+                   (with-temp-card [card]
+                     (mt/user-http-request :rasta :get 400 (preview-embed-card-query-url card)))))))
 
-;;           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
-;;             (with-temp-card [card]
-;;               (is (= "Embedding is not enabled for this object."
-;;                      (mt/user-http-request :crowberto :get 400 (preview-embed-card-query-url card))))))
+        (testing "should fail if embedding is disabled"
+          (is (= "Embedding is not enabled."
+                 (tu/with-temporary-setting-values [enable-embedding false]
+                   (embed-test/with-new-secret-key
+                     (with-temp-card [card]
+                       (mt/user-http-request :crowberto :get 400 (preview-embed-card-query-url card))))))))
 
-;;           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
-;;                         "signed with the wrong key")
-;;             (with-temp-card [card]
-;;               (is (= "Message seems corrupt or manipulated."
-;;                      (mt/user-http-request :crowberto :get 400 (with-new-secret-key (preview-embed-card-query-url card))))))))))))
+        (testing "should fail if embedding is enabled and the wrong key is used"
+          (is (= "Message seems corrupt or manipulated."
+                 (embed-test/with-embedding-enabled-and-new-secret-key
+                   (with-temp-card [card]
+                     (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (preview-embed-card-query-url card))))))))))))
+
+(defn- preview-embed-dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
+  (str "advanced_computation/public/pivot/preview_embed/dashboard/"
+       (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
+                                                              additional-token-params))
+       "/dashcard/" (u/get-id dashcard)
+       "/card/" (:card_id dashcard)))
+
+(deftest preview-embed-card-id-test
+  (mt/test-drivers applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "GET /api/advanced_computation/public/pivot/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+        (testing "successful preview"
+          (let [result (embed-test/with-embedding-enabled-and-new-secret-key
+                         (with-temp-dashcard [dashcard]
+                           (mt/user-http-request :crowberto :get 202 (preview-embed-dashcard-url dashcard))))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 2273 (count rows)))))
+
+       (testing "should fail if user is not an admin"
+          (is (= "You don't have permissions to do that."
+                 (embed-test/with-embedding-enabled-and-new-secret-key
+                   (with-temp-dashcard [dashcard]
+                     (mt/user-http-request :rasta :get 400 (preview-embed-dashcard-url dashcard)))))))
+
+        (testing "should fail if embedding is disabled"
+          (is (= "Embedding is not enabled."
+                 (tu/with-temporary-setting-values [enable-embedding false]
+                   (embed-test/with-new-secret-key
+                     (with-temp-dashcard [dashcard]
+                       (mt/user-http-request :crowberto :get 400 (preview-embed-dashcard-url dashcard))))))))
+
+        (testing "should fail if embedding is enabled and the wrong key is used"
+          (is (= "Message seems corrupt or manipulated."
+                 (embed-test/with-embedding-enabled-and-new-secret-key
+                   (with-temp-dashcard [dashcard]
+                     (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (preview-embed-dashcard-url dashcard))))))))))))
