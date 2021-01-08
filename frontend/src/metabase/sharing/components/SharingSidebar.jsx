@@ -47,8 +47,6 @@ import {
   testPulse,
 } from "metabase/pulse/actions";
 
-import cx from "classnames";
-
 export const CHANNEL_ICONS = {
   email: "mail",
   slack: "slack",
