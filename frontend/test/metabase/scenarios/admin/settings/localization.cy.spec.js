@@ -4,8 +4,8 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > permissions", () => {
-  before(restore);
   beforeEach(() => {
+    restore();
     signInAsAdmin();
     setFirstWeekDayTo("monday");
   });
