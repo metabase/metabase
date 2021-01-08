@@ -11,9 +11,6 @@
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
-            [metabase.util
-             [i18n :as ui18n :refer [deferred-tru tru]]
-             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
