@@ -1,4 +1,4 @@
-(ns metabase.middleware.session-test
+(ns metabase.server.middleware.session-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [environ.core :as env]
@@ -8,8 +8,8 @@
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.middleware.session :as mw.session]
             [metabase.models :refer [Session User]]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.test.data.users :as test-users]
             [metabase.util.i18n :as i18n]

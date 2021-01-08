@@ -1,7 +1,7 @@
-(ns metabase.routes.index-test
+(ns metabase.server.routes.index-test
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [metabase.routes.index :as index]
+            [metabase.server.routes.index :as index]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]))
 

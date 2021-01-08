@@ -1,4 +1,4 @@
-(ns metabase.middleware.session
+(ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]

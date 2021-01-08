@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.api.geojson :as geojson-api]
             [metabase.http-client :as client]
-            [metabase.middleware.security :as mw.security]
+            [metabase.server.middleware.security :as mw.security]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]))

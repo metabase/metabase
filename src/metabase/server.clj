@@ -1,4 +1,5 @@
 (ns metabase.server
+  "Code related to configuring, starting, and stopping the Metabase Jetty web server."
   (:require [clojure.core :as core]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -100,7 +101,7 @@
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
   running server.
 
-    (start-web-server! #'metabase.handler/app)"
+    (start-web-server! #'metabase.server.handler/app)"
   [handler]
   (when-not (instance)
     ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background

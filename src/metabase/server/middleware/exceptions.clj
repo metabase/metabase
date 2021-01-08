@@ -1,9 +1,9 @@
-(ns metabase.middleware.exceptions
+(ns metabase.server.middleware.exceptions
   "Ring middleware for handling Exceptions thrown in API request handler functions."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.middleware.security :as mw.security]
+            [metabase.server.middleware.security :as mw.security]
             [metabase.util.i18n :as ui18n :refer [trs]])
   (:import java.sql.SQLException
            org.eclipse.jetty.io.EofException))

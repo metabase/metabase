@@ -39,9 +39,9 @@
             [metabase.api.user :as user]
             [metabase.api.util :as util]
             [metabase.config :as config]
-            [metabase.middleware.auth :as middleware.auth]
-            [metabase.middleware.exceptions :as middleware.exceptions]
             [metabase.plugins.classloader :as classloader]
+            [metabase.server.middleware.auth :as middleware.auth]
+            [metabase.server.middleware.exceptions :as middleware.exceptions]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru]]))
 

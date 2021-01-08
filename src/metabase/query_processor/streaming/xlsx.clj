@@ -89,7 +89,7 @@
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
-;; `metabase.middleware`.
+;; `metabase.server.middleware`.
 (defmethod spreadsheet/set-cell! Object
   [^Cell cell, value]
   (when (= (.getCellType cell) CellType/FORMULA)

@@ -1,4 +1,4 @@
-(ns metabase.routes
+(ns metabase.server.routes
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
   (:require [compojure.core :refer [context defroutes GET]]
@@ -8,7 +8,7 @@
             [metabase.core.initialization-status :as init-status]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
-            [metabase.routes.index :as index]
+            [metabase.server.routes.index :as index]
             [metabase.util :as u]
             [ring.util.response :as resp]))
 

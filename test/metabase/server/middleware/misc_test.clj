@@ -1,8 +1,8 @@
-(ns metabase.middleware.misc-test
+(ns metabase.server.middleware.misc-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.middleware.misc :as mw.misc]
             [metabase.public-settings :as public-settings]
+            [metabase.server.middleware.misc :as mw.misc]
             [metabase.test :as mt]
             [ring.mock.request :as ring.mock]))
 

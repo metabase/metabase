@@ -2,9 +2,9 @@
   (:require [clojure.test :refer :all]
             [metabase.api.common :as api :refer :all]
             [metabase.api.common.internal :refer :all]
-            [metabase.middleware.exceptions :as mw.exceptions]
-            [metabase.middleware.misc :as mw.misc]
-            [metabase.middleware.security :as mw.security]
+            [metabase.server.middleware.exceptions :as mw.exceptions]
+            [metabase.server.middleware.misc :as mw.misc]
+            [metabase.server.middleware.security :as mw.security]
             [metabase.test.data :refer :all]
             [metabase.util.schema :as su]))
 
