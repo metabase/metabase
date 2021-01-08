@@ -488,9 +488,7 @@
     (map? object-or-id)     (recur (:id object-or-id))
     (integer? object-or-id) object-or-id))
 
-;; TODO - now that I think about this, I think this should be called `the-id` instead, because the idea is similar to
-;; `clojure.core/the-ns`
-(defn get-id
+(defn the-id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
   Otherwise, throws an Exception.
 
@@ -500,6 +498,10 @@
   ^Integer [object-or-id]
   (or (id object-or-id)
       (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
+
+(def ^:deprecated ^Integer ^{:arglists '([object-or-id])} get-id
+  "DEPRECATED: Use `the-id` instead, which does the same thing, but has a clearer name."
+  the-id)
 
 ;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.

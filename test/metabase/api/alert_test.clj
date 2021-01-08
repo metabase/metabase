@@ -242,7 +242,8 @@
                                  :created_at    true})]
    :skip_if_empty       true
    :collection_id       false
-   :collection_position nil})
+   :collection_position nil
+   :dashboard_id        false})
 
 (def ^:private daily-email-channel
   {:enabled       true

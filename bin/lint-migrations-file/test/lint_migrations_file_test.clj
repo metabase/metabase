@@ -12,7 +12,7 @@
     (apply array-map keyvals))})
 
 (defn mock-column [& keyvals]
-  {:column (merge {:name "bird_count", :type "integer"}
+  {:column (merge {:name "bird_count", :type "integer", :remarks "Whatever"}
                   (apply array-map keyvals))})
 
 (defn- mock-add-column-changes [& keyvals]

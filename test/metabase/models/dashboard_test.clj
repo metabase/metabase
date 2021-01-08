@@ -175,7 +175,7 @@
 (deftest post-update-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id} {:name "Lucky the Pigeon's Lucky Stuff"}]
                   Card                [{card-id :id}]
-                  Pulse               [{pulse-id :id}]
+                  Pulse               [{pulse-id :id} {:dashboard_id dashboard-id}]
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   PulseCard           [{pulse-card-id :id} {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
     (testing "Pulse name updates"

@@ -2,8 +2,18 @@
   (:require [clojure.spec.alpha :as s]
             column.common))
 
-(comment column.common/keep-me)
+(defmulti column-name :name)
+
+;; remark is *required* for non-ID columns
+(defmethod column-name :default
+  [_]
+  (s/merge
+   :column.common/column
+   (s/keys :req-un [:column.common/remarks])))
+
+(defmethod column-name "id"
+  [_]
+  :column.common/column)
 
 (s/def ::column
-  (s/merge
-   :column.common/column))
+  (s/multi-spec column-name :name))

@@ -304,7 +304,9 @@
   (-> (base-query-for-model Pulse search-ctx)
       (add-collection-join-and-where-clauses :pulse.collection_id search-ctx)
       ;; We don't want alerts included in pulse results
-      (h/merge-where [:= :alert_condition nil])))
+      (h/merge-where [:and
+                      [:= :alert_condition nil]
+                      [:= :pulse.dashboard_id nil]])))
 
 (s/defmethod search-query-for-model (class Metric)
   [_ search-ctx :- SearchContext]
