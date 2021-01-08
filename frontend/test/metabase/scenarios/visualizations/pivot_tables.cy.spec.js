@@ -87,13 +87,21 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should be able to use binned numeric dimension as a grouping (metabase#14136)", () => {
     // Sample dataset Orders > Count by Subtotal: Auto binned
-    cy.visit(
-      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7InR5cGUiOiJxdWVyeSIsInF1ZXJ5Ijp7InNvdXJjZS10YWJsZSI6MiwiYWdncmVnYXRpb24iOltbImNvdW50Il1dLCJicmVha291dCI6W1siYmlubmluZy1zdHJhdGVneSIsWyJmaWVsZC1pZCIsMTRdLCJkZWZhdWx0Il1dfSwiZGF0YWJhc2UiOjF9LCJkaXNwbGF5IjoiYmFyIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319",
-    );
-    cy.findByText("Count by Subtotal: Auto binned");
-
-    cy.findByText("Visualization").click();
-    cy.get(".Icon-pivot_table").click({ force: true });
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["binning-strategy", ["field-id", ORDERS.SUBTOTAL], "default"],
+          ],
+        },
+        database: 1,
+      },
+      display: "pivot",
+      visualization_settings: {},
+    });
 
     cy.get(".Visualization").within(() => {
       cy.findByText("Subtotal");
@@ -102,6 +110,58 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.findByText(/Grand totals/i);
       cy.findByText("18,760");
     });
+  });
+
+  it("should allow collapsing rows", () => {
+    // open a pivot table of order count grouped by source, category x year
+    const b1 = ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"];
+    const b2 = [
+      "fk->",
+      ["field-id", ORDERS.PRODUCT_ID],
+      ["field-id", PRODUCTS.CATEGORY],
+    ];
+    const b3 = [
+      "fk->",
+      ["field-id", ORDERS.USER_ID],
+      ["field-id", PEOPLE.SOURCE],
+    ];
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [b1, b2, b3],
+        },
+        database: 1,
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [b2, b3],
+          columns: [b1],
+          values: [["aggregation", 0]],
+        },
+      },
+    });
+
+    cy.findByText("215"); // see a non-subtotal value
+
+    // click to collapse rows
+    cy.findByText("Doohickey")
+      .parent()
+      .find(".Icon-dash")
+      .click();
+    cy.findByText("1,352"); // subtotal is still there
+    cy.findByText("215").should("not.exist"); // value is hidden
+
+    // click to uncollapse
+    cy.findByText("Totals for Doohickey")
+      .parent()
+      .find(".Icon-add")
+      .click();
+    cy.findByText("215"); // ...and it's back!
   });
 });
 

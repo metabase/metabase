@@ -7,6 +7,7 @@ import { Grid, List, ScrollSync } from "react-virtualized";
 import { Flex } from "grid-styled";
 
 import Ellipsified from "metabase/components/Ellipsified";
+import Icon from "metabase/components/Icon";
 import { isDimension } from "metabase/lib/schema_metadata";
 import { isPivotGroupColumn, multiLevelPivot } from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
@@ -39,6 +40,9 @@ const CELL_HEIGHT = 25;
 const LEFT_HEADER_LEFT_SPACING = 24;
 const LEFT_HEADER_CELL_WIDTH = 145;
 
+const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
+const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+
 export default class PivotTable extends Component {
   props: VisualizationProps;
   static uiName = t`Pivot Table`;
@@ -67,7 +71,11 @@ export default class PivotTable extends Component {
 
   static settings = {
     ...columnSettings({ hidden: true }),
-    "pivot_table.column_split": {
+    [COLLAPSED_ROWS_SETTING]: {
+      hidden: true,
+      default: [],
+    },
+    [COLUMN_SPLIT_SETTING]: {
       section: null,
       widget: "fieldsPartition",
       persistDefault: true,
@@ -118,13 +126,15 @@ export default class PivotTable extends Component {
     },
   };
 
-  componentDidUpdate() {
-    this.bodyGrid && this.bodyGrid.recomputeGridSize();
-    this.leftList && this.leftList.recomputeGridSize();
-    this.topGrid && this.topGrid.recomputeGridSize();
-  }
-
   render() {
+    // We need to tell the List/Grids to call the columnWidth/rowHeight functions again when data changes.
+    // Putting this in componentDidUpdate led the dimensions to be recomputed _after_ re-rendering the cells.
+    // According to the docs, recomputing dimensions should force a render but this didn't occur correctly.
+    // The downside of keeping it here is that the dimensions are computed twice per render.
+    this.bodyGrid && this.bodyGrid.recomputeGridSize();
+    this.topGrid && this.topGrid.recomputeGridSize();
+    this.leftList && this.leftList.recomputeRowHeights();
+
     const { settings, data, width, height } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
@@ -149,7 +159,13 @@ export default class PivotTable extends Component {
 
     let pivoted;
     try {
-      pivoted = multiLevelPivot(data, columnIndexes, rowIndexes, valueIndexes);
+      pivoted = multiLevelPivot(
+        data,
+        columnIndexes,
+        rowIndexes,
+        valueIndexes,
+        settings["pivot_table.collapsed_rows"],
+      );
     } catch (e) {
       console.warn(e);
     }
@@ -162,13 +178,9 @@ export default class PivotTable extends Component {
       rowCount,
       columnCount,
     } = pivoted;
-    const topHeaderHeight =
-      topIndex.length === 0 ? CELL_HEIGHT : topIndex[0].length * CELL_HEIGHT;
+    const topHeaderHeight = (columnIndexes.length || 1) * CELL_HEIGHT;
     const leftHeaderWidth =
-      leftIndex.length === 0
-        ? 0
-        : LEFT_HEADER_LEFT_SPACING +
-          leftIndex[0][0].length * LEFT_HEADER_CELL_WIDTH;
+      LEFT_HEADER_LEFT_SPACING + rowIndexes.length * LEFT_HEADER_CELL_WIDTH;
 
     function columnWidth({ index }) {
       if (topIndex.length === 0) {
@@ -225,52 +237,74 @@ export default class PivotTable extends Component {
     );
 
     const leftHeaderRenderer = _.memoize(
-      ({ key, style, index }) => {
-        return (
-          <div
-            key={key}
-            style={style}
-            className="flex flex-column border-right border-medium"
-          >
-            {leftIndex[index].map((row, rowIndex) => (
-              <div
-                className="flex"
-                style={{ height: row[0][0].span * CELL_HEIGHT }}
-              >
-                {row.map((col, index) =>
-                  col[0].isSubtotal ? (
-                    <Cell
-                      value={col[0].value}
-                      isSubtotal
-                      isGrandTotal={col[0].isGrandTotal}
-                      style={{
-                        paddingLeft: LEFT_HEADER_LEFT_SPACING,
-                        width: leftHeaderWidth,
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="flex flex-column bg-light flex-basis-none flex-full"
-                      style={{
-                        paddingLeft: index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
-                      }}
-                    >
-                      {col.map(({ value, span = 1, isSubtotal }) => (
-                        <Cell
-                          value={leftIndexFormatters[index](value)}
-                          isSubtotal={isSubtotal}
-                          height={span}
-                          baseWidth={LEFT_HEADER_CELL_WIDTH}
+      ({ key, style, index }) => (
+        <div
+          key={key}
+          style={style}
+          className="flex flex-column border-right border-medium"
+        >
+          {leftIndex[index].map((row, rowIndex) => (
+            <div
+              className="flex"
+              style={{ height: row[0][0].span * CELL_HEIGHT }}
+            >
+              {row.map((col, index) =>
+                col[0].isSubtotal ? (
+                  <Cell
+                    value={col[0].value}
+                    isSubtotal
+                    isGrandTotal={col[0].isGrandTotal}
+                    style={{
+                      paddingLeft: LEFT_HEADER_LEFT_SPACING,
+                      width: leftHeaderWidth,
+                    }}
+                    icon={
+                      !col[0].isGrandTotal && (
+                        <RowToggleIcon
+                          value={col[0].rawValue}
+                          settings={this.props.settings}
+                          updateSettings={
+                            this.props.onUpdateVisualizationSettings
+                          }
+                          hideUnlessCollapsed
                         />
-                      ))}
-                    </div>
-                  ),
-                )}
-              </div>
-            ))}
-          </div>
-        );
-      },
+                      )
+                    }
+                  />
+                ) : (
+                  <div
+                    className="flex flex-column bg-light flex-basis-none flex-full"
+                    style={{
+                      paddingLeft: index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
+                    }}
+                  >
+                    {col.map(({ value, span = 1, isSubtotal }) => (
+                      <Cell
+                        value={leftIndexFormatters[index](value)}
+                        isSubtotal={isSubtotal}
+                        height={span}
+                        icon={
+                          index === 0 &&
+                          rowIndex === 0 &&
+                          row.length > 1 && (
+                            <RowToggleIcon
+                              value={value}
+                              settings={this.props.settings}
+                              updateSettings={
+                                this.props.onUpdateVisualizationSettings
+                              }
+                            />
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                ),
+              )}
+            </div>
+          ))}
+        </div>
+      ),
       ({ index }) => index,
     );
 
@@ -393,6 +427,35 @@ export default class PivotTable extends Component {
   }
 }
 
+function RowToggleIcon({
+  value,
+  settings,
+  updateSettings,
+  hideUnlessCollapsed,
+}) {
+  const setting = settings[COLLAPSED_ROWS_SETTING] || [];
+  const rowRef = JSON.stringify([value]);
+  const isCollapsed = setting.includes(rowRef);
+  if (hideUnlessCollapsed && !isCollapsed) {
+    // subtotal rows shouldn't have an icon unless the section is collapsed
+    return null;
+  }
+  const update = () => {
+    const updatedValue = isCollapsed
+      ? setting.filter(v => v !== rowRef)
+      : setting.concat(rowRef);
+    updateSettings({ [COLLAPSED_ROWS_SETTING]: updatedValue });
+  };
+  return (
+    <Icon
+      name={isCollapsed ? "add" : "dash"}
+      className="cursor-pointer text-brand"
+      size={10}
+      onClick={update}
+    />
+  );
+}
+
 function Cell({
   value,
   isSubtotal,
@@ -405,6 +468,7 @@ function Cell({
   style,
   isBody = false,
   className,
+  icon,
 }) {
   return (
     <div
@@ -421,13 +485,14 @@ function Cell({
       })}
       onClick={onClick}
     >
-      <div className="px1">
+      <div className="px1 flex align-center">
         {isBody ? (
           // Ellipsified isn't really needed for body cells. Avoiding it helps performance.
           value
         ) : (
           <Ellipsified>{value}</Ellipsified>
         )}
+        {icon && <div className="pl1">{icon}</div>}
       </div>
     </div>
   );
