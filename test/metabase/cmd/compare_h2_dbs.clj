@@ -111,7 +111,7 @@
    false
    (distinct (sort (concat (table-names conn-1) (table-names conn-2))))))
 
-(defn- different-contents?
+(defn different-contents?
   "Diff contents of 2 DBs. Returns truthy if there is a difference, falsey if not."
   [db-file-1 db-file-2]
   (jdbc/with-db-connection [conn-1 (jdbc-spec db-file-1)]
