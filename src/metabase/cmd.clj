@@ -18,11 +18,10 @@
   (:refer-clojure :exclude [load])
   (:require [clojure.string :as str]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.util :as qp.util]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
 (defn ^:command migrate

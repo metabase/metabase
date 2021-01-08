@@ -1,10 +1,9 @@
 (ns metabase.query-processor-test.advanced-math-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor-test :refer :all]
-             [test :as mt]
-             [util :as u]]
-            [metabase.test.data :as data]))
+            [metabase.query-processor-test :refer :all]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.util :as u]))
 
 (defn- test-math-expression
   [expr]

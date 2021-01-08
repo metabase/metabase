@@ -2,17 +2,14 @@
   "Tests for databases with a so-called 'dynamic' schema, i.e. one that is not hard-coded somewhere.
    A Mongo database is an example of such a DB. "
   (:require [expectations :refer [expect]]
-            [metabase
-             [sync :as sync]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync :as sync]
             [metabase.test.mock.toucanery :as toucanery]
             [metabase.test.util :as tu]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.util.test :as tt]))
 
 (defn- remove-nonsense

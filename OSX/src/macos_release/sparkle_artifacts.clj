@@ -6,6 +6,7 @@
             [macos-release
              [codesign :as codesign]
              [common :as c]]
+            [metabuild-common.core :as u]
             [pl.danieljanus.tagsoup :as tagsoup])
   (:import [java.io File FileOutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets))
@@ -17,7 +18,7 @@
 (defn- verify-zip-codesign []
   (c/step (format "Verify code signature of Metabase.app archived in %s" zip-file)
     (let [temp-file "/tmp/Metabase.zip"]
-      (c/delete-file! temp-file)
+      (u/delete-file-if-exists! temp-file)
       (c/sh {:quiet? true}
             "unzip" (c/assert-file-exists zip-file)
             "-d"    temp-file)
@@ -26,7 +27,7 @@
         (codesign/verify-codesign unzipped-app-file)))))
 
 (defn- create-zip-archive! []
-  (c/delete-file! zip-file)
+  (u/delete-file-if-exists! zip-file)
   (c/step (format "Create ZIP file %s" zip-file)
     (c/assert-file-exists (c/artifact "Metabase.app"))
     ;; Use ditto instead of zip to preserve the codesigning -- see https://forums.developer.apple.com/thread/116831
@@ -38,8 +39,8 @@
 
 (defn- generate-file-signature [filename]
   (c/step (format "Generate signature for %s" filename)
-    (let [private-key (c/assert-file-exists (str c/macos-source-dir "/dsa_priv.pem"))
-          script      (c/assert-file-exists (str c/root-directory "/bin/lib/sign_update.rb"))
+    (let [private-key (c/assert-file-exists (u/filename c/macos-source-dir "dsa_priv.pem"))
+          script      (c/assert-file-exists (u/filename c/macos-source-dir "bin" "sign_update.rb"))
           [out]       (c/sh script (c/assert-file-exists filename) private-key)
           signature   (str/trim out)]
       (assert (seq signature))
@@ -89,7 +90,7 @@
          :sparkle/dsaSignature signature}]]]])))
 
 (defn- generate-appcast! []
-  (c/delete-file! appcast-file)
+  (u/delete-file-if-exists! appcast-file)
   (c/step (format "Generate appcast %s" appcast-file)
     (with-open [os (FileOutputStream. (File. appcast-file))
                 w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
@@ -117,7 +118,7 @@
    [:body (release-notes-body)]])
 
 (defn- generate-release-notes! []
-  (c/delete-file! release-notes-file)
+  (u/delete-file-if-exists! release-notes-file)
   (c/step (format "Generate release notes %s" release-notes-file)
     (let [notes (release-notes)]
       (with-open [w (io/writer release-notes-file)]

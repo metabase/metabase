@@ -1,16 +1,14 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [sync :as sync]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync
-             [describe-database :as describe-database]
-             [interface :as i]]
+            [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
+            [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan.db :as db])
   (:import java.sql.ResultSet))

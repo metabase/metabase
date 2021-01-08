@@ -1,12 +1,11 @@
 (ns metabase.cmd.load-from-h2-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :refer [Table]]
-             [test :as mt]]
             [metabase.cmd.load-from-h2 :as load-from-h2]
             [metabase.db.connection :as mdb.connection]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.models :refer [Table]]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [toucan.db :as db]))
 

@@ -7,9 +7,8 @@
             [honeysql.core :as hsql]
             [metabase.db.connection :as mdb.connection]
             [metabase.util :as u]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :as ui18n :refer [trs]]]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :as ui18n :refer [trs]]
             [toucan.db :as db])
   (:import java.util.concurrent.locks.ReentrantLock))
 

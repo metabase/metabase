@@ -2,20 +2,16 @@
   "Various schemas that are useful throughout the app."
   (:refer-clojure :exclude [distinct])
   (:require [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
+            [clojure.string :as str]
+            [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase
-             [types :as types]
-             [util :as u]]
-            [metabase.util
-             [i18n :as i18n :refer [deferred-tru]]
-             [password :as password]]
-            [schema
-             [core :as s]
-             [macros :as s.macros]
-             [utils :as s.utils]]))
+            [metabase.types :as types]
+            [metabase.util :as u]
+            [metabase.util.i18n :as i18n :refer [deferred-tru]]
+            [metabase.util.password :as password]
+            [schema.core :as s]
+            [schema.macros :as s.macros]
+            [schema.utils :as s.utils]))
 
 ;; So the `:type/` hierarchy is loaded.
 (comment types/keep-me)

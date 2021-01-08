@@ -2,18 +2,14 @@
   "Middleware that handles `binning-strategy` Field clauses. This adds a `resolved-options` map to every
   `binning-strategy` clause that contains the information query processors will need in order to perform binning."
   (:require [clojure.math.numeric-tower :refer [ceil expt floor]]
-            [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.query-processor
-             [error-type :as error-type]
-             [store :as qp.store]]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 ;;; ----------------------------------------------- Extracting Bounds ------------------------------------------------

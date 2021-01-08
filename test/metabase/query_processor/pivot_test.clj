@@ -1,7 +1,6 @@
 (ns metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
-  (:require [cheshire.core :refer [generate-string]]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.query-processor.pivot :as sut]
             [metabase.test :as mt]))
 

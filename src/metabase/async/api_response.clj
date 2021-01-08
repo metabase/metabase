@@ -12,7 +12,7 @@
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [compojure.response :refer [Sendable]]
-            [metabase.middleware.exceptions :as mw.exceptions]
+            [metabase.server.middleware.exceptions :as mw.exceptions]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs]]
             [ring.core.protocols :as ring.protocols]

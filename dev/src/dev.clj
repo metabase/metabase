@@ -2,20 +2,19 @@
   "Put everything needed for REPL development within easy reach"
   (:require [clojure.core.async :as a]
             [honeysql.core :as hsql]
-            [metabase
-             [core :as mbc]
-             [db :as mdb]
-             [driver :as driver]
-             [handler :as handler]
-             [plugins :as plugins]
-             [server :as server]
-             [test :as mt]
-             [util :as u]]
             [metabase.api.common :as api-common]
+            [metabase.core :as mbc]
             [metabase.core.initialization-status :as init-status]
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.plugins :as plugins]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test.data.impl :as data.impl]))
+            [metabase.server :as server]
+            [metabase.server.handler :as handler]
+            [metabase.test :as mt]
+            [metabase.test.data.impl :as data.impl]
+            [metabase.util :as u]))
 
 (def initialized?
   (atom nil))
@@ -29,7 +28,7 @@
   []
   (when-not @initialized?
     (init!))
-  (server/start-web-server! #'metabase.handler/app)
+  (server/start-web-server! #'handler/app)
   (mdb/setup-db!)
   (plugins/load-plugins!)
   (init-status/set-complete!))

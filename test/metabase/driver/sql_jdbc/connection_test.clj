@@ -1,14 +1,13 @@
 (ns metabase.driver.sql-jdbc.connection-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.db.spec :as db.spec]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.util :as driver.u]
             [metabase.models.database :refer [Database]]
-            [metabase.test.data :as data]))
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.util :as u]))
 
 (deftest can-connect-with-details?-test
   (is (= true

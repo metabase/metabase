@@ -25,9 +25,7 @@ describe("mongodb > admin > add", () => {
 
     typeAndBlurUsingLabel("Name", "QA Mongo4");
     typeAndBlurUsingLabel("Host", "localhost");
-    cy.findByPlaceholderText("27017")
-      .click()
-      .type("27017");
+    typeAndBlurUsingLabel("Port", "27017");
     typeAndBlurUsingLabel("Database name", "sample");
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");

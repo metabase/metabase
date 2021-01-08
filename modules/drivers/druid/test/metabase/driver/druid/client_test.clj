@@ -1,11 +1,10 @@
 (ns metabase.driver.druid.client-test
   (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.driver.druid.client :as druid.client]
             [metabase.driver.util :as driver.u]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [metabase.test.util.log :as tu.log]
             [metabase.timeseries-query-processor-test.util :as tqpt]))
 

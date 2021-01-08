@@ -305,11 +305,14 @@ function addQADatabase(engine, db_display_name, port) {
   });
 }
 
-export function visitQuestionAdhoc(question) {
+export function adhocQuestionHash(question) {
   if (question.display) {
     // without "locking" the display, the QB will run its picking logic and override the setting
     question = Object.assign({}, question, { displayIsLocked: true });
   }
-  const hash = btoa(unescape(encodeURIComponent(JSON.stringify(question))));
-  cy.visit("/question#" + hash);
+  return btoa(unescape(encodeURIComponent(JSON.stringify(question))));
+}
+
+export function visitQuestionAdhoc(question) {
+  cy.visit("/question#" + adhocQuestionHash(question));
 }

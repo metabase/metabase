@@ -1,25 +1,22 @@
 (ns metabase.pulse
   "Public API for sending Pulses."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [email :as email]
-             [query-processor :as qp]
-             [util :as u]]
+            [metabase.email :as email]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
-            [metabase.middleware.session :as session]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [database :refer [Database]]
-             [pulse :as pulse :refer [Pulse]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.pulse.render :as render]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [ui-logic :as ui]
-             [urls :as urls]]
+            [metabase.server.middleware.session :as session]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.ui-logic :as ui]
+            [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.card.CardInstance))

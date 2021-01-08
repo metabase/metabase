@@ -2,36 +2,30 @@
   "Presto driver. See https://prestodb.io/docs/current/ for complete dox."
   (:require [buddy.core.codecs :as codecs]
             [clj-http.client :as http]
-            [clojure
-             [set :as set]
-             [string :as str]]
             [clojure.core.async :as a]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql
-             [core :as hsql]
-             [helpers :as h]]
+            [honeysql.core :as hsql]
+            [honeysql.helpers :as h]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql
-             [query-processor :as sql.qp]
-             [util :as sql.u]]
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor
-             [context :as context]
-             [store :as qp.store]
-             [timezone :as qp.timezone]
-             [util :as qputil]]
-            [metabase.util
-             [date-2 :as u.date]
-             [honeysql-extensions :as hx]
-             [i18n :refer [trs tru]]
-             [schema :as su]
-             [ssh :as ssh]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
+            [metabase.util.ssh :as ssh]
             [schema.core :as s])
   (:import java.sql.Time
            [java.time OffsetDateTime ZonedDateTime]))

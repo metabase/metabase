@@ -2,20 +2,17 @@
   "Tests for the logic behind scheduling the various sync operations of Databases. Most of the actual logic we're
   testing is part of `metabase.models.database`, so there's an argument to be made that these sorts of tests could
   just as easily belong to a `database-test` namespace."
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.models.database :refer [Database]]
-            [metabase.sync
-             [analyze :as sync.analyze]
-             [field-values :as sync.field-values]
-             [sync-metadata :as sync.metadata]]
+            [metabase.sync.analyze :as sync.analyze]
+            [metabase.sync.field-values :as sync.field-values]
+            [metabase.sync.sync-metadata :as sync.metadata]
             [metabase.task.sync-databases :as sync-db]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))

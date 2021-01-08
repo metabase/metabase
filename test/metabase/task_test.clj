@@ -1,17 +1,14 @@
 (ns metabase.task-test
   (:require [clojure.test :refer :all]
-            [clojurewerkz.quartzite
-             [jobs :as jobs]
-             [scheduler :as qs]
-             [triggers :as triggers]]
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clojurewerkz.quartzite.scheduler :as qs]
+            [clojurewerkz.quartzite.triggers :as triggers]
             [expectations :refer [expect]]
-            [metabase
-             [task :as task]
-             [test :as mt]]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
+            [metabase.task :as task]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import [org.quartz CronTrigger JobDetail]))

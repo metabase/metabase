@@ -4,21 +4,17 @@
             [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver
-             [presto :as presto]
-             [util :as driver.u]]
+            [metabase.driver :as driver]
+            [metabase.driver.presto :as presto]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
+            [metabase.driver.util :as driver.u]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 

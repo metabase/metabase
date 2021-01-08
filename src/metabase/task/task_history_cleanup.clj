@@ -1,9 +1,8 @@
 (ns metabase.task.task-history-cleanup
   (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite
-             [jobs :as jobs]
-             [triggers :as triggers]]
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clojurewerkz.quartzite.triggers :as triggers]
             [metabase.models.task-history :as task-history]
             [metabase.task :as task]
             [metabase.util.i18n :refer [trs]]))

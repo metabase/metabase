@@ -1,12 +1,10 @@
 (ns metabase-enterprise.serialization.upsert-test
-  (:require [clojure
-             [data :as diff]
-             [test :refer :all]]
-            [metabase
-             [models :refer [Card Collection Dashboard Database Field Metric Pulse Segment Table User]]
-             [test :as mt]
-             [util :as u]]
+  (:require [clojure.data :as diff]
+            [clojure.test :refer :all]
             [metabase-enterprise.serialization.upsert :as upsert]
+            [metabase.models :refer [Card Collection Dashboard Database Field Metric Pulse Segment Table User]]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (def ^:private same? (comp nil? second diff/diff))

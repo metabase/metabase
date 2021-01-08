@@ -1,17 +1,15 @@
 (ns metabase.query-processor.reducible-test
   "Some basic tests around very-low-level QP logic, and some of the new features of the QP (such as support for
   different reducing functions.)"
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.core.async :as a]
+  (:require [clojure.core.async :as a]
             [clojure.java.io :as io]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [metabase.util.files :as u.files]))
 
 (deftest quit-test

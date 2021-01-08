@@ -4,9 +4,8 @@
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.models.database :refer [Database]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 

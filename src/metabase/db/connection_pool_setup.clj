@@ -1,16 +1,13 @@
 (ns metabase.db.connection-pool-setup
   "Code for creating the connection pool for the application DB and setting it as the default Toucan connection."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [connection-pool :as connection-pool]
-             [util :as u]]
-            [metabase.db
-             [connection :as mdb.connection]
-             [jdbc-protocols :as mdb.jdbc-protocols]]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.config :as config]
+            [metabase.connection-pool :as connection-pool]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.mchange.v2.c3p0.PoolBackedDataSource))

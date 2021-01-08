@@ -1,22 +1,18 @@
 (ns metabase.driver.mongo.parameters
-  (:require [clojure
-             [string :as str]
-             [walk :as walk]]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [java-time :as t]
             [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters
-             [dates :as date-params]
-             [parse :as parse]
-             [values :as values]]
+            [metabase.driver.common.parameters.dates :as date-params]
+            [metabase.driver.common.parameters.parse :as parse]
+            [metabase.driver.common.parameters.values :as values]
             [metabase.driver.mongo.query-processor :as mongo.qp]
-            [metabase.query-processor
-             [error-type :as error-type]
-             [store :as qp.store]]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]])
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]])
   (:import java.time.temporal.Temporal
            [metabase.driver.common.parameters CommaSeparatedNumbers Date]))
 

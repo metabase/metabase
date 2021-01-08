@@ -1,36 +1,31 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
-            [metabase
-             [driver :as driver]
-             [email :as email]
-             [events :as events]
-             [public-settings :as public-settings]
-             [setup :as setup]
-             [util :as u]]
-            [metabase.api
-             [common :as api]
-             [database :as database-api :refer [DBEngineString]]]
+            [metabase.api.common :as api]
+            [metabase.api.database :as database-api :refer [DBEngineString]]
+            [metabase.driver :as driver]
+            [metabase.email :as email]
+            [metabase.events :as events]
             [metabase.integrations.slack :as slack]
-            [metabase.middleware.session :as mw.session]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
-             [metric :refer [Metric]]
-             [pulse :refer [Pulse]]
-             [segment :refer [Segment]]
-             [session :refer [Session]]
-             [table :refer [Table]]
-             [user :as user :refer [User]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.session :refer [Session]]
             [metabase.models.setting.cache :as setting.cache]
-            [metabase.util
-             [i18n :as i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.user :as user :refer [User]]
+            [metabase.public-settings :as public-settings]
+            [metabase.server.middleware.session :as mw.session]
+            [metabase.setup :as setup]
+            [metabase.util :as u]
+            [metabase.util.i18n :as i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as t.models]])
+            [toucan.db :as db]
+            [toucan.models :as t.models])
   (:import java.util.UUID))
 
 (def ^:private SetupToken

@@ -25,10 +25,9 @@
 
   * `metabase.db.util` - general util functions for Toucan/HoneySQL queries against the application DB"
   (:require [metabase.config :as config]
-            [metabase.db
-             [connection :as mdb.connection]
-             [connection-pool-setup :as mdb.connection-pool-setup]
-             [setup :as mdb.setup]]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
+            [metabase.db.setup :as mdb.setup]
             [potemkin :as p]))
 
 ;; TODO - determine if we *actually* need to import any of these

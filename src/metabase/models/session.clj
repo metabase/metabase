@@ -1,10 +1,8 @@
 (ns metabase.models.session
-  (:require [buddy.core
-             [codecs :as codecs]
-             [nonce :as nonce]]
-            [metabase.middleware
-             [misc :as mw.misc]
-             [util :as mw.util]]
+  (:require [buddy.core.codecs :as codecs]
+            [buddy.core.nonce :as nonce]
+            [metabase.server.middleware.misc :as mw.misc]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.models :as models]))

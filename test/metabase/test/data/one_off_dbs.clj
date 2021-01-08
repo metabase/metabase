@@ -6,9 +6,8 @@
             [metabase.db.spec :as db.spec]
             [metabase.models.database :refer [Database]]
             [metabase.sync :as sync]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
+            [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
 
 (def ^:dynamic *conn*

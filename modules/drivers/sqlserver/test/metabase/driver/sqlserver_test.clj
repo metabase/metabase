@@ -1,30 +1,24 @@
 (ns metabase.driver.sqlserver-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [colorize.core :as colorize]
             [honeysql.core :as hsql]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
+            [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor
-             [test-util :as qp.test-util]
-             [timezone :as qp.timezone]]
-            [metabase.test
-             [data :as data]
-             [util :as tu :refer [obj->json->obj]]]
-            [metabase.test.data
-             [datasets :as datasets]
-             [interface :as tx]]))
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.util :as tu :refer [obj->json->obj]]))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 

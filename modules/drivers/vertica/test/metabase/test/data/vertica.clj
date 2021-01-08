@@ -3,13 +3,11 @@
   (:require [clojure.java.jdbc :as jdbc]
             [colorize.core :as colorize]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]
-             [sql-jdbc :as sql-jdbc.tx]]
-            [metabase.test.data.sql-jdbc
-             [execute :as execute]
-             [load-data :as load-data]]))
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+            [metabase.test.data.sql-jdbc.execute :as execute]
+            [metabase.test.data.sql-jdbc.load-data :as load-data]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 

@@ -1,11 +1,9 @@
 (ns metabase.util.honeysql-extensions
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
-  (:require [clojure
-             [pprint :as pprint]
-             [string :as str]]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+  (:require [clojure.pprint :as pprint]
+            [clojure.string :as str]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [metabase.util :as u]
             [potemkin.types :as p.types]
             [pretty.core :as pretty :refer [PrettyPrintable]]

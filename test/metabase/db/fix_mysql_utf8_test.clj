@@ -1,15 +1,12 @@
 (ns metabase.db.fix-mysql-utf8-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
-            [metabase
-             [db :as mdb]
-             [models :refer [Database]]
-             [test :as mt]]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.db.setup :as mdb.setup]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [toucan.db :as db]
-            [metabase.db.setup :as mdb.setup]))
+            [metabase.models :refer [Database]]
+            [metabase.test :as mt]
+            [toucan.db :as db]))
 
 (defn- create-test-db! []
   (jdbc/with-db-connection [server-conn (sql-jdbc.conn/connection-details->spec :mysql

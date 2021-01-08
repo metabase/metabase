@@ -2,16 +2,13 @@
   "The Enterprise version of the LDAP integration is basically the same but also supports syncing user attributes."
   (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase.integrations.common :as integrations.common]
-            [metabase.integrations.ldap
-             [default-implementation :as default-impl]
-             [interface :as i]]
-            [metabase.models
-             [setting :as setting :refer [defsetting]]
-             [user :as user :refer [User]]]
+            [metabase.integrations.ldap.default-implementation :as default-impl]
+            [metabase.integrations.ldap.interface :as i]
+            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.user :as user :refer [User]]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [deferred-tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [deferred-tru]]
+            [metabase.util.schema :as su]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
             [toucan.db :as db])

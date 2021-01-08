@@ -1,28 +1,23 @@
 (ns metabase-enterprise.sso.integrations.saml-test
-  (:require [clojure
-             [set :as set]
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [config :as config]
-             [http-client :as http]
-             [public-settings :as public-settings]
-             [test :as mt]
-             [util :as u]]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase.middleware.session :as mw.session]
-            [metabase.models
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [user :refer [User]]]
+            [metabase.config :as config]
+            [metabase.http-client :as http]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.user :refer [User]]
+            [metabase.public-settings :as public-settings]
             [metabase.public-settings.metastore-test :as metastore-test]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
+            [metabase.server.middleware.session :as mw.session]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [ring.util.codec :as codec]
-            [saml20-clj
-             [core :as saml20]
-             [encode-decode :as encode-decode]]
+            [saml20-clj.core :as saml20]
+            [saml20-clj.encode-decode :as encode-decode]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.net.URL

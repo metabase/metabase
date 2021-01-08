@@ -3,19 +3,16 @@
   behavior in the namespace `metabase.sync-database.sync-dynamic-test`, which is sort of a misnomer.)"
   (:require [clojure.java.jdbc :as jdbc]
             [expectations :refer [expect]]
-            [metabase
-             [query-processor :as qp]
-             [sync :as sync]
-             [util :as u]]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.sync :as sync]
             [metabase.sync.util-test :as sync.util-test]
             [metabase.test.data :as data]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Dropping & Undropping Columns                                          |

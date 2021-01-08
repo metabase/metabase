@@ -1,23 +1,20 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [clojure.test :refer :all]
-            [metabase
-             [http-client :as http]
-             [models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient]]
-             [test :as mt]
-             [util :as u]]
-            [metabase.api
-             [card-test :as card-api-test]
-             [pulse :as pulse-api]]
+            [metabase.api.card-test :as card-api-test]
+            [metabase.api.pulse :as pulse-api]
+            [metabase.http-client :as http]
             [metabase.integrations.slack :as slack]
-            [metabase.middleware.util :as middleware.u]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as perms-group]
-             [pulse :as pulse]
-             [pulse-test :as pulse-test]]
+            [metabase.models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.models.pulse :as pulse]
+            [metabase.models.pulse-test :as pulse-test]
             [metabase.pulse.render.png :as png]
+            [metabase.server.middleware.util :as middleware.u]
+            [metabase.test :as mt]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
 

@@ -1,15 +1,13 @@
 (ns metabase.query-processor.middleware.add-implicit-joins-test
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.driver :as driver]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
             [metabase.query-processor.store :as qp.store]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [toucan.util.test :as tt]))

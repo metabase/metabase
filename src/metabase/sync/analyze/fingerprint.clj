@@ -4,19 +4,16 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
-            [metabase.db
-             [metadata-queries :as metadata-queries]
-             [util :as mdb.u]]
+            [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.db.util :as mdb.u]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [redux.core :as redux]
             [schema.core :as s]
             [toucan.db :as db]))

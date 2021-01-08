@@ -8,16 +8,14 @@
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [metabase.db
-             [connection :as mdb.connection]
-             [liquibase :as liquibase]]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.db.liquibase :as liquibase]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import liquibase.exception.LockException))

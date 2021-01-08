@@ -6,20 +6,18 @@
             [clojure.string :as str]
             [colorize.core :as color]
             [honeysql.format :as hformat]
-            [metabase
-             [models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard
-                             DashboardCardSeries DashboardFavorite Database Dependency Dimension Field FieldValues
-                             Metric MetricImportantField NativeQuerySnippet Permissions PermissionsGroup
-                             PermissionsGroupMembership PermissionsRevision Pulse PulseCard PulseChannel
-                             PulseChannelRecipient Revision Segment Session Setting Table User ViewLog]]
-             [util :as u]]
-            [metabase.db
-             [connection :as mdb.conn]
-             [data-migrations :refer [DataMigrations]]
-             [setup :as mdb.setup]]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.db.connection :as mdb.conn]
+            [metabase.db.data-migrations :refer [DataMigrations]]
+            [metabase.db.setup :as mdb.setup]
+            [metabase.models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard
+                                     DashboardCardSeries DashboardFavorite Database Dependency Dimension Field
+                                     FieldValues Metric MetricImportantField NativeQuerySnippet Permissions
+                                     PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
+                                     PulseChannel PulseChannelRecipient Revision Segment Session Setting Table User
+                                     ViewLog]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import java.sql.SQLException))
 

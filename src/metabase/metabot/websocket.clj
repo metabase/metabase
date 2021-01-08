@@ -3,13 +3,11 @@
   that watches the websocket handling thread and disconnects/reconnects it when needed."
   (:require [aleph.http :as aleph]
             [clojure.tools.logging :as log]
-            [manifold
-             [deferred :as d]
-             [stream :as s]]
+            [manifold.deferred :as d]
+            [manifold.stream :as s]
             [metabase.integrations.slack :as slack]
-            [metabase.metabot
-             [events :as metabot.events]
-             [instance :as metabot.instance]]
+            [metabase.metabot.events :as metabot.events]
+            [metabase.metabot.instance :as metabot.instance]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [throttle.core :as throttle]))

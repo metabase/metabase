@@ -1,10 +1,9 @@
 (ns metabase.query-processor-test.time-field-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [query-processor-test :as qp.test]
-             [test :as mt]]
+            [metabase.driver :as driver]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]))
 
 (defn- time-query [filter-type & filter-args]

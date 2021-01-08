@@ -1,15 +1,14 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure
-             [data :as data]
-             [pprint :refer [pprint]]
-             [set :as set]
-             [string :as str]
-             [walk :as walk]]
+  (:require [clojure.data :as data]
             [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
+            [clojure.pprint :refer [pprint]]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
+            [clojure.walk :as walk]
             [colorize.core :as colorize]
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]

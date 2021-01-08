@@ -2,20 +2,17 @@
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [cheshire.core :as json]
             [clj-http.client :as client]
-            [clojure
-             [string :as str]
-             [test :as t]]
+            [clojure.string :as str]
+            [clojure.test :as t]
             [clojure.tools.logging :as log]
             [java-time :as java-time]
-            [metabase
-             [config :as config]
-             [util :as u]]
-            [metabase.middleware.session :as mw.session]
+            [metabase.config :as config]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.log :as tu.log]
-            [metabase.util
-             [date-2 :as u.date]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 ;;; build-url

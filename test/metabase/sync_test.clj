@@ -5,17 +5,15 @@
   Your new tests almost certainly do not belong in this namespace. Please put them in ones mirroring the location of
   the specific part of sync you're testing."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.driver :as driver]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.mock.util :as mock.u]
             [metabase.test.util :as tu]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

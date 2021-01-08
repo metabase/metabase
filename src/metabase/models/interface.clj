@@ -6,10 +6,9 @@
             [metabase.mbql.normalize :as normalize]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util
-             [cron :as cron-util]
-             [encryption :as encryption]
-             [i18n :refer [trs tru]]]
+            [metabase.util.cron :as cron-util]
+            [metabase.util.encryption :as encryption]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]

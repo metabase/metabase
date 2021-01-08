@@ -9,12 +9,11 @@
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Database Field Table]]
-             [util :as u]]
             [metabase.db.schema-migrations-test.impl :as impl]
+            [metabase.models :refer [Database Field Table]]
             [metabase.models.user :refer [User]]
             [metabase.test.util :as tu]
+            [metabase.util :as u]
             [toucan.db :as db])
   (:import java.util.UUID))
 

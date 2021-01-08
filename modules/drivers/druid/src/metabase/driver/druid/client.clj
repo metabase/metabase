@@ -5,9 +5,8 @@
             [clojure.tools.logging :as log]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [ssh :as ssh]]))
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.ssh :as ssh]))
 
 (defn details->url
   "Helper for building a Druid URL.

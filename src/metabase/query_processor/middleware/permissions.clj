@@ -3,16 +3,14 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
-            [metabase.models
-             [card :refer [Card]]
-             [interface :as mi]
-             [permissions :as perms]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.interface :as mi]
+            [metabase.models.permissions :as perms]
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 

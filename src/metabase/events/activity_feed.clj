@@ -1,16 +1,14 @@
 (ns metabase.events.activity-feed
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase
-             [events :as events]
-             [query-processor :as qp]
-             [util :as u]]
+            [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models
-             [activity :as activity :refer [Activity]]
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [table :as table]]
+            [metabase.models.activity :as activity :refer [Activity]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.table :as table]
+            [metabase.query-processor :as qp]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 

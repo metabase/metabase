@@ -9,9 +9,8 @@
 
    Refer to the documentation for those endpoints for further details."
   (:require [compojure.core :refer [GET]]
-            [metabase.api
-             [common :as api]
-             [embed :as embed-api]]
+            [metabase.api.common :as api]
+            [metabase.api.embed :as embed-api]
             [metabase.util.embed :as eu]))
 
 (defn- check-and-unsign [token]

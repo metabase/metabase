@@ -1,8 +1,7 @@
 (ns metabase.query-processor-test.nested-field-test
   "Tests for nested field access."
-  (:require [metabase
-             [query-processor-test :as qp.test]
-             [test :as mt]]
+  (:require [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 

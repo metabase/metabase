@@ -11,15 +11,14 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [test :as mt]
-             [util :as u]]
+            [metabase.db :as mdb]
             [metabase.db.liquibase :as liquibase]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.initialize :as initialize]
+            [metabase.util :as u]
             [toucan.db :as db])
   (:import [liquibase Contexts Liquibase]
            [liquibase.changelog ChangeSet DatabaseChangeLog]))

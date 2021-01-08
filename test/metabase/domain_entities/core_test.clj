@@ -1,14 +1,11 @@
 (ns metabase.domain-entities.core-test
   (:require [expectations :refer [expect]]
             [metabase.domain-entities.core :as de]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
-            [metabase.test
-             [data :as data]
-             [domain-entities :refer :all]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.test.data :as data]
+            [metabase.test.domain-entities :refer :all]
             [toucan.hydrate :as hydrate]))
-
 
 (expect
   [:field-id (data/id :venues :price)]

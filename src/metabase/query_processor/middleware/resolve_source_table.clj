@@ -2,9 +2,8 @@
   "Fetches Tables corresponding to any `:source-table` IDs anywhere in the query."
   (:require [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (defn- check-all-source-table-ids-are-valid

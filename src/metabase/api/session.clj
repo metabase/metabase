@@ -5,28 +5,24 @@
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
-            [metabase
-             [config :as config]
-             [events :as events]
-             [public-settings :as public-settings]
-             [util :as u]]
             [metabase.api.common :as api]
+            [metabase.config :as config]
             [metabase.email.messages :as email]
+            [metabase.events :as events]
             [metabase.integrations.ldap :as ldap]
-            [metabase.middleware.session :as mw.session]
-            [metabase.models
-             [session :refer [Session]]
-             [setting :as setting :refer [defsetting]]
-             [user :as user :refer [User]]]
-            [metabase.util
-             [i18n :as ui18n :refer [deferred-tru trs tru]]
-             [password :as pass]
-             [schema :as su]]
+            [metabase.models.session :refer [Session]]
+            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.user :as user :refer [User]]
+            [metabase.public-settings :as public-settings]
+            [metabase.server.middleware.session :as mw.session]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
+            [metabase.util.password :as pass]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [throttle.core :as throttle]
-            [toucan
-             [db :as db]
-             [models :as t.models]])
+            [toucan.db :as db]
+            [toucan.models :as t.models])
   (:import com.unboundid.util.LDAPSDKException
            java.util.UUID))
 

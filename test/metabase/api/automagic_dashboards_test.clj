@@ -1,22 +1,18 @@
 (ns metabase.api.automagic-dashboards-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Card Collection Metric Segment]]
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.automagic-dashboards.core :as magic]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as perms-group]]
-            [metabase.test
-             [automagic-dashboards :refer :all]
-             [domain-entities :as de.test]
-             [fixtures :as fixtures]
-             [transforms :as transforms.test]]
-            [metabase.transforms
-             [core :as transforms]
-             [materialize :as transforms.materialize]
-             [specs :as transforms.specs]]
+            [metabase.models :refer [Card Collection Metric Segment]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.test.automagic-dashboards :refer :all]
+            [metabase.test.domain-entities :as de.test]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.transforms :as transforms.test]
+            [metabase.transforms.core :as transforms]
+            [metabase.transforms.materialize :as transforms.materialize]
+            [metabase.transforms.specs :as transforms.specs]
             [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))

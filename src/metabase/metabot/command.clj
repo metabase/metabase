@@ -1,24 +1,20 @@
 (ns metabase.metabot.command
   "Implementations of various MetaBot commands."
-  (:require [clojure
-             [edn :as edn]
-             [string :as str]]
+  (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [pulse :as pulse]
-             [util :as u]]
             [metabase.api.common :refer [*current-user-permissions-set* read-check]]
             [metabase.metabot.slack :as metabot.slack]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection]
-             [interface :as mi]
-             [permissions :refer [Permissions]]
-             [permissions-group :as perms-group]]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [urls :as urls]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection]
+            [metabase.models.interface :as mi]
+            [metabase.models.permissions :refer [Permissions]]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.pulse :as pulse]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.urls :as urls]
             [toucan.db :as db]))
 
 ;;; ----------------------------------------------------- Perms ------------------------------------------------------

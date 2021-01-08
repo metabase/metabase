@@ -19,10 +19,9 @@
   using this namespace directly."
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.db.spec :as db.spec]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
 (defn- get-db-file

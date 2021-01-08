@@ -1,11 +1,10 @@
 (ns metabase.api.geojson-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [http-client :as client]
-             [test :as mt]
-             [util :as u]]
             [metabase.api.geojson :as geojson-api]
-            [metabase.middleware.security :as mw.security]
+            [metabase.http-client :as client]
+            [metabase.server.middleware.security :as mw.security]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [schema.core :as s]))
 
 (def ^:private ^String test-geojson-url

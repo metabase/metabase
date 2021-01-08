@@ -1,27 +1,23 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase
-             [driver :as driver]
-             [models :refer [Card Collection Field Table]]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
             [metabase-enterprise.sandbox.test-util :as mt.tu]
+            [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql
-             [normalize :as normalize]
-             [util :as mbql.u]]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as perms-group]]
+            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models :refer [Card Collection Field Table]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qputil]
+            [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
             [metabase.test.util :as tu]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]))
 

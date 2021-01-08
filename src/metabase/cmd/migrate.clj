@@ -1,7 +1,6 @@
 (ns metabase.cmd.migrate
-  (:require [metabase.db
-             [connection :as mdb.connection]
-             [setup :as mdb.setup]]))
+  (:require [metabase.db.connection :as mdb.connection]
+            [metabase.db.setup :as mdb.setup]))
 
 (defn migrate!
   "Migrate the Metabase application DB."

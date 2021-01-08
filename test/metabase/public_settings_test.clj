@@ -1,10 +1,9 @@
 (ns metabase.public-settings-test
   (:require [clojure.test :refer :all]
             [environ.core :as env]
-            [metabase
-             [public-settings :as public-settings]
-             [test :as mt]]
             [metabase.models.setting :as setting]
+            [metabase.public-settings :as public-settings]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util.i18n :as i18n :refer [tru]]))
 

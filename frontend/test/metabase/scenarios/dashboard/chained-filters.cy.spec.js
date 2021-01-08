@@ -202,7 +202,7 @@ describe("scenarios > dashboard > chained filter", () => {
     });
   }
 
-  it.skip("can use a chained filter with embedded SQL questions (metabase#13868)", () => {
+  it("can use a chained filter with embedded SQL questions (metabase#13868)", () => {
     createDashboardWithQuestion({}, dashboardId => {
       // Enable embedding for this dashboard with both the city and state filters enabled
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {

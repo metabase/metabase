@@ -1,16 +1,14 @@
 (ns metabase.driver.redshift-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [public-settings :as pubset]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.driver.sql-jdbc.execute :as execute]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
+            [metabase.public-settings :as pubset]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [metabase.test.data.redshift :as rstest]
-            [metabase.test.fixtures :as fixtures])
+            [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u])
   (:import metabase.plugins.jdbc_proxy.ProxyDriver))
 
 (use-fixtures :once (fixtures/initialize :plugins))

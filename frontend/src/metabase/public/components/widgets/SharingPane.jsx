@@ -149,7 +149,7 @@ export default class SharingPane extends Component {
             src="app/assets/img/simple_embed.png"
             srcSet="
               app/assets/img/simple_embed.png     1x,
-              app/assets/img/simple_embed.png@2x  2x
+              app/assets/img/simple_embed@2x.png  2x
             "
           />
           <div className="ml2">

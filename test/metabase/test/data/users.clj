@@ -2,12 +2,11 @@
   "Code related to creating / managing fake `Users` for testing purposes."
   (:require [clojure.test :as t]
             [medley.core :as m]
-            [metabase
-             [http-client :as http]
-             [util :as u]]
-            [metabase.middleware.session :as mw.session]
+            [metabase.http-client :as http]
             [metabase.models.user :as user :refer [User]]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo

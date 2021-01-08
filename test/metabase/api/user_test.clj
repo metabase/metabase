@@ -2,26 +2,22 @@
   "Tests for /api/user endpoints."
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [metabase
-             [email-test :as et]
-             [http-client :as http]
-             [test :as mt]
-             [util :as u]]
-            [metabase.middleware.util :as middleware.u]
-            [metabase.models
-             [collection :as collection :refer [Collection]]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [user :refer [User]]
-             [user-test :as user-test]]
-            [metabase.test
-             [data :refer :all]
-             [fixtures :as fixtures]
-             [util :as tu :refer [random-name]]]
+            [metabase.email-test :as et]
+            [metabase.http-client :as http]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.user :refer [User]]
+            [metabase.models.user-test :as user-test]
+            [metabase.server.middleware.util :as middleware.u]
+            [metabase.test :as mt]
+            [metabase.test.data :refer :all]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu :refer [random-name]]
+            [metabase.util :as u]
             [metabase.util.i18n :as i18n]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (use-fixtures
   :once
