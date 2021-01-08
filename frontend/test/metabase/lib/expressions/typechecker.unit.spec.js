@@ -85,6 +85,12 @@ describe("type-checker", () => {
       expect(expr("[X]+CASE([Y],4,5)").dimensions).toEqual(["X"]);
       expect(expr("[X]+CASE([Y],4,5)").segments).toEqual(["Y"]);
     });
+
+    it("should allow any number of arguments in a variadic function", () => {
+      expect(() => validate("CONCAT('1')")).not.toThrow();
+      expect(() => validate("CONCAT('1','2')")).not.toThrow();
+      expect(() => validate("CONCAT('1','2','3')")).not.toThrow();
+    });
   });
 
   describe("for a filter", () => {
