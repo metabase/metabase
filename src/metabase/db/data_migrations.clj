@@ -1,4 +1,4 @@
-(ns metabase.db.migrations
+(ns metabase.db.data-migrations
   "Clojure-land data migration definitions and fns for running them.
   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
   H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
@@ -10,7 +10,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
-            [metabase.db :as mdb]
+            [metabase.db.util :as mdb.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -197,11 +197,11 @@
 ;; specified. Other areas of the application expect that site-url will always include http/https. This migration
 ;; ensures that if we have a site-url stored it has the current defaulting logic applied to it
 (defmigration ^{:author "senior", :added "0.25.1"} ensure-protocol-specified-in-site-url
-  (let [stored-site-url (db/select-one-field :value Setting :key "site-url")
-        defaulted-site-url (public-settings/site-url stored-site-url)]
-    (when (and stored-site-url
-               (not= stored-site-url defaulted-site-url))
-      (setting/set! "site-url" stored-site-url))))
+  (when-let [stored-site-url (db/select-one-field :value Setting :key "site-url")]
+    (let [defaulted-site-url (public-settings/site-url stored-site-url)]
+      (when (and stored-site-url
+                 (not= stored-site-url defaulted-site-url))
+        (setting/set! "site-url" stored-site-url)))))
 
 ;; There was a bug (#5998) preventing database_id from being persisted with native query type cards. This migration
 ;; populates all of the Cards missing those database ids
@@ -246,7 +246,7 @@
 ;; their behavior doesn't suddenly change.
 (defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
   (db/update-where! Field {:has_field_values nil
-                           :special_type     (mdb/isa :type/Category)
+                           :special_type     (mdb.u/isa :type/Category)
                            :active           true}
     :has_field_values "list"))
 

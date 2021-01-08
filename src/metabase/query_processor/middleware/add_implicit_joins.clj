@@ -3,7 +3,7 @@
   with `:joined-field` clauses."
   (:refer-clojure :exclude [alias])
   (:require [medley.core :as m]
-            [metabase.db :as mdb]
+            [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -48,7 +48,7 @@
                            :where     [:and
                                        [:in :source-fk.id (set fk-field-ids)]
                                        [:= :target-table.db_id (u/get-id (qp.store/database))]
-                                       (mdb/isa :source-fk.special_type :type/FK)]})]
+                                       (mdb.u/isa :source-fk.special_type :type/FK)]})]
       (for [{:keys [fk-name table-name], :as info} infos]
         (assoc info :alias (join-alias table-name fk-name))))))
 

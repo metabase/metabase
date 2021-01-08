@@ -117,10 +117,9 @@
     #".*"                               ; default
     message))
 
-(defmethod driver/db-default-timezone :mysql
-  [_ db]
-  (let [spec                                   (sql-jdbc.conn/db->pooled-connection-spec db)
-        sql                                    (str "SELECT @@GLOBAL.time_zone AS global_tz,"
+(defmethod sql-jdbc.sync/db-default-timezone :mysql
+  [_ spec]
+  (let [sql                                    (str "SELECT @@GLOBAL.time_zone AS global_tz,"
                                                     " @@system_time_zone AS system_tz,"
                                                     " time_format("
                                                     "   timediff("

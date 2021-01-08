@@ -1,6 +1,6 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [metabase.db :as mdb]
+            [metabase.db.util :as mdb.u]
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
@@ -41,7 +41,7 @@
          {:properties  (constantly {:timestamped? true})
           :types       (constantly {:parameter_mappings :parameter-mappings, :visualization_settings :json})
           :pre-insert  pre-insert
-          :post-select (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})})
+          :post-select #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY})})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set  perms-objects-set
@@ -62,7 +62,7 @@
   "Return the `Cards` associated as additional series on this DashboardCard."
   [{:keys [id]}]
   (db/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
-    (mdb/join [Card :id] [DashboardCardSeries :card_id])
+    (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
     (db/qualify DashboardCardSeries :dashboardcard_id) id
     {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))
 

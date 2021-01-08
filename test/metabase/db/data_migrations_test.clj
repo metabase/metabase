@@ -1,10 +1,10 @@
-(ns metabase.db.migrations-test
+(ns metabase.db.data-migrations-test
   "Tests to make sure the data migrations actually work as expected and don't break things. Shamefully, we have way less
   of these than we should... but that doesn't mean we can't write them for our new ones :)"
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.db.migrations :as migrations]
+            [metabase.db.data-migrations :as migrations]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]

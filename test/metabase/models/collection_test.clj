@@ -1226,7 +1226,6 @@
     `(do ~@body)
     `(mt/with-temp Collection [~collection-symb {:name     ~(str/upper-case (name collection-symb))
                                                  :location ~parent-location}]
-       (println "CREATE" ~(name collection-symb) "IN" (pr-str ~parent-location)) ; NOCOMMIT
        (with-collection-hierarchy-in (collection/children-location ~collection-symb) ~more ~@body))))
 
 (defmacro ^:private with-personal-and-impersonal-collections {:style/indent 1}

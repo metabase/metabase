@@ -27,6 +27,10 @@
 ;;; |                                               SCHEDULER INSTANCE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:dynamic *quartz-scheduler*
+  "Override the global Quartz scheduler by binding this var."
+  nil)
+
 (defonce ^:private quartz-scheduler
   (atom nil))
 
@@ -36,7 +40,8 @@
   are a few places (e.g., in tests) where we swap the instance out."
   ;; TODO - why can't we just swap the atom out in the tests?
   ^Scheduler []
-  @quartz-scheduler)
+  (or *quartz-scheduler*
+      @quartz-scheduler))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

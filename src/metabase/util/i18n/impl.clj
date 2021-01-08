@@ -148,9 +148,9 @@
 (def ^:private site-locale-from-setting-fn
   (atom
    (fn []
-     (when-let [db-is-setup? (resolve 'metabase.db/db-is-setup?)]
-       (when (and (bound? db-is-setup?)
-                  (db-is-setup?))
+     (when-let [db-is-set-up? (resolve 'metabase.db/db-is-set-up?)]
+       (when (and (bound? db-is-set-up?)
+                  (db-is-set-up?))
          (when-let [get-string (resolve 'metabase.models.setting/get-string)]
            (when (bound? get-string)
              (let [f (fn [] (get-string :site-locale))]

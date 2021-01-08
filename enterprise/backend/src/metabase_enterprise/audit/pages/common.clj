@@ -11,9 +11,8 @@
             [medley.core :as m]
             [metabase-enterprise.audit.query-processor.middleware.handle-audit-queries :as qp.middleware.audit]
             [metabase.db :as mdb]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.timezone :as qp.tz]
@@ -79,21 +78,17 @@
           form))
       (dissoc query :with)))))
 
+;; TODO - fixme
 (def ^:private ^{:arglists '([])} application-db-default-timezone
   ;; cache the application DB's default timezone for an hour. I don't expect this information to change *ever*,
   ;; really, but it seems like it is possible that it *could* change. Determining this for every audit query seems
   ;; wasteful however.
-  (memoize/ttl
-   (fn []
-     (let [driver (mdb/db-type)]
-       ;; we're using a driver method to determine this, so we need to create a fake DB to get things to work
-       ;; correctly, since various driver impls probably try to use the connection pool to determine this.
-       (driver/db-default-timezone
-        driver
-        {:details @mdb/db-connection-details
-         :engine  driver
-         :id      sql-jdbc.conn/application-db-mock-id})))
-   :ttl/threshold (u/hours->ms 1)))
+  ;;
+  ;; This is cached by db-type and the JDBC connection spec in case that gets changed/swapped out for one reason or
+  ;; another
+  (let [timezone (memoize/ttl sql-jdbc.sync/db-default-timezone :ttl/threshold (u/hours->ms 1))]
+    (fn []
+      (timezone (mdb/db-type) (db/connection)))))
 
 (defn- reduce-results* [honeysql-query context rff init]
   (let [driver         (mdb/db-type)

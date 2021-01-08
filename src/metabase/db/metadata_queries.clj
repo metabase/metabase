@@ -1,5 +1,8 @@
 (ns metabase.db.metadata-queries
-  "Predefined MBQL queries for getting metadata about an external database."
+  "Predefined MBQL queries for getting metadata about an external database.
+
+  TODO -- these have nothing to do with the application database. This namespace should be renamed something like
+  `metabase.driver.util.metadata-queries`."
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]

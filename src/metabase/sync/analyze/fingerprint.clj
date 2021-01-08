@@ -4,8 +4,8 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
-            [metabase.db :as mdb]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.db.util :as mdb.u]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
@@ -139,7 +139,7 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb/isa :special_type :type/PK)]
+    [:not (mdb.u/isa :special_type :type/PK)]
     [:= :special_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
    [:not= :base_type "type/Structured"]])

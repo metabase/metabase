@@ -19,7 +19,6 @@
   (:require [clojure.string :as str]
             [medley.core :as m]
             [metabase.config :as config]
-            [metabase.db :as mdb]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
@@ -28,7 +27,8 @@
 (defn ^:command migrate
   "Run database migrations. Valid options for `direction` are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
-  (mdb/migrate! (keyword direction)))
+  (classloader/require 'metabase.cmd.migrate)
+  ((resolve 'metabase.cmd.migrate/migrate!) direction))
 
 (defn ^:command load-from-h2
   "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
@@ -36,8 +36,7 @@
    (load-from-h2 nil))
   ([h2-connection-string]
    (classloader/require 'metabase.cmd.load-from-h2)
-   (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
+   ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string)))
 
 (defn ^:command dump-to-h2
   "Transfer data from existing database to newly created H2 DB with specified filename.
@@ -45,11 +44,10 @@
   Target H2 file is deleted before dump, unless the --keep-existing flag is given."
   [h2-filename & opts]
   (classloader/require 'metabase.cmd.dump-to-h2)
-  (binding [mdb/*disable-data-migrations* true]
-    (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))}
-          return-code    ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)]
-      (when (pos-int? return-code)
-        (System/exit return-code)))))
+  (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))}
+        return-code    ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)]
+    (when (pos-int? return-code)
+      (System/exit return-code))))
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."

@@ -2,7 +2,7 @@
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase.db :as mdb]
+            [metabase.db.util :as mdb.u]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.schema.helpers :as mbql.s.helpers]
@@ -95,7 +95,7 @@
   (when-let [table-ids (seq (map :table_id fields))]
     (u/key-by :table_id (-> (db/select Field:params-columns-only
                               :table_id     [:in table-ids]
-                              :special_type (mdb/isa :type/Name))
+                              :special_type (mdb.u/isa :type/Name))
                             ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
                             ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                             ;; `list` instead of `auto-list`.)

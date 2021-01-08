@@ -43,6 +43,12 @@
   [driver _]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
+(defmethod driver/db-default-timezone :sql-jdbc
+  [driver database]
+  (when (not= (get-method sql-jdbc.sync/db-default-timezone driver)
+              (get-method sql-jdbc.sync/db-default-timezone :sql-jdbc))
+    (sql-jdbc.sync/db-default-timezone driver (sql-jdbc.conn/db->pooled-connection-spec database))))
+
 (defmethod driver/execute-reducible-query :sql-jdbc
   [driver query chans respond]
   (sql-jdbc.execute/execute-reducible-query driver query chans respond))

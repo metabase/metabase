@@ -1,6 +1,6 @@
 (ns metabase.models.table
   (:require [honeysql.core :as hsql]
-            [metabase.db :as mdb]
+            [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
@@ -87,10 +87,10 @@
                   {:order-by (case (:field_order table)
                                :custom       [[:custom_position :asc]]
                                :smart        [[(hsql/call :case
-                                                 (mdb/isa :special_type :type/PK)       0
-                                                 (mdb/isa :special_type :type/Name)     1
-                                                 (mdb/isa :special_type :type/Temporal) 2
-                                                 :else                                  3)
+                                                 (mdb.u/isa :special_type :type/PK)       0
+                                                 (mdb.u/isa :special_type :type/Name)     1
+                                                 (mdb.u/isa :special_type :type/Temporal) 2
+                                                 :else                                    3)
                                                :asc]
                                               [:%lower.name :asc]]
                                :database     [[:database_position :asc]]
@@ -154,7 +154,7 @@
   [{:keys [id]}]
   (db/select-one-id Field
     :table_id        id
-    :special_type    (mdb/isa :type/PK)
+    :special_type    (mdb.u/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
 
 

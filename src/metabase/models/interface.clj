@@ -2,7 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
-            [metabase.db :as mdb]
+            [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as normalize]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -159,7 +159,7 @@
 ;; max (nanosecond) resolution.
 (defn- now []
   (classloader/require 'metabase.driver.sql.query-processor)
-  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb/db-type)))
+  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
   (assoc obj :created_at (now)))

@@ -458,7 +458,7 @@
 ;; in place and then check the tasks that get scheduled
 
 (defn do-with-scheduler [scheduler thunk]
-  (with-redefs [task/scheduler (constantly scheduler)]
+  (binding [task/*quartz-scheduler* scheduler]
     (thunk)))
 
 (defmacro with-scheduler

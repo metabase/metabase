@@ -8,6 +8,7 @@
   however, set permissions for them. "
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -21,14 +22,17 @@
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- get-or-create-magic-group! [group-name]
-  (memoize
-   (fn []
-     (or (db/select-one PermissionsGroup
-           :name group-name)
-         (u/prog1 (db/insert! PermissionsGroup
-                    :name group-name)
-           (log/info (u/format-color 'green (trs "Created magic permissions group ''{0}'' (ID = {1})"
-                                                 group-name (:id <>)))))))))
+  ;; these are memoized by the application DB in case it gets swapped out/mocked
+  (let [f (memoize
+           (fn [_ _]
+             (or (db/select-one PermissionsGroup
+                   :name group-name)
+                 (u/prog1 (db/insert! PermissionsGroup
+                            :name group-name)
+                   (log/info (u/format-color 'green (trs "Created magic permissions group ''{0}'' (ID = {1})"
+                                                         group-name (:id <>))))))))]
+    (fn []
+      (f (mdb.connection/db-type) (mdb.connection/jdbc-spec)))))
 
 (def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
   all-users
