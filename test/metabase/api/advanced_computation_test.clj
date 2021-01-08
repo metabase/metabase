@@ -328,14 +328,14 @@
                      (mt/user-http-request :rasta :get 400 (embed-test/with-new-secret-key (card-query-url card ""))))))))))))
 
 (defn- preview-embed-card-query-url [card & [additional-token-params]]
-  (str "advanced_computation/public/pivot/preview_embed/card/"
+  (str "advanced_computation/preview_embed/pivot/card/"
        (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))
        "/query"))
 
 (deftest preview-embed-query-test
   (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
-      (testing "GET /api/advanced_computation/public/pivot/preview_embed/card/:token/query"
+      (testing "GET /api/advanced_computation/preview_embed/pivot/card/:token/query"
         (testing "successful preview"
           (let [result (embed-test/with-embedding-enabled-and-new-secret-key
                          (with-temp-card [card]
@@ -350,7 +350,7 @@
           (is (= "You don't have permissions to do that."
                  (embed-test/with-embedding-enabled-and-new-secret-key
                    (with-temp-card [card]
-                     (mt/user-http-request :rasta :get 400 (preview-embed-card-query-url card)))))))
+                     (mt/user-http-request :rasta :get 403 (preview-embed-card-query-url card)))))))
 
         (testing "should fail if embedding is disabled"
           (is (= "Embedding is not enabled."
@@ -366,7 +366,7 @@
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (preview-embed-card-query-url card))))))))))))
 
 (defn- preview-embed-dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
-  (str "advanced_computation/public/pivot/preview_embed/dashboard/"
+  (str "advanced_computation/preview_embed/pivot/dashboard/"
        (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
                                                               additional-token-params))
        "/dashcard/" (u/get-id dashcard)
@@ -375,7 +375,7 @@
 (deftest preview-embed-card-id-test
   (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
-      (testing "GET /api/advanced_computation/public/pivot/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+      (testing "GET /api/advanced_computation/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
         (testing "successful preview"
           (let [result (embed-test/with-embedding-enabled-and-new-secret-key
                          (with-temp-dashcard [dashcard]
@@ -390,7 +390,7 @@
           (is (= "You don't have permissions to do that."
                  (embed-test/with-embedding-enabled-and-new-secret-key
                    (with-temp-dashcard [dashcard]
-                     (mt/user-http-request :rasta :get 400 (preview-embed-dashcard-url dashcard)))))))
+                     (mt/user-http-request :rasta :get 403 (preview-embed-dashcard-url dashcard)))))))
 
         (testing "should fail if embedding is disabled"
           (is (= "Embedding is not enabled."
