@@ -1,6 +1,7 @@
 (ns metabase.api.advanced-computation.authenticated-test
   (:require [clojure.test :refer :all]
             [metabase.api.advanced-computation.common-test :as common]
+            [metabase.api.embed-test :as embed-test]
             [metabase.test :as mt]
             [metabase.util :as u]))
 
@@ -82,7 +83,7 @@
   (mt/test-drivers common/applicable-drivers
     (mt/dataset sample-dataset
       (testing "POST /api/advanced_computation/pivot/card/id"
-        (common/with-temp-pivot-card [_ card]
+        (embed-test/with-temp-card [card (common/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "advanced_computation/pivot/card/%d/query" (u/get-id card)))
                 rows   (mt/rows result)]
             (is (= 2273 (:row_count result)))

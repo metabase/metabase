@@ -5,11 +5,9 @@
             [metabase.api.embed-test :as embed-test]
             [metabase.api.public-test :as api.public-test]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card Dashboard DashboardCard]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+            [metabase.util :as u]))
 
 (deftest pivot-public-card-test
   (mt/test-drivers common/applicable-drivers
@@ -94,14 +92,14 @@
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (tu/with-temporary-setting-values [enable-embedding false]
             (embed-test/with-new-secret-key
-              (common/with-temp-card [card]
+              (embed-test/with-temp-card [card (common/pivot-card)]
                 (is (= "Embedding is not enabled."
                        (http/client :get 400 (card-query-url card ""))))))))
 
         (embed-test/with-embedding-enabled-and-new-secret-key
           (let [expected-status 202]
             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
-              (common/with-temp-card [card {:enable_embedding true}]
+              (embed-test/with-temp-card [card (merge {:enable_embedding true} (common/pivot-card))]
                 (let [result (http/client :get expected-status (card-query-url card "") {:request-options nil})
                       rows   (mt/rows result)]
                   (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
@@ -110,12 +108,12 @@
                   (is (= 2273 (count rows)))))))
 
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
-            (common/with-temp-card [card]
+            (embed-test/with-temp-card [card (common/pivot-card)]
               (is (= "Embedding is not enabled for this object."
                      (http/client :get 400 (card-query-url card ""))))))
 
           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
                         "signed with the wrong key")
-            (common/with-temp-card [card {:enable_embedding true}]
+            (embed-test/with-temp-card [card (merge {:enable_embedding true} (common/pivot-card))]
               (is (= "Message seems corrupt or manipulated."
                      (http/client :get 400 (embed-test/with-new-secret-key (card-query-url card ""))))))))))))

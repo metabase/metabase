@@ -49,8 +49,12 @@
                additional-token-params)))
 
 (defmacro with-temp-card {:style/indent 1} [[card-binding & [card]] & body]
-  `(tt/with-temp Card [~card-binding (merge (public-test/count-of-venues-card) ~card)]
-     ~@body))
+  `(let [card-defaults# ~card
+         card-settings# (merge (when-not (:dataset_query card-defaults#)
+                                 (public-test/count-of-venues-card))
+                               card-defaults#)]
+     (tt/with-temp Card [~card-binding card-settings#]
+       ~@body)))
 
 (defmacro with-temp-dashcard {:style/indent 1} [[dashcard-binding {:keys [dash card dashcard]}] & body]
   `(with-temp-card [card# ~card]
