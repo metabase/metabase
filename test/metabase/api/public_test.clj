@@ -22,33 +22,38 @@
   {:dataset_query (mt/mbql-query venues
                     {:aggregation [[:count]]})})
 
-(defn- shared-obj []
+(defn shared-obj []
   {:public_uuid       (str (UUID/randomUUID))
    :made_public_by_id (mt/user->id :crowberto)})
 
-(defmacro ^:private with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
-  `(let [card-settings# (merge (count-of-venues-card) (shared-obj) ~card)]
+(defmacro with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
+  `(let [card-defaults# ~card
+         card-settings# (merge (when-not (:dataset_query card-defaults#) (count-of-venues-card))
+                               (shared-obj)
+                               card-defaults#)]
      (mt/with-temp Card [card# card-settings#]
        ;; add :public_uuid back in to the value that gets bound because it might not come back from post-select if
        ;; public sharing is disabled; but we still want to test it
        (let [~binding (assoc card# :public_uuid (:public_uuid card-settings#))]
          ~@body))))
 
-(defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
-  `(let [dashboard-settings# (merge
-                              {:parameters [{:id      "_VENUE_ID_"
-                                             :name    "Venue ID"
-                                             :slug    "venue_id"
-                                             :type    "id"
-                                             :target  [:dimension (mt/id :venues :id)]
-                                             :default nil}]}
+(defmacro with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
+  `(let [dashboard-defaults# ~dashboard
+         dashboard-settings# (merge
+                              (when-not (:parameters dashboard-defaults#)
+                                {:parameters [{:id      "_VENUE_ID_"
+                                               :name    "Venue ID"
+                                               :slug    "venue_id"
+                                               :type    "id"
+                                               :target  [:dimension (mt/id :venues :id)]
+                                               :default nil}]})
                               (shared-obj)
-                              ~dashboard)]
+                              dashboard-defaults#)]
      (mt/with-temp Dashboard [dashboard# dashboard-settings#]
        (let [~binding (assoc dashboard# :public_uuid (:public_uuid dashboard-settings#))]
          ~@body))))
 
-(defn- add-card-to-dashboard! {:style/indent 2} [card dashboard & {:as kvs}]
+(defn add-card-to-dashboard! {:style/indent 2} [card dashboard & {:as kvs}]
   (db/insert! DashboardCard (merge {:dashboard_id (u/get-id dashboard), :card_id (u/get-id card)}
                                    kvs)))
 
