@@ -164,7 +164,7 @@ export default class PivotTable extends Component {
         columnIndexes,
         rowIndexes,
         valueIndexes,
-        settings["pivot_table.collapsed_rows"],
+        settings[COLLAPSED_ROWS_SETTING],
       );
     } catch (e) {
       console.warn(e);
