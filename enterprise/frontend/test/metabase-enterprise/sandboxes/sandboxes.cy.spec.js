@@ -249,7 +249,7 @@ describeWithToken("formatting > sandboxes", () => {
         .should("have.length", 11);
     });
 
-    it("should be sandbox with a filter (after applying a filter to a JOINed question)", () => {
+    it("should be sandboxed with a filter (after applying a filter to a JOINed question)", () => {
       cy.visit("/question/5");
 
       // Notebook filter
@@ -351,7 +351,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("11"); // Sum of orders for user with ID #1
     });
 
-    it.skip("SB question with `case` CC should substitue the `else` argument's table (metabase-enterprise#548)", () => {
+    it.skip("SB question with `case` CC should substitute the `else` argument's table (metabase-enterprise#548)", () => {
       const QUESTION_NAME = "EE_548";
       const CC_NAME = "CC_548"; // Custom column
 
