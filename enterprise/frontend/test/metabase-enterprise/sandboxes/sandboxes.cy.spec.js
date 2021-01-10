@@ -59,11 +59,11 @@ function createUser(user) {
 
 describeWithToken("formatting > sandboxes", () => {
   before(restore);
+  describe("Sandboxes should work", () => {
+    beforeEach(() => {
+      signInAsAdmin();
 
-  describe("Setup for sandbox tests", () => {
-    beforeEach(signInAsAdmin);
-
-    it("should make SQL question", () => {
+      cy.log("**--Create parametrized SQL question--**");
       cy.request("POST", "/api/card", {
         name: "sql param",
         dataset_query: {
@@ -86,39 +86,35 @@ describeWithToken("formatting > sandboxes", () => {
         display: "table",
         visualization_settings: {},
       });
+
+      cy.log("**--Create question with joins--**");
+      cy.request("POST", "/api/card", {
+        name: "test joins table",
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ],
+                alias: "Products",
+              },
+            ],
+          },
+          database: 1,
+        },
+        display: "table",
+        visualization_settings: {},
+      });
     });
-
-    // TODO: Remove manual waiting
-    it("should make a JOINs table", () => {
-      openOrdersTable();
-      cy.wait(1000)
-        .get(".Icon-notebook")
-        .click();
-      cy.wait(1000)
-        .findByText("Join data")
-        .click();
-      cy.findByText("Products").click();
-      cy.findByText("Visualize").click();
-      cy.findByText("Save").click();
-
-      cy.findByLabelText("Name")
-        .clear()
-        .wait(1)
-        .type("test joins table");
-      cy.findAllByText("Save")
-        .last()
-        .click();
-      cy.findByText("Not now").click();
-    });
-  });
-
-  describe("Sandboxes should work", () => {
-    beforeEach(signInAsNormalUser);
 
     it("should add key attributes to new user and existing user", () => {
-      signOut();
-      signInAsAdmin();
-
       // Existing user
       cy.visit("/admin/people");
       cy.get(".Icon-ellipsis")
@@ -146,9 +142,6 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should change sandbox permissions as admin", () => {
-      signOut();
-      signInAsAdmin();
-
       // Changes Orders permssions to use filter and People to use SQL filter
       cy.request("POST", "/api/mt/gtap", {
         id: 1,
@@ -188,6 +181,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should be sandboxed with a filter (on normal table)", () => {
+      signInAsNormalUser();
       cy.visit("/browse/1");
       cy.findByText("Orders").click();
 
@@ -242,6 +236,7 @@ describeWithToken("formatting > sandboxes", () => {
 
     // TODO: Restore before each test and avoid using hard coded question IDs
     it("should be sandboxed with a filter (on a saved JOINed question)", () => {
+      signInAsNormalUser();
       cy.visit("/question/5");
 
       cy.wait(2000)
@@ -250,6 +245,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should be sandboxed with a filter (after applying a filter to a JOINed question)", () => {
+      signInAsNormalUser();
       cy.visit("/question/5");
 
       // Notebook filter
@@ -271,6 +267,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should filter categories on saved SQL question (for a new question - column number)", () => {
+      signInAsNormalUser();
       openPeopleTable();
       cy.get(".TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
@@ -279,6 +276,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should filter categories on saved SQL question (for a new question - row number)", () => {
+      signInAsNormalUser();
       openPeopleTable();
       cy.get(".TableInteractive-headerCellData").should("have.length", 4);
     });
