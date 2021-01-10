@@ -30,12 +30,6 @@ const {
   COLLECTION_GROUP,
 } = USER_GROUPS;
 
-const new_user = {
-  first_name: "Barb",
-  last_name: "Tabley",
-  username: "new@metabase.com",
-};
-
 // TODO: If we ever have the need to use this user across multiple tests, extract it to `__support__/cypress`
 const sandboxed_user = {
   first_name: "User",
@@ -58,227 +52,233 @@ function createUser(user) {
 }
 
 describeWithToken("formatting > sandboxes", () => {
-  before(restore);
-  describe("Sandboxes should work", () => {
+  describe("should work", () => {
     beforeEach(() => {
+      restore();
       signInAsAdmin();
+    });
+    describe("for admins", () => {
+      beforeEach(() => {
+        cy.visit("/admin/people");
+      });
 
-      cy.log("**--Create parametrized SQL question--**");
-      cy.request("POST", "/api/card", {
-        name: "sql param",
-        dataset_query: {
-          type: "native",
-          native: {
-            query: "select id,name,address,email from people where {{cid}}",
-            "template-tags": {
-              cid: {
-                id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
-                name: "cid",
-                "display-name": "CID",
-                type: "dimension",
-                dimension: ["field-id", PEOPLE.ID],
-                "widget-type": "id",
+      it("should add key attributes to an existing user", () => {
+        cy.get(".Icon-ellipsis")
+          .last()
+          .click();
+        cy.findByText("Edit user").click();
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("3");
+        cy.findByText("Update").click();
+      });
+
+      it("should add key attributes to a new user", () => {
+        cy.findByText("Add someone").click();
+        cy.findByPlaceholderText("Johnny").type(sandboxed_user.first_name);
+        cy.findByPlaceholderText("Appleseed").type(sandboxed_user.last_name);
+        cy.findByPlaceholderText("youlooknicetoday@email.com").type(
+          sandboxed_user.email,
+        );
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("1");
+        cy.findAllByText("Create").click();
+        cy.findByText("Done").click();
+      });
+    });
+
+    describe("on sandboxed users", () => {
+      beforeEach(() => {
+        cy.log("**--Create parametrized SQL question--**");
+        cy.request("POST", "/api/card", {
+          name: "sql param",
+          dataset_query: {
+            type: "native",
+            native: {
+              query: "select id,name,address,email from people where {{cid}}",
+              "template-tags": {
+                cid: {
+                  id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+                  name: "cid",
+                  "display-name": "CID",
+                  type: "dimension",
+                  dimension: ["field-id", PEOPLE.ID],
+                  "widget-type": "id",
+                },
               },
             },
+            database: 1,
           },
-          database: 1,
-        },
-        display: "table",
-        visualization_settings: {},
-      });
+          display: "table",
+          visualization_settings: {},
+        });
 
-      cy.log("**--Create question with joins--**");
-      cy.request("POST", "/api/card", {
-        name: "test joins table",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-                condition: [
-                  "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-                ],
-                alias: "Products",
-              },
-            ],
+        cy.log("**--Create question with joins--**");
+        cy.request("POST", "/api/card", {
+          name: "test joins table",
+          dataset_query: {
+            type: "query",
+            query: {
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  fields: "all",
+                  "source-table": PRODUCTS_ID,
+                  condition: [
+                    "=",
+                    ["field-id", ORDERS.PRODUCT_ID],
+                    ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ],
+                  alias: "Products",
+                },
+              ],
+            },
+            database: 1,
           },
-          database: 1,
-        },
-        display: "table",
-        visualization_settings: {},
-      });
-    });
+          display: "table",
+          visualization_settings: {},
+        });
+        // Existing user ("normal")
+        cy.request("PUT", "/api/user/2", {
+          login_attributes: { "User ID": "3" },
+        });
 
-    it("should add key attributes to new user and existing user", () => {
-      // Existing user
-      cy.visit("/admin/people");
-      cy.get(".Icon-ellipsis")
-        .last()
-        .click();
-      cy.findByText("Edit user").click();
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("3");
-      cy.findByText("Update").click();
-
-      // New user
-      cy.visit("/admin/people");
-      cy.findByText("Add someone").click();
-      cy.findByPlaceholderText("Johnny").type(new_user.first_name);
-      cy.findByPlaceholderText("Appleseed").type(new_user.last_name);
-      cy.findByPlaceholderText("youlooknicetoday@email.com").type(
-        new_user.username,
-      );
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("1");
-      cy.findAllByText("Create").click();
-      cy.findByText("Done").click();
-    });
-
-    it("should change sandbox permissions as admin", () => {
-      // Changes Orders permssions to use filter and People to use SQL filter
-      cy.request("POST", "/api/mt/gtap", {
-        id: 1,
-        group_id: DATA_GROUP,
-        table_id: ORDERS_ID,
-        card_id: null,
-        attribute_remappings: {
-          "User ID": ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-      });
-      cy.request("POST", "/api/mt/gtap", {
-        group_id: DATA_GROUP,
-        table_id: PEOPLE_ID,
-        card_id: 4,
-        attribute_remappings: {
-          "User ID": ["dimension", ["template-tag", "cid"]],
-        },
-      });
-      cy.request("PUT", "/api/permissions/graph", {
-        revision: 1,
-        groups: {
-          [ADMIN_GROUP]: { "1": { native: "write", schemas: "all" } },
-          [DATA_GROUP]: {
-            "1": {
-              schemas: {
-                PUBLIC: {
-                  [ORDERS_ID]: { query: "segmented", read: "all" },
-                  [PEOPLE_ID]: { query: "segmented", read: "all" },
-                  [PRODUCTS_ID]: "all",
-                  [REVIEWS_ID]: "all",
+        // Changes Orders permssions to use filter...
+        cy.request("POST", "/api/mt/gtap", {
+          group_id: DATA_GROUP,
+          table_id: ORDERS_ID,
+          card_id: null,
+          attribute_remappings: {
+            "User ID": ["dimension", ["field-id", ORDERS.USER_ID]],
+          },
+        });
+        // and People to use SQL filter
+        cy.request("POST", "/api/mt/gtap", {
+          group_id: DATA_GROUP,
+          table_id: PEOPLE_ID,
+          card_id: 4,
+          attribute_remappings: {
+            "User ID": ["dimension", ["template-tag", "cid"]],
+          },
+        });
+        cy.request("PUT", "/api/permissions/graph", {
+          revision: 1,
+          groups: {
+            [ADMIN_GROUP]: { "1": { native: "write", schemas: "all" } },
+            [DATA_GROUP]: {
+              "1": {
+                schemas: {
+                  PUBLIC: {
+                    [ORDERS_ID]: { query: "segmented", read: "all" },
+                    [PEOPLE_ID]: { query: "segmented", read: "all" },
+                    [PRODUCTS_ID]: "all",
+                    [REVIEWS_ID]: "all",
+                  },
                 },
               },
             },
           },
-        },
-      });
-    });
-
-    it("should be sandboxed with a filter (on normal table)", () => {
-      signInAsNormalUser();
-      cy.visit("/browse/1");
-      cy.findByText("Orders").click();
-
-      // TODO: Refactor - asserting on the number of rows proved to be risky.
-      // Table filter - only 10 rows should show up
-      cy.contains("Showing 10");
-
-      // And those rows should only show the User ID of 3
-      // First get the number of columns...
-      // And then find the index of the column that contains "User ID"
-      // Then ensure every nth element of that column only contains the desired User ID
-      // TODO: If we use this again, it should go in a helper
-      cy.get(".TableInteractive-headerCellData")
-        .its("length")
-        .then(columnCount => {
-          cy.contains(".TableInteractive-headerCellData", "User ID")
-            .invoke("index")
-            .then(userIDIndex => {
-              cy.get(".cellData")
-                .its("length")
-                .then(cellCountWithHeaders => {
-                  const range = (start, stop, step) =>
-                    Array.from(
-                      { length: (stop - start) / step + 1 },
-                      (_, i) => start + i * step,
-                    );
-                  // Loop over the columns starting at the zero-indexed second row (first row is headers)
-                  // userIDIndex is already zero-indexed, so we just add that to the number of columns
-                  const genArr = range(
-                    columnCount + userIDIndex,
-                    cellCountWithHeaders,
-                    columnCount,
-                  );
-                  cy.wrap(genArr).each(index => {
-                    cy.get(".cellData")
-                      .eq(index)
-                      .should("have.text", "3");
-                  });
-                });
-            });
         });
+        signOut();
+        signInAsNormalUser();
+      });
 
-      // Notebook filter
-      cy.get(".Icon-notebook").click();
-      cy.findByText("Summarize").click();
-      cy.findByText("Count of rows").click();
-      cy.findByText("Visualize").click();
-      cy.get(".ScalarValue");
-      cy.findByText("18,760").should("not.exist");
-      cy.findByText("10");
-    });
+      it("should be sandboxed with a filter (on normal table)", () => {
+        cy.visit("/browse/1");
+        cy.findByText("Orders").click();
 
-    // TODO: Restore before each test and avoid using hard coded question IDs
-    it("should be sandboxed with a filter (on a saved JOINed question)", () => {
-      signInAsNormalUser();
-      cy.visit("/question/5");
+        // TODO: Refactor - asserting on the number of rows proved to be risky.
+        // Table filter - only 10 rows should show up
+        cy.contains("Showing 10");
 
-      cy.wait(2000)
-        .get(".TableInteractive-cellWrapper--firstColumn")
-        .should("have.length", 11);
-    });
+        // And those rows should only show the User ID of 3
+        // First get the number of columns...
+        // And then find the index of the column that contains "User ID"
+        // Then ensure every nth element of that column only contains the desired User ID
+        // TODO: If we use this again, it should go in a helper
+        cy.get(".TableInteractive-headerCellData")
+          .its("length")
+          .then(columnCount => {
+            cy.contains(".TableInteractive-headerCellData", "User ID")
+              .invoke("index")
+              .then(userIDIndex => {
+                cy.get(".cellData")
+                  .its("length")
+                  .then(cellCountWithHeaders => {
+                    const range = (start, stop, step) =>
+                      Array.from(
+                        { length: (stop - start) / step + 1 },
+                        (_, i) => start + i * step,
+                      );
+                    // Loop over the columns starting at the zero-indexed second row (first row is headers)
+                    // userIDIndex is already zero-indexed, so we just add that to the number of columns
+                    const genArr = range(
+                      columnCount + userIDIndex,
+                      cellCountWithHeaders,
+                      columnCount,
+                    );
+                    cy.wrap(genArr).each(index => {
+                      cy.get(".cellData")
+                        .eq(index)
+                        .should("have.text", "3");
+                    });
+                  });
+              });
+          });
 
-    it("should be sandboxed with a filter (after applying a filter to a JOINed question)", () => {
-      signInAsNormalUser();
-      cy.visit("/question/5");
+        // Notebook filter
+        cy.get(".Icon-notebook").click();
+        cy.findByText("Summarize").click();
+        cy.findByText("Count of rows").click();
+        cy.findByText("Visualize").click();
+        cy.get(".ScalarValue");
+        cy.findByText("18,760").should("not.exist");
+        cy.findByText("10");
+      });
 
-      // Notebook filter
-      cy.get(".Icon-notebook").click();
-      cy.wait(2000)
-        .findByText("Filter")
-        .click();
-      cy.findAllByText("Total")
-        .last()
-        .click();
-      cy.findByText("Equal to").click();
-      cy.findByText("Greater than").click();
-      cy.findByPlaceholderText("Enter a number").type("100");
-      cy.findByText("Add filter").click();
-      cy.findByText("Visualize").click();
-      cy.wait(2000)
-        .get(".TableInteractive-cellWrapper--firstColumn")
-        .should("have.length", 7);
-    });
+      // TODO: Restore before each test and avoid using hard coded question IDs
+      it("should be sandboxed with a filter (on a saved JOINed question)", () => {
+        cy.visit("/question/5");
 
-    it("should filter categories on saved SQL question (for a new question - column number)", () => {
-      signInAsNormalUser();
-      openPeopleTable();
-      cy.get(".TableInteractive-cellWrapper--firstColumn").should(
-        "have.length",
-        2,
-      );
-    });
+        cy.wait(2000)
+          .get(".TableInteractive-cellWrapper--firstColumn")
+          .should("have.length", 11);
+      });
 
-    it("should filter categories on saved SQL question (for a new question - row number)", () => {
-      signInAsNormalUser();
-      openPeopleTable();
-      cy.get(".TableInteractive-headerCellData").should("have.length", 4);
+      it("should be sandboxed with a filter (after applying a filter to a JOINed question)", () => {
+        cy.visit("/question/5");
+
+        // Notebook filter
+        cy.get(".Icon-notebook").click();
+        cy.wait(2000)
+          .findByText("Filter")
+          .click();
+        cy.findAllByText("Total")
+          .last()
+          .click();
+        cy.findByText("Equal to").click();
+        cy.findByText("Greater than").click();
+        cy.findByPlaceholderText("Enter a number").type("100");
+        cy.findByText("Add filter").click();
+        cy.findByText("Visualize").click();
+        cy.wait(2000)
+          .get(".TableInteractive-cellWrapper--firstColumn")
+          .should("have.length", 7);
+      });
+
+      it("should filter categories on saved SQL question (for a new question - column number)", () => {
+        openPeopleTable();
+        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+          "have.length",
+          2,
+        );
+      });
+
+      it("should filter categories on saved SQL question (for a new question - row number)", () => {
+        openPeopleTable();
+        cy.get(".TableInteractive-headerCellData").should("have.length", 4);
+      });
     });
   });
 
