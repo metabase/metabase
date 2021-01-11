@@ -1,5 +1,6 @@
 (ns metabase.cmd.load-and-dump-test
   (:require [clojure.java.io :as io]
+            [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [metabase.cmd.compare-h2-dbs :as compare-h2-dbs]
             [metabase.cmd.copy.h2 :as h2]
@@ -9,8 +10,30 @@
             [metabase.db.setup :as mdb.setup]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
-            [metabase.models :refer [Database Table Field FieldValues Metric Dimension
-            MetricImportantField Segment Collection CollectionRevision NativeQuerySnippet Activity]]
+            [metabase.models
+             :refer
+             [Activity
+              Card
+              CardFavorite
+              Collection
+              CollectionRevision
+              Dashboard
+              DashboardCard
+              DashboardFavorite
+              Database
+              Dimension
+              Field
+              FieldValues
+              Metric
+              MetricImportantField
+              NativeQuerySnippet
+              Pulse
+              PulseCard
+              PulseChannel
+              PulseChannelRecipient
+              Segment
+              Table
+              User]]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
@@ -18,51 +41,87 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
+(defn- insert-with-overrides
+  ([table]
+   (db/insert! table (tt/with-temp-defaults table)))
+  ([table & overrides]
+   (db/insert! table (apply assoc (tt/with-temp-defaults table) overrides))))
 
 (defn load-it! []
-  (let [db (db/insert! Database (tt/with-temp-defaults Database))
-        user (db/insert! User (tt/with-temp-defaults User))
+  (let [db (insert-with-overrides Database)
+        user (insert-with-overrides User)
+
+        ;; permissions-group (db/insert! PermissionsGroup (tt/with-temp-defaults PermissionsGroup))
+        ;; permissions-group-membership (db/insert! PermissionsGroupMembership
+        ;;                                {:user_id (:id user)}
+        ;;                                :group_id (:id permissions-group))
 
         ;; db_fks
-        table (db/insert! Table (assoc (tt/with-temp-defaults Table)
-                                       :db_id (:id db)))
-        field (db/insert! Field (assoc (tt/with-temp-defaults Field)
-                                       :table_id (:id table)))
-        metric (db/insert! Metric (assoc (tt/with-temp-defaults Metric)
-                                       :table_id (:id table)))
+        table (insert-with-overrides Table :db_id (:id db))
 
+        field (insert-with-overrides Field :table_id (:id table))
+
+        metric (insert-with-overrides Metric
+                                      :table_id (:id table)
+                                      :creator_id (:id user))
 
         ;; table_fks
-        field_value (db/insert! FieldValues (assoc (tt/with-temp-defaults FieldValues)
-                                                   :field_id (:id field)))
-        dimension (db/insert! Dimension (assoc (tt/with-temp-defaults Dimension)
-                                               :field_id (:id field)))
-        important_field (db/insert! MetricImportantField (assoc (tt/with-temp-defaults MetricImportantField)
-                                                          :field_id (:id field)
-                                                          :metric_id (:id metric)))
+        field_value (insert-with-overrides FieldValues :field_id (:id field))
+
+        dimension (insert-with-overrides Dimension :field_id (:id field))
+
+        important_field (insert-with-overrides MetricImportantField
+                                               :field_id (:id field)
+                                               :metric_id (:id metric))
 
         ;; db+user_fks
-        segment (db/insert! Segment (assoc (tt/with-temp-defaults Segment)
-                                           :table_id (:id table)
-                                           :creator_id (:id user)))
+        segment (insert-with-overrides Segment
+                                       :table_id (:id table)
+                                       :creator_id (:id user))
 
-        collection (db/insert! Collection (assoc (tt/with-temp-defaults Collection)
-                                                 :personal_owner_id (:id user)))
+        collection (insert-with-overrides Collection
+                                          :personal_owner_id (:id user))
 
-        snippets-collection (db/insert! Collection (assoc (tt/with-temp-defaults Collection)
-                                                          :namespace :snippets))
+        snippets-collection (insert-with-overrides Collection :namespace :snippets)
 
-        collection-revision (db/insert! CollectionRevision (assoc (tt/with-temp-defaults CollectionRevision)
-                                                                  :user_id (:id user)))
+        collection-revision (insert-with-overrides CollectionRevision
+                                                   :user_id (:id user))
 
-        native-query-snippet (db/insert! NativeQuerySnippet (assoc (tt/with-temp-defaults NativeQuerySnippet)
-                                                                   :creator_id (:id user)
-                                                                   :collection_id (:id snippets-collection)))
+        native-query-snippet (insert-with-overrides NativeQuerySnippet
+                                                    :creator_id (:id user)
+                                                    :collection_id (:id snippets-collection))
+        ;; already present in the default db, but I couldn't get to insert into it. Also, it might not be a good idea
+        ;; in case other tests rely on that db having a particular shape
+        activity (insert-with-overrides Activity :user_id (:id user))
 
-        ;; ;; already present in the default db, but I couldn't get to insert into it. Also, it might not be a good idea
-        ;; ;; in case other tests rely on that db having a particular shape
-        ;; activity (db/insert! Activity (assoc (tt/with-temp-defaults Activity)
-        ;;                                      :user_id (:id user)))
+        card (insert-with-overrides Card
+                                    :creator_id (:id user)
+                                    :database_id (:id db)
+                                    :table_id (:id table)
+                                    :collection_id (:id collection))
+
+        card-favorite (insert-with-overrides CardFavorite
+                                             :owner_id (:id user)
+                                             :card_id (:id card))
+        dashboard (insert-with-overrides Dashboard
+                                         :creator_id (:id user)
+                                         :collection_id (:id collection))
+        dashboard-card (insert-with-overrides DashboardCard
+                                              :card_id (:id card)
+                                              :dashboard_id (:id dashboard))
+        dashboard-favorite (insert-with-overrides DashboardFavorite
+                                                  :user_id (:id user)
+                                                  :dashboard_id (:id dashboard))
+
+        pulse (insert-with-overrides Pulse :creator_id (:id user) :collection_id (:id collection))
+        pulse-card (insert-with-overrides PulseCard
+                                          :pulse_id (:id pulse)
+                                          :card_id (:id card)
+                                          :dashboard_card_id (:id dashboard-card))
+        pulse-channel (insert-with-overrides PulseChannel :pulse_id (:id pulse))
+        pulse-channel-recipient (insert-with-overrides PulseChannelRecipient
+                                                       :pulse_channel_id (:id pulse-channel)
+                                                       :user_id (:id user))
 
         ;; ;; 404 not found entities
         ;; label (db/insert! Label (assoc (tt/with-temp-defaults Label)))
@@ -83,21 +142,12 @@
       (mdb.setup/setup-db! :h2 jdbc-spec true)
       (load-it!))))
 
-(defn x []
-  (let [spec {:subprotocol "h2"
-              :subname     "file:/tmp/my_db.db"
-              :classname   "org.h2.Driver"}]
-    (load-a-bunch-of-data! "/tmp/my_db.db" spec)
-    (jdbc/query spec ["SELECT * FROM metabase_table;"])))
-
 (defn populate-h2-db! [file-name]
   (let [spec {:subprotocol "h2"
               :subname     (format "file:%s" file-name)
               :classname   "org.h2.Driver"}]
     (load-a-bunch-of-data! file-name spec)
-    (jdbc/query spec ["SELECT * FROM metabase_table;"])))
-
-
+    (jdbc/query spec ["SELECT * FROM activity;"])))
 
 (defn- abs-path
   [path]
