@@ -9,8 +9,8 @@
             [metabase.db.setup :as mdb.setup]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
-            [metabase.models :refer [Database Table Field FieldValues Metric Dimension MetricImportantField Segment
-            Collection CollectionRevision NativeQuerySnippet Activity]]
+            [metabase.models :refer [Database Table Field FieldValues Metric Dimension
+            MetricImportantField Segment Collection CollectionRevision NativeQuerySnippet Activity]]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
@@ -59,11 +59,16 @@
                                                                    :creator_id (:id user)
                                                                    :collection_id (:id snippets-collection)))
 
-        ;; already present in the default db, but I couldn't get to insert into it. Also, it might not be a good idea
-        ;; in case other tests rely on that db having a particular shape
+        ;; ;; already present in the default db, but I couldn't get to insert into it. Also, it might not be a good idea
+        ;; ;; in case other tests rely on that db having a particular shape
+        ;; activity (db/insert! Activity (assoc (tt/with-temp-defaults Activity)
+        ;;                                      :user_id (:id user)))
 
-        activity (db/insert! Activity (assoc (tt/with-temp-defaults Activity)
-                                             :user_id (:id user)))
+        ;; ;; 404 not found entities
+        ;; label (db/insert! Label (assoc (tt/with-temp-defaults Label)))
+        ;; card-label (db/insert! CardLabel (assoc (tt/with-temp-defaults CardLabel
+        ;;                                           :label_id (:id label))))
+
         ]
     (println "POPULATED!")))
 
@@ -76,24 +81,7 @@
             setting/*disable-cache*    true]
     (with-redefs [i18n.impl/site-locale-from-setting-fn (atom (constantly false))]
       (mdb.setup/setup-db! :h2 jdbc-spec true)
-      (load-it!)
-      ;; (dotimes [_ 1]
-      ;;   (let [db (db/insert! Database (tt/with-temp-defaults Database))]
-      ;;     (dotimes [_ 1]
-      ;;       (let [table (db/insert! Table (assoc (tt/with-temp-defaults Table)
-      ;;                                            :db_id (:id db)))]
-      ;; (dotimes [_ 1]
-      ;;   (let [field (db/insert! Field (assoc (tt/with-temp-defaults Field)
-      ;;                                        :table_id (:id table)))]
-      ;;     (dotimes [_ 1]
-      ;;       (let [field_value (db/insert! FieldValues (assoc (tt/with-temp-defaults FieldValues)
-      ;;                                                        :field_id (:id field)))]
-
-      ;;                 ))
-      ;;             ))
-
-      ;;         ))))
-      )))
+      (load-it!))))
 
 (defn x []
   (let [spec {:subprotocol "h2"
@@ -121,6 +109,7 @@
           ;; (abs-path "frontend/test/__runner__/test_db_fixture.db")
           h2-file            (abs-path "/tmp/out.db")
           db-name            "dump-test"]
+      (h2/delete-existing-h2-database-files! h2-fixture-db-file)
       (populate-h2-db! h2-fixture-db-file)
       (mt/test-drivers #{:postgres :mysql :h2}
         (h2/delete-existing-h2-database-files! h2-file)
