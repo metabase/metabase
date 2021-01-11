@@ -3,14 +3,11 @@
   (:require [clojure.data :as diff]
             [clojure.java.io :as io]
             [expectations :refer [expect]]
-            [metabase
-             [models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency Dimension
-                             Field FieldValues Metric Pulse PulseCard PulseChannel Segment Table User]]
-             [util :as u]]
-            [metabase-enterprise.serialization
-             [cmd :refer [dump load]]
-             [test-util :as ts]]
+            [metabase-enterprise.serialization.cmd :refer [dump load]]
+            [metabase-enterprise.serialization.test-util :as ts]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency Dimension Field FieldValues Metric Pulse PulseCard PulseChannel Segment Table User]]
             [metabase.test.data.users :as test-users]
+            [metabase.util :as u]
             [toucan.db :as db])
   (:import org.apache.commons.io.FileUtils))
 

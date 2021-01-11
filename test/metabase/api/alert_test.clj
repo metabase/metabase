@@ -2,22 +2,19 @@
   "Tests for `/api/alert` endpoints."
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [email-test :as et]
-             [http-client :as http]
-             [models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
-             [test :as mt]
-             [util :as u]]
-            [metabase.middleware.util :as middleware.u]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as group]
-             [pulse :as pulse]
-             [pulse-test :as pulse-test]]
-            [metabase.test.util :as tu]
+            [metabase.email-test :as et]
+            [metabase.http-client :as http]
+            [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.pulse :as pulse]
+            [metabase.models.pulse-test :as pulse-test]
+            [metabase.server.middleware.util :as middleware.u]
+            [metabase.test :as mt]
             [metabase.test.data.users :as users :refer :all]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [schema.core :as s]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -245,7 +242,8 @@
                                  :created_at    true})]
    :skip_if_empty       true
    :collection_id       false
-   :collection_position nil})
+   :collection_position nil
+   :dashboard_id        false})
 
 (def ^:private daily-email-channel
   {:enabled       true

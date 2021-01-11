@@ -1,22 +1,17 @@
 (ns metabase.driver.mongo.execute
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [clojure.core.async :as a]
+  (:require [clojure.core.async :as a]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.driver.mongo
-             [query-processor :as mongo.qp]
-             [util :refer [*mongo-connection*]]]
-            [metabase.query-processor
-             [context :as context]
-             [error-type :as error-type]
-             [reducible :as qp.reducible]]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :as ui18n :refer [tru]]]
-            [monger
-             [conversion :as m.conversion]
-             [util :as m.util]]
+            [metabase.driver.mongo.query-processor :as mongo.qp]
+            [metabase.driver.mongo.util :refer [*mongo-connection*]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :as ui18n :refer [tru]]
+            [monger.conversion :as m.conversion]
+            [monger.util :as m.util]
             [schema.core :as s])
   (:import [com.mongodb AggregationOptions AggregationOptions$OutputMode Cursor DB DBObject]
            java.util.concurrent.TimeUnit))

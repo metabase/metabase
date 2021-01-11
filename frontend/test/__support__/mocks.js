@@ -34,20 +34,7 @@ jest.mock("ace/snippets/json", () => {}, { virtual: true });
 jest.mock("ace/snippets/json", () => {}, { virtual: true });
 jest.mock("ace/ext-language_tools", () => {}, { virtual: true });
 
-// Use test versions of components that are normally rendered to document root or use unsupported browser APIs
-import * as modal from "metabase/components/Modal";
-modal.default = modal.TestModal;
-
-import * as tooltip from "metabase/components/Tooltip";
-tooltip.default = tooltip.TestTooltip;
-
 jest.mock("metabase/components/Popover");
-
-import * as bodyComponent from "metabase/components/BodyComponent";
-bodyComponent.default = bodyComponent.TestBodyComponent;
-
-import * as table from "metabase/visualizations/visualizations/Table";
-table.default = table.TestTable;
 
 // Replace addEventListener with a test implementation which collects all event listeners to `eventListeners` map
 export const eventListeners = {};

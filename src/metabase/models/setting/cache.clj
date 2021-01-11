@@ -5,12 +5,10 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :as ui18n :refer [trs]]]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :as ui18n :refer [trs]]
             [toucan.db :as db])
   (:import java.util.concurrent.locks.ReentrantLock))
 
@@ -57,7 +55,7 @@
   []
   (log/debug (trs "Updating value of settings-last-updated in DB..."))
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb/db-type) :mysql) :char :text)
+  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
                                                       (hsql/raw "current_timestamp"))]
     ;; attempt to UPDATE the existing row. If no row exists, `update-where!` will return false...
     (or (db/update-where! 'Setting {:key settings-last-updated-key} :value current-timestamp-as-string-honeysql)
@@ -145,8 +143,8 @@
       (when (.tryLock restore-cache-lock)
         (try
           ;; don't try to restore the cache before the application DB is ready, it's not going to work...
-          (when-let [db-is-setup? (resolve 'metabase.db/db-is-setup?)]
-            (when (db-is-setup?)
+          (when-let [db-is-set-up? (resolve 'metabase.db/db-is-set-up?)]
+            (when (db-is-set-up?)
               (reset! last-update-check (System/currentTimeMillis))
               (when (cache-out-of-date?)
                 (restore-cache!))))

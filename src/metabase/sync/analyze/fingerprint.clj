@@ -4,19 +4,16 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.db.util :as mdb.u]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [redux.core :as redux]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -142,7 +139,7 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb/isa :special_type :type/PK)]
+    [:not (mdb.u/isa :special_type :type/PK)]
     [:= :special_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
    [:not= :base_type "type/Structured"]])

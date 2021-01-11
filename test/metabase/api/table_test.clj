@@ -1,28 +1,24 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require [cheshire.core :as json]
-            [clojure
-             [test :refer :all]
-             [walk :as walk]]
+            [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase
-             [http-client :as http]
-             [models :refer [Card Database Field FieldValues Table]]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
-            [metabase.middleware.util :as middleware.u]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as perms-group]
-             [table :as table]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.http-client :as http]
+            [metabase.models :refer [Card Database Field FieldValues Table]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.models.table :as table]
+            [metabase.server.middleware.util :as middleware.u]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
             [metabase.test.mock.util :as mutil]
+            [metabase.test.util :as tu]
             [metabase.timeseries-query-processor-test.util :as tqpt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 ;; ## /api/org/* AUTHENTICATION Tests

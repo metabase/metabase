@@ -3,30 +3,26 @@
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
             [metabase.api.common :as api :refer [*current-user-id*]]
-            [metabase.mbql
-             [normalize :as normalize]
-             [util :as mbql.u]]
-            [metabase.middleware.session :as session]
-            [metabase.models
-             [collection :as collection]
-             [dependency :as dependency]
-             [field-values :as field-values]
-             [interface :as i]
-             [params :as params]
-             [permissions :as perms]
-             [query :as query]
-             [revision :as revision]]
+            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.collection :as collection]
+            [metabase.models.dependency :as dependency]
+            [metabase.models.field-values :as field-values]
+            [metabase.models.interface :as i]
+            [metabase.models.params :as params]
+            [metabase.models.permissions :as perms]
+            [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.models.revision :as revision]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.util :as qputil]
+            [metabase.server.middleware.session :as session]
+            [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [tru]]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (models/defmodel Card :report_card)
 

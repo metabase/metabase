@@ -2,14 +2,12 @@
   "Implementation of the JWT backend for sso"
   (:require [buddy.sign.jwt :as jwt]
             [metabase-enterprise.sso.api.sso :as sso]
-            [metabase-enterprise.sso.integrations
-             [sso-settings :as sso-settings]
-             [sso-utils :as sso-utils]]
-            [metabase.api
-             [common :as api]
-             [session :as session]]
+            [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+            [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
+            [metabase.api.common :as api]
+            [metabase.api.session :as session]
             [metabase.integrations.common :as integrations.common]
-            [metabase.middleware.session :as mw.session]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.util.i18n :refer [tru]]
             [ring.util.response :as resp])
   (:import java.net.URLEncoder))

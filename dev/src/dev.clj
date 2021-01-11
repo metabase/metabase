@@ -2,19 +2,19 @@
   "Put everything needed for REPL development within easy reach"
   (:require [clojure.core.async :as a]
             [honeysql.core :as hsql]
-            [metabase
-             [core :as mbc]
-             [db :as mdb]
-             [driver :as driver]
-             [handler :as handler]
-             [plugins :as pluguns]
-             [server :as server]
-             [test :as mt]
-             [util :as u]]
             [metabase.api.common :as api-common]
+            [metabase.core :as mbc]
+            [metabase.core.initialization-status :as init-status]
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.plugins :as plugins]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test.data.impl :as data.impl]))
+            [metabase.server :as server]
+            [metabase.server.handler :as handler]
+            [metabase.test :as mt]
+            [metabase.test.data.impl :as data.impl]
+            [metabase.util :as u]))
 
 (def initialized?
   (atom nil))
@@ -28,10 +28,10 @@
   []
   (when-not @initialized?
     (init!))
-  (metabase.server/start-web-server! #'metabase.handler/app)
-  (metabase.db/setup-db!)
-  (metabase.plugins/load-plugins!)
-  (metabase.core.initialization-status/set-complete!))
+  (server/start-web-server! #'handler/app)
+  (mdb/setup-db!)
+  (plugins/load-plugins!)
+  (init-status/set-complete!))
 
 (defn stop!
   []
@@ -52,6 +52,10 @@
 
   ([a-namespace]
    (doseq [[symb] (ns-interns a-namespace)]
+     (ns-unmap a-namespace symb))
+   (doseq [[symb varr] (ns-refers a-namespace)
+           :when (not= (the-ns (:ns (meta varr)))
+                       (the-ns 'clojure.core))]
      (ns-unmap a-namespace symb))))
 
 (defn ns-unalias-all

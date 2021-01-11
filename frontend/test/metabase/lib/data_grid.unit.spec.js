@@ -180,7 +180,7 @@ describe("data_grid", () => {
             { span: 1, value: "z" },
           ],
         ],
-        [[{ span: 1, value: "Row totals" }], [{ span: 1, value: "Metric" }]],
+        [[{ span: 1, value: "Row totals" }]],
       ]);
       expect(leftIndex).toEqual([]);
       expect(rowCount).toEqual(1);
@@ -243,7 +243,7 @@ describe("data_grid", () => {
       expect(topIndex).toEqual([
         [[{ value: "a", span: 1 }]],
         [[{ value: "b", span: 1 }]],
-        [[{ span: 1, value: "Row totals" }], [{ value: "Metric", span: 1 }]],
+        [[{ span: 1, value: "Row totals" }]],
       ]);
       expect(extractValues(getRowSection(0, 0))).toEqual([["1"]]);
       expect(extractValues(getRowSection(1, 1))).toEqual([[null]]);

@@ -1,18 +1,15 @@
 (ns metabase.models.database-test
   (:require [cheshire.core :refer [decode encode]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [models :refer [Database]]
-             [task :as task]
-             [test :as mt]]
-            [metabase.middleware.session :as mw.session]
-            [metabase.models
-             [database :as mdb]
-             [permissions :as perms]
-             [user :as user]]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.models :refer [Database]]
+            [metabase.models.database :as mdb]
+            [metabase.models.permissions :as perms]
+            [metabase.models.user :as user]
             [metabase.plugins.classloader :as classloader]
+            [metabase.server.middleware.session :as mw.session]
+            [metabase.task :as task]
+            [metabase.test :as mt]
             [schema.core :as s]
             [toucan.db :as db]))
 

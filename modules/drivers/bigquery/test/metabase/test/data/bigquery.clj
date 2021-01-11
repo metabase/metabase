@@ -3,20 +3,16 @@
             [flatland.ordered.map :as ordered-map]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [util :as u]]
-            [metabase.driver
-             [bigquery :as bigquery]
-             [google :as google]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.driver.bigquery :as bigquery]
+            [metabase.driver.google :as google]
             [metabase.test.data :as data]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]]
-            [metabase.util
-             [date-2 :as u.date]
-             [schema :as su]]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import com.google.api.client.util.DateTime
            [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table

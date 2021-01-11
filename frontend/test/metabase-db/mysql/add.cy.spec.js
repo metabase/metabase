@@ -25,11 +25,7 @@ describe("mysql > admin > add", () => {
 
     typeAndBlurUsingLabel("Name", "QA MySQL8");
     typeAndBlurUsingLabel("Host", "localhost");
-    // TODO: "Port" label and input field are misconfigured (input field is missing `aria-labeledby` attribute)
-    // typeAndBlurUsingLabel("Port", "3306") => this will not work (switching to placeholder temporarily)
-    cy.findByPlaceholderText("3306")
-      .click()
-      .type("3306");
+    typeAndBlurUsingLabel("Port", "3306");
     typeAndBlurUsingLabel("Database name", "sample");
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");

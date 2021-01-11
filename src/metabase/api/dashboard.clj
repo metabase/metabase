@@ -3,36 +3,31 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase
-             [events :as events]
-             [related :as related]
-             [util :as u]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as magic.populate]
+            [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection]
-             [dashboard :as dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard delete-dashboard-card!]]
-             [dashboard-favorite :refer [DashboardFavorite]]
-             [field :refer [Field]]
-             [interface :as mi]
-             [params :as params]
-             [query :as query :refer [Query]]
-             [revision :as revision]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection]
+            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard delete-dashboard-card!]]
+            [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
+            [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [util :as qp-util]]
+            [metabase.models.query :as query :refer [Query]]
+            [metabase.models.revision :as revision]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.query-processor.util :as qp-util]
+            [metabase.related :as related]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import java.util.UUID))
 
 (defn- hydrate-favorites
@@ -322,7 +317,6 @@
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
-
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
@@ -336,7 +330,6 @@
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
     (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})))
-
 
 ;; TODO - we should use schema to validate the format of the Cards :D
 (api/defendpoint PUT "/:id/cards"
@@ -355,7 +348,6 @@
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
 
-
 (api/defendpoint DELETE "/:id/cards"
   "Remove a `DashboardCard` from a Dashboard."
   [id dashcardId]
@@ -363,15 +355,13 @@
   (api/check-not-archived (api/write-check Dashboard id))
   (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
     (api/check-500 (delete-dashboard-card! dashboard-card api/*current-user-id*))
-    {:success true})) ; TODO - why doesn't this return a 204 'No Content' response?
-
+    api/generic-204-no-content))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
   [id]
   (api/read-check Dashboard id)
   (revision/revisions+details Dashboard id))
-
 
 (api/defendpoint POST "/:id/revert"
   "Revert a Dashboard to a prior `Revision`."

@@ -3,9 +3,8 @@
    See http://www.quartz-scheduler.org/documentation/quartz-2.x/tutorials/crontrigger.html#format for details on cron
    format."
   (:require [clojure.string :as str]
-            [metabase.util
-             [i18n :as i18n]
-             [schema :as su]]
+            [metabase.util.i18n :as i18n]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import net.redhogs.cronparser.CronExpressionDescriptor
            org.quartz.CronExpression))

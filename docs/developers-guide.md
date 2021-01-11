@@ -244,6 +244,6 @@ If you see incorrect or missing strings for your language, please visit our [POE
 
 ## License
 
-Copyright © 2020 Metabase, Inc.
+Copyright © 2021 Metabase, Inc.
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted. See individual files for details.

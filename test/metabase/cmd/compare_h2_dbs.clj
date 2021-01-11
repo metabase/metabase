@@ -1,10 +1,9 @@
 (ns metabase.cmd.compare-h2-dbs
   "Utility functions for comparing the contents of two H2 DBs, for testing the `load-from-h2 and `dump-to-h2` commands."
-  (:require [clojure
-             [data :as data]
-             [pprint :as pprint]
-             [string :as str]]
+  (:require [clojure.data :as data]
             [clojure.java.jdbc :as jdbc]
+            [clojure.pprint :as pprint]
+            [clojure.string :as str]
             metabase.db.jdbc-protocols))
 
 (comment metabase.db.jdbc-protocols/keep-me)

@@ -5,12 +5,10 @@
    and infer field special types."
   (:require [clojure.tools.logging :as log]
             [metabase.models.field :refer [Field]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.sync.analyze
-             [classify :as classify]
-             [fingerprint :as fingerprint]]
+            [metabase.sync.analyze.classify :as classify]
+            [metabase.sync.analyze.fingerprint :as fingerprint]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]

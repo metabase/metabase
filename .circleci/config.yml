@@ -1077,7 +1077,7 @@ workflows:
           requires:
             - be-deps
           lein-command: with-profile +junit test
-          skip-key: tests
+          skip-key: tests-<< matrix.edition >>
           <<: *Matrix
 
       - lein:
@@ -1086,7 +1086,7 @@ workflows:
             - be-deps
           e: java-11
           lein-command: with-profile +junit test
-          skip-key: tests-java-11
+          skip-key: tests-java-11-<< matrix.edition >>
           <<: *Matrix
 
       - lein:

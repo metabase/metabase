@@ -1,18 +1,16 @@
 (ns metabase-enterprise.audit.pages-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.classpath :as classpath]
+  (:require [clojure.java.classpath :as classpath]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [clojure.tools.namespace.find :as ns-find]
-            [metabase
-             [models :refer [Card Dashboard DashboardCard Database Table]]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
+            [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qp-util]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 

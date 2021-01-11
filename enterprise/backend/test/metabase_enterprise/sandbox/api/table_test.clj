@@ -1,7 +1,6 @@
 (ns metabase-enterprise.sandbox.api.table-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase-enterprise.sandbox.test-util :as mt.tu]
             [metabase.test :as mt]))
 

@@ -3,9 +3,8 @@
             [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util
-             [i18n :as ui18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [ring.util.response :as rr]
             [schema.core :as s])
   (:import org.apache.commons.io.input.ReaderInputStream))

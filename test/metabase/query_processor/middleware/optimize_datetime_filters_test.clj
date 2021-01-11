@@ -1,13 +1,11 @@
 (ns metabase.query-processor.middleware.optimize-datetime-filters-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [test :as mt]]
+            [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.optimize-datetime-filters :as optimize-datetime-filters]
+            [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
 (driver/register! ::timezone-driver, :abstract? true)

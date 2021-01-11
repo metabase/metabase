@@ -1,11 +1,9 @@
 (ns metabase-enterprise.serialization.names-test
   (:require [expectations :refer :all]
-            [metabase
-             [models :refer [Card Collection Dashboard Database Field Metric Segment Table]]
-             [util :as u]]
-            [metabase-enterprise.serialization
-             [names :as names :refer :all]
-             [test-util :as ts]]))
+            [metabase-enterprise.serialization.names :as names :refer :all]
+            [metabase-enterprise.serialization.test-util :as ts]
+            [metabase.models :refer [Card Collection Dashboard Database Field Metric Segment Table]]
+            [metabase.util :as u]))
 
 (expect
   (= (safe-name {:name "foo"}) "foo"))

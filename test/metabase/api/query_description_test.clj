@@ -1,10 +1,9 @@
 (ns metabase.api.query-description-test
   (:require [clojure.test :refer :all]
             [metabase.api.query-description :as sut]
-            [metabase.models
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]
-             [table :refer [Table]]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util.i18n :as ui18n :refer [deferred-tru]]

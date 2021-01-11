@@ -1,25 +1,22 @@
 (ns metabase.driver.bigquery.query-processor-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [models :refer [Database Field Table]]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.bigquery :as bigquery]
             [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models :refer [Database Field Table]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.store :as qp.store]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.data.bigquery :as bigquery.tx]
             [metabase.test.util.timezone :as tu.tz]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
 

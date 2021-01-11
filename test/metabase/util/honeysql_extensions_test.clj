@@ -1,8 +1,7 @@
 (ns metabase.util.honeysql-extensions-test
   (:require [clojure.test :refer :all]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [metabase.test :as mt]
             [metabase.util.honeysql-extensions :as hx])
   (:import metabase.util.honeysql_extensions.Identifier))

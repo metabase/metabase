@@ -2,7 +2,7 @@
   (:require [clj-http.client :as client]
             [clojure.test :refer :all]
             [metabase.http-client :as http]
-            [metabase.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as middleware.u]
             [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server))

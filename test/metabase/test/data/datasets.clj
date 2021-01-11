@@ -15,9 +15,8 @@
   (:require [clojure.test :as t]
             [colorize.core :as colorize]
             [metabase.driver :as driver]
-            [metabase.test.data
-             [env :as tx.env]
-             [interface :as tx]]))
+            [metabase.test.data.env :as tx.env]
+            [metabase.test.data.interface :as tx]))
 
 (defn do-when-testing-driver
   "Call function `f` (always with no arguments) *only* if we are currently testing against `driver` (i.e., if `driver`

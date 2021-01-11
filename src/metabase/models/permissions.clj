@@ -1,29 +1,24 @@
 (ns metabase.models.permissions
-  (:require [clojure
-             [data :as data]
-             [string :as str]]
-            [clojure.core.match :refer [match]]
+  (:require [clojure.core.match :refer [match]]
+            [clojure.data :as data]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [util :as u]]
             [metabase.api.common :refer [*current-user-id*]]
-            [metabase.models
-             [interface :as i]
-             [permissions-group :as group]
-             [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
+            [metabase.config :as config]
+            [metabase.models.interface :as i]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-revision :as perms-revision :refer [PermissionsRevision]]
             [metabase.models.permissions.parse :as perms-parse]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :as ui18n :refer [deferred-tru trs tru]]
-             [regex :as u.regex]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
+            [metabase.util.regex :as u.regex]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |

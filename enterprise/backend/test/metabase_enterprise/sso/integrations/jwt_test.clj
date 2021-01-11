@@ -1,23 +1,18 @@
 (ns metabase-enterprise.sso.integrations.jwt-test
-  (:require [buddy.sign
-             [jwt :as jwt]
-             [util :as buddy-util]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [buddy.sign.jwt :as jwt]
+            [buddy.sign.util :as buddy-util]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [crypto.random :as crypto-random]
-            [metabase
-             [test :as mt]
-             [util :as u]]
-            [metabase-enterprise.sso.integrations
-             [jwt :as mt.jwt]
-             [saml-test :as saml-test]]
-            [metabase.models
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [user :refer [User]]]
+            [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
+            [metabase-enterprise.sso.integrations.saml-test :as saml-test]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.user :refer [User]]
             [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 

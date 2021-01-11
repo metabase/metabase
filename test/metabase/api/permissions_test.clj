@@ -1,16 +1,14 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
   (:require [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.api.permissions :as permissions-api]
-            [metabase.models
-             [database :refer [Database]]
-             [permissions :as perms]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.table :refer [Table]]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 

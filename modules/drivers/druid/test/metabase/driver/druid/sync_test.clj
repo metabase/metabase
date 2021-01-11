@@ -1,8 +1,7 @@
 (ns metabase.driver.druid.sync-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
+            [metabase.driver :as driver]
+            [metabase.test :as mt]
             [metabase.timeseries-query-processor-test.util :as tqpt]))
 
 (deftest sync-test

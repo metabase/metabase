@@ -3,26 +3,15 @@
   multimethods for SQL JDBC drivers."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [connection-pool :as connection-pool]
-             [driver :as driver]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.connection-pool :as connection-pool]
+            [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [ssh :as ssh]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.ssh :as ssh]
             [toucan.db :as db]))
-
-(def ^:deprecated application-db-mock-id
-  "Mock ID used to get a connection to the application DB itself, rather than to a some other data warehouse DB. Only
-  used to make certain driver methods like `metabase.driver/db-default-timezone` work with the application DB
-  itself.
-
-  Try not to use this unless you absolutely have to -- it's only here in the first place because the EE audit code
-  needs to run queries against the application DB itself."
-  -5432)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -139,10 +128,6 @@
     (u/id db-or-id-or-spec)
     (let [database-id (u/get-id db-or-id-or-spec)]
       (or
-       ;; if we're using the special mock ID to refer to the application DB itself, return a connection spec for the
-       ;; application DB
-       (when (= database-id application-db-mock-id)
-         (db/connection))
        ;; we have an existing pool for this database, so use it
        (get @database-id->connection-pool database-id)
        ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
@@ -184,11 +169,15 @@
   (let [details-with-tunnel (ssh/include-ssh-tunnel details)]
     (connection-details->spec driver details-with-tunnel)))
 
+(defn can-connect-with-spec?
+  "Can we connect to a JDBC database with `clojure.java.jdbc` `jdbc-spec` and run a simple query?"
+  [jdbc-spec]
+  (let [[first-row] (jdbc/query jdbc-spec ["SELECT 1"])
+        [result]    (vals first-row)]
+    (= 1 result)))
+
 (defn can-connect?
   "Default implementation of `driver/can-connect?` for SQL JDBC drivers. Checks whether we can perform a simple `SELECT
   1` query."
   [driver details]
-  (let [spec        (details->connection-spec-for-testing-connection driver details)
-        [first-row] (jdbc/query spec ["SELECT 1"])
-        [result]    (vals first-row)]
-    (= 1 result)))
+  (can-connect-with-spec? (details->connection-spec-for-testing-connection driver details)))

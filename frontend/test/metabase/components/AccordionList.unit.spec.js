@@ -1,8 +1,8 @@
 import React from "react";
-import { mount } from "enzyme";
+import "@testing-library/jest-dom/extend-expect";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 import AccordionList from "metabase/components/AccordionList";
-import ListSearchField from "metabase/components/ListSearchField";
 
 const SECTIONS = [
   {
@@ -17,59 +17,80 @@ const SECTIONS = [
 
 describe("AccordionList", () => {
   it("should open the first section by default", () => {
-    const wrapper = mount(<AccordionList sections={SECTIONS} />);
-    expect(wrapper.find(".List-section-header").length).toBe(2);
-    expect(wrapper.find(".List-item").length).toBe(2);
+    render(<AccordionList sections={SECTIONS} />);
+
+    assertPresence(["Foo", "Bar"]);
+    assertAbsence(["Baz"]);
   });
+
   it("should open the second section if initiallyOpenSection=1", () => {
-    const wrapper = mount(
-      <AccordionList sections={SECTIONS} initiallyOpenSection={1} />,
-    );
-    expect(wrapper.find(".List-item").length).toBe(1);
+    render(<AccordionList sections={SECTIONS} initiallyOpenSection={1} />);
+    assertPresence(["Baz"]);
   });
+
   it("should not open a section if initiallyOpenSection=null", () => {
-    const wrapper = mount(
-      <AccordionList sections={SECTIONS} initiallyOpenSection={null} />,
-    );
-    expect(wrapper.find(".List-item").length).toBe(0);
+    render(<AccordionList sections={SECTIONS} initiallyOpenSection={null} />);
+    assertAbsence(["Foo", "Bar", "Baz"]);
   });
+
   it("should open all sections if alwaysExpanded is set", () => {
-    const wrapper = mount(<AccordionList sections={SECTIONS} alwaysExpanded />);
-    expect(wrapper.find(".List-item").length).toBe(3);
+    render(<AccordionList sections={SECTIONS} alwaysExpanded />);
+    assertPresence(["Foo", "Bar", "Baz"]);
   });
+
   it("should not show search field by default", () => {
-    const wrapper = mount(<AccordionList sections={SECTIONS} />);
-    expect(wrapper.find(ListSearchField).length).toBe(0);
+    const SEARCH_ICON = screen.queryByRole("img", { name: /search/i });
+
+    render(<AccordionList sections={SECTIONS} />);
+    expect(SEARCH_ICON).not.toBeInTheDocument();
   });
+
   it("should show search field is searchable is set", () => {
-    const wrapper = mount(<AccordionList sections={SECTIONS} searchable />);
-    expect(wrapper.find(ListSearchField).length).toBe(1);
+    render(<AccordionList sections={SECTIONS} searchable />);
+    screen.getByRole("img", { name: /search/i });
   });
+
   it("should close the section when header is clicked", () => {
-    const wrapper = mount(<AccordionList sections={SECTIONS} />);
-    expect(wrapper.find(".List-item").length).toBe(2);
-    wrapper
-      .find(".List-section-header")
-      .first()
-      .simulate("click");
-    expect(wrapper.find(".List-item").length).toBe(0);
+    render(<AccordionList sections={SECTIONS} />);
+    const FIRST_TITLE = screen.getByText("Widgets");
+
+    assertPresence(["Foo", "Bar"]);
+
+    fireEvent.click(FIRST_TITLE);
+    assertAbsence(["Foo", "Bar"]);
   });
+
   it("should switch sections when another section is clicked", () => {
-    const wrapper = mount(<AccordionList sections={SECTIONS} />);
-    expect(wrapper.find(".List-item").length).toBe(2);
-    wrapper
-      .find(".List-section-header")
-      .last()
-      .simulate("click");
-    expect(wrapper.find(".List-item").length).toBe(1);
+    render(<AccordionList sections={SECTIONS} />);
+    const SECOND_TITLE = screen.getByText("Doohickeys");
+
+    assertAbsence(["Baz"]);
+
+    fireEvent.click(SECOND_TITLE);
+    assertPresence(["Baz"]);
   });
+
   it("should filter items when searched", () => {
-    const wrapper = mount(<AccordionList sections={SECTIONS} searchable />);
-    const searchInput = wrapper.find(ListSearchField).find("input");
-    expect(wrapper.find(".List-item").length).toBe(2);
-    searchInput.simulate("change", { target: { value: "Foo" } });
-    expect(wrapper.find(".List-item").length).toBe(1);
-    searchInput.simulate("change", { target: { value: "Something Else" } });
-    expect(wrapper.find(".List-item").length).toBe(0);
+    render(<AccordionList sections={SECTIONS} searchable />);
+    const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+
+    fireEvent.change(SEARCH_FIELD, { target: { value: "Foo" } });
+    assertPresence(["Foo"]);
+    assertAbsence(["Bar", "Baz"]);
+
+    fireEvent.change(SEARCH_FIELD, { target: { value: "Something Else" } });
+    assertAbsence(["Foo", "Bar", "Baz"]);
   });
 });
+
+function assertAbsence(array) {
+  array.forEach(item => {
+    expect(screen.queryByText(item)).not.toBeInTheDocument();
+  });
+}
+
+function assertPresence(array) {
+  array.forEach(item => {
+    screen.getByText(item);
+  });
+}

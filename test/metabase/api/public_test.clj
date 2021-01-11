@@ -1,21 +1,17 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase
-             [http-client :as http]
-             [models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
-             [test :as mt]
-             [util :as u]]
-            [metabase.api
-             [dashboard-test :as dashboard-api-test]
-             [public :as public-api]]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as group]]
+            [metabase.api.dashboard-test :as dashboard-api-test]
+            [metabase.api.public :as public-api]
+            [metabase.http-client :as http]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))

@@ -2,15 +2,12 @@
   (:require [clojure.test :refer :all]
             [expectations :refer :all]
             [metabase.api.embed-test :as embed-test]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
-            [metabase.test.data
-             [datasets :as datasets]
-             [users :as test-users]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.test.data :as data]
+            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data.users :as test-users]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 

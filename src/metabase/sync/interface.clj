@@ -1,10 +1,9 @@
 (ns metabase.sync.interface
   "Schemas and constants used by the sync code."
   (:require [clj-time.core :as time]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))

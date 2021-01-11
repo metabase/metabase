@@ -1,11 +1,9 @@
 (ns metabase.test.automagic-dashboards
   "Helper functions and macros for writing tests for automagic dashboards."
-  (:require [metabase
-             [models :refer [Card Collection Dashboard DashboardCard]]
-             [test :as mt]]
-            [metabase.mbql
-             [normalize :as normalize]
-             [schema :as mbql.s]]
+  (:require [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+            [metabase.test :as mt]
             [schema.core :as s]))
 
 (defmacro with-dashboard-cleanup

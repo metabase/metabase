@@ -1,17 +1,13 @@
 (ns metabase.db.metadata-queries-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :as models :refer [Field Table]]
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.models
-             [database :as database]
-             [field :as field]
-             [table :as table]]
-            [schema.core :as s]))
+            [metabase.models :as models :refer [Field Table]]
+            [metabase.models.database :as database]
+            [metabase.models.field :as field]
+            [metabase.models.table :as table]
+            [metabase.test :as mt]))
 
 ;; Redshift tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
 (defn- metadata-queries-test-drivers []

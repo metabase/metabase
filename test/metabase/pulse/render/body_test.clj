@@ -1,12 +1,10 @@
 (ns metabase.pulse.render.body-test
-  (:require [clojure
-             [test :refer :all]
-             [walk :as walk]]
+  (:require [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [hiccup.core :refer [html]]
-            [metabase.pulse.render
-             [body :as body]
-             [common :as common]
-             [test-util :as render.tu]]))
+            [metabase.pulse.render.body :as body]
+            [metabase.pulse.render.common :as common]
+            [metabase.pulse.render.test-util :as render.tu]))
 
 (def ^:private pacific-tz "America/Los_Angeles")
 

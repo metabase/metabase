@@ -201,31 +201,6 @@ export class FullPageModal extends Component {
   }
 }
 
-/**
- * A modified version of Modal for Jest/Enzyme tests. Renders the modal content inline instead of document root.
- */
-export class TestModal extends Component {
-  static defaultProps = {
-    isOpen: true,
-  };
-
-  render() {
-    if (this.props.isOpen) {
-      return (
-        <div className="test-modal" onClick={e => e.stopPropagation()}>
-          {getModalContent({
-            ...this.props,
-            fullPageModal: true,
-            formModal: !!this.props.form,
-          })}
-        </div>
-      );
-    } else {
-      return null;
-    }
-  }
-}
-
 // the "routeless" version should only be used for non-inline modals
 const RoutelessFullPageModal = routeless(FullPageModal);
 

@@ -2,15 +2,13 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
+            [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as normalize]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util
-             [cron :as cron-util]
-             [encryption :as encryption]
-             [i18n :refer [trs tru]]]
+            [metabase.util :as u]
+            [metabase.util.cron :as cron-util]
+            [metabase.util.encryption :as encryption]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
@@ -161,7 +159,7 @@
 ;; max (nanosecond) resolution.
 (defn- now []
   (classloader/require 'metabase.driver.sql.query-processor)
-  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb/db-type)))
+  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
   (assoc obj :created_at (now)))

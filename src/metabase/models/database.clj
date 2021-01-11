@@ -2,21 +2,18 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [util :as u]]
             [metabase.api.common :refer [*current-user*]]
+            [metabase.db.util :as mdb.u]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [interface :as i]
-             [permissions :as perms]
-             [permissions-group :as perm-group]]
+            [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perm-group]
             [metabase.plugins.classloader :as classloader]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -139,7 +136,7 @@
   [{:keys [id]}]
   (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (db/select 'Field, :table_id [:in table-ids], :special_type (mdb/isa :type/PK)))))
+      (db/select 'Field, :table_id [:in table-ids], :special_type (mdb.u/isa :type/PK)))))
 
 (defn schema-exists?
   "Does `database` have any tables with `schema`?"

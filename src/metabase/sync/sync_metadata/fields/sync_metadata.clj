@@ -5,14 +5,12 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.models.field :as field :refer [Field]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.sync.interface :as i]
             [metabase.sync.sync-metadata.fields.common :as common]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 

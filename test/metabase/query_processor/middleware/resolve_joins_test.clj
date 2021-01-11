@@ -1,14 +1,12 @@
 (ns metabase.query-processor.middleware.resolve-joins-test
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [metabase.models
-             [database :refer [Database]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor
-             [store :as qp.store]
-             [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [toucan.util.test :as tt]))
 

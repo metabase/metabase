@@ -1,21 +1,17 @@
 (ns metabase.driver.sqlite-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor-test :as qp.test]
-             [sync :as sync]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models
-             [database :refer [Database]]
-             [table :refer [Table]]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [metabase.models.database :refer [Database]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.test.util :as tu]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (deftest timezone-id-test
   (mt/test-driver :sqlite

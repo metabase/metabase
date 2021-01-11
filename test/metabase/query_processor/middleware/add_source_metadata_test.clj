@@ -1,11 +1,9 @@
 (ns metabase.query-processor.middleware.add-source-metadata-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
-            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]))
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
+            [metabase.test :as mt]))
 
 (defn- add-source-metadata [query]
   (driver/with-driver :h2

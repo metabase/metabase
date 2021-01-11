@@ -1,8 +1,7 @@
 (ns metabase.sync.analyze.classifiers.name-test
   (:require [clojure.test :refer :all]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.sync.analyze.classifiers.name :as classify.names]
             [toucan.util.test :as tt]))
 

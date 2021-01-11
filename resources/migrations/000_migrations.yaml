@@ -7838,6 +7838,9 @@ databaseChangeLog:
       id: 275
       author: dpsutton
       comment: 'Added 0.38.0 refingerprint to Database'
+      validCheckSum:
+        - 8:b976d49f4eb84664649119f5f63465dd
+        - 8:447d9e294f59dd1058940defec7e0f40
       changes:
         - addColumn:
             tableName: metabase_database
@@ -7845,25 +7848,30 @@ databaseChangeLog:
               - column:
                   name: refingerprint
                   type: boolean
+                  remarks: 'Whether or not to enable periodic refingerprinting for this Database.'
                   constraints:
                     nullable: true
   - changeSet:
       id: 276
       author: robroland
       comment: Added 0.38.0 - Dashboard subscriptions
+      validCheckSum:
+        - 8:dfe9b8333b600c739306caa85d95ad55
+        - 8:59dd1fb0732c7a9b78bce896c0cff3c0
       changes:
         - addColumn:
+            tableName: pulse_card
             columns:
             - column:
                 name: dashboard_card_id
                 type: int
+                remarks: 'If this Pulse is a Dashboard subscription, the ID of the DashboardCard that corresponds to this PulseCard.'
                 constraints:
                   nullable: true
                   references: report_dashboardcard(id)
                   foreignKeyName: fk_pulse_card_ref_pulse_card_id
                   deferrable: false
                   initiallyDeferred: false
-            tableName: pulse_card
 
   - changeSet:
       id: 277
@@ -7886,3 +7894,48 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_pulse_card_ref_pulse_card_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: 279
+      author: camsaul
+      comment: Added 0.38.0 - Dashboard subscriptions
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: 'ID of the Dashboard if this Pulse is a Dashboard Subscription.'
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: 280
+      author: camsaul
+      comment: Added 0.38.0 - Dashboard subscriptions
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_pulse_ref_dashboard_id
+            onDelete: CASCADE
+
+
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
+########################################################################################################################
+#
+# ADVICE:
+#
+# 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
+#    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
+#    this check but it's nicer to know now instead of waiting for CI.
+#
+# 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
+#    migration so someone else doesn't steal your ID number
+#
+# PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
+#
+########################################################################################################################

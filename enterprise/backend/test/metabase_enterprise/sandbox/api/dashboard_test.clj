@@ -2,9 +2,8 @@
   "Tests for special behavior of `/api/metabase/dashboard` endpoints in the Metabase Enterprise Edition."
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sandbox.test-util :as mt.tu]
-            [metabase
-             [models :refer [Card Dashboard DashboardCard]]
-             [test :as mt]]))
+            [metabase.models :refer [Card Dashboard DashboardCard]]
+            [metabase.test :as mt]))
 
 (deftest params-values-test
   (testing "Don't return `param_values` for fields to which the user only has segmented access."

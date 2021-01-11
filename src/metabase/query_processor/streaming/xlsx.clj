@@ -4,9 +4,8 @@
             [java-time :as t]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.streaming.interface :as i]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]])
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
            [java.time LocalDate LocalDateTime OffsetDateTime ZonedDateTime]
            [org.apache.poi.ss.usermodel Cell CellType Workbook]
@@ -90,7 +89,7 @@
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
-;; `metabase.middleware`.
+;; `metabase.server.middleware`.
 (defmethod spreadsheet/set-cell! Object
   [^Cell cell, value]
   (when (= (.getCellType cell) CellType/FORMULA)

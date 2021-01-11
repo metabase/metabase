@@ -4,19 +4,16 @@
   clauses."
   (:require [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models
-             [dependency :as dependency]
-             [interface :as i]
-             [revision :as revision]]
+            [metabase.models.dependency :as dependency]
+            [metabase.models.interface :as i]
+            [metabase.models.revision :as revision]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models]))
 
 (models/defmodel Metric :metric)
 

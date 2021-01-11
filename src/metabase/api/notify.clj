@@ -2,9 +2,8 @@
   "/api/notify/* endpoints which receive inbound etl server notifications."
   (:require [compojure.core :refer [POST]]
             [metabase.api.common :as api]
-            [metabase.models
-             [database :refer [Database]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.table :refer [Table]]
             [metabase.sync :as sync]))
 
 (api/defendpoint POST "/db/:id"

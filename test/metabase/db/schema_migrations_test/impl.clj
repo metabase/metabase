@@ -11,15 +11,14 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [test :as mt]
-             [util :as u]]
+            [metabase.db :as mdb]
             [metabase.db.liquibase :as liquibase]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.initialize :as initialize]
+            [metabase.util :as u]
             [toucan.db :as db])
   (:import [liquibase Contexts Liquibase]
            [liquibase.changelog ChangeSet DatabaseChangeLog]))
@@ -53,9 +52,7 @@
   ;;
   ;; don't use the usual implementation of `tx/dbdef->connection-details` because it creates a spec that only connects
   ;; to with `USER=GUEST` which doesn't let us run DDL statements
-  (let [connection-details {:db "mem:schema-migrations-test-db"}
-        jdbc-spec          (binding [mdb/*allow-potentailly-unsafe-connections* true]
-                             (sql-jdbc.conn/connection-details->spec driver connection-details))]
+  (let [jdbc-spec {:subprotocol "h2", :subname "mem:schema-migrations-test-db", :classname "org.h2.Driver"}]
     (f jdbc-spec)))
 
 (defn- do-with-temp-empty-app-db [driver f]

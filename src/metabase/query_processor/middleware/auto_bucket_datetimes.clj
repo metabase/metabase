@@ -3,11 +3,10 @@
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
   (:require [medley.core :as m]
-            [metabase.mbql
-             [predicates :as mbql.preds]
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.mbql.predicates :as mbql.preds]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.schema.helpers :as mbql.s.helpers]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.util :as u]
             [metabase.util.schema :as su]

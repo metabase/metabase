@@ -30,26 +30,22 @@
       (setting/all)"
   (:refer-clojure :exclude [get])
   (:require [cheshire.core :as json]
-            [clojure
-             [core :as core]
-             [data :as data]
-             [string :as str]]
+            [clojure.core :as core]
+            [clojure.data :as data]
             [clojure.data.csv :as csv]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :as env]
             [medley.core :as m]
-            [metabase
-             [events :as events]
-             [util :as u]]
+            [metabase.events :as events]
             [metabase.models.setting.cache :as cache]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]])
-  (:import (clojure.lang Keyword Symbol)
+            [toucan.db :as db]
+            [toucan.models :as models])
+  (:import [clojure.lang Keyword Symbol]
            java.io.StringWriter))
 
 (models/defmodel Setting

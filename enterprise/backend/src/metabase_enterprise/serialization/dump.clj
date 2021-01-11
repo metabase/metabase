@@ -2,28 +2,24 @@
   "Serialize entities into a directory structure of YAMLs."
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [metabase-enterprise.serialization
-             [names :refer [fully-qualified-name name-for-logging safe-name]]
-             [serialize :as serialize :refer [serialize]]]
+            [metabase-enterprise.serialization.names :refer [fully-qualified-name name-for-logging safe-name]]
+            [metabase-enterprise.serialization.serialize :as serialize :refer [serialize]]
             [metabase.config :as config]
-            [metabase.models
-             [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
-             [dependency :refer [Dependency]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [metric :refer [Metric]]
-             [pulse :refer [Pulse]]
-             [segment :refer [Segment]]
-             [setting :as setting]
-             [table :refer [Table]]
-             [user :refer [User]]]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :as i18n :refer [trs]]]
-            [yaml
-             [core :as yaml]
-             [writer :as y.writer]])
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.dependency :refer [Dependency]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.setting :as setting]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.user :refer [User]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :as i18n :refer [trs]]
+            [yaml.core :as yaml]
+            [yaml.writer :as y.writer])
   (:import java.time.temporal.Temporal))
 
 (extend-type Temporal y.writer/YAMLWriter

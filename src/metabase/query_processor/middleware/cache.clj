@@ -14,17 +14,14 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.query-processor
-             [context :as context]
-             [util :as qputil]]
-            [metabase.query-processor.middleware.cache-backend
-             [db :as backend.db]
-             [interface :as i]]
+            [metabase.config :as config]
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.middleware.cache-backend.db :as backend.db]
+            [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]])
   (:import org.eclipse.jetty.io.EofException))
 

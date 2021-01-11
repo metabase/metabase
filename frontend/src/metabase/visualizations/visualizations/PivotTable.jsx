@@ -168,7 +168,7 @@ export default class PivotTable extends Component {
       leftIndex.length === 0
         ? 0
         : LEFT_HEADER_LEFT_SPACING +
-          leftIndex[0].length * LEFT_HEADER_CELL_WIDTH;
+          leftIndex[0][0].length * LEFT_HEADER_CELL_WIDTH;
 
     function columnWidth({ index }) {
       if (topIndex.length === 0) {
@@ -286,6 +286,8 @@ export default class PivotTable extends Component {
                     <Cell
                       key={index}
                       value={value}
+                      height={1}
+                      width={1}
                       isSubtotal={isSubtotal}
                       isGrandTotal={isGrandTotal}
                       isBody
@@ -334,6 +336,8 @@ export default class PivotTable extends Component {
                     <Cell
                       value={formatColumn(columns[index])}
                       baseWidth={LEFT_HEADER_CELL_WIDTH}
+                      width={1}
+                      height={1}
                     />
                   ))}
                 </div>
@@ -394,8 +398,8 @@ function Cell({
   isSubtotal,
   isGrandTotal,
   onClick,
-  width = 1,
-  height = 1,
+  width,
+  height,
   baseWidth = CELL_WIDTH,
   baseHeight = CELL_HEIGHT,
   style,
@@ -405,18 +409,16 @@ function Cell({
   return (
     <div
       style={{
+        ...(width != null ? { width: baseWidth * width } : {}),
+        ...(height != null ? { height: baseHeight * height } : {}),
         lineHeight: `${CELL_HEIGHT}px`,
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
       }}
-      className={cx(
-        "flex-basis-none flex-full shrink-below-content-size",
-        className,
-        {
-          "bg-medium text-bold": isSubtotal,
-          "cursor-pointer": onClick,
-        },
-      )}
+      className={cx(className, {
+        "bg-medium text-bold": isSubtotal,
+        "cursor-pointer": onClick,
+      })}
       onClick={onClick}
     >
       <div className="px1">
