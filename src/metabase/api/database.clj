@@ -558,18 +558,30 @@
           ;; TODO - this means one cannot unset the description. Does that matter?
           (api/check-500 (db/update-non-nil-keys! Database id
                                                   (merge
-                                                   {:name               name
-                                                    :engine             engine
-                                                    :details            details
-                                                    :refingerprint      refingerprint
-                                                    :is_full_sync       full-sync?
-                                                    :is_on_demand       (boolean is_on_demand)
-                                                    :description        description
-                                                    :caveats            caveats
-                                                    :points_of_interest points_of_interest
-                                                    :auto_run_queries   auto_run_queries}
-                                                   (when schedules
-                                                     (sync.schedules/schedule-map->cron-strings schedules)))))
+                                                     {:name               name
+                                                      :engine             engine
+                                                      :details            details
+                                                      :refingerprint      refingerprint
+                                                      :is_full_sync       full-sync?
+                                                      :is_on_demand       (boolean is_on_demand)
+                                                      :description        description
+                                                      :caveats            caveats
+                                                      :points_of_interest points_of_interest
+                                                      :auto_run_queries   auto_run_queries}
+                                                     (cond
+                                                       ;; transition back to metabase managed schedules. the schedule
+                                                       ;; details, even if provided, are ignored
+                                                       (and (get-in database [:details :let-user-control-scheduling])
+                                                            (not (:let-user-control-scheduling details)))
+
+                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
+
+                                                       ;; if user is controlling schedules
+                                                       (:let-user-control-scheduling details)
+                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
+                                                       ;; do nothing in the case that user is not in control of
+                                                       ;; scheduling. leave them as they are in the db
+                                                       ))))
           (let [db (Database id)]
             (events/publish-event! :database-update db)
             ;; return the DB with the expanded schedules back in place

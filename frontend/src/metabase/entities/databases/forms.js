@@ -325,8 +325,7 @@ const forms = {
         // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
         return {
           ...database,
-          is_full_sync: true,
-          schedules: DEFAULT_SCHEDULES,
+          is_full_sync: true
         };
       } else {
         return database;

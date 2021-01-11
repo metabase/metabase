@@ -4,7 +4,8 @@
             [clj-http.client :as client]
             [clojure
              [string :as str]
-             [test :as t]]
+             [test :as t]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
             [java-time :as java-time]
             [metabase
@@ -168,11 +169,22 @@
    (s/optional-key :url-param-kwargs) (s/maybe su/Map)
    (s/optional-key :request-options)  (s/maybe su/Map)})
 
+(defn derecordize
+  "Convert all record types in `form` to plain maps, so tests won't fail."
+  [form]
+  (walk/postwalk
+   (fn [form]
+     (if (record? form)
+       (into {} form)
+       form))
+   form))
+
 (s/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body url-param-kwargs request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
-  (let [request-map (merge (build-request-map credentials http-body) request-options)
+  (let [http-body   (derecordize http-body)
+        request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url url-param-kwargs)
         method-name (str/upper-case (name method))

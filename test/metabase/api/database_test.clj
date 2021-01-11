@@ -582,15 +582,25 @@
            (finally (db/delete! Database :name db-name))))))
 
 (deftest update-schedules-for-existing-db
-  (testing "Can we UPDATE the schedules for an existing database?"
-    (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
-      ((mt/user->client :crowberto) :put 200 (format "database/%d" (u/get-id db))
-       (assoc db
-              :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
-                          :metadata_sync      schedule-map-for-hourly}))
-      (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
-              :metadata_sync_schedule      "0 0 * * * ? *"}
-             (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db))))))))
+  (let [attempted {:cache_field_values schedule-map-for-last-friday-at-11pm
+                   :metadata_sync      schedule-map-for-hourly}
+        expected  {:cache_field_values_schedule "0 0 23 ? * 6L *"
+                   :metadata_sync_schedule      "0 0 * * * ? *"}]
+    (testing "Can we UPDATE the schedules for an existing database?"
+      (testing "We cannot if we don't mark `:let-user-control-scheduling`"
+          (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/get-id db))
+                                  (assoc db :schedules attempted))
+            (is (not= expected
+                      (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db)))))))
+      (testing "We can if we mark `:let-user-control-scheduling`"
+        (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/get-id db))
+                                (-> db
+                                    (assoc :schedules attempted)
+                                    (assoc-in [:details :let-user-control-scheduling] true)))
+          (is (= expected
+                 (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db))))))))))
 
 (deftest fetch-db-with-expanded-schedules
   (testing "If we FETCH a database will it have the correct 'expanded' schedules?"
