@@ -114,7 +114,7 @@ describeWithToken("formatting > sandboxes", () => {
         dataset_query: {
           type: "native",
           native: {
-            query: "select id,name,address,email from people where {{cid}}",
+            query: `select id,name,address,email from people where {{${TTAG_NAME}}}`,
             "template-tags": {
               [TTAG_NAME]: {
                 id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
