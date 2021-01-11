@@ -92,34 +92,36 @@ describeWithToken("formatting > whitelabel", () => {
   });
 
   describe("company name", () => {
+    const COMPANY_NAME = "Test Co";
+
     beforeEach(() => {
       cy.log("**Change company name**");
       cy.visit("/admin/settings/whitelabel");
       cy.findByPlaceholderText("Metabase")
         .clear()
-        .type("Test Co");
+        .type(COMPANY_NAME);
       // Helps scroll the page up in order to see "Saved" notification
       cy.findByText("Application Name").click();
       cy.findByText("Saved");
-      cy.findByDisplayValue("Test Co");
+      cy.findByDisplayValue(COMPANY_NAME);
       cy.log("Company name has been updated!");
     });
 
-    it("changes should reflect", () => {
+    it("changes should reflect in different parts of UI", () => {
       cy.log("**--1. New company should show up on activity page--**");
       cy.visit("/activity");
-      cy.findByText("Test Co is up and running.");
+      cy.findByText(`${COMPANY_NAME} is up and running.`);
       cy.findByText("Metabase is up and running.").should("not.exist");
 
       cy.log("**--2. New company should show up when logged out--**");
       signOut();
       cy.visit("/");
-      cy.findByText("Sign in to Test Co");
+      cy.findByText(`Sign in to ${COMPANY_NAME}`);
 
       cy.log("**--3. New company should show up for a normal user--**");
       signInAsNormalUser();
       cy.visit("/activity");
-      cy.findByText("Test Co is up and running.");
+      cy.findByText(`${COMPANY_NAME} is up and running.`);
       cy.findByText("Metabase is up and running.").should("not.exist");
     });
   });
