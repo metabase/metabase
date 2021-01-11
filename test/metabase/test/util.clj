@@ -8,9 +8,9 @@
             [colorize.core :as colorize]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
-                                     NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
-                                     Revision Segment Table TaskHistory User]]
+            [metabase.models :refer [Activity Card Collection CollectionRevision Dashboard DashboardCardSeries Database
+                                     Dimension Field Metric NativeQuerySnippet Permissions PermissionsGroup Pulse
+                                     PulseCard PulseChannel Revision Segment Table TaskHistory User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -124,7 +124,11 @@
 (defn- rasta-id [] (user-id :rasta))
 
 (def ^:private with-temp-defaults-fns
-  {Card
+  {Activity
+   (fn [_] {:user_id (rasta-id)
+            :topic (random-name)})
+
+   Card
    (fn [_] {:creator_id             (rasta-id)
             :dataset_query          {}
             :display                :table
@@ -134,6 +138,11 @@
    Collection
    (fn [_] {:name  (random-name)
             :color "#ABCDEF"})
+
+   CollectionRevision
+   (fn [_] {:user_id (rasta-id)
+            :before (json/generate-string {})
+            :after (json/generate-string {})})
 
    Dashboard
    (fn [_] {:creator_id   (rasta-id)
@@ -233,6 +242,7 @@
 
 (set-with-temp-defaults!)
 
+;; TODO Add the added models here also
 ;; if any of the models get redefined, reload the `with-temp-defaults` so they apply to the new version of the model
 (doseq [model-var [#'Card
                    #'Collection
