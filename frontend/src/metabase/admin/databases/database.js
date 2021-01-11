@@ -123,6 +123,7 @@ export const initializeDatabase = function(databaseId) {
     } else {
       const newDatabase = {
         name: "",
+        auto_run_queries: true,
         engine: Object.keys(MetabaseSettings.get("engines"))[0],
         details: {},
         created: false,
