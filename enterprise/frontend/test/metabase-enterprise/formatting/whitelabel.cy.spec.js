@@ -192,12 +192,11 @@ describeWithToken("formatting > whitelabel", () => {
     });
   });
 
-  describe("Changes to logo work", () => {
-    it("should add a logo", () => {
+  describe("Logo customization", () => {
+    beforeEach(() => {
       signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
 
-      cy.server();
+      cy.log("**Add a logo**");
       cy.readFile(
         "enterprise/frontend/test/metabase-enterprise/_support_/logo.jpeg",
         "base64",
@@ -219,12 +218,12 @@ describeWithToken("formatting > whitelabel", () => {
     });
 
     it("should reflect logo change on admin's dashboard", () => {
-      signInAsAdmin();
       cy.visit("/");
       checkLogo();
     });
 
     it("should reflect logo change while signed out", () => {
+      signOut();
       cy.visit("/");
       checkLogo();
     });
@@ -239,8 +238,6 @@ describeWithToken("formatting > whitelabel", () => {
   it("should add a custom favicon", () => {
     signInAsAdmin();
     cy.visit("/admin/settings/whitelabel");
-
-    cy.server();
 
     cy.findByPlaceholderText("frontend_client/favicon.ico").type(
       "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
