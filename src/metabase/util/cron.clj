@@ -61,7 +61,7 @@
 (def ^:private day-of-week->cron
   {"sun"  1
    "mon"  2
-   "tue" 3
+   "tue"  3
    "wed"  4
    "thu"  5
    "fri"  6
@@ -87,7 +87,7 @@
     frame :schedule_frame,  schedule-type :schedule_type} :- ScheduleMap]
   (cron-string (case (keyword schedule-type)
                  :hourly  {:minutes minute}
-                 :daily   {:hours hour}
+                 :daily   {:hours (or hour 0)}
                  :weekly  {:hours       hour
                            :day-of-week (day-of-week->cron day-of-week)
                            :day-of-month "?"}

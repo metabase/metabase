@@ -12,6 +12,9 @@
              {:schedule_type  "hourly"})))
     (is (= "0 0 0 * * ? *"
            (cron-util/schedule-map->cron-string
+             {:schedule_type  "daily"})))
+    (is (= "0 0 0 * * ? *"
+           (cron-util/schedule-map->cron-string
              {:schedule_hour  0
               :schedule_type  "daily"})))
     (is (= "0 0 3 * * ? *"

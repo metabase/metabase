@@ -1,4 +1,7 @@
 (ns metabase.sync.schedules
+  "Types and defaults for the syncing schedules used for the scheduled sync tasks. Has defaults for the two schedules
+  maps and some helper methods for turning those into appropriately named cron strings as stored in the
+  `metabase_database` table."
   (:require [metabase.util.cron :as cron-util]
             [metabase.util.schema :as su]
             [schema.core :as s]))
