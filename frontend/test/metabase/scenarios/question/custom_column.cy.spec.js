@@ -216,7 +216,7 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("There was a problem with your question").should("not.exist");
   });
 
-  it.skip("should not return same results for columns with the same name (metabase#12649)", () => {
+  it("should not return same results for columns with the same name (metabase#12649)", () => {
     openOrdersTable({ mode: "notebook" });
     // join with Products
     cy.findByText("Join data").click();
