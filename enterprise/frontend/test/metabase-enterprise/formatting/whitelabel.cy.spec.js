@@ -5,7 +5,7 @@ import {
   signInAsNormalUser,
   openOrdersTable,
   describeWithToken,
-} from "../../../../../frontend/test/__support__/cypress";
+} from "__support__/cypress";
 
 // Define colors that we use for whitelabeling
 // If rbg values exist, it's because we explicit test those
@@ -28,11 +28,13 @@ function changeThemeColor(location, colorhex) {
   cy.get(`div[title='#${colorhex}']`).click();
   cy.findByText("Done").click();
 }
+
 function checkFavicon() {
   cy.request("/api/setting/application-favicon-url")
     .its("body")
     .should("include", "https://cdn.ecosia.org/assets/images/ico/favicon.ico");
 }
+
 function checkLogo() {
   cy.readFile(
     "enterprise/frontend/test/metabase-enterprise/_support_/logo.jpeg",
