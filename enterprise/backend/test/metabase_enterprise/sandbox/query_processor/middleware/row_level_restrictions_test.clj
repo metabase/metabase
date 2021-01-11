@@ -1,27 +1,23 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase
-             [driver :as driver]
-             [models :refer [Card Collection Field Table]]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
             [metabase-enterprise.sandbox.test-util :as mt.tu]
+            [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql
-             [normalize :as normalize]
-             [util :as mbql.u]]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as perms-group]]
+            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models :refer [Card Collection Field Table]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qputil]
+            [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
             [metabase.test.util :as tu]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]))
 
@@ -572,7 +568,7 @@
         (let [venues-gtap-card-id (db/select-one-field :card_id GroupTableAccessPolicy
                                     :group_id (:id &group)
                                     :table_id (mt/id :venues))]
-          (assert (integer? venues-gtap-card-id))
+          (is (integer? venues-gtap-card-id))
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
                    (db/select-one-field :result_metadata Card :id venues-gtap-card-id))))
@@ -591,3 +587,76 @@
             (is (= [{:name "ID", :base_type :type/BigInteger, :display_name "ID"}
                     {:name "NAME", :base_type :type/Text, :display_name "NAME"}]
                    (db/select-one-field :result_metadata Card :id venues-gtap-card-id)))))))))
+
+(deftest run-queries-to-infer-columns-error-on-new-columns-test
+  (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
+    (letfn [(do-with-sql-gtap [sql f]
+              (mt/with-gtaps (mt/$ids
+                               {:gtaps      {:venues   {:query      (mt/native-query
+                                                                      {:query         sql
+                                                                       :template-tags {"sandbox"
+                                                                                       {:name         "sandbox"
+                                                                                        :display-name "Sandbox"
+                                                                                        :type         :text}}})
+                                                        :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
+                                             :checkins {}}
+                                :attributes {"venue_id" 1}})
+                (let [venues-gtap-card-id (db/select-one-field :card_id GroupTableAccessPolicy
+                                            :group_id (:id &group)
+                                            :table_id (mt/id :venues))]
+                  (is (integer? venues-gtap-card-id))
+                  (testing "GTAP Card should not yet current have result_metadata"
+                    (is (= nil
+                           (db/select-one-field :result_metadata Card :id venues-gtap-card-id))))
+                  (f {:run-query (fn []
+                                   (mt/run-mbql-query venues
+                                     {:fields   [$id $name]
+                                      :joins    [{:fields       :all
+                                                  :source-table $$venues
+                                                  :condition    [:= $id [:joined-field "Venue" $id]]
+                                                  :alias        "Venue"}]
+                                      :order-by [[:asc $id]]
+                                      :limit    3}))}))))]
+      (testing "Removing columns should be ok."
+        (do-with-sql-gtap
+         (str "SELECT ID, NAME "
+              "FROM VENUES "
+              "WHERE ID IN ({{sandbox}})")
+         (fn [{:keys [run-query]}]
+           (testing "Query without weird stuff going on should work"
+             (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
+                    (mt/rows (run-query))))))))
+
+      (testing "Don't allow people to add additional columns not present in the original Table"
+        (do-with-sql-gtap
+         (str "SELECT ID, NAME, 100 AS ONE_HUNDRED "
+              "FROM VENUES "
+              "WHERE ID IN ({{sandbox}})")
+         (fn [{:keys [run-query]}]
+           (testing "Should throw an Exception when running the query"
+             (is (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"Sandbox Cards can't return columns that arent present in the Table they are sandboxing"
+                  (run-query)))))))
+
+      (testing "Don't allow people to change the types of columns in the original Table"
+        (do-with-sql-gtap
+         (str "SELECT ID, 100 AS NAME "
+              "FROM VENUES "
+              "WHERE ID IN ({{sandbox}})")
+         (fn [{:keys [run-query]}]
+           (testing "Should throw an Exception when running the query"
+             (is (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"Sandbox Cards can't return columns that have different types than the Table they are sandboxing"
+                  (run-query))))))
+
+        (testing "Should be ok if you change the type of the column to a *SUBTYPE* of the original Type"
+          (do-with-sql-gtap
+           (str "SELECT cast(ID AS bigint) AS ID, NAME "
+                "FROM VENUES "
+                "WHERE ID IN ({{sandbox}})")
+           (fn [{:keys [run-query]}]
+             (testing "Should throw an Exception when running the query"
+               (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
+                      (mt/rows (run-query))))))))))))

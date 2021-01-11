@@ -1,23 +1,19 @@
 (ns metabase.sync.analyze.query-results-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.sync.analyze.fingerprint
-             [fingerprinters :as fprint]
-             [insights :as insights]]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as fprint]
+            [metabase.sync.analyze.fingerprint.insights :as insights]
             [metabase.sync.analyze.query-results :as qr]
-            [metabase.test
-             [data :as data]
-             [sync :as sync-test]
-             [util :as tu]]
-            [metabase.test.mock.util :as mock.u]))
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.test.mock.util :as mock.u]
+            [metabase.test.sync :as sync-test]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 (defn- column->name-keyword [field-or-column-metadata]
   (-> field-or-column-metadata

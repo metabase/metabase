@@ -1,16 +1,13 @@
 (ns metabase.models.setting-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :refer :all]]
-            [metabase.util
-             [encryption-test :as encryption-test]
-             [i18n :as i18n :refer [deferred-tru]]]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :refer :all]
+            [metabase.util :as u]
+            [metabase.util.encryption-test :as encryption-test]
+            [metabase.util.i18n :as i18n :refer [deferred-tru]]
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))

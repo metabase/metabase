@@ -1,10 +1,9 @@
 (ns metabase.integrations.common-test
   (:require [expectations :refer [expect]]
             [metabase.integrations.common :as integrations.common]
-            [metabase.models
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [user :refer [User]]]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.user :refer [User]]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [toucan.db :as db]

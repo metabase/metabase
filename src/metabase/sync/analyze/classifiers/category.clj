@@ -11,15 +11,12 @@
   determined by the cardinality of the Field, like Category status. Thus it is entirely possibly for a Field to be
   both a Category and a `list` Field."
   (:require [clojure.tools.logging :as log]
-            [metabase.models
-             [field :as field]
-             [field-values :as field-values]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.models.field :as field]
+            [metabase.models.field-values :as field-values]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util.schema :as su]
             [schema.core :as s]))
-
 
 (defn- cannot-be-category-or-list?
   [{:keys [base_type special_type]}]

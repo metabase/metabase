@@ -2,26 +2,20 @@
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [util :as u]]
-            [metabase.db
-             [jdbc-protocols :as jdbc-protocols]
-             [spec :as dbspec]]
+            [metabase.db.jdbc-protocols :as jdbc-protocols]
+            [metabase.db.spec :as dbspec]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor
-             [error-type :as error-type]
-             [store :as qp.store]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :refer [deferred-tru tru]]])
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [deferred-tru tru]])
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime))
 
@@ -295,9 +289,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
-               details
-               (update details :db connection-string-set-safe-options))))
+  (dbspec/h2 (update details :db connection-string-set-safe-options)))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]

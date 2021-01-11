@@ -3,9 +3,8 @@
             [medley.core :as m]
             [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models
-             [card :refer [Card]]
-             [table :as table :refer [Table]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.util :as u]
             [schema.core :as s]))
 

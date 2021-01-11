@@ -1,19 +1,17 @@
 (ns metabase.api.transform-test
   (:require [clojure.test :refer :all]
             [expectations :refer :all]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [permissions :as perms]
-             [permissions-group :as perms-group]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
-            [metabase.test
-             [data :as data]
-             [domain-entities :refer :all]
-             [fixtures :as fixtures]
-             [transforms :refer :all]
-             [util :as tu]]
-            [metabase.test.data.users :as test-users]))
+            [metabase.test.data :as data]
+            [metabase.test.data.users :as test-users]
+            [metabase.test.domain-entities :refer :all]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.transforms :refer :all]
+            [metabase.test.util :as tu]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

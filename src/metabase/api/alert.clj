@@ -4,23 +4,19 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
-            [metabase
-             [email :as email]
-             [events :as events]
-             [util :as u]]
             [metabase.api.common :as api]
+            [metabase.email :as email]
             [metabase.email.messages :as messages]
-            [metabase.models
-             [card :refer [Card]]
-             [interface :as mi]
-             [pulse :as pulse :refer [Pulse]]]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.events :as events]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.interface :as mi]
+            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (api/defendpoint GET "/"
   "Fetch all alerts"

@@ -1,15 +1,13 @@
 (ns metabase.query-processor.middleware.binning-test
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [metabase
-             [test :as mt]
-             [util :as u]]
-            [metabase.models
-             [card :refer [Card]]
-             [field :as field :refer [Field]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
+            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 (expect

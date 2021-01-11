@@ -1,7 +1,6 @@
 (ns metabase.mbql.normalize-test
-  (:require [clojure
-             [set :as set]
-             [test :refer :all]]
+  (:require [clojure.set :as set]
+            [clojure.test :refer :all]
             [metabase.mbql.normalize :as normalize]))
 
 (defn- tests {:style/indent 2} [f-symb f group->input->expected]
@@ -1030,4 +1029,3 @@
                                                        [:and
                                                         [:= [:field-id 5] "abc"]
                                                         [:between [:field-id 9] 0 25]]]}})))))
-

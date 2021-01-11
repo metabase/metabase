@@ -2,17 +2,15 @@
   "Tests for /api/activity endpoints."
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
             [metabase.api.activity :as activity-api]
-            [metabase.models
-             [activity :refer [Activity]]
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [view-log :refer [ViewLog]]]
+            [metabase.db :as mdb]
+            [metabase.models.activity :refer [Activity]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.view-log :refer [ViewLog]]
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 

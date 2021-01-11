@@ -2,9 +2,8 @@
   "Tests for special behavior of `/api/metabase/field` endpoints in the Metabase Enterprise Edition."
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sandbox.test-util :as mt.tu]
-            [metabase.models
-             [field :refer [Field]]
-             [field-values :as field-values :refer [FieldValues]]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.test :as mt]
             [toucan.db :as db]))
 

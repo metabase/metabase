@@ -1,27 +1,22 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
   (:require [clojure.tools.logging :as log]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+            [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.models
-             [card :refer [Card]]
-             [field :refer [Field]]
-             [permissions :as perms]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [table :refer [Table]]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [store :as qp.store]]
-            [metabase.query-processor.middleware
-             [annotate :as annotate]
-             [fetch-source-query :as fetch-source-query]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -160,7 +155,7 @@
 ;; individually)
 
 (s/defn ^:private run-gtap-source-query-for-metadata :- [mbql.s/SourceQueryMetadata]
-  [source-query :- mbql.s/SourceQuery]
+  [gtapped-table-id :- su/IntGreaterThanZero source-query :- mbql.s/SourceQuery]
   (let [query {:database (:id (qp.store/database))
                :type     :query
                :query    source-query}
@@ -169,7 +164,11 @@
                     :data :cols))]
     (u/prog1 (for [col cols]
                (select-keys col [:name :base_type :display_name :special_type]))
-      (log/tracef "Inferred source query metadata:\n%s" (u/pprint-to-str 'magenta <>)))))
+      (log/tracef "Inferred source query metadata:\n%s" (u/pprint-to-str 'magenta <>))
+      ;; Make sure the columns returned when running a source query match up with those in the original Table. A GTAP
+      ;; can *remove* columns from the original Table, but it cannot add new ones. Columns cannot change types
+      ;; completely, but they can change to a type that is a descendant of the type in the original Table.
+      (gtap/check-columns-match-table gtapped-table-id <>))))
 
 ;; This metadata will be the same regardless of what user runs the query in question, so we only need to run it once
 ;; for each GTAP Card; we can save it and reuse it after that point. `update-metadata-for-gtap!` takes care of that.
@@ -205,7 +204,7 @@
         run-query-for-metadata? (and run-gtap-source-query-for-metadata? (empty? (:source-metadata source-query)))]
     (if-not run-query-for-metadata?
       source-query
-      (let [metadata (run-gtap-source-query-for-metadata source-query)]
+      (let [metadata (run-gtap-source-query-for-metadata table-id source-query)]
         (update-metadata-for-gtap! gtap metadata)
         (assoc source-query :source-metadata metadata)))))
 

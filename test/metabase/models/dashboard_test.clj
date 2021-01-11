@@ -1,27 +1,24 @@
 (ns metabase.models.dashboard-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.core :as magic]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [dashboard :as dashboard :refer :all]
-             [dashboard-card :as dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [database :refer [Database]]
-             [interface :as mi]
-             [permissions :as perms]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [table :refer [Table]]
-             [user :as user]]
-            [metabase.test
-             [data :refer :all]
-             [util :as tu]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.dashboard :as dashboard :refer :all]
+            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
+            [metabase.models.permissions :as perms]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.user :as user]
+            [metabase.test :as mt]
+            [metabase.test.data :refer :all]
             [metabase.test.data.users :as users]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -178,7 +175,7 @@
 (deftest post-update-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id} {:name "Lucky the Pigeon's Lucky Stuff"}]
                   Card                [{card-id :id}]
-                  Pulse               [{pulse-id :id}]
+                  Pulse               [{pulse-id :id} {:dashboard_id dashboard-id}]
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   PulseCard           [{pulse-card-id :id} {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
     (testing "Pulse name updates"

@@ -5,9 +5,8 @@
             [honeysql.core :as hsql]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util :as u]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :refer [trs]]]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import metabase.util.honeysql_extensions.Identifier))
 

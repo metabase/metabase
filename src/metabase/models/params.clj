@@ -2,21 +2,17 @@
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
-            [metabase.mbql
-             [normalize :as mbql.normalize]
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.db.util :as mdb.u]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.schema.helpers :as mbql.s.helpers]
-            [metabase.util
-             [i18n :as ui18n :refer [deferred-trs tru]]
-             [schema :as su]]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [deferred-trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -99,7 +95,7 @@
   (when-let [table-ids (seq (map :table_id fields))]
     (u/key-by :table_id (-> (db/select Field:params-columns-only
                               :table_id     [:in table-ids]
-                              :special_type (mdb/isa :type/Name))
+                              :special_type (mdb.u/isa :type/Name))
                             ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
                             ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                             ;; `list` instead of `auto-list`.)

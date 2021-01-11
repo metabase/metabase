@@ -1,8 +1,7 @@
 (ns metabase.models.revision-test
   (:require [expectations :refer :all]
-            [metabase.models
-             [card :refer [Card]]
-             [revision :as revision :refer :all]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.revision :as revision :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]
             [toucan.models :as models]

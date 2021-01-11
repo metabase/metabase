@@ -19,8 +19,8 @@
    "run-ee"                            ["with-profile" "+run,+ee" "run"]
    "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "run-with-repl-ee"                  ["with-profile" "+run-with-repl,+ee" "repl"]
-   "ring"                              ["with-profile" "+ring" "ring"]
-   "ring-ee"                           ["with-profile" "+ring,+ee" "ring"]
+   ;; "ring"                              ["with-profile" "+ring" "ring"]
+   ;; "ring-ee"                           ["with-profile" "+ring,+ee" "ring"]
    "test"                              ["with-profile" "+test" "test"]
    "test-ee"                           ["with-profile" "+test,+ee" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
@@ -274,24 +274,25 @@
                    (metabase.core/-main))
       :timeout 60000}}]
 
+   ;; DISABLED FOR NOW SINCE IT'S BROKEN -- SEE #12181
    ;; start the dev HTTP server with 'lein ring server'
-   :ring
-   [:exclude-tests
-    :include-all-drivers
-    {:dependencies
-     ;; used internally by lein ring to track namespace changes. Newer version contains fix by yours truly with 1000x
-     ;; faster launch time
-     [[ns-tracker "0.4.0"]]
+   ;; :ring
+   ;; [:exclude-tests
+   ;;  :include-all-drivers
+   ;;  {:dependencies
+   ;;   ;; used internally by lein ring to track namespace changes. Newer version contains fix by yours truly with 1000x
+   ;;   ;; faster launch time
+   ;;   [[ns-tracker "0.4.0"]]
 
-     :plugins
-     [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]
+   ;;   :plugins
+   ;;   [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]
 
-     :ring
-     {:handler      metabase.handler/app
-      :init         metabase.core/init!
-      :async?       true
-      :destroy      metabase.core/destroy
-      :reload-paths ["src"]}}]
+   ;;   :ring
+   ;;   {:handler      metabase.server.handler/app
+   ;;    :init         metabase.core/init!
+   ;;    :async?       true
+   ;;    :destroy      metabase.core/destroy
+   ;;    :reload-paths ["src"]}}]
 
    :with-include-drivers-middleware
    {:plugins
@@ -392,7 +393,7 @@
    :check-namespace-decls
    [:linters-common
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :check-namespace-decls {:prefix-rewriting true}}]
+     :check-namespace-decls {:prefix-rewriting false}}]
 
    :cloverage
    [:test-common

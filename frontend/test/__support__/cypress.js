@@ -182,10 +182,10 @@ export function withDatabase(databaseId, f) {
     for (const table of body.tables) {
       const fields = {};
       for (const field of table.fields) {
-        fields[field.name] = field.id;
+        fields[field.name.toUpperCase()] = field.id;
       }
-      database[table.name] = fields;
-      database[table.name + "_ID"] = table.id;
+      database[table.name.toUpperCase()] = fields;
+      database[table.name.toUpperCase() + "_ID"] = table.id;
     }
     f(database);
   });
@@ -305,11 +305,14 @@ function addQADatabase(engine, db_display_name, port) {
   });
 }
 
-export function visitQuestionAdhoc(question) {
+export function adhocQuestionHash(question) {
   if (question.display) {
     // without "locking" the display, the QB will run its picking logic and override the setting
     question = Object.assign({}, question, { displayIsLocked: true });
   }
-  const hash = btoa(unescape(encodeURIComponent(JSON.stringify(question))));
-  cy.visit("/question#" + hash);
+  return btoa(unescape(encodeURIComponent(JSON.stringify(question))));
+}
+
+export function visitQuestionAdhoc(question) {
+  cy.visit("/question#" + adhocQuestionHash(question));
 }

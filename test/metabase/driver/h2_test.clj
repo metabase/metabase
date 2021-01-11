@@ -2,15 +2,13 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [models :refer [Database]]
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.db.spec :as db.spec]
+            [metabase.driver :as driver]
             [metabase.driver.h2 :as h2]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models :refer [Database]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util.honeysql-extensions :as hx]))
 
@@ -52,13 +50,7 @@
            (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
                 (catch org.h2.jdbc.JdbcSQLException e
                   (and (re-matches #"Database .+ not found .+" (.getMessage e))
-                       ::exception-thrown))))))
-
-  (testing (str "Check that we can connect to a non-existent Database when we enable potentailly unsafe connections "
-                "(e.g. to the Metabase database)")
-    (binding [mdb/*allow-potentailly-unsafe-connections* true]
-      (is (= true
-             (boolean (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/pigeon_sightings")})))))))
+                       ::exception-thrown)))))))
 
 (deftest db-timezone-id-test
   (mt/test-driver :h2

@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import cx from "classnames";
 
 import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
@@ -26,12 +27,18 @@ export const getDashboardActions = (
     onRefreshPeriodChange,
     onSharingClick,
     onEmbeddingClick,
+    dashcardData,
   },
 ) => {
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
   const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
   const buttons = [];
+
+  /* we consider the dashboard to be shareable if there is at least one card with data in it on the dashboard
+    markdown cards don't appear in dashcardData so we check to see if there is at least one value
+  */
+  const canShareDashboard = Object.keys(dashcardData).length > 0;
 
   if (!isEditing && !isEmpty) {
     const extraButtonClassNames =
@@ -40,9 +47,22 @@ export const getDashboardActions = (
     buttons.push(
       <PopoverWithTrigger
         ref="popover"
+        disabled={!canShareDashboard}
         triggerElement={
-          <Tooltip tooltip={t`Sharing`}>
-            <Icon name="share" className="text-brand-hover" />
+          <Tooltip
+            tooltip={
+              canShareDashboard
+                ? t`Sharing`
+                : t`Add data to share this dashboard`
+            }
+          >
+            <Icon
+              name="share"
+              className={cx({
+                "text-brand-hover": canShareDashboard,
+                "text-light": !canShareDashboard,
+              })}
+            />
           </Tooltip>
         }
       >

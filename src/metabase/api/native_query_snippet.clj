@@ -3,17 +3,14 @@
   (:require [clojure.data :as data]
             [compojure.core :refer [GET POST PUT]]
             [metabase.api.common :as api]
-            [metabase.models
-             [interface :as mi]
-             [native-query-snippet :as snippet :refer [NativeQuerySnippet]]]
+            [metabase.models.interface :as mi]
+            [metabase.models.native-query-snippet :as snippet :refer [NativeQuerySnippet]]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (s/defn ^:private hydrated-native-query-snippet :- (s/maybe (class NativeQuerySnippet))
   [id :- su/IntGreaterThanZero]

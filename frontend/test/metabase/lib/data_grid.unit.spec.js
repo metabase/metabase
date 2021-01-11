@@ -180,7 +180,7 @@ describe("data_grid", () => {
             { span: 1, value: "z" },
           ],
         ],
-        [[{ span: 1, value: "Row totals" }], [{ span: 1, value: "Metric" }]],
+        [[{ span: 1, value: "Row totals" }]],
       ]);
       expect(leftIndex).toEqual([]);
       expect(rowCount).toEqual(1);
@@ -203,7 +203,16 @@ describe("data_grid", () => {
               { value: "z", span: 1 },
             ],
           ],
-          [[{ isSubtotal: true, span: 1, value: "Totals for a" }]],
+          [
+            [
+              {
+                isSubtotal: true,
+                span: 1,
+                value: "Totals for a",
+                rawValue: "a",
+              },
+            ],
+          ],
         ],
         [
           [
@@ -214,7 +223,16 @@ describe("data_grid", () => {
               { value: "z", span: 1 },
             ],
           ],
-          [[{ isSubtotal: true, span: 1, value: "Totals for b" }]],
+          [
+            [
+              {
+                isSubtotal: true,
+                span: 1,
+                value: "Totals for b",
+                rawValue: "b",
+              },
+            ],
+          ],
         ],
         GRAND_TOTALS_ROW,
       ]);
@@ -243,7 +261,7 @@ describe("data_grid", () => {
       expect(topIndex).toEqual([
         [[{ value: "a", span: 1 }]],
         [[{ value: "b", span: 1 }]],
-        [[{ span: 1, value: "Row totals" }], [{ value: "Metric", span: 1 }]],
+        [[{ span: 1, value: "Row totals" }]],
       ]);
       expect(extractValues(getRowSection(0, 0))).toEqual([["1"]]);
       expect(extractValues(getRowSection(1, 1))).toEqual([[null]]);
@@ -314,7 +332,16 @@ describe("data_grid", () => {
               { span: 1, value: "c2" },
             ],
           ],
-          [[{ isSubtotal: true, span: 1, value: "Totals for a1" }]],
+          [
+            [
+              {
+                isSubtotal: true,
+                span: 1,
+                value: "Totals for a1",
+                rawValue: "a1",
+              },
+            ],
+          ],
         ],
         [
           [
@@ -327,7 +354,16 @@ describe("data_grid", () => {
               { span: 1, value: "c2" },
             ],
           ],
-          [[{ isSubtotal: true, span: 1, value: "Totals for a2" }]],
+          [
+            [
+              {
+                isSubtotal: true,
+                span: 1,
+                value: "Totals for a2",
+                rawValue: "a2",
+              },
+            ],
+          ],
         ],
         GRAND_TOTALS_ROW,
       ]);
@@ -448,6 +484,41 @@ describe("data_grid", () => {
       expect(extractValues(getRowSection(0, 0))).toEqual([["1"], ["2"], ["3"]]);
       expect(extractValues(getRowSection(0, 1))).toEqual([["3"], ["4"], ["7"]]);
       expect(extractValues(getRowSection(0, 2))).toEqual([["10"]]);
+    });
+
+    it("hide collapsed rows", () => {
+      const cols = [D1, D2, M];
+      const primaryGroup = 0;
+      const subtotalOne = 2;
+      const subtotalTwo = 1;
+      const subtotalThree = 3;
+      const rows = [
+        ["a", "x", 1, primaryGroup],
+        ["a", "y", 2, primaryGroup],
+        ["b", "x", 3, primaryGroup],
+        ["b", "y", 4, primaryGroup],
+        ["a", null, 3, subtotalOne],
+        ["b", null, 7, subtotalOne],
+        [null, "x", 4, subtotalTwo],
+        [null, "y", 6, subtotalTwo],
+        [null, null, 10, subtotalThree],
+      ];
+      const data = {
+        rows,
+        cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
+      };
+      const { getRowSection, leftIndex, rowCount } = multiLevelPivot(
+        data,
+        [],
+        [0, 1],
+        [2],
+        ['["a"]'],
+      );
+      expect(rowCount).toEqual(3);
+      expect(leftIndex[0]).toEqual([
+        [[{ isSubtotal: true, span: 1, value: "Totals for a", rawValue: "a" }]],
+      ]);
+      expect(extractValues(getRowSection(0, 0))).toEqual([["3"]]);
     });
   });
 });

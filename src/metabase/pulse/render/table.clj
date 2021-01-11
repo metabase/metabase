@@ -2,9 +2,8 @@
   (:require [hiccup.core :refer [h]]
             [medley.core :as m]
             [metabase.plugins.classloader :as classloader]
-            [metabase.pulse.render
-             [color :as color]
-             [style :as style]])
+            [metabase.pulse.render.color :as color]
+            [metabase.pulse.render.style :as style])
   (:import jdk.nashorn.api.scripting.JSObject))
 
 ;; Our 'helpful' NS declaration linter will complain that common is unused. But we need to require it so

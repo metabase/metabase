@@ -3,19 +3,16 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [test :as mt]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]]
-            [metabase.test.data.sql-jdbc
-             [execute :as execute]
-             [spec :as spec]]
+            [metabase.test :as mt]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc.execute :as execute]
+            [metabase.test.data.sql-jdbc.spec :as spec]
             [metabase.test.data.sql.ddl :as ddl]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.SQLException))
 
@@ -147,6 +144,10 @@
 (def load-data-add-ids!
   "Implementation of `load-data!`. Insert all rows at once; add IDs."
   (make-load-data-fn load-data-add-ids))
+
+(def load-data-add-ids-chunked!
+  "Implementation of `load-data!`. Insert rows in chunks of 200 at a time; add IDs."
+  (make-load-data-fn load-data-add-ids load-data-chunked))
 
 (def load-data-one-at-a-time-add-ids!
   "Implementation of `load-data!` that inserts rows one at a time, but adds IDs."

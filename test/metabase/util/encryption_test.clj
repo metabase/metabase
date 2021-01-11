@@ -1,8 +1,7 @@
 (ns metabase.util.encryption-test
   "Tests for encryption of Metabase DB details."
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [expectations :refer :all]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.test.util :as tu]

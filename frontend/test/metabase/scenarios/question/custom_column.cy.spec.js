@@ -10,7 +10,7 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 const customFormulas = [
   {
@@ -361,6 +361,76 @@ describe("scenarios > question > custom columns", () => {
       cy.log("**Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2**");
       cy.findByText("Foo Bar");
       cy.findAllByText("57911");
+    });
+  });
+
+  it.skip("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
+    const CC_NAME = "Double the fun";
+
+    cy.request("POST", "/api/card", {
+      name: "14193",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
+            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+            ],
+          },
+          expressions: {
+            [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+          },
+        },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      // Test displays collapsed filter - click on number 1 to expand and show the filter name
+      cy.get(".Icon-filter")
+        .parent()
+        .contains("1")
+        .click();
+
+      cy.findByText(/Subtotal is greater than 0/i)
+        .parent()
+        .find(".Icon-close")
+        .click();
+
+      cy.findByText(CC_NAME);
+    });
+  });
+
+  it.skip("should handle identical custom column and table column names (metabase#14255)", () => {
+    // Uppercase is important for this reproduction on H2
+    const CC_NAME = "CATEGORY";
+
+    cy.request("POST", "/api/card", {
+      name: "14255",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            [CC_NAME]: ["concat", ["field-id", PRODUCTS.CATEGORY], "2"],
+          },
+          aggregation: [["count"]],
+          breakout: [["expression", CC_NAME]],
+        },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.findByText(CC_NAME);
+      cy.findByText("Gizmo2");
     });
   });
 });

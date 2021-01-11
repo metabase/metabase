@@ -2,12 +2,10 @@
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
             [metabase.models.dependency :as dep :refer [Dependency]]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
-            [toucan
-             [db :as db]
-             [models :as models]]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
+            [toucan.db :as db]
+            [toucan.models :as models]
             [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db))

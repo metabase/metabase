@@ -22,10 +22,9 @@
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [config :refer [local-process-uuid]]
-             [util :as u]]
+            [metabase.config :refer [local-process-uuid]]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import java.time.temporal.Temporal))

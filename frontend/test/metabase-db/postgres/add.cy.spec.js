@@ -25,11 +25,7 @@ describe("postgres > admin > add", () => {
 
     typeAndBlurUsingLabel("Name", "QA Postgres12");
     typeAndBlurUsingLabel("Host", "localhost");
-    // TODO: "Port" label and input field are misconfigured (input field is missing `aria-labeledby` attribute)
-    // typeAndBlurUsingLabel("Port", "5432") => this will not work (switching to placeholder temporarily)
-    cy.findByPlaceholderText("5432")
-      .click()
-      .type("5432");
+    typeAndBlurUsingLabel("Port", "5432");
     typeAndBlurUsingLabel("Database name", "sample");
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");

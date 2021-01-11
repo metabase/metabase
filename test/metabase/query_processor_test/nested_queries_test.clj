@@ -3,21 +3,19 @@
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [interface :as models]
-             [permissions :as perms]
-             [permissions-group :as group]
-             [segment :refer [Segment]]]
-            [metabase.models.query.permissions :as query-perms]))
+            [metabase.models.card :as card :refer [Card]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.interface :as models]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.query.permissions :as query-perms]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)

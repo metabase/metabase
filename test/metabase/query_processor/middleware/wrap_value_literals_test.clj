@@ -1,11 +1,10 @@
 (ns metabase.query-processor.middleware.wrap-value-literals-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
-            [metabase.query-processor.timezone :as qp.timezone]))
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.test :as mt]))
 
 (driver/register! ::tz-driver, :abstract? true)
 

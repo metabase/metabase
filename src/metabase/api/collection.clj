@@ -6,27 +6,23 @@
   `?namespace=snippet`)."
   (:require [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
-            [metabase.api
-             [card :as card-api]
-             [common :as api]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [interface :as mi]
-             [native-query-snippet :refer [NativeQuerySnippet]]
-             [permissions :as perms]
-             [pulse :as pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]]
-            [metabase.models.collection
-             [graph :as collection.graph]
-             [root :as collection.root]]
+            [metabase.api.card :as card-api]
+            [metabase.api.common :as api]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.collection.graph :as collection.graph]
+            [metabase.models.collection.root :as collection.root]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.interface :as mi]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (declare root-collection)
 

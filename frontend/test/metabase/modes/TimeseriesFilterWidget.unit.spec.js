@@ -1,7 +1,7 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 import React from "react";
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
-import { mount } from "enzyme";
+import { render, screen } from "@testing-library/react";
 
 import Question from "metabase-lib/lib/Question";
 import {
@@ -30,34 +30,37 @@ describe("TimeseriesFilterWidget", () => {
     .question();
 
   it("should display 'All Time' text if no filter is selected", () => {
-    const widget = mount(getTimeseriesFilterWidget(questionWithoutFilter));
-    expect(widget.find(".AdminSelect-content").text()).toBe("All Time");
+    render(getTimeseriesFilterWidget(questionWithoutFilter));
+    screen.getByText(/All Time/i);
   });
+
   it("should display 'Previous 30 Days' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
       .filter(["time-interval", ["field-id", 1], -30, "day"])
       .question();
 
-    const widget = mount(getTimeseriesFilterWidget(questionWithFilter));
-    expect(widget.find(".AdminSelect-content").text()).toBe("Previous 30 Days");
+    render(getTimeseriesFilterWidget(questionWithFilter));
+    screen.getByText(/Previous 30 Days/i);
   });
+
   it("should display 'Is Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
       .filter(["is-null", ["field-id", 1]])
       .question();
 
-    const widget = mount(getTimeseriesFilterWidget(questionWithFilter));
-    expect(widget.find(".AdminSelect-content").text()).toBe("Is Empty");
+    render(getTimeseriesFilterWidget(questionWithFilter));
+    screen.getByText(/Is Empty/i);
   });
+
   it("should display 'Not Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
       .filter(["not-null", ["field-id", 1]])
       .question();
 
-    const widget = mount(getTimeseriesFilterWidget(questionWithFilter));
-    expect(widget.find(".AdminSelect-content").text()).toBe("Not Empty");
+    render(getTimeseriesFilterWidget(questionWithFilter));
+    screen.getByText(/Not Empty/i);
   });
 });

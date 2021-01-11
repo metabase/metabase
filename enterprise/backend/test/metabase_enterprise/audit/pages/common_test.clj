@@ -1,11 +1,10 @@
 (ns metabase-enterprise.audit.pages.common-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [db :as mdb]
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase-enterprise.audit.pages.common :as pages.common]
-            [metabase.public-settings.metastore-test :as metastore-test]))
+            [metabase.db :as mdb]
+            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]))
 
 (defn- run-query
   [varr & {:as additional-query-params}]

@@ -2,11 +2,10 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [models :refer [Card Collection Metric Segment]]
-             [related :as r :refer :all]
-             [sync :as sync]
-             [test :as mt]]
+            [metabase.models :refer [Card Collection Metric Segment]]
+            [metabase.related :as r :refer :all]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.data.one-off-dbs :as one-off-dbs]))
 
 (deftest collect-context-bearing-forms-test

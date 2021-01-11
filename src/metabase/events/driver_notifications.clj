@@ -6,9 +6,8 @@
   connection pools when database details change or when they are deleted."
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase
-             [driver :as driver]
-             [events :as events]]))
+            [metabase.driver :as driver]
+            [metabase.events :as events]))
 
 (def ^:private driver-notifications-topics
   "The `Set` of event topics which are subscribed to for use in driver notifications."

@@ -1,30 +1,25 @@
 (ns metabase.api.embed-test
   "Tests for /api/embed endpoints."
-  (:require [buddy.sign
-             [jwt :as jwt]
-             [util :as buddy-util]]
+  (:require [buddy.sign.jwt :as jwt]
+            [buddy.sign.util :as buddy-util]
             [clj-time.core :as time]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
             [clojure.data.csv :as csv]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase
-             [http-client :as http]
-             [models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-             [query-processor-test :as qp.test]
-             [test :as mt]
-             [util :as u]]
-            [metabase.api
-             [dashboard-test :as dashboard-api-test]
-             [embed :as embed-api]
-             [public-test :as public-test]]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as group]]
+            [metabase.api.dashboard-test :as dashboard-api-test]
+            [metabase.api.embed :as embed-api]
+            [metabase.api.public-test :as public-test]
+            [metabase.http-client :as http]
+            [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream))

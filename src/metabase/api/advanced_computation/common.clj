@@ -3,10 +3,9 @@
   (:require [clojure.core.async :as a]
             [metabase.api.common :as api]
             [metabase.query-processor :as qp]
-            [metabase.query-processor
-             [context :as qp.context]
-             [pivot :as pivot]
-             [store :as qp.store]]))
+            [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.pivot :as pivot]
+            [metabase.query-processor.store :as qp.store]))
 
 (defn- process-query-append-results
   "Reduce the results of a single `query` using `rf` and initial value `init`."

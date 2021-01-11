@@ -1,11 +1,8 @@
 (ns metabase.mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure
-   :exclude
-   [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace])
-  (:require [clojure
-             [core :as core]
-             [set :as set]]
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace])
+  (:require [clojure.core :as core]
+            [clojure.set :as set]
             [metabase.mbql.schema.helpers :refer [defclause is-clause? one-of]]
             [metabase.mbql.util.match :as match]
             [metabase.util.schema :as su]

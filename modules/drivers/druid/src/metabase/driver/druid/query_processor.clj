@@ -2,23 +2,19 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [types :as types]
-             [util :as u]]
             [metabase.driver.common :as driver.common]
             [metabase.driver.druid.js :as js]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [interface :as i]
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :as ui18n :refer [trs tru]]]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.types :as types]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :as ui18n :refer [trs tru]]
             [schema.core :as s]))
 
 (def ^:private ^:const topN-max-results

@@ -1,20 +1,17 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [metabase
-             [db :as mdb]
-             [events :as events]
-             [util :as u]]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [interface :as i]
-             [pulse-card :refer [PulseCard]]]
+            [metabase.db.util :as mdb.u]
+            [metabase.events :as events]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+            [metabase.models.interface :as i]
+            [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models]))
 
 (models/defmodel DashboardCard :report_dashboardcard)
 
@@ -44,7 +41,7 @@
          {:properties  (constantly {:timestamped? true})
           :types       (constantly {:parameter_mappings :parameter-mappings, :visualization_settings :json})
           :pre-insert  pre-insert
-          :post-select (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})})
+          :post-select #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY})})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set  perms-objects-set
@@ -65,7 +62,7 @@
   "Return the `Cards` associated as additional series on this DashboardCard."
   [{:keys [id]}]
   (db/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
-    (mdb/join [Card :id] [DashboardCardSeries :card_id])
+    (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
     (db/qualify DashboardCardSeries :dashboardcard_id) id
     {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))
 
@@ -162,7 +159,7 @@
           (dissoc dashcard :actor_id))))))
 
 (defn delete-dashboard-card!
-  "Delete a DashboardCard`"
+  "Delete a DashboardCard."
   [dashboard-card user-id]
   {:pre [(map? dashboard-card)
          (integer? user-id)]}

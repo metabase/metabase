@@ -36,18 +36,15 @@
   (:require [clojure.test :as t]
             [colorize.core :as colorize]
             [medley.core :as m]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [dimension :refer [Dimension]]
-             [field-values :refer [FieldValues]]]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [impl :as impl]
-             [interface :as tx]
-             [mbql-query-impl :as mbql-query-impl]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field-values :refer [FieldValues]]
+            [metabase.query-processor :as qp]
+            [metabase.test.data.dataset-definitions :as defs]
+            [metabase.test.data.impl :as impl]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.mbql-query-impl :as mbql-query-impl]
+            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------

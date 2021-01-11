@@ -1,24 +1,20 @@
 (ns metabase.api.metric-test
   "Tests for /api/metric endpoints."
   (:require [expectations :refer [expect]]
-            [metabase
-             [http-client :as http]
-             [util :as u]]
-            [metabase.middleware.util :as middleware.u]
-            [metabase.models
-             [database :refer [Database]]
-             [metric :as metric :refer [Metric]]
-             [permissions :as perms]
-             [permissions-group :as group]
-             [revision :refer [Revision]]
-             [table :refer [Table]]]
-            [metabase.test
-             [data :as data :refer :all]
-             [util :as tu]]
+            [metabase.http-client :as http]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.metric :as metric :refer [Metric]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.revision :refer [Revision]]
+            [metabase.models.table :refer [Table]]
+            [metabase.server.middleware.util :as middleware.u]
+            [metabase.test.data :as data :refer :all]
             [metabase.test.data.users :refer [fetch-user user->client user->id]]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.util.test :as tt]))
 
 ;; ## Helper Fns

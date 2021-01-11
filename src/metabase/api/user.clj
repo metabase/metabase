@@ -3,24 +3,20 @@
   (:require [cemerick.friend.credentials :as creds]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
-            [metabase.api
-             [common :as api]
-             [session :as session-api]]
+            [metabase.api.common :as api]
+            [metabase.api.session :as session-api]
             [metabase.email.messages :as email]
             [metabase.integrations.ldap :as ldap]
-            [metabase.models
-             [collection :as collection :refer [Collection]]
-             [permissions-group :as group]
-             [user :as user :refer [User]]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :as i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :as i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
 

@@ -3,8 +3,9 @@ import {
   signInAsAdmin,
   setupLocalHostEmail,
   signInAsNormalUser,
-  modal,
   signOut,
+  modal,
+  popover,
   USERS,
   USER_GROUPS,
 } from "__support__/cypress";
@@ -289,7 +290,7 @@ describe("scenarios > collection_defaults", () => {
       signInAsAdmin();
     });
 
-    it.skip("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
+    it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
       // Create Parent collection within `Our analytics`
       cy.request("POST", "/api/collection", {
         name: "Parent",
@@ -363,6 +364,75 @@ describe("scenarios > collection_defaults", () => {
           .should("not.be.disabled")
           .click();
       });
+    });
+
+    it.skip("should show moved collections inside a folder tree structure (metabase#14280)", () => {
+      const NEW_COLLECTION = "New collection";
+
+      // Create New collection within `Our analytics`
+      cy.request("POST", "/api/collection", {
+        name: NEW_COLLECTION,
+        color: "#509EE3",
+        parent_id: null,
+      });
+
+      cy.visit("/collection/root");
+      cy.findByText(NEW_COLLECTION);
+      cy.findByText("First collection").click();
+      cy.get(".Icon-pencil").click();
+      cy.findByText("Edit this collection").click();
+      modal().within(() => {
+        // Open the select dropdown menu
+        cy.findByText("Our analytics").click();
+      });
+      popover().within(() => {
+        cy.findByText(NEW_COLLECTION).click();
+      });
+      // Make sure the correct value is selected
+      cy.get(".AdminSelect-content").contains(NEW_COLLECTION);
+      cy.findByText("Update")
+        .closest(".Button")
+        .should("not.be.disabled")
+        .click();
+      // Make sure modal closed
+      cy.findByText("Update").should("not.exist");
+
+      // Make sure sidebar updated (waiting for a specific XHR didn't help)
+      // Before update, "First collection" was expanded, thus showing "Second collection"
+      cy.findByText("Second collection").should("not.exist");
+
+      cy.log(
+        "**New collection should immediately be open, showing nested children**",
+      );
+      cy.findByText(NEW_COLLECTION)
+        .closest("a")
+        .within(() => {
+          cy.get(".Icon-chevrondown");
+          cy.findByText("First collection");
+        });
+    });
+
+    it.skip("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
+      cy.request("POST", "/api/collection", {
+        name: "foo:bar",
+        color: "#509EE3",
+        parent_id: null,
+      }).then(({ body: { id: COLLECTION_ID } }) => {
+        // Move question #1 ("Orders") to newly created collection
+        cy.request("PUT", "/api/card/1", {
+          collection_id: COLLECTION_ID,
+        });
+        // Sanity check: make sure Orders is indeed inside new collection
+        cy.visit(`/collection/${COLLECTION_ID}`);
+        cy.findByText("Orders");
+      });
+
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      // Note: collection name's first letter is capitalized
+      cy.findByText(/foo:bar/i).click();
+      cy.findByText("Orders");
     });
   });
 });

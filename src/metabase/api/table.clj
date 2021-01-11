@@ -3,28 +3,24 @@
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST PUT]]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [related :as related]
-             [sync :as sync]
-             [types :as types]
-             [util :as u]]
             [metabase.api.common :as api]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [card :refer [Card]]
-             [field :refer [Field]]
-             [field-values :as fv :refer [FieldValues]]
-             [interface :as mi]
-             [table :as table :refer [Table]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :as fv :refer [FieldValues]]
+            [metabase.models.interface :as mi]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.related :as related]
+            [metabase.sync :as sync]
             [metabase.sync.field-values :as sync-field-values]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [schema :as su]]
+            [metabase.types :as types]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."

@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.add-timezone-info-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
-            [metabase.query-processor.middleware.add-timezone-info :as add-timezone-info]))
+            [metabase.driver :as driver]
+            [metabase.query-processor.middleware.add-timezone-info :as add-timezone-info]
+            [metabase.test :as mt]))
 
 (driver/register! ::timezone-driver, :abstract? true)
 

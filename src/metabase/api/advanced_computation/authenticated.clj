@@ -1,10 +1,9 @@
 (ns metabase.api.advanced-computation.authenticated
   "Authenticated /api/advanced_computation endpoints, like pivot table generation"
   (:require [compojure.core :refer [POST]]
-            [metabase.api
-             [card :as api.card]
-             [common :as api]]
             [metabase.api.advanced-computation.common :as advcomp-common]
+            [metabase.api.card :as api.card]
+            [metabase.api.common :as api]
             [metabase.models.database :as database :refer [Database]]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.streaming :as qp.streaming]

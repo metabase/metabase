@@ -4,9 +4,8 @@
   actions can take place or be prevented when something changes."
   (:require [clojure.set :as set]
             [potemkin.types :as p.types]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (p.types/defprotocol+ IDependent
   "Methods an entity may optionally implement to control how dependencies of an instance are captured."

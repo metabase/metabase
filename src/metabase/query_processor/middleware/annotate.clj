@@ -2,23 +2,19 @@
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
   (:require [clojure.string :as str]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.mbql
-             [predicates :as mbql.preds]
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.mbql.predicates :as mbql.preds]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.humanization :as humanization]
-            [metabase.query-processor
-             [error-type :as error-type]
-             [reducible :as qp.reducible]
-             [store :as qp.store]]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.query-processor.store :as qp.store]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [metabase.util
-             [i18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def ^:private Col

@@ -1,14 +1,12 @@
 (ns metabase.query-processor-test.explicit-joins-test
-  (:require [clojure
-             [set :as set]
-             [test :refer :all]]
-            [metabase
-             [driver :as driver]
-             [models :refer [Card]]
-             [query-processor :as qp]
-             [test :as mt]]
+  (:require [clojure.set :as set]
+            [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.models :refer [Card]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor-test.timezones-test :as timezones-test]
             [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]))
 
 (defn- native-form [query]

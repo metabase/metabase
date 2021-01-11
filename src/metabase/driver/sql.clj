@@ -1,12 +1,10 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
   (:require [metabase.driver :as driver]
-            [metabase.driver.common.parameters
-             [parse :as params.parse]
-             [values :as params.values]]
-            [metabase.driver.sql.parameters
-             [substitute :as params.substitute]
-             [substitution :as param-substitution]]
+            [metabase.driver.common.parameters.parse :as params.parse]
+            [metabase.driver.common.parameters.values :as params.values]
+            [metabase.driver.sql.parameters.substitute :as params.substitute]
+            [metabase.driver.sql.parameters.substitution :as param-substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [potemkin :as p]))

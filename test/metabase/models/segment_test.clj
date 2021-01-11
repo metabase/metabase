@@ -1,9 +1,8 @@
 (ns metabase.models.segment-test
   (:require [expectations :refer [expect]]
-            [metabase.models
-             [database :refer [Database]]
-             [segment :as segment :refer [Segment]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.segment :as segment :refer [Segment]]
+            [metabase.models.table :refer [Table]]
             [metabase.test.data.users :refer [fetch-user user->id]]
             [metabase.util :as u]
             [toucan.db :as db]

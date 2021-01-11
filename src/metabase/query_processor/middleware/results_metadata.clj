@@ -9,9 +9,8 @@
             [metabase.driver :as driver]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.sync.analyze.query-results :as analyze.results]
-            [metabase.util
-             [encryption :as encryption]
-             [i18n :refer [tru]]]
+            [metabase.util.encryption :as encryption]
+            [metabase.util.i18n :refer [tru]]
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 

@@ -5,15 +5,13 @@
             [metabase.db.spec :as dbspec]
             [metabase.driver.sql.util :as sql.u]
             [metabase.models.database :refer [Database]]
-            [metabase.test.data
-             [impl :as data.impl]
-             [interface :as tx]
-             [sql :as sql.tx]
-             [sql-jdbc :as sql-jdbc.tx]]
-            [metabase.test.data.sql-jdbc
-             [execute :as execute]
-             [load-data :as load-data]
-             [spec :as spec]]
+            [metabase.test.data.impl :as data.impl]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+            [metabase.test.data.sql-jdbc.execute :as execute]
+            [metabase.test.data.sql-jdbc.load-data :as load-data]
+            [metabase.test.data.sql-jdbc.spec :as spec]
             [toucan.db :as db]))
 
 (sql-jdbc.tx/add-test-extensions! :h2)

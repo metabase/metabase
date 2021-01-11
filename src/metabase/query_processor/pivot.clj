@@ -31,14 +31,17 @@
 (defn add-grouping-field
   "Add the grouping field and expression to the query"
   [query breakout bitmask]
-  (-> query
-      (assoc-in [:query :breakout] breakout)
-      ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
-      (update-in [:query :fields]
-                 #(conj % [:expression "pivot-grouping"]))
-      ;;TODO: replace this value with a bitmask or something to indicate the source better
-      (update-in [:query :expressions]
-                 #(assoc % "pivot-grouping" [:abs bitmask]))))
+  (let [new-query (-> query
+                      ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
+                      (update-in [:query :fields]
+                                 #(conj % [:expression "pivot-grouping"]))
+                      ;;TODO: replace this value with a bitmask or something to indicate the source better
+                      (update-in [:query :expressions]
+                                 #(assoc % "pivot-grouping" [:abs bitmask])))]
+    ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts
+    (assoc-in new-query [:query :breakout]
+              (concat breakout (map (fn [expr] [:expression (name expr)])
+                                    (keys (get-in new-query [:query :expressions])))))))
 
 (defn generate-queries
   "Generate the additional queries to perform a generic pivot table"

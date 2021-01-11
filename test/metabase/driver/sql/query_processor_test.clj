@@ -1,12 +1,11 @@
 (ns metabase.driver.sql.query-processor-test
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.setting :as setting]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [metabase.util.honeysql-extensions :as hx]
             [pretty.core :refer [PrettyPrintable]])
   (:import metabase.util.honeysql_extensions.Identifier))

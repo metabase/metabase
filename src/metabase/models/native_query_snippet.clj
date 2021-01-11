@@ -1,17 +1,14 @@
 (ns metabase.models.native-query-snippet
-  (:require [metabase.models
-             [collection :as collection]
-             [interface :as i]]
+  (:require [metabase.models.collection :as collection]
+            [metabase.models.interface :as i]
             [metabase.models.native-query-snippet.permissions :as snippet.perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 ;; Load the EE implementation of snippet permissions, if they exist (if we're running with EE code available).
 (u/ignore-exceptions

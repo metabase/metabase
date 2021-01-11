@@ -1,11 +1,10 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require [clojure.tools.logging :as log]
-            [metabase.query-processor
-             [context :as context]
-             [error-type :as error-type]
-             [reducible :as qp.reducible]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.permissions :as perms]
+            [metabase.query-processor.reducible :as qp.reducible]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             schema.utils)

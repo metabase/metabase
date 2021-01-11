@@ -8,26 +8,22 @@
             [hiccup.core :refer [html]]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [email :as email]
-             [public-settings :as public-settings]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
+            [metabase.email :as email]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render :as render]
-            [metabase.pulse.render
-             [body :as render.body]
-             [style :as render.style]]
+            [metabase.pulse.render.body :as render.body]
+            [metabase.pulse.render.style :as render.style]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
-            [metabase.util
-             [i18n :refer [deferred-trs trs tru]]
-             [quotation :as quotation]
-             [urls :as url]]
-            [stencil
-             [core :as stencil]
-             [loader :as stencil-loader]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-trs trs tru]]
+            [metabase.util.quotation :as quotation]
+            [metabase.util.urls :as url]
+            [stencil.core :as stencil]
+            [stencil.loader :as stencil-loader]
             [toucan.db :as db])
   (:import [java.io File IOException OutputStream]))
 

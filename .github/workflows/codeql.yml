@@ -1,0 +1,22 @@
+name: "CodeQL"
+
+on:
+  pull_request:
+    paths-ignore:
+    - 'docs/**'
+  push:
+    paths-ignore:
+    - 'docs/**'
+
+jobs:
+  analyze:
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        languages: javascript
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
