@@ -1,7 +1,6 @@
 (ns metabase.sync.schedules
-  (:require [metabase.util
-             [cron :as cron-util]
-             [schema :as su]]
+  (:require [metabase.util.cron :as cron-util]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def CronSchedulesMap
