@@ -53,25 +53,23 @@ describeWithToken("formatting > whitelabel", () => {
     cy.findByPlaceholderText("Metabase")
       .clear()
       .type("Test Co");
-    // *** In html, is not text, only value
+    // Helps scroll the page up in order to see "Saved" notification
     cy.findByText("Application Name").click();
-
     cy.findByText("Saved");
-    cy.get("input").should("have.value", "Test Co");
-    cy.log("Company name has been updated");
+    cy.findByDisplayValue("Test Co");
+    cy.log("Company name has been updated!");
 
-    cy.log("New company show show up on activity page");
-    // signInAsAdmin();
+    cy.log("**--1. New company should show up on activity page--**");
     cy.visit("/activity");
     cy.findByText("Test Co is up and running.");
     cy.findByText("Metabase is up and running.").should("not.exist");
 
-    cy.log("New company should show up when logged out");
+    cy.log("**--2. New company should show up when logged out--**");
     signOut();
     cy.visit("/");
     cy.findByText("Sign in to Test Co");
 
-    cy.log("new company should show up as a normal user");
+    cy.log("**--3. New company should show up for a normal user--**");
     signInAsNormalUser();
     cy.visit("/activity");
     cy.findByText("Test Co is up and running.");
