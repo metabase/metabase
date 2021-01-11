@@ -76,56 +76,62 @@ describeWithToken("formatting > whitelabel", () => {
     cy.findByText("Metabase is up and running.").should("not.exist");
   });
 
+  it("should be able to set colors using color-picker dialog", () => {
+    signInAsAdmin();
+    cy.visit("/admin/settings/whitelabel");
+
+    cy.log("**--1. Select color with squares--**");
+    changeThemeColor(1, colors.primary.hex);
+
+    cy.log("**--2. Select color by entering rgb value--**");
+    cy.get("td")
+      .eq(5)
+      .click();
+    cy.get(".sketch-picker")
+      .find("input")
+      .eq(1)
+      .clear()
+      .type(colors.nav.rgb[0]);
+    cy.get(".sketch-picker")
+      .find("input")
+      .eq(2)
+      .clear()
+      .type(colors.nav.rgb[1]);
+    cy.get(".sketch-picker")
+      .find("input")
+      .eq(3)
+      .clear()
+      .type(colors.nav.rgb[2]);
+    cy.findByText("Done").click();
+
+    cy.log("**--3. Select color by typing hex code--**");
+    cy.get("td")
+      .eq(29)
+      .click();
+    cy.get(".sketch-picker")
+      .find("input")
+      .first()
+      .clear()
+      .type(colors.additional4.hex);
+    cy.findByText("Done").click();
+  });
+
   describe("Changes to theme colors work", () => {
-    it("should change theme colors in admin panel", () => {
+    beforeEach(() => {
       signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
-
-      // Select color with squares
-      changeThemeColor(1, colors.primary.hex);
-
-      // Select color by entering rgb
-      cy.get("td")
-        .eq(5)
-        .click();
-      cy.get(".sketch-picker")
-        .find("input")
-        .eq(1)
-        .clear()
-        .type(colors.nav.rgb[0]);
-      cy.get(".sketch-picker")
-        .find("input")
-        .eq(2)
-        .clear()
-        .type(colors.nav.rgb[1]);
-      cy.get(".sketch-picker")
-        .find("input")
-        .eq(3)
-        .clear()
-        .type(colors.nav.rgb[2]);
-      cy.findByText("Done").click();
-
-      // Select colors with squares
-      changeThemeColor(9, colors.accent1.hex);
-      changeThemeColor(13, colors.accent2.hex);
-      changeThemeColor(17, colors.additional1.hex);
-      changeThemeColor(21, colors.additional2.hex);
-      changeThemeColor(25, colors.additional3.hex);
-
-      // Select color by typing hex code
-      cy.get("td")
-        .eq(29)
-        .click();
-      cy.get(".sketch-picker")
-        .find("input")
-        .first()
-        .clear()
-        .type(colors.additional4.hex);
-      cy.findByText("Done").click();
-
-      changeThemeColor(33, colors.additional5.hex);
-
-      cy.get(".Icon-close").should("have.length", 10);
+      cy.request("PUT", "/api/setting/application-colors", {
+        value: {
+          accent1: "#417505",
+          accent2: "#7ed321",
+          accent3: "#b8e986",
+          accent4: "#50e3c2",
+          accent5: "#4a90e2",
+          accent6: "#082cbe",
+          accent7: "#f8e71c",
+          brand: "#8b572a",
+          nav: "#284e07",
+        },
+      });
     });
 
     it("should show color changes", () => {
