@@ -470,4 +470,19 @@ describe("scenarios > question > filter", () => {
       "not.exist",
     );
   });
+
+  it.skip("should be able to add date filter with calendar collapsed (metabase#14327)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Created At").click();
+    cy.findByText("Previous").click();
+    cy.findByText("Before").click();
+    // Collapse the calendar view
+    cy.get(".Icon-calendar").click();
+    cy.findByText("Add filter")
+      .closest(".Button")
+      .should("not.be.disabled")
+      .click();
+    cy.findByText(/^Created At is before/i);
+  });
 });
