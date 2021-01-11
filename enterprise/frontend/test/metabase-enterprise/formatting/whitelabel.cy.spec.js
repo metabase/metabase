@@ -45,7 +45,7 @@ function checkLogo() {
 }
 
 describeWithToken("formatting > whitelabel", () => {
-  before(restore);
+  beforeEach(restore);
 
   it("should be able to change company name", () => {
     signInAsAdmin();
