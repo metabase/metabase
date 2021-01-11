@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { ngettext, msgid } from "ttag";
 import { ExpressionVisitor } from "./visitor";
 import { CLAUSE_TOKENS } from "./lexer";
 
@@ -65,7 +65,11 @@ export function typeCheck(cst, rootType) {
       const name = functionToken.name;
       const expectedArgsLength = clause.args.length;
       if (!clause.multiple && clause.args.length !== args.length) {
-        const message = t`Function ${name} expects ${expectedArgsLength} arguments`;
+        const message = ngettext(
+          msgid`Function ${name} expects ${expectedArgsLength} argument`,
+          `Function ${name} expects ${expectedArgsLength} arguments`,
+          expectedArgsLength,
+        );
         this.errors.push({ message });
       }
       return args.map(arg => {
