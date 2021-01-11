@@ -447,4 +447,27 @@ describe("scenarios > question > filter", () => {
     );
     cy.findByText(AGGREGATED_FILTER);
   });
+
+  it.skip("in a simple question should display popup for custom expression options (metabase#14341)", () => {
+    openProductsTable();
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    // This issue has two problematic parts. We're testing for both:
+    cy.log("**--1. Popover should display all custom expression options--**");
+    // Popover shows up even without explicitly clicking the contenteditable field
+    popover().within(() => {
+      cy.findAllByRole("listitem").contains(/functions/i);
+    });
+
+    cy.log("**--2. Should not display error prematurely--**");
+    cy.get("[contenteditable='true']")
+      .click()
+      .type("contains(");
+    cy.findByText(/Checks to see if string1 contains string2 within it./i);
+    cy.get(".text-error").should("not.exist");
+    cy.findAllByText(/Expected one of these possible Token sequences:/i).should(
+      "not.exist",
+    );
+  });
 });
