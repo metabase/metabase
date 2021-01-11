@@ -5,10 +5,6 @@
   (:require [clojure.test :refer :all]
             [metabase.util.cron :as cron-util]))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          SCHEDULE MAP -> CRON STRING                                           |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (deftest schedule-map->cron-string-test
   (testing "basic schedule"
     (is (= "0 0 * * * ? *"
