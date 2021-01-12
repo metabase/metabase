@@ -247,11 +247,10 @@
   every hour at 50 minutes or on the hour. This can cause a large load on the databaes or CPU and this attempts to
   spread them out in time."
   [database]
-  (let [randomized-schedules (randomized-schedules database)]
-    (if (seq randomized-schedules)
-      (u/prog1 (merge database randomized-schedules)
-        (db/update! Database (u/id database) randomized-schedules))
-      database)))
+  (if-let [randomized-schedules (randomized-schedules database)]
+    (u/prog1 (merge database randomized-schedules)
+             (db/update! Database (u/id database) randomized-schedules))
+    database))
 
 (defmethod task/init! ::SyncDatabases
   [_]
