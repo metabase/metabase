@@ -160,7 +160,7 @@
   "Hydrate Pulse or Alert with the Fields needed for sending it."
   [notification :- PulseInstance]
   (-> notification
-      (hydrate :creator :cards [:channels :recipients])
+      (hydrate :creator :cards :dashboard [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
 (s/defn ^:private hydrate-notifications :- [PulseInstance]
@@ -359,23 +359,11 @@
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
   [notification card-refs :- (s/maybe [CardRef]) channels]
-  ;; if card-refs have dashboard_ids, go ahead and set the Pulse dashboard_id at the same time.
-  ;; make sure the DashboardCards all belong to the same Dashboard.
-  (let [dashboard-id (when-let [dashcard-ids (not-empty (set (keep :dashboard_card_id card-refs)))]
-                       (let [dashboard-ids (db/select-field :dashboard_id DashboardCard :id [:in dashcard-ids])]
-                         (when (> (count dashboard-ids) 1)
-                           (throw (ex-info (tru "Cannot create a Pulse for more than one Dashboard!")
-                                           {:dashboard-ids dashboard-ids})))
-                         (first dashboard-ids)))]
-
-    (db/transaction
-      (let [notification (db/insert! Pulse (assoc notification :dashboard_id dashboard-id))]
-        ;; add card-ids to the Pulse
-        (update-notification-cards! notification card-refs)
-        ;; add channels to the Pulse
-        (update-notification-channels! notification channels)
-        ;; now return the ID
-        (u/the-id notification)))))
+  (db/transaction
+    (let [notification (db/insert! Pulse notification)]
+      (update-notification-cards! notification card-refs)
+      (update-notification-channels! notification channels)
+      (u/the-id notification))))
 
 (s/defn create-pulse!
   "Create a new Pulse by inserting it into the database along with all associated pieces of data such as:
@@ -389,7 +377,8 @@
                 :creator_id                           su/IntGreaterThanZero
                 (s/optional-key :skip_if_empty)       (s/maybe s/Bool)
                 (s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
-                (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)}]
+                (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
+                (s/optional-key :dashboard_id)        (s/maybe su/IntGreaterThanZero)}]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event)
     (events/publish-event! :pulse-create (retrieve-pulse pulse-id))))

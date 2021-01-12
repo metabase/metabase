@@ -66,16 +66,17 @@
 (defn expand
   "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate
   values in the queries themselves)."
-  [query [{:keys [target value], :as param} & rest]]
-  (cond
-    (not param)
-    query
+  [query [{:keys [target value default], :as param} & rest]]
+  (let [param-value (or value default)]
+    (cond
+      (not param)
+      query
 
-    (or (not target)
-        (not value))
-    (recur query rest)
+      (or (not target)
+          (not param-value))
+      (recur query rest)
 
-    :else
-    (let [filter-clause (build-filter-clause param)
-          query         (mbql.u/add-filter-clause query filter-clause)]
-      (recur query rest))))
+      :else
+      (let [filter-clause (build-filter-clause (assoc param :value param-value))
+            query         (mbql.u/add-filter-clause query filter-clause)]
+        (recur query rest)))))

@@ -1,6 +1,7 @@
 (ns metabase.pulse
   "Public API for sending Pulses."
   (:require [clojure.tools.logging :as log]
+            [metabase.api.card :as card-api]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
@@ -31,7 +32,7 @@
   ;; The Card must either be executed in the context of a User or by the MetaBot which itself is not a User
   {:pre [(or (integer? pulse-creator-id)
              (= (:context options) :metabot))]}
-  (let [card-id (u/get-id card-or-id)]
+  (let [card-id (u/the-id card-or-id)]
     (try
       (when-let [{query :dataset_query, :as card} (Card :id card-id, :archived false)]
         (let [query         (assoc query :async? false)
@@ -42,23 +43,47 @@
                                        :context     :pulse
                                        :card-id     card-id}
                                       options)))]
-          {:card   card
-           :result (if pulse-creator-id
+          (let [result (if pulse-creator-id
                      (session/with-current-user pulse-creator-id
                        (process-query))
-                     (process-query))}))
+                     (process-query))]
+            {:card   card
+             :result result})))
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
+
+(defn- execute-dashboard-subscription-card
+  [owner-id dashboard dashcard card-or-id]
+  (try
+    (let [card-id         (u/the-id card-or-id)
+          card            (Card :id card-id)
+          param-id->param (u/key-by :id (:parameters dashboard))
+          params          (for [mapping (:parameter_mappings dashcard)
+                                :when   (= (:card_id mapping) card-id)
+                                :let    [param (get param-id->param (:parameter_id mapping))]
+                                :when   param]
+                            (assoc param :target (:target mapping)))
+          result (session/with-current-user owner-id
+                   (card-api/run-query-for-card-async
+                    card-id :api
+                    :dashboard-id  (:id dashboard)
+                    :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
+                    :export-format :api
+                    :parameters    params
+                    :run (fn [query & args]
+                           (apply qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) args))))]
+      {:card card
+       :result result})
+    (catch Throwable e
+        (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
 (defn execute-dashboard
   "Execute all the cards in a dashboard for a Pulse"
   [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
   (let [dashboard-id (u/get-id dashboard-or-id)
         dashboard (Dashboard :id dashboard-id)]
-    (for [dashcard (db/select DashboardCard :dashboard_id dashboard-id)]
-      (if options
-        (execute-card pulse (:card_id dashcard) options)
-        (execute-card pulse (:card_id dashcard))))))
+    (for [dashcard (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])]
+      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -233,9 +258,9 @@
 
 (defn- pulse->notifications
   "Execute the underlying queries for a sequence of Pulses and return the results as 'notification' maps."
-  [{:keys [cards dashboard dashboard_id], pulse-id :id, :as pulse}]
+  [{:keys [cards dashboard_id], pulse-id :id, :as pulse}]
   (results->notifications pulse
-                          (if dashboard
+                          (if dashboard_id
                             ;; send the dashboard
                             (execute-dashboard pulse dashboard_id)
                             ;; send the cards instead

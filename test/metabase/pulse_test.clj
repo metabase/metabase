@@ -5,7 +5,7 @@
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.pulse :as models.pulse]
@@ -806,6 +806,20 @@
       (is (schema= {:card   (s/pred map?)
                     :result (s/pred map?)}
                    (pulse/execute-card {:creator_id (mt/user->id :rasta)} card))))))
+
+(deftest execute-dashboard-test
+  (testing "it runs for each card"
+    (mt/with-temp* [Card          [{card-id-1 :id}]
+                    Card          [{card-id-2 :id}]
+                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
+                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1}]
+                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2}]
+                    User [{user-id :id}]]
+      (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
+        (is (= (count result) 2))
+        (is (schema= [{:card   (s/pred map?)
+                       :result (s/pred map?)}]
+                     result))))))
 
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."
