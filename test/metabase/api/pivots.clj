@@ -1,4 +1,4 @@
-(ns metabase.api.advanced-computation.common-test
+(ns metabase.api.pivots
   (:require [metabase.test :as mt]))
 
 ;; Redshift takes A LONG TIME to insert the sample-dataset, so do not

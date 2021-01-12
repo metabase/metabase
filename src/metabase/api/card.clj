@@ -26,6 +26,7 @@
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.util :as qputil]
             [metabase.related :as related]
@@ -691,5 +692,15 @@
   "Return related entities for an ad-hoc query."
   [:as {query :body}]
   (related/related (query/adhoc-query query)))
+
+(api/defendpoint ^:streaming POST "/pivot/:card-id/query"
+  "Run the query associated with a Card."
+  [card-id :as {{:keys [parameters ignore_cache]
+                 :or   {ignore_cache false}} :body}]
+  {ignore_cache (s/maybe s/Bool)}
+
+  (qp.streaming/streaming-response [context :api]
+    (binding [cache/*ignore-cached-results* ignore_cache]
+      (run-query-for-card-async card-id :api, :parameters parameters, :run (partial qp.pivot/run-pivot-query context) :context context))))
 
 (api/define-routes)

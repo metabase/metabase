@@ -10,6 +10,7 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase.api.dashboard-test :as dashboard-api-test]
             [metabase.api.embed :as embed-api]
+            [metabase.api.pivots :as pivots]
             [metabase.api.public-test :as public-test]
             [metabase.http-client :as http]
             [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
@@ -866,3 +867,44 @@
           (testing (str "\n" url)
             (is (= "You're not allowed to specify a value for :price."
                    (http/client :get 400 url)))))))))
+
+;; Pivot tables
+
+(defn- pivot-card-query-url [card response-format & [additional-token-params]]
+  (str "/embed/pivot/card/"
+       (card-token card additional-token-params)
+       "/query"
+       response-format))
+
+(deftest pivot-embed-query-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "GET /api/embed/pivot/card/:token/query"
+        (testing "check that the endpoint doesn't work if embedding isn't enabled"
+          (tu/with-temporary-setting-values [enable-embedding false]
+            (with-new-secret-key
+              (with-temp-card [card (pivots/pivot-card)]
+                (is (= "Embedding is not enabled."
+                       (http/client :get 400 (pivot-card-query-url card ""))))))))
+
+        (with-embedding-enabled-and-new-secret-key
+          (let [expected-status 202]
+            (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
+              (with-temp-card [card (merge {:enable_embedding true} (pivots/pivot-card))]
+                (let [result (http/client :get expected-status (pivot-card-query-url card "") {:request-options nil})
+                      rows   (mt/rows result)]
+                  (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                  (is (= "completed" (:status result)))
+                  (is (= 6 (count (get-in result [:data :cols]))))
+                  (is (= 2273 (count rows)))))))
+
+          (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
+            (with-temp-card [card (pivots/pivot-card)]
+              (is (= "Embedding is not enabled for this object."
+                     (http/client :get 400 (pivot-card-query-url card ""))))))
+
+          (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
+                        "signed with the wrong key")
+            (with-temp-card [card (merge {:enable_embedding true} (pivots/pivot-card))]
+              (is (= "Message seems corrupt or manipulated."
+                     (http/client :get 400 (with-new-secret-key (pivot-card-query-url card ""))))))))))))

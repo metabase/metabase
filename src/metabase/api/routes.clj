@@ -2,9 +2,6 @@
   (:require [compojure.core :refer [context defroutes]]
             [compojure.route :as route]
             [metabase.api.activity :as activity]
-            [metabase.api.advanced-computation.authenticated :as advcomp-auth]
-            [metabase.api.advanced-computation.preview-embed :as advcomp-preview-embed]
-            [metabase.api.advanced-computation.public :as advcomp-public]
             [metabase.api.alert :as alert]
             [metabase.api.automagic-dashboards :as magic]
             [metabase.api.card :as card]
@@ -71,11 +68,6 @@
       (fn [_ respond _]
         (respond nil)))
   (context "/activity"                           [] (+auth activity/routes))
-  ;; order is important here! the /public version must appear first, otherwise
-  ;; it does not apply.
-  (context "/advanced_computation/public"        [] (+message-only-exceptions advcomp-public/routes))
-  (context "/advanced_computation/preview_embed" [] (+auth advcomp-preview-embed/routes))
-  (context "/advanced_computation"               [] (+auth advcomp-auth/routes))
   (context "/alert"                              [] (+auth alert/routes))
   (context "/automagic-dashboards"               [] (+auth magic/routes))
   (context "/card"                               [] (+auth card/routes))

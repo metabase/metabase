@@ -5,6 +5,7 @@
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase.api.dashboard-test :as dashboard-api-test]
+            [metabase.api.pivots :as pivots]
             [metabase.api.public :as public-api]
             [metabase.http-client :as http]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
@@ -1029,3 +1030,75 @@
               (let [url (format "public/dashboard/%s/params/%s/search/s" uuid (:category-name param-keys))]
                 (is (= ["Scandinavian" "Seafood" "South Pacific"]
                        (take 3 ((mt/user->client :rasta) :get 200 url))))))))))))
+
+;; Pivot tables
+
+(deftest pivot-public-card-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "GET /api/public/pivot/card/:uuid/query"
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid} (pivots/pivot-card)]
+            (let [result (http/client :get 202 (format "public/pivot/card/%s/query" uuid))
+                  rows   (mt/rows result)]
+              (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+              (is (= "completed" (:status result)))
+              (is (= 6 (count (get-in result [:data :cols]))))
+              (is (= 2273 (count rows)))
+
+              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+              (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+              (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
+              (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
+
+(defn- pivot-dashcard-url
+  "URL for fetching results of a public DashCard."
+  [dash card]
+  (str "public/pivot/dashboard/" (:public_uuid dash) "/card/" (u/get-id card)))
+
+(deftest pivot-public-dashcard-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (let [dashboard-defaults {:parameters [{:id      "_STATE_"
+                                              :name    "State"
+                                              :slug    "state"
+                                              :type    "string"
+                                              :target  [:dimension [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
+                                              :default nil}]}]
+        (testing "GET /api/public/pivot/dashboard/:uuid/card/:card-id"
+          (testing "without parameters"
+            (mt/with-temporary-setting-values [enable-public-sharing true]
+              (with-temp-public-dashboard [dash dashboard-defaults]
+                (with-temp-public-card [card (pivots/pivot-card)]
+                  (add-card-to-dashboard! card dash)
+                  (let [result (http/client :get 202 (pivot-dashcard-url dash card))
+                        rows   (mt/rows result)]
+                    (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                    (is (= "completed" (:status result)))
+                    (is (= 6 (count (get-in result [:data :cols]))))
+                    (is (= 2273 (count rows)))
+
+                    (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+                    (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+                    (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
+                    (is (= [nil nil nil 7 18760 69540] (last rows))))))))
+
+          (testing "with parameters"
+            (mt/with-temporary-setting-values [enable-public-sharing true]
+              (with-temp-public-dashboard [dash dashboard-defaults]
+                (with-temp-public-card [card (pivots/pivot-card)]
+                  (add-card-to-dashboard! card dash)
+                  (let [result (http/client :get 202 (pivot-dashcard-url dash card)
+                                            :parameters (json/encode [{:name   "State"
+                                                                       :slug   :state
+                                                                       :target [:dimension [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
+                                                                       :value  ["CA" "WA"]}]))
+                        rows   (mt/rows result)]
+                    (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                    (is (= "completed" (:status result)))
+                    (is (= 6 (count (get-in result [:data :cols]))))
+                    (is (= 131 (count rows)))
+
+                    (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
+                    (is (= [nil "Twitter" "Widget" 1 77 270] (nth rows 100)))
+                    (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))

@@ -98,7 +98,7 @@ export const CardApi = {
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:cardId"),
   query: POST("/api/card/:cardId/query"),
-  query_pivot: POST("/api/advanced_computation/pivot/card/:cardId/query"),
+  query_pivot: POST("/api/card/pivot/:cardId/query"),
   // isfavorite:                  GET("/api/card/:cardId/favorite"),
   favorite: POST("/api/card/:cardId/favorite"),
   unfavorite: DELETE("/api/card/:cardId/favorite"),
@@ -147,7 +147,7 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
-const PIVOT_PUBLIC_PREFIX = "/api/advanced_computation/public/pivot/";
+const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
   card: GET("/api/public/card/:uuid"),
@@ -291,7 +291,7 @@ export const MetabaseApi = {
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
-  dataset_pivot: POST("/api/advanced_computation/pivot/dataset"),
+  dataset_pivot: POST("/api/dataset/pivot"),
   dataset_duration: POST("/api/dataset/duration"),
   native: POST("/api/dataset/native"),
 

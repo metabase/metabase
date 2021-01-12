@@ -41,7 +41,7 @@ describe("postgres > user > query", () => {
 
   it("should display pivot tables  (metabase#14148)", () => {
     cy.server();
-    cy.route("POST", "/api/advanced_computation/pivot/dataset").as(
+    cy.route("POST", "/api/dataset/pivot").as(
       "pivotDataset",
     );
 
