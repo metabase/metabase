@@ -11,12 +11,10 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { PRODUCTS } = SAMPLE_DATASET;
 
 const year = new Date().getFullYear();
-const QUESTION = "question";
-const DASHBOARD = "dashboard";
 
 function generateQuestions(user) {
   cy.request("POST", `/api/card`, {
-    name: `${user} ${QUESTION}`,
+    name: `${user} question`,
     dataset_query: {
       type: "native",
       native: {
@@ -42,20 +40,20 @@ function generateQuestions(user) {
 
 function generateDashboards(user) {
   cy.request("POST", "/api/dashboard", {
-    name: `${user} ${DASHBOARD}`,
+    name: `${user} dashboard`,
   });
 }
 
 describeWithToken("audit > auditing", () => {
-  const userRoles = ["admin", "normal"];
-  const ADMIN_QUESTION = `${userRoles[0]} ${QUESTION}`;
-  const ADMIN_DASHBOARD = `${userRoles[0]} ${DASHBOARD}`;
-  const NORMAL_QUESTION = `${userRoles[1]} ${QUESTION}`;
-  const NORMAL_DASHBOARD = `${userRoles[1]} ${DASHBOARD}`;
+  const [admin, normal] = Object.keys(USERS);
+  const ADMIN_QUESTION = `${admin} question`;
+  const ADMIN_DASHBOARD = `${admin} dashboard`;
+  const NORMAL_QUESTION = `${normal} question`;
+  const NORMAL_DASHBOARD = `${normal} dashboard`;
 
   before(() => {
     restore();
-    userRoles.forEach(user => {
+    [admin, normal].forEach(user => {
       signIn(user);
       generateQuestions(user);
       generateDashboards(user);
@@ -68,7 +66,7 @@ describeWithToken("audit > auditing", () => {
 
     signIn("nodata");
 
-    cy.log(`**View ${userRoles[1]}'s dashboard**`);
+    cy.log(`**View ${normal}'s dashboard**`);
     cy.visit("/collection/root?type=dashboard");
     cy.findByText(NORMAL_DASHBOARD).click();
     cy.findByText("This dashboard is looking empty.");
@@ -78,7 +76,7 @@ describeWithToken("audit > auditing", () => {
     cy.visit("/question/2");
     cy.findByText("18,760");
 
-    cy.log(`**View newly created ${userRoles[0]}'s question**`);
+    cy.log(`**View newly created ${admin}'s question**`);
     cy.visit("/collection/root?type");
     cy.findByText(ADMIN_QUESTION).click();
     cy.findByPlaceholderText(/ID/i);
