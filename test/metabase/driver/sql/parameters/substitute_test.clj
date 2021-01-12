@@ -124,8 +124,20 @@
   (testing "Native query snippet substitution"
     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
       (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-             (substitute query {"snippet:symbol_is_A" (i/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
-
+             (substitute query {"snippet:symbol_is_A" (i/->ReferencedQuerySnippet 123 "symbol = 'A'")})))))
+  (testing "Native query nested snippet substitution"
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_something")]
+          nested1 {"snippet:symbol_is_something" (i/->ReferencedQuerySnippet 123 "symbol = {{snippet:the_something}}")
+                   "snippet:the_something" (i/->ReferencedQuerySnippet 157 "'X'")}
+          nested2 {"snippet:symbol_is_something" (i/->ReferencedQuerySnippet 123 "symbol = {{snippet:the_something}}")
+                   "snippet:the_something" (i/->ReferencedQuerySnippet 157 "{{snippet:symbol_is_something}}")}]
+      ;; legal nested snippets (should resolve recursively)
+      (is (= ["SELECT * FROM test_scores WHERE symbol = 'X'" nil]
+             (substitute query nested1)))
+      ;; illegal nested snippets (cycle)
+      (is (thrown?
+           Exception
+           (substitute query nested2))))))
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 

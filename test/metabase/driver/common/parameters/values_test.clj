@@ -284,14 +284,18 @@
              (values/query->params-map query)))))))
 
 (deftest snippet-test
-  (letfn [(query-with-snippet [& {:as snippet-properties}]
-            (assoc (mt/native-query "SELECT * FROM {{expensive-venues}}")
-                   :template-tags {"expensive-venues" (merge
-                                                       {:type         :snippet
-                                                        :name         "expensive-venues"
-                                                        :display-name "Expensive Venues"
-                                                        :snippet-name "expensive-venues"}
-                                                       snippet-properties)}))]
+  (letfn [(query-with-snippet* [snippet-name display-name snippet-properties]
+            (assoc (mt/native-query (str "SELECT * FROM {{" snippet-name "}}"))
+              :template-tags {snippet-name (merge
+                                             {:type         :snippet
+                                              :name         snippet-name
+                                              :display-name display-name
+                                              :snippet-name snippet-name}
+                                             snippet-properties)}))
+          (query-with-snippet [& {:as snippet-properties}]
+            (query-with-snippet* "expensive-venues" "Expensive venues" snippet-properties))
+          (nested-query-with-snippet [& {:as snippet-properties}]
+            (query-with-snippet* "expensive-nearby-venues" "Expensive nearby venues" snippet-properties))]
     (testing "`:snippet-id` should be required"
       (is (thrown?
            clojure.lang.ExceptionInfo
@@ -303,13 +307,42 @@
            (values/query->params-map (query-with-snippet :snippet-id Integer/MAX_VALUE)))))
 
     (testing "Snippet parsing should work correctly for a valid Snippet"
-      (mt/with-temp NativeQuerySnippet [{snippet-id :id} {:name    "expensive-venues"
-                                                          :content "venues WHERE price = 4"}]
+      (mt/with-temp* [NativeQuerySnippet [{snippet-id :id} {:name    "expensive-venues"
+                                                            :content "venues WHERE price = 4"}]
+                      NativeQuerySnippet [{snp-near-dist-amt :id} {:name    "near-distance-amt"
+                                                                   :content "10"}]
+                      NativeQuerySnippet [{snp-near-dist :id} {:name    "near-distance"
+                                                               :content "distance < {{snippet:near-distance-amt}}"}]
+                      NativeQuerySnippet [{snp-expensive-nearby :id}
+                                          {:name    "expensive-nearby-venues"
+                                           :content "{{snippet:expensive-venues}} AND {{snippet:near-distance}}"}]
+                      NativeQuerySnippet [{snp-circ-1 :id} {:name    "snp-circ-1"
+                                                            :content "venues WHERE price < 2 AND {{snippet:snp-circ-2}}"}]
+                      NativeQuerySnippet [{snp-circ-2 :id} {:name    "snp-circ-2"
+                                                            :content "distance = 1 AND {{snippet:snp-circ-1}}"}]]
         (let [expected {"expensive-venues" (i/map->ReferencedQuerySnippet {:snippet-id snippet-id
-                                                                           :content    "venues WHERE price = 4"})}]
+                                                                           :content    "venues WHERE price = 4"})}
+              expected-nested (assoc expected "expensive-nearby-venues"
+                                              (i/map->ReferencedQuerySnippet
+                                                {:snippet-id snp-expensive-nearby
+                                                 :content    "{{snippet:expensive-venues}} AND {{snippet:near-distance}}"})
+                                              "near-distance"
+                                              (metabase.driver.common.parameters/map->ReferencedQuerySnippet
+                                                {:content    "distance < {{snippet:near-distance-amt}}"
+                                                 :snippet-id snp-near-dist})
+                                              "near-distance-amt"
+                                              (metabase.driver.common.parameters/map->ReferencedQuerySnippet
+                                                {:content    "10"
+                                                 :snippet-id snp-near-dist-amt}))]
           (is (= expected
                  (values/query->params-map (query-with-snippet :snippet-id snippet-id))))
-
+          (testing "all nested snippets should be resolved and placed into param map correctly"
+            (is (= expected-nested
+                   (values/query->params-map (nested-query-with-snippet :snippet-id snp-expensive-nearby)))))
+          (testing "circular nested snippet definition should throw an exception"
+            (is (thrown?
+                  clojure.lang.ExceptionInfo
+                  (values/query->params-map (nested-query-with-snippet :snippet-id snp-circ-1)))))
           (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
             (is (= expected
                    (values/query->params-map (query-with-snippet :snippet-id snippet-id, :snippet-name "Old Name"))))))))))
