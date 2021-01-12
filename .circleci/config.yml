@@ -703,29 +703,6 @@ jobs:
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/junit
 
-  test-migrate-from-h2:
-    parameters:
-      e:
-        type: executor
-      db-type:
-        type: string
-      <<: *Params
-    executor: << parameters.e >>
-    steps:
-      - attach-workspace
-      - run-on-change:
-          cache-key: load-and-dump-<< parameters.db-type >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum "bin/test-load-and-dump.sh" }}
-          steps:
-            - restore-be-deps-cache
-            - run:
-                name: Test migrating from H2 -> << parameters.db-type >> -> H2
-                environment:
-                  MB_DB_TYPE: << parameters.db-type >>
-                  MB_DB_HOST: localhost
-                  MB_EDITION: << parameters.edition >>
-                command: ./bin/test-load-and-dump.sh
-                no_output_timeout: 10m
-
   test-build-scripts:
     executor: metabase-ci
     steps:
@@ -1276,22 +1253,6 @@ workflows:
                 source: VERTICA_JDBC_JAR
                 dest: vertica-jdbc-7.1.2-0.jar
           driver: vertica
-
-      - test-migrate-from-h2:
-          name: be-tests-migrate-to-postgres-<< matrix.edition >>
-          requires:
-            - be-tests-<< matrix.edition >>
-          e: postgres-9-6
-          db-type: postgres
-          <<: *Matrix
-
-      - test-migrate-from-h2:
-          name: be-tests-migrate-to-mysql-<< matrix.edition >>
-          requires:
-            - be-tests-<< matrix.edition >>
-          e: mysql-5-7
-          db-type: mysql
-          <<: *Matrix
 
       - test-build-scripts:
           requires:
