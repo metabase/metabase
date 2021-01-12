@@ -6,8 +6,10 @@ import {
 } from "__support__/cypress";
 
 describe("scenarios > question > trendline", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    signInAsNormalUser();
+  });
 
   it.skip("displays trendline when there are multiple numeric outputs (for simple question) (metabase#12781)", () => {
     // Create question: orders summarized with "Average of Subtotal" and "Sum of Total" by CreatedAt:Year
