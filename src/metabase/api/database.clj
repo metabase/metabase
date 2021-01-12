@@ -533,8 +533,8 @@
    auto_run_queries   (s/maybe s/Bool)}
   (api/check-superuser)
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (api/let-404 [database (Database id)]
-    (let [details    (upsert-sensitive-fields database details)
+  (api/let-404 [existing-database (Database id)]
+    (let [details    (upsert-sensitive-fields existing-database details)
           conn-error (when (some? details)
                        (assert (some? engine))
                        (test-database-connection engine details))
@@ -565,7 +565,7 @@
                                                        ;; transition back to metabase managed schedules. the schedule
                                                        ;; details, even if provided, are ignored. database is the
                                                        ;; current stored value and check against the incoming details
-                                                       (and (get-in database [:details :let-user-control-scheduling])
+                                                       (and (get-in existing-database [:details :let-user-control-scheduling])
                                                             (not (:let-user-control-scheduling details)))
 
                                                        (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
