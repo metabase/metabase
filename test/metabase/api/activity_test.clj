@@ -42,6 +42,7 @@
   (testing "GET /api/activity"
     (tt/with-temp* [Activity [activity1 {:topic     "install"
                                          :details   {}
+                                         :user_id   nil
                                          :timestamp #t "2015-09-09T12:13:14.888Z[UTC]"}]
                     Activity [activity2 {:topic     "dashboard-create"
                                          :user_id   (test-users/user->id :crowberto)
