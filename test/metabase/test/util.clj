@@ -76,6 +76,24 @@
        :diffs    (when-not pass?#
                    [[actual# [(s/check schema# actual#) nil]]])})))
 
+(defmethod assert-expr 'thrown-with-info? [msg form]
+  ;; (is (thrown-with-info-entries? c info expr))
+  ;; Asserts that evaluating expr throws an exception of class c.
+  ;; Also asserts that the map within the ExceptionInfo contains all entries from info..
+  (let [klass        (nth form 1)
+        info-entries (nth form 2)
+        body         (nthnext form 3)]
+    `(try
+       ~@body
+       (do-report {:type :fail, :message ~msg, :expected '~body, :actual nil})
+       (catch ~klass e#
+         (let [ex-d#  (ex-data e#)
+               k#     (keys ~info-entries)]
+           (is
+             (=
+               ~info-entries
+               (select-keys ex-d# k#))))))))
+
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
 

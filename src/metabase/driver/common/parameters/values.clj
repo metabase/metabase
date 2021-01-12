@@ -11,6 +11,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver.common.parameters :as i]
+            [metabase.driver.common.parameters.parse :as parse]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :refer [Field]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
@@ -39,6 +40,19 @@
   {:arglists '([tag params])}
   (fn [{tag-type :type} _]
     (keyword tag-type)))
+
+(defmulti resolve-nested-tag-values
+  "Parse any nested parameter value(s) for a given tag and its parsed value,
+  returning a map of nested param names to values (which are the appropriate
+  record type such as `metabase.driver.common.parameters.FieldFilter`)."
+  {:arglists '([tag tag-value])}
+  (fn [{tag-type :type} _]
+    (keyword tag-type)))
+
+(defmethod resolve-nested-tag-values :default
+  [_ _]
+  ;; by default, do not resolve any nested tag values
+  {})
 
 (defmethod parse-tag :default
   [{tag-type :type, :as tag} _]
@@ -170,6 +184,63 @@
                  :type              qp.error-type/invalid-parameter}
                 e))))))
 
+(defn ^:private get-snippet-name [param-key ex-attrs]
+  (let [[_ p-type p-name] (re-matches #"([^:]+):(.+)" param-key)]
+    (if (= (name :snippet) p-type)
+      p-name
+      (throw (ex-info (tru "Invalid nested parameter found in snippet {0}. Only other snippets can be nested."
+                           param-key)
+                      (assoc ex-attrs :type qp.error-type/invalid-parameter))))))
+
+(defn ^:private native-snippet-to-ref-map [native-snippet]
+  {(str "snippet:" (:name native-snippet))
+   (i/map->ReferencedQuerySnippet
+     {:snippet-id (:id native-snippet)
+      :content    (:content native-snippet)})})
+
+(defn ^:private find-all-nested-snippets [parent-tag level snippet-nm {:keys [snippet-id content], :as snippet} name-to-val]
+  (if
+    (contains? name-to-val snippet-nm)
+    (throw (ex-info (tru "Cycle detected in snippet definitions; name {0} already seen. Full chain: {1}."
+                         snippet-nm
+                         (pr-str name-to-val))
+                    {:snippet-id       snippet-id
+                     :snippet-name     snippet-nm
+                     :tag              parent-tag
+                     :nest-level       level
+                     :covered-snippets (keys name-to-val)
+                     :type             qp.error-type/invalid-parameter}))
+    (let [parsed-content (parse/parse content)
+          params (filter i/Param? parsed-content)
+          ret-map (if (> level 0) {snippet-nm snippet} {})
+          ex-attrs {:snippet-id   snippet-id
+                    :snippet-name snippet-nm
+                    :tag          parent-tag}]
+      (if (> (count params) 0)
+        (let [names               (map #(get-snippet-name (:k %) ex-attrs) params)
+              native-vals         (map #(db/select-one NativeQuerySnippet :name %) names)
+              name->ref           (map native-snippet-to-ref-map native-vals)
+              nested-refs-by-name (reduce
+                                    (fn [acc sub-snippets] ; TODO: pull out to separate fn
+                                      (merge
+                                        acc
+                                        (reduce-kv
+                                          (fn [sub-acc nested-name nested-snippet]
+                                            (merge
+                                              sub-acc
+                                              (find-all-nested-snippets
+                                                parent-tag
+                                                (inc level)
+                                                nested-name
+                                                nested-snippet
+                                                (assoc name-to-val snippet-nm snippet))))
+                                          {}
+                                          sub-snippets)))
+                                    {}
+                                    name->ref)]
+          (into ret-map nested-refs-by-name))
+        ret-map))))
+
 (s/defmethod parse-tag :snippet :- ReferencedQuerySnippet
   [{:keys [snippet-name snippet-id], :as tag} :- TagParam, _]
   (let [snippet-id (or snippet-id
@@ -185,6 +256,9 @@
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
+(s/defmethod resolve-nested-tag-values :snippet :- su/Map
+             [tag snippet-value]
+             (find-all-nested-snippets tag 0 (:name tag) snippet-value {}))
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
@@ -343,16 +417,20 @@
   (log/tracef "Building params map out of tags %s and params %s" (pr-str tags) (pr-str params))
   (try
     (into {} (for [[k tag] tags
-                   :let    [v (value-for-tag tag params)]
+                   :let    [v (value-for-tag tag params)
+                            nested-v (resolve-nested-tag-values tag v)]
                    :when   v]
                ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
                ;; kind of query shouldn't be possible from the frontend anyway
                (do
                  (log/tracef "Value for tag %s %s -> %s" (pr-str k) (pr-str tag) (pr-str v))
-                 {k v})))
+                 (log/tracef "Nested values found: %s" (pr-str nested-v))
+                 (assoc nested-v k v))))
     (catch Throwable e
       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
-                      {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
-                       :tags   tags
-                       :params params}
+                      (merge
+                        (ex-data e)
+                        {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
+                         :tags   tags
+                         :params params})
                       e)))))

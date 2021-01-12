@@ -5,8 +5,10 @@
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.data :as data]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import (clojure.lang ExceptionInfo)))
 
 (deftest with-temp-vals-in-db-test
   (testing "let's make sure this acutally works right!"
@@ -41,3 +43,11 @@
       (test-util-test-setting))
     (is (= ["A" "B" "C"]
            (test-util-test-setting)))))
+
+(deftest thrown-with-info?-test
+  (testing "thrown-with-info? implementation"
+    (is
+      (thrown-with-info?
+        ExceptionInfo
+        {:a 1 :b "foo" :c [3 4 5]}
+        (throw (ex-info "Something bad happened" {:a 1 :b "foo" :c [3 4 5]}))))))
