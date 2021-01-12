@@ -54,45 +54,34 @@ describeWithToken("audit > auditing", () => {
       generateQuestions(user);
       generateDashboards(user);
     });
+
+    cy.log("**Download a question**");
+    cy.visit("/question/3");
+    // cy.server();
+    cy.get(".Icon-download").click();
+    cy.request("POST", "/api/card/1/query/json");
+
+    signIn("nodata");
+
+    cy.log(`**View ${users[1]}'s dashboard**`);
+    cy.visit("/collection/root?type=dashboard");
+    cy.findByText(users[1] + " test dash").click();
+    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("My personal collection").should("not.exist");
+
+    cy.log("**View old existing question**");
+    cy.visit("/question/2");
+    cy.findByText("18,760");
+
+    cy.log(`**View newly created ${users[0]}'s question**`);
+    cy.visit("/collection/root?type");
+    cy.findByText(users[0] + " test q").click();
+    cy.findByPlaceholderText(/ID/i);
   });
 
-  describe("Generate data to audit", () => {
-    beforeEach(signOut);
-
-    it("should view a dashboard", () => {
-      signIn("nodata");
-      cy.visit("/collection/root?type=dashboard");
-      cy.findByText(users[1] + " test dash").click();
-
-      cy.findByText("This dashboard is looking empty.");
-      cy.findByText("My personal collection").should("not.exist");
-    });
-
-    it("should view old question and new question", () => {
-      signIn("nodata");
-      cy.visit("/collection/root?type");
-      cy.findByText("Orders, Count").click();
-
-      cy.findByText("18,760");
-
-      cy.visit("/collection/root?type");
-      cy.findByText(users[0] + " test q").click();
-
-      cy.get('[placeholder="ID"]');
-    });
-
-    it("should download a question", () => {
-      signInAsNormalUser();
-      cy.visit("/question/3");
-      cy.server();
-      cy.get(".Icon-download").click();
-      cy.request("POST", "/api/card/1/query/json");
-    });
-  });
+  beforeEach(signInAsAdmin);
 
   describe("See expected info on team member pages", () => {
-    beforeEach(signInAsAdmin);
-
     const all_users = [
       USERS.admin,
       USERS.normal,
@@ -148,8 +137,6 @@ describeWithToken("audit > auditing", () => {
   });
 
   describe("See expected info on data pages", () => {
-    beforeEach(signInAsAdmin);
-
     it("should load both tabs in Databases", () => {
       // Overview tab
       cy.visit("/admin/audit/databases/overview");
@@ -209,8 +196,6 @@ describeWithToken("audit > auditing", () => {
   });
 
   describe("See expected info on item pages", () => {
-    beforeEach(signInAsAdmin);
-
     it("should load both tabs in Questions", () => {
       // Overview tab
       cy.visit("/admin/audit/questions/overview");
