@@ -163,19 +163,13 @@ export const PublicApi = {
 export const EmbedApi = {
   card: GET(embedBase + "/card/:token"),
   cardQuery: GET(embedBase + "/card/:token/query"),
-  cardQueryPivot: GET(
-    PIVOT_PUBLIC_PREFIX +
-      (IS_EMBED_PREVIEW ? "preview_embed" : "embed") +
-      "/card/:token/query",
-  ),
+  cardQueryPivot: GET(embedBase + "/pivot/card/:token/query"),
   dashboard: GET(embedBase + "/dashboard/:token"),
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
   dashboardCardQueryPivot: GET(
-    PIVOT_PUBLIC_PREFIX +
-      (IS_EMBED_PREVIEW ? "preview_embed" : "embed") +
-      "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
+    embedBase + "/pivot/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
 };
 
