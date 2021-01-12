@@ -50,15 +50,9 @@ export function generateQuestions(users) {
 export function generateDashboards(users) {
   users.forEach(user => {
     signIn(user);
-    cy.visit("/");
-    cy.get(".Icon-add").click();
-    cy.findByText("New dashboard").click();
-    cy.findByLabelText("Name").type(user + " test dash");
-    cy.get(".Icon-chevrondown").click();
-    cy.findAllByText("Our analytics")
-      .last()
-      .click();
-    cy.findByText("Create").click();
+    cy.request("POST", "/api/dashboard", {
+      name: user + " test dash",
+    });
   });
 }
 
