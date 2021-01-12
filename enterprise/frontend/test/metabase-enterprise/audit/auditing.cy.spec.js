@@ -82,14 +82,6 @@ describeWithToken("audit > auditing", () => {
   beforeEach(signInAsAdmin);
 
   describe("See expected info on team member pages", () => {
-    const all_users = [
-      USERS.admin,
-      USERS.normal,
-      USERS.nodata,
-      USERS.nocollection,
-      USERS.none,
-    ];
-
     it("should load the Overview tab", () => {
       cy.visit("/admin/audit/members/overview");
 
@@ -116,8 +108,8 @@ describeWithToken("audit > auditing", () => {
     it("should load the All Members tab", () => {
       cy.visit("/admin/audit/members/all");
 
-      all_users.forEach(user => {
-        cy.findByText(user.first_name + " " + user.last_name);
+      Object.values(USERS).forEach(({ first_name, last_name }) => {
+        cy.findByText(`${first_name} ${last_name}`);
       });
       cy.get("tr")
         .last()
