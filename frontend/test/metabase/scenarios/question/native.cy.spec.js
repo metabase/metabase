@@ -10,8 +10,10 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { ORDERS } = SAMPLE_DATASET;
 
 describe("scenarios > question > native", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    signInAsNormalUser();
+  });
 
   it("lets you create and run a SQL question", () => {
     cy.visit("/question/new");
@@ -275,6 +277,37 @@ describe("scenarios > question > native", () => {
         .click();
       cy.findByText("Done").click();
       cy.get(".ScalarValue").contains("1");
+    });
+  });
+
+  it.skip("should not make the question dirty when there are no changes (metabase#14302)", () => {
+    cy.request("POST", "/api/card", {
+      name: "14302",
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            'SELECT "CATEGORY", COUNT(*)\nFROM "PRODUCTS"\nWHERE "PRICE" > {{PRICE}}\nGROUP BY "CATEGORY"',
+          "template-tags": {
+            PRICE: {
+              id: "39b51ccd-47a7-9df6-a1c5-371918352c79",
+              name: "PRICE",
+              "display-name": "Price",
+              type: "number",
+              default: "10",
+              required: true,
+            },
+          },
+        },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+      cy.findByText("14302");
+      cy.log("**Reported on v0.37.5 - Regression since v0.37.0**");
+      cy.findByText("Save").should("not.exist");
     });
   });
 });

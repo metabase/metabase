@@ -1,10 +1,18 @@
-import { signInAsNormalUser, restore, popover } from "__support__/cypress";
+import {
+  signInAsNormalUser,
+  signInAsAdmin,
+  restore,
+  popover,
+} from "__support__/cypress";
 
 describe("scenarios > visualizations > maps", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should display a pin map for a native query", () => {
+    signInAsNormalUser();
     // create a native query with lng/lat fields
     cy.visit("/question/new");
     cy.contains("Native query").click();
@@ -47,5 +55,49 @@ describe("scenarios > visualizations > maps", () => {
 
     // check that a map appears
     cy.get(".leaflet-container");
+  });
+
+  it.skip("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
+    cy.request("POST", "/api/card", {
+      name: "14254",
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "map",
+      visualization_settings: {
+        "map.region": "us_states",
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+
+    cy.findByText("Visualization")
+      .closest(".Button")
+      .as("vizButton");
+    cy.get("@vizButton").find(".Icon-pinmap");
+    cy.get("@vizButton").click();
+    cy.findByText("Choose a visualization");
+    // Sidebar should really have a distinct class name
+    cy.get(".scroll-y .scroll-y").as("vizSidebar");
+
+    cy.get("@vizSidebar").within(() => {
+      // There should be a unique class for "selected" viz type
+      cy.get(".Icon-pinmap")
+        .parent()
+        .should("have.class", "text-white");
+
+      cy.findByText("Map")
+        .parent()
+        .should("have.css", "opacity", "1");
+    });
   });
 });
