@@ -32,6 +32,14 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
+    // Instead of bloating our test suite with a separate repro, this line will do
+    cy.log(
+      "**Repro for [metabase#14334](https://github.com/metabase/metabase/issues/14334)**",
+    );
+    cy.findByLabelText(
+      "Automatically run queries when doing simple filtering and summarizing",
+    ).should("have.attr", "aria-checked", "true");
+
     typeField("Name", "Test db name");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
