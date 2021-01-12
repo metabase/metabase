@@ -5,8 +5,7 @@
             [metabase.api.common :as api]
             [metabase.query-processor :as qp]
             [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.store :as qp.store]
-            [clojure.tools.logging :as log]))
+            [metabase.query-processor.store :as qp.store]))
 
 (defn powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
@@ -126,7 +125,6 @@
 
   ([context query info]
    (qp.store/with-store
-     (log/error "query " query)
      (let [main-breakout           (:breakout (:query query))
            col-determination-query (add-grouping-field query main-breakout 0)
            all-expected-cols       (qp/query->expected-cols col-determination-query)
