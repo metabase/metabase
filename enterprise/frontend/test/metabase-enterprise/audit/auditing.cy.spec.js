@@ -14,45 +14,34 @@ const { PRODUCTS } = SAMPLE_DATASET;
 
 const year = new Date().getFullYear();
 
-export function generateQuestions(users) {
-  users.forEach(user => {
-    signIn(user);
-
-    cy.request("POST", `/api/card`, {
-      name: `${user} test q`,
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "SELECT * FROM products WHERE {{ID}}",
-          "template-tags": {
-            ID: {
-              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-              name: "ID",
-              display_name: "ID",
-              type: "dimension",
-              dimension: ["field-id", PRODUCTS.ID],
-              "widget-type": "category",
-              default: null,
-            },
+export function generateQuestions(user) {
+  cy.request("POST", `/api/card`, {
+    name: `${user} test q`,
+    dataset_query: {
+      type: "native",
+      native: {
+        query: "SELECT * FROM products WHERE {{ID}}",
+        "template-tags": {
+          ID: {
+            id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+            name: "ID",
+            display_name: "ID",
+            type: "dimension",
+            dimension: ["field-id", PRODUCTS.ID],
+            "widget-type": "category",
+            default: null,
           },
         },
-        database: 1,
       },
-      display: "scalar",
-      description: null,
-      visualization_settings: {},
-      collection_id: null,
-      result_metadata: null,
-      metadata_checksum: null,
-    });
+      database: 1,
+    },
+    display: "scalar",
+    visualization_settings: {},
   });
 }
-export function generateDashboards(users) {
-  users.forEach(user => {
-    signIn(user);
-    cy.request("POST", "/api/dashboard", {
-      name: user + " test dash",
-    });
+export function generateDashboards(user) {
+  cy.request("POST", "/api/dashboard", {
+    name: `${user} test dash`,
   });
 }
 
@@ -60,8 +49,11 @@ describeWithToken("audit > auditing", () => {
   const users = ["admin", "normal"];
   before(() => {
     restore();
-    generateQuestions(users);
-    generateDashboards(users);
+    users.forEach(user => {
+      signIn(user);
+      generateQuestions(user);
+      generateDashboards(user);
+    });
   });
 
   describe("Generate data to audit", () => {
