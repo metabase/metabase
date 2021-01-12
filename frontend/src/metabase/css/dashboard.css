@@ -83,6 +83,25 @@
   fill: currentColor;
 }
 
+.Dashboard.Dashboard--night .bg-light {
+  background-color: var(--color-bg-black);
+}
+
+.Dashboard.Dashboard--night .bg-medium {
+  background-color: var(--color-bg-dark);
+}
+
+.Dashboard.Dashboard--night .text-dark {
+  color: var(--color-bg-light);
+}
+
+.Dashboard.Dashboard--night .border-top,
+.Dashboard.Dashboard--night .border-left,
+.Dashboard.Dashboard--night .border-bottom,
+.Dashboard.Dashboard--night .border-right {
+  border-color: var(--color-bg-dark);
+}
+
 /* Night mode transition */
 .Dashboard.Dashboard--fullscreen,
 .Dashboard.Dashboard--fullscreen .DashCard .Card {
