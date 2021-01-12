@@ -214,17 +214,7 @@ describeWithToken("formatting > whitelabel", () => {
         "base64",
       ).then(logo_data => {
         cy.request("PUT", "/api/setting/application-logo-url", {
-          placeholder:
-            "enterprise/frontend/test/metabase-enterprise/_support_/logo.jpeg",
-          default: "app/assets/img/logo.svg",
-          description:
-            "For best results, use an SVG file with a transparent background.",
-          display_name: "Logo",
-          env_name: "MB_APPLICATION_LOGO_URL",
-          is_env_setting: false,
-          type: "string",
           value: `data:image/jpeg;base64,${logo_data}`,
-          originalValue: null,
         });
       });
     });
