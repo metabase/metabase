@@ -147,15 +147,6 @@
   :default    false
   :visibility :authenticated)
 
-(defsetting embedding-secret-key
-  (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
-  :visibility :admin
-  :setter (fn [new-value]
-            (when (seq new-value)
-              (assert (u/hexadecimal-string? new-value)
-                (tru "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string).")))
-            (setting/set-string! :embedding-secret-key new-value)))
-
 (defsetting embedding-app-origin
   (deferred-tru "Allow this origin to embed the full Metabase application")
   :visibility :public)
