@@ -348,7 +348,7 @@
 
   Returns a `StreamingResponse`."
   {:style/indent 1}
-  [token dashcard-id card-id export-format query-params
+  [token dashcard-id card-id export-format query-params qp-runner
    & {:keys [constraints]
       :or   {constraints constraints/default-query-constraints}}]
   (let [unsigned-token (eu/unsign token)
@@ -362,13 +362,14 @@
       :embedding-params (db/select-one-field :embedding_params Dashboard :id dashboard-id)
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :query-params     query-params
-      :constraints      constraints)))
+      :constraints      constraints
+      :qp-runner        qp-runner)))
 
 (api/defendpoint ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
-  (card-results-for-signed-token-async token dashcard-id card-id :api query-params))
+  (card-results-for-signed-token-async token dashcard-id card-id :api query-params nil))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -451,6 +452,7 @@
     card-id
     export-format
     (m/map-keys keyword query-params)
+    nil
     :constraints nil))
 
 
@@ -538,5 +540,11 @@
       :params   <parameters>}"
   [token & query-params]
   (run-query-for-unsigned-token-async (eu/unsign token) :api query-params qp.pivot/run-query))
+
+(api/defendpoint ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
+  `embedding-secret-key`"
+  [token dashcard-id card-id & query-params]
+  (card-results-for-signed-token-async token dashcard-id card-id :api query-params qp.pivot/run-query))
 
 (api/define-routes)

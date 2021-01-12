@@ -908,3 +908,107 @@
             (with-temp-card [card (merge {:enable_embedding true} (pivots/pivot-card))]
               (is (= "Message seems corrupt or manipulated."
                      (http/client :get 400 (with-new-secret-key (pivot-card-query-url card ""))))))))))))
+
+(defn- pivot-dashcard-url [dashcard & [additional-token-params]]
+  (str "embed/pivot/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-params)
+       "/dashcard/" (u/get-id dashcard)
+       "/card/" (:card_id dashcard)))
+
+(deftest pivot-dashcard-success-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                       :card (pivots/pivot-card)}]
+          (let [result (http/client :get 202 (pivot-dashcard-url dashcard))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 2273 (count rows)))))))))
+
+(deftest pivot-dashcard-embedding-disabled-test
+  (mt/dataset sample-dataset
+    (tu/with-temporary-setting-values [enable-embedding false]
+      (with-new-secret-key
+        (with-temp-dashcard [dashcard {:card (pivots/pivot-card)}]
+          (is (= "Embedding is not enabled."
+                 (http/client :get 400 (pivot-dashcard-url dashcard)))))))))
+
+(deftest pivot-dashcard-embedding-disabled-for-card-test
+  (mt/dataset sample-dataset
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-dashcard [dashcard {:card (pivots/pivot-card)}]
+        (is (= "Embedding is not enabled for this object."
+               (http/client :get 400 (pivot-dashcard-url dashcard))))))))
+
+(deftest pivot-dashcard-signing-check-test
+  (mt/dataset sample-dataset
+    (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are signed "
+                  "with the wrong key")
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                       :card (pivots/pivot-card)}]
+          (is (= "Message seems corrupt or manipulated."
+                 (http/client :get 400 (with-new-secret-key (pivot-dashcard-url dashcard))))))))))
+
+(deftest pivot-dashcard-locked-params-test
+  (mt/dataset sample-dataset
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "locked"}}
+                                     :card (pivots/pivot-card)}]
+        (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
+                      "missing a `:locked` parameter")
+          (is (= "You must specify a value for :abc in the JWT."
+                 (http/client :get 400 (pivot-dashcard-url dashcard)))))
+
+        (testing "if `:locked` param is supplied, request should succeed"
+          (let [result (http/client :get 202 (pivot-dashcard-url dashcard {:params {:abc 100}}))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 2273 (count rows)))))
+
+        (testing "if `:locked` parameter is present in URL params, request should fail"
+          (is (= "You must specify a value for :abc in the JWT."
+                 (http/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=100")))))))))
+
+(deftest pivot-dashcard-disabled-params-test
+  (mt/dataset sample-dataset
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "disabled"}}
+                                     :card (pivots/pivot-card)}]
+        (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
+                      "`:disabled` parameter")
+          (is (= "You're not allowed to specify a value for :abc."
+                 (http/client :get 400 (pivot-dashcard-url dashcard {:params {:abc 100}})))))
+
+        (testing "If a `:disabled` param is passed in the URL the request should fail"
+          (is (= "You're not allowed to specify a value for :abc."
+                 (http/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=200")))))))))
+
+(deftest pivot-dashcard-enabled-params-test
+  (mt/dataset sample-dataset
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "enabled"}}
+                                     :card (pivots/pivot-card)}]
+        (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
+          (is (= "You can't specify a value for :abc if it's already set in the JWT."
+                 (http/client :get 400 (str (pivot-dashcard-url dashcard {:params {:abc 100}}) "?abc=200")))))
+
+        (testing "If an `:enabled` param is present in the JWT, that's ok"
+          (let [result (http/client :get 202 (pivot-dashcard-url dashcard {:params {:abc 100}}))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 2273 (count rows)))))
+
+        (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+          (let [result (http/client :get 202 (str (pivot-dashcard-url dashcard) "?abc=200"))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 2273 (count rows)))))))))
