@@ -24,6 +24,7 @@
             [metabase.sample-data :as sample-data]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.field-values :as sync-field-values]
+            [metabase.sync.schedules :as sync.schedules]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
             [metabase.util.cron :as cron-util]
@@ -216,16 +217,6 @@
 
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
-
-(def ExpandedSchedulesMap
-  "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.
-   This same key is used in reverse to update the schedules."
-  (su/with-api-error-message
-      (s/named
-       {(s/optional-key :cache_field_values) cron-util/ScheduleMap
-        (s/optional-key :metadata_sync)      cron-util/ScheduleMap}
-       "Map of expanded schedule maps")
-    "value must be a valid map of schedule maps for a DB."))
 
 (s/defn ^:private expanded-schedules [db :- DatabaseInstance]
   {:cache_field_values (cron-util/cron-string->schedule-map (:cache_field_values_schedule db))
@@ -455,21 +446,6 @@
             (recur (assoc details :ssl false))
             (or error details)))))))
 
-(def ^:private CronSchedulesMap
-  "Schema with values for a DB's schedules that can be put directly into the DB."
-  {(s/optional-key :metadata_sync_schedule)      cron-util/CronScheduleString
-   (s/optional-key :cache_field_values_schedule) cron-util/CronScheduleString})
-
-(s/defn schedule-map->cron-strings :- CronSchedulesMap
-  "Convert a map of `:schedules` as passed in by the frontend to a map of cron strings with the approriate keys for
-   Database. This map can then be merged directly inserted into the DB, or merged with a map of other columns to
-   insert/update."
-  [{:keys [metadata_sync cache_field_values]} :- ExpandedSchedulesMap]
-  (cond-> {}
-    metadata_sync      (assoc :metadata_sync_schedule      (cron-util/schedule-map->cron-string metadata_sync))
-    cache_field_values (assoc :cache_field_values_schedule (cron-util/schedule-map->cron-string cache_field_values))))
-
-
 (api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries]} :body}]
@@ -478,7 +454,7 @@
    details          su/Map
    is_full_sync     (s/maybe s/Bool)
    is_on_demand     (s/maybe s/Bool)
-   schedules        (s/maybe ExpandedSchedulesMap)
+   schedules        (s/maybe sync.schedules/ExpandedSchedulesMap)
    auto_run_queries (s/maybe s/Bool)}
   (api/check-superuser)
   (let [is-full-sync?    (or (nil? is_full_sync)
@@ -490,15 +466,17 @@
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (db/insert! Database
                                 (merge
-                                 {:name         name
-                                  :engine       engine
-                                  :details      details-or-error
-                                  :is_full_sync is-full-sync?
-                                  :is_on_demand (boolean is_on_demand)}
-                                 (when schedules
-                                   (schedule-map->cron-strings schedules))
-                                 (when (some? auto_run_queries)
-                                   {:auto_run_queries auto_run_queries}))))
+                                  {:name         name
+                                   :engine       engine
+                                   :details      details-or-error
+                                   :is_full_sync is-full-sync?
+                                   :is_on_demand (boolean is_on_demand)}
+                                  (sync.schedules/schedule-map->cron-strings
+                                    (if (:let-user-control-scheduling details)
+                                      (sync.schedules/scheduling schedules)
+                                      (sync.schedules/default-schedule)))
+                                  (when (some? auto_run_queries)
+                                    {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :database-create <>))
       ;; failed to connect, return error
       {:status 400
@@ -548,14 +526,15 @@
    engine             (s/maybe DBEngineString)
    refingerprint      (s/maybe s/Bool)
    details            (s/maybe su/Map)
-   schedules          (s/maybe ExpandedSchedulesMap)
+   schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
    description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
    caveats            (s/maybe s/Str)                ; whether someone sets these to blank strings
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)}
   (api/check-superuser)
-  (api/let-404 [database (Database id)]
-    (let [details    (upsert-sensitive-fields database details)
+  ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
+  (api/let-404 [existing-database (Database id)]
+    (let [details    (upsert-sensitive-fields existing-database details)
           conn-error (when (some? details)
                        (assert (some? engine))
                        (test-database-connection engine details))
@@ -572,18 +551,31 @@
           ;; TODO - this means one cannot unset the description. Does that matter?
           (api/check-500 (db/update-non-nil-keys! Database id
                                                   (merge
-                                                   {:name               name
-                                                    :engine             engine
-                                                    :details            details
-                                                    :refingerprint      refingerprint
-                                                    :is_full_sync       full-sync?
-                                                    :is_on_demand       (boolean is_on_demand)
-                                                    :description        description
-                                                    :caveats            caveats
-                                                    :points_of_interest points_of_interest
-                                                    :auto_run_queries   auto_run_queries}
-                                                   (when schedules
-                                                     (schedule-map->cron-strings schedules)))))
+                                                     {:name               name
+                                                      :engine             engine
+                                                      :details            details
+                                                      :refingerprint      refingerprint
+                                                      :is_full_sync       full-sync?
+                                                      :is_on_demand       (boolean is_on_demand)
+                                                      :description        description
+                                                      :caveats            caveats
+                                                      :points_of_interest points_of_interest
+                                                      :auto_run_queries   auto_run_queries}
+                                                     (cond
+                                                       ;; transition back to metabase managed schedules. the schedule
+                                                       ;; details, even if provided, are ignored. database is the
+                                                       ;; current stored value and check against the incoming details
+                                                       (and (get-in existing-database [:details :let-user-control-scheduling])
+                                                            (not (:let-user-control-scheduling details)))
+
+                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
+
+                                                       ;; if user is controlling schedules
+                                                       (:let-user-control-scheduling details)
+                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
+                                                       ;; do nothing in the case that user is not in control of
+                                                       ;; scheduling. leave them as they are in the db
+                                                       ))))
           (let [db (Database id)]
             (events/publish-event! :database-update db)
             ;; return the DB with the expanded schedules back in place

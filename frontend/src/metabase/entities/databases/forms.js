@@ -320,12 +320,10 @@ const forms = {
     ],
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
-        // If we don't let user control the scheduling settings, let's override them with Metabase defaults
         // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
         return {
           ...database,
           is_full_sync: true,
-          schedules: DEFAULT_SCHEDULES,
         };
       } else {
         return database;

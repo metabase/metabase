@@ -20,6 +20,7 @@
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.setup :as setup]
+            [metabase.sync.schedules :as sync.schedules]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -65,7 +66,7 @@
        {:name name, :engine driver, :details details}
        (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
        (when schedules
-         (database-api/schedule-map->cron-strings schedules))))))
+         (sync.schedules/schedule-map->cron-strings schedules))))))
 
 (defn- setup-set-settings! [request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
@@ -99,7 +100,7 @@
    email            su/Email
    password         su/ComplexPassword
    allow_tracking   (s/maybe (s/cond-pre s/Bool su/BooleanString))
-   schedules        (s/maybe database-api/ExpandedSchedulesMap)
+   schedules        (s/maybe sync.schedules/ExpandedSchedulesMap)
    auto_run_queries (s/maybe s/Bool)}
   (letfn [(create! []
             (try
