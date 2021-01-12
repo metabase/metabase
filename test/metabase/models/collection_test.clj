@@ -325,7 +325,7 @@
 ;;; |                                Nested Collections: CRUD Constraints & Behavior                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmacro ^:private with-collection-in-lo [[collection-binding location] & body]
+(defmacro ^:private with-collection-in-location [[collection-binding location] & body]
   `(let [name# (mt/random-name)]
      (try
        (let [~collection-binding (db/insert! Collection :name name#, :color "#ABCDEF", :location ~location)]
@@ -342,11 +342,11 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid Collection location: path is invalid"
-         (with-collection-in-lo [_ "/a/"]))))
+         (with-collection-in-location [_ "/a/"]))))
 
   (testing "We should be able to INSERT a Collection with a *valid* location"
     (mt/with-temp Collection [parent]
-      (with-collection-in-lo [collection (collection/location-path parent)]
+      (with-collection-in-location [collection (collection/location-path parent)]
         (is (= (collection/location-path parent)
                (:location collection))))))
 
@@ -368,7 +368,7 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid Collection location: some or all ancestors do not exist"
-         (with-collection-in-lo [_ (collection/location-path (nonexistent-collection-id))]))))
+         (with-collection-in-location [_ (collection/location-path (nonexistent-collection-id))]))))
 
   (testing "Make sure we can't UPDATE a Collection to give it a non-existent ancestors"
     (mt/with-temp Collection [collection]

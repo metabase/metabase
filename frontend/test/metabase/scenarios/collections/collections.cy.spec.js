@@ -366,7 +366,7 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    it.skip("should show moved collections inside a folder tree structure (metabase#14280)", () => {
+    it("should show moved collections inside a folder tree structure (metabase#14280)", () => {
       const NEW_COLLECTION = "New collection";
 
       // Create New collection within `Our analytics`
