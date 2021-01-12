@@ -563,7 +563,8 @@
                                                       :auto_run_queries   auto_run_queries}
                                                      (cond
                                                        ;; transition back to metabase managed schedules. the schedule
-                                                       ;; details, even if provided, are ignored
+                                                       ;; details, even if provided, are ignored. database is the
+                                                       ;; current stored value and check against the incoming details
                                                        (and (get-in database [:details :let-user-control-scheduling])
                                                             (not (:let-user-control-scheduling details)))
 
