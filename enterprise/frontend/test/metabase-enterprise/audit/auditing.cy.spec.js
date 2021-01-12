@@ -14,7 +14,7 @@ const year = new Date().getFullYear();
 const QUESTION = "question";
 const DASHBOARD = "dashboard";
 
-export function generateQuestions(user) {
+function generateQuestions(user) {
   cy.request("POST", `/api/card`, {
     name: `${user} ${QUESTION}`,
     dataset_query: {
@@ -39,7 +39,8 @@ export function generateQuestions(user) {
     visualization_settings: {},
   });
 }
-export function generateDashboards(user) {
+
+function generateDashboards(user) {
   cy.request("POST", "/api/dashboard", {
     name: `${user} ${DASHBOARD}`,
   });
