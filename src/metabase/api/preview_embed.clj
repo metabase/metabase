@@ -11,9 +11,8 @@
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.api.embed :as embed-api]
-            [metabase.api.pivot :as pivot]
-            [metabase.util.embed :as eu]
-            [metabase.query-processor.pivot :as qp.pivot]))
+            [metabase.query-processor.pivot :as qp.pivot]
+            [metabase.util.embed :as eu]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
