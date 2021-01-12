@@ -125,7 +125,7 @@ describeWithToken("audit > auditing", () => {
         .should("contain", year);
     });
 
-    it.skip("should load the Audit log (Audit log should display views of dashboards)", () => {
+    it.skip("audit log should display views of dashboards (metabase-enterprise#287)", () => {
       cy.visit("/admin/audit/members/log");
 
       cy.findAllByText("Orders, Count").should("have.length", 1);
