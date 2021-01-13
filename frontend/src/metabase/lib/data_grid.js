@@ -301,7 +301,7 @@ function addSubtotal(item, [formatter, ...formatters]) {
       ? [
           {
             value: t`Totals for ${formatter(item.value)}`,
-            rawValue: item.value,
+            rawValue: item.rawValue,
             span: 1,
             isSubtotal: true,
             children: [],

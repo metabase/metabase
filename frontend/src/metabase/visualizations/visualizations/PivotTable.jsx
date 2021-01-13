@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
-import { getIn } from "icepick";
+import { getIn, updateIn } from "icepick";
 import { Grid, List, ScrollSync } from "react-virtualized";
 import { Flex } from "grid-styled";
 
@@ -73,7 +73,20 @@ export default class PivotTable extends Component {
     ...columnSettings({ hidden: true }),
     [COLLAPSED_ROWS_SETTING]: {
       hidden: true,
-      default: [],
+      readDependencies: [COLUMN_SPLIT_SETTING],
+      getValue: (series, settings = {}) => {
+        // This is hack. Collapsed rows depend on the current column split setting.
+        // If the query changes or the rows are reordered, we ignore the current collapsed row setting.
+        // This is accomplished by snapshotting part of the column split setting *inside* this setting.
+        // `value` the is the actual data for this setting
+        // `rows` is value we check against the current setting to see if we should use `value`
+        const { rows, value } = settings[COLLAPSED_ROWS_SETTING] || {};
+        const { rows: currentRows } = settings[COLUMN_SPLIT_SETTING];
+        if (!_.isEqual(rows, currentRows)) {
+          return { value: [], rows: currentRows };
+        }
+        return { rows, value };
+      },
     },
     [COLUMN_SPLIT_SETTING]: {
       section: null,
@@ -84,7 +97,7 @@ export default class PivotTable extends Component {
         columns: data == null ? [] : data.cols,
       }),
       getValue: ([{ data, card }], settings = {}) => {
-        const storedValue = settings["pivot_table.column_split"];
+        const storedValue = settings[COLUMN_SPLIT_SETTING];
         if (data == null) {
           return undefined;
         }
@@ -170,7 +183,7 @@ export default class PivotTable extends Component {
         columnIndexes,
         rowIndexes,
         valueIndexes,
-        settings[COLLAPSED_ROWS_SETTING],
+        settings[COLLAPSED_ROWS_SETTING].value,
       );
     } catch (e) {
       console.warn(e);
@@ -389,17 +402,18 @@ function RowToggleIcon({
   updateSettings,
   hideUnlessCollapsed,
 }) {
-  const setting = settings[COLLAPSED_ROWS_SETTING] || [];
+  const setting = settings[COLLAPSED_ROWS_SETTING];
   const rowRef = JSON.stringify(value);
-  const isCollapsed = setting.includes(rowRef);
+  const isCollapsed = (setting.value || []).includes(rowRef);
   if (hideUnlessCollapsed && !isCollapsed) {
     // subtotal rows shouldn't have an icon unless the section is collapsed
     return null;
   }
+  const toggle = isCollapsed
+    ? value => value.filter(v => v !== rowRef)
+    : value => value.concat(rowRef);
   const update = () => {
-    const updatedValue = isCollapsed
-      ? setting.filter(v => v !== rowRef)
-      : setting.concat(rowRef);
+    const updatedValue = updateIn(setting, ["value"], toggle);
     updateSettings({ [COLLAPSED_ROWS_SETTING]: updatedValue });
   };
   return (
