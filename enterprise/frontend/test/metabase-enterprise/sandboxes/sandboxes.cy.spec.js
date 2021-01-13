@@ -23,18 +23,7 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATASET;
 
-const {
-  ALL_USERS_GROUP,
-  ADMIN_GROUP,
-  DATA_GROUP,
-  COLLECTION_GROUP,
-} = USER_GROUPS;
-
-const new_user = {
-  first_name: "Barb",
-  last_name: "Tabley",
-  username: "new@metabase.com",
-};
+const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 // TODO: If we ever have the need to use this user across multiple tests, extract it to `__support__/cypress`
 const sandboxed_user = {
@@ -58,22 +47,78 @@ function createUser(user) {
 }
 
 describeWithToken("formatting > sandboxes", () => {
-  before(restore);
+  describe("admin", () => {
+    beforeEach(() => {
+      restore();
+      signInAsAdmin();
+      cy.visit("/admin/people");
+    });
 
-  describe("Setup for sandbox tests", () => {
-    beforeEach(signInAsAdmin);
+    it("should add key attributes to an existing user", () => {
+      cy.get(".Icon-ellipsis")
+        .last()
+        .click();
+      cy.findByText("Edit user").click();
+      cy.findByText("Add an attribute").click();
+      cy.findByPlaceholderText("Key").type("User ID");
+      cy.findByPlaceholderText("Value").type("3");
+      cy.findByText("Update").click();
+    });
 
-    it("should make SQL question", () => {
+    it("should add key attributes to a new user", () => {
+      cy.findByText("Add someone").click();
+      cy.findByPlaceholderText("Johnny").type(sandboxed_user.first_name);
+      cy.findByPlaceholderText("Appleseed").type(sandboxed_user.last_name);
+      cy.findByPlaceholderText("youlooknicetoday@email.com").type(
+        sandboxed_user.email,
+      );
+      cy.findByText("Add an attribute").click();
+      cy.findByPlaceholderText("Key").type("User ID");
+      cy.findByPlaceholderText("Value").type("1");
+      cy.findAllByText("Create").click();
+      cy.findByText("Done").click();
+    });
+  });
+
+  describe("normal user", () => {
+    const USER_ATTRIBUTE = "User ID";
+    const ATTRIBUTE_VALUE = "3";
+    const TTAG_NAME = "cid";
+    const QUESTION_NAME = "Joined test";
+
+    beforeEach(() => {
+      restore();
+      signInAsAdmin();
+
+      // Add user attribute to existing ("normal" / id:2) user
+      cy.request("PUT", "/api/user/2", {
+        login_attributes: { [USER_ATTRIBUTE]: ATTRIBUTE_VALUE },
+      });
+
+      // Orders join Products
+      createJoinedQuestion(QUESTION_NAME);
+
+      // Sandbox Orders table on "User ID"
+      cy.request("POST", "/api/mt/gtap", {
+        group_id: DATA_GROUP,
+        table_id: ORDERS_ID,
+        card_id: null,
+        attribute_remappings: {
+          [USER_ATTRIBUTE]: ["dimension", ["field-id", ORDERS.USER_ID]],
+        },
+      });
+
+      cy.log("**--Create parametrized SQL question--**");
       cy.request("POST", "/api/card", {
         name: "sql param",
         dataset_query: {
           type: "native",
           native: {
-            query: "select id,name,address,email from people where {{cid}}",
+            query: `select id,name,address,email from people where {{${TTAG_NAME}}}`,
             "template-tags": {
-              cid: {
+              [TTAG_NAME]: {
                 id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
-                name: "cid",
+                name: TTAG_NAME,
                 "display-name": "CID",
                 type: "dimension",
                 dimension: ["field-id", PEOPLE.ID],
@@ -85,202 +130,79 @@ describeWithToken("formatting > sandboxes", () => {
         },
         display: "table",
         visualization_settings: {},
-      });
-    });
-
-    // TODO: Remove manual waiting
-    it("should make a JOINs table", () => {
-      openOrdersTable();
-      cy.wait(1000)
-        .get(".Icon-notebook")
-        .click();
-      cy.wait(1000)
-        .findByText("Join data")
-        .click();
-      cy.findByText("Products").click();
-      cy.findByText("Visualize").click();
-      cy.findByText("Save").click();
-
-      cy.findByLabelText("Name")
-        .clear()
-        .wait(1)
-        .type("test joins table");
-      cy.findAllByText("Save")
-        .last()
-        .click();
-      cy.findByText("Not now").click();
-    });
-  });
-
-  describe("Sandboxes should work", () => {
-    beforeEach(signInAsNormalUser);
-
-    it("should add key attributes to new user and existing user", () => {
-      signOut();
-      signInAsAdmin();
-
-      // Existing user
-      cy.visit("/admin/people");
-      cy.get(".Icon-ellipsis")
-        .last()
-        .click();
-      cy.findByText("Edit user").click();
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("3");
-      cy.findByText("Update").click();
-
-      // New user
-      cy.visit("/admin/people");
-      cy.findByText("Add someone").click();
-      cy.findByPlaceholderText("Johnny").type(new_user.first_name);
-      cy.findByPlaceholderText("Appleseed").type(new_user.last_name);
-      cy.findByPlaceholderText("youlooknicetoday@email.com").type(
-        new_user.username,
-      );
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("1");
-      cy.findAllByText("Create").click();
-      cy.findByText("Done").click();
-    });
-
-    it("should change sandbox permissions as admin", () => {
-      signOut();
-      signInAsAdmin();
-
-      // Changes Orders permssions to use filter and People to use SQL filter
-      cy.request("POST", "/api/mt/gtap", {
-        id: 1,
-        group_id: DATA_GROUP,
-        table_id: ORDERS_ID,
-        card_id: null,
-        attribute_remappings: {
-          "User ID": ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-      });
-      cy.request("POST", "/api/mt/gtap", {
-        group_id: DATA_GROUP,
-        table_id: PEOPLE_ID,
-        card_id: 4,
-        attribute_remappings: {
-          "User ID": ["dimension", ["template-tag", "cid"]],
-        },
-      });
-      cy.request("PUT", "/api/permissions/graph", {
-        revision: 1,
-        groups: {
-          [ADMIN_GROUP]: { "1": { native: "write", schemas: "all" } },
-          [DATA_GROUP]: {
-            "1": {
-              schemas: {
-                PUBLIC: {
-                  [ORDERS_ID]: { query: "segmented", read: "all" },
-                  [PEOPLE_ID]: { query: "segmented", read: "all" },
-                  [PRODUCTS_ID]: "all",
-                  [REVIEWS_ID]: "all",
-                },
-              },
-            },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        // Sandbox `People` table based on previously created SQL question
+        cy.request("POST", "/api/mt/gtap", {
+          group_id: DATA_GROUP,
+          table_id: PEOPLE_ID,
+          card_id: QUESTION_ID,
+          attribute_remappings: {
+            [USER_ATTRIBUTE]: ["dimension", ["template-tag", TTAG_NAME]],
           },
+        });
+      });
+
+      updatePermissionsGraph({
+        schema: {
+          [ORDERS_ID]: { query: "segmented", read: "all" },
+          [PEOPLE_ID]: { query: "segmented", read: "all" },
         },
+        user_group: DATA_GROUP,
+      });
+
+      signOut();
+      signInAsNormalUser();
+    });
+
+    describe("table sandboxed on a user attribute", () => {
+      it("should display correct number of orders", () => {
+        openOrdersTable();
+        // 10 rows filtered on User ID
+        cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 10);
       });
     });
 
-    it("should be sandboxed with a filter (on normal table)", () => {
-      cy.visit("/browse/1");
-      cy.findByText("Orders").click();
+    describe("question with joins", () => {
+      it("should be sandboxed even after applying a filter to the question", () => {
+        cy.log("**--0. Open saved question with joins--**");
+        cy.visit("/collection/root");
+        cy.findByText(QUESTION_NAME).click();
 
-      // TODO: Refactor - asserting on the number of rows proved to be risky.
-      // Table filter - only 10 rows should show up
-      cy.contains("Showing 10");
+        cy.log("**--1. Make sure user is initially sandboxed--**");
+        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+          "have.length",
+          11,
+        );
 
-      // And those rows should only show the User ID of 3
-      // First get the number of columns...
-      // And then find the index of the column that contains "User ID"
-      // Then ensure every nth element of that column only contains the desired User ID
-      // TODO: If we use this again, it should go in a helper
-      cy.get(".TableInteractive-headerCellData")
-        .its("length")
-        .then(columnCount => {
-          cy.contains(".TableInteractive-headerCellData", "User ID")
-            .invoke("index")
-            .then(userIDIndex => {
-              cy.get(".cellData")
-                .its("length")
-                .then(cellCountWithHeaders => {
-                  const range = (start, stop, step) =>
-                    Array.from(
-                      { length: (stop - start) / step + 1 },
-                      (_, i) => start + i * step,
-                    );
-                  // Loop over the columns starting at the zero-indexed second row (first row is headers)
-                  // userIDIndex is already zero-indexed, so we just add that to the number of columns
-                  const genArr = range(
-                    columnCount + userIDIndex,
-                    cellCountWithHeaders,
-                    columnCount,
-                  );
-                  cy.wrap(genArr).each(index => {
-                    cy.get(".cellData")
-                      .eq(index)
-                      .should("have.text", "3");
-                  });
-                });
-            });
+        cy.log("**--2. Add filter to a question--**");
+        cy.get(".Icon-notebook").click();
+        cy.findByText("Filter").click();
+        popover().within(() => {
+          cy.findByText("Total").click();
         });
+        cy.findByText("Equal to").click();
+        cy.findByText("Greater than").click();
+        cy.findByPlaceholderText("Enter a number").type("100");
+        cy.findByText("Add filter").click();
+        cy.findByText("Visualize").click();
 
-      // Notebook filter
-      cy.get(".Icon-notebook").click();
-      cy.findByText("Summarize").click();
-      cy.findByText("Count of rows").click();
-      cy.findByText("Visualize").click();
-      cy.get(".ScalarValue");
-      cy.findByText("18,760").should("not.exist");
-      cy.findByText("10");
+        cy.log("**--3. Make sure user is still sandboxed--**");
+        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+          "have.length",
+          7,
+        );
+      });
     });
 
-    // TODO: Restore before each test and avoid using hard coded question IDs
-    it("should be sandboxed with a filter (on a saved JOINed question)", () => {
-      cy.visit("/question/5");
-
-      cy.wait(2000)
-        .get(".TableInteractive-cellWrapper--firstColumn")
-        .should("have.length", 11);
-    });
-
-    it("should be sandbox with a filter (after applying a filter to a JOINed question)", () => {
-      cy.visit("/question/5");
-
-      // Notebook filter
-      cy.get(".Icon-notebook").click();
-      cy.wait(2000)
-        .findByText("Filter")
-        .click();
-      cy.findAllByText("Total")
-        .last()
-        .click();
-      cy.findByText("Equal to").click();
-      cy.findByText("Greater than").click();
-      cy.findByPlaceholderText("Enter a number").type("100");
-      cy.findByText("Add filter").click();
-      cy.findByText("Visualize").click();
-      cy.wait(2000)
-        .get(".TableInteractive-cellWrapper--firstColumn")
-        .should("have.length", 7);
-    });
-
-    it("should filter categories on saved SQL question (for a new question - column number)", () => {
-      openPeopleTable();
-      cy.get(".TableInteractive-cellWrapper--firstColumn").should(
-        "have.length",
-        2,
-      );
-    });
-
-    it("should filter categories on saved SQL question (for a new question - row number)", () => {
-      openPeopleTable();
-      cy.get(".TableInteractive-headerCellData").should("have.length", 4);
+    describe("table sandboxed on a saved parametrized SQL question", () => {
+      it("should show filtered categories", () => {
+        openPeopleTable();
+        cy.get(".TableInteractive-headerCellData").should("have.length", 4);
+        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+          "have.length",
+          2,
+        );
+      });
     });
   });
 
@@ -351,7 +273,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("11"); // Sum of orders for user with ID #1
     });
 
-    it.skip("SB question with `case` CC should substitue the `else` argument's table (metabase-enterprise#548)", () => {
+    it.skip("SB question with `case` CC should substitute the `else` argument's table (metabase-enterprise#548)", () => {
       const QUESTION_NAME = "EE_548";
       const CC_NAME = "CC_548"; // Custom column
 
@@ -960,4 +882,31 @@ function updatePermissionsGraph({
       });
     },
   );
+}
+
+function createJoinedQuestion(name) {
+  return cy.request("POST", "/api/card", {
+    name,
+    dataset_query: {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ],
+            alias: "Products",
+          },
+        ],
+      },
+      database: 1,
+    },
+    display: "table",
+    visualization_settings: {},
+  });
 }
