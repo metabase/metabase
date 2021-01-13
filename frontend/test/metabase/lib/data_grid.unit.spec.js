@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { pivot, multiLevelPivot } from "metabase/lib/data_grid";
 
 import { TYPE } from "metabase/lib/types";
@@ -17,19 +15,6 @@ const D3 = dimension(3);
 const D4 = dimension(4);
 
 const M = { name: "M", display_name: "Metric", base_type: TYPE.Integer };
-
-const GRAND_TOTALS_ROW = [
-  [
-    [
-      {
-        isGrandTotal: true,
-        isSubtotal: true,
-        span: 1,
-        value: "Grand totals",
-      },
-    ],
-  ],
-];
 
 function makeData(rows) {
   return {
@@ -465,7 +450,6 @@ describe("data_grid", () => {
       const primaryGroup = 0;
       const subtotalOne = 2;
       const subtotalTwo = 1;
-      const subtotalThree = 3;
       const rows = [
         ["a", "x", 1, primaryGroup],
         ["a", "y", 2, primaryGroup],
@@ -495,6 +479,7 @@ describe("data_grid", () => {
         span: 1,
         value: "Totals for a",
       });
+      expect(getRowSection(0, 0)).toEqual([[{ isSubtotal: true, value: "3" }]]);
     });
 
     it("should return multiple levels of subtotals", () => {
@@ -537,12 +522,7 @@ describe("data_grid", () => {
         rows,
         cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
       };
-      const { getRowSection, rowCount, columnCount } = multiLevelPivot(
-        data,
-        [3],
-        [0, 1, 2],
-        [4],
-      );
+      const { getRowSection } = multiLevelPivot(data, [3], [0, 1, 2], [4]);
       expect(extractValues(getRowSection(0, 0))).toEqual([
         ["1"],
         ["2"],
