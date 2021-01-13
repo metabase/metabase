@@ -150,7 +150,7 @@ Pivot tables allow you swap rows and columns, group data, and include subtotals 
 
 Pivot tables are only available to simple and custom questions with summarized data. They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code to pivot the tables. The workaround here is to write a question using SQL, save it, and use that saved SQL question as the starting point for a simple or custom question that summarizes that data.
 
-In the settings for the  Pivot Table visualization, you can assign fields to one of three "buckets":
+In the settings for the Pivot Table visualization, you can assign fields to one of three "buckets":
 
 - Fields to use for the table rows
 - Fields to use for the table columns
