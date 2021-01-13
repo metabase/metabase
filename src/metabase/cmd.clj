@@ -24,7 +24,9 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
-(defn- system-exit! [return-code]
+(defn- system-exit!
+  "Proxy function to System/exit to enable the use of `with-redefs`."
+  [return-code]
   (System/exit return-code))
 
 (defn ^:command migrate
