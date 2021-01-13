@@ -179,7 +179,6 @@ export default class PivotTable extends Component {
       topIndex,
       leftIndex,
       topIndexFormatters,
-      leftIndexFormatters,
       getRowSection,
       rowCount,
       columnCount,
