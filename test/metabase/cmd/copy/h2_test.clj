@@ -13,4 +13,10 @@
     (is (= {:classname "org.h2.Driver"
             :subprotocol "h2"
             :subname     "file:/path/to/metabase.db"}
-           (copy.h2/h2-jdbc-spec "file:/path/to/metabase.db")))))
+           (copy.h2/h2-jdbc-spec "file:/path/to/metabase.db"))))
+
+  (testing "works with .mv.db suffix"
+    (is (= {:classname "org.h2.Driver"
+            :subprotocol "h2"
+            :subname     "file:/path/to/metabase.db"}
+           (copy.h2/h2-jdbc-spec "file:/path/to/metabase.db.mv.db")))))
