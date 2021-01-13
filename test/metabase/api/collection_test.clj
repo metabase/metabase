@@ -116,11 +116,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- collection-tree-transform [xform collections]
-  (for [collection collections
-        :let       [collection (xform collection)]
-        :when      collection]
-    (cond-> collection
-      (:children collection) (update :children (partial collection-tree-transform xform)))))
+  (vec (for [collection collections
+             :let       [collection (xform collection)]
+             :when      collection]
+         (cond-> collection
+           (:children collection) (update :children (partial collection-tree-transform xform))))))
 
 (defn- collection-tree-names-only
   "Keep just the names of Collections in `collection-ids-to-keep` in the response returned by the Collection tree
