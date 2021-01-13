@@ -46,11 +46,13 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
     return ref;
   }
 
+  const question = new Question(card, new Metadata());
+
   function wrap(api) {
     return (params: ?Data, ...rest: any) => {
-      const question = new Question(card, new Metadata());
       const setting = question.setting("pivot_table.column_split");
-      const breakout = question.query().breakouts();
+      const breakout =
+        (question.isStructured() && question.query().breakouts()) || [];
       const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
         setting,
         fieldRefs =>
@@ -65,7 +67,7 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
-  if (card.display !== "pivot") {
+  if (card.display !== "pivot" || !question.isStructured()) {
     return api;
   }
 
