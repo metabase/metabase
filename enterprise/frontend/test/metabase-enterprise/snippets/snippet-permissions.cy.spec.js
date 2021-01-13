@@ -9,8 +9,10 @@ import {
 } from "__support__/cypress";
 
 describeWithToken("scenarios > question > snippets", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("can create a snippet", () => {
     cy.visit("/question/new");
