@@ -126,7 +126,9 @@
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check Database database)
-  (qp.streaming/streaming-response [context :api]
-    (pivot/run-pivot-query context (assoc query :async? true))))
+  (let [info {:executed-by api/*current-user-id*
+              :context     (export-format->context :api)}]
+    (qp.streaming/streaming-response [context :api]
+      (pivot/run-pivot-query (assoc query :async? true) info context))))
 
 (api/define-routes)

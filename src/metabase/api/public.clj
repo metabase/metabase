@@ -488,7 +488,7 @@
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
-  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) qp.pivot/run-query))
+  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) qp.pivot/run-pivot-query))
 
 (api/defendpoint ^:streaming GET "/pivot/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
@@ -498,7 +498,7 @@
   (api/check-public-sharing-enabled)
 
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    (public-dashcard-results-async dashboard-id card-id :api parameters :qp-runner qp.pivot/run-query)))
+    (public-dashcard-results-async dashboard-id card-id :api parameters :qp-runner qp.pivot/run-pivot-query)))
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 

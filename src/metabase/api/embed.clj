@@ -539,12 +539,12 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token & query-params]
-  (run-query-for-unsigned-token-async (eu/unsign token) :api query-params qp.pivot/run-query))
+  (run-query-for-unsigned-token-async (eu/unsign token) :api query-params qp.pivot/run-pivot-query))
 
 (api/defendpoint ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
-  (card-results-for-signed-token-async token dashcard-id card-id :api query-params qp.pivot/run-query))
+  (card-results-for-signed-token-async token dashcard-id card-id :api query-params qp.pivot/run-pivot-query))
 
 (api/define-routes)

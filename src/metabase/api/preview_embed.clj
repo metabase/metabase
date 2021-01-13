@@ -72,7 +72,7 @@
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
       :query-params     query-params
-      :qp-runner        qp.pivot/run-query)))
+      :qp-runner        qp.pivot/run-pivot-query)))
 
 (api/defendpoint ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
@@ -89,6 +89,6 @@
       :embedding-params embedding-params
       :token-params     token-params
       :query-params     query-params
-      :qp-runner        qp.pivot/run-query)))
+      :qp-runner        qp.pivot/run-pivot-query)))
 
 (api/define-routes)

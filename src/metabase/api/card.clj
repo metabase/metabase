@@ -597,14 +597,15 @@
   be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
   not met before returning the `StreamingResponse`."
   [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware run]
+   & {:keys [parameters constraints context dashboard-id middleware qp-runner run]
       :or   {constraints constraints/default-query-constraints
              context     :question
+             qp-runner   qp/process-query-and-save-execution!
              ;; param `run` can be used to control how the query is ran, e.g. if you need to
              ;; customize the `context` passed to the QP
              run         (^:once fn* [query info]
                           (qp.streaming/streaming-response [context export-format]
-                            (qp/process-query-and-save-execution! query info context)))}}]
+                            (qp-runner query info context)))}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)
@@ -698,8 +699,7 @@
   [card-id :as {{:keys [parameters ignore_cache]
                  :or   {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
-  (qp.streaming/streaming-response [context :api]
-    (binding [cache/*ignore-cached-results* ignore_cache]
-      (run-query-for-card-async card-id :api, :parameters parameters, :run (partial qp.pivot/run-pivot-query context) :context context))))
+  (binding [cache/*ignore-cached-results* ignore_cache]
+    (run-query-for-card-async card-id :api, :parameters parameters, :qp-runner qp.pivot/run-pivot-query)))
 
 (api/define-routes)

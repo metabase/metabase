@@ -2,7 +2,6 @@
   "Pivot table actions for the query processor"
   (:require [clojure.core.async :as a]
             [clojure.set :refer [map-invert]]
-            [metabase.api.common :as api]
             [metabase.query-processor :as qp]
             [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.store :as qp.store]))
@@ -120,10 +119,7 @@
    its application via `partial`.
 
    You are expected to wrap this call in `qp.streaming/streaming-response` yourself."
-  ([context query]
-   (run-pivot-query context query {:executed-by api/*current-user-id*}))
-
-  ([context query info]
+  ([query info context]
    (qp.store/with-store
      (let [main-breakout           (:breakout (:query query))
            col-determination-query (add-grouping-field query main-breakout 0)
@@ -151,8 +147,3 @@
                                             (nth row mapping)))
                                         col-mapping)
                                    row))))))))
-
-(defn run-query
-  "A query runner that matches the interface of `qp/process-query`"
-  [query info context]
-  (run-pivot-query context query info))
