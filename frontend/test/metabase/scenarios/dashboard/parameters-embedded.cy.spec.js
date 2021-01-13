@@ -19,7 +19,7 @@ const DASHBOARD_JWT_TOKEN =
 describe("scenarios > dashboard > parameters-embedded", () => {
   let dashboardId, questionId, dashcardId;
 
-  before(() => {
+  beforeEach(() => {
     restore();
     signInAsAdmin();
 
@@ -86,8 +86,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
 
   describe("public question", () => {
     let uuid;
-    before(() => {
-      signInAsAdmin();
+    beforeEach(() => {
       cy.request("POST", `/api/card/${questionId}/public_link`).then(
         res => (uuid = res.body.uuid),
       );
@@ -103,8 +102,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   });
 
   describe("embedded question", () => {
-    before(() => {
-      signInAsAdmin();
+    beforeEach(() => {
       cy.request("PUT", `/api/card/${questionId}`, {
         embedding_params: {
           id: "enabled",
@@ -138,8 +136,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
 
   describe("public dashboard", () => {
     let uuid;
-    before(() => {
-      signInAsAdmin();
+    beforeEach(() => {
       cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
         res => (uuid = res.body.uuid),
       );
@@ -155,8 +152,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   });
 
   describe("embedded dashboard", () => {
-    before(() => {
-      signInAsAdmin();
+    beforeEach(() => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
         embedding_params: {
           id: "enabled",
