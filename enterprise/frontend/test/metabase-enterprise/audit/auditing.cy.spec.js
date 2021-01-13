@@ -1,10 +1,8 @@
 import {
   restore,
   signIn,
-  signOut,
   signInAsAdmin,
   USERS,
-  signInAsNormalUser,
   describeWithToken,
 } from "__support__/cypress";
 
@@ -14,107 +12,79 @@ const { PRODUCTS } = SAMPLE_DATASET;
 
 const year = new Date().getFullYear();
 
-export function generateQuestions(users) {
-  users.forEach(user => {
-    signIn(user);
-
-    cy.request("POST", `/api/card`, {
-      name: `${user} test q`,
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "SELECT * FROM products WHERE {{ID}}",
-          "template-tags": {
-            ID: {
-              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-              name: "ID",
-              display_name: "ID",
-              type: "dimension",
-              dimension: ["field-id", PRODUCTS.ID],
-              "widget-type": "category",
-              default: null,
-            },
+function generateQuestions(user) {
+  cy.request("POST", `/api/card`, {
+    name: `${user} question`,
+    dataset_query: {
+      type: "native",
+      native: {
+        query: "SELECT * FROM products WHERE {{ID}}",
+        "template-tags": {
+          ID: {
+            id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+            name: "ID",
+            display_name: "ID",
+            type: "dimension",
+            dimension: ["field-id", PRODUCTS.ID],
+            "widget-type": "category",
+            default: null,
           },
         },
-        database: 1,
       },
-      display: "scalar",
-      description: null,
-      visualization_settings: {},
-      collection_id: null,
-      result_metadata: null,
-      metadata_checksum: null,
-    });
+      database: 1,
+    },
+    display: "scalar",
+    visualization_settings: {},
   });
 }
-export function generateDashboards(users) {
-  users.forEach(user => {
-    signIn(user);
-    cy.visit("/");
-    cy.get(".Icon-add").click();
-    cy.findByText("New dashboard").click();
-    cy.findByLabelText("Name").type(user + " test dash");
-    cy.get(".Icon-chevrondown").click();
-    cy.findAllByText("Our analytics")
-      .last()
-      .click();
-    cy.findByText("Create").click();
+
+function generateDashboards(user) {
+  cy.request("POST", "/api/dashboard", {
+    name: `${user} dashboard`,
   });
 }
 
 describeWithToken("audit > auditing", () => {
-  const users = ["admin", "normal"];
+  const [admin, normal] = Object.keys(USERS);
+  const ADMIN_QUESTION = `${admin} question`;
+  const ADMIN_DASHBOARD = `${admin} dashboard`;
+  const NORMAL_QUESTION = `${normal} question`;
+  const NORMAL_DASHBOARD = `${normal} dashboard`;
+
   before(() => {
     restore();
-    generateQuestions(users);
-    generateDashboards(users);
+    [admin, normal].forEach(user => {
+      signIn(user);
+      generateQuestions(user);
+      generateDashboards(user);
+    });
+
+    cy.log("**Download a question**");
+    cy.visit("/question/3");
+    cy.get(".Icon-download").click();
+    cy.request("POST", "/api/card/1/query/json");
+
+    signIn("nodata");
+
+    cy.log(`**View ${normal}'s dashboard**`);
+    cy.visit("/collection/root?type=dashboard");
+    cy.findByText(NORMAL_DASHBOARD).click();
+    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("My personal collection").should("not.exist");
+
+    cy.log("**View old existing question**");
+    cy.visit("/question/2");
+    cy.findByText("18,760");
+
+    cy.log(`**View newly created ${admin}'s question**`);
+    cy.visit("/collection/root?type");
+    cy.findByText(ADMIN_QUESTION).click();
+    cy.findByPlaceholderText(/ID/i);
   });
 
-  describe("Generate data to audit", () => {
-    beforeEach(signOut);
-
-    it("should view a dashboard", () => {
-      signIn("nodata");
-      cy.visit("/collection/root?type=dashboard");
-      cy.findByText(users[1] + " test dash").click();
-
-      cy.findByText("This dashboard is looking empty.");
-      cy.findByText("My personal collection").should("not.exist");
-    });
-
-    it("should view old question and new question", () => {
-      signIn("nodata");
-      cy.visit("/collection/root?type");
-      cy.findByText("Orders, Count").click();
-
-      cy.findByText("18,760");
-
-      cy.visit("/collection/root?type");
-      cy.findByText(users[0] + " test q").click();
-
-      cy.get('[placeholder="ID"]');
-    });
-
-    it("should download a question", () => {
-      signInAsNormalUser();
-      cy.visit("/question/3");
-      cy.server();
-      cy.get(".Icon-download").click();
-      cy.request("POST", "/api/card/1/query/json");
-    });
-  });
+  beforeEach(signInAsAdmin);
 
   describe("See expected info on team member pages", () => {
-    beforeEach(signInAsAdmin);
-
-    const all_users = [
-      USERS.admin,
-      USERS.normal,
-      USERS.nodata,
-      USERS.nocollection,
-      USERS.none,
-    ];
-
     it("should load the Overview tab", () => {
       cy.visit("/admin/audit/members/overview");
 
@@ -123,16 +93,18 @@ describeWithToken("audit > auditing", () => {
       cy.findByText("No results!");
 
       // Wait for both of the charts to show up
-      cy.get(".dc-chart").should("have.length", 2);
+      cy.get(".dc-chart")
+        .as("charts")
+        .should("have.length", 2);
 
       // For queries viewed, we have 2 users that haven't viewed anything
-      cy.get(".LineAreaBarChart")
+      cy.get("@charts")
         .first()
         .find("[width='0']")
         .should("have.length", 2);
 
       // For queries created, we have 3 users that haven't created anything
-      cy.get("svg")
+      cy.get("@charts")
         .last()
         .find("[width='0']")
         .should("have.length", 3);
@@ -141,29 +113,29 @@ describeWithToken("audit > auditing", () => {
     it("should load the All Members tab", () => {
       cy.visit("/admin/audit/members/all");
 
-      all_users.forEach(user => {
-        cy.findByText(user.first_name + " " + user.last_name);
+      Object.values(USERS).forEach(({ first_name, last_name }) => {
+        cy.findByText(`${first_name} ${last_name}`);
       });
+
       cy.get("tr")
         .last()
         .children()
         .eq(-2)
+        .as("lastActive")
         .should("contain", year);
     });
 
-    it.skip("should load the Audit log (Audit log should display views of dashboards)", () => {
+    it.skip("audit log should display views of dashboards (metabase-enterprise#287)", () => {
       cy.visit("/admin/audit/members/log");
 
       cy.findAllByText("Orders, Count").should("have.length", 1);
-      cy.findAllByText("admin test q").should("have.length", 1);
+      cy.findAllByText(ADMIN_QUESTION).should("have.length", 1);
       cy.findAllByText("Sample Dataset").should("have.length", 4);
-      cy.findByText(users[1] + " test dash");
+      cy.findByText(NORMAL_DASHBOARD);
     });
   });
 
   describe("See expected info on data pages", () => {
-    beforeEach(signInAsAdmin);
-
     it("should load both tabs in Databases", () => {
       // Overview tab
       cy.visit("/admin/audit/databases/overview");
@@ -177,7 +149,8 @@ describeWithToken("audit > auditing", () => {
       cy.findByPlaceholderText("Database name");
       cy.findByText("No results!").should("not.exist");
       cy.findByText("Sample Dataset");
-      cy.findByText("Every hour");
+      cy.findByText(/Sync Schedule/i);
+      cy.contains(year);
     });
 
     it("should load both tabs in Schemas", () => {
@@ -217,14 +190,12 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/tables/all");
       cy.findByPlaceholderText("Table name");
       cy.findAllByText("PUBLIC").should("have.length", 4);
-      cy.findByText("REVIEWS");
-      cy.findByText("Reviews");
+      cy.findByText("REVIEWS"); // Table name in DB
+      cy.findByText("Reviews"); // Table display name
     });
   });
 
   describe("See expected info on item pages", () => {
-    beforeEach(signInAsAdmin);
-
     it("should load both tabs in Questions", () => {
       // Overview tab
       cy.visit("/admin/audit/questions/overview");
@@ -239,7 +210,7 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/questions/all");
       cy.findByPlaceholderText("Question name");
       cy.findAllByText("Sample Dataset").should("have.length", 5);
-      cy.findByText("normal test q");
+      cy.findByText(NORMAL_QUESTION);
       cy.findByText("Orders, Count, Grouped by Created At (year)");
       cy.findByText("4").should("not.exist");
     });
@@ -249,19 +220,20 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/dashboards/overview");
       cy.findByText("Most popular dashboards and their avg loading times");
       cy.findAllByText("Avg. Question Load Time (ms)");
-      cy.findByText("normal test dash");
+      cy.findByText(NORMAL_DASHBOARD);
       cy.findByText("Orders");
       cy.findByText("Orders, Count").should("not.exist");
 
       // All dashboards tab
       cy.visit("/admin/audit/dashboards/all");
       cy.findByPlaceholderText("Dashboard name");
-      cy.findByText("admin test dash");
+      cy.findByText(ADMIN_DASHBOARD);
       cy.findByText(USERS.normal.first_name + " " + USERS.normal.last_name);
       cy.get("tr")
         .eq(1)
         .children()
         .last()
+        .as("lastEdited")
         .should("contain", year);
     });
 
@@ -279,6 +251,7 @@ describeWithToken("audit > auditing", () => {
         .last()
         .children()
         .first()
+        .as("downloadedAt")
         .should("contain", year);
       cy.findAllByText("GUI");
     });
