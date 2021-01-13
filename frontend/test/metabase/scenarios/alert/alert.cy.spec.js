@@ -27,8 +27,10 @@ export function setGoal(number) {
 }
 
 describe("scenarios > alert", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
