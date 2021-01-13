@@ -163,6 +163,6 @@ WHERE True
 
 ---
 
-## Next: Using a saved question as a Common Table Expression (CTE)
+## Next: Referencing saved questions in queries
 
-Learn about how to easily and quickly see automatic explorations of your data with Metabase's powerful [x-ray feature](14-x-rays.md).
+Learn how to [refer to a saved question in a SQL query](referencing-saved-questions-in-queries.md).

@@ -1,4 +1,4 @@
-## Using a saved question as a sub-query
+## Referencing saved questions in queries
 
 With SQL databases, we can use an existing question as the basis for a new query, or as a common table expression (CTE). For example, let's say we have a lot of data spread across a number of tables, but our users are most interested in a subset of that data. We can perform a complicated query once to return those results, which people can refer to in their queries just like they would with any other table.
 
@@ -73,15 +73,20 @@ FROM 2019_gizmo_orders
 
 ## When and why to use saved questions as a data source
 
-
 - If you can't create a view in the database, since saved questions effectively act as views. If you can create a view, and you expect that you and others will frequently query the results, consider creating a materialized view. The results will be stored in the database (as opposed to computed each time), which will speed up query time.
-- To simplify or standardize queries for people. If you have data split across multiple tables, you can perform those complicated joins once, and provide the results as a simplified "table" that people can query. For other ways to standardize analytics, check out [segments and metrics](../administration-guide/07-segments-and-metrics.md).
+- To simplify or standardize queries for people. If you have data split across multiple tables, you can perform those complicated joins once, and provide the results as a simplified "table" that people can query.
+
+For other ways to standardize analytics, check out:
+
+- [Segments and Metrics](../administration-guide/07-segments-and-metrics.md)
+- [SQL Snippets](https://www.metabase.com/learn/building-analytics/sql-templates/sql-snippets.html)
+- [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html)
 
 ### Limitations and tradeoffs
 
-- You can only reference a saved question in a query when working with a SQL database like PostgreSQL, MySQL, or SQL Server. 
+- You can only reference a saved question in a query when working with a SQL database like PostgreSQL, MySQL, or SQL Server.
 - The saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.
-- You cannot reference variables in sub-queries. You only have access to the _results_ of the saved question, not the saved question's query. For example, if you have a saved question that uses a [field filter](https://www.metabase.com/learn/building-analytics/sql-templates/field-filters), you won't be able to reference that variable. If you need to change how the saved question has filtered the results, you'll need to update (or duplicate) that question and apply the filter. 
+- You cannot reference variables in sub-queries. You only have access to the _results_ of the saved question, not the saved question's query. For example, if you have a saved question that uses a [field filter](https://www.metabase.com/learn/building-analytics/sql-templates/field-filters), you won't be able to reference that variable. If you need to change how the saved question has filtered the results, you'll need to update (or duplicate) that question and apply the filter.
 
 ---
 

@@ -93,4 +93,7 @@ Any user who has SQL editor permissions to at least one of your connected databa
 
 ### Learn more
 
-Learn more about [SQL snippets](https://www.metabase.com/blog/sql-snippets/index.html).
+Check out:
+
+- [SQL snippets](https://www.metabase.com/learn/building-analytics/sql-templates/sql-snippets.html)
+- [SQL Snippets vs Saved Questions vs Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html).
