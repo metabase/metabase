@@ -9,13 +9,13 @@ function addTextBox(string) {
 }
 
 describe("scenarios > dashboard > text-box", () => {
-  before(restore);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   describe("Editing", () => {
     beforeEach(() => {
-      restore();
-      signInAsAdmin();
-
       // Create text box card
       cy.visit("/dashboard/1");
       addTextBox("Text *text* __text__");
@@ -45,8 +45,6 @@ describe("scenarios > dashboard > text-box", () => {
 
   describe("when text-box is the only element on the dashboard", () => {
     beforeEach(() => {
-      restore(); // restore before each so we can reuse dashboard id
-      signInAsAdmin();
       // Create dashboard
       cy.server();
       cy.request("POST", "/api/dashboard", {
