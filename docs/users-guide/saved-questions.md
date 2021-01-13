@@ -1,8 +1,8 @@
 ## Using a saved question as a sub-query
 
-With SQL databases, we can use an existing question as the basis for a new query, or as a common table expression (CTE). For example, let's say we have a lot of data spread across a number of tables, but our users are most interested in a subset of that data. We can perform a complicated query once to return those results, which people can refer to in their queries, just like they would refer to any other table.
+With SQL databases, we can use an existing question as the basis for a new query, or as a common table expression (CTE). For example, let's say we have a lot of data spread across a number of tables, but our users are most interested in a subset of that data. We can perform a complicated query once to return those results, which people can refer to in their queries just like they would with any other table.
 
-Here's how it works: create and save a question that returns the result set you'd like to make available for people to query. Using the sample dataset included with Metabase as an example, let's say we want to provide a result set (a "table") that only has orders from 2019, and only includes orders for products in the Gizmo category.
+Here's how it works. First, create and save a question that returns the result set you'd like to make available for people to query. Using the sample dataset included with Metabase as an example, let's say we want to provide a result set (a "table") that only has orders from 2019, and only includes orders for products in the Gizmo category.
 
 We could create this question using the notebook editor, like so:
 
@@ -21,7 +21,7 @@ WHERE  p.category = 'Gizmo'
 
 We'll save that question as "Gizmo orders in 2019".
 
-Now let's refer to that "Gizmo orders in 2019" in a new query. To keep it simple, let's say we just want to count all of the Gizmo orders from 2019. We can use the `#` symbol to refer to a saved question in a query.
+Now let's refer to "Gizmo orders in 2019" in a new query. To keep it simple, let's say we just want to count all of those Gizmo orders from 2019. We can use the `#` symbol to refer to a saved question in a query.
 
 If we type out:
 
@@ -30,18 +30,18 @@ SELECT count(*)
 FROM {% raw %}{{#{% endraw %}
 ```
 
-Metabase will slide out a sidebar where we can select a question to reference. We'll search for our "Gizmo orders in 2019" question
+Metabase will slide out a sidebar where we can select a question to reference. We'll search for our "Gizmo orders in 2019" question:
 
 ![Select a question from the variable sidebar](images/saved-questions/variable-sidebar.png)
 
-We'll select our "Gizmo orders in 2019" question, and Metabase will update our code with the question's ID, `5`:
+We'll select that question, and Metabase will update our code with the question's ID, `5`:
 
 ```
 SELECT count(*)
 FROM {% raw %}{{#5}}{% endraw %}
 ```
 
-This query returns the number of records from our saved question, "Gizmo orders in 2019", which has an ID of `5`.
+This query returns the number of rows in our saved question.
 
 ## Saved question as a Common Table Expression (CTE)
 
@@ -53,7 +53,7 @@ SELECT count(*)
 FROM 2019_gizmo_orders
 ```
 
-The `{% raw %}{{#5}}{% endraw %}` tag is substituted for the SQL query of the referenced question, surrounded by parentheses, equivalent to:
+When this query is run, the `{% raw %}{{#5}}{% endraw %}` tag will be substituted with the SQL query of the referenced question, surrounded by parentheses. So it'll look like this under the hood:
 
 ```
 WITH 2019_gizmo_orders AS (SELECT *
@@ -69,13 +69,12 @@ FROM 2019_gizmo_orders
 # How to find a question's ID
 
 - Selecting a question from the variable sidebar in the SQL editor will automatically add the ID number to the variable in our query.
-- We can also load the question we'd like to reference and find the ID at the end of the URL in your browser's address bar, after `/question/`, e.g., for `https://our.metabase.com/question/12345`, the question's ID would be `12345`.
+- You can also navigate to the question you'd like to reference and find its ID at the end of the URL in your browser's address bar, after `/question/`. E.g., for `https://metabase.example.com/question/12345`, the question's ID would be `12345`.
 
-## Use cases for saved questions
+## When and why to use saved questions as a data source
 
-Why you would use a saved question as a data source:
 
-- You can't create a view in the database, as saved questions effectively act as views. If you can create a view, and you expect that you and others will frequently query the results, consider creating a materialized view. The results will be stored in the database (as opposed to computed each time), which will speed up query time.
+- If you can't create a view in the database, since saved questions effectively act as views. If you can create a view, and you expect that you and others will frequently query the results, consider creating a materialized view. The results will be stored in the database (as opposed to computed each time), which will speed up query time.
 - To simplify or standardize queries for people. If you have data split across multiple tables, you can perform those complicated joins once, and provide the results as a simplified "table" that people can query. For other ways to standardize analytics, check out [segments and metrics](../administration-guide/07-segments-and-metrics.md).
 
 ### Limitations and tradeoffs
