@@ -76,6 +76,7 @@
   "The default set of middleware applied to queries ran via `process-query`."
   [#'mbql-to-native/mbql->native
    #'check-features/check-features
+   #'limit/limit
    #'cache/maybe-return-cached-results
    #'optimize-datetime-filters/optimize-datetime-filters
    #'auto-parse-filter-values/auto-parse-filter-values
@@ -90,7 +91,6 @@
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
    #'large-int-id/convert-id-to-string
-   #'limit/limit
    #'format-rows/format-rows
    #'desugar/desugar
    #'binning/update-binning-strategy
