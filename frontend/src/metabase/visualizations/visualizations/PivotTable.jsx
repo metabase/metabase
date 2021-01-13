@@ -183,7 +183,8 @@ export default class PivotTable extends Component {
       rowCount,
       columnCount,
     } = pivoted;
-    const topHeaderHeight = (columnIndexes.length || 1) * CELL_HEIGHT;
+
+    const topHeaderHeight = (topIndex[0].length || 1) * CELL_HEIGHT;
     const leftHeaderWidth =
       rowIndexes.length > 0
         ? LEFT_HEADER_LEFT_SPACING + rowIndexes.length * LEFT_HEADER_CELL_WIDTH
@@ -438,7 +439,7 @@ function LeftHeaderSection({
             ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
           }}
           icon={
-            (isSubtotal || children.length > 0) && (
+            (isSubtotal || children.length > 1) && (
               <RowToggleIcon
                 value={valuePath}
                 settings={settings}
