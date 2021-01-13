@@ -575,7 +575,6 @@
 
         (testing "Run it again, should be cached"
           (let [result (run-query)]
-            (println "result:" result)  ; NOCOMMIT
             (is (= true
                    (:cached result)))
             (is (= [[10]]
