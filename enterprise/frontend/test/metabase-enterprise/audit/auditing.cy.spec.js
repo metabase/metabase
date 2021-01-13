@@ -149,7 +149,8 @@ describeWithToken("audit > auditing", () => {
       cy.findByPlaceholderText("Database name");
       cy.findByText("No results!").should("not.exist");
       cy.findByText("Sample Dataset");
-      cy.findByText("Every hour");
+      cy.findByText(/Sync Schedule/i);
+      cy.contains(year);
     });
 
     it("should load both tabs in Schemas", () => {
