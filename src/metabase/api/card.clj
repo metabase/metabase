@@ -698,7 +698,6 @@
   [card-id :as {{:keys [parameters ignore_cache]
                  :or   {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
-
   (qp.streaming/streaming-response [context :api]
     (binding [cache/*ignore-cached-results* ignore_cache]
       (run-query-for-card-async card-id :api, :parameters parameters, :run (partial qp.pivot/run-pivot-query context) :context context))))

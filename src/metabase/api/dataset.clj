@@ -123,11 +123,9 @@
          query-type :type
          :as        query} :body}]
   {database (s/maybe s/Int)}
-
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check Database database)
-
   (qp.streaming/streaming-response [context :api]
     (pivot/run-pivot-query context (assoc query :async? true))))
 
