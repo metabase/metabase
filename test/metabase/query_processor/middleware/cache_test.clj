@@ -76,7 +76,7 @@
         (log/tracef "Purge old entries --> store: %s" this)
         (a/>!! purge-chan ::purge)))))
 
-(defn- do-with-mock-cache [f]
+(defn do-with-mock-cache [f]
   (mt/with-open-channels [save-chan  (a/chan 1)
                           purge-chan (a/chan 1)]
     (mt/with-temporary-setting-values [enable-query-caching  true
