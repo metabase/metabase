@@ -46,11 +46,13 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
     return ref;
   }
 
+  const question = new Question(card, new Metadata());
+
   function wrap(api) {
     return (params: ?Data, ...rest: any) => {
-      const question = new Question(card, new Metadata());
       const setting = question.setting("pivot_table.column_split");
-      const breakout = question.query().breakouts();
+      const breakout =
+        (question.isStructured() && question.query().breakouts()) || [];
       const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
         setting,
         fieldRefs =>
@@ -65,7 +67,7 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
-  if (card.display !== "pivot") {
+  if (card.display !== "pivot" || !question.isStructured()) {
     return api;
   }
 
@@ -73,6 +75,9 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
     [CardApi.query, CardApi.query_pivot],
     [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
+    [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
+    [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
+    [EmbedApi.dashboardCardQuery, EmbedApi.dashboardCardQueryPivot],
   ];
   for (const [from, to] of mapping) {
     if (api === from) {
@@ -95,7 +100,7 @@ export const CardApi = {
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:cardId"),
   query: POST("/api/card/:cardId/query"),
-  query_pivot: POST("/api/advanced_computation/pivot/card/:cardId/query"),
+  query_pivot: POST("/api/card/pivot/:cardId/query"),
   // isfavorite:                  GET("/api/card/:cardId/favorite"),
   favorite: POST("/api/card/:cardId/favorite"),
   unfavorite: DELETE("/api/card/:cardId/favorite"),
@@ -144,22 +149,29 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
+const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
+
 export const PublicApi = {
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
-  cardQueryPivot: GET(
-    "/api/advanced_computation/public/pivot/card/:uuid/query",
-  ),
+  cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
   dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
+  dashboardCardQueryPivot: GET(
+    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/card/:cardId",
+  ),
 };
 
 export const EmbedApi = {
   card: GET(embedBase + "/card/:token"),
   cardQuery: GET(embedBase + "/card/:token/query"),
+  cardQueryPivot: GET(embedBase + "/pivot/card/:token/query"),
   dashboard: GET(embedBase + "/dashboard/:token"),
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
+  ),
+  dashboardCardQueryPivot: GET(
+    embedBase + "/pivot/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
 };
 
@@ -275,7 +287,7 @@ export const MetabaseApi = {
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
-  dataset_pivot: POST("/api/advanced_computation/pivot/dataset"),
+  dataset_pivot: POST("/api/dataset/pivot"),
   dataset_duration: POST("/api/dataset/duration"),
   native: POST("/api/dataset/native"),
 

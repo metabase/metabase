@@ -7,6 +7,8 @@
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
+            [metabase.api.pivots :as pivots]
+            [metabase.api.embed-test :as embed-test]
             [metabase.http-client :as http-client]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
@@ -341,3 +343,77 @@
                  (-> results
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
+
+(deftest pivot-dataset-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "POST /api/dataset/pivot"
+        (testing "Run a pivot table"
+          (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/pivot-query))
+                rows   (mt/rows result)]
+            (is (= 1192 (:row_count result)))
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 1192 (count rows)))
+
+            (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+            (is (= ["WV" "Facebook" nil 4 45 292] (nth rows 1000)))
+            (is (= [nil nil nil 7 18760 69540] (last rows)))))
+
+        (testing "with an added expression"
+          (let [query (-> (pivots/pivot-query)
+                          (assoc-in [:query :fields] [[:expression "test-expr"]])
+                          (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
+                result (mt/user-http-request :rasta :post 202 "dataset/pivot" query)
+                rows (mt/rows result)]
+            (is (= 1192 (:row_count result)))
+            (is (= 1192 (count rows)))
+
+            (let [cols (get-in result [:data :cols])]
+              (is (= 7 (count cols)))
+              (is (= {:base_type "type/Text"
+                      :special_type nil
+                      :name "test-expr"
+                      :display_name "test-expr"
+                      :expression_name "test-expr"
+                      :field_ref ["expression" "test-expr"]
+                      :source "breakout"}
+                     (nth cols 3))))
+
+            (is (= [nil nil nil "wheeee" 7 18760 69540] (last rows)))))))))
+
+(deftest pivot-filter-dataset-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "POST /api/dataset/pivot"
+        (testing "Run a pivot table"
+          (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/filters-query))
+                rows   (mt/rows result)]
+            (is (= 230 (:row_count result)))
+            (is (= "completed" (:status result)))
+            (is (= 4 (count (get-in result [:data :cols]))))
+            (is (= 230 (count rows)))
+
+            (is (= ["AK" "Google" 0 119] (first rows)))
+            (is (= ["AK" "Organic" 0 89] (second rows)))
+            (is (= ["MS" "Google" 0 43] (nth rows 135)))
+            (is (= ["MS" nil 2 136] (nth rows 205)))
+            (is (= [nil nil 3 7562] (last rows)))))))))
+
+(deftest pivot-parameter-dataset-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "POST /api/dataset/pivot"
+        (testing "Run a pivot table"
+          (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/parameters-query))
+                rows   (mt/rows result)]
+            (is (= 225 (:row_count result)))
+            (is (= "completed" (:status result)))
+            (is (= 4 (count (get-in result [:data :cols]))))
+            (is (= 225 (count rows)))
+
+            (is (= ["AK" "Google" 0 27] (first rows)))
+            (is (= ["AK" "Organic" 0 25] (second rows)))
+            (is (= ["MN" "Organic" 0 39] (nth rows 130)))
+            (is (= ["NE" nil 2 59] (nth rows 205)))
+            (is (= [nil nil 3 2009] (last rows)))))))))

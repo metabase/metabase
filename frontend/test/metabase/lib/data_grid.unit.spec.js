@@ -117,10 +117,10 @@ describe("data_grid", () => {
       const pivotedData = pivot(data, 0, 1, 2);
       expect(pivotedData.rows.length).toEqual(1);
       expect(pivotedData.cols.length).toEqual(2);
-      expect(pivotedData.cols[0].name).toEqual(jasmine.any(String));
-      expect(pivotedData.cols[0].display_name).toEqual(jasmine.any(String));
-      expect(pivotedData.cols[1].name).toEqual(jasmine.any(String));
-      expect(pivotedData.cols[1].display_name).toEqual(jasmine.any(String));
+      expect(pivotedData.cols[0].name).toEqual(expect.any(String));
+      expect(pivotedData.cols[0].display_name).toEqual(expect.any(String));
+      expect(pivotedData.cols[1].name).toEqual(expect.any(String));
+      expect(pivotedData.cols[1].display_name).toEqual(expect.any(String));
     });
 
     it("should infer sort order of sparse data correctly", () => {

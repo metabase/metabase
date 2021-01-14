@@ -6,14 +6,12 @@ import {
 } from "__support__/cypress";
 
 describeWithToken("audit > ad-hoc", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
-
   describe("native query with JOIN", () => {
-    before(() => {
+    beforeEach(() => {
+      restore();
+
       cy.log("**Run ad hoc native query as normal user**");
       signInAsNormalUser();
-
       cy.visit("/question/new");
       cy.findByText("Native query").click();
       cy.get(".ace_content").type("SELECT 123");
@@ -23,6 +21,9 @@ describeWithToken("audit > ad-hoc", () => {
 
       // make sure results rendered before moving forward
       cy.get(".ScalarValue").contains("123");
+
+      // Sign in as admin to be able to access audit logs in tests
+      signInAsAdmin();
     });
 
     it.skip("should appear in audit log (metabase-enterprise#486)", () => {

@@ -79,6 +79,9 @@ export default class PivotTable extends Component {
       section: null,
       widget: "fieldsPartition",
       persistDefault: true,
+      getHidden: ([{ data }]) =>
+        // hide the setting widget if there are invalid columns
+        !data || data.cols.some(col => !isColumnValid(col)),
       getProps: ([{ data }], settings) => ({
         partitions,
         columns: data == null ? [] : data.cols,
@@ -535,7 +538,7 @@ function updateValueWithCurrentColumns(storedValue, columns) {
 // When a breakout is added to the query, we need to partition it before getting the rows.
 // We pretend the breakouts are columns so we can partition the new breakout.
 function addMissingCardBreakouts(setting, card) {
-  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]);
+  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]) || [];
   if (breakouts.length <= setting.columns.length + setting.rows.length) {
     return setting;
   }

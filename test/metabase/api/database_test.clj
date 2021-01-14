@@ -18,6 +18,7 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.test.util :as tu]
             [metabase.util :as u]
+            [metabase.util.cron :as cron-util]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -78,22 +79,25 @@
                                              :schedule_frame nil
                                              :schedule_hour  0
                                              :schedule_type  "daily"}
-                        :metadata_sync      {:schedule_day   nil
-                                             :schedule_frame nil
-                                             :schedule_hour  nil
-                                             :schedule_type  "hourly"}}))
+                        :metadata_sync      {:schedule_day    nil
+                                             :schedule_frame  nil
+                                             :schedule_hour   nil
+                                             :schedule_type   "hourly"
+                                             :schedule_minute 50}}))
 
 (deftest get-database-test
   (testing "GET /api/database/:id"
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
-        (is (= (add-schedules (-> (db-details)
-                                  (dissoc :details)))
-               ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id))))))
+        (is (= (-> (db-details)
+                   (dissoc :details :schedules))
+               (-> ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id)))
+                   (dissoc :schedules)))))
 
       (testing "Superusers should see DB details"
-        (is (= (add-schedules (db-details))
-               ((mt/user->client :crowberto) :get 200 (format "database/%d" (mt/id)))))))
+        (is (= (db-details)
+               (-> ((mt/user->client :crowberto) :get 200 (format "database/%d" (mt/id)))
+                   (dissoc :schedules))))))
 
     (mt/with-temp* [Database [db {:name "My DB", :engine ::test-driver}]
                     Table    [t1 {:name "Table 1", :db_id (:id db)}]
@@ -147,6 +151,8 @@
     (testing "Check that we can create a Database"
       (is (schema= (merge
                     (m/map-vals s/eq (mt/object-defaults Database))
+                    {:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"
+                     :cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"}
                     {:created_at java.time.temporal.Temporal
                      :engine     (s/eq ::test-driver)
                      :id         su/IntGreaterThanZero
@@ -158,7 +164,24 @@
 
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
       (is (= {:is_full_sync false}
-             (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))))
+             (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))
+    (testing "if `:let-user-control-scheduling` is false it will ignore any schedules provided"
+      (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
+            {:keys [details metadata_sync_schedule cache_field_values_schedule]}
+            (create-db-via-api! {:schedules {:metadata_sync      monthly-schedule
+                                             :cache_field_values monthly-schedule}})]
+        (is (not (:let-user-control-scheduling details)))
+        (is (= "daily" (-> cache_field_values_schedule cron-util/cron-string->schedule-map :schedule_type)))
+        (is (= "hourly" (-> metadata_sync_schedule cron-util/cron-string->schedule-map :schedule_type)))))
+    (testing "if `:let-user-control-scheduling` is true it will accept the schedules"
+      (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
+            {:keys [details metadata_sync_schedule cache_field_values_schedule]}
+            (create-db-via-api! {:details   {:let-user-control-scheduling true}
+                                 :schedules {:metadata_sync      monthly-schedule
+                                             :cache_field_values monthly-schedule}})]
+        (is (:let-user-control-scheduling details))
+        (is (= "monthly" (-> cache_field_values_schedule cron-util/cron-string->schedule-map :schedule_type)))
+        (is (= "monthly" (-> metadata_sync_schedule cron-util/cron-string->schedule-map :schedule_type)))))))
 
 (deftest delete-database-test
   (testing "DELETE /api/database/:id"
@@ -542,16 +565,18 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private schedule-map-for-last-friday-at-11pm
-  {:schedule_day   "fri"
-   :schedule_frame "last"
-   :schedule_hour  23
-   :schedule_type  "monthly"})
+  {:schedule_minute 0
+   :schedule_day    "fri"
+   :schedule_frame  "last"
+   :schedule_hour   23
+   :schedule_type   "monthly"})
 
 (def ^:private schedule-map-for-hourly
-  {:schedule_day   nil
-   :schedule_frame nil
-   :schedule_hour  nil
-   :schedule_type  "hourly"})
+  {:schedule_minute 0
+   :schedule_day    nil
+   :schedule_frame  nil
+   :schedule_hour   nil
+   :schedule_type   "hourly"})
 
 (deftest create-new-db-with-custom-schedules-test
   (testing "Can we create a NEW database and give it custom schedules?"
@@ -560,7 +585,7 @@
                       ((mt/user->client :crowberto) :post 200 "database"
                        {:name      db-name
                         :engine    (u/qualified-name ::test-driver)
-                        :details   {:db "my_db"}
+                        :details   {:db "my_db" :let-user-control-scheduling true}
                         :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
                                     :metadata_sync      schedule-map-for-hourly}}))]
              (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
@@ -569,15 +594,36 @@
            (finally (db/delete! Database :name db-name))))))
 
 (deftest update-schedules-for-existing-db
-  (testing "Can we UPDATE the schedules for an existing database?"
-    (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
-      ((mt/user->client :crowberto) :put 200 (format "database/%d" (u/get-id db))
-       (assoc db
-              :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
-                          :metadata_sync      schedule-map-for-hourly}))
-      (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
-              :metadata_sync_schedule      "0 0 * * * ? *"}
-             (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db))))))))
+  (let [attempted {:cache_field_values schedule-map-for-last-friday-at-11pm
+                   :metadata_sync      schedule-map-for-hourly}
+        expected  {:cache_field_values_schedule "0 0 23 ? * 6L *"
+                   :metadata_sync_schedule      "0 0 * * * ? *"}]
+    (testing "Can we UPDATE the schedules for an existing database?"
+      (testing "We cannot if we don't mark `:let-user-control-scheduling`"
+        (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/get-id db))
+                                (assoc db :schedules attempted))
+          (is (not= expected
+                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
+      (testing "We can if we mark `:let-user-control-scheduling`"
+        (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                (-> db
+                                    (assoc :schedules attempted)
+                                    (assoc-in [:details :let-user-control-scheduling] true)))
+          (is (= expected
+                 (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
+      (testing "if we update back to metabase managed schedules it randomizes for us"
+        (let [original-custom-schedules expected]
+          (mt/with-temp Database [db (merge {:engine "h2" :details (assoc (:details (mt/db))
+                                                                          :let-user-control-scheduling true)}
+                                            original-custom-schedules)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                  (assoc-in db [:details :let-user-control-scheduling] false))
+            (let [schedules (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
+              (is (not= original-custom-schedules schedules))
+              (is (= "hourly" (-> schedules :metadata_sync_schedule cron-util/cron-string->schedule-map :schedule_type)))
+              (is (= "daily" (-> schedules :cache_field_values_schedule cron-util/cron-string->schedule-map :schedule_type))))))))))
 
 (deftest fetch-db-with-expanded-schedules
   (testing "If we FETCH a database will it have the correct 'expanded' schedules?"

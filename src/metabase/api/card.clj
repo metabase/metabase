@@ -26,6 +26,7 @@
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.util :as qputil]
             [metabase.related :as related]
@@ -596,14 +597,15 @@
   be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
   not met before returning the `StreamingResponse`."
   [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware run]
+   & {:keys [parameters constraints context dashboard-id middleware qp-runner run]
       :or   {constraints constraints/default-query-constraints
              context     :question
+             qp-runner   qp/process-query-and-save-execution!
              ;; param `run` can be used to control how the query is ran, e.g. if you need to
              ;; customize the `context` passed to the QP
              run         (^:once fn* [query info]
                           (qp.streaming/streaming-response [context export-format]
-                            (qp/process-query-and-save-execution! query info context)))}}]
+                            (qp-runner query info context)))}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)
@@ -691,5 +693,13 @@
   "Return related entities for an ad-hoc query."
   [:as {query :body}]
   (related/related (query/adhoc-query query)))
+
+(api/defendpoint ^:streaming POST "/pivot/:card-id/query"
+  "Run the query associated with a Card."
+  [card-id :as {{:keys [parameters ignore_cache]
+                 :or   {ignore_cache false}} :body}]
+  {ignore_cache (s/maybe s/Bool)}
+  (binding [cache/*ignore-cached-results* ignore_cache]
+    (run-query-for-card-async card-id :api, :parameters parameters, :qp-runner qp.pivot/run-pivot-query)))
 
 (api/define-routes)

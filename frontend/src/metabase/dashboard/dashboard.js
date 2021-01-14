@@ -570,7 +570,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "public") {
       result = await fetchDataOrError(
-        PublicApi.dashboardCardQuery(
+        maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
           {
             uuid: dashcard.dashboard_id,
             cardId: card.id,
@@ -584,7 +584,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "embed") {
       result = await fetchDataOrError(
-        EmbedApi.dashboardCardQuery(
+        maybeUsePivotEndpoint(EmbedApi.dashboardCardQuery, card)(
           {
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
