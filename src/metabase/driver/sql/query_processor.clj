@@ -919,7 +919,7 @@
   because it is aliased."
   [driver honeysql-form {:keys [source-query source-metadata native], :as inner-query}]
   (let [field-metadata (when-not native
-                         (->> (mbql.u/match inner-query #{:field-id :field-literal})
+                         (->> (mbql.u/match inner-query #{:field-id :joined-field})
                               (map (partial annotate/col-info-for-field-clause inner-query))
                               (u/key-by :id)))]
     (binding [*query* (assoc inner-query :field-metadata field-metadata)]
