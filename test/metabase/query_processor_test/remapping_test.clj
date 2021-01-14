@@ -34,7 +34,7 @@
                          (assoc :remapped_from (mt/format-name "category_id")
                                 :field_ref     [:fk-> [:field-id (mt/id :venues :category_id)]
                                                 [:field-id (mt/id :categories :name)]]
-                                :source_alias  "CATEGORIES__via__CATEGORY_ID"
+                                :source_alias  (mt/format-name "CATEGORIES__via__CATEGORY_ID")
                                 :fk_field_id   (mt/id :venues :category_id)
                                 :source        :breakout))
                      (-> (mt/col :venues :category_id)
@@ -107,7 +107,7 @@
                               :name          (mt/format-name "name_2")
                               :remapped_from (mt/format-name "category_id")
                               :field_ref     $category_id->categories.name
-                              :source_alias  "CATEGORIES__via__CATEGORY_ID"))]}
+                              :source_alias  (mt/format-name "CATEGORIES__via__CATEGORY_ID")))]}
              (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
                (mt/format-rows-by [int str int double double int str]
                  (mt/run-mbql-query venues
@@ -132,7 +132,7 @@
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")
                                 :field_ref     $category_id->categories.name
-                                :source_alias  "CATEGORIES__via__CATEGORY_ID"))]}
+                                :source_alias  (mt/format-name "CATEGORIES__via__CATEGORY_ID")))]}
                (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
                  (mt/format-rows-by [str int str str]
                    (mt/run-mbql-query venues
