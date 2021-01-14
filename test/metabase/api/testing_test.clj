@@ -21,8 +21,9 @@
 
 (deftest e2e-test
   (testing "Should be able to snapshot & restore stuff"
-    (let [snapshot-name (munge (u/qualified-name ::test-snapshot))]
-      (is (= nil
-             (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))))
-      (is (= nil
-             (mt/user-http-request :rasta :post 204 (format "testing/restore/%s" snapshot-name)))))))
+    (when (= (mdb.conn/db-type) :h2)
+      (let [snapshot-name (munge (u/qualified-name ::test-snapshot))]
+        (is (= nil
+               (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))))
+        (is (= nil
+               (mt/user-http-request :rasta :post 204 (format "testing/restore/%s" snapshot-name))))))))
