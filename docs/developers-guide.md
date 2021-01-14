@@ -37,6 +37,8 @@ sudo apt install openjdk-11-jdk nodejs yarnpkg leiningen
 
 If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 
+Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](developers-guide-vscode.md) and its remote container support.
+
 # Build Metabase
 
 The entire Metabase application is compiled and assembled into a single .jar file which can run on any modern JVM. There is a script which will execute all steps in the process and output the final artifact for you.
