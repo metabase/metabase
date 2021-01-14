@@ -1,5 +1,6 @@
 (ns metabase.db.connection
-  "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them."
+  "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them.
+   TODO - consider renaming this namespace `metabase.db.config`."
   (:require [metabase.db.env :as mdb.env]))
 
 (def ^:dynamic *db-type*
