@@ -148,7 +148,7 @@ This auto-pivoting is distinct from the pivot table visualization, which we cove
 
 Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions. 
 
-Pivot tables are only available to simple and custom questions with summarized data. They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code to pivot the tables. The workaround here is to write a question using SQL, save it, and use that saved SQL question as the starting point for a simple or custom question that summarizes that data.
+Pivot tables are only available to simple and custom questions with summarized data. They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data. See [Referencing saved questions in queries](referencing-saved-questions-in-queries.md).
 
 In the settings for the Pivot Table visualization, you can assign fields to one of three "buckets":
 
