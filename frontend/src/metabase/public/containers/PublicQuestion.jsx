@@ -157,7 +157,7 @@ export default class PublicQuestion extends Component {
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await EmbedApi.cardQuery({
+        newResult = await maybeUsePivotEndpoint(EmbedApi.cardQuery, card)({
           token,
           ...getParametersBySlug(parameters, parameterValues),
         });
