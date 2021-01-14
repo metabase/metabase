@@ -20,7 +20,6 @@
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
