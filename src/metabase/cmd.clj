@@ -24,6 +24,9 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
+(defn- system-exit! [return-code]
+  (System/exit return-code))
+
 (defn ^:command migrate
   "Run database migrations. Valid options for `direction` are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
@@ -47,7 +50,7 @@
   (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))}
         return-code    ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)]
     (when (pos-int? return-code)
-      (System/exit return-code))))
+      (system-exit! return-code))))
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
