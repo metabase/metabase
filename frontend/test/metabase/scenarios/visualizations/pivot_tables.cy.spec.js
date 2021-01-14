@@ -163,6 +163,25 @@ describe("scenarios > visualizations > pivot tables", () => {
       .click();
     cy.findByText("215"); // ...and it's back!
   });
+
+  it("should display an error message for native queries", () => {
+    cy.server();
+    // native queries should use the normal dataset endpoint even when set to pivot
+    cy.route("POST", `/api/dataset`).as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: { query: "select 1", "template-tags": {} },
+        database: 1,
+      },
+      display: "pivot",
+      visualization_settings: {},
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("Pivot tables can only be used with aggregated queries.");
+  });
 });
 
 const testQuery = {

@@ -79,6 +79,9 @@ export default class PivotTable extends Component {
       section: null,
       widget: "fieldsPartition",
       persistDefault: true,
+      getHidden: ([{ data }]) =>
+        // hide the setting widget if there are invalid columns
+        !data || data.cols.some(col => !isColumnValid(col)),
       getProps: ([{ data }], settings) => ({
         partitions,
         columns: data == null ? [] : data.cols,
