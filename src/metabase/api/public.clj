@@ -99,7 +99,9 @@
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
-  [card-id export-format parameters qp-runner & options]
+  [card-id export-format parameters & {:keys [qp-runner]
+                                       :or   {qp-runner qp/process-query-and-save-execution!}
+                                       :as   options}]
   {:pre [(integer? card-id)]}
   ;; run this query with full superuser perms
   ;;
@@ -107,33 +109,33 @@
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (apply card-api/run-query-for-card-async card-id export-format
-           :parameters parameters
-           :context    :public-question
-           :run        (fn [query info]
-                         (qp.streaming/streaming-response [{:keys [reducedf], :as context} export-format]
-                           (let [context  (assoc context :reducedf (public-reducedf reducedf))
-                                 in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                                            ((or qp-runner qp/process-query-and-save-execution!) query info context))
-                                 out-chan (a/promise-chan (map transform-results))]
-                             (async.u/promise-pipe in-chan out-chan)
-                             out-chan)))
-           options)))
+    (m/mapply card-api/run-query-for-card-async card-id export-format
+              :parameters parameters
+              :context    :public-question
+              :run        (fn [query info]
+                            (qp.streaming/streaming-response [{:keys [reducedf], :as context} export-format]
+                              (let [context  (assoc context :reducedf (public-reducedf reducedf))
+                                    in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                                               (qp-runner query info context))
+                                    out-chan (a/promise-chan (map transform-results))]
+                                (async.u/promise-pipe in-chan out-chan)
+                                out-chan)))
+              options)))
 
 (s/defn ^:private run-query-for-card-with-public-uuid-async
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
-  [uuid export-format parameters qp-runner & options]
+  [uuid export-format parameters & options]
   (api/check-public-sharing-enabled)
   (let [card-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false))]
-    (apply run-query-for-card-with-id-async card-id export-format parameters qp-runner options)))
+    (apply run-query-for-card-with-id-async card-id export-format parameters options)))
 
 (api/defendpoint ^:streaming GET "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
-  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) nil))
+  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)))
 
 (api/defendpoint ^:streaming GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
@@ -141,7 +143,7 @@
   [uuid export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
-  (run-query-for-card-with-public-uuid-async uuid export-format (json/parse-string parameters keyword) nil
+  (run-query-for-card-with-public-uuid-async uuid export-format (json/parse-string parameters keyword)
                                              :constraints nil))
 
 
@@ -267,16 +269,18 @@
   [dashboard-id card-id export-format parameters
    & {:keys [context constraints qp-runner]
       :or   {context     :public-dashboard
-             constraints constraints/default-query-constraints}}]
+             constraints constraints/default-query-constraints
+             qp-runner   qp/process-query-and-save-execution!}}]
   (check-card-is-in-dashboard card-id dashboard-id)
   (let [params (resolve-params dashboard-id (if (string? parameters)
                                               (json/parse-string parameters keyword)
                                               parameters))]
     (run-query-for-card-with-id-async
-     card-id export-format params qp-runner
+     card-id export-format params
      :dashboard-id dashboard-id
      :context      context
-     :constraints  constraints)))
+     :constraints  constraints
+     :qp-runner    qp-runner)))
 
 (api/defendpoint ^:streaming GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
@@ -488,7 +492,7 @@
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
-  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) qp.pivot/run-pivot-query))
+  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
 
 (api/defendpoint ^:streaming GET "/pivot/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
