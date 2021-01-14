@@ -27,8 +27,8 @@ function testWorkbookDatetimes(workbook, download_type, sheetName) {
 }
 
 describe("scenarios > question > download", () => {
-  before(restore);
   beforeEach(() => {
+    restore();
     signInAsAdmin();
   });
 

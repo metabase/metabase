@@ -331,9 +331,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   describe("for an unsaved question", () => {
-    before(() => {
-      restore();
-      signInAsAdmin();
+    beforeEach(() => {
       // Build a question without saving
       openProductsTable();
       cy.findByText("Summarize").click();

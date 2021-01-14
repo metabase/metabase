@@ -1,8 +1,10 @@
 import { signInAsAdmin, restore, popover, modal } from "__support__/cypress";
 
 describe("scenarios > dashboard > embed", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it.skip("should have the correct embed snippet", () => {
     cy.visit("/dashboard/1");

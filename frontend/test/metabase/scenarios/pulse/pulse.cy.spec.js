@@ -14,9 +14,11 @@ const MOCK_PULSE_FORM_INPUT = {
 };
 
 describe("scenarios > pulse", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
-  it("should be able get to the new pulse page from the navbar", () => {
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
+  it("should be able get to the new pulse page from the nav bar", () => {
     cy.visit("/");
 
     cy.get(".Icon-add").click();
@@ -31,8 +33,8 @@ describe("scenarios > pulse", () => {
 
     cy.visit("/pulse/create");
 
-    cy.get('[placeholder="Important metrics"]')
-      .wait(100)
+    cy.findByPlaceholderText("Important metrics")
+      .click()
       .type("pulse title");
 
     cy.contains("Select a question").click();
@@ -51,21 +53,44 @@ describe("scenarios > pulse", () => {
     cy.contains("pulse title");
   });
 
-  it("should load existing pulses", () => {
-    cy.visit("/collection/root");
-    cy.contains("pulse title").click({ force: true });
-    cy.contains("18,760");
-  });
+  describe("existing pulses", () => {
+    beforeEach(() => {
+      cy.server();
+      // Create new pulse without relying on the previous test
+      cy.request("POST", "/api/pulse", {
+        name: "pulse title",
+        cards: [{ id: 2, include_csv: false, include_xls: false }],
+        channels: [
+          {
+            channel_type: "email",
+            details: {},
+            enabled: true,
+            recipients: [],
+            schedule_day: "mon",
+            schedule_frame: "first",
+            schedule_hour: 8,
+            schedule_type: "daily",
+          },
+        ],
+        skip_if_empty: false,
+      });
+    });
 
-  it("should edit existing pulses", () => {
-    cy.visit("/pulse/1");
-    cy.get('[placeholder="Important metrics"]')
-      .wait(100)
-      .clear()
-      .type("new pulse title");
+    it("should load existing pulses", () => {
+      cy.visit("/collection/root");
+      cy.contains("pulse title").click({ force: true });
+      cy.contains("18,760");
+    });
 
-    cy.contains("Save changes").click();
-    cy.url().should("match", /\/collection\/root$/);
-    cy.contains("new pulse title");
+    it("should edit existing pulses", () => {
+      cy.visit("/pulse/1");
+      cy.get('[placeholder="Important metrics"]')
+        .clear()
+        .type("new pulse title");
+
+      cy.contains("Save changes").click();
+      cy.url().should("match", /\/collection\/root$/);
+      cy.contains("new pulse title");
+    });
   });
 });

@@ -1,8 +1,10 @@
 import { signIn, restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > title drill", () => {
-  before(restore);
-  beforeEach(signIn);
+  beforeEach(() => {
+    restore();
+    signIn();
+  });
 
   it("should let you click through the title to the query builder", () => {
     createDashboard(dashId => {

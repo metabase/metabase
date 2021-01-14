@@ -18,48 +18,61 @@ function _clearAndIterativelyTypeUsingLabel(label, string) {
 //       - There is a related issue: https://github.com/metabase/metabase-enterprise/issues/543
 // TODO: Once the above issue is (re)solved, change back to `signInAsNormalUser`
 describe("scenarios > question > snippets", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should let you create and use a snippet", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
 
-    // type a query and highlight some of the text
-    cy.get(".ace_content").as("ace");
-    cy.get("@ace").type(
+    // Type a query and highlight some of the text
+    cy.get(".ace_content").as("editor");
+    cy.get("@editor").type(
       "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
     );
 
-    // add a snippet of that text
+    // Add a snippet of that text
     cy.get(".Icon-snippet").click();
     cy.contains("Create a snippet").click();
 
-    modal()
-      .find("input[name=name]")
-      .type("stuff-snippet");
-    modal()
-      .contains("Save")
-      .click();
+    modal().within(() => {
+      cy.findByLabelText("Give your snippet a name").type("stuff-snippet");
+      cy.findByText("Save").click();
+    });
 
     // SQL editor should get updated automatically
-    cy.get("@ace")
-      .wait(100)
-      .contains("select {{snippet: stuff-snippet}}");
+    cy.get("@editor").contains("select {{snippet: stuff-snippet}}");
 
-    // run the query and check the displayed scalar
+    // Run the query and check the value
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.get(".ScalarValue").contains("stuff");
   });
 
   it("should let you edit snippet", () => {
-    // open the snippet edit modal
-    cy.get(".Icon-chevrondown")
-      .wait(100)
-      .click({ force: true });
+    // Re-create the above snippet via API without the need to rely on the previous test
+    cy.request("POST", "/api/native-query-snippet", {
+      name: "stuff-snippet",
+      content: "stuff",
+    });
+
+    cy.visit("/question/new");
+    cy.findByText("Native query").click();
+
+    // Populate the native editor first
+    // 1. select
+    cy.get(".ace_content").as("editor");
+    cy.get("@editor").type("select ");
+    // 2. snippet
+    cy.get(".Icon-snippet").click();
+    cy.findByText("stuff-snippet").click();
+
+    // Open the snippet edit modal
+    cy.get(".Icon-chevrondown").click({ force: true });
     cy.findByText("Edit").click();
 
-    // update the name and content
+    // Update the name and content
     modal().within(() => {
       cy.findByText("Editing stuff-snippet");
 
@@ -73,9 +86,9 @@ describe("scenarios > question > snippets", () => {
     });
 
     // SQL editor should get updated automatically
-    cy.get(".ace_content").contains("select {{snippet: Math}}");
+    cy.get("@editor").contains("select {{snippet: Math}}");
 
-    // run the query and check the displayed scalar
+    // Run the query and check the new value
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.get(".ScalarValue").contains("2");
   });
