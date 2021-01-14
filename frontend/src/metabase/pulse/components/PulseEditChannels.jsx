@@ -214,6 +214,7 @@ export default class PulseEditChannels extends Component {
               "schedule_day",
               "schedule_frame",
               "schedule_hour",
+              "schedule_minute",
               "schedule_type",
             )}
             scheduleOptions={channelSpec.schedules}
