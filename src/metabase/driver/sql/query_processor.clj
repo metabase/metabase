@@ -297,7 +297,7 @@
     (if (and prefix alias
              (not= prefix *table-alias*)
              (not *joined-field?*))
-      (str prefix  "__" alias)
+      (str prefix "__" alias)
       alias)))
 
 (defmethod ->honeysql [:sql (class Field)]
@@ -919,7 +919,9 @@
   because it is aliased."
   [driver honeysql-form {:keys [source-query source-metadata native], :as inner-query}]
   (let [field-metadata (when-not native
-                         (u/key-by :id (annotate/mbql-cols inner-query nil)))]
+                         (->> (mbql.u/match inner-query #{:field-id :field-literal})
+                              (map (partial annotate/col-info-for-field-clause inner-query))
+                              (u/key-by :id)))]
     (binding [*query* (assoc inner-query :field-metadata field-metadata)]
       (if source-query
         (apply-clauses-with-aliased-source-query-table
