@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
   (:require [clojure.test :refer :all]
+            [clojure.string :as str]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :as qp.test]
@@ -34,7 +35,7 @@
                          (assoc :remapped_from (mt/format-name "category_id")
                                 :field_ref     [:fk-> [:field-id (mt/id :venues :category_id)]
                                                 [:field-id (mt/id :categories :name)]]
-                                :source_alias  (mt/format-name "CATEGORIES__via__CATEGORY_ID")
+                                :source_alias  "CATEGORIES__VIA__CATEGORY_ID"
                                 :fk_field_id   (mt/id :venues :category_id)
                                 :source        :breakout))
                      (-> (mt/col :venues :category_id)
@@ -52,7 +53,7 @@
                       :limit       3}))
                  qp.test/rows-and-cols
                  (update :cols (fn [[c1 c2 agg]]
-                                 [c1 c2 (dissoc agg :base_type)]))))))))
+                                 [(update c1 :source_alias str/upper-case) c2 (dissoc agg :base_type)]))))))))
 
 (deftest nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -107,12 +108,14 @@
                               :name          (mt/format-name "name_2")
                               :remapped_from (mt/format-name "category_id")
                               :field_ref     $category_id->categories.name
-                              :source_alias  (mt/format-name "CATEGORIES__via__CATEGORY_ID")))]}
-             (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-               (mt/format-rows-by [int str int double double int str]
-                 (mt/run-mbql-query venues
-                   {:order-by [[:asc $name]]
-                    :limit    4}))))))))
+                              :source_alias  "CATEGORIES__VIA__CATEGORY_ID"))]}
+             (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
+                                 (mt/format-rows-by [int str int double double int str]
+                                   (mt/run-mbql-query venues
+                                     {:order-by [[:asc $name]]
+                                      :limit    4})))
+                 (update :cols (fn [[c1 c2 c3]]
+                                 [c1 c2 (update c3 :source_alias str/upper-case)]))))))))
 
 (deftest remappings-with-field-clause-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -132,13 +135,15 @@
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")
                                 :field_ref     $category_id->categories.name
-                                :source_alias  (mt/format-name "CATEGORIES__via__CATEGORY_ID")))]}
-               (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                 (mt/format-rows-by [str int str str]
-                   (mt/run-mbql-query venues
-                     {:fields   [$name $price $category_id]
-                      :order-by [[:asc $name]]
-                      :limit    4})))))))))
+                                :source_alias  "CATEGORIES__VIA__CATEGORY_ID"))]}
+               (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
+                     (mt/format-rows-by [str int str str]
+                       (mt/run-mbql-query venues
+                         {:fields   [$name $price $category_id]
+                          :order-by [[:asc $name]]
+                          :limit    4})))
+                   (update :cols (fn [[c1 c2 c3]]
+                                   [c1 c2 (update c3 :source_alias str/upper-case)])))))))))
 
 (deftest remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"
