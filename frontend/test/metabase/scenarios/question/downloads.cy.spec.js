@@ -9,8 +9,8 @@ const testCases = [
 ];
 
 describe("scenarios > question > download", () => {
-  before(restore);
   beforeEach(() => {
+    restore();
     signInAsAdmin();
   });
 

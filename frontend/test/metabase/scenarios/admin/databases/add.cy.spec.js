@@ -15,9 +15,8 @@ function toggleFieldWithDisplayName(displayName) {
 }
 
 describe("scenarios > admin > databases > add", () => {
-  before(restore);
-
   beforeEach(() => {
+    restore();
     signInAsAdmin();
     cy.server();
   });

@@ -8,7 +8,7 @@ import {
 const PG_DB_NAME = "QA Postgres12";
 
 describe("postgres > question > custom columns", () => {
-  before(() => {
+  beforeEach(() => {
     restore();
     signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);

@@ -1,8 +1,10 @@
 import { restore, signInAsAdmin } from "__support__/cypress";
 
 describe("scenarios > admin > permissions", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should display error on failed save", () => {
     // revoke some permissions

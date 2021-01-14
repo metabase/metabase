@@ -11,7 +11,7 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
 
 describe("scenarios > question > nested (metabase#12568)", () => {
-  before(() => {
+  beforeEach(() => {
     restore();
     signInAsAdmin();
 
@@ -45,11 +45,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
         database: 1,
       },
       display: "scalar",
-      description: null,
       visualization_settings: {},
-      collection_id: null,
-      result_metadata: null,
-      metadata_checksum: null,
     });
 
     // Create a complex native question
@@ -87,15 +83,9 @@ describe("scenarios > question > nested (metabase#12568)", () => {
         database: 1,
       },
       display: "scalar",
-      description: null,
       visualization_settings: {},
-      collection_id: null,
-      result_metadata: null,
-      metadata_checksum: null,
     });
   });
-
-  beforeEach(signInAsAdmin);
 
   it("should allow Distribution on a Saved Simple Question", () => {
     cy.visit("/question/new");
@@ -154,7 +144,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
 });
 
 describe("scenarios > question > nested", () => {
-  before(() => {
+  beforeEach(() => {
     restore();
     signInAsAdmin();
   });
