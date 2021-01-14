@@ -195,7 +195,7 @@
       ;;     |
       ;;     +-> F* -> G*
       (collection-test/with-collection-hierarchy [{:keys [a b e f g], :as collections}]
-        (doseq [collection (cons collection/root-collection [a b e f g])]
+        (doseq [collection [a b e f g]]
           (perms/grant-collection-read-permissions! (group/all-users) collection))
         (is (= [{:name     "A"
                  :children [{:name "B"}
