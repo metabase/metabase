@@ -167,6 +167,12 @@
     :alert
     :pulse))
 
+(defn- subject
+  [{:keys [name cards]}]
+  (if (some :dashboard_id cards)
+    name
+    (trs "Pulse: {0}" name)))
+
 (defmulti ^:private should-send-notification?
   "Returns true if given the pulse type and resultset a new notification (pulse or alert) should be sent"
   (fn [pulse _results] (alert-or-pulse pulse)))
@@ -204,10 +210,9 @@
   [{pulse-id :id, pulse-name :name, :as pulse} results {:keys [recipients] :as channel}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (count results))))
-  (let [email-subject    (trs "Pulse: {0}" pulse-name)
-        email-recipients (filterv u/email? (map :email recipients))
+  (let [email-recipients (filterv u/email? (map :email recipients))
         timezone         (-> results first :card defaulted-timezone)]
-    {:subject      email-subject
+    {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
      :message      (messages/render-pulse-email timezone pulse results)}))
@@ -217,7 +222,7 @@
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
                                         pulse-id (pr-str pulse-name) (count results))))
   {:channel-id  channel-id
-   :message     (str "Pulse: " pulse-name)
+   :message     (subject pulse)
    :attachments (create-slack-attachment-data results)})
 
 (defmethod notification [:alert :email]
