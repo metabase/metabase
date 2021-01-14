@@ -13,16 +13,23 @@
              [test :as mt]
              [util :as u]]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.middleware.session :as session]
+            [metabase.models
+             [permissions :as perms]
+             [permissions-group :as group]]
             [metabase.query-processor
              [streaming :as qp.streaming]
              [util :as qputil]]
             [metabase.query-processor.middleware.cache :as cache]
+            [metabase.query-processor.middleware.cache
+             [impl :as impl]
+             [impl-test :as impl-test]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.query-processor.middleware.cache.impl :as impl]
             [metabase.test
              [fixtures :as fixtures]
              [util :as tu]]
-            [pretty.core :as pretty]))
+            [pretty.core :as pretty]
+            [schema.core :as s]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -35,6 +42,9 @@
   "Gets a message whenever old entries are purged from the test backend."
   nil)
 
+(defprotocol ^:private CacheContents
+  (^:private contents [cache-backend]))
+
 (defn- test-backend
   "In in-memory cache backend implementation."
   [save-chan purge-chan]
@@ -45,7 +55,12 @@
         (str "\n"
              (metabase.util/pprint-to-str 'blue
                (for [[hash {:keys [created]}] @store]
-                 [hash (metabase.util/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
+                 [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
+
+      CacheContents
+      (contents [_]
+        (into {} (for [[k v] store]
+                   [k (impl-test/deserialize v)])))
 
       i/CacheBackend
       (cached-results [this query-hash max-age-seconds respond]
@@ -62,7 +77,7 @@
             (respond nil))))
 
       (save-results! [this query-hash results]
-        (let [hex-hash (buddy.core.codecs/bytes->hex query-hash)]
+        (let [hex-hash (codecs/bytes->hex query-hash)]
           (swap! store assoc hex-hash {:results results
                                        :created (t/instant)})
           (log/tracef "Save results for %s --> store: %s" hex-hash this))
@@ -401,3 +416,35 @@
       (is (= max-bytes (count (transduce identity
                                          (#'cache/save-results-xform 0 {} (byte 0) conj)
                                          (repeat max-bytes [1]))))))))
+
+(deftest perms-checks-should-still-apply-test
+  (testing "Double-check that perms checks still happen even for cached results"
+    (mt/with-temp-copy-of-db
+      (perms/revoke-permissions! (group/all-users) (mt/db))
+      (mt/with-test-user :rasta
+        (with-mock-cache [save-chan]
+          (letfn [(run-forbidden-query []
+                    (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                                             :cache-ttl 100)))]
+            (testing "Shouldn't be allowed to run a query if we don't have perms for it"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (run-forbidden-query))))
+            (testing "Run forbidden query as superuser to populate the cache"
+              (session/with-current-user (mt/user->id :crowberto)
+                (is (= [[1000]]
+                       (mt/rows (run-forbidden-query))))))
+            (testing "Cache entry should be saved within 5 seconds"
+              (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
+                (is (= save-chan
+                       chan))))
+            (testing "Run forbidden query again as superuser again, should be cached"
+              (session/with-current-user (mt/user->id :crowberto)
+                (is (schema= {:cached (s/eq true), s/Keyword s/Any}
+                             (run-forbidden-query)))))
+            (testing "Run query as regular user, should get perms Exception even though result is cached"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (run-forbidden-query))))))))))
