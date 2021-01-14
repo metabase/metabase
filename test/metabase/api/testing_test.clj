@@ -6,22 +6,22 @@
             [metabase.util :as u]))
 
 (deftest snapshot-test
-  (testing "Just make sure the snapshot endpoint doesn't crash."
-    (when (= (mdb.conn/db-type) :h2)
+  (when (= (mdb.conn/db-type) :h2)
+    (testing "Just make sure the snapshot endpoint doesn't crash."
       (is (= nil
-             (mt/user-http-request :rasta :post 204 "testing/snapshot/default"))))
-    (testing "File should have been created"
-      (is (.exists (java.io.File. (#'testing/snapshot-path-for-name :default)))))))
+             (mt/user-http-request :rasta :post 204 "testing/snapshot/default")))
+      (testing "File should have been created"
+        (is (.exists (java.io.File. (#'testing/snapshot-path-for-name :default))))))))
 
 (deftest restore-test
-  (testing "Should throw Exception if file does not exist"
-    (when (= (mdb.conn/db-type) :h2)
+  (when (= (mdb.conn/db-type) :h2)
+    (testing "Should throw Exception if file does not exist"
       (is (= "Not found."
              (mt/user-http-request :rasta :post 404 (format "testing/restore/%s" (mt/random-name))))))))
 
 (deftest e2e-test
-  (testing "Should be able to snapshot & restore stuff"
-    (when (= (mdb.conn/db-type) :h2)
+  (when (= (mdb.conn/db-type) :h2)
+    (testing "Should be able to snapshot & restore stuff"
       (let [snapshot-name (munge (u/qualified-name ::test-snapshot))]
         (is (= nil
                (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))))
