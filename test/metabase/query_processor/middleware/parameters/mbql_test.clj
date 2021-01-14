@@ -243,3 +243,29 @@
                    :parameters [{:type   :id
                                  :target [:dimension $category_id->categories.name]
                                  :value  ["BBQ"]}]}))))))))
+
+(deftest test-mbql-parameters
+  (testing "Should be able to pass parameters in to an MBQL query"
+    (letfn [(venues-with-price [param]
+              (ffirst
+               (mt/rows
+                 (mt/process-query
+                  {:database   (mt/id)
+                   :type       :query
+                   :query      {:source-table (mt/id :venues)
+                                :aggregation  [[:count]]}
+                   :parameters [(merge
+                                 {:type   :category
+                                  :target [:dimension [:field-id (mt/id :venues :price)]]}
+                                 param)]}))))]
+      (doseq [[price expected] {1 22
+                                2 59}]
+        (testing (format ":value = %d" price)
+          (is (= expected
+                 (venues-with-price {:value price})))))
+      (testing "Should use :default if :value is not specified"
+        (is (= 22
+               (venues-with-price {:default 1}))))
+      (testing "Should prefer :value over :default"
+        (is (= 59
+               (venues-with-price {:default 1, :value 2})))))))
