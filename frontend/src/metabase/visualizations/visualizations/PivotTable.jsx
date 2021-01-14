@@ -538,11 +538,8 @@ function updateValueWithCurrentColumns(storedValue, columns) {
 // When a breakout is added to the query, we need to partition it before getting the rows.
 // We pretend the breakouts are columns so we can partition the new breakout.
 function addMissingCardBreakouts(setting, card) {
-  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]);
-  if (
-    breakouts == null ||
-    breakouts.length <= setting.columns.length + setting.rows.length
-  ) {
+  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]) || [];
+  if (breakouts.length <= setting.columns.length + setting.rows.length) {
     return setting;
   }
   const breakoutFieldRefs = breakouts.map(field_ref => ({ field_ref }));
