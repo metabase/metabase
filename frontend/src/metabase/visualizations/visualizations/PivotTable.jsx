@@ -20,21 +20,21 @@ const partitions = [
     name: "rows",
     columnFilter: isDimension,
     title: jt`Fields to use for the table ${(
-      <span className="text-dark text-heavy">rows</span>
+      <span className="text-dark text-heavy">{t`rows`}</span>
     )}`,
   },
   {
     name: "columns",
     columnFilter: isDimension,
     title: jt`Fields to use for the table ${(
-      <span className="text-dark text-heavy">columns</span>
+      <span className="text-dark text-heavy">{t`columns`}</span>
     )}`,
   },
   {
     name: "values",
     columnFilter: col => !isDimension(col),
     title: jt`Fields to use for the table ${(
-      <span className="text-dark text-heavy">values</span>
+      <span className="text-dark text-heavy">{t`values`}</span>
     )}`,
   },
 ];
