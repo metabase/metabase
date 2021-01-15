@@ -79,6 +79,10 @@ export default class Database extends Base {
     }
   }
 
+  supportsPivots() {
+    return this.hasFeature("expressions") && this.hasFeature("left-join");
+  }
+
   // QUESTIONS
 
   newQuestion(): Question {
