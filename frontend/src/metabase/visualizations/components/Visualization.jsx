@@ -39,6 +39,7 @@ export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
 import Question from "metabase-lib/lib/Question";
+import Query from "metabase-lib/lib/queries/Query";
 import Mode from "metabase-lib/lib/Mode";
 import type {
   Card as CardObject,
@@ -87,6 +88,9 @@ type Props = {
   dispatch: Function,
   onChangeCardAndRun: OnChangeCardAndRun,
   onChangeLocation: (url: string) => void,
+
+  // for checking renderability
+  query: Query,
 
   mode?: Mode,
 
