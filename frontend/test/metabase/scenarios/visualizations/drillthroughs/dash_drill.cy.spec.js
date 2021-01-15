@@ -12,13 +12,14 @@ const Q2 = {
 
 describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
   describe("card title click action", () => {
+    beforeEach(() => {
+      restore();
+      signInAsAdmin();
+    });
     describe("from a scalar card", () => {
       const DASHBOARD_NAME = "Scalar Dash";
 
-      before(() => {
-        restore();
-        signInAsAdmin();
-
+      beforeEach(() => {
         // Convert the second question to a scalar (Orders, summarized by count)
         cy.request("PUT", `/api/card/${Q2.id}`, {
           display: "scalar",
@@ -41,10 +42,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
     describe("from a scalar with active filter applied", () => {
       const DASHBOARD_NAME = "Scalar w Filter Dash";
 
-      before(() => {
-        restore();
-        signInAsAdmin();
-
+      beforeEach(() => {
         // Convert Q2 to a scalar with a filter applied
         cy.request("PUT", `/api/card/${Q2.id}`, {
           dataset_query: {
@@ -75,10 +73,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       const DASHBOARD_NAME = "Multiscalar Dash";
       const CARD_NAME = "Multiscalar Question";
 
-      before(() => {
-        restore();
-        signInAsAdmin();
-
+      beforeEach(() => {
         // Create muliscalar card
         cy.request("POST", "/api/card", {
           name: CARD_NAME,
@@ -131,11 +126,6 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
     });
 
     describe("saved visualizations", () => {
-      beforeEach(() => {
-        restore();
-        signInAsAdmin();
-      });
-
       it.skip("should respect visualization type when entering a question from a dashboard (metabase#13415)", () => {
         const QUESTION_NAME = "13415";
 
@@ -159,7 +149,6 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             type: "query",
           },
           display: "table",
-          description: null,
           visualization_settings: {
             "table.pivot_column": "CATEGORY",
             "table.cell_column": "count",

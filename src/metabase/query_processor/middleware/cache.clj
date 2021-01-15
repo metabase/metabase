@@ -127,15 +127,15 @@
         ([]
          (rf))
 
-        ([acc]
-         ;; if results are in the 'normal format' then use the final metadata from the cache rather than
-         ;; whatever `acc` is right now since we don't run the entire post-processing pipeline for cached results
-         (let [normal-format? (and (map? acc) (seq (get-in acc [:data :cols])))
-               acc*           (-> (if normal-format?
-                                    @final-metadata
-                                    acc)
+        ([result]
+         (let [normal-format? (and (map? (unreduced result))
+                                   (seq (get-in (unreduced result) [:data :cols])))
+               result*        (-> (if normal-format?
+                                    (merge-with merge @final-metadata (unreduced result))
+                                    (unreduced result))
                                   (assoc :cached true, :updated_at last-ran))]
-           (rf acc*)))
+           (rf (cond-> result*
+                 (reduced? result) reduced))))
 
         ([acc row]
          (if (map? row)

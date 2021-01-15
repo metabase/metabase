@@ -7,8 +7,10 @@ import {
 } from "__support__/cypress";
 
 describe("scenarios > admin > settings", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should surface an error when validation for any field fails (metabase#4506)", () => {
     const BASE_URL = Cypress.config().baseUrl;
@@ -284,6 +286,15 @@ describe("scenarios > admin > settings", () => {
       cy.findByText("Changes saved!");
     });
     it("should show an error if test email fails", () => {
+      // Reuse Email setup without relying on the previous test
+      cy.request("PUT", "/api/setting", {
+        "email-from-address": "admin@metabase.com",
+        "email-smtp-host": "localhost",
+        "email-smtp-password": null,
+        "email-smtp-port": "1234",
+        "email-smtp-security": "none",
+        "email-smtp-username": null,
+      });
       cy.visit("/admin/settings/email");
       cy.findByText("Send test email").click();
       cy.findByText("Sorry, something went wrong. Please try again.");

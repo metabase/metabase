@@ -1,7 +1,7 @@
 import { signIn, restore } from "__support__/cypress";
 
 describe("scenarios > permissions", () => {
-  before(restore);
+  beforeEach(restore);
 
   const PATHS = [
     "/dashboard/1",

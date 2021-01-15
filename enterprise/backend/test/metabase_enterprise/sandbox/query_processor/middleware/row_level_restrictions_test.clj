@@ -1,10 +1,12 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
-  (:require [clojure.string :as str]
+  (:require [clojure.core.async :as a]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
             [metabase-enterprise.sandbox.test-util :as mt.tu]
+            [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.normalize :as normalize]
@@ -13,6 +15,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.cache-test :as cache-test]
             [metabase.query-processor.util :as qputil]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
@@ -660,3 +663,39 @@
              (testing "Should throw an Exception when running the query"
                (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
                       (mt/rows (run-query))))))))))))
+
+(deftest dont-cache-sandboxes-test
+  (cache-test/with-mock-cache [save-chan]
+    (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                    :attributes {"cat" 50}}
+      (letfn [(run-query []
+                (qp/process-query (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                                         :cache-ttl 100)))]
+        (testing "Run the query, should not be cached"
+          (let [result (run-query)]
+            (is (= nil
+                   (:cached result)))
+            (is (= [[10]]
+                   (mt/rows result)))))
+        (testing "Cache entry should be saved within 5 seconds"
+          (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
+            (is (= save-chan
+                   chan))))
+
+        (testing "Run it again, should be cached"
+          (let [result (run-query)]
+            (is (= true
+                   (:cached result)))
+            (is (= [[10]]
+                   (mt/rows result)))))
+        (testing "Run the query with different User attributes, should not get the cached result"
+          (mt.tu/with-user-attributes :rasta {"cat" 40}
+            ;; re-bind current user so updated attributes come in to effect
+            (mt/with-test-user :rasta
+              (is (= {"cat" 40}
+                     (:login_attributes @api/*current-user*)))
+              (let [result (run-query)]
+                (is (= nil
+                       (:cached result)))
+                (is (= [[9]]
+                       (mt/rows result)))))))))))

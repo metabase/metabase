@@ -457,12 +457,17 @@
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
-            (mt/user-http-request :rasta :post 202 "card"
-                                  (assoc (card-with-name-and-query card-name)
-                                         :collection_id (u/get-id collection), :collection_position 1))
-            (is (= #metabase.models.card.CardInstance{:collection_id true, :collection_position 1}
-                   (some-> (db/select-one [Card :collection_id :collection_position] :name card-name)
-                           (update :collection_id (partial = (u/get-id collection))))))))))))
+            (is (schema= {:collection_id       (s/eq (u/get-id collection))
+                          :collection_position (s/eq 1)
+                          :name                (s/eq card-name)
+                          s/Keyword            s/Any}
+                         (mt/user-http-request :rasta :post 202 "card"
+                                               (assoc (card-with-name-and-query card-name)
+                                                      :collection_id (u/get-id collection), :collection_position 1))))
+            (is (schema= {:collection_id       (s/eq (u/get-id collection))
+                          :collection_position (s/eq 1)
+                          s/Keyword            s/Any}
+                         (db/select-one Card :name card-name)))))))))
 
 (deftest need-permission-for-collection
   (testing "You need to have Collection permissions to create a Card in a Collection"
