@@ -419,7 +419,7 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))))
+            (is (= 1144 (count rows)))))
 
         (testing "should fail if user is not an admin"
           (is (= "You don't have permissions to do that."
@@ -459,7 +459,7 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))))
+            (is (= 1144 (count rows)))))
 
        (testing "should fail if user is not an admin"
           (is (= "You don't have permissions to do that."

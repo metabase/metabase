@@ -12,13 +12,14 @@
 (defn pivot-query
   "A basic pivot table query"
   []
-  (-> (mt/mbql-query orders
-        {:aggregation [[:count] [:sum $orders.quantity]]
-         :breakout    [[:fk-> $orders.user_id $people.state]
-                       [:fk-> $orders.user_id $people.source]
-                       [:fk-> $orders.product_id $products.category]]})
-      (assoc :pivot_rows [1 0]
-             :pivot_cols [2])))
+  (mt/dataset sample-dataset
+    (-> (mt/mbql-query orders
+          {:aggregation [[:count] [:sum $orders.quantity]]
+           :breakout    [[:fk-> $orders.user_id $people.state]
+                         [:fk-> $orders.user_id $people.source]
+                         [:fk-> $orders.product_id $products.category]]})
+        (assoc :pivot_rows [1 0]
+               :pivot_cols [2]))))
 
 (defn filters-query
   "A pivot table query with a filter applied"
