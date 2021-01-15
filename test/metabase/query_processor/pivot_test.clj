@@ -104,40 +104,37 @@
   (mt/test-drivers pivot.test-utils/applicable-drivers
     (mt/dataset sample-dataset
       (let [request {:database   (mt/db)
-                     :query      (mt/$ids orders
-                                   {:source-table $$orders
-                                    :aggregation  [[:count] [:sum $orders.quantity]]
-                                    :breakout     [$orders.user_id->people.state
-                                                   $orders.user_id->people.source
-                                                   $orders.product_id->products.category]})
+                     :query      {:source-table (mt/$ids $$orders)
+                                  :aggregation  [[:count] [:sum (mt/$ids $orders.quantity)]]
+                                  :breakout     [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
+                                                 [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
+                                                 [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]]}
                      :type       :query
                      :parameters []
                      :pivot-rows [1 0]
                      :pivot-cols [2]}]
         (testing "can generate queries for each new breakout"
-          (let [expected (mt/$ids orders
-                           [{:query {:breakout    [$orders.user_id->people.state
-                                                   $orders.user_id->people.source
-                                                   $orders.product_id->products.category
-                                                   [:expression "pivot-grouping"]]
-                                     :expressions {"pivot-grouping" [:abs 0]}}}
-                            {:query {:breakout    [$orders.user_id->people.source
-                                                   $orders.product_id->products.category
-                                                   [:expression "pivot-grouping"]]
-                                     :expressions {"pivot-grouping" [:abs 1]}}}
-                            {:query {:breakout    [$orders.product_id->products.category
-                                                   [:expression "pivot-grouping"]]
-                                     :expressions {"pivot-grouping" [:abs 3]}}}
-                            {:query {:breakout    [$orders.user_id->people.source
-                                                   $orders.user_id->people.state
-                                                   [:expression "pivot-grouping"]]
-                                     :expressions {"pivot-grouping" [:abs 4]}}}
-                            {:query {:breakout    [$orders.user_id->people.source
-                                                   [:expression "pivot-grouping"]]
-                                     :expressions {"pivot-grouping" [:abs 5]}}}
-
-                            {:query {:breakout    [[:expression "pivot-grouping"]]
-                                     :expressions {"pivot-grouping" [:abs 7]}}}])
+          (let [expected [{:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
+                                                 [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
+                                                 [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]
+                                                 [:expression "pivot-grouping"]]
+                                   :expressions {"pivot-grouping" [:abs 0]}}}
+                          {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
+                                                 [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]
+                                                 [:expression "pivot-grouping"]]
+                                   :expressions {"pivot-grouping" [:abs 1]}}}
+                          {:query {:breakout    [[:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]
+                                                 [:expression "pivot-grouping"]]
+                                   :expressions {"pivot-grouping" [:abs 3]}}}
+                          {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
+                                                 [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
+                                                 [:expression "pivot-grouping"]]
+                                   :expressions {"pivot-grouping" [:abs 4]}}}
+                          {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
+                                                 [:expression "pivot-grouping"]]
+                                   :expressions {"pivot-grouping" [:abs 5]}}}
+                          {:query {:breakout    [[:expression "pivot-grouping"]]
+                                   :expressions {"pivot-grouping" [:abs 7]}}}]
                 expected (map (fn [expected-val] (-> expected-val
                                                      (assoc :type       :query
                                                             :parameters []
@@ -148,8 +145,6 @@
                                                      (assoc-in [:query :source-table] (mt/$ids $$orders)))) expected)
                 actual   (map (fn [actual-val] (dissoc actual-val :database)) (#'pivot/generate-queries request))]
             (is (= 6 (count actual)))
-            (is (= (map #(get-in % [:query :expressions "pivot-grouping"]) expected)
-                   (map #(get-in % [:query :expressions "pivot-grouping"]) actual)))
             (is (= expected actual))))))))
 
 (deftest dont-return-too-many-rows-test
