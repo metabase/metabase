@@ -219,15 +219,15 @@ function assertOnPivotSettings() {
   cy.log("**-- Implicit side-bar assertions --**");
   cy.findByText(/Pivot Table options/i);
 
-  cy.findByText("Fields to use for the table rows");
+  cy.findAllByText("Fields to use for the table").eq(0);
   cy.get("@fieldOption")
     .eq(0)
     .contains(/Users? → Source/);
-  cy.findByText("Fields to use for the table columns");
+  cy.findAllByText("Fields to use for the table").eq(1);
   cy.get("@fieldOption")
     .eq(1)
     .contains(/Products? → Category/);
-  cy.findByText("Fields to use for the table values");
+  cy.findAllByText("Fields to use for the table").eq(2);
   cy.get("@fieldOption")
     .eq(2)
     .contains("Count");
