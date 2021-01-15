@@ -59,15 +59,30 @@ export default class PivotTable extends Component {
     return false;
   }
 
-  static isSensible({ cols }) {
-    return cols.length >= 2 && cols.every(isColumnValid);
+  static databaseSupportsPivotTables(query) {
+    if (query && query.database && query.database() != null) {
+      // if we don't have metadata, we can't check this
+      return query.database().supportsPivots();
+    }
+    return true;
   }
 
-  static checkRenderable([{ data }]) {
+  static isSensible({ cols }, query) {
+    return (
+      cols.length >= 2 &&
+      cols.every(isColumnValid) &&
+      this.databaseSupportsPivotTables(query)
+    );
+  }
+
+  static checkRenderable([{ data, card }], settings, query) {
     if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
       throw new Error(
         t`Pivot tables can only be used with aggregated queries.`,
       );
+    }
+    if (!this.databaseSupportsPivotTables(query)) {
+      throw new Error(t`This database does not support pivot tables.`);
     }
   }
 
