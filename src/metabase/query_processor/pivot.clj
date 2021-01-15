@@ -5,6 +5,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.context.default :as context.default]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]]))
 
