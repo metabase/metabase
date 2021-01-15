@@ -1460,12 +1460,11 @@
         (mt/with-temp Card [card (pivots/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/get-id card)))
                 rows   (mt/rows result)]
-            (is (= 2273 (:row_count result)))
+            (is (= 1144 (:row_count result)))
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))
+            (is (= 1144 (count rows)))
 
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
-            (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
