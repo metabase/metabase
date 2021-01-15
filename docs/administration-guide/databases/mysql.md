@@ -15,3 +15,21 @@ If you are spinning up a new MySQL container, and
  
 Use the `['--sql_mode=', '--default-authentication-plugin=mysql_native_password']` modifiers when you run the container, like so:
  
+a simple docker run:
+`docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=xxxxxx mysql:8.0.xx --sql_mode= --default-authentication-plugin=mysql_native_password`
+
+or in docker-compose:
+`mysql:
+    image: mysql:8.0.21
+    container_name: mysql
+    hostname: mysql
+    ports: 
+      - 3306:3306
+    environment:
+      - "MYSQL_ROOT_PASSWORD=xxxxxx"
+      - "MYSQL_USER=metabase"
+      - "MYSQL_PASSWORD=xxxxxx"
+      - "MYSQL_DATABASE=metabase"
+    volumes:
+      - $PWD/mysql:/var/lib/mysql
+    command: ['--sql_mode=', '--default-authentication-plugin=mysql_native_password']`
