@@ -9,6 +9,7 @@
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
+            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-channel :refer [channel-types PulseChannel]]
@@ -48,22 +49,27 @@
 
 (api/defendpoint POST "/"
   "Create a new `Pulse`."
-  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position]} :body}]
+  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id]} :body}]
   {name                su/NonBlankString
    cards               (su/non-empty [pulse/CoercibleToCardRef])
    channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
    collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+   collection_position (s/maybe su/IntGreaterThanZero)
+   dashboard_id        (s/maybe su/IntGreaterThanZero)}
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, make sure we have write permissions for that collection
   (collection/check-write-perms-for-collection collection_id)
+  ;; prohibit sending dashboard subs for unauthorized dashboards
+  (when dashboard_id
+    (api/write-check Dashboard dashboard_id))
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
                     :skip_if_empty       skip_if_empty
                     :collection_id       collection_id
-                    :collection_position collection_position}]
+                    :collection_position collection_position
+                    :dashboard_id        dashboard_id}]
     (db/transaction
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
       ;; check that and fix it if needed
@@ -191,13 +197,14 @@
 
 (api/defendpoint POST "/test"
   "Test send an unsaved pulse."
-  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position] :as body} :body}]
+  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
   {name                su/NonBlankString
    cards               (su/non-empty [pulse/CoercibleToCardRef])
    channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
    collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+   collection_position (s/maybe su/IntGreaterThanZero)
+   dashboard_id        (s/maybe su/IntGreaterThanZero)}
   (check-card-read-permissions cards)
   (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})

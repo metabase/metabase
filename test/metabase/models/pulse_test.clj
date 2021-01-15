@@ -38,11 +38,12 @@
                                 (m/dissoc-in [:details :emails])))))))
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
-  [pulse-name creator cards channels skip-if-empty?]
+  [pulse-name creator cards channels skip-if-empty? & [dashboard-id]]
   (-> (pulse/create-pulse! cards channels
         {:name          pulse-name
          :creator_id    (u/the-id creator)
-         :skip_if_empty skip-if-empty?})
+         :skip_if_empty skip-if-empty?
+         :dashboard_id dashboard-id})
       remove-uneeded-pulse-keys))
 
 (defn- update-pulse-then-select!
@@ -196,7 +197,8 @@
                         :schedule_hour 18
                         :enabled       true
                         :recipients    [{:email "foo@bar.com"}]}]
-                      false)))))))
+                      false
+                      dashboard-id)))))))
 
 ;; update-pulse!
 ;; basic update.  we are testing several things here

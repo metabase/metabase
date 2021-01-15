@@ -251,7 +251,7 @@ function enumerate(
   const childPaths = children.flatMap(child =>
     enumerate(child, { includeSubtotals }, pathWithValue),
   );
-  return includeSubtotals
+  return includeSubtotals && children.length > 1
     ? // follow children with their subtotal
       [...childPaths, pathWithValue]
     : childPaths;
@@ -297,7 +297,7 @@ function addSubtotals(rowColumnTree, formatters) {
 
 function addSubtotal(item, [formatter, ...formatters]) {
   const subtotal =
-    item.children.length > 0
+    item.children.length > 1
       ? [
           {
             value: t`Totals for ${formatter(item.value)}`,

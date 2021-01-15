@@ -20,6 +20,7 @@ export default function MetadataSyncScheduleWidget({ field }) {
       scheduleOptions={["hourly", "daily"]}
       onScheduleChange={field.onChange}
       textBeforeInterval={t`Scan`}
+      minutesOnHourPicker={true}
     />
   );
 }

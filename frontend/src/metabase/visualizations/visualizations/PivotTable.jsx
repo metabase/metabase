@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn, updateIn } from "icepick";
@@ -19,17 +19,23 @@ const partitions = [
   {
     name: "rows",
     columnFilter: isDimension,
-    title: t`Fields to use for the table rows`,
+    title: jt`Fields to use for the table ${(
+      <span className="text-dark text-heavy">{t`rows`}</span>
+    )}`,
   },
   {
     name: "columns",
     columnFilter: isDimension,
-    title: t`Fields to use for the table columns`,
+    title: jt`Fields to use for the table ${(
+      <span className="text-dark text-heavy">{t`columns`}</span>
+    )}`,
   },
   {
     name: "values",
     columnFilter: col => !isDimension(col),
-    title: t`Fields to use for the table values`,
+    title: jt`Fields to use for the table ${(
+      <span className="text-dark text-heavy">{t`values`}</span>
+    )}`,
   },
 ];
 
@@ -53,15 +59,30 @@ export default class PivotTable extends Component {
     return false;
   }
 
-  static isSensible({ cols }) {
-    return cols.length >= 2 && cols.every(isColumnValid);
+  static databaseSupportsPivotTables(query) {
+    if (query && query.database && query.database() != null) {
+      // if we don't have metadata, we can't check this
+      return query.database().supportsPivots();
+    }
+    return true;
   }
 
-  static checkRenderable([{ data }]) {
+  static isSensible({ cols }, query) {
+    return (
+      cols.length >= 2 &&
+      cols.every(isColumnValid) &&
+      this.databaseSupportsPivotTables(query)
+    );
+  }
+
+  static checkRenderable([{ data, card }], settings, query) {
     if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
       throw new Error(
         t`Pivot tables can only be used with aggregated queries.`,
       );
+    }
+    if (!this.databaseSupportsPivotTables(query)) {
+      throw new Error(t`This database does not support pivot tables.`);
     }
   }
 
@@ -92,6 +113,9 @@ export default class PivotTable extends Component {
       section: null,
       widget: "fieldsPartition",
       persistDefault: true,
+      getHidden: ([{ data }]) =>
+        // hide the setting widget if there are invalid columns
+        !data || data.cols.some(col => !isColumnValid(col)),
       getProps: ([{ data }], settings) => ({
         partitions,
         columns: data == null ? [] : data.cols,
@@ -196,7 +220,8 @@ export default class PivotTable extends Component {
       rowCount,
       columnCount,
     } = pivoted;
-    const topHeaderHeight = (columnIndexes.length || 1) * CELL_HEIGHT;
+
+    const topHeaderHeight = (topIndex[0].length || 1) * CELL_HEIGHT;
     const leftHeaderWidth =
       rowIndexes.length > 0
         ? LEFT_HEADER_LEFT_SPACING + rowIndexes.length * LEFT_HEADER_CELL_WIDTH
@@ -452,7 +477,7 @@ function LeftHeaderSection({
             ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
           }}
           icon={
-            (isSubtotal || children.length > 0) && (
+            (isSubtotal || children.length > 1) && (
               <RowToggleIcon
                 value={valuePath}
                 settings={settings}
@@ -553,7 +578,7 @@ function updateValueWithCurrentColumns(storedValue, columns) {
 // When a breakout is added to the query, we need to partition it before getting the rows.
 // We pretend the breakouts are columns so we can partition the new breakout.
 function addMissingCardBreakouts(setting, card) {
-  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]);
+  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]) || [];
   if (breakouts.length <= setting.columns.length + setting.rows.length) {
     return setting;
   }

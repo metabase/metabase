@@ -68,17 +68,19 @@
     ;; if the sync operation schedules have changed, we need to reschedule this DB
     (when (or new-metadata-schedule new-fieldvalues-schedule)
       (let [{old-metadata-schedule    :metadata_sync_schedule
-             old-fieldvalues-schedule :cache_field_values_schedule} (db/select-one [Database
-                                                                                    :metadata_sync_schedule
-                                                                                    :cache_field_values_schedule]
-                                                                      :id (u/get-id database))
+             old-fieldvalues-schedule :cache_field_values_schedule
+             existing-engine          :engine
+             existing-name            :name} (db/select-one [Database
+                                                             :metadata_sync_schedule
+                                                             :cache_field_values_schedule]
+                                               :id (u/the-id database))
             ;; if one of the schedules wasn't passed continue using the old one
-            new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
-            new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
+            new-metadata-schedule            (or new-metadata-schedule old-metadata-schedule)
+            new-fieldvalues-schedule         (or new-fieldvalues-schedule old-fieldvalues-schedule)]
         (when-not (= [new-metadata-schedule new-fieldvalues-schedule]
                      [old-metadata-schedule old-fieldvalues-schedule])
           (log/info
-           (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" (:engine database) (:name database))
+           (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" existing-engine existing-name)
            "\n"
            (trs "Sync metadata was: ''{0}'' is now: ''{1}''" old-metadata-schedule new-metadata-schedule)
            "\n"

@@ -8,11 +8,13 @@
             [metabase.models.database :refer [Database]]
             [metabase.sync.analyze :as sync.analyze]
             [metabase.sync.field-values :as sync.field-values]
+            [metabase.sync.schedules :as sync.schedules]
             [metabase.sync.sync-metadata :as sync.metadata]
             [metabase.task.sync-databases :as sync-db]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
+            [metabase.util.cron :as cron-util]
             [metabase.util.date-2 :as u.date]
             [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
@@ -254,3 +256,31 @@
     (is (not (should-refingerprint (results (dec threshold) 10)))))
   (testing "It will fingerprint if under time and no other fingerprints"
     (is (should-refingerprint (results (dec threshold) 0)))))
+
+(deftest randomized-schedules-test
+  (testing "when user schedules it does not return new schedules"
+    (is (nil? (sync-db/randomized-schedules {:details {:let-user-control-scheduling true}}))))
+  (testing "when schedules are already 'randomized' it returns nil"
+    (is (nil? (sync-db/randomized-schedules
+                {:cache_field_values_schedule (cron-util/schedule-map->cron-string
+                                                {:schedule_hour 17 :schedule_type "daily"})
+                 :metadata_sync_schedule      (cron-util/schedule-map->cron-string
+                                                {:schedule_minute 17 :schedule_type "hourly"})}))))
+  (testing "returns appropriate randomized schedules"
+    (doseq [default-metadata sync.schedules/default-metadata-sync-schedule-cron-strings]
+      (is (contains? (sync-db/randomized-schedules
+                       {:metadata_sync_schedule      default-metadata
+                        :cache_field_values_schedule (cron-util/schedule-map->cron-string
+                                                       {:schedule_hour 17 :schedule_type "daily"})})
+                     :metadata_sync_schedule)))
+    (doseq [default-cache sync.schedules/default-cache-field-values-schedule-cron-strings]
+      (is (contains? (sync-db/randomized-schedules
+                       {:metadata_sync_schedule      (cron-util/schedule-map->cron-string
+                                                       {:schedule_hour 17 :schedule_type "hourly"})
+                        :cache_field_values_schedule default-cache})
+                     :cache_field_values_schedule)))
+    (is (schema= {:metadata_sync_schedule      String
+                  :cache_field_values_schedule String}
+                 (sync-db/randomized-schedules
+                   {:metadata_sync_schedule      (first sync.schedules/default-metadata-sync-schedule-cron-strings)
+                    :cache_field_values_schedule (first sync.schedules/default-cache-field-values-schedule-cron-strings)})))))

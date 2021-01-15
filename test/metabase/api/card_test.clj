@@ -7,6 +7,7 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase.api.card :as card-api]
+            [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http :refer :all]
             [metabase.models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
@@ -1451,3 +1452,19 @@
                   :dashboards        s/Any
                   :collections       s/Any}
                  (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/get-id card)))))))
+
+(deftest pivot-card-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "POST /api/card/pivot/:card-id/query"
+        (mt/with-temp Card [card (pivots/pivot-card)]
+          (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/get-id card)))
+                rows   (mt/rows result)]
+            (is (= 1144 (:row_count result)))
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 1144 (count rows)))
+
+            (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+            (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
+            (is (= [nil nil nil 7 18760 69540] (last rows)))))))))

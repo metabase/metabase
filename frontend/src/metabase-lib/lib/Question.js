@@ -824,7 +824,11 @@ export default class Question {
       };
 
       return [
-        await maybeUsePivotEndpoint(CardApi.query, this.card())(queryParams, {
+        await maybeUsePivotEndpoint(
+          CardApi.query,
+          this.card(),
+          this.metadata(),
+        )(queryParams, {
           cancelled: cancelDeferred.promise,
         }),
       ];
@@ -835,7 +839,11 @@ export default class Question {
           parameters,
         };
 
-        return maybeUsePivotEndpoint(MetabaseApi.dataset, this.card())(
+        return maybeUsePivotEndpoint(
+          MetabaseApi.dataset,
+          this.card(),
+          this.metadata(),
+        )(
           datasetQueryWithParameters,
           cancelDeferred ? { cancelled: cancelDeferred.promise } : {},
         );

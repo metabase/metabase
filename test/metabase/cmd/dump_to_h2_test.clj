@@ -4,6 +4,7 @@
             [metabase.cmd
              [copy :as copy]
              [dump-to-h2 :as dump-to-h2]]
+            [metabase.cmd :as cmd]
             [metabase.util.files :as u.files]))
 
 (deftest dump-deletes-target-db-files-tests
@@ -29,3 +30,8 @@
                   :let     [file (io/file filename)]]
             (when (.exists file)
               (io/delete-file file))))))))
+
+(deftest cmd-dump-to-h2-returns-code-from-dump-test
+  (with-redefs [dump-to-h2/dump-to-h2! (constantly 1)
+                cmd/system-exit! identity]
+    (is (= 1 (cmd/dump-to-h2 "file1")))))

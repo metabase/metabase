@@ -18,16 +18,6 @@ import {
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
 
 describe("DataSelector", () => {
-  let originalTimeout;
-  beforeEach(() => {
-    originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = 15000;
-  });
-
-  afterEach(() => {
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
-  });
-
   const emptyMetadata = {
     databases: {},
     schemas: {},

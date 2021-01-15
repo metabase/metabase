@@ -97,7 +97,8 @@
   authenticate
   build-url
   client
-  client-full-response]
+  client-full-response
+  derecordize]
 
  [i18n.tu
   with-mock-i18n-bundles
@@ -278,16 +279,6 @@
             :pre      (-> result :data :pre)
             :post     (-> result :data :rows)
             :metadata (update result :data #(dissoc % :pre :rows))}))))))
-
-(defn derecordize
-  "Convert all record types in `form` to plain maps, so tests won't fail."
-  [form]
-  (walk/postwalk
-   (fn [form]
-     (if (record? form)
-       (into {} form)
-       form))
-   form))
 
 (def ^{:arglists '([toucan-model])} object-defaults
   "Return the default values for columns in an instance of a `toucan-model`, excluding ones that differ between

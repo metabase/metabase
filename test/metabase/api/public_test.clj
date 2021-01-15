@@ -5,6 +5,7 @@
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase.api.dashboard-test :as dashboard-api-test]
+            [metabase.api.pivots :as pivots]
             [metabase.api.public :as public-api]
             [metabase.http-client :as http]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
@@ -22,33 +23,38 @@
   {:dataset_query (mt/mbql-query venues
                     {:aggregation [[:count]]})})
 
-(defn- shared-obj []
+(defn shared-obj []
   {:public_uuid       (str (UUID/randomUUID))
    :made_public_by_id (mt/user->id :crowberto)})
 
-(defmacro ^:private with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
-  `(let [card-settings# (merge (count-of-venues-card) (shared-obj) ~card)]
+(defmacro with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
+  `(let [card-defaults# ~card
+         card-settings# (merge (when-not (:dataset_query card-defaults#) (count-of-venues-card))
+                               (shared-obj)
+                               card-defaults#)]
      (mt/with-temp Card [card# card-settings#]
        ;; add :public_uuid back in to the value that gets bound because it might not come back from post-select if
        ;; public sharing is disabled; but we still want to test it
        (let [~binding (assoc card# :public_uuid (:public_uuid card-settings#))]
          ~@body))))
 
-(defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
-  `(let [dashboard-settings# (merge
-                              {:parameters [{:id      "_VENUE_ID_"
-                                             :name    "Venue ID"
-                                             :slug    "venue_id"
-                                             :type    "id"
-                                             :target  [:dimension (mt/id :venues :id)]
-                                             :default nil}]}
+(defmacro with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
+  `(let [dashboard-defaults# ~dashboard
+         dashboard-settings# (merge
+                              (when-not (:parameters dashboard-defaults#)
+                                {:parameters [{:id      "_VENUE_ID_"
+                                               :name    "Venue ID"
+                                               :slug    "venue_id"
+                                               :type    "id"
+                                               :target  [:dimension (mt/id :venues :id)]
+                                               :default nil}]})
                               (shared-obj)
-                              ~dashboard)]
+                              dashboard-defaults#)]
      (mt/with-temp Dashboard [dashboard# dashboard-settings#]
        (let [~binding (assoc dashboard# :public_uuid (:public_uuid dashboard-settings#))]
          ~@body))))
 
-(defn- add-card-to-dashboard! {:style/indent 2} [card dashboard & {:as kvs}]
+(defn add-card-to-dashboard! {:style/indent 2} [card dashboard & {:as kvs}]
   (db/insert! DashboardCard (merge {:dashboard_id (u/get-id dashboard), :card_id (u/get-id card)}
                                    kvs)))
 
@@ -1024,3 +1030,73 @@
               (let [url (format "public/dashboard/%s/params/%s/search/s" uuid (:category-name param-keys))]
                 (is (= ["Scandinavian" "Seafood" "South Pacific"]
                        (take 3 ((mt/user->client :rasta) :get 200 url))))))))))))
+
+;; Pivot tables
+
+(deftest pivot-public-card-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "GET /api/public/pivot/card/:uuid/query"
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid} (pivots/pivot-card)]
+            (let [result (http/client :get 202 (format "public/pivot/card/%s/query" uuid))
+                  rows   (mt/rows result)]
+              (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+              (is (= "completed" (:status result)))
+              (is (= 6 (count (get-in result [:data :cols]))))
+              (is (= 1144 (count rows)))
+
+              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+              (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+              (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
+
+(defn- pivot-dashcard-url
+  "URL for fetching results of a public DashCard."
+  [dash card]
+  (str "public/pivot/dashboard/" (:public_uuid dash) "/card/" (u/get-id card)))
+
+(deftest pivot-public-dashcard-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (let [dashboard-defaults {:parameters [{:id      "_STATE_"
+                                              :name    "State"
+                                              :slug    "state"
+                                              :type    "string"
+                                              :target  [:dimension [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
+                                              :default nil}]}]
+        (testing "GET /api/public/pivot/dashboard/:uuid/card/:card-id"
+          (testing "without parameters"
+            (mt/with-temporary-setting-values [enable-public-sharing true]
+              (with-temp-public-dashboard [dash dashboard-defaults]
+                (with-temp-public-card [card (pivots/pivot-card)]
+                  (add-card-to-dashboard! card dash)
+                  (let [result (http/client :get 202 (pivot-dashcard-url dash card))
+                        rows   (mt/rows result)]
+                    (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                    (is (= "completed" (:status result)))
+                    (is (= 6 (count (get-in result [:data :cols]))))
+                    (is (= 1144 (count rows)))
+
+                    (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+                    (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+                    (is (= [nil nil nil 7 18760 69540] (last rows))))))))
+
+          (testing "with parameters"
+            (mt/with-temporary-setting-values [enable-public-sharing true]
+              (with-temp-public-dashboard [dash dashboard-defaults]
+                (with-temp-public-card [card (pivots/pivot-card)]
+                  (add-card-to-dashboard! card dash)
+                  (let [result (http/client :get 202 (pivot-dashcard-url dash card)
+                                            :parameters (json/encode [{:name   "State"
+                                                                       :slug   :state
+                                                                       :target [:dimension [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
+                                                                       :value  ["CA" "WA"]}]))
+                        rows   (mt/rows result)]
+                    (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                    (is (= "completed" (:status result)))
+                    (is (= 6 (count (get-in result [:data :cols]))))
+                    (is (= 80 (count rows)))
+
+                    (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
+                    (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
+                    (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))

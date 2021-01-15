@@ -163,6 +163,25 @@ describe("scenarios > visualizations > pivot tables", () => {
       .click();
     cy.findByText("215"); // ...and it's back!
   });
+
+  it("should display an error message for native queries", () => {
+    cy.server();
+    // native queries should use the normal dataset endpoint even when set to pivot
+    cy.route("POST", `/api/dataset`).as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: { query: "select 1", "template-tags": {} },
+        database: 1,
+      },
+      display: "pivot",
+      visualization_settings: {},
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("Pivot tables can only be used with aggregated queries.");
+  });
 });
 
 const testQuery = {
@@ -200,15 +219,15 @@ function assertOnPivotSettings() {
   cy.log("**-- Implicit side-bar assertions --**");
   cy.findByText(/Pivot Table options/i);
 
-  cy.findByText("Fields to use for the table rows");
+  cy.findAllByText("Fields to use for the table").eq(0);
   cy.get("@fieldOption")
     .eq(0)
     .contains(/Users? → Source/);
-  cy.findByText("Fields to use for the table columns");
+  cy.findAllByText("Fields to use for the table").eq(1);
   cy.get("@fieldOption")
     .eq(1)
     .contains(/Products? → Category/);
-  cy.findByText("Fields to use for the table values");
+  cy.findAllByText("Fields to use for the table").eq(2);
   cy.get("@fieldOption")
     .eq(2)
     .contains("Count");
