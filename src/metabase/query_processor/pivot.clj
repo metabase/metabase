@@ -161,7 +161,7 @@
 
    You are expected to wrap this call in `qp.streaming/streaming-response` yourself."
   ([query]
-   (run-pivot-query query nil nil))
+   (run-pivot-query query nil))
   ([query info]
    (run-pivot-query query info nil))
   ([query info context]
