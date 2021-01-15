@@ -12,6 +12,7 @@ import { isDimension } from "metabase/lib/schema_metadata";
 import { isPivotGroupColumn, multiLevelPivot } from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
@@ -53,15 +54,32 @@ export default class PivotTable extends Component {
     return false;
   }
 
-  static isSensible({ cols }) {
-    return cols.length >= 2 && cols.every(isColumnValid);
+  static databaseSupportsPivotTables(query) {
+    if (query instanceof StructuredQuery) {
+      return (
+        query.database().hasFeature("expressions") &&
+        query.database().hasFeature("left-join")
+      );
+    }
+    return true;
   }
 
-  static checkRenderable([{ data }]) {
+  static isSensible({ cols }, query) {
+    return (
+      cols.length >= 2 &&
+      cols.every(isColumnValid) &&
+      this.databaseSupportsPivotTables(query)
+    );
+  }
+
+  static checkRenderable([{ data, card }], settings, query) {
     if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
       throw new Error(
         t`Pivot tables can only be used with aggregated queries.`,
       );
+    }
+    if (!this.databaseSupportsPivotTables(query)) {
+      throw new Error(t`This database does not support pivot tables.`);
     }
   }
 

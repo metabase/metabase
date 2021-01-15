@@ -111,7 +111,7 @@ type Props = {
 type State = {
   series: ?Series,
   visualization: ?(React.Component<void, VisualizationSettings, void> & {
-    checkRenderable: (any, any) => void,
+    checkRenderable: (any, any, any) => void,
     noHeader: boolean,
   }),
   computedSettings: VisualizationSettings,
@@ -416,7 +416,7 @@ export default class Visualization extends React.PureComponent {
       } else {
         try {
           if (visualization.checkRenderable) {
-            visualization.checkRenderable(series, settings);
+            visualization.checkRenderable(series, settings, this.props.query);
           }
         } catch (e) {
           error = e.message || t`Could not display this chart with this data.`;
