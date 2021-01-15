@@ -22,13 +22,16 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText("Settings").click();
     assertOnPivotSettings();
-    assertOnPivotTable();
+    cy.get(".Visualization").within(() => {
+      assertOnPivotFields();
+    });
   });
 
   it("should correctly display saved question", () => {
     createAndVisitTestQuestion();
-
-    assertOnPivotTable();
+    cy.get(".Visualization").within(() => {
+      assertOnPivotFields();
+    });
 
     // Open Pivot table side-bar
     cy.findByText("Settings").click();
@@ -233,16 +236,15 @@ function assertOnPivotSettings() {
     .contains("Count");
 }
 
-function assertOnPivotTable() {
+function assertOnPivotFields() {
   cy.log("**-- Implicit assertions on a table itself --**");
-  cy.get(".Visualization").within(() => {
-    cy.findByText(/Users? → Source/);
-    cy.findByText(/Row totals/i);
-    cy.findByText(/Grand totals/i);
-    cy.findByText("3,520");
-    cy.findByText("4,784");
-    cy.findByText("18,760");
-  });
+
+  cy.findByText(/Users? → Source/);
+  cy.findByText(/Row totals/i);
+  cy.findByText(/Grand totals/i);
+  cy.findByText("3,520");
+  cy.findByText("4,784");
+  cy.findByText("18,760");
 }
 
 // Rely on native drag events, rather than on the coordinates
