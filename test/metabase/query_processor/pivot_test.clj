@@ -95,7 +95,7 @@
        :pivot-cols []})))
 
 (deftest allow-snake-case-test
-  (testing "make sure the stuff works with either normal lisp-case keys or snake case. It should only ever see lisp-case"
+  (testing "make sure the stuff works with either normal lisp-case keys or snake_case"
     (is (= (mt/rows (pivot/run-pivot-query (test-query)))
            (mt/rows (pivot/run-pivot-query (set/rename-keys (test-query)
                                                             {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
