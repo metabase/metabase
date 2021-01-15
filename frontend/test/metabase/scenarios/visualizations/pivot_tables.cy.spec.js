@@ -185,6 +185,121 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.wait("@dataset");
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
+
+  describe("sharing", () => {
+    beforeEach(() => {
+      cy.log("**--1. Create a question--**");
+      cy.request("POST", "/api/card", {
+        name: QUESTION_NAME,
+        dataset_query: testQuery,
+        display: "pivot",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.log("**--1a. Enable sharing--**");
+        cy.request("POST", `/api/card/${QUESTION_ID}/public_link`);
+
+        cy.log("**--1b. Enable embedding--**");
+        cy.request("PUT", `/api/card/${QUESTION_ID}`, {
+          enable_embedding: true,
+        });
+
+        cy.log("**--2. Create new dashboard--**");
+        cy.request("POST", "/api/dashboard", {
+          name: "Pivot table dashboard",
+        }).then(({ body: { id: DASHBOARD_ID } }) => {
+          cy.log("**--Add previously created question to that dashboard--**");
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            cy.log("**--Resize the dashboard card--**");
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 12,
+                  sizeY: 8,
+                },
+              ],
+            });
+          });
+
+          cy.log("**--2a. Enable sharing--**");
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/public_link`);
+
+          cy.log("**--2b. Enable embedding--**");
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+            enable_embedding: true,
+          });
+        });
+        cy.visit(`/question/${QUESTION_ID}`);
+      });
+    });
+
+    describe("question", () => {
+      beforeEach(() => {
+        cy.visit("/collection/root");
+        cy.findByText(QUESTION_NAME).click();
+        cy.get(".Icon-share").click();
+      });
+      it("should display pivot table in a public link", () => {
+        cy.findByText("Public link")
+          .parent()
+          .find("input")
+          .invoke("val")
+          .then($value => {
+            const SANITIZED_URL = $value.replace(
+              /https?:\/\/localhost:\d*/,
+              "",
+            );
+            cy.visit(SANITIZED_URL);
+          });
+        cy.findByText(QUESTION_NAME);
+        assertOnPivotFields();
+      });
+
+      it("should display pivot table in an embed preview", () => {
+        cy.findByText("Embed this question in an application").click();
+
+        cy.findByText(QUESTION_NAME);
+        assertOnPivotFields();
+      });
+    });
+
+    describe("dashboard", () => {
+      beforeEach(() => {
+        cy.visit("collection/root");
+        cy.findByText("Pivot table dashboard").click();
+        cy.get(".Icon-share").click();
+        cy.findByText("Sharing and embedding").click();
+      });
+
+      it("should display pivot table in a public link", () => {
+        cy.findByText("Public link")
+          .parent()
+          .find("input")
+          .invoke("val")
+          .then($value => {
+            const SANITIZED_URL = $value.replace(
+              /https?:\/\/localhost:\d*/,
+              "",
+            );
+            cy.visit(SANITIZED_URL);
+          });
+        cy.findByText("Pivot table dashboard");
+        assertOnPivotFields();
+      });
+
+      it("should display pivot table in an embed preview", () => {
+        cy.findByText("Embed this dashboard in an application").click();
+
+        cy.findByText("Pivot table dashboard");
+        assertOnPivotFields();
+      });
+    });
+  });
 });
 
 const testQuery = {
