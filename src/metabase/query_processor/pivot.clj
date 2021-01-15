@@ -84,13 +84,6 @@
         ;; bottom right corner [_ _ _ _] => 1111 => Group #15
         [[]]))))))
 
-(defn- generate-specified-breakouts
-  "Generate breakouts specified by pivot_rows"
-  [breakouts pivot-rows pivot-cols]
-  (for [combo (breakout-combinations (count breakouts) pivot-rows pivot-cols)]
-    (for [i combo]
-      (nth breakouts i))))
-
 (defn add-grouping-field
   "Add the grouping field and expression to the query"
   [query breakout bitmask]
