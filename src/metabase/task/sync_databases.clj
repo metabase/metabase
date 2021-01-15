@@ -249,7 +249,7 @@
   [database]
   (if-let [randomized-schedules (randomized-schedules database)]
     (u/prog1 (merge database randomized-schedules)
-             (db/update! Database (u/id database) randomized-schedules))
+      (db/update! Database (u/the-id database) randomized-schedules))
     database))
 
 (defmethod task/init! ::SyncDatabases
