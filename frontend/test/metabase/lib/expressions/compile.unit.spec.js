@@ -112,4 +112,95 @@ describe("metabase/lib/expressions/compile", () => {
       });
     });
   });
+
+  function mockResolve(kind, name) {
+    return [kind, name];
+  }
+  function compileSource(source, startRule) {
+    let mbql = null;
+    try {
+      mbql = compile({ source, startRule, resolve: mockResolve });
+    } catch (e) {
+      let err = e;
+      if (err.length && err.length > 0) {
+        err = err[0];
+        if (typeof err.message === "string") {
+          err = err.message;
+        }
+      }
+      throw err;
+    }
+    return mbql;
+  }
+
+  describe("(for an expression)", () => {
+    function expr(source) {
+      return compileSource(source, "expression");
+    }
+    it("should compile literals", () => {
+      expect(expr("42")).toEqual(42);
+      expect(expr("'Universe'")).toEqual("Universe");
+    });
+    it("should compile dimensions", () => {
+      expect(expr("[Price]")).toEqual(["dimension", "Price"]);
+      expect(expr("([X])")).toEqual(["dimension", "X"]);
+    });
+    it("should compile arithmetic operations", () => {
+      expect(expr("1+2")).toEqual(["+", 1, 2]);
+      expect(expr("3-4")).toEqual(["-", 3, 4]);
+      expect(expr("5*6")).toEqual(["*", 5, 6]);
+      expect(expr("7/8")).toEqual(["/", 7, 8]);
+    });
+    it("should compile comparisons", () => {
+      expect(expr("1<2")).toEqual(["<", 1, 2]);
+      expect(expr("3>4")).toEqual([">", 3, 4]);
+      expect(expr("5<=6")).toEqual(["<=", 5, 6]);
+      expect(expr("7>=8")).toEqual([">=", 7, 8]);
+      expect(expr("9=9")).toEqual(["=", 9, 9]);
+      expect(expr("9!=0")).toEqual(["!=", 9, 0]);
+    });
+    it("should handle parenthesized expression", () => {
+      expect(expr("(42)")).toEqual(42);
+      expect(expr("((43))")).toEqual(43);
+      expect(expr("('Universe')")).toEqual("Universe");
+      expect(expr("(('Answer'))")).toEqual("Answer");
+      expect(expr("(1+2)")).toEqual(["+", 1, 2]);
+      expect(expr("(1+2)/3")).toEqual(["/", ["+", 1, 2], 3]);
+      expect(expr("4-(5*6)")).toEqual(["-", 4, ["*", 5, 6]]);
+    });
+  });
+
+  describe("(for a filter)", () => {
+    function filter(source) {
+      return compileSource(source, "boolean");
+    }
+    it("should compile logical operations", () => {
+      expect(filter("NOT A")).toEqual(["not", ["segment", "A"]]);
+      expect(filter("NOT 0")).toEqual(["not", 0]);
+      expect(filter("NOT NOT 0")).toEqual(["not", ["not", 0]]);
+      expect(filter("1 OR 2")).toEqual(["or", 1, 2]);
+      expect(filter("2 AND 3")).toEqual(["and", 2, 3]);
+      expect(filter("1 OR 2 AND 3")).toEqual(["or", 1, ["and", 2, 3]]);
+      expect(filter("NOT 4 OR 5")).toEqual(["or", ["not", 4], 5]);
+    });
+    it("should compile comparisons", () => {
+      expect(filter("Tax>5")).toEqual([">", ["dimension", "Tax"], 5]);
+      expect(filter("X=0")).toEqual(["=", ["dimension", "X"], 0]);
+    });
+    it("should compile segments", () => {
+      expect(filter("[Expensive]")).toEqual(["segment", "Expensive"]);
+      expect(filter("NOT [Good]")).toEqual(["not", ["segment", "Good"]]);
+    });
+  });
+
+  describe("(for an aggregation)", () => {
+    function aggr(source) {
+      return compileSource(source, "aggregation");
+    }
+    it("should handle metric vs dimension vs segment", () => {
+      expect(aggr("[TotalOrder]")).toEqual(["metric", "TotalOrder"]);
+      expect(aggr("AVERAGE(X)")).toEqual(["avg", ["dimension", "X"]]);
+      expect(aggr("COUNTIF(Y)")).toEqual(["count-where", ["segment", "Y"]]);
+    });
+  });
 });
