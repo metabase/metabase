@@ -159,7 +159,13 @@ export default class PivotTable extends Component {
     this.topGrid && this.topGrid.recomputeGridSize();
     this.leftList && this.leftList.recomputeRowHeights();
 
-    const { settings, data, width, height } = this.props;
+    const {
+      settings,
+      data,
+      width,
+      height,
+      onUpdateVisualizationSettings,
+    } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
     }
@@ -197,14 +203,16 @@ export default class PivotTable extends Component {
       topIndex,
       leftIndex,
       topIndexFormatters,
-      leftIndexFormatters,
       getRowSection,
       rowCount,
       columnCount,
     } = pivoted;
-    const topHeaderHeight = (columnIndexes.length || 1) * CELL_HEIGHT;
+
+    const topHeaderHeight = (topIndex[0].length || 1) * CELL_HEIGHT;
     const leftHeaderWidth =
-      LEFT_HEADER_LEFT_SPACING + rowIndexes.length * LEFT_HEADER_CELL_WIDTH;
+      rowIndexes.length > 0
+        ? LEFT_HEADER_LEFT_SPACING + rowIndexes.length * LEFT_HEADER_CELL_WIDTH
+        : 0;
 
     function columnWidth({ index }) {
       if (topIndex.length === 0) {
@@ -214,14 +222,16 @@ export default class PivotTable extends Component {
       return indexItem[indexItem.length - 1].length * CELL_WIDTH;
     }
 
+    function getSpan(children) {
+      return children.length === 0
+        ? 1
+        : children.reduce((sum, child) => sum + getSpan(child.children), 0);
+    }
     function rowHeight({ index }) {
       if (leftIndex.length === 0) {
         return CELL_HEIGHT;
       }
-      const span = leftIndex[index].reduce(
-        (sum, row) => row[0][0].span + sum,
-        0,
-      );
+      const span = getSpan(leftIndex[index]);
       return span * CELL_HEIGHT;
     }
 
@@ -265,67 +275,14 @@ export default class PivotTable extends Component {
         <div
           key={key}
           style={style}
-          className="flex flex-column border-right border-medium"
+          className="border-right border-medium bg-light"
         >
-          {leftIndex[index].map((row, rowIndex) => (
-            <div
-              className="flex"
-              style={{ height: row[0][0].span * CELL_HEIGHT }}
-            >
-              {row.map((col, index) =>
-                col[0].isSubtotal ? (
-                  <Cell
-                    value={col[0].value}
-                    isSubtotal
-                    isGrandTotal={col[0].isGrandTotal}
-                    style={{
-                      paddingLeft: LEFT_HEADER_LEFT_SPACING,
-                      width: leftHeaderWidth,
-                    }}
-                    icon={
-                      !col[0].isGrandTotal && (
-                        <RowToggleIcon
-                          value={col[0].rawValue}
-                          settings={this.props.settings}
-                          updateSettings={
-                            this.props.onUpdateVisualizationSettings
-                          }
-                          hideUnlessCollapsed
-                        />
-                      )
-                    }
-                  />
-                ) : (
-                  <div
-                    className="flex flex-column bg-light flex-basis-none flex-full"
-                    style={{
-                      paddingLeft: index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
-                    }}
-                  >
-                    {col.map(({ value, span = 1, isSubtotal }) => (
-                      <Cell
-                        value={leftIndexFormatters[index](value)}
-                        isSubtotal={isSubtotal}
-                        height={span}
-                        icon={
-                          index === 0 &&
-                          rowIndex === 0 &&
-                          row.length > 1 && (
-                            <RowToggleIcon
-                              value={value}
-                              settings={this.props.settings}
-                              updateSettings={
-                                this.props.onUpdateVisualizationSettings
-                              }
-                            />
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
-                ),
-              )}
-            </div>
+          {(leftIndex[index] || []).map(item => (
+            <LeftHeaderSection
+              item={item}
+              settings={settings}
+              onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+            />
           ))}
         </div>
       ),
@@ -458,7 +415,7 @@ function RowToggleIcon({
   hideUnlessCollapsed,
 }) {
   const setting = settings[COLLAPSED_ROWS_SETTING] || [];
-  const rowRef = JSON.stringify([value]);
+  const rowRef = JSON.stringify(value);
   const isCollapsed = setting.includes(rowRef);
   if (hideUnlessCollapsed && !isCollapsed) {
     // subtotal rows shouldn't have an icon unless the section is collapsed
@@ -480,6 +437,54 @@ function RowToggleIcon({
       onClick={update}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
+    </div>
+  );
+}
+
+function LeftHeaderSection({
+  item: { value, rawValue, isSubtotal, isGrandTotal, children },
+  settings,
+  onUpdateVisualizationSettings,
+  valuePath = [],
+  depth = 0,
+}) {
+  valuePath = [...valuePath, rawValue];
+  return (
+    <div className="flex justify-between">
+      {value === null ? null : (
+        <Cell
+          value={value}
+          isSubtotal={isSubtotal}
+          isGrandTotal={isGrandTotal}
+          baseWidth={LEFT_HEADER_CELL_WIDTH}
+          width={isSubtotal ? undefined : 1}
+          className={isSubtotal ? "flex-full" : ""}
+          style={{
+            ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
+          }}
+          icon={
+            (isSubtotal || children.length > 1) && (
+              <RowToggleIcon
+                value={valuePath}
+                settings={settings}
+                updateSettings={onUpdateVisualizationSettings}
+                hideUnlessCollapsed={isSubtotal}
+              />
+            )
+          }
+        />
+      )}
+      <div className="flex flex-column">
+        {children.map(child => (
+          <LeftHeaderSection
+            item={child}
+            depth={depth + 1}
+            valuePath={valuePath}
+            settings={settings}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          />
+        ))}
+      </div>
     </div>
   );
 }
