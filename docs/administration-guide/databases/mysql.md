@@ -7,4 +7,11 @@ Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The
 If you're still experiencing problems connecting, please refer to the [troubleshooting guide](../../troubleshooting-guide/datawarehouse.html#mysql-unable-to-log-in-with-correct-credentials).
 
 ### Raising a MySQL Docker container of MySQL 8+
-If you are spinning up a new MySQL container and you want Metabase to connect to it without having to manually create the user or change the authentication mechanism, or you are facing the `RSA public key is not available client side (option serverRsaPublicKeyFile not set)` error, use the `['--sql_mode=', '--default-authentication-plugin=mysql_native_password']` modifiers when you are running the container. This will ensure that the root user and the user you create keep using the `mysql_native_password` authentication mechanism.
+
+If you are spinning up a new MySQL container, and
+
+ - you want Metabase to connect to the container without having to manually create the user or change the authentication mechanism,
+ - or you're facing a `RSA public key is not available client side (option serverRsaPublicKeyFile not set)` error,
+ 
+Use the `['--sql_mode=', '--default-authentication-plugin=mysql_native_password']` modifiers when you run the container, like so:
+ 
