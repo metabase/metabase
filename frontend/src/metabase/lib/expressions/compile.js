@@ -13,8 +13,9 @@ import { ExpressionCstVisitor, parse } from "./parser";
 class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   constructor(options) {
     super();
-    this._options = options;
     this.validateVisitor();
+    const resolve = (kind, name) => [kind, name];
+    this.resolve = options.resolve ? options.resolve : resolve;
   }
 
   any(ctx) {
@@ -89,26 +90,7 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
 
   dimensionExpression(ctx) {
     const name = this.visit(ctx.dimensionName);
-    if (ctx.resolveAs === "metric") {
-      const metric = parseMetric(name, this._options);
-      if (!metric) {
-        throw new Error(`Unknown Metric: ${name}`);
-      }
-      return ["metric", metric.id];
-    } else if (ctx.resolveAs === "segment") {
-      const segment = parseSegment(name, this._options);
-      if (!segment) {
-        throw new Error(`Unknown Segment: ${name}`);
-      }
-      return ["segment", segment.id];
-    } else {
-      // fallback
-      const dimension = parseDimension(name, this._options);
-      if (!dimension) {
-        throw new Error(`Unknown Field: ${name}`);
-      }
-      return dimension.mbql();
-    }
+    return this.resolve(ctx.resolveAs, name);
   }
 
   identifier(ctx) {
@@ -159,7 +141,30 @@ export function compile({ cst, ...options }) {
   if (!cst) {
     ({ cst } = parse(options));
   }
-  const vistor = new ExpressionMBQLCompilerVisitor(options);
+  function resolveMBQLField(kind, name) {
+    if (kind === "metric") {
+      const metric = parseMetric(name, options);
+      if (!metric) {
+        throw new Error(`Unknown Metric: ${name}`);
+      }
+      return ["metric", metric.id];
+    } else if (kind === "segment") {
+      const segment = parseSegment(name, options);
+      if (!segment) {
+        throw new Error(`Unknown Segment: ${name}`);
+      }
+      return ["segment", segment.id];
+    } else {
+      // fallback
+      const dimension = parseDimension(name, options);
+      if (!dimension) {
+        throw new Error(`Unknown Field: ${name}`);
+      }
+      return dimension.mbql();
+    }
+  }
+  const resolve = options.resolve ? options.resolve : resolveMBQLField;
+  const vistor = new ExpressionMBQLCompilerVisitor({ ...options, resolve });
   return vistor.visit(cst);
 }
 
