@@ -448,19 +448,25 @@ describe("scenarios > question > filter", () => {
     cy.findByText(AGGREGATED_FILTER);
   });
 
+  // This issue (#14341) has two problematic parts. We're testing for both:
+
   it.skip("in a simple question should display popup for custom expression options (metabase#14341)", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
-    // This issue has two problematic parts. We're testing for both:
-    cy.log("**--1. Popover should display all custom expression options--**");
+    cy.log("** Popover should display all custom expression options--**");
     // Popover shows up even without explicitly clicking the contenteditable field
     popover().within(() => {
       cy.findAllByRole("listitem").contains(/functions/i);
     });
+  });
 
-    cy.log("**--2. Should not display error prematurely--**");
+  it("in a simple question should not show verbose error while typing (metabase#14341)", () => {
+    openProductsTable();
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.log("** Should not display error prematurely--**");
     cy.get("[contenteditable='true']")
       .click()
       .type("contains(");
