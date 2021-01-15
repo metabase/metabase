@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -19,17 +19,23 @@ const partitions = [
   {
     name: "rows",
     columnFilter: isDimension,
-    title: t`Fields to use for the table rows`,
+    title: jt`Fields to use for the table ${(
+      <span className="text-dark text-heavy">rows</span>
+    )}`,
   },
   {
     name: "columns",
     columnFilter: isDimension,
-    title: t`Fields to use for the table columns`,
+    title: jt`Fields to use for the table ${(
+      <span className="text-dark text-heavy">columns</span>
+    )}`,
   },
   {
     name: "values",
     columnFilter: col => !isDimension(col),
-    title: t`Fields to use for the table values`,
+    title: jt`Fields to use for the table ${(
+      <span className="text-dark text-heavy">values</span>
+    )}`,
   },
 ];
 
