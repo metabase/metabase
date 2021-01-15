@@ -133,33 +133,33 @@
 
 (deftest collection-tree-test
   (testing "GET /api/collection/tree"
-    (with-collection-hierarchy [a b c d e f g]
-      (let [ids      (set (map :id (cons (collection/user->personal-collection (mt/user->id :rasta))
-                                         [a b c d e f g])))
-            response (mt/user-http-request :rasta :get 200 "collection/tree")]
-        (testing "Make sure overall tree shape of the response is as is expected"
-          (is (= [{:name     "A"
-                   :children [{:name "B"}
-                              {:name     "C"
-                               :children [{:name     "D"
-                                           :children [{:name "E"}]}
-                                           {:name     "F"
-                                           :children [{:name "G"}]}]}]}
-                  {:name "Rasta Toucan's Personal Collection"}]
-                 (collection-tree-names-only ids response))))
-        (testing "Make sure each Collection comes back with the expected keys"
-          (is (= {:description       nil
-                  :archived          false
-                  :slug              "rasta_toucan_s_personal_collection"
-                  :color             "#31698A"
-                  :name              "Rasta Toucan's Personal Collection"
-                  :personal_owner_id (mt/user->id :rasta)
-                  :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
-                  :location          "/"
-                  :namespace         nil}
-                 (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
-                          %)
-                       response))))))))
+    (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
+      (with-collection-hierarchy [a b c d e f g]
+        (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
+              response (mt/user-http-request :rasta :get 200 "collection/tree")]
+          (testing "Make sure overall tree shape of the response is as is expected"
+            (is (= [{:name     "A"
+                     :children [{:name "B"}
+                                {:name     "C"
+                                 :children [{:name     "D"
+                                             :children [{:name "E"}]}
+                                            {:name     "F"
+                                             :children [{:name "G"}]}]}]}
+                    {:name "Rasta Toucan's Personal Collection"}]
+                   (collection-tree-names-only ids response))))
+          (testing "Make sure each Collection comes back with the expected keys"
+            (is (= {:description       nil
+                    :archived          false
+                    :slug              "rasta_toucan_s_personal_collection"
+                    :color             "#31698A"
+                    :name              "Rasta Toucan's Personal Collection"
+                    :personal_owner_id (mt/user->id :rasta)
+                    :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                    :location          "/"
+                    :namespace         nil}
+                   (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
+                            %)
+                         response)))))))))
 
 (deftest collection-tree-child-permissions-test
   (testing "GET /api/collection/tree"
