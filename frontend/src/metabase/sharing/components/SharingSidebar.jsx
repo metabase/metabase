@@ -260,9 +260,9 @@ class SharingSidebar extends React.Component {
     cleanedPulse.name = dashboard.name;
     await this.props.updateEditingPulse(cleanedPulse);
 
-    await this.props.saveEditingPulse();
-
+    // The order below matters; it hides the "Done" button faster and prevents two pulses from being made if it's double-clicked
     this.setState({ editingMode: "list-pulses" });
+    await this.props.saveEditingPulse();
   };
 
   createSubscription = () => {
