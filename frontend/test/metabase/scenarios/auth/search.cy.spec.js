@@ -6,7 +6,7 @@ import {
 } from "__support__/cypress";
 
 describe("scenarios > auth > search", () => {
-  before(restore);
+  beforeEach(restore);
 
   describe("universal search", () => {
     it("should work for admin", () => {

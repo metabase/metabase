@@ -1,8 +1,10 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("scenarios > reference > databases", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should see the listing", () => {
     cy.visit("/reference/databases");

@@ -1,8 +1,10 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("scenarios > question > data reference sidebar", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should load needed data", () => {
     cy.visit("/question/new");

@@ -1,8 +1,10 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("scenarios > question > loading behavior", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should preload tables on the new question page", () => {
     cy.server();

@@ -25,7 +25,7 @@ function filterDashboard(suggests = true) {
 }
 
 describe("support > permissions (metabase#8472)", () => {
-  before(() => {
+  beforeEach(() => {
     restore();
     signIn("admin");
 
@@ -48,7 +48,6 @@ describe("support > permissions (metabase#8472)", () => {
   });
 
   it("should allow an admin user to select the filter", () => {
-    signIn("admin");
     filterDashboard();
   });
 

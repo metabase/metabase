@@ -1,9 +1,8 @@
 import { signInAsAdmin, restore, popover, modal } from "__support__/cypress";
 
 describe("scenarios > admin > databases > edit", () => {
-  before(restore);
-
   beforeEach(() => {
+    restore();
     signInAsAdmin();
     cy.server();
     cy.route("GET", "/api/database/*").as("databaseGet");
@@ -65,13 +64,23 @@ describe("scenarios > admin > databases > edit", () => {
   });
 
   describe("Scheduling tab", () => {
+    beforeEach(() => {
+      // Turn on scheduling without relying on the previous test(s)
+      cy.request("PUT", "/api/database/1", {
+        details: {
+          "let-user-control-scheduling": true,
+        },
+        engine: "h2",
+      });
+    });
+
     it("shows the initial scheduling settings correctly", () => {
       cy.visit("/admin/databases/1");
 
       cy.findByText("Scheduling").click();
 
       cy.findByText("Database syncing")
-        .parent()
+        .closest(".Form-field")
         .findByText("Hourly");
 
       cy.findByText("Regularly, on a schedule")
@@ -85,7 +94,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.findByText("Scheduling").click();
 
       cy.findByText("Database syncing")
-        .parent()
+        .closest(".Form-field")
         .as("sync");
 
       cy.get("@sync")

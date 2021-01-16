@@ -6,8 +6,10 @@ import {
 } from "__support__/cypress";
 
 describe("scenarios > question > settings", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   describe("column settings", () => {
     it("should allow you to remove a column and add two foreign columns", () => {
