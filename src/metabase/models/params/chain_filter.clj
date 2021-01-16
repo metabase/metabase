@@ -439,12 +439,10 @@
 (s/defn ^:private human-readable-remapping-map :- (s/maybe HumanReadableRemappingMap)
   [field-id :- su/IntGreaterThanZero]
   (when-let [{orig :values, remapped :human_readable_values} (db/select-one [FieldValues :values :human_readable_values]
-                                                               {:where [:and
-                                                                        [:= :field_id field-id]
-                                                                        [:not= :human_readable_values nil]
-                                                                        [:not= :human_readable_values "{}"]]})]
-    (when (seq remapped)
-      (zipmap orig remapped))))
+                                                               :field_id field-id)]
+    ;; if there are no remappings, we can still just str the values. if there are remappings there necessarily are all
+    ;; present and in the same order as orig
+    (zipmap orig (if (seq remapped) remapped (map str orig)))))
 
 (s/defn ^:private add-human-readable-values
   "Convert result `values` (a sequence of single values) to a sequence of `[v human-readable]` pairs by finding the
