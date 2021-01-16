@@ -39,6 +39,9 @@ describe("scenarios > pulse", () => {
 
     cy.contains("Select a question").click();
     cy.contains("Orders, Count").click();
+    cy.findByPlaceholderText("Enter user names or email addresses")
+      .type("bobby@example.test")
+      .blur();
 
     // pulse card preview
     cy.contains("18,760");
@@ -51,7 +54,6 @@ describe("scenarios > pulse", () => {
 
   describe("existing pulses", () => {
     beforeEach(() => {
-      cy.server();
       // Create new pulse without relying on the previous test
       cy.request("POST", "/api/pulse", {
         name: "pulse title",
@@ -61,7 +63,7 @@ describe("scenarios > pulse", () => {
             channel_type: "email",
             details: {},
             enabled: true,
-            recipients: [],
+            recipients: [{ email: "bobby@example.test" }],
             schedule_day: "mon",
             schedule_frame: "first",
             schedule_hour: 8,
@@ -80,7 +82,8 @@ describe("scenarios > pulse", () => {
 
     it("should edit existing pulses", () => {
       cy.visit("/pulse/1");
-      cy.get('[placeholder="Important metrics"]')
+      cy.findByPlaceholderText("Important metrics")
+        .click()
         .clear()
         .type("new pulse title");
 
