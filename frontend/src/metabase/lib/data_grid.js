@@ -144,6 +144,7 @@ export function multiLevelPivot(
     topIndex,
     leftIndex,
     topIndexFormatters,
+    rowColumnTree,
     leftIndexFormatters,
     columnCount,
     rowCount,
@@ -300,7 +301,7 @@ function addSubtotal(item, [formatter, ...formatters]) {
       ? [
           {
             value: t`Totals for ${formatter(item.value)}`,
-            rawValue: item.value,
+            rawValue: item.rawValue,
             span: 1,
             isSubtotal: true,
             children: [],
