@@ -28,7 +28,7 @@ msgstr "探索数据"
 msgid "Select a database type"
 msgstr "选择数据库类型"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:254
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:253
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:175
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:428
 #: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:106
@@ -50,7 +50,7 @@ msgstr "保存"
 msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
 msgstr "为了做一些神奇的事情，Metabase 需要扫描你的数据库。我们将会定期扫描，来保持源数据是最新的。你也可以在周期的扫描之前，手工来控制扫描。"
 
-#: frontend/src/metabase/entities/databases/forms.js:307
+#: frontend/src/metabase/entities/databases/forms.js:306
 msgid "Database syncing"
 msgstr "数据库同步中"
 
@@ -65,7 +65,7 @@ msgstr "这是一个检查数据库模式变化的轻量级的过程，大部分
 msgid "Scan"
 msgstr "扫描"
 
-#: frontend/src/metabase/entities/databases/forms.js:314
+#: frontend/src/metabase/entities/databases/forms.js:313
 msgid "Scanning for Filter Values"
 msgstr "扫描过滤器值"
 
@@ -76,7 +76,7 @@ msgid "Metabase can scan the values present in each\n"
 "database."
 msgstr "Metabase 可以扫描数据库中每个字段的值, 用以启用查询或仪表板中的选择框过滤器. 当您的数据库较大时, 这可能是一个资源密集型的过程."
 
-#: frontend/src/metabase/entities/databases/forms.js:318
+#: frontend/src/metabase/entities/databases/forms.js:317
 msgid "When should Metabase automatically scan and cache field values?"
 msgstr "Metabase 应该在什么时候自动扫描缓存的字段值"
 
@@ -98,7 +98,7 @@ msgid "Never, I'll do this manually if I need to"
 msgstr "不用，如果需要我会手动执行"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:29
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:229
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:227
 #: frontend/src/metabase/components/ActionButton.jsx:52
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
 msgid "Saving..."
@@ -134,7 +134,7 @@ msgstr "删除"
 msgid "in this box:"
 msgstr "在这个框里:"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:247
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:246
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:77
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:66
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:49
@@ -159,11 +159,11 @@ msgstr "在这个框里:"
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:166
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:32
 #: frontend/src/metabase/dashboard/components/Sidebar.jsx:28
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:191
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:191
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:354
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:218
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:190
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:371
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:39
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:99
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:101
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:32
 #: frontend/src/metabase/reference/components/EditHeader.jsx:34
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:52
@@ -175,6 +175,7 @@ msgstr "取消"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:83
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:124
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:135
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:466
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:461
 msgid "Delete"
 msgstr "删除"
@@ -185,7 +186,7 @@ msgstr "删除"
 #: frontend/src/metabase/admin/permissions/selectors.js:348
 #: frontend/src/metabase/admin/permissions/selectors.js:459
 #: frontend/src/metabase/admin/routes.jsx:60
-#: frontend/src/metabase/nav/containers/Navbar.jsx:221
+#: frontend/src/metabase/nav/containers/Navbar.jsx:131
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:18
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:21
 msgid "Databases"
@@ -208,9 +209,9 @@ msgstr "调度"
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:62
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:80
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:28
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:228
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:184
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:356
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:226
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:211
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:373
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:47
 msgid "Save changes"
 msgstr "保存修改"
@@ -259,7 +260,7 @@ msgid "Scan triggered!"
 msgstr "扫描已触发！"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:233
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:400
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:417
 msgid "Danger Zone"
 msgstr "危险地带"
 
@@ -309,7 +310,7 @@ msgstr "加载中…"
 msgid "Bring the sample dataset back"
 msgstr "恢复样本数据集"
 
-#: frontend/src/metabase/admin/databases/database.js:167
+#: frontend/src/metabase/admin/databases/database.js:168
 msgid "Couldn't connect to the database. Please check the connection details."
 msgstr "无法连接到数据库。 请检查连接的详细信息。"
 
@@ -386,7 +387,7 @@ msgid "No special type"
 msgstr "无指定类型"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem.jsx:188
-#: frontend/src/metabase/lib/core.js:290
+#: frontend/src/metabase/lib/core.js:310
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:16
 #: frontend/src/metabase/reference/components/Field.jsx:57
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:37
@@ -403,17 +404,17 @@ msgstr "选择指定类型"
 msgid "Select a target"
 msgstr "选择目标"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:843
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:155
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:846
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:156
 #: frontend/src/metabase/query_builder/components/notebook/steps/FieldsPicker.jsx:23
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:83
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:95
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:126
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:163
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:82
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:94
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:125
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:162
 msgid "Columns"
 msgstr "字段"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:479
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:482
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList.jsx:109
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchema.jsx:46
 msgid "Column"
@@ -500,7 +501,7 @@ msgstr "查找表格"
 msgid "Schemas"
 msgstr "表结构"
 
-#: frontend/src/metabase-lib/lib/queries/StructuredQuery.js:830
+#: frontend/src/metabase-lib/lib/queries/StructuredQuery.js:833
 #: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:40
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp.jsx:39
 #: frontend/src/metabase/home/containers/SearchApp.jsx:67
@@ -826,7 +827,7 @@ msgstr "这将显示在过滤器的修订历史记录中，以帮助每个人记
 #: frontend/src/metabase/admin/routes.jsx:137
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:216
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:94
-#: frontend/src/metabase/nav/containers/Navbar.jsx:203
+#: frontend/src/metabase/nav/containers/Navbar.jsx:113
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:18
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:94
 #: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:201
@@ -964,12 +965,12 @@ msgstr "移除分组"
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:41
 #: frontend/src/metabase/components/HeaderModal.jsx:43
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:281
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:657
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:658
 #: frontend/src/metabase/dashboard/components/Sidebar.jsx:37
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:193
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:192
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:73
 #: frontend/src/metabase/query_builder/components/SidebarContent.jsx:17
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:113
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:115
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:334
 msgid "Done"
 msgstr "完成"
@@ -1015,7 +1016,7 @@ msgstr "停用"
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:21
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:94
 #: frontend/src/metabase/admin/routes.jsx:93
-#: frontend/src/metabase/nav/containers/Navbar.jsx:209
+#: frontend/src/metabase/nav/containers/Navbar.jsx:119
 msgid "People"
 msgstr "人员"
 
@@ -1179,7 +1180,7 @@ msgid " native queries for "
 msgstr "本地查询"
 
 #: frontend/src/metabase/admin/permissions/routes.jsx:14
-#: frontend/src/metabase/nav/containers/Navbar.jsx:227
+#: frontend/src/metabase/nav/containers/Navbar.jsx:137
 msgid "Permissions"
 msgstr "权限"
 
@@ -1345,7 +1346,7 @@ msgid "View schemas"
 msgstr "查看架构"
 
 #: frontend/src/metabase/admin/routes.jsx:66
-#: frontend/src/metabase/nav/containers/Navbar.jsx:215
+#: frontend/src/metabase/nav/containers/Navbar.jsx:125
 msgid "Data Model"
 msgstr "数据模型"
 
@@ -1374,24 +1375,24 @@ msgid "Allows users within your LDAP directory to log in to Metabase with their 
 msgstr "允许LDAP目录中的用户使用他们的LDAP凭证登录到Metabase，并且允许自动同步LDAP组的数据到Metabase中来。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:76
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:74
 #: frontend/src/metabase/admin/settings/selectors.js:158
 msgid "That's not a valid email address"
 msgstr "这不是有效的电子邮件地址"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:23
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:80
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:78
 msgid "That's not a valid integer"
 msgstr "那不是一个有效的整数"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:30
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:164
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:230
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:228
 msgid "Changes saved!"
 msgstr "更改已保存！"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:180
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:139
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:137
 msgid "Looks like we ran into some problems"
 msgstr "看起来我们遇到了一些问题"
 
@@ -1469,15 +1470,15 @@ msgstr "你的Google客户端ID"
 msgid "Allow users to sign up on their own if their Google account email address is from:"
 msgstr "允许用户用他们自己的邮箱注册，如果他们的Google账户地址来自："
 
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:249
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:250
 msgid "Answers sent right to your Slack #channels"
 msgstr "答案发送到您的Slack #channels"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:258
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:259
 msgid "Create a Slack Bot User for MetaBot"
 msgstr "为MetaBot创建一个Slack Bot用户"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:269
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
 msgstr "进入后，请为其命名并单击{0}。然后将Bot API令牌复制并粘贴到下面的字段中。完成后，在Slack中创建“metabase_files”通道。Metabase需要这个来上传图表。"
 
@@ -1491,7 +1492,7 @@ msgstr "Metabase {0}可更新。你正在运行是{1}"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:41
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:113
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:115
 msgid "Update"
 msgstr "更新"
 
@@ -1504,10 +1505,10 @@ msgid "Add a map"
 msgstr "添加一个地图"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:188
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:123
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:562
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:599
-#: frontend/src/metabase/lib/core.js:282
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:124
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:563
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:600
+#: frontend/src/metabase/lib/core.js:302
 msgid "URL"
 msgstr "链接"
 
@@ -1517,11 +1518,11 @@ msgstr "删除自定义地图"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:207
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:337
-#: frontend/src/metabase/containers/Overworld.jsx:146
-#: frontend/src/metabase/containers/Overworld.jsx:293
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:303
+#: frontend/src/metabase/containers/Overworld.jsx:145
+#: frontend/src/metabase/containers/Overworld.jsx:296
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:302
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:124
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:126
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:160
 msgid "Remove"
 msgstr "删除"
@@ -1606,23 +1607,23 @@ msgstr "简单来说，当您在自己的应用程序中嵌入Metabase的图表�
 msgid "Enable"
 msgstr "启用"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:24
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:25
 msgid "Premium embedding enabled"
 msgstr "标准编辑已启用"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:26
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:27
 msgid "Enter the token you bought from the Metabase Store"
 msgstr "输入你从Metabase商店购买的token"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:53
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:54
 msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
 msgstr "高级嵌入允许您在嵌入式仪表板和问题上禁用“Powered by Metabase”。"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:60
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:61
 msgid "Buy a token"
 msgstr "购买 token"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:63
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:64
 msgid "Enter a token"
 msgstr "输入 token"
 
@@ -2112,7 +2113,7 @@ msgstr "用你的新密码登录"
 
 #: frontend/src/metabase/components/ActionButton.jsx:53
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:174
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:186
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:213
 msgid "Save failed"
 msgstr "保存失败"
 
@@ -2120,7 +2121,7 @@ msgstr "保存失败"
 #: frontend/src/metabase/components/SaveStatus.jsx:60
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:175
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:133
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:187
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:214
 msgid "Saved"
 msgstr "已保存"
 
@@ -2137,19 +2138,17 @@ msgid "The dashboards, collections, and pulses in this collection will also be a
 msgstr "此集合中的仪表板，集合和定时通知也将被归档。"
 
 #: enterprise/frontend/src/metabase-enterprise/snippets/components/CollectionOptionsButton.jsx:85
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:475
+#: frontend/src/metabase/collections/components/BulkActions.jsx:25
 #: frontend/src/metabase/components/ArchiveModal.jsx:40
 #: frontend/src/metabase/components/EntityMenu.info.js:32
 #: frontend/src/metabase/components/EntityMenu.info.js:88
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:338
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:50
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:196
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:201
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:202
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:223
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:228
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:229
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:58
-#: frontend/src/metabase/routes.jsx:198
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:480
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:481
+#: frontend/src/metabase/routes.jsx:197
 msgid "Archive"
 msgstr "归档"
 
@@ -2165,21 +2164,21 @@ msgstr "查看归档"
 msgid "Unarchive this {0}"
 msgstr "取消归档此{0}"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:46
-#: frontend/src/metabase/components/BrowseApp.jsx:112
-#: frontend/src/metabase/components/BrowseApp.jsx:204
-#: frontend/src/metabase/containers/Overworld.jsx:270
+#: frontend/src/metabase/browse/containers/DatabaseBrowser.jsx:21
+#: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:37
+#: frontend/src/metabase/browse/containers/TableBrowser.jsx:34
+#: frontend/src/metabase/containers/Overworld.jsx:273
 #: frontend/src/metabase/reference/databases/DatabaseList.jsx:48
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:39
 msgid "Our data"
 msgstr "我们的数据"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:156
+#: frontend/src/metabase/browse/containers/TableBrowser.jsx:74
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:53
 msgid "X-ray this table"
 msgstr "透视这个数据表单"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:171
+#: frontend/src/metabase/browse/containers/TableBrowser.jsx:89
 msgid "Learn about this table"
 msgstr "了解这张数据表"
 
@@ -2270,7 +2269,7 @@ msgstr "问题是对保存的数据查看。"
 msgid "Pins"
 msgstr "固定"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:299
+#: frontend/src/metabase/collections/components/PinnedItems.jsx:49
 msgid "Drag something here to pin it to the top"
 msgstr "把东西拖到这里将它固定在顶部"
 
@@ -2279,24 +2278,24 @@ msgstr "把东西拖到这里将它固定在顶部"
 msgid "Collections"
 msgstr "集合"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:370
+#: frontend/src/metabase/collections/components/ItemList.jsx:103
 msgid "Drag here to un-pin"
 msgstr "拖到这里取消固定"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:398
+#: frontend/src/metabase/collections/components/BulkActions.jsx:84
 msgid "{0} item selected"
 msgid_plural "{0} items selected"
 msgstr[0] "已选择{0}项"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:434
+#: frontend/src/metabase/collections/components/BulkActions.jsx:111
 msgid "Move {0} items?"
 msgstr "移动{0}项？"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:435
+#: frontend/src/metabase/collections/components/BulkActions.jsx:112
 msgid "Move \"{0}\"?"
 msgstr "移动“{0}”？"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:482
+#: frontend/src/metabase/collections/components/BulkActions.jsx:32
 #: frontend/src/metabase/components/EntityMenu.info.js:30
 #: frontend/src/metabase/components/EntityMenu.info.js:86
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:69
@@ -2305,11 +2304,11 @@ msgstr "移动“{0}”？"
 msgid "Move"
 msgstr "移动"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:514
+#: frontend/src/metabase/collections/components/CollectionEditMenu.jsx:16
 msgid "Edit this collection"
 msgstr "修改集合"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:522
+#: frontend/src/metabase/collections/components/CollectionEditMenu.jsx:24
 msgid "Archive this collection"
 msgstr "归档集合"
 
@@ -2318,7 +2317,7 @@ msgstr "归档集合"
 msgid "My personal collection"
 msgstr "我的个人集合"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:227
+#: frontend/src/metabase/collections/components/Header.jsx:68
 #: frontend/src/metabase/components/CollectionList.jsx:107
 msgid "New collection"
 msgstr "新建集合"
@@ -2339,7 +2338,7 @@ msgstr "一些数据库安装只有通过SSH通道访问的服务器有权访问
 "当VPN不可用时，这个选项也提供了一个额外的安全层。\n"
 "启用这个选项，通常比直接连接速度更慢。"
 
-#: frontend/src/metabase/entities/databases/forms.js:291
+#: frontend/src/metabase/entities/databases/forms.js:290
 msgid "This is a large database, so let me choose when Metabase syncs and scans"
 msgstr "这是一个大型数据库，让我选择Metabase同步和扫描的时间"
 
@@ -2384,12 +2383,11 @@ msgid "How would you like to refer to this database?"
 msgstr "您想如何使用这个数据库？"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:187
-#: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:97
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:236
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:143
 #: frontend/src/metabase/setup/components/DatabaseSchedulingStep.jsx:70
 #: frontend/src/metabase/setup/components/LanguageStep.jsx:96
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:126
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:128
 #: frontend/src/metabase/setup/components/UserStep.jsx:93
 msgid "Next"
 msgstr "下一个"
@@ -2449,8 +2447,7 @@ msgstr "下载结果"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:52
 #: frontend/src/metabase/components/EntityMenu.info.js:104
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:73
-#: frontend/src/metabase/dashboard/containers/DashboardSharingEmbeddingModal.jsx:59
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:93
 msgid "Sharing and embedding"
 msgstr "分享并且编辑"
 
@@ -2607,20 +2604,21 @@ msgstr "恢复失败"
 msgid "Reverted"
 msgstr "已恢复"
 
-#: frontend/src/metabase/components/ItemTypeFilterBar.jsx:13
+#: frontend/src/metabase/collections/components/ItemList.jsx:35
+#: frontend/src/metabase/collections/components/ItemTypeFilterBar.jsx:13
 msgid "Everything"
 msgstr "所有的"
 
-#: frontend/src/metabase/components/ItemTypeFilterBar.jsx:18
+#: frontend/src/metabase/collections/components/ItemTypeFilterBar.jsx:18
 msgid "Dashboards"
 msgstr "仪表盘"
 
-#: frontend/src/metabase/components/ItemTypeFilterBar.jsx:23
+#: frontend/src/metabase/collections/components/ItemTypeFilterBar.jsx:23
 msgid "Questions"
 msgstr "问题"
 
-#: frontend/src/metabase/components/ItemTypeFilterBar.jsx:28
-#: frontend/src/metabase/routes.jsx:315
+#: frontend/src/metabase/collections/components/ItemTypeFilterBar.jsx:28
+#: frontend/src/metabase/routes.jsx:314
 msgid "Pulses"
 msgstr "定时任务"
 
@@ -2695,66 +2693,66 @@ msgid "Error:"
 msgstr "错误："
 
 #: frontend/src/metabase/admin/settings/selectors.js:242
-#: frontend/src/metabase/components/SchedulePicker.jsx:24
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:334
+#: frontend/src/metabase/components/SchedulePicker.jsx:29
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:315
 msgid "Sunday"
 msgstr "星期日"
 
 #: frontend/src/metabase/admin/settings/selectors.js:243
-#: frontend/src/metabase/components/SchedulePicker.jsx:25
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:322
+#: frontend/src/metabase/components/SchedulePicker.jsx:30
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:303
 msgid "Monday"
 msgstr "星期一"
 
 #: frontend/src/metabase/admin/settings/selectors.js:244
-#: frontend/src/metabase/components/SchedulePicker.jsx:26
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:324
+#: frontend/src/metabase/components/SchedulePicker.jsx:31
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:305
 msgid "Tuesday"
 msgstr "星期二"
 
 #: frontend/src/metabase/admin/settings/selectors.js:245
-#: frontend/src/metabase/components/SchedulePicker.jsx:27
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:326
+#: frontend/src/metabase/components/SchedulePicker.jsx:32
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:307
 msgid "Wednesday"
 msgstr "星期三"
 
 #: frontend/src/metabase/admin/settings/selectors.js:246
-#: frontend/src/metabase/components/SchedulePicker.jsx:28
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:328
+#: frontend/src/metabase/components/SchedulePicker.jsx:33
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:309
 msgid "Thursday"
 msgstr "星期四"
 
 #: frontend/src/metabase/admin/settings/selectors.js:247
-#: frontend/src/metabase/components/SchedulePicker.jsx:29
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:330
+#: frontend/src/metabase/components/SchedulePicker.jsx:34
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:311
 msgid "Friday"
 msgstr "星期五"
 
 #: frontend/src/metabase/admin/settings/selectors.js:248
-#: frontend/src/metabase/components/SchedulePicker.jsx:30
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:332
+#: frontend/src/metabase/components/SchedulePicker.jsx:35
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:313
 msgid "Saturday"
 msgstr "星期六"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:34
+#: frontend/src/metabase/components/SchedulePicker.jsx:39
 msgid "First"
 msgstr "第一个"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:35
+#: frontend/src/metabase/components/SchedulePicker.jsx:40
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:23
 msgid "Last"
 msgstr "过往"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:36
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:347
+#: frontend/src/metabase/components/SchedulePicker.jsx:41
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:328
 msgid "15th (Midpoint)"
 msgstr "第十五个（中位数）"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:126
+#: frontend/src/metabase/components/SchedulePicker.jsx:133
 msgid "Calendar Day"
 msgstr "日历日"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:211
+#: frontend/src/metabase/components/SchedulePicker.jsx:244
 msgid "your Metabase timezone"
 msgstr "你的Metabase时区"
 
@@ -2799,8 +2797,8 @@ msgstr "对不起，你没有权限看那些东西"
 msgid "Unknown error encountered"
 msgstr "未知错误发生了"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:210
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
+#: frontend/src/metabase/nav/containers/Navbar.jsx:261
 msgid "Create"
 msgstr "创建"
 
@@ -2808,7 +2806,7 @@ msgstr "创建"
 msgid "Create dashboard"
 msgstr "创建仪表盘"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:58
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:57
 msgid "Table"
 msgstr "表格"
 
@@ -2836,7 +2834,7 @@ msgstr "查看方式"
 msgid "of"
 msgstr "的"
 
-#: frontend/src/metabase/containers/Overworld.jsx:91
+#: frontend/src/metabase/containers/Overworld.jsx:90
 msgid "Don't tell anyone, but you're my favorite."
 msgstr "不要告诉任何人，但你是我的最爱。"
 
@@ -2844,19 +2842,19 @@ msgstr "不要告诉任何人，但你是我的最爱。"
 msgid "Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data."
 msgstr "一旦连接了自己的数据，我就可以向您展示一些称为透视的自动探索。以下是一些基于示例数据的例子。"
 
-#: frontend/src/metabase/containers/Overworld.jsx:180
-#: frontend/src/metabase/containers/Overworld.jsx:384
+#: frontend/src/metabase/containers/Overworld.jsx:179
+#: frontend/src/metabase/containers/Overworld.jsx:387
 msgid "Start here"
 msgstr "从这里开始"
 
 #: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:77
-#: frontend/src/metabase/containers/Overworld.jsx:379
+#: frontend/src/metabase/containers/Overworld.jsx:382
 #: frontend/src/metabase/entities/collections.js:165
 #: src/metabase/models/collection.clj
 msgid "Our analytics"
 msgstr "分析"
 
-#: frontend/src/metabase/containers/Overworld.jsx:248
+#: frontend/src/metabase/containers/Overworld.jsx:251
 msgid "Browse all items"
 msgstr "浏览所有"
 
@@ -2953,32 +2951,32 @@ msgstr "文档仪表盘"
 msgid "Make sure to make a selection for each series, or the filter won't work on this card."
 msgstr "确保为每个系列都做出了选择，不然筛选将不会在这个卡片上起作用"
 
-#: frontend/src/metabase/dashboard/components/Dashboard.jsx:327
+#: frontend/src/metabase/dashboard/components/Dashboard.jsx:329
 msgid "This dashboard is looking empty."
 msgstr "这个仪表盘看起来是空的"
 
-#: frontend/src/metabase/dashboard/components/Dashboard.jsx:328
+#: frontend/src/metabase/dashboard/components/Dashboard.jsx:330
 msgid "Add a question to start making it useful!"
 msgstr "添加一个疑问来让它变得有用"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:99
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
 msgid "Daytime mode"
 msgstr "白天模式"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:99
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
 msgid "Nighttime mode"
 msgstr "夜晚模式"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:117
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
 msgid "Exit fullscreen"
 msgstr "退出全屏"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:117
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
 msgid "Enter fullscreen"
 msgstr "进入全屏"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:173
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:185
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:212
 msgid "Saving…"
 msgstr "保存中"
 
@@ -2990,7 +2988,7 @@ msgstr "添加一个问题"
 msgid "Add a question to this dashboard"
 msgstr "添加报表到仪表盘"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:498
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:501
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:241
 msgid "Add a filter"
 msgstr "添加筛选"
@@ -3042,7 +3040,7 @@ msgstr "什么类型的筛选"
 #: frontend/src/metabase/dashboard/components/RefreshWidget.jsx:13
 #: frontend/src/metabase/visualizations/lib/settings/column.js:242
 #: frontend/src/metabase/visualizations/lib/settings/series.js:90
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:250
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:249
 msgid "Off"
 msgstr "关闭"
 
@@ -3086,7 +3084,7 @@ msgstr "移除这个疑问？"
 msgid "Your dashboard was saved"
 msgstr "你的仪表盘已经保存"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:554
+#: frontend/src/metabase/collections/components/CollectionCopyEntityModal.jsx:35
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:79
 msgid "See it"
 msgstr "查看它"
@@ -3304,12 +3302,12 @@ msgstr "{0}项已选择"
 
 #: enterprise/frontend/src/metabase-enterprise/snippets/components/CollectionOptionsButton.jsx:59
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:124
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:174
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:201
 #: frontend/src/metabase/query_builder/components/template_tags/snippet-sidebar/SnippetRow.jsx:89
 msgid "Unarchive"
 msgstr "取消归档"
 
-#: frontend/src/metabase/home/containers/HomepageApp.jsx:77
+#: frontend/src/metabase/home/containers/HomepageApp.jsx:54
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Activity"
 msgstr "活动"
@@ -3351,7 +3349,7 @@ msgstr "外键"
 msgid "Points to another table to make a connection."
 msgstr "选择另外一个表格做连接。"
 
-#: frontend/src/metabase/lib/core.js:272
+#: frontend/src/metabase/lib/core.js:292
 msgid "Avatar Image URL"
 msgstr "头像图片URL链接"
 
@@ -3377,15 +3375,15 @@ msgstr "城市"
 msgid "Country"
 msgstr "国家"
 
-#: frontend/src/metabase/lib/core.js:255
+#: frontend/src/metabase/lib/core.js:275
 msgid "Enum"
 msgstr "枚举"
 
-#: frontend/src/metabase/lib/core.js:277
+#: frontend/src/metabase/lib/core.js:297
 msgid "Image URL"
 msgstr "图片链接"
 
-#: frontend/src/metabase/lib/core.js:289
+#: frontend/src/metabase/lib/core.js:309
 msgid "Field containing JSON"
 msgstr "包含JSON的字段"
 
@@ -3409,11 +3407,11 @@ msgstr "数字"
 msgid "State"
 msgstr "州"
 
-#: frontend/src/metabase/lib/core.js:248
+#: frontend/src/metabase/lib/core.js:268
 msgid "UNIX Timestamp (Seconds)"
 msgstr "UNIX时间戳（秒）"
 
-#: frontend/src/metabase/lib/core.js:243
+#: frontend/src/metabase/lib/core.js:258
 msgid "UNIX Timestamp (Milliseconds)"
 msgstr "UNIX时间戳（毫秒）"
 
@@ -3446,7 +3444,7 @@ msgstr "创建时间"
 msgid "Creation date"
 msgstr "创建日期"
 
-#: frontend/src/metabase/lib/core.js:260
+#: frontend/src/metabase/lib/core.js:280
 msgid "Product"
 msgstr "产品"
 
@@ -3454,7 +3452,7 @@ msgstr "产品"
 msgid "User"
 msgstr "用户"
 
-#: frontend/src/metabase/lib/core.js:265
+#: frontend/src/metabase/lib/core.js:285
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:96
 msgid "Source"
 msgstr "来源"
@@ -3465,15 +3463,15 @@ msgstr "来源"
 msgid "Price"
 msgstr "价格"
 
-#: frontend/src/metabase/lib/core.js:238
+#: frontend/src/metabase/lib/core.js:253
 msgid "Join timestamp"
 msgstr "关联时间戳"
 
-#: frontend/src/metabase/lib/core.js:233
+#: frontend/src/metabase/lib/core.js:248
 msgid "Join time"
 msgstr "关联时间"
 
-#: frontend/src/metabase/lib/core.js:228
+#: frontend/src/metabase/lib/core.js:243
 msgid "Join date"
 msgstr "关联日期"
 
@@ -3526,23 +3524,23 @@ msgstr "毛利"
 msgid "Birthday"
 msgstr "生日"
 
-#: frontend/src/metabase/lib/core.js:300
+#: frontend/src/metabase/lib/core.js:320
 msgid "Search box"
 msgstr "搜索框"
 
-#: frontend/src/metabase/lib/core.js:301
+#: frontend/src/metabase/lib/core.js:321
 msgid "A list of all values"
 msgstr "一个所有值的列表"
 
-#: frontend/src/metabase/lib/core.js:302
+#: frontend/src/metabase/lib/core.js:322
 msgid "Plain input box"
 msgstr "文本框"
 
-#: frontend/src/metabase/lib/core.js:308
+#: frontend/src/metabase/lib/core.js:328
 msgid "Everywhere"
 msgstr "所有地方"
 
-#: frontend/src/metabase/lib/core.js:309
+#: frontend/src/metabase/lib/core.js:329
 msgid "The default setting. This field will be displayed normally in tables and charts."
 msgstr "默认设置。这个字段通常将会被展示在表单中和图表中。"
 
@@ -3550,7 +3548,7 @@ msgstr "默认设置。这个字段通常将会被展示在表单中和图表中
 msgid "Only in Detail Views"
 msgstr "只在细节视图中"
 
-#: frontend/src/metabase/lib/core.js:314
+#: frontend/src/metabase/lib/core.js:334
 msgid "This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart."
 msgstr "仅在查看单个记录的详细信息时才会显示此字段。将此用于冗长或在表格、图表中无用的信息。"
 
@@ -3618,12 +3616,12 @@ msgstr "最大"
 msgid "sad sad panda, lexing errors detected"
 msgstr "哎呀，出错了"
 
-#: frontend/src/metabase/lib/formatting.js:854
+#: frontend/src/metabase/lib/formatting.js:864
 msgid "{0} second"
 msgid_plural "{0} seconds"
 msgstr[0] "{0}秒"
 
-#: frontend/src/metabase/lib/formatting.js:857
+#: frontend/src/metabase/lib/formatting.js:867
 msgid "{0} minute"
 msgid_plural "{0} minutes"
 msgstr[0] "{0}分钟"
@@ -4151,23 +4149,23 @@ msgstr "是一个……的商标"
 msgid "and is built with care in San Francisco, CA"
 msgstr "并且它在加州，旧金山精心被打造"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:198
+#: frontend/src/metabase/nav/containers/Navbar.jsx:108
 msgid "Metabase Admin"
 msgstr "Metabase管理员"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:326
+#: frontend/src/metabase/nav/containers/Navbar.jsx:238
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:35
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:36
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:36
 msgid "Ask a question"
 msgstr "创建问题"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:215
+#: frontend/src/metabase/nav/containers/Navbar.jsx:267
 msgid "New dashboard"
 msgstr "新仪表盘"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:221
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:129
+#: frontend/src/metabase/nav/containers/Navbar.jsx:273
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:141
 msgid "New pulse"
 msgstr "新定时任务"
 
@@ -4431,106 +4429,106 @@ msgstr "更多{0}"
 msgid "examples on GitHub"
 msgstr "在GitHub上的案例"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:71
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:70
 msgid "Enable sharing"
 msgstr "开启分享"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:75
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:74
 msgid "Disable this public link?"
 msgstr "禁用这个公共链接？"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:76
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:75
 msgid "This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link."
 msgstr "会取消已存在的链接。可以重新生效，但是链接会变更。"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:116
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:115
 msgid "Public link"
 msgstr "公开链接"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:117
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:116
 msgid "Share this {0} with people who don't have a Metabase account using the URL below:"
 msgstr "将{0}通过下面的链接分享那些没有Metabase账号的人。"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:154
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:156
 msgid "Public embed"
 msgstr "公开嵌入"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:155
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:157
 msgid "Embed this {0} in blog posts or web pages by copying and pasting this snippet:"
 msgstr "将这个代码块粘贴到页面代码，可以在博客或者网页中启用{0}。"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:172
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:177
 msgid "Embed this {0} in an application"
 msgstr "在一个应用嵌入这个{0}"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:173
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:178
 msgid "By integrating with your application server code, you can provide a secure stats {0} limited to a specific user, customer, organization, etc."
 msgstr "通过与应用程序服务器代码集成，您可以提供仅限于特定用户，客户，组织等的安全统计信息{0}。"
 
-#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:93
+#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:94
 msgid "Remove attachment"
 msgstr "移除附件"
 
-#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:94
+#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:95
 msgid "Attach file with results"
 msgstr "添加结果文件附件"
 
-#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:126
+#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:127
 msgid "This question will be added as a file attachment"
 msgstr "图表会被添加文件附件"
 
-#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:127
+#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:128
 msgid "This question won't be included in your Pulse"
 msgstr "这个图表不会包含在你的定时任务中"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:91
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:97
 msgid "This pulse will no longer be emailed to {0} {1}"
 msgstr "这个定时任务不再发送给{0}{1}"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:93
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:375
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:439
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:99
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:392
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:423
 msgid "{0} address"
 msgid_plural "{0} addresses"
 msgstr[0] "{0}地址"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:102
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:108
 msgid "Slack channel {0} will no longer get this pulse {1}"
 msgstr "Slack通道{0}将不再接收此定时通知{1}"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:111
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:117
 msgid "Channel {0} will no longer receive this pulse {1}"
 msgstr "{0}不会再收到定时任务{1}"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:129
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:141
 msgid "Edit pulse"
 msgstr "编辑定时任务"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:133
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:145
 msgid "What's a Pulse?"
 msgstr "什么是定时任务"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:143
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:155
 msgid "Got it"
 msgstr "得到结果了！"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:159
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:186
 msgid "Where should this data go?"
 msgstr "这个数据应该去哪？"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:175
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:202
 msgid "Unarchiving…"
 msgstr "正在取消归档"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:176
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:203
 msgid "Unarchive failed"
 msgstr "取消归档失败"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:177
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:204
 msgid "Unarchived"
 msgstr "已取消归档"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:184
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:211
 msgid "Create pulse"
 msgstr "创建定时任务"
 
@@ -4540,7 +4538,7 @@ msgstr "附件"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:105
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:112
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:675
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:696
 msgid "Heads up"
 msgstr "小心"
 
@@ -4570,30 +4568,30 @@ msgid "Choose questions you'd like to send in this pulse"
 msgstr "挑选你想在这个定时任务里发送的图表。"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:27
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:57
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:58
 msgid "Emails"
 msgstr "电子邮箱"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:28
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:58
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:59
 msgid "Slack messages"
 msgstr "Slack消息"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:220
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:710
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:805
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:641
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:726
 msgid "Sent"
 msgstr "发送"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:221
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:711
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:806
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:642
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:727
 msgid "{0} will be sent at"
 msgstr "{0}将会在……被发送"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:223
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:713
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:808
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:644
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:729
 msgid "Messages"
 msgstr "信息"
 
@@ -4620,7 +4618,6 @@ msgstr "发送失败"
 msgid "Didn’t send because the pulse has no results."
 msgstr "未发送，因为定时任务没有结果。"
 
-#: frontend/src/metabase/components/SendTestEmail.jsx:31
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:247
 msgid "Pulse sent"
 msgstr "定时任务已发送。"
@@ -4661,11 +4658,11 @@ msgstr "如果都没有结果，跳过该定时任务"
 msgid "Enter email addresses you'd like this data to go to"
 msgstr "输入你想这个数据被送达的邮箱地址"
 
-#: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:16
+#: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:14
 msgid "Help everyone on your team stay in sync with your data."
 msgstr "帮助每个在你们团队的人和你们的数据保持联结"
 
-#: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:31
+#: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:32
 msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
 msgstr "定时通知允许您根据您选择的时间表从Metabase发送数据到电子邮件或Slack。"
 
@@ -4846,148 +4843,148 @@ msgstr "你正在接收{0}的警报"
 msgid "{0} set up an alert"
 msgstr "{0}设置一个警报"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:160
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:159
 msgid "alerts"
 msgstr "警报"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:183
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:182
 msgid "Let's set up your alert"
 msgstr "让我们来设置你的警报"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:214
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:213
 msgid "The wide world of alerts"
 msgstr "全局警报"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:215
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:214
 msgid "There are a few different kinds of alerts you can get"
 msgstr "可以设置不同的提醒方式"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:229
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:234
 msgid "When a raw data question {0}"
 msgstr "当一个源数据查询 {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:230
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:235
 msgid "returns any results"
 msgstr "返回任意结果"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:241
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:252
 msgid "When a line or bar {0}"
 msgstr "当一个线或者柱{0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:242
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:253
 msgid "crosses a goal line"
 msgstr "超越目标线"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:253
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:270
 msgid "When a progress bar {0}"
 msgstr "当进度条  {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:254
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:271
 msgid "reaches its goal"
 msgstr "达到它的目标"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:262
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:279
 msgid "Set up an alert"
 msgstr "设置提醒"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:331
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:348
 msgid "Edit your alert"
 msgstr "编辑提醒"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:331
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:348
 msgid "Edit alert"
 msgstr "编辑提醒"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:373
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:390
 msgid "This alert will no longer be emailed to {0}."
 msgstr "提醒不再发送{0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:381
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:398
 msgid "Slack channel {0} will no longer get this alert."
 msgstr "Slack通道{0}将不再接收此警报。"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:385
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:402
 msgid "Channel {0} will no longer receive this alert."
 msgstr "{0}不再收到这个提醒"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:402
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:419
 msgid "Delete this alert"
 msgstr "删除提醒"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:404
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:421
 msgid "Stop delivery and delete this alert. There's no undo, so be careful."
 msgstr "停止并删除提醒。无法恢复，请注意！"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:412
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:429
 msgid "Delete this alert?"
 msgstr "删除这个警报？"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:499
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:520
 msgid "Alert me when the line…"
 msgstr "当这个线……时警告我"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:500
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:521
 msgid "Alert me when the progress bar…"
 msgstr "警告我，当这个进程条……"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:503
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:524
 msgid "Goes above the goal line"
 msgstr "超过目标线"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:503
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:524
 msgid "Reaches the goal"
 msgstr "达成目标"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:506
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:527
 msgid "Goes below the goal line"
 msgstr "低于目标线"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:506
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:527
 msgid "Goes below the goal"
 msgstr "低于目标"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:514
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:535
 msgid "The first time it crosses, or every time?"
 msgstr "首次超越，还是每次？"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:515
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:536
 msgid "The first time it reaches the goal, or every time?"
 msgstr "是第一次达成目标，还是每一次都是？"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:517
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:538
 msgid "The first time"
 msgstr "第一次"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:518
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:539
 msgid "Every time"
 msgstr "每一次"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:621
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:642
 msgid "Where do you want to send these alerts?"
 msgstr "你想发送这些警报到哪里？"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:632
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:653
 msgid "Email alerts to:"
 msgstr "电子邮件发送警报到："
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:674
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:695
 msgid "{0} Goal-based alerts aren't yet supported for charts with more than one line, so this alert will be sent whenever the chart has {1}."
 msgstr "{0} 多行图表还不支持基于目标的报警，所以当图标有{1}时，这个报警就会发送。"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:677
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:698
 #: src/metabase/pulse.clj
 msgid "results"
 msgstr "结果"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:681
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:702
 msgid "{0} This kind of alert is most useful when your saved question doesn’t {1} return any results, but you want to know when it does."
 msgstr "{0}这种类型的警报是最有效果的，当你存储疑问没有"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:682
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:703
 msgid "Tip"
 msgstr "提示"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:684
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:705
 msgid "usually"
 msgstr "通常"
 
@@ -4996,32 +4993,32 @@ msgid "Pick a segment or table"
 msgstr "选择一个区间或者表单"
 
 #: frontend/src/metabase/entities/databases/forms.js:270
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:70
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:71
 msgid "Select a database"
 msgstr "选择一个数据库"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:85
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:86
 #: frontend/src/metabase/reference/components/MetricImportantFieldsDetail.jsx:31
 msgid "Select..."
 msgstr "选择……"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:79
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:80
 msgid "Select a table"
 msgstr "选择一个表单"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:926
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:929
 msgid "No tables found in this database."
 msgstr "该数据库未发现表"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:901
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:902
 msgid "Is a question missing?"
 msgstr "图表缺失？"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:909
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:911
 msgid "Learn more about nested queries"
 msgstr "了解更多关于嵌套查询"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:951
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:954
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:12
 msgid "Fields"
 msgstr "字段"
@@ -5110,7 +5107,7 @@ msgstr "查看"
 msgid "Grouped By"
 msgstr "分组条件"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:161
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:162
 #: frontend/src/metabase/query_builder/components/LimitWidget.jsx:27
 msgid "None"
 msgstr "没有"
@@ -5180,7 +5177,7 @@ msgstr "移动图表"
 msgid "Which collection should this be in?"
 msgstr "将这个放到哪个集合中？"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:248
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:249
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:85
 #: frontend/src/metabase/query_builder/components/view/NativeVariablesButton.jsx:17
 msgid "Variables"
@@ -5426,7 +5423,7 @@ msgstr "查看{0}的所有原始数据"
 msgid "More"
 msgstr "更多"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:248
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:249
 msgid "Invalid expression"
 msgstr "不可用的表达式"
 
@@ -5434,27 +5431,27 @@ msgstr "不可用的表达式"
 msgid "unknown error"
 msgstr "未知错误"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:53
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:55
 msgid "Field formula"
 msgstr "字段公式"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:64
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:66
 msgid "Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost."
 msgstr "这有点像在EXCEL表中编写公式，你可以使用数字，字段，数学符号和一些函数，例如 Subtotal - Cost。"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:111
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:281
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:70
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:73
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:71
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:75
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
 msgid "Learn more"
 msgstr "了解更多"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:77
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:79
 msgid "Give it a name"
 msgstr "给它一个名字吧"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:83
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:85
 msgid "Something nice and descriptive"
 msgstr "一些超棒的、值得记录的东西"
 
@@ -5558,15 +5555,15 @@ msgstr "可以输入多个值按逗号分隔"
 msgid "Enter desired text"
 msgstr "输入想要的文本"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:210
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:211
 msgid "Try it"
 msgstr "试试看"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:243
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:244
 msgid "What's this for?"
 msgstr "这是针对于？"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:245
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:246
 msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
 msgstr "原生查询中的变量允许使用筛选组件或URL参数来动态替换查询中的值。"
 
@@ -5574,7 +5571,7 @@ msgstr "原生查询中的变量允许使用筛选组件或URL参数来动态替
 msgid "{0} creates a variable in this SQL template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the SQL template."
 msgstr "{0}会在此SQL模板中创建一个名为“variable_name”的变量。该变量可以在侧边栏中选择类型，来改变变量填充的效果。除了“字段筛选条件”之外的所有变量类型都将会在此问题上面自动生成对应的过滤器窗口小部件;字段筛选条件可以设置为是否必填项。填充此过滤器窗口小部件时，该值将替换SQL模板中对应的变量。"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:259
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:260
 msgid "Field Filters"
 msgstr "字段过滤器"
 
@@ -5582,11 +5579,11 @@ msgstr "字段过滤器"
 msgid "Giving a variable the \"Field Filter\" type allows you to link SQL cards to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
 msgstr "为变量提供“字段过滤器”类型将允许您链接SQL卡到仪表盘的过滤组件，或在图表上使用更多类型的过滤组件。 在现有列上添加过滤器时，字段过滤器变量会插入类似于GUI查询构建器生成的SQL。"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:264
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:265
 msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
 msgstr "添加“字段过滤器”变量时，您需要将其映射到特定字段。 然后，您可以选择在问题上显示过滤组件，但即使不这样做，现在可以在将此问题添加到仪表板时将“字段过滤器”变量映射到仪表盘过滤器。 字段过滤器应在“WHERE”子句中使用。"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:271
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:272
 msgid "Optional Clauses"
 msgstr "可选条款"
 
@@ -5594,11 +5591,11 @@ msgstr "可选条款"
 msgid "brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
 msgstr "{0}周围的括号在模板中创建一个可选子句。如果设置了“variable”，则将整个子句放入模板中。否则忽略整个子句。"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:283
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:284
 msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
 msgstr "要使用多个可选子句，您可以包含至少一个非可选WHERE子句，接着以“AND”开头的可选子句。"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:301
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:302
 msgid "Read the full documentation"
 msgstr "阅读完整文档"
 
@@ -6177,24 +6174,24 @@ msgstr "有关这个区段的疑问"
 msgid "X-ray this segment"
 msgstr "透视这个区段"
 
-#: frontend/src/metabase/routes.jsx:171 frontend/src/metabase/routes.jsx:172
+#: frontend/src/metabase/routes.jsx:170 frontend/src/metabase/routes.jsx:171
 msgid "Login"
 msgstr "登录"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableWithSearch.jsx:20
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:400
 #: frontend/src/metabase/containers/ItemPicker.jsx:129
-#: frontend/src/metabase/nav/containers/Navbar.jsx:153
-#: frontend/src/metabase/routes.jsx:197
+#: frontend/src/metabase/nav/components/SearchBar.jsx:101
+#: frontend/src/metabase/routes.jsx:196
 msgid "Search"
 msgstr "查询"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:560
-#: frontend/src/metabase/routes.jsx:216
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:561
+#: frontend/src/metabase/routes.jsx:215
 msgid "Dashboard"
 msgstr "仪表盘"
 
-#: frontend/src/metabase/routes.jsx:231
+#: frontend/src/metabase/routes.jsx:230
 msgid "New Question"
 msgstr "新疑问"
 
@@ -6226,75 +6223,75 @@ msgstr "我之后再添加数据"
 msgid "Control automatic scans"
 msgstr "控制自动化扫描"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:59
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:61
 msgid "Usage data preferences"
 msgstr "使用数据引用"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:62
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:64
 msgid "Thanks for helping us improve"
 msgstr "感谢帮助我们提升"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:63
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:65
 msgid "We won't collect any usage events"
 msgstr "我们不会收集任何使用事件信息"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:88
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:90
 msgid "In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics."
 msgstr "为了提升Metabase的用户体验，可能需要通过Google Analytics收集特定的使用数据。"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:93
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:95
 msgid "Here's a full list of everything we track and why."
 msgstr "这个我们所有我们要收集的清单，以及为什么要收集"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:108
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:110
 msgid "Allow Metabase to anonymously collect usage events"
 msgstr "允许Metabase匿名收集使用事件"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:116
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:118
 msgid "Metabase {0} collects anything about your data or question results."
 msgstr "Metabase{0}收集任何事情关于你的数据或者提问结果"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:117
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:119
 msgid "never"
 msgstr "永不"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:119
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:121
 msgid "All collection is completely anonymous."
 msgstr "所有的收集都是匿名的。"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:120
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:122
 msgid "Collection can be turned off at any point in your admin settings."
 msgstr "您随时可以在管理设置中关闭信息收集。"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:61
+#: frontend/src/metabase/setup/components/Setup.jsx:62
 msgid "If you feel stuck"
 msgstr "如果你不知从何下手"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:66
+#: frontend/src/metabase/setup/components/Setup.jsx:67
 msgid "our getting started guide"
 msgstr "初始化文档"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:67
+#: frontend/src/metabase/setup/components/Setup.jsx:68
 msgid "is just a click away."
 msgstr "点击一下"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:113
+#: frontend/src/metabase/setup/components/Setup.jsx:114
 msgid "Welcome to Metabase"
 msgstr "欢迎来到Metabase"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:114
+#: frontend/src/metabase/setup/components/Setup.jsx:115
 msgid "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!"
 msgstr "看起来一切都在正常工作，现在让我们了解你吧，连接到你的数据，并且开始寻找一些属于你的答案！"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:118
+#: frontend/src/metabase/setup/components/Setup.jsx:119
 msgid "Let's get started"
 msgstr "让我们开始吧"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:168
+#: frontend/src/metabase/setup/components/Setup.jsx:169
 msgid "You're all set up!"
 msgstr "你已经设置完毕了！"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:179
+#: frontend/src/metabase/setup/components/Setup.jsx:180
 msgid "Take me to Metabase"
 msgstr "带我去Metabase"
 
@@ -6546,7 +6543,7 @@ msgstr "取消过滤器"
 msgid "Pin Map"
 msgstr "固定地图"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:373
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:372
 msgid "Unset"
 msgstr "撤销设置"
 
@@ -6759,11 +6756,11 @@ msgstr "没有{0}的可视化"
 msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed."
 msgstr "“{0}”是未聚合的字段，如果它在X轴的点上有多于一个的值，这些值将会被求和。"
 
-#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:96
+#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:90
 msgid "This chart type requires at least 2 columns."
 msgstr "这种图表需要至少2列"
 
-#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:101
+#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:95
 msgid "This chart type doesn't support more than {0} series of data."
 msgstr "这种图表不支持超过{0}种数据"
 
@@ -6776,8 +6773,8 @@ msgstr "目标"
 msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
 msgstr "正在……噢！从你的查询中获得的数去并不适合所选的展示选项，这个可视化需要最少数据中的{0}{1}。"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:103
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:219
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:104
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:220
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:20
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:23
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:27
@@ -7151,8 +7148,9 @@ msgstr "对象细节"
 msgid "object"
 msgstr "对象"
 
-#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:140
-#: frontend/src/metabase/visualizations/lib/chart_values.js:114
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:137
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:252
+#: frontend/src/metabase/visualizations/lib/renderer_utils.js:336
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:374
 msgid "Total"
 msgstr "总计"
@@ -7224,15 +7222,15 @@ msgstr "分隔符"
 msgid "Number of decimal places"
 msgstr "小数位数"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:405
+#: frontend/src/metabase/visualizations/lib/settings/column.js:406
 msgid "Add a prefix"
 msgstr "添加一个前缀"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:409
+#: frontend/src/metabase/visualizations/lib/settings/column.js:410
 msgid "Add a suffix"
 msgstr "添加一个后缀"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:398
+#: frontend/src/metabase/visualizations/lib/settings/column.js:399
 msgid "Multiply by a number"
 msgstr "乘以数字"
 
@@ -7244,7 +7242,7 @@ msgstr "分散"
 msgid "scatter plot"
 msgstr "散点图"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:84
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:83
 msgid "Pivot the table"
 msgstr "透视表"
 
@@ -7535,12 +7533,12 @@ msgstr "在{0}中有很多已保存的问题？创建集合以帮助管理它们
 #. This is the very first log message that will get printed.
 #. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:240
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:238
 #: frontend/src/metabase/home/components/Activity.jsx:87
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:90
 #: frontend/src/metabase/public/components/LogoBadge.jsx:22
 #: frontend/src/metabase/routes-public.jsx:15
-#: frontend/src/metabase/routes.jsx:142 src/metabase/api/setup.clj
+#: frontend/src/metabase/routes.jsx:141 src/metabase/api/setup.clj
 #: src/metabase/email/messages.clj
 msgid "Metabase"
 msgstr "Metabase"
@@ -7997,15 +7995,15 @@ msgid "Migration lock cleared, but nothing to do here! Migrations were finished 
 msgstr "迁移锁清除了，但这里没什么可做的！迁移是由另一个实例完成的。"
 
 #. Set up liquibase and let it do its thing
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Setting up Liquibase..."
 msgstr "Liquibase设置"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Liquibase is ready."
 msgstr "Liquibase已经准备好了"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Verifying {0} Database Connection ..."
 msgstr "{0}数据库连接认证中"
 
@@ -8013,11 +8011,11 @@ msgstr "{0}数据库连接认证中"
 msgid "Verify Database Connection ... "
 msgstr "认证数据库连接……"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Running Database Migrations..."
 msgstr "正在运行数据库迁移…"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Database Migrations Current ... "
 msgstr "数据库迁移当前…"
 
@@ -8323,15 +8321,15 @@ msgstr "Metabot停止中……"
 msgid "MetaBot already running. Killing the previous WebSocket listener first."
 msgstr "MetaBot已经在运行。请先杀死之前的WebSocket侦听器。"
 
-#: src/metabase/middleware/security.clj
+#: src/metabase/server/middleware/security.clj
 msgid "Base-64 encoded public key for this site's SSL certificate."
 msgstr "此站点的SSL证书公钥（public key）需要通过Base-64加密"
 
-#: src/metabase/middleware/security.clj
+#: src/metabase/server/middleware/security.clj
 msgid "Specify this to enable HTTP Public Key Pinning."
 msgstr "指定这个选项来打开HTTP Public Key Pinning"
 
-#: src/metabase/middleware/security.clj
+#: src/metabase/server/middleware/security.clj
 msgid "See {0} for more information."
 msgstr "查看{0}获取更多信息。"
 
@@ -9085,11 +9083,11 @@ msgstr "查看子集合"
 msgid "Remember Me"
 msgstr "记住我"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:73
+#: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:64
 msgid "X-ray this schema"
 msgstr "透视这个图表"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:188
+#: frontend/src/metabase/collections/components/Header.jsx:49
 msgid "Edit the permissions for this collection"
 msgstr "修改集合权限"
 
@@ -9109,11 +9107,11 @@ msgstr "找不到您要访问的页面"
 msgid "Select a {0}"
 msgstr "选择{0}"
 
-#: frontend/src/metabase/containers/Overworld.jsx:234
+#: frontend/src/metabase/containers/Overworld.jsx:237
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr "在“{0}”中保存仪表板，问题和集合"
 
-#: frontend/src/metabase/containers/Overworld.jsx:235
+#: frontend/src/metabase/containers/Overworld.jsx:238
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr "访问“{0}”中的仪表板，问题和集合"
 
@@ -9160,15 +9158,15 @@ msgid "Custom fields"
 msgstr "自定义字段"
 
 #. 2. Create the new collections.
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Migrated Dashboards"
 msgstr "迁移仪表盘"
 
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Migrated Pulses"
 msgstr "迁移的Pulses"
 
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Migrated Questions"
 msgstr "迁移的报表"
 
@@ -9376,7 +9374,7 @@ msgstr "管理员"
 msgid "MetaBot"
 msgstr "Meta机器人"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:44
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:55
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
 msgstr "分享"
@@ -9425,7 +9423,7 @@ msgstr "坐标轴"
 msgid "Formatting"
 msgstr "格式化"
 
-#: frontend/src/metabase/containers/Overworld.jsx:121
+#: frontend/src/metabase/containers/Overworld.jsx:120
 msgid "Try these x-rays based on your data."
 msgstr "根据你的数据试试这些透视。"
 
@@ -9462,11 +9460,11 @@ msgid "We suggest you leave this off unless you're doing manual timezone casting
 "many or most of your queries with this data."
 msgstr "我们建议你让它关闭，除非你用这些数据在大部分查询中手动调整时区"
 
-#: frontend/src/metabase/containers/Overworld.jsx:395
+#: frontend/src/metabase/containers/Overworld.jsx:398
 msgid "Your team's most important dashboards go here"
 msgstr "你的团队的最重要的仪表盘在这里"
 
-#: frontend/src/metabase/containers/Overworld.jsx:396
+#: frontend/src/metabase/containers/Overworld.jsx:399
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr "把面板固定在{0}里，使之对所有人可见"
 
@@ -9495,7 +9493,7 @@ msgid "Field Type"
 msgstr "字段类型"
 
 #: frontend/src/metabase/admin/routes.jsx:118
-#: frontend/src/metabase/nav/containers/Navbar.jsx:241
+#: frontend/src/metabase/nav/containers/Navbar.jsx:151
 msgid "Troubleshooting"
 msgstr "错误排查"
 
@@ -9545,11 +9543,11 @@ msgid "Currency"
 msgstr "货币"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:161
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:221
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:228
 msgid "Pick a user or channel..."
 msgstr "选择一个用户或频道"
 
-#: frontend/src/metabase/visualizations/components/ColumnSettings.jsx:90
+#: frontend/src/metabase/visualizations/components/ColumnSettings.jsx:87
 msgid "No formatting settings"
 msgstr "无格式化设置"
 
@@ -9669,7 +9667,7 @@ msgstr "货币标签风格"
 msgid "Where to display the unit of currency"
 msgstr "在哪里显示货币单位"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:394
+#: frontend/src/metabase/visualizations/lib/settings/column.js:395
 msgid "Minimum number of decimal places"
 msgstr "最少小数位数"
 
@@ -9743,51 +9741,51 @@ msgstr "聚一个时间字段来看指标随着时间的变化情况"
 msgid "Switch positive / negative colors?"
 msgstr "切换正、负颜色"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:96
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:95
 msgid "Pivot column"
 msgstr "透视列"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:127
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:126
 msgid "Cell column"
 msgstr "列单元"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:164
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:163
 msgid "Visible columns"
 msgstr "可见列"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:193
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:192
 msgid "Conditional Formatting"
 msgstr "条件格式化"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:235
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:234
 msgid "Column title"
 msgstr "列抬头"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:243
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:242
 msgid "Show a mini bar chart"
 msgstr "显示迷你条形图"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:254
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:253
 msgid "Link"
 msgstr "连接"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:258
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:257
 msgid "Email link"
 msgstr "Email地址"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:262
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:261
 msgid "Image"
 msgstr "图片"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:266
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:265
 msgid "Automatic"
 msgstr "自动"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:271
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:270
 msgid "View as link or image"
 msgstr "以链接或图片查看"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:281
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:280
 msgid "Link text"
 msgstr "链接文字"
 
@@ -10155,7 +10153,7 @@ msgstr "任务历史清理完毕, 记录删除 {0}"
 msgid "not"
 msgstr "不"
 
-#: src/metabase/db.clj src/metabase/util/encryption.clj
+#: src/metabase/db/env.clj src/metabase/util/encryption.clj
 msgid "For more information, see"
 msgstr "查看更多信息，看"
 
@@ -11526,7 +11524,7 @@ msgstr "任务"
 msgid "Jobs"
 msgstr "任务"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:549
+#: frontend/src/metabase/collections/components/CollectionCopyEntityModal.jsx:30
 msgid "Duplicated {0}"
 msgstr "复制 {0}"
 
@@ -11695,11 +11693,11 @@ msgstr "有关详细信息，请参阅https://github.com/metabase/metabase/issue
 msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
 msgstr "警告：建议不要将Metabase与H2应用程序数据库一起用于生产部署。"
 
-#: src/metabase/db.clj
+#: src/metabase/db/env.clj
 msgid "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
 msgstr "对于生产部署，我们强烈建议使用Postgres，MySQL或MariaDB。"
 
-#: src/metabase/db.clj
+#: src/metabase/db/env.clj
 msgid "If you decide to continue to use H2, please be sure to back up the database file regularly."
 msgstr "如果您决定继续使用H2，请务必定期备份数据库文件。"
 
@@ -11707,11 +11705,11 @@ msgstr "如果您决定继续使用H2，请务必定期备份数据库文件。"
 msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information."
 msgstr "有关详细信息，请参阅https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres。"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Unable to connect to Metabase {0} DB."
 msgstr " 不能连接到 Metabase {0} 数据库。"
 
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
 msgstr "将遗留SQL指令添加到BigQuery保存问题时出错"
 
@@ -12422,11 +12420,11 @@ msgstr "您可以更详细一点，或者使用ID？ 我找到了这些名字匹
 msgid "Card {0} not found."
 msgstr "卡片 {0} 未找到."
 
-#: src/metabase/middleware/exceptions.clj
+#: src/metabase/server/middleware/exceptions.clj
 msgid "Exception in API call"
 msgstr "API调用异常"
 
-#: src/metabase/middleware/exceptions.clj
+#: src/metabase/server/middleware/exceptions.clj
 msgid "Request canceled before finishing."
 msgstr "请求在完成之前发生异常."
 
@@ -12438,7 +12436,7 @@ msgstr "Metabase仅支持JSON请求"
 msgid "Make sure you set a 'Content-Type: application/json' header."
 msgstr "确定你设置了一个'Content-Type：application / json'报头。"
 
-#: src/metabase/middleware/misc.clj
+#: src/metabase/server/middleware/misc.clj
 msgid "Setting Metabase site URL to {0}"
 msgstr "将Metabase的站点URL设置为{0}"
 
@@ -12526,7 +12524,7 @@ msgstr "失火指令"
 msgid "Archive this?"
 msgstr "将这个归档?"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:253
+#: frontend/src/metabase/browse/components/BrowseHeader.jsx:25
 msgid "Learn about our data"
 msgstr "了解我们的数据"
 
@@ -12548,7 +12546,7 @@ msgstr "在进行简单的过滤和汇总时自动运行查询"
 msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "这个选项开启时，当用户在查看表格或图表时使用“汇总”和“过滤”按钮进行简单数据探索时，Metabase将自动运行查询。 如果查询此数据库的速度很慢，可以将该选项关闭。 此设置不会影响数据钻探或SQL查询。"
 
-#: frontend/src/metabase/containers/Overworld.jsx:329
+#: frontend/src/metabase/containers/Overworld.jsx:332
 msgid "Learn about this database"
 msgstr "了解这个数据库"
 
@@ -12586,7 +12584,7 @@ msgstr[0] "记录"
 msgid "Browse Data"
 msgstr "浏览数据"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:358
+#: frontend/src/metabase/nav/containers/Navbar.jsx:290
 msgid "Write SQL"
 msgstr "写SQL"
 
@@ -12695,11 +12693,11 @@ msgstr "选择数据表…"
 msgid "Enter a limit"
 msgstr "输入限制条件"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:273
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:274
 msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
 msgstr "{0}周围的括号在模板中创建可选子句。 如果设置了“variable”，则将整个子句放入模板中。 如果不是，则忽略整个子句。"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:290
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:291
 msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
 msgstr "当某字段被用作筛选条件后, SQL语句中不应再包含该列明. 相应的在侧边栏上, 变量应该映射到一个字段上."
 
@@ -12892,7 +12890,7 @@ msgstr "请求已取消，以后将会取消。"
 msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
 msgstr "Metabase只能将数据从H2传输到Postgres或MySQL / MariaDB。"
 
-#: src/metabase/db.clj
+#: src/metabase/db/env.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
 msgstr "警告：不推荐将Metabase与H2应用数据库一起用于生产环境部署。"
 
@@ -12924,11 +12922,11 @@ msgstr "客户端关闭连接，取消查询"
 msgid "{0} is not a valid DN."
 msgstr "{0} 不是一个有效的 DN"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "Error logging API request"
 msgstr "错误的日志API请求"
 
-#: src/metabase/middleware/misc.clj
+#: src/metabase/server/middleware/misc.clj
 msgid "Failed to set site-url"
 msgstr "设置站点url失败"
 
@@ -13186,7 +13184,7 @@ msgstr "查询表{0}数据失败：表不存在，或者属于另一个数据库
 msgid "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database."
 msgstr "查询字段{0}失败：字段不存在，或者属于另一个数据库"
 
-#: src/metabase/routes/index.clj
+#: src/metabase/server/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
 msgstr "加载模板{0}失败。你是否记得构建metabse的前端？"
 
@@ -13309,31 +13307,31 @@ msgstr "邮箱登录"
 msgid "Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled."
 msgstr "使用此选项要求提供的主机是FQDN。 如果连接到Atlas群集，则可能需要启用此选项。 如果您不知道这意味着什么，请禁用此功能。"
 
-#: frontend/src/metabase/entities/databases/forms.js:292
+#: frontend/src/metabase/entities/databases/forms.js:291
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "默认情况下，Metabase每小时执行一次轻量级同步，每天执行一次密集扫描。 如果您有一个大型数据库，我们建议启用此功能并查看字段值扫描的发生时间和频率。"
 
-#: frontend/src/metabase/containers/Overworld.jsx:126
+#: frontend/src/metabase/containers/Overworld.jsx:125
 msgid "Remove these suggestions"
 msgstr "移除这些建议"
 
-#: frontend/src/metabase/containers/Overworld.jsx:135
+#: frontend/src/metabase/containers/Overworld.jsx:134
 msgid "Remove these suggestions?"
 msgstr "移除这些建议？"
 
-#: frontend/src/metabase/containers/Overworld.jsx:151
+#: frontend/src/metabase/containers/Overworld.jsx:150
 msgid "These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables."
 msgstr "这些不会出现在您的任何用户主页上，但是您始终可以通过单击主导航中的“浏览数据”，然后单击其中任一张表上的闪电图标。"
 
-#: frontend/src/metabase/containers/Overworld.jsx:274
+#: frontend/src/metabase/containers/Overworld.jsx:277
 msgid "Hide this section"
 msgstr "隐藏此部分"
 
-#: frontend/src/metabase/containers/Overworld.jsx:282
+#: frontend/src/metabase/containers/Overworld.jsx:285
 msgid "Remove this section?"
 msgstr "移除此部分？"
 
-#: frontend/src/metabase/containers/Overworld.jsx:298
+#: frontend/src/metabase/containers/Overworld.jsx:301
 msgid "\"Our Data\" won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation."
 msgstr "“我们的数据”不会出现在你的任何用户主页上，但你可以通过点击主导航栏中的“浏览数据”来浏览你的数据库和表"
 
@@ -13365,15 +13363,15 @@ msgstr "删除时间"
 msgid "Deletion date"
 msgstr "删除日期"
 
-#: frontend/src/metabase/lib/core.js:313
+#: frontend/src/metabase/lib/core.js:333
 msgid "Only in detail views"
 msgstr "仅详细视图"
 
-#: frontend/src/metabase/lib/core.js:318
+#: frontend/src/metabase/lib/core.js:338
 msgid "Do not include"
 msgstr "不包含"
 
-#: frontend/src/metabase/lib/core.js:319
+#: frontend/src/metabase/lib/core.js:339
 msgid "This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries."
 msgstr "在使用GUI界面创建的问题中，该字段将不可见或不可选择。 在SQL /本地查询中仍然可以访问。"
 
@@ -13445,7 +13443,7 @@ msgstr "该指标如何计算"
 msgid "Table this is based on"
 msgstr "该表基于"
 
-#: frontend/src/metabase/visualizations/lib/renderer_utils.js:346
+#: frontend/src/metabase/visualizations/lib/renderer_utils.js:393
 msgid "(empty)"
 msgstr "（空）"
 
@@ -13493,7 +13491,7 @@ msgstr "此图表包含在多个时区运行的查询：{0}"
 msgid "An error occurred while running the query."
 msgstr "运行查询时发生错误"
 
-#: src/metabase/cmd/dump_to_h2.clj
+#: src/metabase/cmd/copy/h2.clj
 msgid "Output H2 database already exists: %s, removing."
 msgstr "导出H2数据库已存在：％s，正在删除。"
 
@@ -13501,7 +13499,7 @@ msgstr "导出H2数据库已存在：％s，正在删除。"
 msgid "Don't need to migrate, just use the existing H2 file"
 msgstr "无需迁移，只需使用现有的H2文件"
 
-#: src/metabase/cmd/load_from_h2.clj
+#: src/metabase/cmd/copy.clj
 msgid "Target DB is already populated!"
 msgstr "目标数据库已填充!"
 
@@ -13509,12 +13507,12 @@ msgstr "目标数据库已填充!"
 msgid "System info:n {0}"
 msgstr "系统信息：n{0}"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Database setup"
 msgstr "数据库设置"
 
 #. 4. move everything not in this Collection to a new Collection
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Moving instances of {0} that aren''t in a Collection to {1} Collection {2}"
 msgstr "将不在集合中的{0}实例移动到{1}集合{2}"
 
@@ -13842,11 +13840,11 @@ msgstr "需要"
 msgid "Database type"
 msgstr "数据库类型"
 
-#: frontend/src/metabase/entities/databases/forms.js:308
+#: frontend/src/metabase/entities/databases/forms.js:307
 msgid "This is a lightweight process that checks for updates to this database’s schema. In most cases, you should be fine leaving this set to sync hourly."
 msgstr "这是一个轻量级的过程，用于检查对该数据库架构的更新。在大多数情况下，最好将此设置保持为每小时同步。"
 
-#: frontend/src/metabase/entities/databases/forms.js:316
+#: frontend/src/metabase/entities/databases/forms.js:315
 msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
 msgstr "Metabase可以扫描此数据库中每个字段中存在的值，以启用仪表板和问题中的复选框过滤器。这可能会占用一些资源，特别是如果您的数据库很大。"
 
@@ -13885,17 +13883,19 @@ msgstr "数字"
 #: frontend/src/metabase/lib/core.js:219 frontend/src/metabase/lib/core.js:224
 #: frontend/src/metabase/lib/core.js:229 frontend/src/metabase/lib/core.js:234
 #: frontend/src/metabase/lib/core.js:239 frontend/src/metabase/lib/core.js:244
-#: frontend/src/metabase/lib/core.js:249
+#: frontend/src/metabase/lib/core.js:249 frontend/src/metabase/lib/core.js:254
+#: frontend/src/metabase/lib/core.js:259 frontend/src/metabase/lib/core.js:264
+#: frontend/src/metabase/lib/core.js:269
 msgid "Date and Time"
 msgstr "日期和时间"
 
-#: frontend/src/metabase/lib/core.js:256 frontend/src/metabase/lib/core.js:261
-#: frontend/src/metabase/lib/core.js:266
+#: frontend/src/metabase/lib/core.js:276 frontend/src/metabase/lib/core.js:281
+#: frontend/src/metabase/lib/core.js:286
 msgid "Categorical"
 msgstr "分类的"
 
-#: frontend/src/metabase/lib/core.js:273 frontend/src/metabase/lib/core.js:278
-#: frontend/src/metabase/lib/core.js:283
+#: frontend/src/metabase/lib/core.js:293 frontend/src/metabase/lib/core.js:298
+#: frontend/src/metabase/lib/core.js:303
 msgid "URLs"
 msgstr "网址"
 
@@ -14401,7 +14401,7 @@ msgid "Powered by {0}"
 msgstr "由{0}提供支持"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:195
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:686
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:617
 msgid "To:"
 msgstr "至："
 
@@ -14437,11 +14437,11 @@ msgstr "问题＃{0}"
 msgid "Last edited {0}"
 msgstr "上次编辑的{0}"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:250
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:251
 msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
 msgstr "{0}在此查询模板中创建一个名为“ variable_name”的变量。可以在侧面板中为变量指定类型，从而更改其行为。除“字段过滤器”以外的所有变量类型都将自动导致将过滤器小部件放置在此问题上；对于字段过滤器，这是可选的。填写此过滤器小部件后，该值将替换查询模板中的变量。"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:261
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:262
 msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
 msgstr "通过为变量指定“字段过滤器”类型，您可以将问题链接到仪表板过滤器小部件，或在SQL问题上使用更多类型的过滤器小部件。在现有列上添加过滤器时，“字段过滤器”变量将插入与GUI查询构建器生成的SQL相似的SQL。"
 
@@ -14545,7 +14545,8 @@ msgstr "Google身份验证令牌似乎不正确。 "
 msgid "Double check that it matches in Google and Metabase."
 msgstr "再次检查它在Google和Metabase中是否匹配。"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:307
+#: frontend/src/metabase/collections/components/ItemList.jsx:35
+#: frontend/src/metabase/collections/components/ItemList.jsx:47
 #: src/metabase/api/table.clj
 msgid "Everything else"
 msgstr "其他一切"
@@ -14554,41 +14555,41 @@ msgstr "其他一切"
 msgid "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords."
 msgstr "警告：您已启用名称空间跟踪，这可能会记录敏感信息，例如db密码。"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Database Upgrade Required"
 msgstr "需要数据库升级"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "NOTICE: Your database requires updates to work with this version of Metabase."
 msgstr "注意：您的数据库需要更新才能使用此版本的Metabase。"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Please execute the following sql commands on your database before proceeding."
 msgstr "在继续之前，请在数据库上执行以下sql命令。"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Once your database is updated try running the application again."
 msgstr "数据库更新后，请尝试再次运行该应用程序。"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Database requires manual upgrade."
 msgstr "数据库需要手动升级。"
 
 #. Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Set transaction to automatically roll back..."
 msgstr "将交易设置为自动回滚..."
 
 #. Disable auto-commit. This should already be off but set it just to be safe
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Disable auto-commit..."
 msgstr "禁用自动提交..."
 
-#: src/metabase/db.clj
+#: src/metabase/db/connection_pool_setup.clj
 msgid "Set default db connection with connection pool..."
 msgstr "使用连接池设置默认的数据库连接..."
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Successfully verified {0} {1} application database connection."
 msgstr "已成功验证{0} {1}应用程序数据库连接。"
 
@@ -14889,7 +14890,7 @@ msgstr "实例语言"
 msgid "Localization options"
 msgstr "本地化选项"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:51
+#: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:42
 msgid "This database doesn't have any tables."
 msgstr "该数据库没有任何表。"
 
@@ -15128,31 +15129,31 @@ msgstr "确定参数值时出错"
 msgid "Error building query parameter map"
 msgstr "建立查询参数图时出错"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "ASYNC"
 msgstr "异步"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "{0} ({1} DB calls)"
 msgstr "{0}（{1}个数据库调用）"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "App DB connections: {0}/{1}"
 msgstr "应用数据库连接：{0} / {1}"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "Jetty threads: {0}/{1} ({2} idle, {3} queued)"
 msgstr "码头线程：{0} / {1}（{2}空闲，{3}排队）"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "({0} total active threads)"
 msgstr "（{0}个活动线程总数）"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "Queries in flight: {0}"
 msgstr "进行中的查询：{0}"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "({0} queued)"
 msgstr "（{0}已排队）"
 
@@ -15507,90 +15508,90 @@ msgstr "嵌入整个Metabase应用"
 msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
 msgstr "如果你想嵌入Metabase的所有内容，请在iframe中输入你想允许嵌入的网站或Web应用程序的来源，用空格隔开。下面是可以输入的{0}。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:163
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:162
 msgid "Grant sandboxed access to this table"
 msgstr "授予对该表的沙箱访问权"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:170
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:169
 msgid "When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question."
 msgstr "当这个组中的用户查看这个表格时，他们会看到一个由他们的用户属性过滤的版本，或者是基于保存的问题的自定义视图。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:173
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:172
 msgid "How do you want to filter this table for users in this group?"
 msgstr "你想如何过滤此表中的用户？"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:192
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:191
 msgid "Pick a saved question that returns the custom view of this table that these users should see."
 msgstr "选择一个保存的问题，返回这些用户应该看到的这个表的自定义视图。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:210
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:209
 msgid "You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question."
 msgstr "您可以根据用户属性在这里选择添加额外的过滤器。这些过滤器将被应用在这个保存的问题中的任何过滤器之上。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:230
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:229
 msgid "For this option to work, your users need to have some attributes"
 msgstr "为了使这个选项有效，你的用户需要有一些属性。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:231
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:230
 msgid "To add additional filters, your users need to have some attributes"
 msgstr "要添加额外的过滤器，你的用户需要有一些属性。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:270
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:269
 msgid "No user attributes"
 msgstr "无用户属性"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:271
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:457
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:270
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:460
 msgid "Pick a user attribute"
 msgstr "选择一个用户属性"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:290
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:476
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:289
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:479
 msgid "Pick a parameter"
 msgstr "选择一个参数"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:308
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:476
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:307
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:479
 msgid "Pick a column"
 msgstr "选择一列"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:328
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:327
 msgid "Users in {0} can view"
 msgstr "在{0}的用户可以查看"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:334
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:333
 msgid "rows in the {0} question"
 msgstr "行"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:337
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:336
 msgid "rows in the {0} table"
 msgstr "行数"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:347
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:346
 msgid "where {0} equals {1}"
 msgstr "其中，{0}等于{1}。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:350
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:349
 msgid "and {0} equals {1}"
 msgstr "而{0}等于{1}。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:441
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:444
 msgid "You can add attributes automatically by setting up an SSO that uses SAML, or you can enter them manually by going to the People section and clicking on the … menu on the far right."
 msgstr "您可以通过设置使用SAML的SSO自动添加属性，也可以通过进入 \"人员 \"部分并点击最右边的...菜单手动输入。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:460
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:463
 msgid "User attribute"
 msgstr "用户属性"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:462
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:465
 msgid "We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the \"…\" menu in the People section of the Admin Panel."
 msgstr "如果你已经设置了SSO，我们可以自动获取你的用户属性，或者你可以从管理面板的 \"人 \"部分的\"... \"菜单中手动添加他们。"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:479
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:482
 msgid "Parameter or variable"
 msgstr "参数或变量"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:497
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:500
 msgid "equals"
 msgstr "等于"
 
@@ -15826,147 +15827,148 @@ msgstr "一周的第一天"
 msgid "There was an issue signing in with Google. Please contact an administrator."
 msgstr "用谷歌登录时出现了问题。请联系管理员。"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:133
+#: frontend/src/metabase/components/SchedulePicker.jsx:140
 msgid "on the"
 msgstr "在...上"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:191
+#: frontend/src/metabase/components/SchedulePicker.jsx:194
+#: frontend/src/metabase/components/SchedulePicker.jsx:224
 msgid "at"
 msgstr "在"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:44
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:45
 msgid "Open the Metabase actions menu"
 msgstr "打开Metabase操作菜单"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:45
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:370
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:46
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:371
 #: frontend/src/metabase/lib/click-behavior.js:167
 msgid "Do nothing"
 msgstr "什么都不做"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:48
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:49
 msgid "Go to a custom destination"
 msgstr "前往自定义目的地"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:50
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:367
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:51
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:368
 msgid "Update a dashboard filter"
 msgstr "更新仪表板过滤器"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:151
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:152
 msgid "{0} updates {1} filter"
 msgid_plural "{0} updates {1} filters"
 msgstr[0] "{0}更新 {1}过滤"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:157
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:158
 msgid "{0} goes to {1}"
 msgstr "{0}到{1}"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:342
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:343
 msgid "On-click behavior for each column"
 msgstr "每列的点击行为"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:366
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:367
 msgid "Go to custom destination"
 msgstr "前往自定义目的地"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:369
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:370
 msgid "Open the actions menu"
 msgstr "打开动作菜单"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:402
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:424
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:403
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:425
 msgid "Click behavior for {0}"
 msgstr "点击行为为{0}。"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:546
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:547
 msgid "Pick one or more filters to update"
 msgstr "选择一个或多个过滤器进行更新"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:561
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:562
 msgid "Saved question"
 msgstr "已保存的问题"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:567
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:568
 msgid "Link to"
 msgstr "链接到"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:625
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:626
 msgid "Enter a URL to link to"
 msgstr "输入链接到的URL"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:628
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:629
 msgid "You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}"
 msgstr "你可以使用列或仪表板过滤器的名称插入其值，就像这样。{{some_column}}"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:632
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:633
 msgid "e.g. http://acme.com/id/{{user_id}}"
 msgstr "如：http://acme.com/id/{{用户ID}}。"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:726
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:727
 msgid "Pick a dashboard..."
 msgstr "选择一个仪表盘..."
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:728
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:729
 msgid "Pick a question..."
 msgstr "选一个问题..."
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:759
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:760
 msgid "Pick a dashboard to link to"
 msgstr "选择一个仪表盘链接到"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:760
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:761
 msgid "Pick a question to link to"
 msgstr "选择一个问题链接到"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:788
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:789
 msgid "Pass values to this dashboard's filters (optional)"
 msgstr "传递值到这个仪表板的过滤器（可选）。"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:789
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:790
 msgid "Pass values to this question's variables (optional)"
 msgstr "向本题的变量传递数值（可选）。"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:790
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:791
 msgid "Pass values to filter this question (optional)"
 msgstr "通过数值来过滤这个问题（可选）。"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:850
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:154
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:853
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:155
 msgid "Dashboard filters"
 msgstr "仪表板过滤器"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:857
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:156
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:860
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:157
 msgid "User attributes"
 msgstr "用户属性"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:817
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:818
 msgid "Customize link text (optional)"
 msgstr "自定义链接文本（可选"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:820
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:821
 msgid "E.x. Details for {{Column Name}}"
 msgstr "E.x. {{栏目名称}}的详情"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:864
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:867
 msgid "Values you can reference"
 msgstr "您可以参考的值"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:63
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:64
 msgid "No available targets"
 msgstr "没有可用的目标"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:103
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:220
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:104
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:221
 msgid "filter"
 msgstr "过滤"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:103
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:104
 msgid "variable"
 msgstr "可变的"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:112
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:113
 msgid "Other available filters"
 msgstr "其他可用的过滤器"
 
@@ -15974,7 +15976,7 @@ msgstr "其他可用的过滤器"
 msgid "Avaliable filters"
 msgstr "可用的过滤器"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:117
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:118
 msgid "Other available variables"
 msgstr "其他可用变量"
 
@@ -15982,7 +15984,7 @@ msgstr "其他可用变量"
 msgid "Avaliable variables"
 msgstr "可变数"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:122
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:123
 msgid "Other available columns"
 msgstr "其他可用栏目"
 
@@ -15990,31 +15992,31 @@ msgstr "其他可用栏目"
 msgid "Avaliable columns"
 msgstr "可用列数"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:221
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:222
 msgid "user attribute"
 msgstr "用户属性"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:216
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:215
 msgid "Text card"
 msgstr "文本卡"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:277
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:276
 msgid "Click behavior"
 msgstr "点击行为"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:315
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:314
 msgid "Visualization options"
 msgstr "可视化选项"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:352
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:351
 msgid "Edit series"
 msgstr "编辑系列"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:352
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:351
 msgid "Add series"
 msgstr "添加系列"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:406
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:405
 msgid "On click"
 msgstr "点击后"
 
@@ -16031,7 +16033,7 @@ msgstr "你已经更新了嵌入参数，需要更新你的嵌入代码。"
 msgid "Add question"
 msgstr "添加问题"
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:376
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:378
 msgid "You're editing this dashboard."
 msgstr "你正在编辑这个仪表板。"
 
@@ -16441,15 +16443,15 @@ msgstr "输入用户名或电子邮件地址"
 msgid "New snippet"
 msgstr "新片段"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:311
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:292
 msgid "{0}:00 PM"
 msgstr "{0}:00下午"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:313
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:294
 msgid "12:00 AM"
 msgstr "上午12:00"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:315
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:296
 msgid "{0}:00 AM"
 msgstr "{0}:00 AM"
 
@@ -16469,53 +16471,52 @@ msgstr "每周在{0}上进行{1}。"
 msgid "Monthly on the {0} {1} at {2}"
 msgstr "每月在{0}{1}上{2}。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:475
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:460
 msgid "Delete this subscription"
 msgstr "删除此订阅"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:458
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:528
 msgid "Subscriptions"
 msgstr "订阅"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:59
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:571
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:752
 msgid "Create a dashboard subscription"
 msgstr "创建一个仪表板订阅"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:599
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:788
 msgid "Email it"
 msgstr "电子邮件"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:609
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:803
 msgid "You can send this dashboard regularly to users or email addresses."
 msgstr "您可以定期向用户或电子邮件地址发送此仪表板。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:635
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:837
 msgid "Send it to Slack"
 msgstr "发送到Slack"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:645
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:852
 msgid "Pick a channel and a schedule, and Metabase will do the rest."
 msgstr "选择一个频道和时间表，Metabase将做其余的工作。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:681
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:611
 msgid "Email this dashboard"
 msgstr "通过电子邮件发送此仪表板"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:725
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:812
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:656
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:733
 msgid "Don't send if there aren't results"
 msgstr "没有结果就不要发了"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:733
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:664
 msgid "Attach results"
 msgstr "附上结果"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:738
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:669
 msgid "Attachments can contain up to 2,000 rows of data."
 msgstr "附件最多可以包含2,000行数据。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:791
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:711
 msgid "Send this dashboard to Slack"
 msgstr "将此仪表板发送到Slack"
 
@@ -16641,23 +16642,23 @@ msgstr "上传的图片"
 msgid "Error uploading file to Slack:"
 msgstr "上传文件到Slack时出错。"
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "Invalid session. Expected an instance of Session."
 msgstr "无效会话。期待一个会话的实例。"
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "Session cookie's SameSite is configured to \"None\", but site is"
 msgstr "Session cookie的SameSite配置为 \"None\"，但站点是"
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "served over an insecure connection. Some browsers will reject "
 msgstr "通过不安全的连接提供服务。有些浏览器会拒绝 "
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "cookies under these conditions. "
 msgstr "饼干在这些条件下。 "
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "https://www.chromestatus.com/feature/5633521622188032"
 msgstr "https://www.chromestatus.com/feature/5633521622188032"
 
@@ -16828,19 +16829,19 @@ msgstr "姓名不详"
 msgid "Unknown engine"
 msgstr "未知的发动机"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:202
+#: frontend/src/metabase/collections/components/Header.jsx:61
 msgid "Edit collection"
 msgstr "编辑收藏"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:239
+#: frontend/src/metabase/collections/components/PinnedItems.jsx:57
 msgid "Pinned items"
 msgstr "钉住的项目"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:103
+#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:109
 msgid "Other users' personal collections"
 msgstr "其他用户的个人收藏"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:114
+#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:117
 msgid "View archive"
 msgstr "查看档案"
 
@@ -16860,15 +16861,15 @@ msgstr "使用集合为您的团队或您自己组织和分组仪表板和问题
 msgid "Unpin this item"
 msgstr "拔掉这个项目"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:113
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:114
 msgid "Available filters"
 msgstr "可用的过滤器"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:118
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:119
 msgid "Available variables"
 msgstr "可用变量"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:123
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:124
 msgid "Available columns"
 msgstr "可用栏目"
 
@@ -16880,11 +16881,11 @@ msgstr "在查询中包含用户ID和查询哈希值。"
 msgid "When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs."
 msgstr "当开启时，Metabase用户ID和查询散列会被附加到这个数据库的查询中，这对审计和调试很有用。然而，这将导致每个查询看起来不同，防止BigQuery返回缓存结果，这可能会增加你的成本。"
 
-#: frontend/src/metabase/entities/databases/forms.js:298
+#: frontend/src/metabase/entities/databases/forms.js:297
 msgid "Periodically refingerprint tables"
 msgstr "定期重新打印表格"
 
-#: frontend/src/metabase/entities/databases/forms.js:299
+#: frontend/src/metabase/entities/databases/forms.js:298
 msgid "When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter."
 msgstr "当与该数据库同步时，Metabase将扫描字段值的子集，以收集统计数据，从而实现诸如改进图表中的分批行为，并通常使您的Metabase实例更加智能。"
 
@@ -16908,7 +16909,7 @@ msgstr "像 \"日\"、\"月\"、\"年 \"这样的间隔类型。"
 msgid "Filter by this column"
 msgstr "按此列过滤"
 
-#: frontend/src/metabase/modes/components/drill/FormatAction.jsx:28
+#: frontend/src/metabase/modes/components/drill/FormatAction.jsx:29
 msgid "Column formatting"
 msgstr "栏目格式化"
 
@@ -16920,7 +16921,7 @@ msgstr "升序排列"
 msgid "Sort descending"
 msgstr "降序"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:343
+#: frontend/src/metabase/nav/containers/Navbar.jsx:255
 msgid "Browse data"
 msgstr "浏览数据"
 
@@ -16936,56 +16937,56 @@ msgstr "这个可视化有一个问题"
 msgid "Showing first {0} rows"
 msgstr "显示前{0}行"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:343
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:324
 msgid "first"
 msgstr "第一"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:345
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:326
 msgid "last"
 msgstr "最后的"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:356
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:337
 msgid "Emailed "
 msgstr "电子邮件 "
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:358
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:339
 msgid "Sent to "
 msgstr "发送至 "
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:360
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:341
 msgid "Sent "
 msgstr "已发送 "
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:365
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:346
 msgid "hourly"
 msgstr "每小时"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:369
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:350
 msgid "daily at {0}"
 msgstr "每天在{0}"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:375
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:356
 msgid "{0} at {1}"
 msgstr "{0}在{1}"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:382
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:363
 msgid "monthly on the {0} {1} at {2}"
 msgstr "每月在{0}{1}上{2}。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:398
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:379
 msgid " and {0} other"
 msgid_plural " and {0} others"
 msgstr[0] "和{0}其他"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:437
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:421
 msgid "This dashboard will no longer be emailed to {0} {1}"
 msgstr "此仪表盘将不再通过电子邮件发送至{0}{1}。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:448
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:432
 msgid "Slack channel {0} will no longer get this dashboard {1}"
 msgstr "Slack频道{0}将不再获得此仪表板{1}。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:457
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:441
 msgid "Channel {0} will no longer receive this dashboard {1}"
 msgstr "频道{0}将不再接收此仪表板{1}。"
 
@@ -16993,19 +16994,19 @@ msgstr "频道{0}将不再接收此仪表板{1}。"
 msgid "Schedules"
 msgstr "时间表"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:515
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:531
 msgid "Set up a new schedule"
 msgstr "设置新的时间表"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:523
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:539
 msgid "Close"
 msgstr "关闭"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:603
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:797
 msgid "You'll need to {0} first."
 msgstr "你需要先{0}。"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:639
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:846
 msgid "First, you'll have to {0}."
 msgstr "首先，你要{0}。"
 
@@ -17013,7 +17014,7 @@ msgstr "首先，你要{0}。"
 msgid "Rows {0}-{1} of first {2}"
 msgstr "第一行{0}-{1}的{2}。"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:123
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:150
 msgid "Drag fields here"
 msgstr "在这里拖动领域"
 
@@ -17021,15 +17022,15 @@ msgstr "在这里拖动领域"
 msgid "Percentage"
 msgstr "百分比"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:19
+#: frontend/src/metabase/lib/data_grid.js:311
 msgid "Totals for {0}"
 msgstr "{0}的总数"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:20
+#: frontend/src/metabase/lib/data_grid.js:135
 msgid "Grand totals"
 msgstr "总计"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:21
+#: frontend/src/metabase/lib/data_grid.js:110
 msgid "Row totals"
 msgstr "行总数"
 
@@ -17045,11 +17046,11 @@ msgstr "表列使用的字段"
 msgid "Fields to use for the table values"
 msgstr "用于表值的字段"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:63
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:69
 msgid "Pivot tables can only be used with aggregated queries."
 msgstr "数据透视表只能与汇总查询一起使用。"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:44
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:54
 msgid "Pivot Table"
 msgstr "枢轴表"
 
@@ -17637,11 +17638,186 @@ msgctxt "An info message letting you know you can create dashboard subscriptions
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "你现在可以设置{0}来代替。我们将在未来的版本中删除Pulses，并帮助你迁移任何你仍然拥有的Pulses。"
 
-#: 
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:136
 msgid "dashboard subscriptions"
 msgstr "仪表盘订阅"
 
 #: 
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0}订阅中的图表与仪表盘中的图表看起来不一样。{1}"
+
+#: frontend/src/metabase/components/SchedulePicker.jsx:203
+msgid "minutes past the hour"
+msgstr "时分"
+
+#: frontend/src/metabase/components/SendTestEmail.jsx:31
+msgid "Email sent"
+msgstr "发送的电子邮件"
+
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
+msgid "Add data to share this dashboard"
+msgstr "添加数据以共享此仪表板"
+
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:79
+msgid "Dashboard subscriptions"
+msgstr "仪表盘订阅"
+
+#: frontend/src/metabase/lib/core.js:228
+msgid "Text as a ISO-8601 timestamp"
+msgstr "文本为ISO-8601时间戳"
+
+#: frontend/src/metabase/lib/core.js:233
+msgid "Text as a ISO-8601 time"
+msgstr "文本为ISO-8601时间"
+
+#: frontend/src/metabase/lib/core.js:238
+msgid "Text as a ISO-8601 date"
+msgstr "文本为ISO-8601日期"
+
+#: frontend/src/metabase/lib/core.js:263
+msgid "UNIX Timestamp (Microseconds)"
+msgstr "UNIX时间戳(微秒)"
+
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:173
+msgid "Pulses are being phased out"
+msgstr "豆类正在被淘汰"
+
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:174
+msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
+msgstr "你现在可以设置{0}来代替。我们将在未来的版本中删除Pulses，并帮助你迁移任何你仍然拥有的Pulses。"
+
+#: frontend/src/metabase/sharing/components/EmailAttachmentPicker.jsx:181
+msgid "File format"
+msgstr "文件格式"
+
+#: frontend/src/metabase/sharing/components/EmailAttachmentPicker.jsx:204
+msgid "Questions to attach"
+msgstr "附上的问题"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:465
+msgid "Delete this subscription to {0}?"
+msgstr "删除本次订阅{0}？"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:506
+msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}."
+msgstr "{0}订阅中的图表与仪表盘中的图表看起来不一样。{1}."
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:22
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:29
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:36
+msgid "Fields to use for the table {0}"
+msgstr "表格使用的字段{0}"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:23
+msgid "rows"
+msgstr "行数"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:30
+msgid "columns"
+msgstr "专栏"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:37
+msgid "values"
+msgstr "价值观"
+
+#: backend/mbql/src/metabase/mbql/normalize.clj
+msgid "Error normalizing form."
+msgstr "误差归一化形式。"
+
+#: backend/mbql/src/metabase/mbql/normalize.clj
+msgid "Error canonicalizing query"
+msgstr "错误的规范化查询"
+
+#: backend/mbql/src/metabase/mbql/normalize.clj
+msgid "Error performing whole query transformations"
+msgstr "执行整个查询转换时出错"
+
+#: backend/mbql/src/metabase/mbql/normalize.clj
+msgid "Error normalizing query"
+msgstr "错误归一化查询"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/models/group_table_access_policy.clj
+msgid "Sandbox Cards can''t return columns that aren't present in the Table they are sandboxing."
+msgstr "沙盒卡不能返回他们所沙盒的表中不存在的列。"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/models/group_table_access_policy.clj
+msgid "Sandbox Cards can''t return columns that have different types than the Table they are sandboxing."
+msgstr "沙盒卡不能返回与他们所沙盒的表有不同类型的列。"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/models/group_table_access_policy.clj
+msgid "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules."
+msgstr "不能更新卡片。卡片用于沙盒，更新会违反沙盒规则。"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/models/group_table_access_policy.clj
+msgid "You cannot change the Table ID of a GTAP once it has been created."
+msgstr "一旦GTAP被创建，您就不能改变它的表ID。"
+
+#: src/metabase/api/dataset.clj
+msgid "`database` is required for all queries."
+msgstr "所有查询都需要 \"数据库\"。"
+
+#: src/metabase/cmd/copy.clj
+msgid "ERROR {0}"
+msgstr "ERROR {0}"
+
+#: src/metabase/cmd/copy.clj
+msgid "copied {0} instances."
+msgstr "复制了{0}个实例。"
+
+#: src/metabase/cmd/copy.clj
+msgid "Copying instances of {0}..."
+msgstr "复制{0}...的实例。"
+
+#: src/metabase/cmd/copy.clj
+msgid "Error copying instances of {0}"
+msgstr "复制{0}的实例时出错。"
+
+#: src/metabase/cmd/copy.clj
+msgid "Temporarily disabling DB constraints..."
+msgstr "暂时禁用DB约束..."
+
+#: src/metabase/cmd/copy.clj
+msgid "Re-enabling DB constraints..."
+msgstr "重新启用DB约束..."
+
+#: src/metabase/cmd/copy.clj
+msgid "Setting Postgres sequence ids to proper values..."
+msgstr "将Postgres序列id设置为正确的值......。"
+
+#. make sure the source database is up-do-date
+#: src/metabase/cmd/copy.clj
+msgid "Set up {0} source database and run migrations..."
+msgstr "建立{0}源数据库并运行迁移..."
+
+#. make sure the dest DB is up-to-date
+#. 
+#. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
+#: src/metabase/cmd/copy.clj
+msgid "Set up {0} target database and run migrations..."
+msgstr "建立{0}目标数据库并运行迁移......"
+
+#. make sure target DB is empty
+#: src/metabase/cmd/copy.clj
+msgid "Testing if target {0} database is already populated..."
+msgstr "测试目标{0}数据库是否已经填充......。"
+
+#: src/metabase/db/env.clj
+msgid "Unsupported application database type: {0} is not currently supported."
+msgstr "不支持的应用程序数据库类型。目前不支持{0}。"
+
+#: src/metabase/db/env.clj
+msgid "Check the value of MB_DB_CONNECTION_URI."
+msgstr "检查MB_DB_CONNECTION_URI的值。"
+
+#: src/metabase/driver/sql/query_processor.clj
+msgid "Driver {0} does not support {1}"
+msgstr "驱动{0}不支持{1}。"
+
+#: src/metabase/driver/sql/query_processor.clj
+msgid "No magnitude known for {0}"
+msgstr "不知道{0}的幅度。"
+
+#: src/metabase/query_processor/middleware/fetch_source_query.clj
+msgid "Error resolving source query"
+msgstr "源查询解析错误"
 

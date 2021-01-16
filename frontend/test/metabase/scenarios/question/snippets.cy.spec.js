@@ -43,9 +43,7 @@ describe("scenarios > question > snippets", () => {
     });
 
     // SQL editor should get updated automatically
-    cy.get("@editor")
-      .wait(100)
-      .contains("select {{snippet: stuff-snippet}}");
+    cy.get("@editor").contains("select {{snippet: stuff-snippet}}");
 
     // Run the query and check the value
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -71,9 +69,7 @@ describe("scenarios > question > snippets", () => {
     cy.findByText("stuff-snippet").click();
 
     // Open the snippet edit modal
-    cy.get(".Icon-chevrondown")
-      .wait(100)
-      .click({ force: true });
+    cy.get(".Icon-chevrondown").click({ force: true });
     cy.findByText("Edit").click();
 
     // Update the name and content

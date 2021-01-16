@@ -28,7 +28,7 @@ msgstr "Explora aquestes dades"
 msgid "Select a database type"
 msgstr "Selecciona un tipus de base de dades"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:254
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:253
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:175
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:428
 #: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:106
@@ -50,7 +50,7 @@ msgstr "Desa"
 msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
 msgstr "Metabase necessita analitzar la teva base de dades. S'analitzarà periòdicament per tal de mantenir actualizades les metadades. A continuació, pots definir la periodicitat dels anàlisis."
 
-#: frontend/src/metabase/entities/databases/forms.js:307
+#: frontend/src/metabase/entities/databases/forms.js:306
 msgid "Database syncing"
 msgstr "S'està sincronitzant"
 
@@ -65,7 +65,7 @@ msgstr "Això es un procès simple que busca actualitzacions a l'esquema de la b
 msgid "Scan"
 msgstr "Escaneja"
 
-#: frontend/src/metabase/entities/databases/forms.js:314
+#: frontend/src/metabase/entities/databases/forms.js:313
 msgid "Scanning for Filter Values"
 msgstr "Escanejant els valors dels filtres"
 
@@ -76,7 +76,7 @@ msgid "Metabase can scan the values present in each\n"
 "database."
 msgstr "Metabase pot analizar els valors presents a cada camp de la base de dades, per tal d'activar filtres als quadres de comandament i les preguntes. Aquest procés pot ser intensiu, en especial si disposes d'una base de dades gran."
 
-#: frontend/src/metabase/entities/databases/forms.js:318
+#: frontend/src/metabase/entities/databases/forms.js:317
 msgid "When should Metabase automatically scan and cache field values?"
 msgstr "Amb quina periodicitat Metabase ha d'analitzar i desar en memoria els valors dels camps?"
 
@@ -98,7 +98,7 @@ msgid "Never, I'll do this manually if I need to"
 msgstr "Mai. Ho faré manualment si ho necessito."
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:29
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:229
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:227
 #: frontend/src/metabase/components/ActionButton.jsx:52
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
 msgid "Saving..."
@@ -134,7 +134,7 @@ msgstr "Elimar"
 msgid "in this box:"
 msgstr "en aquest camp:"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:247
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:246
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:77
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:66
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:49
@@ -159,11 +159,11 @@ msgstr "en aquest camp:"
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:166
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:32
 #: frontend/src/metabase/dashboard/components/Sidebar.jsx:28
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:191
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:191
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:354
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:218
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:190
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:371
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:39
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:99
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:101
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:32
 #: frontend/src/metabase/reference/components/EditHeader.jsx:34
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:52
@@ -175,6 +175,7 @@ msgstr "Cancel·lar"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:83
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:124
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:135
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:466
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:461
 msgid "Delete"
 msgstr "Eliminar"
@@ -185,7 +186,7 @@ msgstr "Eliminar"
 #: frontend/src/metabase/admin/permissions/selectors.js:348
 #: frontend/src/metabase/admin/permissions/selectors.js:459
 #: frontend/src/metabase/admin/routes.jsx:60
-#: frontend/src/metabase/nav/containers/Navbar.jsx:221
+#: frontend/src/metabase/nav/containers/Navbar.jsx:131
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:18
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:21
 msgid "Databases"
@@ -208,9 +209,9 @@ msgstr "Programació"
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:62
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:80
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:28
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:228
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:184
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:356
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:226
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:211
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:373
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:47
 msgid "Save changes"
 msgstr "Desar els canvis"
@@ -259,7 +260,7 @@ msgid "Scan triggered!"
 msgstr "Sincronització programada!"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:233
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:400
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:417
 msgid "Danger Zone"
 msgstr "Zona de perill"
 
@@ -309,7 +310,7 @@ msgstr "Carregant..."
 msgid "Bring the sample dataset back"
 msgstr "Recuperar la base de dades de prova"
 
-#: frontend/src/metabase/admin/databases/database.js:167
+#: frontend/src/metabase/admin/databases/database.js:168
 msgid "Couldn't connect to the database. Please check the connection details."
 msgstr "No s'ha pogut connectar a la base de dades. Si us plau, reviseu els paràmetres de connexió"
 
@@ -386,7 +387,7 @@ msgid "No special type"
 msgstr "Sense cap tipus especial"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem.jsx:188
-#: frontend/src/metabase/lib/core.js:290
+#: frontend/src/metabase/lib/core.js:310
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:16
 #: frontend/src/metabase/reference/components/Field.jsx:57
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:37
@@ -403,17 +404,17 @@ msgstr "Seleccioneu un tipus especial"
 msgid "Select a target"
 msgstr "Selecciona una referència"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:843
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:155
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:846
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:156
 #: frontend/src/metabase/query_builder/components/notebook/steps/FieldsPicker.jsx:23
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:83
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:95
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:126
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:163
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:82
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:94
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:125
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:162
 msgid "Columns"
 msgstr "Columnes"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:479
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:482
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList.jsx:109
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchema.jsx:46
 msgid "Column"
@@ -503,7 +504,7 @@ msgstr "Troba una taula"
 msgid "Schemas"
 msgstr "Esquemes"
 
-#: frontend/src/metabase-lib/lib/queries/StructuredQuery.js:830
+#: frontend/src/metabase-lib/lib/queries/StructuredQuery.js:833
 #: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:40
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp.jsx:39
 #: frontend/src/metabase/home/containers/SearchApp.jsx:67
@@ -829,7 +830,7 @@ msgstr "Això apareixerà al historial de versions d'aquest segment per ajudar a
 #: frontend/src/metabase/admin/routes.jsx:137
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:216
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:94
-#: frontend/src/metabase/nav/containers/Navbar.jsx:203
+#: frontend/src/metabase/nav/containers/Navbar.jsx:113
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:18
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:94
 #: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:201
@@ -968,12 +969,12 @@ msgstr "Elimina el grup"
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:41
 #: frontend/src/metabase/components/HeaderModal.jsx:43
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:281
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:657
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:658
 #: frontend/src/metabase/dashboard/components/Sidebar.jsx:37
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:193
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:192
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:73
 #: frontend/src/metabase/query_builder/components/SidebarContent.jsx:17
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:113
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:115
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:334
 msgid "Done"
 msgstr "Fet"
@@ -1019,7 +1020,7 @@ msgstr "Desactiva"
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:21
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:94
 #: frontend/src/metabase/admin/routes.jsx:93
-#: frontend/src/metabase/nav/containers/Navbar.jsx:209
+#: frontend/src/metabase/nav/containers/Navbar.jsx:119
 msgid "People"
 msgstr "Gent"
 
@@ -1184,7 +1185,7 @@ msgid " native queries for "
 msgstr " consultes natives de "
 
 #: frontend/src/metabase/admin/permissions/routes.jsx:14
-#: frontend/src/metabase/nav/containers/Navbar.jsx:227
+#: frontend/src/metabase/nav/containers/Navbar.jsx:137
 msgid "Permissions"
 msgstr "Permisos"
 
@@ -1350,7 +1351,7 @@ msgid "View schemas"
 msgstr "Mostrar esquemes"
 
 #: frontend/src/metabase/admin/routes.jsx:66
-#: frontend/src/metabase/nav/containers/Navbar.jsx:215
+#: frontend/src/metabase/nav/containers/Navbar.jsx:125
 msgid "Data Model"
 msgstr "Model de dades"
 
@@ -1379,24 +1380,24 @@ msgid "Allows users within your LDAP directory to log in to Metabase with their 
 msgstr "Permet als usuaris del teu directori LDAP iniciar sessió a Metabase amb les seves credencials LDAP i permet la assignació automàtica de grups LDAP a grups de metabase."
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:76
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:74
 #: frontend/src/metabase/admin/settings/selectors.js:158
 msgid "That's not a valid email address"
 msgstr "No es un correu electrònic vàlid"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:23
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:80
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:78
 msgid "That's not a valid integer"
 msgstr "No és una enter vàlid"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:30
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:164
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:230
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:228
 msgid "Changes saved!"
 msgstr "Canvis desats!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:180
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:139
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:137
 msgid "Looks like we ran into some problems"
 msgstr "Sembla que s'ha produït un error"
 
@@ -1474,15 +1475,15 @@ msgstr "El teu ID de client de Google"
 msgid "Allow users to sign up on their own if their Google account email address is from:"
 msgstr "Permet que els usuaris es registrin per ells mateixos si la seva de compta de Google es de:"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:249
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:250
 msgid "Answers sent right to your Slack #channels"
 msgstr "Respostes enviades directament als teus #canals de Slack"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:258
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:259
 msgid "Create a Slack Bot User for MetaBot"
 msgstr "Crea un usuari de Slack BOt pel Metabot"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:269
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
 msgstr "Una cop arribats allí, assigna-li un nom i clica a {0}. Desprès copia i pega el token de la API del Bot al camp a continuació. Quan hagis acabat, crea un canal \"metabase_files\" en Slack. Aquest canal es necessita per pujar gràfiques."
 
@@ -1496,7 +1497,7 @@ msgstr "La versió {0} de Metabase esta disponible. Esteu fent servir la versió
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:41
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:113
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:115
 msgid "Update"
 msgstr "Actualitzat"
 
@@ -1509,10 +1510,10 @@ msgid "Add a map"
 msgstr "Afegiu un mapa"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:188
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:123
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:562
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:599
-#: frontend/src/metabase/lib/core.js:282
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:124
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:563
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:600
+#: frontend/src/metabase/lib/core.js:302
 msgid "URL"
 msgstr "URL"
 
@@ -1522,11 +1523,11 @@ msgstr "Elimina el mapa personalitzat"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:207
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:337
-#: frontend/src/metabase/containers/Overworld.jsx:146
-#: frontend/src/metabase/containers/Overworld.jsx:293
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:303
+#: frontend/src/metabase/containers/Overworld.jsx:145
+#: frontend/src/metabase/containers/Overworld.jsx:296
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:302
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:124
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:126
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:160
 msgid "Remove"
 msgstr "Elimina"
@@ -1611,23 +1612,23 @@ msgstr "Amb llenguatge senzill, quan incrustes taules o quadres de comandament d
 msgid "Enable"
 msgstr "Habilita"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:24
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:25
 msgid "Premium embedding enabled"
 msgstr "Incrustat premium habilitat"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:26
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:27
 msgid "Enter the token you bought from the Metabase Store"
 msgstr "Introdueix"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:53
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:54
 msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
 msgstr "La incrustació premium et permet desactivar el \"Powered by Metabase\" en els teus quadres de comandament i preguntes incrustades"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:60
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:61
 msgid "Buy a token"
 msgstr "Compra un token"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:63
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:64
 msgid "Enter a token"
 msgstr "Afegiu un token"
 
@@ -2117,7 +2118,7 @@ msgstr "Inicia sessió amb la nova contrasenya"
 
 #: frontend/src/metabase/components/ActionButton.jsx:53
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:174
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:186
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:213
 msgid "Save failed"
 msgstr "No s'ha pogut guardar"
 
@@ -2125,7 +2126,7 @@ msgstr "No s'ha pogut guardar"
 #: frontend/src/metabase/components/SaveStatus.jsx:60
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:175
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:133
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:187
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:214
 msgid "Saved"
 msgstr "Guardat"
 
@@ -2142,19 +2143,17 @@ msgid "The dashboards, collections, and pulses in this collection will also be a
 msgstr "Els cuadres de comandament, les colecions i els polsos d'aquesta col·lecció també s'arxivaran."
 
 #: enterprise/frontend/src/metabase-enterprise/snippets/components/CollectionOptionsButton.jsx:85
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:475
+#: frontend/src/metabase/collections/components/BulkActions.jsx:25
 #: frontend/src/metabase/components/ArchiveModal.jsx:40
 #: frontend/src/metabase/components/EntityMenu.info.js:32
 #: frontend/src/metabase/components/EntityMenu.info.js:88
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:338
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:50
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:196
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:201
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:202
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:223
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:228
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:229
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:58
-#: frontend/src/metabase/routes.jsx:198
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:480
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:481
+#: frontend/src/metabase/routes.jsx:197
 msgid "Archive"
 msgstr "Arxiva"
 
@@ -2170,21 +2169,21 @@ msgstr "Mostra l'arxiu"
 msgid "Unarchive this {0}"
 msgstr "Desarxiva aquest {0}"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:46
-#: frontend/src/metabase/components/BrowseApp.jsx:112
-#: frontend/src/metabase/components/BrowseApp.jsx:204
-#: frontend/src/metabase/containers/Overworld.jsx:270
+#: frontend/src/metabase/browse/containers/DatabaseBrowser.jsx:21
+#: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:37
+#: frontend/src/metabase/browse/containers/TableBrowser.jsx:34
+#: frontend/src/metabase/containers/Overworld.jsx:273
 #: frontend/src/metabase/reference/databases/DatabaseList.jsx:48
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:39
 msgid "Our data"
 msgstr "Les nostres dades"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:156
+#: frontend/src/metabase/browse/containers/TableBrowser.jsx:74
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:53
 msgid "X-ray this table"
 msgstr "Aplica rajos-X a aquesta taula"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:171
+#: frontend/src/metabase/browse/containers/TableBrowser.jsx:89
 msgid "Learn about this table"
 msgstr "Aprèn sobre aquesta taula"
 
@@ -2275,7 +2274,7 @@ msgstr "Les preguntes son visualitzacions guardades de les teves dades."
 msgid "Pins"
 msgstr "Contingut fixat"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:299
+#: frontend/src/metabase/collections/components/PinnedItems.jsx:49
 msgid "Drag something here to pin it to the top"
 msgstr "Arrasta coses aquí per fixar-les a dalt"
 
@@ -2284,25 +2283,25 @@ msgstr "Arrasta coses aquí per fixar-les a dalt"
 msgid "Collections"
 msgstr "Col·leccions"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:370
+#: frontend/src/metabase/collections/components/ItemList.jsx:103
 msgid "Drag here to un-pin"
 msgstr "Arrastra-ho aquí per deixar de fixar-los"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:398
+#: frontend/src/metabase/collections/components/BulkActions.jsx:84
 msgid "{0} item selected"
 msgid_plural "{0} items selected"
 msgstr[0] "{0} element seleccionat"
 msgstr[1] "{0} elements seleccionats"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:434
+#: frontend/src/metabase/collections/components/BulkActions.jsx:111
 msgid "Move {0} items?"
 msgstr "Moure {0} element(s)?"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:435
+#: frontend/src/metabase/collections/components/BulkActions.jsx:112
 msgid "Move \"{0}\"?"
 msgstr "Moure \"{0}\"?"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:482
+#: frontend/src/metabase/collections/components/BulkActions.jsx:32
 #: frontend/src/metabase/components/EntityMenu.info.js:30
 #: frontend/src/metabase/components/EntityMenu.info.js:86
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:69
@@ -2311,11 +2310,11 @@ msgstr "Moure \"{0}\"?"
 msgid "Move"
 msgstr "Moure"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:514
+#: frontend/src/metabase/collections/components/CollectionEditMenu.jsx:16
 msgid "Edit this collection"
 msgstr "Edita aquesta col·lecció"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:522
+#: frontend/src/metabase/collections/components/CollectionEditMenu.jsx:24
 msgid "Archive this collection"
 msgstr "Arxiva aquesta col·lecció"
 
@@ -2324,7 +2323,7 @@ msgstr "Arxiva aquesta col·lecció"
 msgid "My personal collection"
 msgstr "La meva col·lecció personal"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:227
+#: frontend/src/metabase/collections/components/Header.jsx:68
 #: frontend/src/metabase/components/CollectionList.jsx:107
 msgid "New collection"
 msgstr "Nova col·lecció"
@@ -2345,7 +2344,7 @@ msgstr "Algunes instancies de bases de dades només es poden accedir a través d
 "Aquesta configuració també proporcionarà una cap addicional de seguretat quan no es disposi d'una VPN. \n"
 "Aquest configuració normalment es més lenta que una connexió directa."
 
-#: frontend/src/metabase/entities/databases/forms.js:291
+#: frontend/src/metabase/entities/databases/forms.js:290
 msgid "This is a large database, so let me choose when Metabase syncs and scans"
 msgstr "Aquesta es una base de dades gran. Deixem decidir quan el Metabase es sincronitza i escaneja les dades"
 
@@ -2390,12 +2389,11 @@ msgid "How would you like to refer to this database?"
 msgstr "Com t'agradaria anomenar aquesta base de dades?"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:187
-#: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:97
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:236
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:143
 #: frontend/src/metabase/setup/components/DatabaseSchedulingStep.jsx:70
 #: frontend/src/metabase/setup/components/LanguageStep.jsx:96
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:126
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:128
 #: frontend/src/metabase/setup/components/UserStep.jsx:93
 msgid "Next"
 msgstr "Següent"
@@ -2455,8 +2453,7 @@ msgstr "Descarrega els resultats"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:52
 #: frontend/src/metabase/components/EntityMenu.info.js:104
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:73
-#: frontend/src/metabase/dashboard/containers/DashboardSharingEmbeddingModal.jsx:59
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:93
 msgid "Sharing and embedding"
 msgstr "Compartint i incrustant"
 
@@ -2613,20 +2610,21 @@ msgstr "No s'ha pogut desfer"
 msgid "Reverted"
 msgstr "Desfet"
 
-#: frontend/src/metabase/components/ItemTypeFilterBar.jsx:13
+#: frontend/src/metabase/collections/components/ItemList.jsx:35
+#: frontend/src/metabase/collections/components/ItemTypeFilterBar.jsx:13
 msgid "Everything"
 msgstr "Tot"
 
-#: frontend/src/metabase/components/ItemTypeFilterBar.jsx:18
+#: frontend/src/metabase/collections/components/ItemTypeFilterBar.jsx:18
 msgid "Dashboards"
 msgstr "Quadres de comandament"
 
-#: frontend/src/metabase/components/ItemTypeFilterBar.jsx:23
+#: frontend/src/metabase/collections/components/ItemTypeFilterBar.jsx:23
 msgid "Questions"
 msgstr "Preguntes"
 
-#: frontend/src/metabase/components/ItemTypeFilterBar.jsx:28
-#: frontend/src/metabase/routes.jsx:315
+#: frontend/src/metabase/collections/components/ItemTypeFilterBar.jsx:28
+#: frontend/src/metabase/routes.jsx:314
 msgid "Pulses"
 msgstr "Polsos"
 
@@ -2701,66 +2699,66 @@ msgid "Error:"
 msgstr "Error:"
 
 #: frontend/src/metabase/admin/settings/selectors.js:242
-#: frontend/src/metabase/components/SchedulePicker.jsx:24
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:334
+#: frontend/src/metabase/components/SchedulePicker.jsx:29
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:315
 msgid "Sunday"
 msgstr "Diumenge"
 
 #: frontend/src/metabase/admin/settings/selectors.js:243
-#: frontend/src/metabase/components/SchedulePicker.jsx:25
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:322
+#: frontend/src/metabase/components/SchedulePicker.jsx:30
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:303
 msgid "Monday"
 msgstr "Dilluns"
 
 #: frontend/src/metabase/admin/settings/selectors.js:244
-#: frontend/src/metabase/components/SchedulePicker.jsx:26
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:324
+#: frontend/src/metabase/components/SchedulePicker.jsx:31
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:305
 msgid "Tuesday"
 msgstr "Dimarts"
 
 #: frontend/src/metabase/admin/settings/selectors.js:245
-#: frontend/src/metabase/components/SchedulePicker.jsx:27
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:326
+#: frontend/src/metabase/components/SchedulePicker.jsx:32
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:307
 msgid "Wednesday"
 msgstr "Dimecres"
 
 #: frontend/src/metabase/admin/settings/selectors.js:246
-#: frontend/src/metabase/components/SchedulePicker.jsx:28
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:328
+#: frontend/src/metabase/components/SchedulePicker.jsx:33
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:309
 msgid "Thursday"
 msgstr "Dijous"
 
 #: frontend/src/metabase/admin/settings/selectors.js:247
-#: frontend/src/metabase/components/SchedulePicker.jsx:29
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:330
+#: frontend/src/metabase/components/SchedulePicker.jsx:34
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:311
 msgid "Friday"
 msgstr "Divendres"
 
 #: frontend/src/metabase/admin/settings/selectors.js:248
-#: frontend/src/metabase/components/SchedulePicker.jsx:30
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:332
+#: frontend/src/metabase/components/SchedulePicker.jsx:35
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:313
 msgid "Saturday"
 msgstr "Dissabte"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:34
+#: frontend/src/metabase/components/SchedulePicker.jsx:39
 msgid "First"
 msgstr "Primer"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:35
+#: frontend/src/metabase/components/SchedulePicker.jsx:40
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:23
 msgid "Last"
 msgstr "Últim"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:36
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:347
+#: frontend/src/metabase/components/SchedulePicker.jsx:41
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:328
 msgid "15th (Midpoint)"
 msgstr "15è (punt mitg)"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:126
+#: frontend/src/metabase/components/SchedulePicker.jsx:133
 msgid "Calendar Day"
 msgstr "Dia del calendari"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:211
+#: frontend/src/metabase/components/SchedulePicker.jsx:244
 msgid "your Metabase timezone"
 msgstr "La zona horària del Metabase"
 
@@ -2805,8 +2803,8 @@ msgstr "Ho sentim, no tens permisos per veure això."
 msgid "Unknown error encountered"
 msgstr "S'ha trobat un error desconegut"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:210
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
+#: frontend/src/metabase/nav/containers/Navbar.jsx:261
 msgid "Create"
 msgstr "Crea"
 
@@ -2814,7 +2812,7 @@ msgstr "Crea"
 msgid "Create dashboard"
 msgstr "Crea un quadre de comandament"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:58
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:57
 msgid "Table"
 msgstr "Taula"
 
@@ -2842,7 +2840,7 @@ msgstr "Vist per"
 msgid "of"
 msgstr "de"
 
-#: frontend/src/metabase/containers/Overworld.jsx:91
+#: frontend/src/metabase/containers/Overworld.jsx:90
 msgid "Don't tell anyone, but you're my favorite."
 msgstr "No li diguis a ningú però ets el meu favorit"
 
@@ -2850,19 +2848,19 @@ msgstr "No li diguis a ningú però ets el meu favorit"
 msgid "Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data."
 msgstr "Quan connectes les teves pròpies dades et puc mostrar algunes exploracions automàtiques anomenades rajos-X. Aquí hi ha alguns exemples de mostra."
 
-#: frontend/src/metabase/containers/Overworld.jsx:180
-#: frontend/src/metabase/containers/Overworld.jsx:384
+#: frontend/src/metabase/containers/Overworld.jsx:179
+#: frontend/src/metabase/containers/Overworld.jsx:387
 msgid "Start here"
 msgstr "Comença aquí"
 
 #: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:77
-#: frontend/src/metabase/containers/Overworld.jsx:379
+#: frontend/src/metabase/containers/Overworld.jsx:382
 #: frontend/src/metabase/entities/collections.js:165
 #: src/metabase/models/collection.clj
 msgid "Our analytics"
 msgstr "La nostra analítica"
 
-#: frontend/src/metabase/containers/Overworld.jsx:248
+#: frontend/src/metabase/containers/Overworld.jsx:251
 msgid "Browse all items"
 msgstr "Mostrar tots els elements"
 
@@ -2959,32 +2957,32 @@ msgstr "Arxiva el quadre de comandament"
 msgid "Make sure to make a selection for each series, or the filter won't work on this card."
 msgstr "Asegura't de fer una selecció per a cada sèrie sinó el filtre no funcionarà per aquesta targeta."
 
-#: frontend/src/metabase/dashboard/components/Dashboard.jsx:327
+#: frontend/src/metabase/dashboard/components/Dashboard.jsx:329
 msgid "This dashboard is looking empty."
 msgstr "Sembla que aquest quadre de comandament està buit."
 
-#: frontend/src/metabase/dashboard/components/Dashboard.jsx:328
+#: frontend/src/metabase/dashboard/components/Dashboard.jsx:330
 msgid "Add a question to start making it useful!"
 msgstr "Afegeix una pregunta per a que sigui útil"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:99
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
 msgid "Daytime mode"
 msgstr "Mode diürn"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:99
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
 msgid "Nighttime mode"
 msgstr "Mode nocturn"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:117
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
 msgid "Exit fullscreen"
 msgstr "Desactiva la pantalla complerta"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:117
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
 msgid "Enter fullscreen"
 msgstr "Activa la pantalla complerta"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:173
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:185
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:212
 msgid "Saving…"
 msgstr "Guardant..."
 
@@ -2996,7 +2994,7 @@ msgstr "Afegeix una pregunta"
 msgid "Add a question to this dashboard"
 msgstr "Afegiu una pregunta a aquest quadre de comandament."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:498
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:501
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:241
 msgid "Add a filter"
 msgstr "Afegeix un filtre"
@@ -3048,7 +3046,7 @@ msgstr "Quin tipus de filtre?"
 #: frontend/src/metabase/dashboard/components/RefreshWidget.jsx:13
 #: frontend/src/metabase/visualizations/lib/settings/column.js:242
 #: frontend/src/metabase/visualizations/lib/settings/series.js:90
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:250
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:249
 msgid "Off"
 msgstr "Desactivat"
 
@@ -3092,7 +3090,7 @@ msgstr "Eliminar aquesta pregunta?"
 msgid "Your dashboard was saved"
 msgstr "S'ha guardat el teu quadre de comandament"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:554
+#: frontend/src/metabase/collections/components/CollectionCopyEntityModal.jsx:35
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:79
 msgid "See it"
 msgstr "Veure-ho"
@@ -3310,12 +3308,12 @@ msgstr "{0} elements seleccionats"
 
 #: enterprise/frontend/src/metabase-enterprise/snippets/components/CollectionOptionsButton.jsx:59
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:124
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:174
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:201
 #: frontend/src/metabase/query_builder/components/template_tags/snippet-sidebar/SnippetRow.jsx:89
 msgid "Unarchive"
 msgstr "Desarxivar"
 
-#: frontend/src/metabase/home/containers/HomepageApp.jsx:77
+#: frontend/src/metabase/home/containers/HomepageApp.jsx:54
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Activity"
 msgstr "Activitat"
@@ -3357,7 +3355,7 @@ msgstr "Clau forana"
 msgid "Points to another table to make a connection."
 msgstr "Referencia a una altra taula per establir una conexxió"
 
-#: frontend/src/metabase/lib/core.js:272
+#: frontend/src/metabase/lib/core.js:292
 msgid "Avatar Image URL"
 msgstr "URL del avatar"
 
@@ -3383,15 +3381,15 @@ msgstr "Ciutat"
 msgid "Country"
 msgstr "País"
 
-#: frontend/src/metabase/lib/core.js:255
+#: frontend/src/metabase/lib/core.js:275
 msgid "Enum"
 msgstr "Enum"
 
-#: frontend/src/metabase/lib/core.js:277
+#: frontend/src/metabase/lib/core.js:297
 msgid "Image URL"
 msgstr "URL Imatge"
 
-#: frontend/src/metabase/lib/core.js:289
+#: frontend/src/metabase/lib/core.js:309
 msgid "Field containing JSON"
 msgstr "Camp que conte JSON"
 
@@ -3415,11 +3413,11 @@ msgstr "Número"
 msgid "State"
 msgstr "Província"
 
-#: frontend/src/metabase/lib/core.js:248
+#: frontend/src/metabase/lib/core.js:268
 msgid "UNIX Timestamp (Seconds)"
 msgstr "Marca de temps UNIX (Segons)"
 
-#: frontend/src/metabase/lib/core.js:243
+#: frontend/src/metabase/lib/core.js:258
 msgid "UNIX Timestamp (Milliseconds)"
 msgstr "Marca de temps UNIX (Mil·lisegons)"
 
@@ -3452,7 +3450,7 @@ msgstr "Hora de creació"
 msgid "Creation date"
 msgstr "Data de creació"
 
-#: frontend/src/metabase/lib/core.js:260
+#: frontend/src/metabase/lib/core.js:280
 msgid "Product"
 msgstr "Producte"
 
@@ -3460,7 +3458,7 @@ msgstr "Producte"
 msgid "User"
 msgstr "Usuari"
 
-#: frontend/src/metabase/lib/core.js:265
+#: frontend/src/metabase/lib/core.js:285
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:96
 msgid "Source"
 msgstr "Origen"
@@ -3471,15 +3469,15 @@ msgstr "Origen"
 msgid "Price"
 msgstr "Preu"
 
-#: frontend/src/metabase/lib/core.js:238
+#: frontend/src/metabase/lib/core.js:253
 msgid "Join timestamp"
 msgstr "Unir per temps"
 
-#: frontend/src/metabase/lib/core.js:233
+#: frontend/src/metabase/lib/core.js:248
 msgid "Join time"
 msgstr "Unir per temps"
 
-#: frontend/src/metabase/lib/core.js:228
+#: frontend/src/metabase/lib/core.js:243
 msgid "Join date"
 msgstr "Unir per data"
 
@@ -3532,23 +3530,23 @@ msgstr "Marge brut"
 msgid "Birthday"
 msgstr "Aniversari"
 
-#: frontend/src/metabase/lib/core.js:300
+#: frontend/src/metabase/lib/core.js:320
 msgid "Search box"
 msgstr "Caixa de cerca"
 
-#: frontend/src/metabase/lib/core.js:301
+#: frontend/src/metabase/lib/core.js:321
 msgid "A list of all values"
 msgstr "Una llista amb tots els valors"
 
-#: frontend/src/metabase/lib/core.js:302
+#: frontend/src/metabase/lib/core.js:322
 msgid "Plain input box"
 msgstr "Caixa de text"
 
-#: frontend/src/metabase/lib/core.js:308
+#: frontend/src/metabase/lib/core.js:328
 msgid "Everywhere"
 msgstr "A tot arreu"
 
-#: frontend/src/metabase/lib/core.js:309
+#: frontend/src/metabase/lib/core.js:329
 msgid "The default setting. This field will be displayed normally in tables and charts."
 msgstr "Configuració per defecte. El camp es mostrarà normalment en taules i gràfics"
 
@@ -3556,7 +3554,7 @@ msgstr "Configuració per defecte. El camp es mostrarà normalment en taules i g
 msgid "Only in Detail Views"
 msgstr "Només a les vistes detallades"
 
-#: frontend/src/metabase/lib/core.js:314
+#: frontend/src/metabase/lib/core.js:334
 msgid "This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart."
 msgstr "Aquest camp només es mostrarà al veure els detalls d'un registre. Feu-ho servir per obtenir informació llarga o que no es útil en una taula o gràfic."
 
@@ -3624,13 +3622,13 @@ msgstr "Màxim"
 msgid "sad sad panda, lexing errors detected"
 msgstr "Trist, molt trista: S'han trobat errors lèxics"
 
-#: frontend/src/metabase/lib/formatting.js:854
+#: frontend/src/metabase/lib/formatting.js:864
 msgid "{0} second"
 msgid_plural "{0} seconds"
 msgstr[0] "{0} segon"
 msgstr[1] "{0} segons"
 
-#: frontend/src/metabase/lib/formatting.js:857
+#: frontend/src/metabase/lib/formatting.js:867
 msgid "{0} minute"
 msgid_plural "{0} minutes"
 msgstr[0] "{0} minut"
@@ -4159,23 +4157,23 @@ msgstr "es una marca registrada de"
 msgid "and is built with care in San Francisco, CA"
 msgstr "i s'ha desenvolupat amb amor a San Francisco, California"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:198
+#: frontend/src/metabase/nav/containers/Navbar.jsx:108
 msgid "Metabase Admin"
 msgstr "Administració del Metabase"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:326
+#: frontend/src/metabase/nav/containers/Navbar.jsx:238
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:35
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:36
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:36
 msgid "Ask a question"
 msgstr "Fes una pregunta"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:215
+#: frontend/src/metabase/nav/containers/Navbar.jsx:267
 msgid "New dashboard"
 msgstr "Afegeix un nou quadre de comandament"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:221
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:129
+#: frontend/src/metabase/nav/containers/Navbar.jsx:273
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:141
 msgid "New pulse"
 msgstr "Nou pols"
 
@@ -4442,107 +4440,107 @@ msgstr "Més {0}"
 msgid "examples on GitHub"
 msgstr "exemples a GitHub"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:71
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:70
 msgid "Enable sharing"
 msgstr "Habilitar la compartició"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:75
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:74
 msgid "Disable this public link?"
 msgstr "Deshabilitar aquest enllaç púbic?"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:76
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:75
 msgid "This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link."
 msgstr "Això farà que aquest enllaç deixi de funcionar. Pots tornar-lo a habilitar però quan ho facis aquest serà un enllaç diferent."
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:116
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:115
 msgid "Public link"
 msgstr "Enllaç públic"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:117
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:116
 msgid "Share this {0} with people who don't have a Metabase account using the URL below:"
 msgstr "Comparteix aquest {0} amb persones que no tenen una compte de Metabase utilitzant la següent URL:"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:154
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:156
 msgid "Public embed"
 msgstr "Incrustació púbilca"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:155
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:157
 msgid "Embed this {0} in blog posts or web pages by copying and pasting this snippet:"
 msgstr "Incrusta aquest {0} en publicaciós de blocs i pàgines web copiant i pegant aquest fragment:"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:172
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:177
 msgid "Embed this {0} in an application"
 msgstr "Incrusta aquest {0} en una aplicació"
 
-#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:173
+#: frontend/src/metabase/public/components/widgets/SharingPane.jsx:178
 msgid "By integrating with your application server code, you can provide a secure stats {0} limited to a specific user, customer, organization, etc."
 msgstr "Al integrar-t'he amb un servidor d'aplicacions pots proporcionar estadístiques segures {0} limitades a una usuari, clients o organitzacions específiques."
 
-#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:93
+#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:94
 msgid "Remove attachment"
 msgstr "Elimina l'adjunt"
 
-#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:94
+#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:95
 msgid "Attach file with results"
 msgstr "Adjunta un fitxer amb els resultats"
 
-#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:126
+#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:127
 msgid "This question will be added as a file attachment"
 msgstr "Aquesta pregunta s'afegirà com un fitxer adjunt"
 
-#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:127
+#: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:128
 msgid "This question won't be included in your Pulse"
 msgstr "Aquesta pregunta no estarà inclosa en el teu Pols."
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:91
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:97
 msgid "This pulse will no longer be emailed to {0} {1}"
 msgstr "Aquest pols ja no s'enviarà per correu electrònic a la direcció {1}"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:93
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:375
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:439
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:99
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:392
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:423
 msgid "{0} address"
 msgid_plural "{0} addresses"
 msgstr[0] "{0} direcció"
 msgstr[1] "{0} direccions"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:102
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:108
 msgid "Slack channel {0} will no longer get this pulse {1}"
 msgstr "El canal de Slack {0} ja no rebrà aquest pols {1}"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:111
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:117
 msgid "Channel {0} will no longer receive this pulse {1}"
 msgstr "El canal {0} ja no rebrà aquest pols {1}"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:129
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:141
 msgid "Edit pulse"
 msgstr "Edita un pols"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:133
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:145
 msgid "What's a Pulse?"
 msgstr "¿Que es un pols?"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:143
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:155
 msgid "Got it"
 msgstr "Ho he entès!"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:159
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:186
 msgid "Where should this data go?"
 msgstr "A on haurien d'anar aquestes dades?"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:175
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:202
 msgid "Unarchiving…"
 msgstr "Desarxivant..."
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:176
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:203
 msgid "Unarchive failed"
 msgstr "Ha fallat la recuperació"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:177
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:204
 msgid "Unarchived"
 msgstr "Desarxivat"
 
-#: frontend/src/metabase/pulse/components/PulseEdit.jsx:184
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:211
 msgid "Create pulse"
 msgstr "Crea un pols"
 
@@ -4552,7 +4550,7 @@ msgstr "Adjunt"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:105
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:112
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:675
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:696
 msgid "Heads up"
 msgstr "Avis"
 
@@ -4582,30 +4580,30 @@ msgid "Choose questions you'd like to send in this pulse"
 msgstr "Escull les preguntes que t'agradaria enviar en aquest pols"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:27
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:57
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:58
 msgid "Emails"
 msgstr "Correus electrònics"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:28
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:58
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:59
 msgid "Slack messages"
 msgstr "Missatges de Slack"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:220
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:710
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:805
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:641
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:726
 msgid "Sent"
 msgstr "Enviat"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:221
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:711
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:806
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:642
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:727
 msgid "{0} will be sent at"
 msgstr "{0} s'enviarà a la les"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:223
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:713
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:808
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:644
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:729
 msgid "Messages"
 msgstr "Missatges"
 
@@ -4632,7 +4630,6 @@ msgstr "S'ha produït un error al enviar"
 msgid "Didn’t send because the pulse has no results."
 msgstr "No s'ha enviat el pols perquè no te resultats"
 
-#: frontend/src/metabase/components/SendTestEmail.jsx:31
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:247
 msgid "Pulse sent"
 msgstr "Pols enviat"
@@ -4673,11 +4670,11 @@ msgstr "Ometre un pols programat si no s'obté resultat per cap de les seves pre
 msgid "Enter email addresses you'd like this data to go to"
 msgstr "Introdueix les direccions "
 
-#: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:16
+#: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:14
 msgid "Help everyone on your team stay in sync with your data."
 msgstr "Ajuda a tots els membres del teu equip a mantenir-se sincronitzats amb totes les teves dades."
 
-#: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:31
+#: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:32
 msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
 msgstr "Els polsos es permeten enviar dades de Metabase en una data planificada per correu electrònic o per Slack."
 
@@ -4858,148 +4855,148 @@ msgstr "Esteu rebent les alertes de {0}"
 msgid "{0} set up an alert"
 msgstr "{0} ha configurat una alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:160
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:159
 msgid "alerts"
 msgstr "alertes"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:183
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:182
 msgid "Let's set up your alert"
 msgstr "Configurem la teva alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:214
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:213
 msgid "The wide world of alerts"
 msgstr "El gran món de les alertes"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:215
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:214
 msgid "There are a few different kinds of alerts you can get"
 msgstr "Hi ha diferents tipus d'alertes que podeu obtenir"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:229
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:234
 msgid "When a raw data question {0}"
 msgstr "Quan una pregunta de dades {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:230
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:235
 msgid "returns any results"
 msgstr "obté resultats"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:241
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:252
 msgid "When a line or bar {0}"
 msgstr "Quan una línia o barra {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:242
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:253
 msgid "crosses a goal line"
 msgstr "supera un objectiu"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:253
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:270
 msgid "When a progress bar {0}"
 msgstr "Quan una barra de progrès {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:254
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:271
 msgid "reaches its goal"
 msgstr "assoleix el seu objectiu"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:262
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:279
 msgid "Set up an alert"
 msgstr "Crea una alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:331
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:348
 msgid "Edit your alert"
 msgstr "Edita la teva alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:331
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:348
 msgid "Edit alert"
 msgstr "Editar alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:373
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:390
 msgid "This alert will no longer be emailed to {0}."
 msgstr "Aquesta alerta ja no s'enviarà per correu electrònica a {0}."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:381
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:398
 msgid "Slack channel {0} will no longer get this alert."
 msgstr "El canal de Slack {0} ja no rebrà aquesta alerta."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:385
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:402
 msgid "Channel {0} will no longer receive this alert."
 msgstr "El canal {0} ja no rebrà aquesta alerta."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:402
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:419
 msgid "Delete this alert"
 msgstr "Elimina aquesta alerta"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:404
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:421
 msgid "Stop delivery and delete this alert. There's no undo, so be careful."
 msgstr "Atura l'enviament i elimina aquesta alerta. Vigileu perquè això no es pot desfer."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:412
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:429
 msgid "Delete this alert?"
 msgstr "Eliminar aquesta alerta?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:499
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:520
 msgid "Alert me when the line…"
 msgstr "Avisa'm quan la línia..."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:500
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:521
 msgid "Alert me when the progress bar…"
 msgstr "Avisa'm quan la barra de progrès"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:503
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:524
 msgid "Goes above the goal line"
 msgstr "Va per damunt de la línia d'objectiu"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:503
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:524
 msgid "Reaches the goal"
 msgstr "Arriba al objectiu"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:506
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:527
 msgid "Goes below the goal line"
 msgstr "Va per davall de la línia de objectiu"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:506
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:527
 msgid "Goes below the goal"
 msgstr "Va per davall del objectiu"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:514
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:535
 msgid "The first time it crosses, or every time?"
 msgstr "La primera vegada que es creua o cada vegada?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:515
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:536
 msgid "The first time it reaches the goal, or every time?"
 msgstr "La primera vegada que s'arriba al objectiu o cada vegada?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:517
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:538
 msgid "The first time"
 msgstr "La primera vegada"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:518
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:539
 msgid "Every time"
 msgstr "Cada vegada"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:621
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:642
 msgid "Where do you want to send these alerts?"
 msgstr "On vols enviar aquestes alertes?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:632
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:653
 msgid "Email alerts to:"
 msgstr "Envia els correus electrònics d'aquesta alerta a:"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:674
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:695
 msgid "{0} Goal-based alerts aren't yet supported for charts with more than one line, so this alert will be sent whenever the chart has {1}."
 msgstr "{0} Les alertes basades en objectius encara no són comptables amb gràfics de més d'una linia de manera que aquesta alerta s'enviara sempre que el gràfic tingui {1}."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:677
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:698
 #: src/metabase/pulse.clj
 msgid "results"
 msgstr "resultats"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:681
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:702
 msgid "{0} This kind of alert is most useful when your saved question doesn’t {1} return any results, but you want to know when it does."
 msgstr "{0} Aquest tipus d'alerta es més útil quan la teva pregunta {1} no retorna cap resultat però vols saber quan ho fa."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:682
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:703
 msgid "Tip"
 msgstr "Consell:"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:684
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:705
 msgid "usually"
 msgstr "generalment"
 
@@ -5008,32 +5005,32 @@ msgid "Pick a segment or table"
 msgstr "Tria un segment o taula"
 
 #: frontend/src/metabase/entities/databases/forms.js:270
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:70
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:71
 msgid "Select a database"
 msgstr "Selecciona una base de dades"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:85
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:86
 #: frontend/src/metabase/reference/components/MetricImportantFieldsDetail.jsx:31
 msgid "Select..."
 msgstr "Seleccionar.."
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:79
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:80
 msgid "Select a table"
 msgstr "Selecciona una taula"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:926
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:929
 msgid "No tables found in this database."
 msgstr "No s'han trobat taules en aquesta base de dades"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:901
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:902
 msgid "Is a question missing?"
 msgstr "Falta una pregunta?"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:909
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:911
 msgid "Learn more about nested queries"
 msgstr "Aconsegueix més informació sobre consultes anidades"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:951
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:954
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:12
 msgid "Fields"
 msgstr "Camps"
@@ -5122,7 +5119,7 @@ msgstr "Mostra"
 msgid "Grouped By"
 msgstr "Agrupat per"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:161
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:162
 #: frontend/src/metabase/query_builder/components/LimitWidget.jsx:27
 msgid "None"
 msgstr "Cap"
@@ -5192,7 +5189,7 @@ msgstr "Moure la pregunta"
 msgid "Which collection should this be in?"
 msgstr "A quina col·lecció ho hauríem de guardar?"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:248
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:249
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:85
 #: frontend/src/metabase/query_builder/components/view/NativeVariablesButton.jsx:17
 msgid "Variables"
@@ -5439,7 +5436,7 @@ msgstr "Mostra les dades de {0}"
 msgid "More"
 msgstr "Més"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:248
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:249
 msgid "Invalid expression"
 msgstr "Expressió invàlida"
 
@@ -5447,27 +5444,27 @@ msgstr "Expressió invàlida"
 msgid "unknown error"
 msgstr "error desconegut"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:53
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:55
 msgid "Field formula"
 msgstr "Formula del camp"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:64
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:66
 msgid "Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost."
 msgstr "Pensa que això es com escriure una fórmula en un full de càlcul: Pots utilitzar números, camps d'aquesta taula, símbols màtemàtics com + i algunes funcions. Pots escriure alguna cosa com: Subtotal - Cost"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:111
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:281
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:70
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:73
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:71
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:75
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
 msgid "Learn more"
 msgstr "Aprendre'n més"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:77
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:79
 msgid "Give it a name"
 msgstr "Dona-li un nom"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:83
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:85
 msgid "Something nice and descriptive"
 msgstr "Quelcom agradable i descriptiu"
 
@@ -5571,15 +5568,15 @@ msgstr "Pots introduir varis valors separats per comes"
 msgid "Enter desired text"
 msgstr "Introdueix el text desitjat"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:210
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:211
 msgid "Try it"
 msgstr "Proba-ho"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:243
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:244
 msgid "What's this for?"
 msgstr "Per a que serveix això?"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:245
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:246
 msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
 msgstr "Les variables a les consultes natives et permetes substituir dinàmicament els valors a les teves consultes utilitzant elements de filtre o a través de la URL."
 
@@ -5587,7 +5584,7 @@ msgstr "Les variables a les consultes natives et permetes substituir dinàmicame
 msgid "{0} creates a variable in this SQL template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the SQL template."
 msgstr "{0} crea una variable en aquesta plantilla SQL anomenada \"nom_variable\". Pots assignar els tipus a les variables al panell lateral cosa que canvia el seu comportament. Tots els tipus de variables que no siguin \"Filtres de camp\" provocaran que es col·loqui un filtre per aquesta pregunta. Amb els filtres de camp, això es opcional. Quan s'estableix el valor d'aquest element al filtre es substitueix la variable a la plantilla SQL."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:259
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:260
 msgid "Field Filters"
 msgstr "Filtres de camp"
 
@@ -5595,11 +5592,11 @@ msgstr "Filtres de camp"
 msgid "Giving a variable the \"Field Filter\" type allows you to link SQL cards to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
 msgstr "Donar-li a la variable el tipus \"Filtre de camp\" et permet vincular les targetes SQL amb quadres de comandament amb elements de filtre o utilitzar més tipus d'elements de filtre a la teva pregunta de SQL. Una variable de filtre insereix un SQL similar al que es genera a la UI de generador de consultes quan s'afegeixen filtres amb columnes existents."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:264
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:265
 msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
 msgstr "Al afegir una variable de Filtre de camp l'hauràs d'assignar a un camp especific. A continuació pots mostrar un element de filtre a la teva pregunta, però si no ho fas pots assignar el Filtre de cap a un filtre del quadre de comandament. Els filtres del camp s'ha d'utilitzar dins de la clàusula \"WHERE\"."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:271
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:272
 msgid "Optional Clauses"
 msgstr "Clàusules opcionals"
 
@@ -5607,11 +5604,11 @@ msgstr "Clàusules opcionals"
 msgid "brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
 msgstr "Els corxetes al voltant de un {0} creen una clàusula opcional a la plantilla. Si s'estableix la \"variable\" aleshores s'introdueix la clàusula complerta a la plantilla. Si no s'estableix s'ignora tota la clàusula."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:283
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:284
 msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
 msgstr "Pots utilitzar múltiples clàusules opcions, pots incloure almenys una clàusula WEHRE no opcional seguida de clàusules opcionals que comencin per \"AND\""
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:301
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:302
 msgid "Read the full documentation"
 msgstr "Llegeix la documentació complerta"
 
@@ -6190,24 +6187,24 @@ msgstr "Preguntes sobre aquest segment"
 msgid "X-ray this segment"
 msgstr "Aplica rajos-X a aquest segment"
 
-#: frontend/src/metabase/routes.jsx:171 frontend/src/metabase/routes.jsx:172
+#: frontend/src/metabase/routes.jsx:170 frontend/src/metabase/routes.jsx:171
 msgid "Login"
 msgstr "Inicia sessió"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableWithSearch.jsx:20
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:400
 #: frontend/src/metabase/containers/ItemPicker.jsx:129
-#: frontend/src/metabase/nav/containers/Navbar.jsx:153
-#: frontend/src/metabase/routes.jsx:197
+#: frontend/src/metabase/nav/components/SearchBar.jsx:101
+#: frontend/src/metabase/routes.jsx:196
 msgid "Search"
 msgstr "Cerca"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:560
-#: frontend/src/metabase/routes.jsx:216
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:561
+#: frontend/src/metabase/routes.jsx:215
 msgid "Dashboard"
 msgstr "Quadre de comandament"
 
-#: frontend/src/metabase/routes.jsx:231
+#: frontend/src/metabase/routes.jsx:230
 msgid "New Question"
 msgstr "Nova pregunta"
 
@@ -6239,75 +6236,75 @@ msgstr "Afegiré les meves dades més tard"
 msgid "Control automatic scans"
 msgstr "Controla els escanejos automàtics"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:59
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:61
 msgid "Usage data preferences"
 msgstr "Preferències d'utilització de dades"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:62
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:64
 msgid "Thanks for helping us improve"
 msgstr "Gràcies per ajudar-nos a millorar"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:63
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:65
 msgid "We won't collect any usage events"
 msgstr "No recopilarem cap esdeveniment d'ús."
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:88
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:90
 msgid "In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics."
 msgstr "Per ajudar-nos a millorar el Metabase ens agradaria recollir informació sobre el seu us a través de Google Analytics."
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:93
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:95
 msgid "Here's a full list of everything we track and why."
 msgstr "Aquí hi ha una llista complerta de tota la informació que recollirem i perquè."
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:108
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:110
 msgid "Allow Metabase to anonymously collect usage events"
 msgstr "Permetre que el Metabase reculli esdeveniments d'ús de forma anònima"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:116
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:118
 msgid "Metabase {0} collects anything about your data or question results."
 msgstr "Metabase {0} recull informació sobre les teves dades o els resultats de les preguntes"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:117
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:119
 msgid "never"
 msgstr "mai"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:119
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:121
 msgid "All collection is completely anonymous."
 msgstr "Tota la informació obtinguda es totalment anònima"
 
-#: frontend/src/metabase/setup/components/PreferencesStep.jsx:120
+#: frontend/src/metabase/setup/components/PreferencesStep.jsx:122
 msgid "Collection can be turned off at any point in your admin settings."
 msgstr "La recopilació es pot desactivar en qualsevol moment des de la pàgina de configuració."
 
-#: frontend/src/metabase/setup/components/Setup.jsx:61
+#: frontend/src/metabase/setup/components/Setup.jsx:62
 msgid "If you feel stuck"
 msgstr "Si et sents abrumant"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:66
+#: frontend/src/metabase/setup/components/Setup.jsx:67
 msgid "our getting started guide"
 msgstr "la nostra guia d'iniciació"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:67
+#: frontend/src/metabase/setup/components/Setup.jsx:68
 msgid "is just a click away."
 msgstr "està a un sol click"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:113
+#: frontend/src/metabase/setup/components/Setup.jsx:114
 msgid "Welcome to Metabase"
 msgstr "Benvingut/da al Metabase"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:114
+#: frontend/src/metabase/setup/components/Setup.jsx:115
 msgid "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!"
 msgstr "Sembla que tot està funcionant. Ara anem a coneixe't, connectar amb les teves dades i començar a donar respostes a les teves preguntes."
 
-#: frontend/src/metabase/setup/components/Setup.jsx:118
+#: frontend/src/metabase/setup/components/Setup.jsx:119
 msgid "Let's get started"
 msgstr "Començem"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:168
+#: frontend/src/metabase/setup/components/Setup.jsx:169
 msgid "You're all set up!"
 msgstr "Ja està tot llest!"
 
-#: frontend/src/metabase/setup/components/Setup.jsx:179
+#: frontend/src/metabase/setup/components/Setup.jsx:180
 msgid "Take me to Metabase"
 msgstr "Portam al Metabase"
 
@@ -6559,7 +6556,7 @@ msgstr "Cancel·la el filtre"
 msgid "Pin Map"
 msgstr "Mapa de pin"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:373
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:372
 msgid "Unset"
 msgstr "Desmarcar"
 
@@ -6772,11 +6769,11 @@ msgstr "No hi ha visualitzacions per {0}"
 msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed."
 msgstr "El camp \"{0}\" no es un agregat: si hi ha més d'un valor en un punt del eix X els valors es sumaran."
 
-#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:96
+#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:90
 msgid "This chart type requires at least 2 columns."
 msgstr "Aquest tipus de gràfic requereix com a mínim dos columnes"
 
-#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:101
+#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:95
 msgid "This chart type doesn't support more than {0} series of data."
 msgstr "Aquest tipus de gràfic no permet més de {0} sèries de dades."
 
@@ -6789,8 +6786,8 @@ msgstr "Objectiu"
 msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
 msgstr "Les dades de la teva consulta no s'ajusten a la opció de visualització escollida. Aquesta visualització necessita com a mínim {0} {1} de dades."
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:103
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:219
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:104
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:220
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:20
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:23
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:27
@@ -7165,8 +7162,9 @@ msgstr "Detall del objecte"
 msgid "object"
 msgstr "objecte"
 
-#: frontend/src/metabase/visualizations/lib/LineAreaBarRenderer.js:140
-#: frontend/src/metabase/visualizations/lib/chart_values.js:114
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:137
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:252
+#: frontend/src/metabase/visualizations/lib/renderer_utils.js:336
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:374
 msgid "Total"
 msgstr "Total"
@@ -7238,15 +7236,15 @@ msgstr "Estil del separador"
 msgid "Number of decimal places"
 msgstr "Nombre de decimals"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:405
+#: frontend/src/metabase/visualizations/lib/settings/column.js:406
 msgid "Add a prefix"
 msgstr "Afegeix un prefix"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:409
+#: frontend/src/metabase/visualizations/lib/settings/column.js:410
 msgid "Add a suffix"
 msgstr "Afegeix un sufix"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:398
+#: frontend/src/metabase/visualizations/lib/settings/column.js:399
 msgid "Multiply by a number"
 msgstr "Multiplica per un nombre"
 
@@ -7258,7 +7256,7 @@ msgstr "Dispersió"
 msgid "scatter plot"
 msgstr "gràfic de dispersió"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:84
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:83
 msgid "Pivot the table"
 msgstr "Pivota la taula"
 
@@ -7551,12 +7549,12 @@ msgstr "Tens moltes preguntes guardades a {0}? Crea col·leccions per gestionar-
 #. This is the very first log message that will get printed.
 #. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
-#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:240
+#: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:238
 #: frontend/src/metabase/home/components/Activity.jsx:87
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:90
 #: frontend/src/metabase/public/components/LogoBadge.jsx:22
 #: frontend/src/metabase/routes-public.jsx:15
-#: frontend/src/metabase/routes.jsx:142 src/metabase/api/setup.clj
+#: frontend/src/metabase/routes.jsx:141 src/metabase/api/setup.clj
 #: src/metabase/email/messages.clj
 msgid "Metabase"
 msgstr "Metabase"
@@ -8018,15 +8016,15 @@ msgid "Migration lock cleared, but nothing to do here! Migrations were finished 
 msgstr "S'ha esborrat el bloqueig de la migració però no hi ha res a fer. Les migracions s'han eliminat en una altra instància."
 
 #. Set up liquibase and let it do its thing
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Setting up Liquibase..."
 msgstr "Preparant Liquidbase..."
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Liquibase is ready."
 msgstr "El Liquidbase està preparat"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Verifying {0} Database Connection ..."
 msgstr "Verificant la connexió a la base de dades {0} ..."
 
@@ -8034,11 +8032,11 @@ msgstr "Verificant la connexió a la base de dades {0} ..."
 msgid "Verify Database Connection ... "
 msgstr "Verifica la connexió a la base de dades ... "
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Running Database Migrations..."
 msgstr "Executant migracions de la base de dades..."
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Database Migrations Current ... "
 msgstr "Migracions de la base de dades actuals... "
 
@@ -8344,15 +8342,15 @@ msgstr "Parant MetaBot...  🤖"
 msgid "MetaBot already running. Killing the previous WebSocket listener first."
 msgstr "El Metabot ja s'està executant. Matant el Websocket d'escolta previ."
 
-#: src/metabase/middleware/security.clj
+#: src/metabase/server/middleware/security.clj
 msgid "Base-64 encoded public key for this site's SSL certificate."
 msgstr "Clau pública codificada amb base64 pel certificat SSL d'aquest lloc web"
 
-#: src/metabase/middleware/security.clj
+#: src/metabase/server/middleware/security.clj
 msgid "Specify this to enable HTTP Public Key Pinning."
 msgstr "Especifica aquest valor per habilitar el Pinning de la clau públic HTTP"
 
-#: src/metabase/middleware/security.clj
+#: src/metabase/server/middleware/security.clj
 msgid "See {0} for more information."
 msgstr "Veure {0} per més informació"
 
@@ -9106,11 +9104,11 @@ msgstr "Mostra sub col·leccíó"
 msgid "Remember Me"
 msgstr "Recorda'm"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:73
+#: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:64
 msgid "X-ray this schema"
 msgstr "Aplica rajos-X a aquest esquema"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:188
+#: frontend/src/metabase/collections/components/Header.jsx:49
 msgid "Edit the permissions for this collection"
 msgstr "Editeu els permisos d'accés a aquesta col·lecció"
 
@@ -9130,11 +9128,11 @@ msgstr "No s'ha trobat la pàgina que heu solicitat"
 msgid "Select a {0}"
 msgstr "Selecciona un(a) {0}"
 
-#: frontend/src/metabase/containers/Overworld.jsx:234
+#: frontend/src/metabase/containers/Overworld.jsx:237
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr "Guardar els quadres de comandament, preguntes i col·leccions a \"{0}\""
 
-#: frontend/src/metabase/containers/Overworld.jsx:235
+#: frontend/src/metabase/containers/Overworld.jsx:238
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr "Accedir als quadres de comandament, preguntes i col·leccions de \"{0}\""
 
@@ -9181,15 +9179,15 @@ msgid "Custom fields"
 msgstr "Camps personalitzats"
 
 #. 2. Create the new collections.
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Migrated Dashboards"
 msgstr "Quadres de comandament migrats"
 
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Migrated Pulses"
 msgstr "Polsos migrats"
 
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Migrated Questions"
 msgstr "Preguntes migrades"
 
@@ -9397,7 +9395,7 @@ msgstr "Administradors"
 msgid "MetaBot"
 msgstr "MetaBot"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:44
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:55
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
 msgstr "Compartir"
@@ -9446,7 +9444,7 @@ msgstr "Eixos"
 msgid "Formatting"
 msgstr "Format"
 
-#: frontend/src/metabase/containers/Overworld.jsx:121
+#: frontend/src/metabase/containers/Overworld.jsx:120
 msgid "Try these x-rays based on your data."
 msgstr "Prova aquests rajos-X segons les teves dades"
 
@@ -9483,11 +9481,11 @@ msgid "We suggest you leave this off unless you're doing manual timezone casting
 "many or most of your queries with this data."
 msgstr "Et suggerim que desactivis això excepte si estàs forçant manualment la zona horària a la majoria de consultes d'aquestes dades"
 
-#: frontend/src/metabase/containers/Overworld.jsx:395
+#: frontend/src/metabase/containers/Overworld.jsx:398
 msgid "Your team's most important dashboards go here"
 msgstr "Els quadres de comandament més importants van aquí"
 
-#: frontend/src/metabase/containers/Overworld.jsx:396
+#: frontend/src/metabase/containers/Overworld.jsx:399
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr "Fixeu els quadres de comandament a {0] per a que es mostrin en aquest espai per a tots"
 
@@ -9516,7 +9514,7 @@ msgid "Field Type"
 msgstr "Tipo de camp"
 
 #: frontend/src/metabase/admin/routes.jsx:118
-#: frontend/src/metabase/nav/containers/Navbar.jsx:241
+#: frontend/src/metabase/nav/containers/Navbar.jsx:151
 msgid "Troubleshooting"
 msgstr "Solució de problemes"
 
@@ -9566,11 +9564,11 @@ msgid "Currency"
 msgstr "Modena"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:161
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:221
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:228
 msgid "Pick a user or channel..."
 msgstr "Escull un usuari o canal"
 
-#: frontend/src/metabase/visualizations/components/ColumnSettings.jsx:90
+#: frontend/src/metabase/visualizations/components/ColumnSettings.jsx:87
 msgid "No formatting settings"
 msgstr "Sense configuració de format"
 
@@ -9690,7 +9688,7 @@ msgstr "Format de l'etiqueta de moneda"
 msgid "Where to display the unit of currency"
 msgstr "On mostrar l'unitat de la moneda"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:394
+#: frontend/src/metabase/visualizations/lib/settings/column.js:395
 msgid "Minimum number of decimal places"
 msgstr "Nombre mínim de decimals"
 
@@ -9764,51 +9762,51 @@ msgstr "Agrupa per un cap temporal per veure com ha canviat al llarg del temps."
 msgid "Switch positive / negative colors?"
 msgstr "Mostrar colors positius/negatius"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:96
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:95
 msgid "Pivot column"
 msgstr "Columna pivot"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:127
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:126
 msgid "Cell column"
 msgstr "Columna celda"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:164
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:163
 msgid "Visible columns"
 msgstr "Columnes visibles"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:193
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:192
 msgid "Conditional Formatting"
 msgstr "Format condicional"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:235
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:234
 msgid "Column title"
 msgstr "Títol de la columna"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:243
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:242
 msgid "Show a mini bar chart"
 msgstr "Mostra una gràfica de barres en minuatura"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:254
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:253
 msgid "Link"
 msgstr "Enllaç"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:258
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:257
 msgid "Email link"
 msgstr "Enllaç de correu electrònic"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:262
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:261
 msgid "Image"
 msgstr "Imatge"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:266
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:265
 msgid "Automatic"
 msgstr "Automàtic"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:271
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:270
 msgid "View as link or image"
 msgstr "Mostra com un enllaç o una imatge"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:281
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:280
 msgid "Link text"
 msgstr "Text el enllaç"
 
@@ -10176,7 +10174,7 @@ msgstr "La neteja del històrial de tasques ha completat amb èxit. S'han elimin
 msgid "not"
 msgstr "no"
 
-#: src/metabase/db.clj src/metabase/util/encryption.clj
+#: src/metabase/db/env.clj src/metabase/util/encryption.clj
 msgid "For more information, see"
 msgstr "Per obtenir més informació vistia"
 
@@ -11535,7 +11533,7 @@ msgstr "Tasques"
 msgid "Jobs"
 msgstr "Treballs"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:549
+#: frontend/src/metabase/collections/components/CollectionCopyEntityModal.jsx:30
 msgid "Duplicated {0}"
 msgstr "S'ha duplicat {0}"
 
@@ -11714,11 +11712,11 @@ msgstr "Consulteu https://github.com/metabase/metabase/issues/8908 per més deta
 msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
 msgstr "AVÍS: L'us del metabase amb una base de dades H2 no es recomana per entorns de producció."
 
-#: src/metabase/db.clj
+#: src/metabase/db/env.clj
 msgid "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
 msgstr "Pels entorns de producció recomanem utilitzar Postgres, MySQL o MariaDB:"
 
-#: src/metabase/db.clj
+#: src/metabase/db/env.clj
 msgid "If you decide to continue to use H2, please be sure to back up the database file regularly."
 msgstr "Si decideixes seguir utilitzant H2, asegura't de fer una copia del arxiu de base de dades amb regularitat"
 
@@ -11726,11 +11724,11 @@ msgstr "Si decideixes seguir utilitzant H2, asegura't de fer una copia del arxiu
 msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information."
 msgstr "Per més informació consulta: https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres."
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Unable to connect to Metabase {0} DB."
 msgstr "No s'ha pogut connectar a la base de dades {0} del Metabase."
 
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
 msgstr "Error al agregar la directiva SQL a la pregunta guardada en BigQuery"
 
@@ -12439,11 +12437,11 @@ msgstr "Pots ser una mica més específic o utilitzar la identificació? He trob
 msgid "Card {0} not found."
 msgstr "No s'ha trobat la targeta {0}"
 
-#: src/metabase/middleware/exceptions.clj
+#: src/metabase/server/middleware/exceptions.clj
 msgid "Exception in API call"
 msgstr "Excepció a la crida de la API"
 
-#: src/metabase/middleware/exceptions.clj
+#: src/metabase/server/middleware/exceptions.clj
 msgid "Request canceled before finishing."
 msgstr "Sol·licitud cancel·lada abans d'acabar"
 
@@ -12455,7 +12453,7 @@ msgstr "El Metabase només suporta sol·licituds JSON."
 msgid "Make sure you set a 'Content-Type: application/json' header."
 msgstr "Asegura't d'establir la capçalera 'Content-Type: application/json'."
 
-#: src/metabase/middleware/misc.clj
+#: src/metabase/server/middleware/misc.clj
 msgid "Setting Metabase site URL to {0}"
 msgstr "Establint la URL de Metabase a {0}"
 
@@ -12543,7 +12541,7 @@ msgstr "Instruccions de fallada"
 msgid "Archive this?"
 msgstr "Arxivar això?"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:253
+#: frontend/src/metabase/browse/components/BrowseHeader.jsx:25
 msgid "Learn about our data"
 msgstr "Apren de les teves dades"
 
@@ -12565,7 +12563,7 @@ msgstr "Executa les consultes automàticament quan es realitze un sumari o un fi
 msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "Quan axxò esta actiu el Metabase executarà automaticament les consultes quan els usuaris duen a terme exploracions simples amb els botons de Resumiri filtrar quan es mostra una taula o grafica. Podeu desactivar-ho si les consultes a la base de dades son lesntes. Aquesta configuració no afecta la otenció de detalls o les consultes SQL."
 
-#: frontend/src/metabase/containers/Overworld.jsx:329
+#: frontend/src/metabase/containers/Overworld.jsx:332
 msgid "Learn about this database"
 msgstr "Apren d'aquesta base de dades"
 
@@ -12604,7 +12602,7 @@ msgstr[1] "registres"
 msgid "Browse Data"
 msgstr "Navegar"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:358
+#: frontend/src/metabase/nav/containers/Navbar.jsx:290
 msgid "Write SQL"
 msgstr "Escriu SQL"
 
@@ -12714,11 +12712,11 @@ msgstr "Trieu una taula..."
 msgid "Enter a limit"
 msgstr "Afegiu un límit"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:273
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:274
 msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
 msgstr "Els corxetes al envoltant un {0} creen una clásula opcional a la plantilla. Si s'estableix aquesta variable la clausula complerta es coloca a la plantilla. Sinó s'ignora tota la cláusula."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:290
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:291
 msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
 msgstr "Quan s'utilitza un filtre de camp, el nombre de la columna no s'ha d'incluir a la consulta SQL. Al seu lloc, la variable s'ha d'asignar a un camp del panell lateral."
 
@@ -12913,7 +12911,7 @@ msgstr "Sol·licitud cancel·lada, cancelant el futur."
 msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
 msgstr "El metabase només pot transferir dades de H2 a Postgres or MySQL/MariaDB"
 
-#: src/metabase/db.clj
+#: src/metabase/db/env.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
 msgstr "ATENCIÓ: No es recomana utilizar el Metabase amb una base de dades H\" per a entorns de producció"
 
@@ -12945,11 +12943,11 @@ msgstr "El client ha tancat la conexió, cancel·lant la consulta"
 msgid "{0} is not a valid DN."
 msgstr "{0} no és un DN válid."
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "Error logging API request"
 msgstr "Error al registrar la sol·licitud de la API"
 
-#: src/metabase/middleware/misc.clj
+#: src/metabase/server/middleware/misc.clj
 msgid "Failed to set site-url"
 msgstr "No s'ha pogut establir la URL de lloc"
 
@@ -13205,7 +13203,7 @@ msgstr "Error al recuperar la Taula {0}: no existeix aquesta taula o pertany a u
 msgid "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database."
 msgstr "Error al recuperar el Camp {0}: no existeix aquest camp o pertany a una base de dades diferent."
 
-#: src/metabase/routes/index.clj
+#: src/metabase/server/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
 msgstr "Error al carregar la plantilla \"{0}\". ¿Us heu enrecordar de construir la interfície de Metabase?"
 
@@ -13328,31 +13326,31 @@ msgstr "Registrar-se a través del correu electrònic"
 msgid "Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled."
 msgstr "Utiltizar aquesta opció requereix que la maquina contingui un FQDN. Si us conecteu a un cluster de Atlas, potseu haureu d'habilitar aquesta opció. Si no sabeu el que vol dir això, millor que ho deixeu desactivat."
 
-#: frontend/src/metabase/entities/databases/forms.js:292
+#: frontend/src/metabase/entities/databases/forms.js:291
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "Per defecte, Metabase fa un sincronització lleujera cada hora i una sincronització intensiva cada hora dels valors dels camps. Si teniu una base de dades gran, us recomanem activar aquesta opció i revisar quan i amb quina freqüencia s'escanejen els valors dels camps."
 
-#: frontend/src/metabase/containers/Overworld.jsx:126
+#: frontend/src/metabase/containers/Overworld.jsx:125
 msgid "Remove these suggestions"
 msgstr "Elimina aquestes sugerències"
 
-#: frontend/src/metabase/containers/Overworld.jsx:135
+#: frontend/src/metabase/containers/Overworld.jsx:134
 msgid "Remove these suggestions?"
 msgstr "Voleu eliminar aquestes sugerències?"
 
-#: frontend/src/metabase/containers/Overworld.jsx:151
+#: frontend/src/metabase/containers/Overworld.jsx:150
 msgid "These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables."
 msgstr "No es mostrarán a la pagina inicial de cap dels usuaris pero es pot accedir els raig-x clicant la opció \"Navegada a les dades\" al menú principal i desprès clicant al icon del raig amb una de les taules."
 
-#: frontend/src/metabase/containers/Overworld.jsx:274
+#: frontend/src/metabase/containers/Overworld.jsx:277
 msgid "Hide this section"
 msgstr "Amaga aquesta secció"
 
-#: frontend/src/metabase/containers/Overworld.jsx:282
+#: frontend/src/metabase/containers/Overworld.jsx:285
 msgid "Remove this section?"
 msgstr "Eliminar aquesta secció?"
 
-#: frontend/src/metabase/containers/Overworld.jsx:298
+#: frontend/src/metabase/containers/Overworld.jsx:301
 msgid "\"Our Data\" won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation."
 msgstr "\"Les nostres dades\" no es mostrarà més a la pàgina inicial per cap dels usuaris però sempre podreu navegar per les databases i clicant l'opció \"Explora les dades\" de la navegació prinicipal."
 
@@ -13384,15 +13382,15 @@ msgstr "Hora d'eliminació"
 msgid "Deletion date"
 msgstr "Data d'eliminació"
 
-#: frontend/src/metabase/lib/core.js:313
+#: frontend/src/metabase/lib/core.js:333
 msgid "Only in detail views"
 msgstr "Només a les vistes de detall"
 
-#: frontend/src/metabase/lib/core.js:318
+#: frontend/src/metabase/lib/core.js:338
 msgid "Do not include"
 msgstr "No ho incloguis"
 
-#: frontend/src/metabase/lib/core.js:319
+#: frontend/src/metabase/lib/core.js:339
 msgid "This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries."
 msgstr "El camp no sera visible o seleccionable a les preguntes createdes amb la interface d'usuari. Si que es podrà accedir amb consultes SQL/natives."
 
@@ -13464,7 +13462,7 @@ msgstr "Com es calcula aquesta mètrica"
 msgid "Table this is based on"
 msgstr "Taula basada en"
 
-#: frontend/src/metabase/visualizations/lib/renderer_utils.js:346
+#: frontend/src/metabase/visualizations/lib/renderer_utils.js:393
 msgid "(empty)"
 msgstr "(buit)"
 
@@ -13512,7 +13510,7 @@ msgstr "Aquest gràfic conté consultes que s'executarán en múltiples zones ho
 msgid "An error occurred while running the query."
 msgstr "S'ha produït un error mentres s'executava la consulta."
 
-#: src/metabase/cmd/dump_to_h2.clj
+#: src/metabase/cmd/copy/h2.clj
 msgid "Output H2 database already exists: %s, removing."
 msgstr "La base de dades H2 desti ja existeix: %s, s'eliminarà."
 
@@ -13520,7 +13518,7 @@ msgstr "La base de dades H2 desti ja existeix: %s, s'eliminarà."
 msgid "Don't need to migrate, just use the existing H2 file"
 msgstr "No es requereix cap migració, només cal utilizar el fitxer H2 existent"
 
-#: src/metabase/cmd/load_from_h2.clj
+#: src/metabase/cmd/copy.clj
 msgid "Target DB is already populated!"
 msgstr "La BD destí ja ha estat inicialitzada"
 
@@ -13528,12 +13526,12 @@ msgstr "La BD destí ja ha estat inicialitzada"
 msgid "System info:n {0}"
 msgstr "Informació del sistema:n {0}"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Database setup"
 msgstr "Configuració de la base de dades"
 
 #. 4. move everything not in this Collection to a new Collection
-#: src/metabase/db/migrations.clj
+#: src/metabase/db/data_migrations.clj
 msgid "Moving instances of {0} that aren''t in a Collection to {1} Collection {2}"
 msgstr "Movent les instancies de {0} que no están a la col·lecció {1} a la col·lecció {2}"
 
@@ -13861,11 +13859,11 @@ msgstr "obligatori"
 msgid "Database type"
 msgstr "Tipus de base de dades"
 
-#: frontend/src/metabase/entities/databases/forms.js:308
+#: frontend/src/metabase/entities/databases/forms.js:307
 msgid "This is a lightweight process that checks for updates to this database’s schema. In most cases, you should be fine leaving this set to sync hourly."
 msgstr "Es tracta d'una process lleuger que comprava les actualitzacions del esquema d'aquesta base de dades. En la majoria de caso es suficient que es sincronitzi cada hora."
 
-#: frontend/src/metabase/entities/databases/forms.js:316
+#: frontend/src/metabase/entities/databases/forms.js:315
 msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
 msgstr "El metabase pot escanejar els valors de cada camp a la base de dades per activar els filtres de casella de verificació als cuadres de comandament i preguntes. Aquest proces pot consumir bastants recursos, especialment si teniu una base de dades gran."
 
@@ -13904,17 +13902,19 @@ msgstr "Numeric"
 #: frontend/src/metabase/lib/core.js:219 frontend/src/metabase/lib/core.js:224
 #: frontend/src/metabase/lib/core.js:229 frontend/src/metabase/lib/core.js:234
 #: frontend/src/metabase/lib/core.js:239 frontend/src/metabase/lib/core.js:244
-#: frontend/src/metabase/lib/core.js:249
+#: frontend/src/metabase/lib/core.js:249 frontend/src/metabase/lib/core.js:254
+#: frontend/src/metabase/lib/core.js:259 frontend/src/metabase/lib/core.js:264
+#: frontend/src/metabase/lib/core.js:269
 msgid "Date and Time"
 msgstr "Data i hora"
 
-#: frontend/src/metabase/lib/core.js:256 frontend/src/metabase/lib/core.js:261
-#: frontend/src/metabase/lib/core.js:266
+#: frontend/src/metabase/lib/core.js:276 frontend/src/metabase/lib/core.js:281
+#: frontend/src/metabase/lib/core.js:286
 msgid "Categorical"
 msgstr "Categoric"
 
-#: frontend/src/metabase/lib/core.js:273 frontend/src/metabase/lib/core.js:278
-#: frontend/src/metabase/lib/core.js:283
+#: frontend/src/metabase/lib/core.js:293 frontend/src/metabase/lib/core.js:298
+#: frontend/src/metabase/lib/core.js:303
 msgid "URLs"
 msgstr "URLs"
 
@@ -14425,7 +14425,7 @@ msgid "Powered by {0}"
 msgstr "Amb la tecnologia de {0}"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:195
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:686
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:617
 msgid "To:"
 msgstr "A:"
 
@@ -14461,11 +14461,11 @@ msgstr "Pregunta #{0}"
 msgid "Last edited {0}"
 msgstr "Ultima edició {0}"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:250
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:251
 msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
 msgstr "{0} crea una variable en aquesta consulta anomenada \"nom_variable\". Es pot defnir els tipus de les variables al panell lateral, cosa que canvia el seu comportament. Les variables de tipus diferent de \"Filtre de camp\" utilizaran automaticament un giny de filtre per aquesta pregunta; amb els \"Filtres de camp\" això es opcional. Quan s'introdueix un valor al giny de filtre aquest remplaça el valor de la variable a la plantilla de la consulta."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:261
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:262
 msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
 msgstr "Seleccionant el tipus \"Filtre de camp\" per una variable us permet enllaçar preguntes amb els filtres dels quadres de comandament o utilitzar més tipus de filtres a les vostres preguntes SQL. Una variable de filtre de camp afegeix un SQL similar al que es genera amb el generador de consultes quan s'afegeix un filtre a les columnes existents."
 
@@ -14569,7 +14569,8 @@ msgstr "El token d'autentificació de Google sembla incorrecte."
 msgid "Double check that it matches in Google and Metabase."
 msgstr "Comproveu que es correspon a Google i a Metabase."
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:307
+#: frontend/src/metabase/collections/components/ItemList.jsx:35
+#: frontend/src/metabase/collections/components/ItemList.jsx:47
 #: src/metabase/api/table.clj
 msgid "Everything else"
 msgstr "Una altra cosa"
@@ -14578,41 +14579,41 @@ msgstr "Una altra cosa"
 msgid "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords."
 msgstr "AVIS: Heu activat els rastreigs d'espais de noms fet que pot registrar informació confidencial com contrasenyes de la base de dades."
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Database Upgrade Required"
 msgstr "Es requereix una actuallització de la base de dades"
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "NOTICE: Your database requires updates to work with this version of Metabase."
 msgstr "AVIS: Es necesita actualitzar la base de dades per poder-la utilizar amb Metabase."
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Please execute the following sql commands on your database before proceeding."
 msgstr "Si us plau, executeu les sequents consultes SQL a la vostra base de dades abans de continuar."
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Once your database is updated try running the application again."
 msgstr "Quan hagueu actualitzat la base de dades proveu d'executar l'aplicació una altra vegada."
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Database requires manual upgrade."
 msgstr "La base de dades requereix una actualització manual"
 
 #. Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Set transaction to automatically roll back..."
 msgstr "Establint que les transaccions facin roll-back automàticament..."
 
 #. Disable auto-commit. This should already be off but set it just to be safe
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Disable auto-commit..."
 msgstr "Desctivant el auto-commit..."
 
-#: src/metabase/db.clj
+#: src/metabase/db/connection_pool_setup.clj
 msgid "Set default db connection with connection pool..."
 msgstr "Establint conexió per defecte a la bd amb un pool de conexión."
 
-#: src/metabase/db.clj
+#: src/metabase/db/setup.clj
 msgid "Successfully verified {0} {1} application database connection."
 msgstr "S'ha verificat correctament la conexió a l'aplicació de base de dades {0} {1}"
 
@@ -14913,7 +14914,7 @@ msgstr "Idioma de la instància"
 msgid "Localization options"
 msgstr "Opcions de localització"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:51
+#: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:42
 msgid "This database doesn't have any tables."
 msgstr "Aquesta base de dades encara no te cap taula."
 
@@ -15152,31 +15153,31 @@ msgstr "Error al determinar el valor d'un paràmetre"
 msgid "Error building query parameter map"
 msgstr "Error al contruir el mapeig de paràmetres de la consulta"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "ASYNC"
 msgstr "ASÍNCRON"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "{0} ({1} DB calls)"
 msgstr "{0} ({1} consultes a la BBDD)"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "App DB connections: {0}/{1}"
 msgstr "Connexións BBDD aplicació: {0}/{1}"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "Jetty threads: {0}/{1} ({2} idle, {3} queued)"
 msgstr "Fils jetty: {0}/{1} ({2} en espera, {3} en cua)"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "({0} total active threads)"
 msgstr "({0} fils actius totals)"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "Queries in flight: {0}"
 msgstr "Consultes en lluita: {0}"
 
-#: src/metabase/middleware/log.clj
+#: src/metabase/server/middleware/log.clj
 msgid "({0} queued)"
 msgstr "({0} en cua)"
 
@@ -15528,90 +15529,90 @@ msgstr "Embedint la aplicació Metabase Completament"
 msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
 msgstr "Si voleu embedir tot el Metabase introduïu els origens de les webs que voleu permetres que s'embedeixin dins d'un iframe separat per espai. Aqui hi ha els {0} que es poden afegir"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:163
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:162
 msgid "Grant sandboxed access to this table"
 msgstr "Doneu acces restringuit a aquesta taula"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:170
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:169
 msgid "When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question."
 msgstr "Quan els usuarid del grupo vegin aquesta taula veuran una versió que esta filtrada pels seus atributs o una vista personalitzada basada en una pregunta guardada."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:173
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:172
 msgid "How do you want to filter this table for users in this group?"
 msgstr "Com voleu filtrar aquesta taula pels usuaris d'aquest grup."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:192
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:191
 msgid "Pick a saved question that returns the custom view of this table that these users should see."
 msgstr "Selecciona una pregunta guardada qeu retorni la vista d'aquesta taula que voleu que vegin els usuaris"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:210
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:209
 msgid "You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question."
 msgstr "Aquí podeu afegir filtres opcionals basats en els atributs d'usuari. Aquest filtres s'plicaran abans que els altres filtres que ja s'han guardat en aquesta pregunta."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:230
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:229
 msgid "For this option to work, your users need to have some attributes"
 msgstr "Per a que aquesta opció funcioni el usuaris han de tenir alguns atributs"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:231
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:230
 msgid "To add additional filters, your users need to have some attributes"
 msgstr "Per afegir filtres adicionals els usuaris han de tenir alguns atributs"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:270
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:269
 msgid "No user attributes"
 msgstr "No hi ha atributs d'usuari"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:271
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:457
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:270
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:460
 msgid "Pick a user attribute"
 msgstr "Seleccioneu un atribut d'usuari"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:290
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:476
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:289
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:479
 msgid "Pick a parameter"
 msgstr "Seleccioneu un paràmetre"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:308
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:476
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:307
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:479
 msgid "Pick a column"
 msgstr "Seleccioneu una columna"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:328
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:327
 msgid "Users in {0} can view"
 msgstr "Els usuaris de {0} poden veure"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:334
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:333
 msgid "rows in the {0} question"
 msgstr "files de la pregunta {0}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:337
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:336
 msgid "rows in the {0} table"
 msgstr "files de la taula {0}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:347
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:346
 msgid "where {0} equals {1}"
 msgstr "on {0} és igual a {1}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:350
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:349
 msgid "and {0} equals {1}"
 msgstr "i {0} és igual a {1}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:441
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:444
 msgid "You can add attributes automatically by setting up an SSO that uses SAML, or you can enter them manually by going to the People section and clicking on the … menu on the far right."
 msgstr "Podeu afegir atributs automaticament configurant el SSO que utilitza SAML, o bé els podeu entrar manualment anant al menu Persone i clicant el menú \"...\" a la dreta del tot."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:460
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:463
 msgid "User attribute"
 msgstr "Atribut d'usuari"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:462
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:465
 msgid "We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the \"…\" menu in the People section of the Admin Panel."
 msgstr "La longitud total dels valors del camp es > {0}."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:479
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:482
 msgid "Parameter or variable"
 msgstr "Paràmetre o varialbe"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:497
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:500
 msgid "equals"
 msgstr "igual"
 
@@ -15847,148 +15848,149 @@ msgstr "Primer dia de la setman"
 msgid "There was an issue signing in with Google. Please contact an administrator."
 msgstr "Hi ha hagut un problema amb l'autentificació amb Google. Contacteu amb l'administrador del sistema."
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:133
+#: frontend/src/metabase/components/SchedulePicker.jsx:140
 msgid "on the"
 msgstr "al"
 
-#: frontend/src/metabase/components/SchedulePicker.jsx:191
+#: frontend/src/metabase/components/SchedulePicker.jsx:194
+#: frontend/src/metabase/components/SchedulePicker.jsx:224
 msgid "at"
 msgstr "el"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:44
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:45
 msgid "Open the Metabase actions menu"
 msgstr "Obrir el menú d'accions del metabase"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:45
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:370
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:46
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:371
 #: frontend/src/metabase/lib/click-behavior.js:167
 msgid "Do nothing"
 msgstr "No facis res"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:48
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:49
 msgid "Go to a custom destination"
 msgstr "Ves a una destinació personalitzada"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:50
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:367
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:51
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:368
 msgid "Update a dashboard filter"
 msgstr "Actualitza el filtre del quadre de comandament"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:151
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:152
 msgid "{0} updates {1} filter"
 msgid_plural "{0} updates {1} filters"
 msgstr[0] "Això afecta els agrupats per semana o els filtres de GUI de consultes. No afecta les consultes SQL."
 msgstr[1] "{0} actualitza el filtres {1}"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:157
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:158
 msgid "{0} goes to {1}"
 msgstr "{0} va cap a {1}"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:342
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:343
 msgid "On-click behavior for each column"
 msgstr "Un comportament de clic per cada columna."
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:366
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:367
 msgid "Go to custom destination"
 msgstr "Ves a una destinació personalitzada"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:369
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:370
 msgid "Open the actions menu"
 msgstr "Obrir el menú d'accions"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:402
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:424
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:403
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:425
 msgid "Click behavior for {0}"
 msgstr "Comportament al clicar a {0}"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:546
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:547
 msgid "Pick one or more filters to update"
 msgstr "Seleccioneu un o més filtres per actualitzar"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:561
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:562
 msgid "Saved question"
 msgstr "Pregunta guardada"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:567
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:568
 msgid "Link to"
 msgstr "Enllaç a"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:625
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:626
 msgid "Enter a URL to link to"
 msgstr "Entra una URL on enllaçar"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:628
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:629
 msgid "You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}"
 msgstr "Podeu inserir el valor d'una columna o filtre de quadre de comandament utiltizant el seu nom, per exemple: {{una_columna}}"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:632
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:633
 msgid "e.g. http://acme.com/id/{{user_id}}"
 msgstr "e.g. http://acme.com/id/{{user_id}}"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:726
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:727
 msgid "Pick a dashboard..."
 msgstr "Selecciona un quadre de comandament..."
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:728
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:729
 msgid "Pick a question..."
 msgstr "Selección una pregunta.."
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:759
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:760
 msgid "Pick a dashboard to link to"
 msgstr "Seleciona un quadre de comandament on enllaçar"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:760
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:761
 msgid "Pick a question to link to"
 msgstr "Seleciona una pregunta on enllaçar"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:788
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:789
 msgid "Pass values to this dashboard's filters (optional)"
 msgstr "Passeu valors als filtres d'aquest quadre de comandament (opcional)"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:789
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:790
 msgid "Pass values to this question's variables (optional)"
 msgstr "Passeu valors a les variables d'aquesta pregunta(opcional)"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:790
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:791
 msgid "Pass values to filter this question (optional)"
 msgstr "Passeu valors per filtrar aquesta pregunta(opcional)"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:850
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:154
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:853
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:155
 msgid "Dashboard filters"
 msgstr "Filtres del quadre de comandament"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:857
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:156
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:860
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:157
 msgid "User attributes"
 msgstr "Atributs d'usuari"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:817
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:818
 msgid "Customize link text (optional)"
 msgstr "Enllaç de text de personalització (opcional)"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:820
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:821
 msgid "E.x. Details for {{Column Name}}"
 msgstr "P. E: Detaill de {{Column Name}}"
 
-#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:864
+#: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:867
 msgid "Values you can reference"
 msgstr "Valors que es poden referenciar"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:63
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:64
 msgid "No available targets"
 msgstr "Sense objectius disponible"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:103
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:220
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:104
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:221
 msgid "filter"
 msgstr "filtre"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:103
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:104
 msgid "variable"
 msgstr "variable"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:112
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:113
 msgid "Other available filters"
 msgstr "Altres filtres disponibles"
 
@@ -15996,7 +15998,7 @@ msgstr "Altres filtres disponibles"
 msgid "Avaliable filters"
 msgstr "Filtres disponibles"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:117
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:118
 msgid "Other available variables"
 msgstr "Altres variables disponibles"
 
@@ -16004,7 +16006,7 @@ msgstr "Altres variables disponibles"
 msgid "Avaliable variables"
 msgstr "Variables disponibles"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:122
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:123
 msgid "Other available columns"
 msgstr "Altres columnes disponibles"
 
@@ -16012,31 +16014,31 @@ msgstr "Altres columnes disponibles"
 msgid "Avaliable columns"
 msgstr "Columnes diponibles"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:221
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:222
 msgid "user attribute"
 msgstr "atribut d'usuari"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:216
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:215
 msgid "Text card"
 msgstr "Carta de text"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:277
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:276
 msgid "Click behavior"
 msgstr "Comportament al clicar"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:315
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:314
 msgid "Visualization options"
 msgstr "Mostra les opcions"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:352
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:351
 msgid "Edit series"
 msgstr "Editue les series"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:352
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:351
 msgid "Add series"
 msgstr "Afegiu series"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:406
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:405
 msgid "On click"
 msgstr "Al clickar"
 
@@ -16053,7 +16055,7 @@ msgstr "Heu actualitzat els parametres d'embicció, heu d'actualitzar el codi"
 msgid "Add question"
 msgstr "Afegiu una pregunta"
 
-#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:376
+#: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:378
 msgid "You're editing this dashboard."
 msgstr "Esteu editant aquest cuadre de comandament."
 
@@ -16464,15 +16466,15 @@ msgstr "Introduiu el nom d'usuari o correu electronic"
 msgid "New snippet"
 msgstr "Nou pedaç de codi"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:311
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:292
 msgid "{0}:00 PM"
 msgstr "{0}:00 PM"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:313
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:294
 msgid "12:00 AM"
 msgstr "12:00 AM"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:315
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:296
 msgid "{0}:00 AM"
 msgstr "{0}:00 AM"
 
@@ -16492,53 +16494,52 @@ msgstr "Semanalment el {0} a les {1}"
 msgid "Monthly on the {0} {1} at {2}"
 msgstr "Mensualment el {0} {1} a les {2}"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:475
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:460
 msgid "Delete this subscription"
 msgstr "Elimina aquesta subscripció"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:458
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:528
 msgid "Subscriptions"
 msgstr "Subscripcions"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:59
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:571
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:752
 msgid "Create a dashboard subscription"
 msgstr "Creu una subscripció al cuadre de comandament"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:599
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:788
 msgid "Email it"
 msgstr "Envia'l per correu electrònic"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:609
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:803
 msgid "You can send this dashboard regularly to users or email addresses."
 msgstr "Podeu enviar aquest quadre de comandament regularment als usuaris o direccions de correu electrònic."
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:635
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:837
 msgid "Send it to Slack"
 msgstr "Envia a Slack"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:645
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:852
 msgid "Pick a channel and a schedule, and Metabase will do the rest."
 msgstr "Selecciona un canal i una programació. Metabase farà la resta."
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:681
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:611
 msgid "Email this dashboard"
 msgstr "Envia el cuadre de comandament per correu electrònic"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:725
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:812
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:656
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:733
 msgid "Don't send if there aren't results"
 msgstr "No ho envis si no hi ha resultats."
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:733
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:664
 msgid "Attach results"
 msgstr "Adjunta els resultats"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:738
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:669
 msgid "Attachments can contain up to 2,000 rows of data."
 msgstr "Els adjunts poden contenir com a màxim 2.000 registres de dades."
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:791
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:711
 msgid "Send this dashboard to Slack"
 msgstr "Envia el cuadre de comandament a Slack"
 
@@ -16664,23 +16665,23 @@ msgstr "Puja una imatge"
 msgid "Error uploading file to Slack:"
 msgstr "Error al pujar l'imatge a Slack:"
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "Invalid session. Expected an instance of Session."
 msgstr "Sessió invalida. S'esperava una instancia de Sessió"
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "Session cookie's SameSite is configured to \"None\", but site is"
 msgstr "La galeta de sessió SameSite està configurado a \"Cap\", però el lloc"
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "served over an insecure connection. Some browsers will reject "
 msgstr "es serveix sobre una conexió insegura. Alguns navegadors ho refusaran."
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "cookies under these conditions. "
 msgstr "coo"
 
-#: src/metabase/middleware/session.clj
+#: src/metabase/server/middleware/session.clj
 msgid "https://www.chromestatus.com/feature/5633521622188032"
 msgstr "https://www.chromestatus.com/feature/5633521622188032"
 
@@ -16851,19 +16852,19 @@ msgstr "Nom desconegut"
 msgid "Unknown engine"
 msgstr "Motor desconegut"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:202
+#: frontend/src/metabase/collections/components/Header.jsx:61
 msgid "Edit collection"
 msgstr "Edita la colecció"
 
-#: frontend/src/metabase/collections/containers/CollectionContent.jsx:239
+#: frontend/src/metabase/collections/components/PinnedItems.jsx:57
 msgid "Pinned items"
 msgstr "Elements destacats"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:103
+#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:109
 msgid "Other users' personal collections"
 msgstr "La col·lecció personal d'altres usuaris"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:114
+#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:117
 msgid "View archive"
 msgstr "Veure l'arxiu"
 
@@ -16883,15 +16884,15 @@ msgstr "Utilitzeu coleccions per organitzar i agrupar quadres de comandament pel
 msgid "Unpin this item"
 msgstr "Elimina de destacats"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:113
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:114
 msgid "Available filters"
 msgstr "Filtres disponibles"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:118
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:119
 msgid "Available variables"
 msgstr "Variables disponibles"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:123
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:124
 msgid "Available columns"
 msgstr "Columnes disponibles"
 
@@ -16903,11 +16904,11 @@ msgstr "Inclou el User ID i el hash a la consulta"
 msgid "When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs."
 msgstr "Quan s'activa el ID d'usuari de Metabase i el hash de la consulta s'inclouen a les consultes d'aquesta bases de dades. Això pot ser últil per debugar o auditar. No obstant, aquestes clausules fan que cada consulta sigui diferent i eviten que el BigQuery no retorni resultats en cache, incrementant el costos."
 
-#: frontend/src/metabase/entities/databases/forms.js:298
+#: frontend/src/metabase/entities/databases/forms.js:297
 msgid "Periodically refingerprint tables"
 msgstr "Rescaneja les taules períodicament"
 
-#: frontend/src/metabase/entities/databases/forms.js:299
+#: frontend/src/metabase/entities/databases/forms.js:298
 msgid "When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter."
 msgstr "Quan es sincronitzi aquesta base de dades el Metabase escanejara un subconjunt de valors dels camps per obtenir estadistiques que permeten una millor experiència en les grafiques i fent la instància de Metabase més inteligent."
 
@@ -16931,7 +16932,7 @@ msgstr "Tipus d'interal com \"dia\", \"més\", \"any\"."
 msgid "Filter by this column"
 msgstr "Filtra per aquesta columna"
 
-#: frontend/src/metabase/modes/components/drill/FormatAction.jsx:28
+#: frontend/src/metabase/modes/components/drill/FormatAction.jsx:29
 msgid "Column formatting"
 msgstr "Format de columna"
 
@@ -16943,7 +16944,7 @@ msgstr "Ordena ascendent"
 msgid "Sort descending"
 msgstr "Ordena descendent"
 
-#: frontend/src/metabase/nav/containers/Navbar.jsx:343
+#: frontend/src/metabase/nav/containers/Navbar.jsx:255
 msgid "Browse data"
 msgstr "Navega per les dades"
 
@@ -16959,57 +16960,57 @@ msgstr "Hi ha un problema amb aquesta visualització"
 msgid "Showing first {0} rows"
 msgstr "Mostrar les primeres {0} files"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:343
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:324
 msgid "first"
 msgstr "primer"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:345
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:326
 msgid "last"
 msgstr "últim"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:356
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:337
 msgid "Emailed "
 msgstr "Enviat per correu "
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:358
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:339
 msgid "Sent to "
 msgstr "Enviat a"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:360
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:341
 msgid "Sent "
 msgstr "Enviat"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:365
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:346
 msgid "hourly"
 msgstr "cada hora"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:369
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:350
 msgid "daily at {0}"
 msgstr "cada dia a les {0}"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:375
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:356
 msgid "{0} at {1}"
 msgstr "{0} a les {1}"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:382
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:363
 msgid "monthly on the {0} {1} at {2}"
 msgstr "cada mes el {0} {1} a les {2}"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:398
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:379
 msgid " and {0} other"
 msgid_plural " and {0} others"
 msgstr[0] " i {0} altre"
 msgstr[1] " i {0} altres"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:437
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:421
 msgid "This dashboard will no longer be emailed to {0} {1}"
 msgstr "Aquest cuadre de comandament ja no s'enviarà per correu a {0} {1}."
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:448
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:432
 msgid "Slack channel {0} will no longer get this dashboard {1}"
 msgstr "El cuadre de comandament {1} ja no s'enviarà al cancal de Slack {0}."
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:457
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:441
 msgid "Channel {0} will no longer receive this dashboard {1}"
 msgstr "El cuadre de comandament {1} ja no s'enviarà al cancal de Slack {0}."
 
@@ -17018,19 +17019,19 @@ msgstr "El cuadre de comandament {1} ja no s'enviarà al cancal de Slack {0}."
 msgid "Schedules"
 msgstr "Programacacions"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:515
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:531
 msgid "Set up a new schedule"
 msgstr "Crear una nova programació"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:523
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:539
 msgid "Close"
 msgstr "Tanca"
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:603
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:797
 msgid "You'll need to {0} first."
 msgstr "Heu de {0} primer."
 
-#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:639
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:846
 msgid "First, you'll have to {0}."
 msgstr "Primer, heu de {0}."
 
@@ -17038,7 +17039,7 @@ msgstr "Primer, heu de {0}."
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Files {0}-{1} de les primeres {2}"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:123
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:150
 msgid "Drag fields here"
 msgstr "Solta els camps aquí"
 
@@ -17046,15 +17047,15 @@ msgstr "Solta els camps aquí"
 msgid "Percentage"
 msgstr "Percentatge"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:19
+#: frontend/src/metabase/lib/data_grid.js:311
 msgid "Totals for {0}"
 msgstr "Totals per {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:20
+#: frontend/src/metabase/lib/data_grid.js:135
 msgid "Grand totals"
 msgstr "Totals"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:21
+#: frontend/src/metabase/lib/data_grid.js:110
 msgid "Row totals"
 msgstr "Total de file"
 
@@ -17070,11 +17071,11 @@ msgstr "Camps a utilizar a les columnes de la taula"
 msgid "Fields to use for the table values"
 msgstr "Camps  a utilitzar pels valors de la taula"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:63
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:69
 msgid "Pivot tables can only be used with aggregated queries."
 msgstr "Les taules dinàmiques només es poden utilitzar amb consultes agregades"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:44
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:54
 msgid "Pivot Table"
 msgstr "Taula dinàmica"
 
@@ -17662,10 +17663,185 @@ msgctxt "An info message letting you know you can create dashboard subscriptions
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Ara podeu configurar {0}. Eliminarem Pulses en una versió futura i us ajudarem a migrar tot el que encara tingueu."
 
-#:
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:136
 msgid "dashboard subscriptions"
 msgstr "subscripcions al tauler"
 
 #:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Els gràfics de {0} a la vostra subscripció no tindran el mateix aspecte que al vostre tauler. {1}"
+
+#: frontend/src/metabase/components/SchedulePicker.jsx:203
+msgid "minutes past the hour"
+msgstr "minuts després de l’hora"
+
+#: frontend/src/metabase/components/SendTestEmail.jsx:31
+msgid "Email sent"
+msgstr "Email enviat"
+
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
+msgid "Add data to share this dashboard"
+msgstr "Afegiu dades per compartir aquest tauler"
+
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:79
+msgid "Dashboard subscriptions"
+msgstr "Subscripcions al tauler"
+
+#: frontend/src/metabase/lib/core.js:228
+msgid "Text as a ISO-8601 timestamp"
+msgstr "Text com a marca de temps ISO-8601"
+
+#: frontend/src/metabase/lib/core.js:233
+msgid "Text as a ISO-8601 time"
+msgstr "Text com a ISO-8601"
+
+#: frontend/src/metabase/lib/core.js:238
+msgid "Text as a ISO-8601 date"
+msgstr "Text com a data ISO-8601"
+
+#: frontend/src/metabase/lib/core.js:263
+msgid "UNIX Timestamp (Microseconds)"
+msgstr "Marca de temps UNIX (microsegons)"
+
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:173
+msgid "Pulses are being phased out"
+msgstr "Els polsos s’estan eliminant"
+
+#: frontend/src/metabase/pulse/components/PulseEdit.jsx:174
+msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
+msgstr "Ara podeu configurar {0}. Eliminarem Pulses en una versió futura i us ajudarem a migrar tot el que encara tingueu."
+
+#: frontend/src/metabase/sharing/components/EmailAttachmentPicker.jsx:181
+msgid "File format"
+msgstr "Format de fitxer"
+
+#: frontend/src/metabase/sharing/components/EmailAttachmentPicker.jsx:204
+msgid "Questions to attach"
+msgstr "Preguntes per adjuntar"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:465
+msgid "Delete this subscription to {0}?"
+msgstr "Voleu suprimir aquesta subscripció a {0}?"
+
+#: frontend/src/metabase/sharing/components/SharingSidebar.jsx:506
+msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}."
+msgstr "Els gràfics de {0} a la vostra subscripció no tindran el mateix aspecte que al vostre tauler. {1}."
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:22
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:29
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:36
+msgid "Fields to use for the table {0}"
+msgstr "Camps que cal utilitzar per a la taula {0}"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:23
+msgid "rows"
+msgstr "files"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:30
+msgid "columns"
+msgstr "columnes"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:37
+msgid "values"
+msgstr "valors"
+
+#: backend/mbql/src/metabase/mbql/normalize.clj
+msgid "Error normalizing form."
+msgstr "Error en normalitzar el formulari."
+
+#: backend/mbql/src/metabase/mbql/normalize.clj
+msgid "Error canonicalizing query"
+msgstr "Error en canonitzar la consulta"
+
+#: backend/mbql/src/metabase/mbql/normalize.clj
+msgid "Error performing whole query transformations"
+msgstr "Error en realitzar transformacions de consulta senceres"
+
+#: backend/mbql/src/metabase/mbql/normalize.clj
+msgid "Error normalizing query"
+msgstr "Error en normalitzar la consulta"
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/models/group_table_access_policy.clj
+msgid "Sandbox Cards can''t return columns that aren't present in the Table they are sandboxing."
+msgstr "Les targetes Sandbox no poden retornar les columnes que no es mostren a la taula, ja que són sandbox."
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/models/group_table_access_policy.clj
+msgid "Sandbox Cards can''t return columns that have different types than the Table they are sandboxing."
+msgstr "Les targetes Sandbox no poden retornar columnes que tinguin tipus diferents de la Taula en què s’emmarquen."
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/models/group_table_access_policy.clj
+msgid "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules."
+msgstr "No es pot actualitzar la targeta: la targeta s'utilitza per a Sandboxing i les actualitzacions infringirien les regles de Sandbox."
+
+#: enterprise/backend/src/metabase_enterprise/sandbox/models/group_table_access_policy.clj
+msgid "You cannot change the Table ID of a GTAP once it has been created."
+msgstr "No podeu canviar l'identificador de taula d'un GTAP un cop s'hagi creat."
+
+#: src/metabase/api/dataset.clj
+msgid "`database` is required for all queries."
+msgstr "Es necessita \"base de dades\" per a totes les consultes."
+
+#: src/metabase/cmd/copy.clj
+msgid "ERROR {0}"
+msgstr "ERROR {0}"
+
+#: src/metabase/cmd/copy.clj
+msgid "copied {0} instances."
+msgstr "{0} instàncies copiades."
+
+#: src/metabase/cmd/copy.clj
+msgid "Copying instances of {0}..."
+msgstr "S'estan copiant instàncies de {0} ..."
+
+#: src/metabase/cmd/copy.clj
+msgid "Error copying instances of {0}"
+msgstr "Error en copiar instàncies de {0}"
+
+#: src/metabase/cmd/copy.clj
+msgid "Temporarily disabling DB constraints..."
+msgstr "Desactivació temporal de les restriccions de base de dades ..."
+
+#: src/metabase/cmd/copy.clj
+msgid "Re-enabling DB constraints..."
+msgstr "Reactivació de restriccions de base de dades ..."
+
+#: src/metabase/cmd/copy.clj
+msgid "Setting Postgres sequence ids to proper values..."
+msgstr "Configuració dels identificadors de seqüència Postgres als valors adequats ..."
+
+#. make sure the source database is up-do-date
+#: src/metabase/cmd/copy.clj
+msgid "Set up {0} source database and run migrations..."
+msgstr "Configureu la base de dades d'origen {0} i executeu migracions ..."
+
+#. make sure the dest DB is up-to-date
+#.
+#. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
+#: src/metabase/cmd/copy.clj
+msgid "Set up {0} target database and run migrations..."
+msgstr "Configureu la base de dades de destinació {0} i executeu les migracions ..."
+
+#. make sure target DB is empty
+#: src/metabase/cmd/copy.clj
+msgid "Testing if target {0} database is already populated..."
+msgstr "S'està comprovant si la base de dades {0} de destinació ja està emplenada ..."
+
+#: src/metabase/db/env.clj
+msgid "Unsupported application database type: {0} is not currently supported."
+msgstr "Tipus de base de dades d'aplicacions no compatibles: {0} no s'admet actualment."
+
+#: src/metabase/db/env.clj
+msgid "Check the value of MB_DB_CONNECTION_URI."
+msgstr "Comproveu el valor de MB_DB_CONNECTION_URI."
+
+#: src/metabase/driver/sql/query_processor.clj
+msgid "Driver {0} does not support {1}"
+msgstr "El controlador {0} no admet {1}"
+
+#: src/metabase/driver/sql/query_processor.clj
+msgid "No magnitude known for {0}"
+msgstr "No es coneix cap magnitud per a {0}"
+
+#: src/metabase/query_processor/middleware/fetch_source_query.clj
+msgid "Error resolving source query"
+msgstr "Error en resoldre la consulta d'origen"

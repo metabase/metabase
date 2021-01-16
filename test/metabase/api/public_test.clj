@@ -1044,11 +1044,10 @@
               (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
               (is (= "completed" (:status result)))
               (is (= 6 (count (get-in result [:data :cols]))))
-              (is (= 2273 (count rows)))
+              (is (= 1144 (count rows)))
 
               (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
               (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
-              (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
               (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
 
 (defn- pivot-dashcard-url
@@ -1076,11 +1075,10 @@
                     (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                     (is (= "completed" (:status result)))
                     (is (= 6 (count (get-in result [:data :cols]))))
-                    (is (= 2273 (count rows)))
+                    (is (= 1144 (count rows)))
 
                     (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
                     (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
-                    (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
                     (is (= [nil nil nil 7 18760 69540] (last rows))))))))
 
           (testing "with parameters"
@@ -1097,8 +1095,8 @@
                     (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                     (is (= "completed" (:status result)))
                     (is (= 6 (count (get-in result [:data :cols]))))
-                    (is (= 131 (count rows)))
+                    (is (= 80 (count rows)))
 
                     (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
-                    (is (= [nil "Twitter" "Widget" 1 77 270] (nth rows 100)))
+                    (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
                     (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))
