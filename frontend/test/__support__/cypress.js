@@ -73,15 +73,19 @@ export function restore(name = "default") {
 export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
+
 export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }
+
 export function nav() {
   return cy.get("nav");
 }
+
 export function main() {
   return cy.get("nav").next();
 }
+
 export function sidebar() {
   return cy.get(".scroll-y");
 }
