@@ -8,6 +8,7 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATASET;
 
 const QUESTION_NAME = "Cypress Pivot Table";
+const DASHBOARD_NAME = "Pivot Table Dashboard";
 
 describe("scenarios > visualizations > pivot tables", () => {
   beforeEach(() => {
@@ -205,7 +206,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
         cy.log("**--2. Create new dashboard--**");
         cy.request("POST", "/api/dashboard", {
-          name: "Pivot table dashboard",
+          name: DASHBOARD_NAME,
         }).then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("**--Add previously created question to that dashboard--**");
           cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -238,65 +239,51 @@ describe("scenarios > visualizations > pivot tables", () => {
       });
     });
 
-    describe("question", () => {
-      beforeEach(() => {
-        cy.visit("/collection/root");
-        cy.findByText(QUESTION_NAME).click();
-        cy.get(".Icon-share").click();
-      });
-      it("should display pivot table in a public link", () => {
-        cy.findByText("Public link")
-          .parent()
-          .find("input")
-          .invoke("val")
-          .then($value => {
-            const SANITIZED_URL = $value.replace(
-              /https?:\/\/localhost:\d*/,
-              "",
-            );
-            cy.visit(SANITIZED_URL);
+    const TEST_CASES = [
+      { case: "question", subject: QUESTION_NAME },
+      { case: "dashboard", subject: DASHBOARD_NAME },
+    ].forEach(test => {
+      describe(test.case, () => {
+        beforeEach(() => {
+          cy.visit("collection/root");
+          cy.findByText(test.subject).click();
+          cy.get(".Icon-share").click();
+          if (test.case === "dashboard") {
+            cy.findByText("Sharing and embedding").click();
+          }
+        });
+
+        it("should display pivot table in a public link", () => {
+          cy.findByText("Public link")
+            .parent()
+            .find("input")
+            .invoke("val")
+            .then($value => {
+              cy.visit($value);
+            });
+          cy.findByText(test.subject);
+          assertOnPivotFields();
+        });
+
+        it("should display pivot table in an embed preview", () => {
+          cy.findByText(
+            /Embed this (question|dashboard) in an application/,
+          ).click();
+          cy.findByText(test.subject);
+          assertOnPivotFields();
+        });
+
+        it("should display pivot table in an embed URL", () => {
+          cy.findByText(
+            /Embed this (question|dashboard) in an application/,
+          ).click();
+          cy.findByText("Publish").click();
+          cy.get("iframe").then($iframe => {
+            cy.visit($iframe[0].src);
+            cy.findByText(test.subject);
+            assertOnPivotFields();
           });
-        cy.findByText(QUESTION_NAME);
-        assertOnPivotFields();
-      });
-
-      it("should display pivot table in an embed preview", () => {
-        cy.findByText("Embed this question in an application").click();
-
-        cy.findByText(QUESTION_NAME);
-        assertOnPivotFields();
-      });
-    });
-
-    describe("dashboard", () => {
-      beforeEach(() => {
-        cy.visit("collection/root");
-        cy.findByText("Pivot table dashboard").click();
-        cy.get(".Icon-share").click();
-        cy.findByText("Sharing and embedding").click();
-      });
-
-      it("should display pivot table in a public link", () => {
-        cy.findByText("Public link")
-          .parent()
-          .find("input")
-          .invoke("val")
-          .then($value => {
-            const SANITIZED_URL = $value.replace(
-              /https?:\/\/localhost:\d*/,
-              "",
-            );
-            cy.visit(SANITIZED_URL);
-          });
-        cy.findByText("Pivot table dashboard");
-        assertOnPivotFields();
-      });
-
-      it("should display pivot table in an embed preview", () => {
-        cy.findByText("Embed this dashboard in an application").click();
-
-        cy.findByText("Pivot table dashboard");
-        assertOnPivotFields();
+        });
       });
     });
   });
