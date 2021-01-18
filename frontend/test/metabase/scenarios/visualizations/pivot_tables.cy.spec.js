@@ -10,6 +10,11 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATASET;
 const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
 
+const TEST_CASES = [
+  { case: "question", subject: QUESTION_NAME },
+  { case: "dashboard", subject: DASHBOARD_NAME },
+];
+
 describe("scenarios > visualizations > pivot tables", () => {
   beforeEach(() => {
     restore();
@@ -239,10 +244,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       });
     });
 
-    const TEST_CASES = [
-      { case: "question", subject: QUESTION_NAME },
-      { case: "dashboard", subject: DASHBOARD_NAME },
-    ].forEach(test => {
+    TEST_CASES.forEach(test => {
       describe(test.case, () => {
         beforeEach(() => {
           cy.visit("collection/root");
