@@ -3,7 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.models :refer [Activity Card Dashboard DashboardCard User Collection Pulse Database Table Field Metric
+   [metabase.models :refer [Activity Card Dashboard DashboardCard User Collection Pulse PulseCard Database Table Field Metric
                             FieldValues Dimension MetricImportantField Segment PermissionsGroup Permissions PermissionsGroupMembership
 ]]
    [metabase.test :as mt]
@@ -13,9 +13,12 @@
 
 (declare create-random!)
 
+(def generated-entities [Card Dashboard DashboardCard Collection Pulse Database Table Field PulseCard Metric
+                         FieldValues Dimension MetricImportantField Activity Segment])
+
 (def ^:dynamic *max-children*
   "Max number of child entities to generate from each entity."
-  3)
+  4)
 
 (def ^:dynamic *current-user* nil)
 
@@ -43,38 +46,11 @@
   (fn [model _]
     (class model)))
 
-(m/defmethod create-random!* :before :default
-  [model property-overrides]
-  (println (name model))
-  property-overrides)
-
 (m/defmethod create-random!* :default
   [model property-overrides]
   (let [properties (merge (tt/with-temp-defaults model)
                           property-overrides)]
     (db/insert! model properties)))
-
-(m/defmethod create-random!* :after :default
-  [model entity]
-  ;; (let [entity->model (set/map-invert
-  ;;                      {"card"      Card
-  ;;                       "dashboard" Dashboard
-  ;;                       "metric"    Metric
-  ;;                       "pulse"     Pulse
-  ;;                       "segment"   Segment})
-  ;;       entity (name model)
-  ;;       ]
-  ;;   (when (= entity "Pulse"); (contains? entity->model (str/lower-case entity))
-  ;;     (metabase.models.activity/record-activity!
-  ;;       :topic (keyword (str entity "-create")))))
-  entity)
-
-;; (defn- compound-filter [filter]
-;;   [:and
-;;    filter
-;;    [:=
-;;     [:field-id (mt/id :venues :price)]
-;;     (inc (rand-int 4))]])
 
 ;;; create-random!* before/after modifiers
 
@@ -155,6 +131,14 @@
       (create-random!* DashboardCard {:dashboard_id (:id dashboard), :card_id (:id card)})))
   dashboard)
 
+(m/defmethod create-random!* :after (class DashboardCard)
+  [_ dcard]
+  (when true ; (coin-toss?)
+    (create-random!* PulseCard {:pulse_id (:id (create-random!* Pulse nil))
+                                :dashboard_card_id (:id dcard)
+                                :card_id (:card_id dcard)}))
+  dcard)
+
 (m/defmethod create-random!* :after (class User)
   [_ user]
   (when (coin-toss?)
@@ -175,7 +159,7 @@
   [_ collection]
   (dotimes [_ (children)]
     (create-random!* Pulse {:creator_id (or (:personal_owner_id collection)
-                                                 (:id (first (db/select User {:limit 1}))))
+                                            (:id (first (db/select User {:limit 1}))))
                             :collection_id (:id collection)}))
 
   (when (coin-toss?)
@@ -200,13 +184,10 @@
           (create-random!* model property-overrides)))))
 
 (defn generate-data! []
-  (let [entities [Card Dashboard DashboardCard Collection Pulse Database Table Field
-                  Metric FieldValues Dimension MetricImportantField Activity Segment]]
-    (mt/with-model-cleanup entities
-      (binding [*current-user* (create-random! User)]
-        (let [dash (create-random! Dashboard {:creator_id (:id *current-user*)})
-              database (create-random! Database)
-              collections (dotimes [_ (children)] (create-random! Collection {:location "/"}))]
-          (doseq [e entities]
-            (printf "created %s: %d\n" (name e) (db/count e)))
-          dash)))))
+  (binding [*current-user* (create-random! User)]
+    (let [dash (create-random! Dashboard {:creator_id (:id *current-user*)})
+          database (create-random! Database)
+          collections (dotimes [_ (children)] (create-random! Collection {:location "/"}))]
+      (doseq [e generated-entities]
+        (printf "created %s: %d\n" (name e) (db/count e)))
+      dash)))
