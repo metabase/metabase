@@ -178,6 +178,7 @@
 
 (deftest ssh-tunnel-works
   (testing "ssh tunnel can properly tunnel"
+    ;; Sometimes the port is already in use
     (u/auto-retry 5
       ;; this will try to open a TCP connection via the tunnel.
        (sshu/with-ssh-tunnel [details-with-tunnel {:tunnel-enabled                true
