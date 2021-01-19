@@ -312,21 +312,24 @@ function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
 
 function treeToArray(nodes) {
   const a = [];
-  function dfs(nodes, depth, offset) {
+  function dfs(nodes, depth, offset, path = []) {
     if (nodes.length === 0) {
       return { span: 1, maxDepth: 0 };
     }
     let totalSpan = 0;
     let maxDepth = 0;
-    for (const { children, ...rest } of nodes) {
+    for (const { children, rawValue, ...rest } of nodes) {
+      const pathWithValue = [...path, rawValue];
       const item = {
         ...rest,
+        rawValue,
         depth,
         offset,
         hasChildren: children.length > 0,
+        path: pathWithValue,
       };
       a.push(item);
-      const result = dfs(children, depth + 1, offset);
+      const result = dfs(children, depth + 1, offset, pathWithValue);
       item.span = result.span;
       item.maxDepthBelow = result.maxDepth;
       offset += result.span;

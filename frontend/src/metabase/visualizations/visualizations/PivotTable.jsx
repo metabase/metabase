@@ -226,6 +226,7 @@ export default class PivotTable extends Component {
         isGrandTotal,
         hasChildren,
         depth,
+        path,
       } = leftTreeList[index];
       return (
         <div
@@ -240,6 +241,16 @@ export default class PivotTable extends Component {
             value={value}
             isSubtotal={isSubtotal}
             isGrandTotal={isGrandTotal}
+            icon={
+              (isSubtotal || hasChildren) && (
+                <RowToggleIcon
+                  value={path}
+                  settings={settings}
+                  updateSettings={onUpdateVisualizationSettings}
+                  hideUnlessCollapsed={isSubtotal}
+                />
+              )
+            }
           />
         </div>
       );
@@ -424,54 +435,6 @@ function RowToggleIcon({
       onClick={update}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
-    </div>
-  );
-}
-
-function LeftHeaderSection({
-  item: { value, rawValue, isSubtotal, isGrandTotal, children },
-  settings,
-  onUpdateVisualizationSettings,
-  valuePath = [],
-  depth = 0,
-}) {
-  valuePath = [...valuePath, rawValue];
-  return (
-    <div className="flex justify-between">
-      {value === null ? null : (
-        <Cell
-          value={value}
-          isSubtotal={isSubtotal}
-          isGrandTotal={isGrandTotal}
-          baseWidth={LEFT_HEADER_CELL_WIDTH}
-          width={isSubtotal ? undefined : 1}
-          className={isSubtotal ? "flex-full" : ""}
-          style={{
-            ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
-          }}
-          icon={
-            (isSubtotal || children.length > 1) && (
-              <RowToggleIcon
-                value={valuePath}
-                settings={settings}
-                updateSettings={onUpdateVisualizationSettings}
-                hideUnlessCollapsed={isSubtotal}
-              />
-            )
-          }
-        />
-      )}
-      <div className="flex flex-column">
-        {children.map(child => (
-          <LeftHeaderSection
-            item={child}
-            depth={depth + 1}
-            valuePath={valuePath}
-            settings={settings}
-            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          />
-        ))}
-      </div>
     </div>
   );
 }
