@@ -117,12 +117,14 @@ export function multiLevelPivot(
       isGrandTotal: true,
     });
   }
-  console.log({ valueColumns });
+
+  const columnIndex = addEmptyIndexItem(
+    formattedColumnTreeWithoutValues.flatMap(enumerate),
+  );
   const formattedColumnTree = addValueColumnNodes(
     formattedColumnTreeWithoutValues,
     valueColumns,
   );
-  console.log({ formattedColumnTreeWithoutValues, formattedColumnTree });
 
   const formattedRowTreeWithoutSubtotals = formatValuesInTree(
     rowColumnTree,
@@ -142,13 +144,10 @@ export function multiLevelPivot(
     });
   }
 
-  console.log({ formattedRowTree, formattedColumnTree });
-  const columnIndex = addEmptyIndexItem(formattedColumnTree.flatMap(enumerate));
   const rowIndex = addEmptyIndexItem(formattedRowTree.flatMap(enumerate));
 
   const leftHeaderItems = treeToArray(formattedRowTree.flat());
   const topHeaderItems = treeToArray(formattedColumnTree.flat());
-  console.log({ columnIndex, rowIndex, leftHeaderItems, topHeaderItems });
 
   const getRowSection = createRowSectionGetter({
     valuesByKey,
@@ -201,7 +200,6 @@ function createRowSectionGetter({
   const getter = (columnIdx, rowIdx) => {
     const columnValues = columnIndex[columnIdx] || [];
     const rowValues = rowIndex[rowIdx] || [];
-    console.log({ columnIdx, rowIdx, columnValues, rowValues });
     const indexValues = columnValues.concat(rowValues);
     if (
       rowValues.length < rowColumnIndexes.length ||
