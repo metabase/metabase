@@ -134,7 +134,7 @@ export function multiLevelPivot(
     formattedRowTreeWithoutSubtotals,
     leftIndexFormatters,
   );
-  if (formattedRowTree.length > 1) {
+  if (formattedRowTreeWithoutSubtotals.length > 1) {
     // if there are multiple columns, we should add another for row totals
     formattedRowTree.push({
       value: t`Grand totals`,
@@ -162,8 +162,8 @@ export function multiLevelPivot(
   return {
     leftHeaderItems,
     topHeaderItems,
-    rowIndex,
-    columnIndex,
+    rowCount: rowIndex.length,
+    columnCount: columnIndex.length,
     getRowSection,
   };
 }
@@ -318,8 +318,15 @@ function treeToArray(nodes) {
     }
     let totalSpan = 0;
     let maxDepth = 0;
-    for (const { children, rawValue, ...rest } of nodes) {
-      const pathWithValue = [...path, rawValue];
+    for (const {
+      children,
+      rawValue,
+      isGrandTotal,
+      isValueColumn,
+      ...rest
+    } of nodes) {
+      const pathWithValue =
+        isValueColumn || isGrandTotal ? null : [...path, rawValue];
       const item = {
         ...rest,
         rawValue,

@@ -214,8 +214,8 @@ export default class PivotTable extends Component {
     const {
       leftHeaderItems: leftTreeList,
       topHeaderItems: topTreeList,
-      rowIndex,
-      columnIndex,
+      rowCount,
+      columnCount,
       getRowSection,
     } = pivoted;
 
@@ -385,9 +385,9 @@ export default class PivotTable extends Component {
                   width={width - leftHeaderWidth}
                   height={height - topHeaderHeight}
                   className="text-dark"
-                  rowCount={rowIndex.length}
+                  rowCount={rowCount}
                   rowHeight={CELL_HEIGHT}
-                  columnCount={columnIndex.length}
+                  columnCount={columnCount}
                   columnWidth={({ index }) => valueIndexes.length * CELL_WIDTH}
                   cellRenderer={bodyRenderer}
                   onScroll={({ scrollLeft, scrollTop }) =>
