@@ -321,7 +321,7 @@
       ;; if you include `:source-metadata`)
       (is (= {:rows [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
               :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
-             (mt/format-rows-by [identity int identity int]
+             (mt/format-rows-by [int int int int]
                (mt/rows+column-names
                  (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                                     (mt/mbql-query venues
@@ -382,7 +382,7 @@
         (is (= {:rows    [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
                 :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
                (mt/rows+column-names
-                 (mt/format-rows-by [identity int identity int]
+                 (mt/format-rows-by [int int int int]
                    (mt/run-mbql-query checkins
                      {:source-query {:source-table $$checkins
                                      :aggregation  [[:count]]

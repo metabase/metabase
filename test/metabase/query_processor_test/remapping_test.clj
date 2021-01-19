@@ -35,7 +35,6 @@
                          (assoc :remapped_from (mt/format-name "category_id")
                                 :field_ref     [:fk-> [:field-id (mt/id :venues :category_id)]
                                                 [:field-id (mt/id :categories :name)]]
-                                :source_alias  "CATEGORIES__VIA__CATEGORY_ID"
                                 :fk_field_id   (mt/id :venues :category_id)
                                 :source        :breakout))
                      (-> (mt/col :venues :category_id)
@@ -53,7 +52,7 @@
                       :limit       3}))
                  qp.test/rows-and-cols
                  (update :cols (fn [[c1 c2 agg]]
-                                 [(update c1 :source_alias str/upper-case) c2 (dissoc agg :base_type)]))))))))
+                                 [(dissoc c1 :source_alias) c2 (dissoc agg :base_type)]))))))))
 
 (deftest nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -107,15 +106,14 @@
                               :display_name  "Foo"
                               :name          (mt/format-name "name_2")
                               :remapped_from (mt/format-name "category_id")
-                              :field_ref     $category_id->categories.name
-                              :source_alias  "CATEGORIES__VIA__CATEGORY_ID"))]}
+                              :field_ref     $category_id->categories.name))]}
              (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
                                  (mt/format-rows-by [int str int double double int str]
                                    (mt/run-mbql-query venues
                                      {:order-by [[:asc $name]]
                                       :limit    4})))
                  (update :cols (fn [[c1 c2 c3]]
-                                 [c1 c2 (update c3 :source_alias str/upper-case)]))))))))
+                                 [c1 c2 (dissoc c3 :source_alias)]))))))))
 
 (deftest remappings-with-field-clause-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -134,8 +132,7 @@
                                 :display_name  "Foo"
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")
-                                :field_ref     $category_id->categories.name
-                                :source_alias  "CATEGORIES__VIA__CATEGORY_ID"))]}
+                                :field_ref     $category_id->categories.name))]}
                (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
                      (mt/format-rows-by [str int str str]
                        (mt/run-mbql-query venues
@@ -143,7 +140,7 @@
                           :order-by [[:asc $name]]
                           :limit    4})))
                    (update :cols (fn [[c1 c2 c3]]
-                                   [c1 c2 (update c3 :source_alias str/upper-case)])))))))))
+                                   [c1 c2 (dissoc c3 :source_alias)])))))))))
 
 (deftest remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"
