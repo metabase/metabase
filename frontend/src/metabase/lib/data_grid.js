@@ -104,76 +104,89 @@ export function multiLevelPivot(
   );
 
   const valueColumns = valueColumnIndexes.map(index => columns[index]);
-  const topIndex = getIndex(columnColumnTree, { valueColumns });
-  if (topIndex.length > 1) {
+  const formattedColumnTreeWithoutValues = formatValuesInTree(
+    columnColumnTree,
+    topIndexFormatters,
+  );
+  if (formattedColumnTreeWithoutValues.length > 1) {
     // if there are multiple columns, we should add another for row totals
-    const rowTotals = [{ value: t`Row totals`, span: valueColumns.length }];
-    if (valueColumns.length > 1) {
-      const colNames = valueColumns.map(col => ({
-        value: col.display_name,
-        span: 1,
-      }));
-      topIndex.push([rowTotals, colNames]);
-    } else {
-      topIndex.push([rowTotals]);
-    }
+    formattedColumnTreeWithoutValues.push({
+      value: t`Row totals`,
+      children: [],
+      isSubtotal: true,
+      isGrandTotal: true,
+    });
   }
+  console.log({ valueColumns });
+  const formattedColumnTree = addValueColumnNodes(
+    formattedColumnTreeWithoutValues,
+    valueColumns,
+  );
+  console.log({ formattedColumnTreeWithoutValues, formattedColumnTree });
 
-  const formattedRowTree = formatValuesInTree(
+  const formattedRowTreeWithoutSubtotals = formatValuesInTree(
     rowColumnTree,
     leftIndexFormatters,
   );
-  const leftIndex = addSubtotals(formattedRowTree, leftIndexFormatters);
-  if (leftIndex.length > 1) {
-    // if there are multiple rows, we should add another for grand totals
-    leftIndex.push([
-      {
-        value: t`Grand totals`,
-        span: 1,
-        isSubtotal: true,
-        isGrandTotal: true,
-        children: [],
-      },
-    ]);
+  const formattedRowTree = addSubtotals(
+    formattedRowTreeWithoutSubtotals,
+    leftIndexFormatters,
+  );
+  if (formattedRowTree.length > 1) {
+    // if there are multiple columns, we should add another for row totals
+    formattedRowTree.push({
+      value: t`Grand totals`,
+      isSubtotal: true,
+      isGrandTotal: true,
+      children: [],
+    });
   }
 
-  // we need at least one row/column, so convert zero length to 1
-  const columnCount = topIndex.length || 1;
-  const rowCount = leftIndex.length || 1;
+  console.log({ formattedRowTree, formattedColumnTree });
+  const columnIndex = addEmptyIndexItem(formattedColumnTree.flatMap(enumerate));
+  const rowIndex = addEmptyIndexItem(formattedRowTree.flatMap(enumerate));
+
+  const leftHeaderItems = treeToArray(formattedRowTree.flat());
+  const topHeaderItems = treeToArray(formattedColumnTree.flat());
+  console.log({ columnIndex, rowIndex, leftHeaderItems, topHeaderItems });
+
+  const getRowSection = createRowSectionGetter({
+    valuesByKey,
+    subtotalValues,
+    valueFormatters,
+    columnColumnIndexes,
+    rowColumnIndexes,
+    columnIndex,
+    rowIndex,
+  });
+
   return {
-    topIndex,
-    leftIndex,
-    topIndexFormatters,
-    rowColumnTree,
-    leftIndexFormatters,
-    columnCount,
-    rowCount,
-    getRowSection: createRowSectionGetter({
-      valuesByKey,
-      columnColumnTree,
-      rowColumnTree,
-      valueFormatters,
-      subtotalValues,
-      columnColumnIndexes,
-      rowColumnIndexes,
-    }),
+    leftHeaderItems,
+    topHeaderItems,
+    rowIndex,
+    columnIndex,
+    getRowSection,
   };
+}
+
+function addEmptyIndexItem(index) {
+  return index.length === 0 ? [[]] : index;
 }
 
 function createRowSectionGetter({
   valuesByKey,
-  columnColumnTree,
-  rowColumnTree,
-  valueFormatters,
   subtotalValues,
+  valueFormatters,
   columnColumnIndexes,
   rowColumnIndexes,
+  columnIndex,
+  rowIndex,
 }) {
   const formatValues = values =>
     values === undefined
       ? Array(valueFormatters.length).fill({ value: null })
       : values.map((v, i) => ({ value: valueFormatters[i](v) }));
-  const getSubtotals = (breakoutIndexes, values, otherAttrs = {}) =>
+  const getSubtotals = (breakoutIndexes, values, otherAttrs) =>
     formatValues(
       getIn(
         subtotalValues,
@@ -185,101 +198,43 @@ function createRowSectionGetter({
       ),
     ).map(value => ({ ...value, isSubtotal: true, ...otherAttrs }));
 
-  const getter = (columnIndex, rowIndex) => {
-    const rows =
-      rowIndex >= rowColumnTree.length
-        ? [[]]
-        : enumerate(rowColumnTree[rowIndex], { includeSubtotals: true });
-    const columns =
-      columnIndex >= columnColumnTree.length
-        ? [[]]
-        : enumerate(columnColumnTree[columnIndex]);
-
-    const bottomRow =
-      rowIndex === rowColumnTree.length && rowColumnTree.length > 0;
-    const rightColumn =
-      columnIndex === columnColumnTree.length && columnColumnTree.length > 0;
-    // totals in the bottom right
-    if (bottomRow && rightColumn) {
-      return [getSubtotals([], [], { isGrandTotal: true })];
+  const getter = (columnIdx, rowIdx) => {
+    const columnValues = columnIndex[columnIdx] || [];
+    const rowValues = rowIndex[rowIdx] || [];
+    console.log({ columnIdx, rowIdx, columnValues, rowValues });
+    const indexValues = columnValues.concat(rowValues);
+    if (
+      rowValues.length < rowColumnIndexes.length ||
+      columnValues.length < columnColumnIndexes.length
+    ) {
+      const rowIndexes = rowColumnIndexes.slice(0, rowValues.length);
+      const columnIndexes = columnColumnIndexes.slice(0, columnValues.length);
+      const indexes = columnIndexes.concat(rowIndexes);
+      const otherAttrs = rowValues.length === 0 ? { isGrandTotal: true } : {};
+      return getSubtotals(indexes, indexValues, otherAttrs);
     }
-
-    // "grand totals" on the bottom
-    if (bottomRow) {
-      return [
-        columns.flatMap(col =>
-          getSubtotals(columnColumnIndexes, col, { isGrandTotal: true }),
-        ),
-      ];
-    }
-
-    // "row totals" on the right
-    if (rightColumn) {
-      return rows.map(row =>
-        getSubtotals(rowColumnIndexes.slice(0, row.length), row),
-      );
-    }
-
-    return rows.map(row =>
-      columns.flatMap(col => {
-        if (row.length < rowColumnIndexes.length) {
-          const indexes = columnColumnIndexes.concat(
-            rowColumnIndexes.slice(0, row.length),
-          );
-          return getSubtotals(indexes, col.concat(row));
-        }
-        const { values, data } =
-          valuesByKey[JSON.stringify(col.concat(row))] || {};
-        return formatValues(values).map(o =>
-          data === undefined ? o : { ...o, clicked: { data } },
-        );
-      }),
+    const { values, data } = valuesByKey[JSON.stringify(indexValues)] || {};
+    return formatValues(values).map(o =>
+      data === undefined ? o : { ...o, clicked: { data } },
     );
   };
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
 }
 
 function enumerate(
-  { value, isCollapsed, children },
-  { includeSubtotals = false } = {},
+  { rawValue, isGrandTotal, children, isValueColumn },
   path = [],
 ) {
-  const pathWithValue = [...path, value];
-  if (isCollapsed || children.length === 0) {
-    return [pathWithValue];
+  if (isGrandTotal) {
+    return [[]];
   }
-  const childPaths = children.flatMap(child =>
-    enumerate(child, { includeSubtotals }, pathWithValue),
-  );
-  return includeSubtotals && children.length > 1
-    ? // follow children with their subtotal
-      [...childPaths, pathWithValue]
-    : childPaths;
-}
-
-function getIndex(
-  values,
-  { subtotalFormatter, showRowSubtotals, valueColumns = [], depth = 0 } = {},
-) {
-  if (values.length === 0) {
-    if (valueColumns.length > 1 || (depth === 0 && valueColumns.length > 0)) {
-      // if we have multiple value columns include their column names
-      const colNames = valueColumns.map(col => ({
-        value: col.display_name,
-        span: 1,
-      }));
-      return [[colNames]];
-    }
-    return [];
+  if (isValueColumn) {
+    return [path];
   }
-  return values.map(({ value, children }) => {
-    const lowerLayers = _.zip(
-      ...getIndex(children, { valueColumns, depth: depth + 1 }),
-    ).map(a => a.flat());
-    const span =
-      lowerLayers.length === 0 ? 1 : lowerLayers[lowerLayers.length - 1].length;
-    return [[{ value, span }], ...lowerLayers];
-  });
+  const pathWithValue = [...path, rawValue];
+  return children.length === 0
+    ? [pathWithValue]
+    : children.flatMap(child => enumerate(child, pathWithValue));
 }
 
 function formatValuesInTree(rowColumnTree, [formatter, ...formatters]) {
@@ -291,8 +246,28 @@ function formatValuesInTree(rowColumnTree, [formatter, ...formatters]) {
   }));
 }
 
+function addValueColumnNodes(nodes, valueColumns) {
+  const leafNodes = valueColumns.map(column => ({
+    value: column.display_name,
+    children: [],
+    isValueColumn: true,
+  }));
+  if (nodes.length === 0) {
+    return leafNodes;
+  }
+  if (valueColumns.length <= 1) {
+    return nodes;
+  }
+  function updateNode(node) {
+    const children =
+      node.children.length === 0 ? leafNodes : node.children.map(updateNode);
+    return { ...node, children };
+  }
+  return nodes.map(updateNode);
+}
+
 function addSubtotals(rowColumnTree, formatters) {
-  return rowColumnTree.map(item => addSubtotal(item, formatters));
+  return rowColumnTree.flatMap(item => addSubtotal(item, formatters));
 }
 
 function addSubtotal(item, [formatter, ...formatters]) {
@@ -335,6 +310,36 @@ function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
     }
     currentLevelSeenValues = seenValue.children;
   }
+}
+
+function treeToArray(nodes) {
+  const a = [];
+  function dfs(nodes, depth, offset) {
+    if (nodes.length === 0) {
+      return { span: 1, maxDepth: 0 };
+    }
+    let totalSpan = 0;
+    let maxDepth = 0;
+    for (const { children, ...rest } of nodes) {
+      const item = {
+        ...rest,
+        depth,
+        offset,
+        hasChildren: children.length > 0,
+      };
+      a.push(item);
+      const result = dfs(children, depth + 1, offset);
+      item.span = result.span;
+      item.maxDepthBelow = result.maxDepth;
+      offset += result.span;
+      totalSpan += result.span;
+      maxDepth = Math.max(maxDepth, result.maxDepth);
+    }
+    return { span: totalSpan, maxDepth: maxDepth + 1 };
+  }
+
+  dfs(nodes, 0, 0);
+  return a;
 }
 
 export function pivot(data, normalCol, pivotCol, cellCol) {

@@ -132,7 +132,7 @@ describe("data_grid", () => {
     });
   });
 
-  describe("multiLevelPivot", () => {
+  describe.skip("multiLevelPivot", () => {
     const extractValues = rows => rows.map(row => row.map(item => item.value));
 
     const data = makePivotData([
