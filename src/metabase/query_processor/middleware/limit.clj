@@ -24,7 +24,7 @@
        (let [result'       (rf result row)
              new-row-count (vswap! row-count inc)]
          (if (>= new-row-count max-rows)
-           (reduced result')
+           (ensure-reduced result')
            result'))))))
 
 (defn limit

@@ -157,8 +157,20 @@
     ;; Cards with queries they wouldn't be allowed to run!
     (when *current-user-id*
       (when-not (query-perms/can-run-query? query)
-        (throw (Exception. (tru "You do not have permissions to run ad-hoc native queries against Database {0}."
-                                (:database query))))))
+        (let [required-perms (try
+                               (query-perms/perms-set query :throw-exceptions? true)
+                               (catch Throwable e
+                                 e))]
+          (throw (ex-info (tru "You do not have permissions to run ad-hoc native queries against Database {0}."
+                               (:database query))
+                          {:status-code    403
+                           :query          query
+                           :required-perms (if (instance? Throwable required-perms)
+                                             :error
+                                             required-perms)
+                           :actual-perms   @api/*current-user-permissions-set*}
+                          (when (instance? Throwable required-perms)
+                            required-perms))))))
     ;; make sure this Card doesn't have circular source query references
     (check-for-circular-source-query-references card)
     (collection/check-collection-namespace Card (:collection_id card))))

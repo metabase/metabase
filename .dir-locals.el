@@ -22,6 +22,7 @@
                               (merge-with 1)
                               (l/matche '(1 (:defn)))
                               (l/matcha '(1 (:defn)))
+                              (p/defprotocol+ '(1 (:defn)))
                               (p.types/defprotocol+ '(1 (:defn)))
                               (p.types/def-abstract-type '(1 (:defn)))
                               (p.types/deftype+ '(2 nil nil (:defn)))

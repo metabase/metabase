@@ -109,12 +109,14 @@
         ;; make sure we're returing an up-to-date copy of the DB
         (Database (u/get-id db))
         (catch Throwable e
-          (db/delete! Database :id (u/get-id db))
-          (throw (ex-info "Failed to create test database"
-                          {:driver             driver
-                           :database-name      database-name
-                           :connection-details connection-details}
-                          e)))))
+          (let [e (ex-info "Failed to create test database"
+                           {:driver             driver
+                            :database-name      database-name
+                            :connection-details connection-details}
+                           e)]
+            (println (u/pprint-to-str 'red (Throwable->map e)))
+            (db/delete! Database :id (u/get-id db))
+            (throw e)))))
     (catch Throwable e
       (let [message (format "Failed to create %s '%s' test database" driver database-name)]
         (println message "\n" e)
@@ -258,7 +260,8 @@
       (try
         (copy-db-tables-and-fields! old-db-id new-db-id)
         (do-with-db new-db f)
-        (finally (db/delete! Database :id new-db-id))))))
+        (finally
+          (db/delete! Database :id new-db-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
