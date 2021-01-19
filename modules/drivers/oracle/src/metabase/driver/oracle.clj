@@ -137,9 +137,9 @@
   [_ identifier]
   (let [field-identifier (last (:components identifier))]
     (if (> (count field-identifier) legacy-max-identifier-length)
-      (update :components (fn [components]
-                            (concat (butlast components)
-                                    [(str "identifier" (Math/abs (hash identifier)))])))
+      (update identifier :components (fn [components]
+                                       (concat (butlast components)
+                                               [(str "identifier" (Math/abs (hash identifier)))])))
       identifier)))
 
 (defmethod sql.qp/->honeysql [:oracle :substring]
