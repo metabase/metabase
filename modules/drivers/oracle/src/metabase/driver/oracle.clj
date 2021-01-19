@@ -135,9 +135,12 @@
 
 (defmethod sql.qp/->honeysql [:oracle Identifier]
   [_ identifier]
-  (if (> (count (hformat/to-sql identifier)) legacy-max-identifier-length)
-    (str "identifier" (Math/abs (hash identifier)))
-    identifier))
+  (let [field-identifier (last (:components identifier))]
+    (if (> (count field-identifier) legacy-max-identifier-length)
+      (update :components (fn [components]
+                            (concat (butlast components)
+                                    [(str "identifier" (Math/abs (hash identifier)))])))
+      identifier)))
 
 (defmethod sql.qp/->honeysql [:oracle :substring]
   [driver [_ arg start length]]
