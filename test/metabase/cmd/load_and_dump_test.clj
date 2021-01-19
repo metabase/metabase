@@ -1,40 +1,15 @@
 (ns metabase.cmd.load-and-dump-test
   (:require [clojure.java.io :as io]
-            [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [metabase.cmd.compare-h2-dbs :as compare-h2-dbs]
             [metabase.cmd.copy.h2 :as h2]
             [metabase.cmd.dump-to-h2 :as dump-to-h2]
             [metabase.cmd.load-from-h2 :as load-from-h2]
+            [metabase.cmd.refresh-integration-test-db-metadata :as refresh]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.setup :as mdb.setup]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
-            [metabase.cmd.refresh-integration-test-db-metadata :as refresh]
-            [metabase.models
-             :refer
-             [Activity
-              Card
-              CardFavorite
-              Collection
-              CollectionRevision
-              Dashboard
-              DashboardCard
-              DashboardFavorite
-              Database
-              Dimension
-              Field
-              FieldValues
-              Metric
-              MetricImportantField
-              NativeQuerySnippet
-              Pulse
-              PulseCard
-              PulseChannel
-              PulseChannelRecipient
-              Segment
-              Table
-              User]]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
@@ -61,14 +36,19 @@
   [path]
   (.getAbsolutePath (io/file path)))
 
+(defn copy-db-file [source-path dest-path]
+  (io/copy (io/file (str source-path ".mv.db"))
+           (io/file (str dest-path   ".mv.db"))))
+
 (deftest load-and-dump-test
   (testing "loading data to h2 and porting to DB and migrating back to H2"
     (let [h2-fixture-db-file (abs-path "frontend/test/__runner__/test_db_fixture.db")
+          h2-fixture-tmp-file (java.io.File/createTempFile "test_db_fixture" ".db")
           h2-file            (abs-path "/tmp/out.db")
           db-name            "dump-test"]
-
+      (copy-db-file h2-fixture-db-file h2-fixture-tmp-file)
       (mt/with-model-cleanup mtg/generated-entities
-        (populate-h2-db! h2-fixture-db-file)
+        (populate-h2-db! h2-fixture-tmp-file)
         (mt/test-drivers #{:h2 :postgres}
           (h2/delete-existing-h2-database-files! h2-file)
           (binding [mdb.connection/*db-type*   driver/*driver*
@@ -83,8 +63,8 @@
                                                       :mysql    db.spec/mysql) details)))]
             (when-not (= driver/*driver* :h2)
               (tx/create-db! driver/*driver* {:database-name db-name}))
-            (load-from-h2/load-from-h2! h2-fixture-db-file)
+            (load-from-h2/load-from-h2! h2-fixture-tmp-file)
             (dump-to-h2/dump-to-h2! h2-file)
             (is (not (compare-h2-dbs/different-contents?
                       h2-file
-                      h2-fixture-db-file)))))))))
+                      h2-fixture-tmp-file)))))))))
