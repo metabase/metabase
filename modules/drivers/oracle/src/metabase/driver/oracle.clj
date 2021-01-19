@@ -133,13 +133,25 @@
   "Maximal identifier length for Oracle < 12.2"
   30)
 
+(defn- truncate-identifier
+  [identifier]
+  (->> identifier
+       hash
+       str
+       (map (fn [digit]
+              (-> digit
+                  int
+                  (+ 65)
+                  char)))
+       (apply str "identifier_")))
+
 (defmethod sql.qp/->honeysql [:oracle Identifier]
   [_ identifier]
   (let [field-identifier (last (:components identifier))]
     (if (> (count field-identifier) legacy-max-identifier-length)
       (update identifier :components (fn [components]
                                        (concat (butlast components)
-                                               [(str "identifier" (Math/abs (hash identifier)))])))
+                                               [(truncate-identifier field-identifier)])))
       identifier)))
 
 (defmethod sql.qp/->honeysql [:oracle :substring]
