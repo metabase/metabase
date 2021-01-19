@@ -81,6 +81,15 @@ describe("scenarios > admin > permissions", () => {
     cy.get(".axis.x").contains(/monday/i);
     cy.get(".axis.x").contains(/tuesday/i);
   });
+
+  it.skip("should not display excessive options in localization tab (metabase#14426)", () => {
+    cy.visit("/admin/settings/localization");
+    cy.findByText(/Instance language/i);
+    cy.findByText(/Report timezone/i);
+    cy.findByText(/First day of the week/i);
+    cy.findByText(/Localization options/i);
+    cy.contains(/Column title/i).should("not.exist");
+  });
 });
 
 function setFirstWeekDayTo(day) {
