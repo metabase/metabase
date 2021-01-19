@@ -468,7 +468,7 @@ function Cell({
       })}
       onClick={onClick}
     >
-      <div className="px1 flex align-center">
+      <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
         {isBody ? (
           // Ellipsified isn't really needed for body cells. Avoiding it helps performance.
           value
