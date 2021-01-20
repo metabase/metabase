@@ -373,6 +373,7 @@ export default class PivotTable extends Component {
                 />
                 {/* left header */}
                 <Collection
+                  className="scroll-hide-all"
                   cellCount={leftHeaderItems.length}
                   cellRenderer={leftCellRenderer}
                   cellSizeAndPositionGetter={leftCellSizeAndPositionGetter}
