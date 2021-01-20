@@ -3,20 +3,72 @@ import cx from "classnames";
 import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
-import styled from "styled-components";
 import colors, { lighten } from "metabase/lib/colors";
 
+import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Grabber from "metabase/components/Grabber";
+import Toggle from "metabase/components/Toggle";
 
-const ColumnDragger = styled.div`
-  padding: 12px 14px;
-  box-shadow: 0 2px 3px ${lighten(colors["text-dark"], 1.5)};
-  &:hover {
-    box-shadow: 0 2px 5px ${lighten(colors["text-dark"], 1.3)};
-    transition: all 300ms linear;
+class ShowTotalsOption extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { showTotals: true };
   }
-`;
+  toggleTotals = () => {
+    const { showTotals } = this.state;
+    this.setState({ showTotals: !showTotals });
+  };
+  render() {
+    const { showTotals } = this.state;
+    return (
+      <div
+        className={cx("flex", "justify-between")}
+        style={{ padding: "14px 0 0 0" }}
+      >
+        <span className="flex-auto">{t`Show totals`}</span>
+        <Toggle value={showTotals} onChange={this.toggleTotals}></Toggle>
+      </div>
+    );
+  }
+}
+class SortIcon extends React.Component {
+  render() {
+    const { name } = this.props;
+    return (
+      <Icon
+        name={name}
+        className={cx("sort", "cursor-pointer", "text-brand-hover")}
+      />
+    );
+  }
+}
+
+class SortOrderOption extends React.Component {
+  render() {
+    return (
+      <div
+        className={cx("flex", "justify-between")}
+        style={{ padding: "14px 0 0 0" }}
+      >
+        <span className="flex-auto">{t`Sort order`}</span>
+        <SortIcon name="arrow_up" />
+        <SortIcon name="arrow_down" />
+      </div>
+    );
+  }
+}
+
+class ColumnOptionsPanel extends React.Component {
+  render() {
+    return (
+      <div>
+        <ShowTotalsOption />
+        <SortOrderOption />
+      </div>
+    );
+  }
+}
 
 class ChartSettingFieldsPartition extends React.Component {
   constructor(props) {
@@ -213,6 +265,14 @@ class EmptyPartition extends React.Component {
   }),
 )
 class Column extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { expanded: false };
+  }
+  toggleExpand = () => {
+    const { expanded } = this.state;
+    this.setState({ expanded: !expanded });
+  };
   render() {
     const {
       column,
@@ -220,18 +280,41 @@ class Column extends React.Component {
       connectDropTarget,
       isDragging,
     } = this.props;
+    const { expanded } = this.state;
+    const showOptionsPanel = expanded && !isDragging;
     return connectDropTarget(
       connectDragSource(
-        <div>
-          <ColumnDragger
+        <div
+          className={cx("mb1 bordered rounded")}
+          style={{
+            padding: "12px 14px",
+            "box-shadow": `0 2px 3px ${lighten(colors["text-dark"], 1.5)}`,
+            "&:hover": {
+              "box-shadow": `0 2px 5px ${lighten(colors["text-dark"], 1.3)}`,
+              transition: "all 300ms linear",
+            },
+          }}
+        >
+          <div
             className={cx(
-              "text-dark mb1 bordered rounded cursor-grab text-bold flex justify-between",
+              "text-dark text-bold cursor-grab flex justify-between",
               { disabled: isDragging },
             )}
           >
-            {column.display_name}
+            <span className="flex-auto">
+              {column.display_name}
+              <Icon
+                name="chevrondown"
+                onClick={this.toggleExpand}
+                size="10"
+                className="cursor-pointer text-light text-medium-hover ml1"
+              />
+            </span>
             <Grabber style={{ width: 10 }} />
-          </ColumnDragger>
+          </div>
+          {showOptionsPanel && (
+            <ColumnOptionsPanel className={cx("text-medium")} />
+          )}
         </div>,
       ),
     );
