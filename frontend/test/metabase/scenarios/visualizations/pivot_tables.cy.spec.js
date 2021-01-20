@@ -192,7 +192,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
 
-  describe.skip("sharing (metabase#14447)", () => {
+  describe("sharing (metabase#14447)", () => {
     beforeEach(() => {
       cy.log("**--1. Create a question--**");
       cy.request("POST", "/api/card", {

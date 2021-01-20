@@ -75,7 +75,7 @@ export function maybeUsePivotEndpoint(
     card.display !== "pivot" ||
     !question.isStructured() ||
     // if we have metadata for the db, check if it supports pivots
-    !(question.database() && question.database().supportsPivots())
+    (question.database() && !question.database().supportsPivots())
   ) {
     return api;
   }
