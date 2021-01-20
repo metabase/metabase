@@ -272,6 +272,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           cy.findByText(
             /Embed this (question|dashboard) in an application/,
           ).click();
+          // we use preview endpoints when MB is iframed in itself
           cy.findByText(test.subject);
           cy.get("iframe")
             .its("0.contentDocument.body")
@@ -283,6 +284,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             /Embed this (question|dashboard) in an application/,
           ).click();
           cy.findByText("Publish").click();
+          // visit the iframe src directly to ensure it's not sing preview endpoints
           cy.get("iframe").then($iframe => {
             cy.visit($iframe[0].src);
             cy.findByText(test.subject);
