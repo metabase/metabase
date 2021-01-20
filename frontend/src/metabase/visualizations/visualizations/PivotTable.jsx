@@ -307,10 +307,7 @@ export default class PivotTable extends Component {
     const bodyRenderer = ({ key, style, rowIndex, columnIndex }) => (
       <div key={key} style={style} className="flex">
         {getRowSection(columnIndex, rowIndex).map(
-          (
-            { value, hasChildren, isSubtotal, isGrandTotal, clicked },
-            index,
-          ) => (
+          ({ value, isSubtotal, isGrandTotal, clicked }, index) => (
             <Cell
               key={index}
               value={value}
