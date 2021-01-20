@@ -211,7 +211,7 @@ export default class PivotTable extends Component {
       getRowSection,
     } = pivoted;
 
-    const leftCellRenderer = ({ index, key, style }) => {
+    const leftHeaderCellRenderer = ({ index, key, style }) => {
       const {
         value,
         isSubtotal,
@@ -248,7 +248,7 @@ export default class PivotTable extends Component {
         </div>
       );
     };
-    const leftCellSizeAndPositionGetter = ({ index }) => {
+    const leftHeaderCellSizeAndPositionGetter = ({ index }) => {
       const { offset, span, depth, maxDepthBelow } = leftHeaderItems[index];
       return {
         height: span * CELL_HEIGHT,
@@ -266,7 +266,7 @@ export default class PivotTable extends Component {
       columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
 
-    const topCellRenderer = ({ index, key, style }) => {
+    const topHeaderCellRenderer = ({ index, key, style }) => {
       const { value, hasChildren } = topHeaderItems[index];
       return (
         <div
@@ -287,7 +287,7 @@ export default class PivotTable extends Component {
         </div>
       );
     };
-    const topCellSizeAndPositionGetter = ({ index }) => {
+    const topHeaderCellSizeAndPositionGetter = ({ index }) => {
       const { offset, span, maxDepthBelow } = topHeaderItems[index];
       return {
         height: CELL_HEIGHT,
@@ -363,8 +363,8 @@ export default class PivotTable extends Component {
                   width={width - leftHeaderWidth}
                   height={topHeaderHeight}
                   cellCount={topHeaderItems.length}
-                  cellRenderer={topCellRenderer}
-                  cellSizeAndPositionGetter={topCellSizeAndPositionGetter}
+                  cellRenderer={topHeaderCellRenderer}
+                  cellSizeAndPositionGetter={topHeaderCellSizeAndPositionGetter}
                   onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                   scrollLeft={scrollLeft}
                 />
@@ -372,8 +372,10 @@ export default class PivotTable extends Component {
                 <Collection
                   className="scroll-hide-all"
                   cellCount={leftHeaderItems.length}
-                  cellRenderer={leftCellRenderer}
-                  cellSizeAndPositionGetter={leftCellSizeAndPositionGetter}
+                  cellRenderer={leftHeaderCellRenderer}
+                  cellSizeAndPositionGetter={
+                    leftHeaderCellSizeAndPositionGetter
+                  }
                   width={leftHeaderWidth}
                   height={height - topHeaderHeight}
                   scrollTop={scrollTop}
