@@ -149,7 +149,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("Hour of day");
     });
 
-    it.skip("should display granularity widgets at the bottom of the screen for timeseries filter (metabase#11183)", () => {
+    it.skip("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
       cy.request("POST", "/api/card", {
         name: "11183",
         dataset_query: {
@@ -173,6 +173,7 @@ describe("scenarios > question > new", () => {
       });
 
       cy.wait("@cardQuery");
+      cy.log("**Reported missing in v0.33.1**");
       cy.get(".AdminSelect")
         .as("select")
         .contains(/All Time/i);
