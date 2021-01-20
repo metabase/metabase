@@ -378,9 +378,9 @@ export default class PivotTable extends Component {
                   height={height - topHeaderHeight}
                   className="text-dark"
                   rowCount={rowCount}
-                  rowHeight={CELL_HEIGHT}
                   columnCount={columnCount}
-                  columnWidth={({ index }) => valueIndexes.length * CELL_WIDTH}
+                  rowHeight={CELL_HEIGHT}
+                  columnWidth={valueIndexes.length * CELL_WIDTH}
                   cellRenderer={bodyRenderer}
                   onScroll={({ scrollLeft, scrollTop }) =>
                     onScroll({ scrollLeft, scrollTop })
