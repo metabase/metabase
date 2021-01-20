@@ -3,8 +3,7 @@ import { t, jt } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn, updateIn } from "icepick";
-import { Grid, List, ScrollSync } from "react-virtualized";
-import { Flex } from "grid-styled";
+import { Grid, Collection, ScrollSync } from "react-virtualized";
 
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
@@ -102,7 +101,7 @@ export default class PivotTable extends Component {
         // `value` the is the actual data for this setting
         // `rows` is value we check against the current setting to see if we should use `value`
         const { rows, value } = settings[COLLAPSED_ROWS_SETTING] || {};
-        const { rows: currentRows } = settings[COLUMN_SPLIT_SETTING];
+        const { rows: currentRows } = settings[COLUMN_SPLIT_SETTING] || {};
         if (!_.isEqual(rows, currentRows)) {
           return { value: [], rows: currentRows };
         }
@@ -164,14 +163,6 @@ export default class PivotTable extends Component {
   };
 
   render() {
-    // We need to tell the List/Grids to call the columnWidth/rowHeight functions again when data changes.
-    // Putting this in componentDidUpdate led the dimensions to be recomputed _after_ re-rendering the cells.
-    // According to the docs, recomputing dimensions should force a render but this didn't occur correctly.
-    // The downside of keeping it here is that the dimensions are computed twice per render.
-    this.bodyGrid && this.bodyGrid.recomputeGridSize();
-    this.topGrid && this.topGrid.recomputeGridSize();
-    this.leftList && this.leftList.recomputeRowHeights();
-
     const {
       settings,
       data,
@@ -213,129 +204,128 @@ export default class PivotTable extends Component {
       console.warn(e);
     }
     const {
-      topIndex,
-      leftIndex,
-      topIndexFormatters,
-      getRowSection,
+      leftHeaderItems,
+      topHeaderItems,
       rowCount,
       columnCount,
+      getRowSection,
     } = pivoted;
 
-    const topHeaderHeight = (topIndex[0].length || 1) * CELL_HEIGHT;
+    const leftHeaderCellRenderer = ({ index, key, style }) => {
+      const {
+        value,
+        isSubtotal,
+        isGrandTotal,
+        hasChildren,
+        hasSubtotal,
+        depth,
+        path,
+      } = leftHeaderItems[index];
+      return (
+        <div
+          key={key}
+          style={style}
+          className={cx("bg-light overflow-hidden", {
+            "border-right border-medium": !hasChildren,
+          })}
+        >
+          <Cell
+            style={depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}}
+            value={value}
+            isSubtotal={isSubtotal}
+            isGrandTotal={isGrandTotal}
+            icon={
+              (isSubtotal || hasSubtotal) && (
+                <RowToggleIcon
+                  value={path}
+                  settings={settings}
+                  updateSettings={onUpdateVisualizationSettings}
+                  hideUnlessCollapsed={isSubtotal}
+                />
+              )
+            }
+          />
+        </div>
+      );
+    };
+    const leftHeaderCellSizeAndPositionGetter = ({ index }) => {
+      const { offset, span, depth, maxDepthBelow } = leftHeaderItems[index];
+      return {
+        height: span * CELL_HEIGHT,
+        width:
+          (rowIndexes.length - depth - maxDepthBelow) * LEFT_HEADER_CELL_WIDTH +
+          (depth === 0 ? LEFT_HEADER_LEFT_SPACING : 0),
+        x:
+          depth * LEFT_HEADER_CELL_WIDTH +
+          (depth > 0 ? LEFT_HEADER_LEFT_SPACING : 0),
+        y: offset * CELL_HEIGHT,
+      };
+    };
+
+    const topHeaderRows =
+      columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
+    const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
+
+    const topHeaderCellRenderer = ({ index, key, style }) => {
+      const { value, hasChildren } = topHeaderItems[index];
+      return (
+        <div
+          key={key}
+          style={style}
+          className={cx("px1 flex align-center", {
+            "border-bottom border-medium": !hasChildren,
+          })}
+        >
+          <div
+            className={cx("flex flex-full full-height align-center", {
+              "border-bottom": hasChildren,
+            })}
+            style={{ width: "100%" }}
+          >
+            <Ellipsified>{value}</Ellipsified>
+          </div>
+        </div>
+      );
+    };
+    const topHeaderCellSizeAndPositionGetter = ({ index }) => {
+      const { offset, span, maxDepthBelow } = topHeaderItems[index];
+      return {
+        height: CELL_HEIGHT,
+        width: span * CELL_WIDTH,
+        x: offset * CELL_WIDTH,
+        y: (topHeaderRows - maxDepthBelow - 1) * CELL_HEIGHT,
+      };
+    };
+
     const leftHeaderWidth =
       rowIndexes.length > 0
         ? LEFT_HEADER_LEFT_SPACING + rowIndexes.length * LEFT_HEADER_CELL_WIDTH
         : 0;
 
-    function columnWidth({ index }) {
-      if (topIndex.length === 0) {
-        return CELL_WIDTH;
-      }
-      const indexItem = topIndex[index];
-      return indexItem[indexItem.length - 1].length * CELL_WIDTH;
-    }
-
-    function getSpan(children) {
-      return children.length === 0
-        ? 1
-        : children.reduce((sum, child) => sum + getSpan(child.children), 0);
-    }
-    function rowHeight({ index }) {
-      if (leftIndex.length === 0) {
-        return CELL_HEIGHT;
-      }
-      const span = getSpan(leftIndex[index]);
-      return span * CELL_HEIGHT;
-    }
-
-    // Create three memoized cell renderers
     // These are tied to the `multiLevelPivot` call, so they're awkwardly shoved in render for now
 
-    const topHeaderRenderer = _.memoize(
-      ({ key, style, columnIndex }) => {
-        const rows = topIndex[columnIndex];
-        return (
-          <div key={key} style={style} className="border-bottom border-medium">
-            <div className="flex flex-column px1 full-height justify-end">
-              {rows.map((row, index) => (
-                <Flex style={{ height: CELL_HEIGHT }}>
-                  {row.map(({ value, span }) => (
-                    <div
-                      style={{ width: CELL_WIDTH * span }}
-                      className={cx("flex flex-column justify-center", {
-                        "border-bottom": index < rows.length - 1,
-                      })}
-                    >
-                      <Ellipsified>
-                        {index < topIndexFormatters.length
-                          ? topIndexFormatters[index](value)
-                          : value // Metric names don't have formatters
-                        }
-                      </Ellipsified>
-                    </div>
-                  ))}
-                </Flex>
-              ))}
-            </div>
-          </div>
-        );
-      },
-      ({ columnIndex }) => columnIndex,
-    );
-
-    const leftHeaderRenderer = _.memoize(
-      ({ key, style, index }) => (
-        <div
-          key={key}
-          style={style}
-          className="border-right border-medium bg-light"
-        >
-          {(leftIndex[index] || []).map(item => (
-            <LeftHeaderSection
-              item={item}
-              settings={settings}
-              onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+    const bodyRenderer = ({ key, style, rowIndex, columnIndex }) => (
+      <div key={key} style={style} className="flex">
+        {getRowSection(columnIndex, rowIndex).map(
+          ({ value, isSubtotal, isGrandTotal, clicked }, index) => (
+            <Cell
+              key={index}
+              value={value}
+              isSubtotal={isSubtotal}
+              isGrandTotal={isGrandTotal}
+              isBody
+              onClick={
+                clicked &&
+                (() =>
+                  this.props.onVisualizationClick({
+                    ...clicked,
+                    settings: this.props.settings,
+                  }))
+              }
             />
-          ))}
-        </div>
-      ),
-      ({ index }) => index,
-    );
-
-    const bodyRenderer = _.memoize(
-      ({ key, style, rowIndex, columnIndex }) => {
-        const rows = getRowSection(columnIndex, rowIndex);
-        return (
-          <Flex flexDirection="column" key={key} style={style}>
-            {rows.map((row, rowIndex) => (
-              <Flex key={rowIndex}>
-                {row.map(
-                  ({ value, isSubtotal, isGrandTotal, clicked }, index) => (
-                    <Cell
-                      key={index}
-                      value={value}
-                      height={1}
-                      width={1}
-                      isSubtotal={isSubtotal}
-                      isGrandTotal={isGrandTotal}
-                      isBody
-                      onClick={
-                        clicked &&
-                        (() =>
-                          this.props.onVisualizationClick({
-                            ...clicked,
-                            settings: this.props.settings,
-                          }))
-                      }
-                    />
-                  ),
-                )}
-              </Flex>
-            ))}
-          </Flex>
-        );
-      },
-      ({ rowIndex, columnIndex }) => [rowIndex, columnIndex].join(),
+          ),
+        )}
+      </div>
     );
 
     return (
@@ -363,48 +353,43 @@ export default class PivotTable extends Component {
                   {rowIndexes.map(index => (
                     <Cell
                       value={formatColumn(columns[index])}
-                      baseWidth={LEFT_HEADER_CELL_WIDTH}
-                      width={1}
-                      height={1}
+                      style={{ width: LEFT_HEADER_CELL_WIDTH }}
                     />
                   ))}
                 </div>
                 {/* top header */}
-                <Grid
-                  ref={e => (this.topGrid = e)}
+                <Collection
                   className="scroll-hide-all text-medium"
                   width={width - leftHeaderWidth}
                   height={topHeaderHeight}
-                  rowCount={1}
-                  rowHeight={topHeaderHeight}
-                  columnCount={columnCount}
-                  columnWidth={columnWidth}
-                  cellRenderer={topHeaderRenderer}
+                  cellCount={topHeaderItems.length}
+                  cellRenderer={topHeaderCellRenderer}
+                  cellSizeAndPositionGetter={topHeaderCellSizeAndPositionGetter}
                   onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                   scrollLeft={scrollLeft}
                 />
                 {/* left header */}
-                <List
-                  ref={e => (this.leftList = e)}
+                <Collection
+                  className="scroll-hide-all"
+                  cellCount={leftHeaderItems.length}
+                  cellRenderer={leftHeaderCellRenderer}
+                  cellSizeAndPositionGetter={
+                    leftHeaderCellSizeAndPositionGetter
+                  }
                   width={leftHeaderWidth}
                   height={height - topHeaderHeight}
-                  className="scroll-hide-all text-dark"
-                  rowCount={rowCount}
-                  rowHeight={rowHeight}
-                  rowRenderer={leftHeaderRenderer}
                   scrollTop={scrollTop}
                   onScroll={({ scrollTop }) => onScroll({ scrollTop })}
                 />
                 {/* pivot table body */}
                 <Grid
-                  ref={e => (this.bodyGrid = e)}
                   width={width - leftHeaderWidth}
                   height={height - topHeaderHeight}
                   className="text-dark"
                   rowCount={rowCount}
-                  rowHeight={rowHeight}
                   columnCount={columnCount}
-                  columnWidth={columnWidth}
+                  rowHeight={CELL_HEIGHT}
+                  columnWidth={valueIndexes.length * CELL_WIDTH}
                   cellRenderer={bodyRenderer}
                   onScroll={({ scrollLeft, scrollTop }) =>
                     onScroll({ scrollLeft, scrollTop })
@@ -455,63 +440,11 @@ function RowToggleIcon({
   );
 }
 
-function LeftHeaderSection({
-  item: { value, rawValue, isSubtotal, isGrandTotal, children },
-  settings,
-  onUpdateVisualizationSettings,
-  valuePath = [],
-  depth = 0,
-}) {
-  valuePath = [...valuePath, rawValue];
-  return (
-    <div className="flex justify-between">
-      {value === null ? null : (
-        <Cell
-          value={value}
-          isSubtotal={isSubtotal}
-          isGrandTotal={isGrandTotal}
-          baseWidth={LEFT_HEADER_CELL_WIDTH}
-          width={isSubtotal ? undefined : 1}
-          className={isSubtotal ? "flex-full" : ""}
-          style={{
-            ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
-          }}
-          icon={
-            (isSubtotal || children.length > 1) && (
-              <RowToggleIcon
-                value={valuePath}
-                settings={settings}
-                updateSettings={onUpdateVisualizationSettings}
-                hideUnlessCollapsed={isSubtotal}
-              />
-            )
-          }
-        />
-      )}
-      <div className="flex flex-column">
-        {children.map(child => (
-          <LeftHeaderSection
-            item={child}
-            depth={depth + 1}
-            valuePath={valuePath}
-            settings={settings}
-            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function Cell({
   value,
   isSubtotal,
   isGrandTotal,
   onClick,
-  width,
-  height,
-  baseWidth = CELL_WIDTH,
-  baseHeight = CELL_HEIGHT,
   style,
   isBody = false,
   className,
@@ -520,19 +453,17 @@ function Cell({
   return (
     <div
       style={{
-        ...(width != null ? { width: baseWidth * width } : {}),
-        ...(height != null ? { height: baseHeight * height } : {}),
         lineHeight: `${CELL_HEIGHT}px`,
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
       }}
-      className={cx(className, {
+      className={cx("flex-full", className, {
         "bg-medium text-bold": isSubtotal,
         "cursor-pointer": onClick,
       })}
       onClick={onClick}
     >
-      <div className="px1 flex align-center">
+      <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
         {isBody ? (
           // Ellipsified isn't really needed for body cells. Avoiding it helps performance.
           value
