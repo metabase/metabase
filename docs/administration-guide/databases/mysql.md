@@ -8,14 +8,14 @@ If you're still experiencing problems connecting, please refer to the [troublesh
 
 ### Raising a MySQL Docker container of MySQL 8+
 
-If you are spinning up a new MySQL container, and
+If you are spinning up a new MySQL container, and:
 
  - you want Metabase to connect to the container without having to manually create the user or change the authentication mechanism,
  - or you're facing a `RSA public key is not available client side (option serverRsaPublicKeyFile not set)` error,
  
-Use the `['--sql_mode=', '--default-authentication-plugin=mysql_native_password']` modifiers when you run the container, like so:
+Use the `['--default-authentication-plugin=mysql_native_password']` modifiers when you run the container, like so:
  
-- a simple docker run: `docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=xxxxxx mysql:8.xx.xx --sql_mode= --default-authentication-plugin=mysql_native_password`
+- a simple docker run: `docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=xxxxxx mysql:8.xx.xx --default-authentication-plugin=mysql_native_password`
 
 - or in docker-compose:
 
@@ -33,5 +33,5 @@ mysql:
       - "MYSQL_DATABASE=metabase"
     volumes:
       - $PWD/mysql:/var/lib/mysql
-    command: ['--sql_mode=', '--default-authentication-plugin=mysql_native_password']
+    command: ['--default-authentication-plugin=mysql_native_password']
 ```
