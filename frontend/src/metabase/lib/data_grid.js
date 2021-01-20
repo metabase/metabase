@@ -8,34 +8,6 @@ export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
 }
 
-// This pulls apart the different aggregations that were packed into one result set.
-// There's a column indicating which breakouts were used to compute that row.
-// We use that column to split apart the data and convert the field refs to indexes.
-function splitPivotData(data, rowIndexes, columnIndexes) {
-  const groupIndex = data.cols.findIndex(isPivotGroupColumn);
-  const columns = data.cols.filter(col => !isPivotGroupColumn(col));
-  const breakouts = columns.filter(col => col.source === "breakout");
-
-  const pivotData = _.chain(data.rows)
-    .groupBy(row => row[groupIndex])
-    .pairs()
-    .map(([key, rows]) => {
-      key = parseInt(key);
-      const indexes = _.range(breakouts.length).filter(
-        index => !((1 << index) & key),
-      );
-      const keyAsIndexes = JSON.stringify(indexes);
-      const rowsWithoutColumn = rows.map(row =>
-        row.slice(0, groupIndex).concat(row.slice(groupIndex + 1)),
-      );
-
-      return [keyAsIndexes, rowsWithoutColumn];
-    })
-    .object()
-    .value();
-  return { pivotData, columns };
-}
-
 export function multiLevelPivot(
   data,
   columnColumnIndexes,
@@ -119,7 +91,7 @@ export function multiLevelPivot(
   }
 
   const columnIndex = addEmptyIndexItem(
-    formattedColumnTreeWithoutValues.flatMap(enumerate),
+    formattedColumnTreeWithoutValues.flatMap(enumeratePaths),
   );
   const formattedColumnTree = addValueColumnNodes(
     formattedColumnTreeWithoutValues,
@@ -144,7 +116,7 @@ export function multiLevelPivot(
     });
   }
 
-  const rowIndex = addEmptyIndexItem(formattedRowTree.flatMap(enumerate));
+  const rowIndex = addEmptyIndexItem(formattedRowTree.flatMap(enumeratePaths));
 
   const leftHeaderItems = treeToArray(formattedRowTree.flat());
   const topHeaderItems = treeToArray(formattedColumnTree.flat());
@@ -168,10 +140,40 @@ export function multiLevelPivot(
   };
 }
 
+// This pulls apart the different aggregations that were packed into one result set.
+// There's a column indicating which breakouts were used to compute that row.
+// We use that column to split apart the data and convert the field refs to indexes.
+function splitPivotData(data, rowIndexes, columnIndexes) {
+  const groupIndex = data.cols.findIndex(isPivotGroupColumn);
+  const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+  const breakouts = columns.filter(col => col.source === "breakout");
+
+  const pivotData = _.chain(data.rows)
+    .groupBy(row => row[groupIndex])
+    .pairs()
+    .map(([key, rows]) => {
+      key = parseInt(key);
+      const indexes = _.range(breakouts.length).filter(
+        index => !((1 << index) & key),
+      );
+      const keyAsIndexes = JSON.stringify(indexes);
+      const rowsWithoutColumn = rows.map(row =>
+        row.slice(0, groupIndex).concat(row.slice(groupIndex + 1)),
+      );
+
+      return [keyAsIndexes, rowsWithoutColumn];
+    })
+    .object()
+    .value();
+  return { pivotData, columns };
+}
+
 function addEmptyIndexItem(index) {
+  // we need a single item even if all columns are on the other axis
   return index.length === 0 ? [[]] : index;
 }
 
+// The getter returned from this function returns the value(s) at given (column, row) location
 function createRowSectionGetter({
   valuesByKey,
   subtotalValues,
@@ -205,6 +207,7 @@ function createRowSectionGetter({
       rowValues.length < rowColumnIndexes.length ||
       columnValues.length < columnColumnIndexes.length
     ) {
+      // if we don't have a full-length key, we're looking for a subtotal
       const rowIndexes = rowColumnIndexes.slice(0, rowValues.length);
       const columnIndexes = columnColumnIndexes.slice(0, columnValues.length);
       const indexes = columnIndexes.concat(rowIndexes);
@@ -219,7 +222,8 @@ function createRowSectionGetter({
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
 }
 
-function enumerate(
+// Given a tree representation of an index, enumeratePaths produces a list of all paths to leaf nodes
+function enumeratePaths(
   { rawValue, isGrandTotal, children, isValueColumn },
   path = [],
 ) {
@@ -232,7 +236,7 @@ function enumerate(
   const pathWithValue = [...path, rawValue];
   return children.length === 0
     ? [pathWithValue]
-    : children.flatMap(child => enumerate(child, pathWithValue));
+    : children.flatMap(child => enumeratePaths(child, pathWithValue));
 }
 
 function formatValuesInTree(rowColumnTree, [formatter, ...formatters]) {
@@ -244,6 +248,9 @@ function formatValuesInTree(rowColumnTree, [formatter, ...formatters]) {
   }));
 }
 
+// This might add value column(s) to the bottom of the top header tree.
+// We display the value column names if there are multiple
+// or if there are no columns pivoted to the top header.
 function addValueColumnNodes(nodes, valueColumns) {
   const leafNodes = valueColumns.map(column => ({
     value: column.display_name,
@@ -264,6 +271,8 @@ function addValueColumnNodes(nodes, valueColumns) {
   return nodes.map(updateNode);
 }
 
+// This inserts nodes into the left header tree for subtotals.
+// We also mark nodes with `hasSubtotal` to display collapsing UI
 function addSubtotals(rowColumnTree, formatters) {
   return rowColumnTree.flatMap(item => addSubtotal(item, formatters));
 }
@@ -296,6 +305,7 @@ function addSubtotal(item, [formatter, ...formatters]) {
   return [node, ...subtotal];
 }
 
+// Update the tree with a row of data
 function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
   let currentLevelSeenValues = seenValues;
   const prefix = [];
@@ -311,6 +321,8 @@ function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
   }
 }
 
+// Take a tree and produce a flat list used to layout the top/left headers.
+// We track the depth, offset, etc to know how to line items up in the headers.
 function treeToArray(nodes) {
   const a = [];
   function dfs(nodes, depth, offset, path = []) {
@@ -352,6 +364,7 @@ function treeToArray(nodes) {
   return a;
 }
 
+// This is the pivot function used in the normal table visualization.
 export function pivot(data, normalCol, pivotCol, cellCol) {
   const { pivotValues, normalValues } = distinctValuesSorted(
     data.rows,
