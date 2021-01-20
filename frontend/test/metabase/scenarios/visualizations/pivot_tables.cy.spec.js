@@ -194,6 +194,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   describe("sharing (metabase#14447)", () => {
     beforeEach(() => {
+      cy.viewport(1400, 800); // Row totals on embed preview was getting cut off at the normal width
       cy.log("**--1. Create a question--**");
       cy.request("POST", "/api/card", {
         name: QUESTION_NAME,
@@ -263,7 +264,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             .then($value => {
               cy.visit($value);
             });
-          cy.findByText(test.subject);
+          cy.findAllByText(test.subject); // the inspector only saw one, but findByText failed due to multiple elements
           assertOnPivotFields();
         });
 
@@ -272,7 +273,9 @@ describe("scenarios > visualizations > pivot tables", () => {
             /Embed this (question|dashboard) in an application/,
           ).click();
           cy.findByText(test.subject);
-          assertOnPivotFields();
+          cy.get("iframe")
+            .its("0.contentDocument.body")
+            .within(assertOnPivotFields);
         });
 
         it("should display pivot table in an embed URL", () => {
