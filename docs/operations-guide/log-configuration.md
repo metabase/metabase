@@ -29,7 +29,7 @@ metabase:
       - "JAVA_OPTS=-Dlog4j.configurationFile=file:///metabase.db/log4j2.xml"
 ```
 
-**IMPORTANT**: when using containers, logs need to be written into /metabase.db directory as it is the only directory with write permissions for the metabase user which is the one that executes java inside the container.
+**IMPORTANT**: when using containers, logs need to be written into the /metabase.db directory. It's the only directory the Metabase user can write to (the user here being the one that executes that Metabase JAR inside the container).
 
 # Configuring Emoji Logging
 
