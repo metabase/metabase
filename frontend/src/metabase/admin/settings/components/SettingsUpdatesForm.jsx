@@ -1,8 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
+import { Flex, Box } from "grid-styled";
 import MetabaseSettings from "metabase/lib/settings";
 import SettingsSetting from "./SettingsSetting";
+
+import ExternalLink from "metabase/components/ExternalLink";
+import Icon from "metabase/components/Icon";
+import Text from "metabase/components/type/Text";
 
 export default class SettingsUpdatesForm extends Component {
   static propTypes = {
@@ -13,10 +18,13 @@ export default class SettingsUpdatesForm extends Component {
     if (MetabaseSettings.versionIsLatest()) {
       const currentVersion = MetabaseSettings.currentVersion();
       return (
-        <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
-          {jt`You're running Metabase ${formatVersion(
-            currentVersion,
-          )} which is the latest and greatest!`}
+        <div>
+          <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
+            {jt`You're running Metabase ${formatVersion(
+              currentVersion,
+            )} which is the latest and greatest!`}
+          </div>
+          <HostingCTA />
         </div>
       );
     } else if (MetabaseSettings.newVersionAvailable()) {
@@ -42,7 +50,10 @@ export default class SettingsUpdatesForm extends Component {
             </a>
           </div>
 
-          <div className="text-medium">
+          <div
+            className="text-medium bordered rounded p1 overflow-scroll"
+            style={{ maxHeight: 330 }}
+          >
             <h3 className="py3 text-uppercase">{t`What's Changed:`}</h3>
 
             <Version version={versionInfo.latest} />
@@ -104,6 +115,39 @@ function Version({ version }) {
           ))}
       </ul>
     </div>
+  );
+}
+
+function HostingCTA() {
+  return (
+    <Flex
+      justifyContent="space-between"
+      alignItems="center"
+      className="rounded bg-light mt4 text-brand p2"
+    >
+      <Flex>
+        <Flex
+          className="circular bg-medium align-center justify-center ml1 mr2"
+          h={32}
+          w={52}
+        >
+          <Icon name="cloud" size={24} />
+        </Flex>
+        <div>
+          <Text className="text-brand mb0">{t`Want to have upgrades taken care of for you?`}</Text>
+          <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
+        </div>
+      </Flex>
+      <Box>
+        <ExternalLink
+          className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 mr2 text-bold flex align-center"
+          href={"https://www.metabase.com/start/hosted/"}
+          target="_blank"
+        >
+          {t`Learn more`}
+        </ExternalLink>
+      </Box>
+    </Flex>
   );
 }
 
