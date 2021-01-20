@@ -225,7 +225,7 @@ export default class PivotTable extends Component {
         <div
           key={key}
           style={style}
-          className={cx("bg-light", {
+          className={cx("bg-light overflow-hidden", {
             "border-right border-medium": !hasChildren,
           })}
         >
@@ -277,7 +277,7 @@ export default class PivotTable extends Component {
           })}
         >
           <div
-            className={cx("flex flex-full full-height align-center", {
+            className={cx("flex full-height align-center", {
               "border-bottom": hasChildren,
             })}
             style={{ width: CELL_WIDTH }}
