@@ -163,14 +163,6 @@ export default class PivotTable extends Component {
   };
 
   render() {
-    // We need to tell the List/Grids to call the columnWidth/rowHeight functions again when data changes.
-    // Putting this in componentDidUpdate led the dimensions to be recomputed _after_ re-rendering the cells.
-    // According to the docs, recomputing dimensions should force a render but this didn't occur correctly.
-    // The downside of keeping it here is that the dimensions are computed twice per render.
-    this.bodyGrid && this.bodyGrid.recomputeGridSize();
-    this.topGrid && this.topGrid.recomputeGridSize();
-    this.leftList && this.leftList.recomputeRowHeights();
-
     const {
       settings,
       data,
@@ -382,7 +374,6 @@ export default class PivotTable extends Component {
                 />
                 {/* pivot table body */}
                 <Grid
-                  ref={e => (this.bodyGrid = e)}
                   width={width - leftHeaderWidth}
                   height={height - topHeaderHeight}
                   className="text-dark"
