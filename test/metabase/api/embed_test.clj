@@ -896,7 +896,7 @@
                   (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                   (is (= "completed" (:status result)))
                   (is (= 6 (count (get-in result [:data :cols]))))
-                  (is (= 2273 (count rows)))))))
+                  (is (= 1144 (count rows)))))))
 
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
             (with-temp-card [card (pivots/pivot-card)]
@@ -925,7 +925,7 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))))))))
+            (is (= 1144 (count rows)))))))))
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset sample-dataset
@@ -968,7 +968,7 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))))
+            (is (= 1144 (count rows)))))
 
         (testing "if `:locked` parameter is present in URL params, request should fail"
           (is (= "You must specify a value for :abc in the JWT."
@@ -1003,7 +1003,7 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))))
+            (is (= 1144 (count rows)))))
 
         (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
           (let [result (http/client :get 202 (str (pivot-dashcard-url dashcard) "?abc=200"))
@@ -1011,4 +1011,4 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))))))))
+            (is (= 1144 (count rows)))))))))

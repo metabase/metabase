@@ -27,10 +27,12 @@ export function setGoal(number) {
 }
 
 describe("scenarios > alert", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
-
   describe("with nothing set", () => {
+    beforeEach(() => {
+      restore();
+      signInAsAdmin();
+    });
+
     it("should prompt you to add email/slack credentials", () => {
       cy.visit("/question/1");
       cy.get(".Icon-bell").click();
@@ -38,6 +40,7 @@ describe("scenarios > alert", () => {
         "To send alerts, you'll need to set up email or Slack integration.",
       );
     });
+
     it("should say to non-admins that admin must add email credentials", () => {
       signInAsNormalUser();
       cy.visit("/question/1");

@@ -8,8 +8,10 @@ import {
 //Replaces HomepageApp.e2e.spec.js
 
 describe("metabase > scenarios > home > activity-page", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should show test startup activity ", () => {
     cy.visit("/activity");

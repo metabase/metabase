@@ -4,7 +4,6 @@
             [java-time :as t]
             [metabase.config :as config]
             [metabase.driver.util :as driver.u]
-            [metabase.models.common :as common]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore :as metastore]
@@ -316,7 +315,7 @@
   "Available report timezone options"
   :visibility :public
   :setter     :none
-  :getter     (constantly common/timezones))
+  :getter     (comp sort t/available-zone-ids))
 
 (defsetting engines
   "Available database engines"

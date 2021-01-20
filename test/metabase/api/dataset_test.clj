@@ -8,7 +8,6 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
             [metabase.api.pivots :as pivots]
-            [metabase.api.embed-test :as embed-test]
             [metabase.http-client :as http-client]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
@@ -351,10 +350,10 @@
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/pivot-query))
                 rows   (mt/rows result)]
-            (is (= 1192 (:row_count result)))
+            (is (= 1144 (:row_count result)))
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 1192 (count rows)))
+            (is (= 1144 (count rows)))
 
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["WV" "Facebook" nil 4 45 292] (nth rows 1000)))
@@ -366,8 +365,8 @@
                           (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
                 result (mt/user-http-request :rasta :post 202 "dataset/pivot" query)
                 rows (mt/rows result)]
-            (is (= 1192 (:row_count result)))
-            (is (= 1192 (count rows)))
+            (is (= 1144 (:row_count result)))
+            (is (= 1144 (count rows)))
 
             (let [cols (get-in result [:data :cols])]
               (is (= 7 (count cols)))
@@ -389,15 +388,14 @@
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/filters-query))
                 rows   (mt/rows result)]
-            (is (= 230 (:row_count result)))
+            (is (= 140 (:row_count result)))
             (is (= "completed" (:status result)))
             (is (= 4 (count (get-in result [:data :cols]))))
-            (is (= 230 (count rows)))
+            (is (= 140 (count rows)))
 
             (is (= ["AK" "Google" 0 119] (first rows)))
             (is (= ["AK" "Organic" 0 89] (second rows)))
-            (is (= ["MS" "Google" 0 43] (nth rows 135)))
-            (is (= ["MS" nil 2 136] (nth rows 205)))
+            (is (= ["WA" nil 2 148] (nth rows 135)))
             (is (= [nil nil 3 7562] (last rows)))))))))
 
 (deftest pivot-parameter-dataset-test
@@ -407,13 +405,12 @@
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/parameters-query))
                 rows   (mt/rows result)]
-            (is (= 225 (:row_count result)))
+            (is (= 137 (:row_count result)))
             (is (= "completed" (:status result)))
             (is (= 4 (count (get-in result [:data :cols]))))
-            (is (= 225 (count rows)))
+            (is (= 137 (count rows)))
 
             (is (= ["AK" "Google" 0 27] (first rows)))
             (is (= ["AK" "Organic" 0 25] (second rows)))
-            (is (= ["MN" "Organic" 0 39] (nth rows 130)))
-            (is (= ["NE" nil 2 59] (nth rows 205)))
+            (is (= ["VA" nil 2 29] (nth rows 130)))
             (is (= [nil nil 3 2009] (last rows)))))))))

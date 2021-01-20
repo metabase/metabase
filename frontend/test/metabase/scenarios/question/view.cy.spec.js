@@ -11,8 +11,10 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { PRODUCTS } = SAMPLE_DATASET;
 
 describe("scenarios > question > view", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   describe("summarize sidebar", () => {
     it("should summarize by category and show a bar chart", () => {
@@ -92,10 +94,9 @@ describe("scenarios > question > view", () => {
     });
   });
 
-  describe.only("apply filters without data permissions", () => {
-    before(() => {
+  describe("apply filters without data permissions", () => {
+    beforeEach(() => {
       // All users upgraded to collection view access
-      signInAsAdmin();
       cy.visit("/admin/permissions/collections");
       cy.get(".Icon-close")
         .first()

@@ -5,7 +5,7 @@ import {
 } from "__support__/cypress";
 
 describe("scenarios > home > overworld", () => {
-  before(restore);
+  beforeEach(restore);
 
   describe("content management", () => {
     describe("as admin", () => {

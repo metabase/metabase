@@ -124,11 +124,10 @@
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it (except for superusers who get to see everything)
     (catch Throwable e
-      (when throw-exceptions?
-        (throw e))
-      (log/error (tru "Error calculating permissions for query: {0}" (.getMessage e))
-                 "\n"
-                 (u/pprint-to-str (u/filtered-stacktrace e)))
+      (let [e (ex-info "Error calculating permissions for query" {:query query} e)]
+        (when throw-exceptions?
+          (throw e))
+        (log/error e))
       #{"/db/0/"})))                    ; DB 0 will never exist
 
 (s/defn ^:private perms-set* :- #{perms/ObjectPath}

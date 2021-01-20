@@ -1,8 +1,10 @@
 import { signInAsAdmin, restore, signIn } from "__support__/cypress";
 
 describe("scenarios > question > native subquery", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should allow a user with no data access to execute a native subquery", () => {
     // Create the initial SQL question and followup nested question

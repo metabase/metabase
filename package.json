@@ -166,6 +166,7 @@
   },
   "scripts": {
     "dev": "concurrently --kill-others -p name -n 'backend,frontend,docs' -c 'blue,green,yellow' 'lein run' 'yarn build-hot' 'yarn docs'",
+    "dev-ee": "concurrently --kill-others -p name -n 'backend,frontend,docs' -c 'blue,green,yellow' 'lein with-profiles +ee run' 'MB_EDITION=ee yarn build-hot' 'yarn docs'",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-flow && yarn lint-docs-links && yarn lint-yaml",
     "lint-eslint": "yarn && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 enterprise/frontend/src frontend/src enterprise/frontend/test frontend/test",
     "lint-prettier": "yarn && prettier -l '{enterprise/,}frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",

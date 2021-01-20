@@ -34,14 +34,15 @@ const pulse_name = "Test pulse";
 const dashboard_name = "Test Dashboard";
 
 describe("scenarios > collection_defaults", () => {
-  before(restore);
-
   describe("for admins", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(() => {
+      restore();
+      signInAsAdmin();
+    });
 
-    describe("a new collection", () => {
-      before(() => {
-        signInAsAdmin();
+    describe("new collections", () => {
+      beforeEach(() => {
+        cy.log("**--Create new collection--**");
         cy.request("POST", "/api/collection", {
           name: collection.name,
           color: "#ff9a9a",
@@ -64,53 +65,53 @@ describe("scenarios > collection_defaults", () => {
         cy.visit("/collection/root");
         cy.findByText(collection.name);
       });
-    });
 
-    describe("a new sub-collection", () => {
-      before(() => {
-        signInAsAdmin();
-        // Create a sub collection within previously added ("Z collection")
-        cy.request("POST", "/api/collection", {
-          name: sub_collection.name,
-          color: "#ff9a9a",
-          parent_id: collection.id,
-        }).then(({ body }) => {
-          sub_collection.id = body.id;
-        });
-      });
-
-      it("should be a sub collection", () => {
-        const LENGTH = sub_collection.id + 1;
-        cy.request("GET", "/api/collection").then(response => {
-          expect(response.body).to.have.length(LENGTH);
-          expect(response.body[sub_collection.id].name).to.equal(
-            sub_collection.name,
+      describe("a new sub-collection", () => {
+        beforeEach(() => {
+          cy.log(
+            "**--Create a sub collection within previously created collection--**",
           );
-          // Check that it has a parent (and that it is a "Z collection")
-          expect(response.body[sub_collection.id].location).to.equal(
-            `/${collection.id}/`,
-          );
+          cy.request("POST", "/api/collection", {
+            name: sub_collection.name,
+            color: "#ff9a9a",
+            parent_id: collection.id,
+          }).then(({ body }) => {
+            sub_collection.id = body.id;
+          });
         });
-      });
-
-      it("should be nested under parent on a parent's URL in a sidebar", () => {
-        cy.visit("/collection/root");
-        cy.findByText(sub_collection.name).should("not.exist");
-
-        cy.visit(`/collection/${collection.id}`);
-        cy.findByText(sub_collection.name);
-      });
-
-      it("should be moved under admin's personal collection", () => {
-        cy.request("PUT", `/api/collection/${sub_collection.id}`, {
-          parent_id: admin.id,
+        it("should be a sub collection", () => {
+          const LENGTH = sub_collection.id + 1;
+          cy.request("GET", "/api/collection").then(response => {
+            expect(response.body).to.have.length(LENGTH);
+            expect(response.body[sub_collection.id].name).to.equal(
+              sub_collection.name,
+            );
+            // Check that it has a parent (and that it is a "Z collection")
+            expect(response.body[sub_collection.id].location).to.equal(
+              `/${collection.id}/`,
+            );
+          });
         });
 
-        cy.visit(`/collection/${admin.id}`);
-        // this changed in 0.38
-        // It used to be "Robert Tableton's personal collection"
-        // but since we're logged in as admin, it's showing "Your personal collection"
-        cy.findByText(sub_collection.name);
+        it("should be nested under parent on a parent's URL in a sidebar", () => {
+          cy.visit("/collection/root");
+          cy.findByText(sub_collection.name).should("not.exist");
+
+          cy.visit(`/collection/${collection.id}`);
+          cy.findByText(sub_collection.name);
+        });
+
+        it("should be moved under admin's personal collection", () => {
+          cy.request("PUT", `/api/collection/${sub_collection.id}`, {
+            parent_id: admin.id,
+          });
+
+          cy.visit(`/collection/${admin.id}`);
+          // this changed in 0.38
+          // It used to be "Robert Tableton's personal collection"
+          // but since we're logged in as admin, it's showing "Your personal collection"
+          cy.findByText(sub_collection.name);
+        });
       });
     });
 
@@ -251,13 +252,14 @@ describe("scenarios > collection_defaults", () => {
   });
 
   describe("for users", () => {
-    before(restore);
-    beforeEach(signInAsNormalUser);
+    beforeEach(() => {
+      restore();
+      signInAsNormalUser();
+    });
 
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
-      before(() => {
-        signInAsAdmin();
+      beforeEach(() => {
         cy.visit("/admin/settings/email");
         setupLocalHostEmail();
       });

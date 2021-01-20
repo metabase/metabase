@@ -133,7 +133,7 @@
     (reduce [_ rf init]
       (loop [acc init]
         (if (reduced? acc)
-          (reduced acc)
+          acc
           (let [row (thaw! is)]
             (if (= ::eof row)
               acc

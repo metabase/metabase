@@ -30,8 +30,9 @@
        {:data metadata})
 
       ([result]
-       {:pre [(map? result)]}
-       (-> result
+       {:pre [(map? (unreduced result))]}
+       ;; if the result is a clojure.lang.Reduced, unwrap it so we always get back the standard-format map
+       (-> (unreduced result)
            (assoc :row_count @row-count
                   :status :completed)
            (assoc-in [:data :rows] @rows)))
