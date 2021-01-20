@@ -10,10 +10,9 @@ The easiest way to get started customizing logging would be to use a copy of def
 
 # Using Log4j 2 with docker
 
-When using docker images you will need to pass the custom `log4j.configurationFile` argument _before_ Metabase runs. To do this add a `JAVA_OPTS=-Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml` to the environment variables of the container. 
+Before running the Metabase docker image, you'll need to pass the custom `log4j.configurationFile` argument. Add a `JAVA_OPTS=-Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml` to the environment variables of the container, like this:
 
-When using docker run:
-`docker run -p 3000:3000 -v $PWD/logging_config:/metabase.db -e JAVA_OPTS=-Dlog4j.configurationFile=file:///metabase.db/log4j2.xml metabase/metabase`
+        docker run -p 3000:3000 -v $PWD/logging_config:/metabase.db -e JAVA_OPTS=-Dlog4j.configurationFile=file:///metabase.db/log4j2.xml metabase/metabase`
 
 When using docker-compose:
 ```
