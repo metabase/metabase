@@ -217,6 +217,7 @@ export default class PivotTable extends Component {
         isSubtotal,
         isGrandTotal,
         hasChildren,
+        hasSubtotal,
         depth,
         path,
       } = leftHeaderItems[index];
@@ -234,7 +235,7 @@ export default class PivotTable extends Component {
             isSubtotal={isSubtotal}
             isGrandTotal={isGrandTotal}
             icon={
-              (isSubtotal || hasChildren) && (
+              (isSubtotal || hasSubtotal) && (
                 <RowToggleIcon
                   value={path}
                   settings={settings}
@@ -271,9 +272,18 @@ export default class PivotTable extends Component {
         <div
           key={key}
           style={style}
-          className={cx({ "border-bottom border-medium": !hasChildren })}
+          className={cx("px1 flex align-center", {
+            "border-bottom border-medium": !hasChildren,
+          })}
         >
-          <Cell value={value} />
+          <div
+            className={cx("flex flex-full full-height align-center", {
+              "border-bottom": hasChildren,
+            })}
+            style={{ width: CELL_WIDTH }}
+          >
+            <Ellipsified>{value}</Ellipsified>
+          </div>
         </div>
       );
     };
@@ -297,14 +307,15 @@ export default class PivotTable extends Component {
     const bodyRenderer = ({ key, style, rowIndex, columnIndex }) => (
       <div key={key} style={style} className="flex">
         {getRowSection(columnIndex, rowIndex).map(
-          ({ value, isSubtotal, isGrandTotal, clicked }, index) => (
+          (
+            { value, hasChildren, isSubtotal, isGrandTotal, clicked },
+            index,
+          ) => (
             <Cell
               key={index}
               value={value}
               isSubtotal={isSubtotal}
               isGrandTotal={isGrandTotal}
-              width={1}
-              height={1}
               isBody
               onClick={
                 clicked &&
@@ -345,9 +356,7 @@ export default class PivotTable extends Component {
                   {rowIndexes.map(index => (
                     <Cell
                       value={formatColumn(columns[index])}
-                      baseWidth={LEFT_HEADER_CELL_WIDTH}
-                      width={1}
-                      height={1}
+                      style={{ width: LEFT_HEADER_CELL_WIDTH }}
                     />
                   ))}
                 </div>
@@ -436,10 +445,6 @@ function Cell({
   isSubtotal,
   isGrandTotal,
   onClick,
-  width,
-  height,
-  baseWidth = CELL_WIDTH,
-  baseHeight = CELL_HEIGHT,
   style,
   isBody = false,
   className,
@@ -448,13 +453,11 @@ function Cell({
   return (
     <div
       style={{
-        ...(width != null ? { width: baseWidth * width } : {}),
-        ...(height != null ? { height: baseHeight * height } : {}),
         lineHeight: `${CELL_HEIGHT}px`,
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
       }}
-      className={cx(className, {
+      className={cx("flex-full", className, {
         "bg-medium text-bold": isSubtotal,
         "cursor-pointer": onClick,
       })}

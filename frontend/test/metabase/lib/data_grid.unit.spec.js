@@ -224,8 +224,6 @@ describe("data_grid", () => {
       const {
         topHeaderItems,
         leftHeaderItems,
-        rowCount,
-        columnCount,
         getRowSection,
       } = multiLevelPivot(data, [0], [1], [2, 3]);
       expect(getValues(topHeaderItems)).toEqual(["a", "Metric 1", "Metric 2"]);
@@ -418,7 +416,6 @@ describe("data_grid", () => {
       const cols = [D1, D2, M];
       const primaryGroup = 0;
       const subtotalOne = 2;
-      const subtotalTwo = 1;
       const rows = [
         ["a", "x", 1, primaryGroup],
         ["a", "y", 2, primaryGroup],

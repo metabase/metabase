@@ -269,23 +269,24 @@ function addSubtotals(rowColumnTree, formatters) {
 }
 
 function addSubtotal(item, [formatter, ...formatters]) {
-  const subtotal =
-    item.children.length > 1
-      ? [
-          {
-            value: t`Totals for ${formatter(item.value)}`,
-            rawValue: item.rawValue,
-            span: 1,
-            isSubtotal: true,
-            children: [],
-          },
-        ]
-      : [];
+  const hasSubtotal = item.children.length > 1;
+  const subtotal = hasSubtotal
+    ? [
+        {
+          value: t`Totals for ${formatter(item.value)}`,
+          rawValue: item.rawValue,
+          span: 1,
+          isSubtotal: true,
+          children: [],
+        },
+      ]
+    : [];
   if (item.isCollapsed) {
     return subtotal;
   }
   const node = {
     ...item,
+    hasSubtotal,
     children: item.children.flatMap(item =>
       // add subtotals until the last level
       item.children.length > 0 ? addSubtotal(item, formatters) : item,
@@ -330,6 +331,7 @@ function treeToArray(nodes) {
       const item = {
         ...rest,
         rawValue,
+        isGrandTotal,
         depth,
         offset,
         hasChildren: children.length > 0,
