@@ -231,7 +231,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       });
     });
 
-    it("should display a pivot table on a dashboard", () => {
+    it("should display a pivot table on a dashboard (metabase#14465)", () => {
       assertOnPivotFields();
     });
   });
