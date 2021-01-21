@@ -2,8 +2,12 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import { Flex, Box } from "grid-styled";
 
 import Button from "metabase/components/Button";
+import ExternalLink from "metabase/components/ExternalLink";
+import Icon from "metabase/components/Icon";
+import Text from "metabase/components/type/Text";
 
 import SettingsBatchForm from "./SettingsBatchForm";
 
@@ -68,33 +72,53 @@ export default class SettingsEmailForm extends Component {
   render() {
     const { sendingEmail } = this.state;
     return (
-      <SettingsBatchForm
-        ref={form => (this._form = form && form.getWrappedInstance())}
-        {...this.props}
-        updateSettings={this.props.updateEmailSettings}
-        disable={sendingEmail !== "default"}
-        renderExtraButtons={({ disabled, valid, dirty, submitting }) => {
-          return [
-            valid && !dirty && submitting === "default" ? (
+      <Flex justifyContent="space-between">
+        <SettingsBatchForm
+          ref={form => (this._form = form && form.getWrappedInstance())}
+          {...this.props}
+          updateSettings={this.props.updateEmailSettings}
+          disable={sendingEmail !== "default"}
+          renderExtraButtons={({ disabled, valid, dirty, submitting }) => {
+            return [
+              valid && !dirty && submitting === "default" ? (
+                <Button
+                  mr={1}
+                  success={sendingEmail === "success"}
+                  disabled={disabled}
+                  onClick={this.sendTestEmail}
+                >
+                  {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                </Button>
+              ) : null,
               <Button
                 mr={1}
-                success={sendingEmail === "success"}
                 disabled={disabled}
-                onClick={this.sendTestEmail}
+                onClick={() => this.clearEmailSettings()}
               >
-                {SEND_TEST_BUTTON_STATES[sendingEmail]}
-              </Button>
-            ) : null,
-            <Button
-              mr={1}
-              disabled={disabled}
-              onClick={() => this.clearEmailSettings()}
-            >
-              {t`Clear`}
-            </Button>,
-          ];
-        }}
-      />
+                {t`Clear`}
+              </Button>,
+            ];
+          }}
+        />
+        <div
+          className="border-left border-brand text-brand px4"
+          style={{ height: 172 }}
+        >
+          <Icon name="cloud" size={48} style={{ color: "#B9D8F4" }} />
+          <div className="pb3">
+            <Text className="text-brand mb0">{t`Have your email configured for you.`}</Text>
+            <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
+          </div>
+
+          <ExternalLink
+            className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 text-bold text-center"
+            href={"https://www.metabase.com/migrate/from/selfhosted"}
+            target="_blank"
+          >
+            {t`Learn more`}
+          </ExternalLink>
+        </div>
+      </Flex>
     );
   }
 }
