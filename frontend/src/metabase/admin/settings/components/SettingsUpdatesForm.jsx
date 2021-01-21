@@ -51,16 +51,18 @@ export default class SettingsUpdatesForm extends Component {
           </div>
 
           <div
-            className="text-medium bordered rounded p1 overflow-scroll"
-            style={{ maxHeight: 330 }}
+            className="text-medium bordered rounded p2 mt2 overflow-y-scroll"
+            style={{ height: 330 }}
           >
-            <h3 className="py3 text-uppercase">{t`What's Changed:`}</h3>
+            <h3 className="pb3 text-uppercase">{t`What's Changed:`}</h3>
 
             <Version version={versionInfo.latest} />
 
             {versionInfo.older &&
               versionInfo.older.map(version => <Version version={version} />)}
           </div>
+
+          <HostingCTA />
         </div>
       );
     } else {
@@ -123,7 +125,7 @@ function HostingCTA() {
     <Flex
       justifyContent="space-between"
       alignItems="center"
-      className="rounded bg-light mt4 text-brand p2"
+      className="rounded bg-light mt4 text-brand py2 px1"
     >
       <Flex>
         <Flex
@@ -140,7 +142,7 @@ function HostingCTA() {
       </Flex>
       <Box>
         <ExternalLink
-          className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 mr2 text-bold flex align-center"
+          className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 mr1 text-bold flex align-center"
           href={"https://www.metabase.com/migrate/from/selfhosted"}
           target="_blank"
         >
