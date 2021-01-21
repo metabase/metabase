@@ -222,10 +222,9 @@ describe("scenarios > visualizations > pivot tables", () => {
                   sizeY: 8,
                 },
               ],
-            }).then(() => {
-              cy.log("**--Open the dashboard--**");
-              cy.visit(`/dashboard/${DASHBOARD_ID}`);
             });
+            cy.log("**--Open the dashboard--**");
+            cy.visit(`/dashboard/${DASHBOARD_ID}`);
           });
         });
       });
