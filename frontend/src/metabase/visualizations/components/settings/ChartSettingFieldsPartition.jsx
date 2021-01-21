@@ -59,12 +59,31 @@ class SortOrderOption extends React.Component {
   }
 }
 
-class ColumnOptionsPanel extends React.Component {
+class FormattingOptions extends React.Component {
   render() {
     return (
+      <div
+        className={cx("flex", "justify-between")}
+        style={{ padding: "14px 0 0 0" }}
+      >
+        <span className="flex-auto cursor-pointer">{t`Formatting...`}</span>
+      </div>
+    );
+  }
+}
+
+class ColumnOptionsPanel extends React.Component {
+  render() {
+    const { partitionName } = this.props;
+    return (
       <div>
-        <ShowTotalsOption />
-        <SortOrderOption />
+        {partitionName !== "values" && (
+          <div>
+            <ShowTotalsOption />
+            <SortOrderOption />
+          </div>
+        )}
+        <FormattingOptions />
       </div>
     );
   }
@@ -279,6 +298,7 @@ class Column extends React.Component {
       connectDragSource,
       connectDropTarget,
       isDragging,
+      partitionName,
     } = this.props;
     const { expanded } = this.state;
     const showOptionsPanel = expanded && !isDragging;
@@ -313,7 +333,10 @@ class Column extends React.Component {
             <Grabber style={{ width: 10 }} />
           </div>
           {showOptionsPanel && (
-            <ColumnOptionsPanel className={cx("text-medium")} />
+            <ColumnOptionsPanel
+              className={cx("text-medium")}
+              partitionName={partitionName}
+            />
           )}
         </div>,
       ),
