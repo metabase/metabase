@@ -1,6 +1,7 @@
 (ns metabase.models.collection-test
   (:refer-clojure :exclude [ancestors descendants])
-  (:require [clojure.string :as str]
+  (:require [clojure.math.combinatorics :as math.combo]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.api.common :refer [*current-user-permissions-set*]]
             [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
@@ -1513,3 +1514,20 @@
     (is (= [{:name "Child", :location "/1/", :id 2, :children [{:name "Grandchild", :location "/1/2/", :id 3}]}]
            (collection/collections->tree [{:name "Child", :location "/1/", :id 2}
                                           {:name "Grandchild", :location "/1/2/", :id 3} ])))))
+
+(deftest collections->tree-permutations-test
+  (testing "The tree should build a proper tree regardless of which order the Collections are passed in (#14280)"
+    (doseq [collections (math.combo/permutations [{:id 1, :name "First collection",  :location "/3/"}
+                                                  {:id 2, :name "Second collection", :location "/3/1/"}
+                                                  {:id 3, :name "New collection",    :location "/"}])]
+      (testing (format "Permutation: %s" (pr-str (mapv :id collections)))
+        (is (= [{:id       3
+                 :name     "New collection"
+                 :location "/"
+                 :children [{:id       1
+                             :name     "First collection"
+                             :location "/3/"
+                             :children [{:id       2
+                                         :name     "Second collection"
+                                         :location "/3/1/"}]}]}]
+               (collection/collections->tree collections)))))))
