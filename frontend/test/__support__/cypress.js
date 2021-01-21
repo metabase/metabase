@@ -73,15 +73,19 @@ export function restore(name = "default") {
 export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
+
 export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }
+
 export function nav() {
   return cy.get("nav");
 }
+
 export function main() {
   return cy.get("nav").next();
 }
+
 export function sidebar() {
   return cy.get(".scroll-y");
 }
@@ -235,6 +239,18 @@ export function createBasicAlert({ firstAlert, includeNormal } = {}) {
   }
   cy.findByText("Done").click();
   cy.findByText("Let's set up your alert").should("not.exist");
+}
+
+export function setupDummySMTP() {
+  cy.log("**Set up dummy SMTP server**");
+  cy.request("PUT", "/api/setting", {
+    "email-smtp-host": "smtp.foo.test",
+    "email-smtp-port": "587",
+    "email-smtp-security": "none",
+    "email-smtp-username": "nevermind",
+    "email-smtp-password": "it-is-secret-NOT",
+    "email-from-address": "nonexisting@metabase.test",
+  });
 }
 
 /*****************************************

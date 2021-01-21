@@ -36,7 +36,11 @@ export const GTAPApi = {
 // To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
-export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
+export function maybeUsePivotEndpoint(
+  api: APIMethod,
+  card: Card,
+  metadata?: Metadata,
+): APIMethod {
   function canonicalFieldRef(ref) {
     // Field refs between the query and setting might differ slightly.
     // This function trims binned dimensions to just the field-id
@@ -46,11 +50,13 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
     return ref;
   }
 
+  const question = new Question(card, metadata || new Metadata());
+
   function wrap(api) {
     return (params: ?Data, ...rest: any) => {
-      const question = new Question(card, new Metadata());
       const setting = question.setting("pivot_table.column_split");
-      const breakout = question.query().breakouts();
+      const breakout =
+        (question.isStructured() && question.query().breakouts()) || [];
       const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
         setting,
         fieldRefs =>
@@ -65,7 +71,12 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
-  if (card.display !== "pivot") {
+  if (
+    card.display !== "pivot" ||
+    !question.isStructured() ||
+    // if we have metadata for the db, check if it supports pivots
+    !(question.database() && question.database().supportsPivots())
+  ) {
     return api;
   }
 

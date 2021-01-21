@@ -183,7 +183,6 @@
                                                                                              :c "enabled"
                                                                                              :d "enabled"}})))))))))
 
-
 ;;; ------------------ GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -------------------
 
 (defn- dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
@@ -330,3 +329,84 @@
             (is (= [[1]]
                    (mt/rows (mt/user-http-request :crowberto :get (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}})
                                                                        "?venue_id=1")))))))))))
+
+
+;; pivot tables
+
+(defn- pivot-card-query-url [card & [additional-token-params]]
+  (str "preview_embed/pivot/card/"
+       (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))
+       "/query"))
+
+(deftest pivot-query-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "GET /api/preview_embed/pivot/card/:token/query"
+        (testing "successful preview"
+          (let [result (embed-test/with-embedding-enabled-and-new-secret-key
+                         (embed-test/with-temp-card [card (pivots/pivot-card)]
+                           (mt/user-http-request :crowberto :get 202 (pivot-card-query-url card))))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 2273 (count rows)))))
+
+        (testing "should fail if user is not an admin"
+          (is (= "You don't have permissions to do that."
+                 (embed-test/with-embedding-enabled-and-new-secret-key
+                   (embed-test/with-temp-card [card (pivots/pivot-card)]
+                     (mt/user-http-request :rasta :get 403 (pivot-card-query-url card)))))))
+
+        (testing "should fail if embedding is disabled"
+          (is (= "Embedding is not enabled."
+                 (tu/with-temporary-setting-values [enable-embedding false]
+                   (embed-test/with-new-secret-key
+                     (embed-test/with-temp-card [card (pivots/pivot-card)]
+                       (mt/user-http-request :crowberto :get 400 (pivot-card-query-url card))))))))
+
+        (testing "should fail if embedding is enabled and the wrong key is used"
+          (is (= "Message seems corrupt or manipulated."
+                 (embed-test/with-embedding-enabled-and-new-secret-key
+                   (embed-test/with-temp-card [card (pivots/pivot-card)]
+                     (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-card-query-url card))))))))))))
+
+(defn- pivot-dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
+  (str "preview_embed/pivot/dashboard/"
+       (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
+                                                              additional-token-params))
+       "/dashcard/" (u/get-id dashcard)
+       "/card/" (:card_id dashcard)))
+
+(deftest pivot-card-id-test
+  (mt/test-drivers pivots/applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+        (testing "successful preview"
+          (let [result (embed-test/with-embedding-enabled-and-new-secret-key
+                         (embed-test/with-temp-dashcard [dashcard {:card (pivots/pivot-card)}]
+                           (mt/user-http-request :crowberto :get 202 (pivot-dashcard-url dashcard))))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 2273 (count rows)))))
+
+       (testing "should fail if user is not an admin"
+          (is (= "You don't have permissions to do that."
+                 (embed-test/with-embedding-enabled-and-new-secret-key
+                   (embed-test/with-temp-dashcard [dashcard {:card (pivots/pivot-card)}]
+                     (mt/user-http-request :rasta :get 403 (pivot-dashcard-url dashcard)))))))
+
+        (testing "should fail if embedding is disabled"
+          (is (= "Embedding is not enabled."
+                 (tu/with-temporary-setting-values [enable-embedding false]
+                   (embed-test/with-new-secret-key
+                     (embed-test/with-temp-dashcard [dashcard {:card (pivots/pivot-card)}]
+                       (mt/user-http-request :crowberto :get 400 (pivot-dashcard-url dashcard))))))))
+
+        (testing "should fail if embedding is enabled and the wrong key is used"
+          (is (= "Message seems corrupt or manipulated."
+                 (embed-test/with-embedding-enabled-and-new-secret-key
+                   (embed-test/with-temp-dashcard [dashcard {:card (pivots/pivot-card)}]
+                     (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-dashcard-url dashcard))))))))))))

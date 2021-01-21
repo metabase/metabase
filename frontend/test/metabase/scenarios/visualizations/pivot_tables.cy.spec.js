@@ -8,6 +8,12 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATASET;
 
 const QUESTION_NAME = "Cypress Pivot Table";
+const DASHBOARD_NAME = "Pivot Table Dashboard";
+
+const TEST_CASES = [
+  { case: "question", subject: QUESTION_NAME },
+  { case: "dashboard", subject: DASHBOARD_NAME },
+];
 
 describe("scenarios > visualizations > pivot tables", () => {
   beforeEach(() => {
@@ -22,13 +28,16 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByText("Settings").click();
     assertOnPivotSettings();
-    assertOnPivotTable();
+    cy.get(".Visualization").within(() => {
+      assertOnPivotFields();
+    });
   });
 
   it("should correctly display saved question", () => {
     createAndVisitTestQuestion();
-
-    assertOnPivotTable();
+    cy.get(".Visualization").within(() => {
+      assertOnPivotFields();
+    });
 
     // Open Pivot table side-bar
     cy.findByText("Settings").click();
@@ -163,6 +172,123 @@ describe("scenarios > visualizations > pivot tables", () => {
       .click();
     cy.findByText("215"); // ...and it's back!
   });
+
+  it("should display an error message for native queries", () => {
+    cy.server();
+    // native queries should use the normal dataset endpoint even when set to pivot
+    cy.route("POST", `/api/dataset`).as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: { query: "select 1", "template-tags": {} },
+        database: 1,
+      },
+      display: "pivot",
+      visualization_settings: {},
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("Pivot tables can only be used with aggregated queries.");
+  });
+
+  describe.skip("sharing (metabase#14447)", () => {
+    beforeEach(() => {
+      cy.log("**--1. Create a question--**");
+      cy.request("POST", "/api/card", {
+        name: QUESTION_NAME,
+        dataset_query: testQuery,
+        display: "pivot",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.log("**--1a. Enable sharing--**");
+        cy.request("POST", `/api/card/${QUESTION_ID}/public_link`);
+
+        cy.log("**--1b. Enable embedding--**");
+        cy.request("PUT", `/api/card/${QUESTION_ID}`, {
+          enable_embedding: true,
+        });
+
+        cy.log("**--2. Create new dashboard--**");
+        cy.request("POST", "/api/dashboard", {
+          name: DASHBOARD_NAME,
+        }).then(({ body: { id: DASHBOARD_ID } }) => {
+          cy.log("**--Add previously created question to that dashboard--**");
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            cy.log("**--Resize the dashboard card--**");
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 12,
+                  sizeY: 8,
+                },
+              ],
+            });
+          });
+
+          cy.log("**--2a. Enable sharing--**");
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/public_link`);
+
+          cy.log("**--2b. Enable embedding--**");
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+            enable_embedding: true,
+          });
+        });
+        cy.visit(`/question/${QUESTION_ID}`);
+      });
+    });
+
+    TEST_CASES.forEach(test => {
+      describe(test.case, () => {
+        beforeEach(() => {
+          cy.visit("collection/root");
+          cy.findByText(test.subject).click();
+          cy.get(".Icon-share").click();
+          if (test.case === "dashboard") {
+            cy.findByText("Sharing and embedding").click();
+          }
+        });
+
+        it("should display pivot table in a public link", () => {
+          cy.findByText("Public link")
+            .parent()
+            .find("input")
+            .invoke("val")
+            .then($value => {
+              cy.visit($value);
+            });
+          cy.findByText(test.subject);
+          assertOnPivotFields();
+        });
+
+        it("should display pivot table in an embed preview", () => {
+          cy.findByText(
+            /Embed this (question|dashboard) in an application/,
+          ).click();
+          cy.findByText(test.subject);
+          assertOnPivotFields();
+        });
+
+        it("should display pivot table in an embed URL", () => {
+          cy.findByText(
+            /Embed this (question|dashboard) in an application/,
+          ).click();
+          cy.findByText("Publish").click();
+          cy.get("iframe").then($iframe => {
+            cy.visit($iframe[0].src);
+            cy.findByText(test.subject);
+            assertOnPivotFields();
+          });
+        });
+      });
+    });
+  });
 });
 
 const testQuery = {
@@ -200,30 +326,29 @@ function assertOnPivotSettings() {
   cy.log("**-- Implicit side-bar assertions --**");
   cy.findByText(/Pivot Table options/i);
 
-  cy.findByText("Fields to use for the table rows");
+  cy.findAllByText("Fields to use for the table").eq(0);
   cy.get("@fieldOption")
     .eq(0)
     .contains(/Users? → Source/);
-  cy.findByText("Fields to use for the table columns");
+  cy.findAllByText("Fields to use for the table").eq(1);
   cy.get("@fieldOption")
     .eq(1)
     .contains(/Products? → Category/);
-  cy.findByText("Fields to use for the table values");
+  cy.findAllByText("Fields to use for the table").eq(2);
   cy.get("@fieldOption")
     .eq(2)
     .contains("Count");
 }
 
-function assertOnPivotTable() {
+function assertOnPivotFields() {
   cy.log("**-- Implicit assertions on a table itself --**");
-  cy.get(".Visualization").within(() => {
-    cy.findByText(/Users? → Source/);
-    cy.findByText(/Row totals/i);
-    cy.findByText(/Grand totals/i);
-    cy.findByText("3,520");
-    cy.findByText("4,784");
-    cy.findByText("18,760");
-  });
+
+  cy.findByText(/Users? → Source/);
+  cy.findByText(/Row totals/i);
+  cy.findByText(/Grand totals/i);
+  cy.findByText("3,520");
+  cy.findByText("4,784");
+  cy.findByText("18,760");
 }
 
 // Rely on native drag events, rather than on the coordinates

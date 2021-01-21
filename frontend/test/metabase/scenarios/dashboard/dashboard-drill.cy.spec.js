@@ -11,8 +11,10 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > dashboard > dashboard drill", () => {
-  before(restore);
-  beforeEach(signIn);
+  beforeEach(() => {
+    restore();
+    signIn();
+  });
 
   it("should handle URL click through on a table", () => {
     createDashboardWithQuestion({}, dashboardId =>

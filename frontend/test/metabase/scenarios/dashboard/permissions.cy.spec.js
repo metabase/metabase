@@ -3,10 +3,10 @@ import { assoc } from "icepick";
 import { signInAsAdmin, signIn, restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > permissions", () => {
-  before(restore);
   let dashboardId;
 
-  it("should let admins view all cards in a dashboard", () => {
+  beforeEach(() => {
+    restore();
     // This first test creates a dashboard with two questions.
     // One is in Our Analytics the other is in a more locked down collection.
     signInAsAdmin();
@@ -107,7 +107,9 @@ describe("scenarios > dashboard > permissions", () => {
         cy.visit(`/dashboard/${dashId}`);
       },
     );
+  });
 
+  it("should let admins view all cards in a dashboard", () => {
     // Admin can see both questions
     cy.findByText("First Question");
     cy.findByText("foo");

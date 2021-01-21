@@ -2,8 +2,10 @@ import { signInAsAdmin, restore } from "__support__/cypress";
 // Ported from `databases.e2e.spec.js`
 
 describe("scenarios > admin > databases > table", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should see four tables in sample database", () => {
     cy.visit("/admin/datamodel/database/1");

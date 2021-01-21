@@ -7,7 +7,7 @@ import {
 const ORDERS_URL = "/admin/datamodel/database/1/table/2";
 
 describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => {
-  before(restore);
+  beforeEach(restore);
 
   it("can hide a table and not show up in 'Our Data'", () => {
     cy.server();

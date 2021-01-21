@@ -57,7 +57,7 @@ const ChartTypeSidebar = ({
                     result &&
                     result.data &&
                     visualization.isSensible &&
-                    visualization.isSensible(result.data)
+                    visualization.isSensible(result.data, props.query)
                   }
                   onClick={() => {
                     question

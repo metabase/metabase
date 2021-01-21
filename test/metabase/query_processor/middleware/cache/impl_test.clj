@@ -10,7 +10,7 @@
 
 (def ^:private objects [{:metadata? true} -200.0 3 "HELLO!" {:x 100, :y #t "2020-02-02", :z #{:a :b :c}} (Z. 100)])
 
-(defn- deserialize
+(defn deserialize
   "Deserialize objects serialized with `serialize-async` using reducing function `rf`."
   ([^bytes bytea]
    (deserialize bytea (fn [metadata]

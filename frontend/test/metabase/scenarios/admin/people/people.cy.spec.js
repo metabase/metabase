@@ -7,6 +7,7 @@ import {
   popover,
   USERS,
   USER_GROUPS,
+  setupDummySMTP,
 } from "__support__/cypress";
 
 const { normal, admin } = USERS;
@@ -179,15 +180,7 @@ describe("scenarios > admin > people", () => {
       const { first_name, last_name } = normal;
       const FULL_NAME = `${first_name} ${last_name}`;
 
-      // Dummy SMTP setup
-      cy.request("PUT", "/api/setting", {
-        "email-smtp-host": "smtp.foo.test",
-        "email-smtp-port": "587",
-        "email-smtp-security": "none",
-        "email-smtp-username": "nevermind",
-        "email-smtp-password": "it-is-secret-NOT",
-        "email-from-address": "nonexisting@metabase.test",
-      });
+      setupDummySMTP();
 
       cy.visit("/admin/people");
       showUserOptions(FULL_NAME);

@@ -457,12 +457,17 @@
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
-            (mt/user-http-request :rasta :post 202 "card"
-                                  (assoc (card-with-name-and-query card-name)
-                                         :collection_id (u/get-id collection), :collection_position 1))
-            (is (= #metabase.models.card.CardInstance{:collection_id true, :collection_position 1}
-                   (some-> (db/select-one [Card :collection_id :collection_position] :name card-name)
-                           (update :collection_id (partial = (u/get-id collection))))))))))))
+            (is (schema= {:collection_id       (s/eq (u/get-id collection))
+                          :collection_position (s/eq 1)
+                          :name                (s/eq card-name)
+                          s/Keyword            s/Any}
+                         (mt/user-http-request :rasta :post 202 "card"
+                                               (assoc (card-with-name-and-query card-name)
+                                                      :collection_id (u/get-id collection), :collection_position 1))))
+            (is (schema= {:collection_id       (s/eq (u/get-id collection))
+                          :collection_position (s/eq 1)
+                          s/Keyword            s/Any}
+                         (db/select-one Card :name card-name)))))))))
 
 (deftest need-permission-for-collection
   (testing "You need to have Collection permissions to create a Card in a Collection"
@@ -1460,12 +1465,11 @@
         (mt/with-temp Card [card (pivots/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/get-id card)))
                 rows   (mt/rows result)]
-            (is (= 2273 (:row_count result)))
+            (is (= 1144 (:row_count result)))
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))
+            (is (= 1144 (count rows)))
 
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
-            (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))

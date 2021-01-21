@@ -12,8 +12,8 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > segments", () => {
-  before(restore);
   beforeEach(() => {
+    restore();
     signInAsAdmin();
     cy.viewport(1400, 860);
   });
@@ -52,9 +52,7 @@ describe("scenarios > admin > datamodel > segments", () => {
   describe("with segment", () => {
     const SEGMENT_NAME = "Orders < 100";
 
-    before(() => {
-      signInAsAdmin();
-
+    beforeEach(() => {
       // Create a segment through API
       cy.request("POST", "/api/segment", {
         name: SEGMENT_NAME,

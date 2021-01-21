@@ -1,8 +1,10 @@
 import { signIn, restore, popover } from "__support__/cypress";
 
 describe("scenarios > dashboard > nested cards", () => {
-  before(restore);
-  beforeEach(signIn);
+  beforeEach(() => {
+    restore();
+    signIn();
+  });
 
   it("should show fields on nested cards", () => {
     createDashboardWithNestedCard(dashId => {
@@ -32,9 +34,7 @@ function createDashboardWithNestedCard(callback) {
       database: 1,
     },
     display: "table",
-    description: null,
     visualization_settings: {},
-    collection_id: null,
   }).then(({ body }) =>
     cy
       .request("POST", "/api/card", {

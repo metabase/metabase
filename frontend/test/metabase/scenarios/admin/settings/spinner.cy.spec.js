@@ -1,8 +1,10 @@
 import { restore, signInAsAdmin } from "__support__/cypress";
 
 describe("scenarios > admin > spinner", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   describe("API request", () => {
     it("should return correct DB", () => {

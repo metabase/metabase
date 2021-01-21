@@ -861,14 +861,16 @@ export const updateQuestion = (
 
     if (
       // switching to pivot
-      (isPivot && !wasPivot) ||
+      (isPivot && !wasPivot && queryHasBreakouts) ||
       // switching away from pivot
       (!isPivot && wasPivot) ||
       // updating the pivot rows/cols
-      !_.isEqual(
-        newQuestion.setting("pivot_table.column_split"),
-        oldQuestion.setting("pivot_table.column_split"),
-      )
+      (isPivot &&
+        queryHasBreakouts &&
+        !_.isEqual(
+          newQuestion.setting("pivot_table.column_split"),
+          oldQuestion.setting("pivot_table.column_split"),
+        ))
     ) {
       run = true; // force a run when switching to/from pivot or updating it's setting
     }

@@ -60,6 +60,7 @@ export default class SchedulePicker extends Component {
     // text prepended to "12:00 PM PST, your Metabase timezone"
     textBeforeSendTime: PropTypes.string,
     onScheduleChange: PropTypes.func.isRequired,
+    minutesOnHourPicker: PropTypes.bool,
   };
 
   handleChangeProperty(name, value) {
@@ -199,6 +200,7 @@ export default class SchedulePicker extends Component {
               this.handleChangeProperty("schedule_minute", value)
             }
           />
+          <span className="text-bold">{t`minutes past the hour`}</span>
         </div>
       </div>
     );
@@ -269,7 +271,9 @@ export default class SchedulePicker extends Component {
           />
           {scheduleType === "weekly" && this.renderDayPicker()}
         </div>
-        {scheduleType === "hourly" && this.renderMinutePicker()}
+        {scheduleType === "hourly" &&
+          this.props.minutesOnHourPicker &&
+          this.renderMinutePicker()}
         {scheduleType === "monthly" && this.renderMonthlyPicker()}
         {(scheduleType === "daily" ||
           scheduleType === "weekly" ||
