@@ -1,6 +1,7 @@
 import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
+import { Flex } from "grid-styled";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
 import colors, { lighten } from "metabase/lib/colors";
@@ -8,6 +9,7 @@ import colors, { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Grabber from "metabase/components/Grabber";
+import Text from "metabase/components/type/Text";
 import Toggle from "metabase/components/Toggle";
 
 class ShowTotalsOption extends React.Component {
@@ -22,13 +24,10 @@ class ShowTotalsOption extends React.Component {
   render() {
     const { showTotals } = this.state;
     return (
-      <div
-        className={cx("flex", "justify-between")}
-        style={{ padding: "14px 0 0 0" }}
-      >
-        <span className="flex-auto">{t`Show totals`}</span>
+      <Flex pt={2} justifyContent="space-between" alignItems="center">
+        <Text>{t`Show totals`}</Text>
         <Toggle value={showTotals} onChange={this.toggleTotals}></Toggle>
-      </div>
+      </Flex>
     );
   }
 }
@@ -38,7 +37,8 @@ class SortIcon extends React.Component {
     return (
       <Icon
         name={name}
-        className={cx("sort", "cursor-pointer", "text-brand-hover")}
+        size={16}
+        className="sort cursor-pointer text-medium text-brand-hover"
       />
     );
   }
@@ -47,14 +47,13 @@ class SortIcon extends React.Component {
 class SortOrderOption extends React.Component {
   render() {
     return (
-      <div
-        className={cx("flex", "justify-between")}
-        style={{ padding: "14px 0 0 0" }}
-      >
-        <span className="flex-auto">{t`Sort order`}</span>
-        <SortIcon name="arrow_up" />
-        <SortIcon name="arrow_down" />
-      </div>
+      <Flex pt={1} justifyContent="space-between" alignItems="center">
+        <Text>{t`Sort order`}</Text>
+        <div>
+          <SortIcon name="arrow_up" />
+          <SortIcon name="arrow_down" />
+        </div>
+      </Flex>
     );
   }
 }
@@ -62,12 +61,10 @@ class SortOrderOption extends React.Component {
 class FormattingOptions extends React.Component {
   render() {
     return (
-      <div
-        className={cx("flex", "justify-between")}
-        style={{ padding: "14px 0 0 0" }}
-      >
-        <span className="flex-auto cursor-pointer">{t`Formatting...`}</span>
-      </div>
+      <Flex pt={1} justifyContent="space-between" alignItems="center">
+        <Text>{t`Formatting`}</Text>
+        <Text className="text-brand text-bold cursor-pointer">{t`See options…`}</Text>
+      </Flex>
     );
   }
 }
@@ -305,7 +302,7 @@ class Column extends React.Component {
     return connectDropTarget(
       connectDragSource(
         <div
-          className={cx("mb1 bordered rounded")}
+          className="mb1 bordered rounded"
           style={{
             padding: "12px 14px",
             "box-shadow": `0 2px 3px ${lighten(colors["text-dark"], 1.5)}`,
@@ -336,7 +333,7 @@ class Column extends React.Component {
           </div>
           {showOptionsPanel && (
             <ColumnOptionsPanel
-              className={cx("text-medium")}
+              className="text-medium"
               partitionName={partitionName}
             />
           )}
