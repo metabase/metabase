@@ -320,9 +320,7 @@ function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
   for (const value of indexes.map(index => row[index])) {
     prefix.push(value);
     let seenValue = currentLevelSeenValues.find(d => d.value === value);
-    const isCollapsed =
-      collapsedSubtotals.includes(JSON.stringify(prefix)) ||
-      collapsedSubtotals.includes(JSON.stringify(prefix.length));
+    const isCollapsed = collapsedSubtotals.includes(JSON.stringify(prefix));
     if (seenValue === undefined) {
       seenValue = { value, children: [], isCollapsed };
       currentLevelSeenValues.push(seenValue);
