@@ -1,10 +1,14 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
-import Icon from "metabase/components/Icon";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { Flex } from "grid-styled";
 import { SetupApi } from "metabase/services";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
+
+import ExternalLink from "metabase/components/ExternalLink";
+import Icon from "metabase/components/Icon";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Text from "metabase/components/type/Text";
 
 const TaskList = ({ tasks }) => (
   <ol>
@@ -101,28 +105,48 @@ export default class SettingsSetupList extends Component {
     }
 
     return (
-      <div className="px2">
-        <h2>{t`Getting set up`}</h2>
-        <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
-        <LoadingAndErrorWrapper
-          loading={!this.state.tasks}
-          error={this.state.error}
+      <Flex justifyContent="space-between">
+        <div className="px2">
+          <h2>{t`Getting set up`}</h2>
+          <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
+          <LoadingAndErrorWrapper
+            loading={!this.state.tasks}
+            error={this.state.error}
+          >
+            {() => (
+              <div style={{ maxWidth: 468 }}>
+                {nextTask && (
+                  <TaskSection
+                    name={t`Recommended next step`}
+                    tasks={[nextTask]}
+                  />
+                )}
+                {tasks.map((section, index) => (
+                  <TaskSection {...section} key={index} />
+                ))}
+              </div>
+            )}
+          </LoadingAndErrorWrapper>
+        </div>
+        <div
+          className="border-left border-brand text-brand px4"
+          style={{ height: 172 }}
         >
-          {() => (
-            <div style={{ maxWidth: 468 }}>
-              {nextTask && (
-                <TaskSection
-                  name={t`Recommended next step`}
-                  tasks={[nextTask]}
-                />
-              )}
-              {tasks.map((section, index) => (
-                <TaskSection {...section} key={index} />
-              ))}
-            </div>
-          )}
-        </LoadingAndErrorWrapper>
-      </div>
+          <Icon name="cloud" size={48} style={{ color: "#B9D8F4" }} />
+          <div className="pb3">
+            <Text className="text-brand mb0">{t`Have your server maintained for you.`}</Text>
+            <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
+          </div>
+
+          <ExternalLink
+            className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 text-bold text-center"
+            href={"https://www.metabase.com/migrate/from/selfhosted"}
+            target="_blank"
+          >
+            {t`Learn more`}
+          </ExternalLink>
+        </div>
+      </Flex>
     );
   }
 }

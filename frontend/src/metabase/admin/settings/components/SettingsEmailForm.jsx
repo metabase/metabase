@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Flex, Box } from "grid-styled";
+import { Flex } from "grid-styled";
 
 import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
