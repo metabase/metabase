@@ -47,24 +47,23 @@
           h2-file            (abs-path "/tmp/out.db")
           db-name            "dump-test"]
       (copy-db-file h2-fixture-db-file h2-fixture-tmp-file)
-      (mt/with-model-cleanup mtg/generated-entities
-        (populate-h2-db! h2-fixture-tmp-file)
-        (mt/test-drivers #{:h2 :postgres}
-          (h2/delete-existing-h2-database-files! h2-file)
-          (binding [mdb.connection/*db-type*   driver/*driver*
-                    mdb.connection/*jdbc-spec* (if (= driver/*driver* :h2)
-                                                 {:subprotocol "h2"
-                                                  :subname     (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))
-                                                  :classname   "org.h2.Driver"}
-                                                 (let [details (tx/dbdef->connection-details driver/*driver*
-                                                                                             :db {:database-name db-name})]
-                                                   ((case driver/*driver*
-                                                      :postgres db.spec/postgres
-                                                      :mysql    db.spec/mysql) details)))]
-            (when-not (= driver/*driver* :h2)
-              (tx/create-db! driver/*driver* {:database-name db-name}))
-            (load-from-h2/load-from-h2! h2-fixture-tmp-file)
-            (dump-to-h2/dump-to-h2! h2-file)
-            (is (not (compare-h2-dbs/different-contents?
-                      h2-file
-                      h2-fixture-tmp-file)))))))))
+      (populate-h2-db! h2-fixture-tmp-file)
+      (mt/test-drivers #{:h2 :postgres}
+        (h2/delete-existing-h2-database-files! h2-file)
+        (binding [mdb.connection/*db-type*   driver/*driver*
+                  mdb.connection/*jdbc-spec* (if (= driver/*driver* :h2)
+                                               {:subprotocol "h2"
+                                                :subname     (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))
+                                                :classname   "org.h2.Driver"}
+                                               (let [details (tx/dbdef->connection-details driver/*driver*
+                                                                                           :db {:database-name db-name})]
+                                                 ((case driver/*driver*
+                                                    :postgres db.spec/postgres
+                                                    :mysql    db.spec/mysql) details)))]
+          (when-not (= driver/*driver* :h2)
+            (tx/create-db! driver/*driver* {:database-name db-name}))
+          (load-from-h2/load-from-h2! h2-fixture-tmp-file)
+          (dump-to-h2/dump-to-h2! h2-file)
+          (is (not (compare-h2-dbs/different-contents?
+                    h2-file
+                    h2-fixture-tmp-file))))))))

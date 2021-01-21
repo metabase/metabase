@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.models :refer [Activity Card Dashboard DashboardCard User Collection Pulse PulseCard Database Table Field Metric
-                            FieldValues Dimension MetricImportantField Segment PermissionsGroup Permissions PermissionsGroupMembership
+                            FieldValues Dimension MetricImportantField PermissionsGroup Permissions PermissionsGroupMembership
 ]]
    [metabase.test :as mt]
    [methodical.core :as m]
@@ -13,8 +13,6 @@
 
 (declare create-random!)
 
-(def generated-entities [Card Dashboard DashboardCard Collection Pulse Database Table Field PulseCard Metric
-                         FieldValues Dimension MetricImportantField Activity Segment])
 
 (def ^:dynamic *max-children*
   "Max number of child entities to generate from each entity."
@@ -46,6 +44,11 @@
   (fn [model _]
     (class model)))
 
+(m/defmethod create-random!* :before :default
+  [model property-overrides]
+  property-overrides)
+
+
 (m/defmethod create-random!* :default
   [model property-overrides]
   (let [properties (merge (tt/with-temp-defaults model)
@@ -55,8 +58,6 @@
 ;;; create-random!* before/after modifiers
 
 (defn- random-query []
-  ;; Make the query consistent with the table but not overdo it
-  ;; TODO -- something more random
   (cond-> (mt/mbql-query venues)
     ;; 50% chance to add an aggregation
     (coin-toss?) (assoc-in [:query :aggregation] [[:count]])
@@ -91,8 +92,7 @@
     (cond-> {}
       (coin-toss?) (assoc :base_type (rand-nth base-types))
       (coin-toss?) (assoc :name (rand-nth names))
-     true (merge property-overrides)))
-  )
+     true (merge property-overrides))))
 
 (m/defmethod create-random!* :after (class Field)
   [_ field]
@@ -110,7 +110,6 @@
           metric (create-random!* Metric {:table_id (:id table)
                                           :creator_id (:id *current-user*)})]
       (when (coin-toss?)
-        ;; check if MetricImportantField is really used
         (create-random!* MetricImportantField
                          {:metric_id (:id metric), :field_id (:id field)}))))
   table)
@@ -124,17 +123,16 @@
 
 (m/defmethod create-random!* :after (class Dashboard)
   [_ dashboard]
-  ;; create 0-4 Cards and add to a Dashboard when creating a Dashboard
   (dotimes [_ (children)]
-    (let [card (create-random!* Card nil)]
+    (let [card (create-random!* Card {:creator_id (:id *current-user*)})]
       (println "Creating random Card with query" (pr-str (:dataset_query card)))
       (create-random!* DashboardCard {:dashboard_id (:id dashboard), :card_id (:id card)})))
   dashboard)
 
 (m/defmethod create-random!* :after (class DashboardCard)
   [_ dcard]
-  (when true ; (coin-toss?)
-    (create-random!* PulseCard {:pulse_id (:id (create-random!* Pulse nil))
+  (when (coin-toss?)
+    (create-random!* PulseCard {:pulse_id (:id (create-random!* Pulse {:creator_id (:id *current-user*)}))
                                 :dashboard_card_id (:id dcard)
                                 :card_id (:card_id dcard)}))
   dcard)
@@ -143,12 +141,8 @@
   [_ user]
   (when (coin-toss?)
     (create-random!* Collection {:personal_owner_id (:id user)}))
-  ;; create collections without personal owner ID
-  ;; create nested collections
-
   (dotimes [_ (children)]
     (create-random!* Activity {:user_id (:id user)}))
-
   (when (coin-toss?)
     (create-random!* PermissionsGroupMembership
                      {:user_id (:id user)
@@ -168,7 +162,6 @@
                                      (:id collection)
                                      "/")
                       }))
-
   collection)
 
 (defn create-random!
@@ -184,10 +177,13 @@
           (create-random!* model property-overrides)))))
 
 (defn generate-data! []
-  (binding [*current-user* (create-random! User)]
-    (let [dash (create-random! Dashboard {:creator_id (:id *current-user*)})
-          database (create-random! Database)
-          collections (dotimes [_ (children)] (create-random! Collection {:location "/"}))]
-      (doseq [e generated-entities]
-        (printf "created %s: %d\n" (name e) (db/count e)))
-      dash)))
+  (let [entities [Card Dashboard DashboardCard Collection Pulse Database Table Field PulseCard Metric
+                  FieldValues Dimension MetricImportantField Activity]]
+    (mt/with-model-cleanup entities
+      (binding [*current-user* (create-random! User)]
+        (let [dash (create-random! Dashboard {:creator_id (:id *current-user*)})
+              database (create-random! Database)
+              collections (dotimes [_ (children)] (create-random! Collection {:location "/"}))]
+          (doseq [e entities]
+            (printf "created %s: %d\n" (name e) (db/count e)))
+          dash)))))
