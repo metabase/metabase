@@ -177,6 +177,37 @@ describe("scenarios > question > new", () => {
       // this step is maybe redundant since it fails to even find "by month"
       cy.findByText("Hour of day");
     });
+
+    it.skip("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
+      cy.request("POST", "/api/card", {
+        name: "11183",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field-id", ORDERS.SUBTOTAL]]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ],
+          },
+          type: "query",
+        },
+        display: "line",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.server();
+        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+        cy.visit(`/question/${QUESTION_ID}`);
+      });
+
+      cy.wait("@cardQuery");
+      cy.log("**Reported missing in v0.33.1**");
+      cy.get(".AdminSelect")
+        .as("select")
+        .contains(/All Time/i);
+      cy.get("@select").contains(/Month/i);
+    });
   });
 
   describe("ask a (custom) question", () => {
