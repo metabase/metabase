@@ -316,9 +316,10 @@ export default class PivotTable extends Component {
               isBody
               onClick={
                 clicked &&
-                (() =>
+                (e =>
                   this.props.onVisualizationClick({
                     ...clicked,
+                    event: e.nativeEvent,
                     settings: this.props.settings,
                   }))
               }

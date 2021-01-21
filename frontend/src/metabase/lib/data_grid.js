@@ -45,6 +45,12 @@ export function multiLevelPivot(
     valuesByKey[valueKey] = {
       values,
       data: row.map((value, index) => ({ value, col: columns[index] })),
+      dimensions: row
+        .map((value, index) => ({
+          value,
+          column: columns[index],
+        }))
+        .filter(({ column }) => column.source === "breakout"),
     };
   }
 
@@ -214,9 +220,11 @@ function createRowSectionGetter({
       const otherAttrs = rowValues.length === 0 ? { isGrandTotal: true } : {};
       return getSubtotals(indexes, indexValues, otherAttrs);
     }
-    const { values, data } = valuesByKey[JSON.stringify(indexValues)] || {};
+    const { values, data, dimensions } =
+      valuesByKey[JSON.stringify(indexValues)] || {};
+    console.log({ data, dimensions });
     return formatValues(values).map(o =>
-      data === undefined ? o : { ...o, clicked: { data } },
+      data === undefined ? o : { ...o, clicked: { data, dimensions } },
     );
   };
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
@@ -312,7 +320,9 @@ function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
   for (const value of indexes.map(index => row[index])) {
     prefix.push(value);
     let seenValue = currentLevelSeenValues.find(d => d.value === value);
-    const isCollapsed = collapsedSubtotals.includes(JSON.stringify(prefix));
+    const isCollapsed =
+      collapsedSubtotals.includes(JSON.stringify(prefix)) ||
+      collapsedSubtotals.includes(JSON.stringify(prefix.length));
     if (seenValue === undefined) {
       seenValue = { value, children: [], isCollapsed };
       currentLevelSeenValues.push(seenValue);
