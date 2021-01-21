@@ -1517,17 +1517,29 @@
 
 (deftest collections->tree-permutations-test
   (testing "The tree should build a proper tree regardless of which order the Collections are passed in (#14280)"
-    (doseq [collections (math.combo/permutations [{:id 1, :name "First collection",  :location "/3/"}
-                                                  {:id 2, :name "Second collection", :location "/3/1/"}
-                                                  {:id 3, :name "New collection",    :location "/"}])]
-      (testing (format "Permutation: %s" (pr-str (mapv :id collections)))
+    (doseq [collections (math.combo/permutations [{:id 1, :name "a", :location "/3/"}
+                                                  {:id 2, :name "a", :location "/3/1/"}
+                                                  {:id 3, :name "a", :location "/"}
+                                                  {:id 4, :name "a", :location "/3/1/"}
+                                                  {:id 5, :name "a", :location "/3/1/2/"}
+                                                  {:id 6, :name "a", :location "/3/"}])]
+      (testing (format "Permutation: %s" (pr-str (map :id collections)))
         (is (= [{:id       3
-                 :name     "New collection"
+                 :name     "a"
                  :location "/"
                  :children [{:id       1
-                             :name     "First collection"
+                             :name     "a"
                              :location "/3/"
                              :children [{:id       2
-                                         :name     "Second collection"
-                                         :location "/3/1/"}]}]}]
+                                         :name     "a"
+                                         :location "/3/1/"
+                                         :children [{:id       5
+                                                     :name     "a"
+                                                     :location "/3/1/2/"}]}
+                                        {:id       4
+                                         :name     "a"
+                                         :location "/3/1/"}]}
+                            {:id       6
+                             :name     "a"
+                             :location "/3/"}]}]
                (collection/collections->tree collections)))))))

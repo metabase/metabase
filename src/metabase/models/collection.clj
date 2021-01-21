@@ -1035,5 +1035,6 @@
         (let [vs (for [v (vals m)]
                    (cond-> v
                      (:children v) (update :children ->tree)))]
-          (sort-by (comp (fnil u/lower-case-en "") :name) vs))))
+          (sort-by (fn [{coll-name :name, coll-id :id}]
+                     [((fnil u/lower-case-en "") coll-name) coll-id]) vs))))
      collections)))
