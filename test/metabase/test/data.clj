@@ -38,6 +38,7 @@
             [medley.core :as m]
             [metabase.driver.util :as driver.u]
             [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.query-processor :as qp]
             [metabase.test.data.dataset-definitions :as defs]
@@ -45,6 +46,7 @@
             [metabase.test.data.interface :as tx]
             [metabase.test.data.mbql-query-impl :as mbql-query-impl]
             [metabase.util :as u]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
@@ -301,3 +303,9 @@
 
 (defmacro with-venue-category-fk-remapping [remapping-name & body]
   `(do-with-venue-category-fk-remapping ~remapping-name (fn [] ~@body)))
+
+(defn get-field-definitions
+  "Gets the field definitions for the given table-id"
+  [table-id]
+  (map (partial into {})
+       (db/select [Field :name :database_type :base_type] :table_id table-id)))

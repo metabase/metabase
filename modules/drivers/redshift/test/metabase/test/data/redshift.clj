@@ -80,7 +80,10 @@
 
 ;;; Create + destroy the schema used for this test session
 
-(defn- execute! [format-string & args]
+(defn execute!
+  "Executes SQL statements against the current test session's schema. format-string is the statement(s) (formatted)
+   and any format args follow."
+  [format-string & args]
   (let [sql  (apply format format-string args)
         spec (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
     (println (u/format-color 'blue "[redshift] %s" sql))
