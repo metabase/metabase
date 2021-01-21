@@ -141,7 +141,9 @@ export default class PublicDashboard extends Component {
       isFullscreen,
       isNightMode,
     } = this.props;
-    const buttons = !IFRAMED ? getDashboardActions(this, this.props) : [];
+    const buttons = !IFRAMED
+      ? getDashboardActions(this, { ...this.props, isPublic: true })
+      : [];
 
     return (
       <EmbedFrame
