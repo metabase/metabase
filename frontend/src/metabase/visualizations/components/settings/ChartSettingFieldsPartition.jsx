@@ -321,13 +321,15 @@ class Column extends React.Component {
               { disabled: isDragging },
             )}
           >
-            <span className="flex-auto">
+            <span
+              onClick={this.toggleExpand}
+              className="cursor-pointer text-brand-hover hover-parent hover--inherit"
+            >
               {column.display_name}
               <Icon
                 name="chevrondown"
-                onClick={this.toggleExpand}
                 size="10"
-                className="cursor-pointer text-light text-medium-hover ml1"
+                className="text-light hover-child hover--inherit ml1"
               />
             </span>
             <Grabber style={{ width: 10 }} />
