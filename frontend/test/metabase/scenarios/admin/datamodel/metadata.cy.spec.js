@@ -7,7 +7,7 @@ import {
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, REVIEWS } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
@@ -109,5 +109,22 @@ describe("scenarios > admin > datamodel > metadata", () => {
       cy.log("**Reported failing in v0.37.2**");
       cy.findByText(/^3:00 AM$/);
     });
+  });
+
+  it("object details should handle non-json data even if field is set to JSON (metabase#12600)", () => {
+    // Fixed in #13633
+
+    cy.log("**-- Set Reviews.BODY to `Field containing JSON` --**");
+    cy.request("PUT", `/api/field/${REVIEWS.BODY}`, {
+      special_type: "type/SerializedJSON",
+    });
+
+    openReviewsTable();
+    cy.get(".TableInteractive-cellWrapper--firstColumn")
+      .eq(2)
+      .click();
+    // Text is broken into elements - cannot use cy.findByText() here
+    cy.contains("This Review is connected to:");
+    cy.findByText(/xavier/i);
   });
 });
