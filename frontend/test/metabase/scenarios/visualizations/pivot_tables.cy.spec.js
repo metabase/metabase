@@ -192,6 +192,49 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
 
+  describe("dashboards", () => {
+    beforeEach(() => {
+      cy.log("**--1. Create a question--**");
+      cy.request("POST", "/api/card", {
+        name: QUESTION_NAME,
+        dataset_query: testQuery,
+        display: "pivot",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.log("**--2. Create new dashboard--**");
+        cy.request("POST", "/api/dashboard", {
+          name: DASHBOARD_NAME,
+        }).then(({ body: { id: DASHBOARD_ID } }) => {
+          cy.log("**--Add previously created question to that dashboard--**");
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            cy.log("**--Resize the dashboard card--**");
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 12,
+                  sizeY: 8,
+                },
+              ],
+            }).then(() => {
+              cy.log("**--Open the dashboard--**");
+              cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            });
+          });
+        });
+      });
+    });
+
+    it("should display a pivot table on a dashboard", () => {
+      assertOnPivotFields();
+    });
+  });
+
   describe("sharing (metabase#14447)", () => {
     beforeEach(() => {
       cy.viewport(1400, 800); // Row totals on embed preview was getting cut off at the normal width
