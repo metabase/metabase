@@ -7,7 +7,8 @@
   border-top-color: currentColor;
   border-radius: 99px;
 
-  animation: LoadingSpinner-transition 0.8s infinite linear;
+  animation: LoadingSpinner-transition 1.3s infinite
+    cubic-bezier(0.785, 0.135, 0.15, 0.86);
 }
 
 .LoadingSpinner:after {
