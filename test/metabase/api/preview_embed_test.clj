@@ -1,6 +1,7 @@
 (ns metabase.api.preview-embed-test
   (:require [clojure.test :refer :all]
             [metabase.api.embed-test :as embed-test]
+            [metabase.api.pivots :as pivots]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.test :as mt]
@@ -350,7 +351,7 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))))
+            (is (= 1144 (count rows)))))
 
         (testing "should fail if user is not an admin"
           (is (= "You don't have permissions to do that."
@@ -375,7 +376,7 @@
   (str "preview_embed/pivot/dashboard/"
        (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
                                                               additional-token-params))
-       "/dashcard/" (u/get-id dashcard)
+       "/dashcard/" (u/the-id dashcard)
        "/card/" (:card_id dashcard)))
 
 (deftest pivot-card-id-test
@@ -390,7 +391,7 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 2273 (count rows)))))
+            (is (= 1144 (count rows)))))
 
        (testing "should fail if user is not an admin"
           (is (= "You don't have permissions to do that."
