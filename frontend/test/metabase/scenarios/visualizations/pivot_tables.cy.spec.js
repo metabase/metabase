@@ -2,6 +2,7 @@ import {
   signInAsAdmin,
   restore,
   visitQuestionAdhoc,
+  getIframeBody,
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -317,9 +318,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           ).click();
           // we use preview endpoints when MB is iframed in itself
           cy.findByText(test.subject);
-          cy.get("iframe")
-            .its("0.contentDocument.body")
-            .within(assertOnPivotFields);
+          getIframeBody().within(assertOnPivotFields);
         });
 
         it("should display pivot table in an embed URL", () => {

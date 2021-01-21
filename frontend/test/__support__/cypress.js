@@ -332,3 +332,13 @@ export function adhocQuestionHash(question) {
 export function visitQuestionAdhoc(question) {
   cy.visit("/question#" + adhocQuestionHash(question));
 }
+
+export function getIframeBody(selector = "iframe") {
+  return cy
+    .get(selector)
+    .its("0.contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.null")
+    .then(cy.wrap);
+}
