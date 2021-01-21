@@ -141,7 +141,7 @@ function HostingCTA() {
       <Box>
         <ExternalLink
           className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 mr2 text-bold flex align-center"
-          href={"https://www.metabase.com/start/hosted/"}
+          href={"https://www.metabase.com/migrate/from/selfhosted"}
           target="_blank"
         >
           {t`Learn more`}
