@@ -2,6 +2,7 @@ import {
   signInAsAdmin,
   restore,
   visitQuestionAdhoc,
+  popover,
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -67,6 +68,35 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.findByText("4,784").should("not.exist");
       cy.findByText("18,760").should("not.exist");
     });
+  });
+
+  it("should allow drill through on cells", () => {
+    createAndVisitTestQuestion();
+    // open actions menu
+    cy.findByText("783").click();
+    // drill through to orders list
+    cy.findByText("View these Orders").click();
+    // filters are applied
+    cy.findByText("Source is Affiliate");
+    cy.findByText("Category is Doohickey");
+    // data loads
+    cy.findByText("45.08");
+  });
+
+  it("should allow drill through on left/top header values", () => {
+    createAndVisitTestQuestion();
+    // open actions menu and filter to that value
+    cy.findByText("Doohickey").click();
+    popover().within(() => cy.findByText("=").click());
+    // filter is applied
+    cy.findByText("Category is Doohickey");
+    // filter out affiliate as a source
+    cy.findByText("Affiliate").click();
+    popover().within(() => cy.findByText("≠").click());
+    // filter is applied and value is gone from the left header
+    cy.findByText("Source is not Affiliate");
+    cy.findByText("Affiliate").should("not.exist");
+    cy.findByText("3,193"); // new grand total
   });
 
   it("should rearrange pivoted columns", () => {

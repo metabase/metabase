@@ -220,6 +220,7 @@ export default class PivotTable extends Component {
         hasSubtotal,
         depth,
         path,
+        clicked,
       } = leftHeaderItems[index];
       return (
         <div
@@ -234,6 +235,7 @@ export default class PivotTable extends Component {
             value={value}
             isSubtotal={isSubtotal}
             isGrandTotal={isGrandTotal}
+            onClick={this.getCellClickHander(clicked)}
             icon={
               (isSubtotal || hasSubtotal) && (
                 <RowToggleIcon
@@ -267,7 +269,7 @@ export default class PivotTable extends Component {
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
 
     const topHeaderCellRenderer = ({ index, key, style }) => {
-      const { value, hasChildren } = topHeaderItems[index];
+      const { value, hasChildren, clicked } = topHeaderItems[index];
       return (
         <div
           key={key}
@@ -275,6 +277,7 @@ export default class PivotTable extends Component {
           className={cx("px1 flex align-center", {
             "border-bottom border-medium": !hasChildren,
           })}
+          onClick={this.getCellClickHander(clicked)}
         >
           <div
             className={cx("flex flex-full full-height align-center", {
@@ -314,15 +317,7 @@ export default class PivotTable extends Component {
               isSubtotal={isSubtotal}
               isGrandTotal={isGrandTotal}
               isBody
-              onClick={
-                clicked &&
-                (e =>
-                  this.props.onVisualizationClick({
-                    ...clicked,
-                    event: e.nativeEvent,
-                    settings: this.props.settings,
-                  }))
-              }
+              onClick={this.getCellClickHander(clicked)}
             />
           ),
         )}
@@ -404,6 +399,18 @@ export default class PivotTable extends Component {
         </ScrollSync>
       </div>
     );
+  }
+
+  getCellClickHander(clicked) {
+    if (!clicked) {
+      return null;
+    }
+    return e =>
+      this.props.onVisualizationClick({
+        ...clicked,
+        event: e.nativeEvent,
+        settings: this.props.settings,
+      });
   }
 }
 
