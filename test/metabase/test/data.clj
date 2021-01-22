@@ -170,12 +170,17 @@
     :type     :native
     :native   ~inner-native-query})
 
+(defn do-run-mbql-query [query]
+  (try
+    (qp/process-query query)
+    (catch Throwable e
+      (throw (ex-info "Error running MBQL query" {:query query} e)))))
+
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."
   {:style/indent 1}
   [table-name & [query]]
-  `(qp/process-query
-     (mbql-query ~table-name ~(or query {}))))
+  `(do-run-mbql-query (mbql-query ~table-name ~(or query {}))))
 
 (defn format-name
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the driver's
@@ -191,7 +196,7 @@
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic variable `*get-db*`, which
   can be rebound with `with-db`."
   ([]
-   (u/get-id (db)))
+   (u/the-id (db)))
 
   ([table-name]
    (impl/the-table-id (id) (format-name table-name)))

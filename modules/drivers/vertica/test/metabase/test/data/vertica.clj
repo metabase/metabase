@@ -78,6 +78,11 @@
   ;; escape commas
   (str/escape s {\, "\\,"}))
 
+(defmethod value->csv honeysql.types.SqlCall
+  [call]
+  (throw (ex-info "Cannot insert rows containing HoneySQL calls: insert the appropriate raw value instead"
+                  {:call call})))
+
 (defn- dump-table-rows-to-csv!
   "Dump a sequence of rows (as vectors) to a CSV file."
   [{:keys [field-definitions rows]} ^String filename]
@@ -93,7 +98,7 @@
         (catch Throwable e
           (throw (ex-info "Error writing rows to CSV" {:rows (take 10 csv-rows)} e)))))
     (catch Throwable e
-      (throw (ex-info "Error dumping rows to CSV" {:filename filename, :rows (take 10 rows)} e)))))
+      (throw (ex-info "Error dumping rows to CSV" {:filename filename} e)))))
 
 (defn- load-rows-from-csv!
   "Load rows from a CSV file into a Table."
@@ -107,8 +112,8 @@
                     (throw (ex-info "Error executing SQL" {:sql sql, :spec (dbspec)} e)))))
               (actual-rows []
                 (u/ignore-exceptions
-                  (jdbc/query {:connection conn}
-                              (format "SELECT * FROM %s ORDER BY id ASC;" table-identifier))))]
+                 (jdbc/query {:connection conn}
+                             (format "SELECT * FROM %s ORDER BY id ASC;" table-identifier))))]
         (try
           ;; make sure the Table is empty
           (execute! (format "TRUNCATE TABLE %s" table-identifier))
@@ -129,13 +134,19 @@
           ;; success!
           :ok
           (catch Throwable e
-            (throw (ex-info "Error loading rows from CSV file" {:filename filename} e))))))))
+            (throw (ex-info "Error loading rows from CSV file"
+                            {:filename filename
+                             :rows     (take 10 (str/split-lines (slurp filename)))}
+                            e))))))))
 
 (defmethod load-data/load-data! :vertica
-  [driver dbdef tabledef]
-  (let [filename (str (files/get-path (System/getProperty "java.io.tmpdir") "vertica-rows.csv"))]
-    (dump-table-rows-to-csv! tabledef filename)
-    (load-rows-from-csv! driver dbdef tabledef filename)))
+  [driver dbdef {:keys [rows], :as tabledef}]
+  (try
+    (let [filename (str (files/get-path (System/getProperty "java.io.tmpdir") "vertica-rows.csv"))]
+      (dump-table-rows-to-csv! tabledef filename)
+      (load-rows-from-csv! driver dbdef tabledef filename))
+    (catch Throwable e
+      (throw (ex-info "Error loading rows" {:rows (take 10 rows)} e)))))
 
 (defmethod sql.tx/pk-sql-type :vertica [& _] "INTEGER")
 
