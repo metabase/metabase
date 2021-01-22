@@ -209,6 +209,12 @@
   (fn [driver special_type _] [(driver/dispatch-on-initialized-driver driver) special_type])
   :hierarchy #'driver/hierarchy)
 
+(defmulti cast-ip-string
+  "Cast an ip type to a string"
+  {:arglists '([driver special_type expr]), :added "0.38.0"}
+  (fn [driver special_type _] [(driver/dispatch-on-initialized-driver driver) special_type])
+  :hierarchy #'driver/hierarchy)
+
 (defmethod cast-temporal-string :default
   [driver special_type _expr]
   (throw (Exception. (tru "Driver {0} does not support {1}" driver special_type))))
@@ -280,10 +286,11 @@
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
   (match [(:base_type field) (:special_type field)]
-    [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql driver
-                                                                                    (special-type->unix-timestamp-unit (:special_type field))
-                                                                                    field-identifier)
-    [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:special_type field) field-identifier)
+    [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]   (unix-timestamp->honeysql driver
+                                                                                     (special-type->unix-timestamp-unit (:special_type field))
+                                                                                     field-identifier)
+    [:type/Text             (:isa? :type/TemporalString)]  (cast-temporal-string driver (:special_type field) field-identifier)
+    [:type/Binary           (:isa? :type/IPAddressString)] (cast-ip-string driver (:special_type field) field-identifier)
     :else field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed

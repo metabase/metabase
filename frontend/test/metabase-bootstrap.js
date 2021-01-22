@@ -111,6 +111,8 @@ window.MetabaseBootstrap = {
     "type/DateTimeWithLocalTZ": ["type/DateTimeWithTZ"],
     "type/UNIXTimestamp": ["type/Integer", "type/Instant"],
     "type/Enum": ["type/Category", "type/*"],
+    "type/Binary": ["type/*"],
+    "type/IPAddressString": ["type/String"],
   },
   version: {
     tag: "v1",

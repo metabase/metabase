@@ -166,6 +166,10 @@
   [_driver _special_type expr]
   (hx/->datetime expr))
 
+(defmethod sql.qp/cast-ip-string [:mysql :type/IPAddressString]
+  [_driver _special_type expr]
+  (hsql/call :inet6_ntoa expr))
+
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
 
@@ -241,7 +245,7 @@
 (defmethod sql-jdbc.sync/database-type->base-type :mysql
   [_ database-type]
   ({:BIGINT     :type/BigInteger
-    :BINARY     :type/*
+    :BINARY     :type/Binary
     :BIT        :type/Boolean
     :BLOB       :type/*
     :CHAR       :type/Text
@@ -268,7 +272,7 @@
     :TINYBLOB   :type/*
     :TINYINT    :type/Integer
     :TINYTEXT   :type/Text
-    :VARBINARY  :type/*
+    :VARBINARY  :type/Binary
     :VARCHAR    :type/Text
     :YEAR       :type/Date}
    ;; strip off " UNSIGNED" from end if present

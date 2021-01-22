@@ -309,6 +309,11 @@ export const field_special_types = [
     name: t`Field containing JSON`,
     section: t`Other`,
   },
+  {
+    id: TYPE.IPAddressString,
+    name: t`IP Address String`,
+    section: t`Other`,
+  }
 ];
 
 export const field_special_types_map = field_special_types.reduce(

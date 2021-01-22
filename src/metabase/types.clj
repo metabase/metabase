@@ -78,6 +78,8 @@
 
 (derive :type/PostgresEnum :type/Text)
 
+(derive :type/IPAddressString :type/Text)
+
 ;;; DateTime Types
 
 (derive :type/Temporal :type/*)
@@ -162,6 +164,8 @@
 (derive :type/TextLike :type/*)
 (derive :type/IPAddress :type/TextLike)
 (derive :type/MongoBSONID :type/TextLike)
+
+(derive :type/Binary :type/*)
 
 ;;; "Virtual" Types
 
