@@ -67,20 +67,6 @@
        :diffs    (when-not pass?#
                    [[actual# [(s/check schema# actual#) nil]]])})))
 
-(defmacro ^:deprecated expect-schema
-  "Like `expect`, but checks that results match a schema. DEPRECATED -- you can use `deftest` combined with `schema=`
-  instead.
-
-    (deftest my-test
-      (is (schema= expected-schema
-                   actual-value)))"
-  {:style/indent 0}
-  [expected actual]
-  (let [symb (symbol (format "expect-schema-%d" (hash &form)))]
-    `(deftest ~symb
-       (testing (format ~(str (ns-name *ns*) ":%s") (:line (meta (var ~symb))))
-         (is (~'schema= ~expected ~actual))))))
-
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
 
