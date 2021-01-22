@@ -151,6 +151,8 @@ Ensure that the file you are writing or reading from a file or folder that the u
 - if you are running Metabase as a `jar` file in your local machine or server, check the user that is running the java process
 - if you are running Metabase from the docker container, make sure that you are using the `/metabase.db` folder which is owned by the metabase user who is the one that runs the java process inside the container
 
+If you are running metabase from the jar file in any *nix (Unix like) operating system, in order to see which user is running metabase you have to open a terminal and type `ps -uA | grep metabase`.
+
 ## Helpful tidbits
 
 ### How to get to the shell in the Metabase container
