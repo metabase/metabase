@@ -208,6 +208,7 @@ export default class PivotTable extends Component {
       topHeaderItems,
       rowCount,
       columnCount,
+      rowIndex,
       getRowSection,
     } = pivoted;
 
@@ -241,6 +242,7 @@ export default class PivotTable extends Component {
                   settings={settings}
                   updateSettings={onUpdateVisualizationSettings}
                   hideUnlessCollapsed={isSubtotal}
+                  rowIndex={rowIndex} // used to get a list of "other" paths when open one item in a collapsed column
                 />
               )
             }
@@ -350,10 +352,20 @@ export default class PivotTable extends Component {
                     height: topHeaderHeight,
                   }}
                 >
-                  {rowIndexes.map(index => (
+                  {rowIndexes.map((rowIndex, index) => (
                     <Cell
-                      value={formatColumn(columns[index])}
+                      value={formatColumn(columns[rowIndex])}
                       style={{ width: LEFT_HEADER_CELL_WIDTH }}
+                      icon={
+                        // you can only collapse before the last column
+                        index < rowIndexes.length - 1 && (
+                          <RowToggleIcon
+                            value={index + 1}
+                            settings={settings}
+                            updateSettings={onUpdateVisualizationSettings}
+                          />
+                        )
+                      }
                     />
                   ))}
                 </div>
@@ -411,17 +423,56 @@ function RowToggleIcon({
   settings,
   updateSettings,
   hideUnlessCollapsed,
+  rowIndex,
 }) {
+  if (value == null) {
+    return null;
+  }
   const setting = settings[COLLAPSED_ROWS_SETTING];
-  const rowRef = JSON.stringify(value);
-  const isCollapsed = (setting.value || []).includes(rowRef);
+  const ref = JSON.stringify(value);
+  const isColumn = !Array.isArray(value);
+  const columnRef = isColumn ? null : JSON.stringify(value.length);
+  const settingValue = setting.value || [];
+  const isColumnCollapsed = !isColumn && settingValue.includes(columnRef);
+  const isCollapsed = settingValue.includes(ref) || isColumnCollapsed;
   if (hideUnlessCollapsed && !isCollapsed) {
     // subtotal rows shouldn't have an icon unless the section is collapsed
     return null;
   }
-  const toggle = isCollapsed
-    ? value => value.filter(v => v !== rowRef)
-    : value => value.concat(rowRef);
+
+  // The giant nested ternary below picks the right function to toggle the current button.
+  // That depends on whether we're a row or column header and whether we're open or closed.
+  const toggle =
+    isColumn && !isCollapsed // click on open column
+      ? settingValue =>
+          settingValue
+            .filter(v => {
+              const parsed = JSON.parse(v);
+              return !(Array.isArray(parsed) && parsed.length === value);
+            }) // remove any already collapsed items in this column
+            .concat(ref) // add column to list
+      : !isColumn && isColumnCollapsed // single row in collapsed column
+      ? settingValue =>
+          settingValue
+            .filter(v => v !== columnRef) // remove column from list
+            .concat(
+              // add other rows in this columns so they stay closed
+              rowIndex
+                .filter(
+                  item =>
+                    // equal length means they're in the same column
+                    item.length === value.length &&
+                    // but not exactly this item
+                    !_.isEqual(item, value),
+                )
+                // serialize those paths
+                .map(item => JSON.stringify(item)),
+            )
+      : isCollapsed // closed row or column
+      ? settingValue => settingValue.filter(v => v !== ref)
+      : // open row or column
+        settingValue => settingValue.concat(ref);
+
   const update = () => {
     const updatedValue = updateIn(setting, ["value"], toggle);
     updateSettings({ [COLLAPSED_ROWS_SETTING]: updatedValue });
