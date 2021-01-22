@@ -34,7 +34,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describe("with email and/or slack set up", () => {
+  describe("with email set up", () => {
     beforeEach(() => {
       setupDummySMTP();
     });
