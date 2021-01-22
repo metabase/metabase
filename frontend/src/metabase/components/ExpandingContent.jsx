@@ -59,6 +59,7 @@ class ExpandingContent extends Component {
           transition: `all ${duration}ms ease`,
           maxHeight: !animateHeight || isOpen ? maxHeight : 0,
           opacity: !animateOpacity || isOpen ? 1 : 0,
+          overflow: isOpen ? null : "hidden",
         }}
       >
         {children}
