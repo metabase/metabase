@@ -24,10 +24,6 @@ const SEND_TEST_BUTTON_STATES = {
   success: t`Sent!`,
 };
 
-const isHosted = MetabaseSettings.get("site-url")
-  .toLowerCase()
-  .includes("metabaseapp.com");
-
 @connect(
   null,
   { sendTestEmail, updateEmailSettings, clearEmailSettings },
@@ -103,7 +99,7 @@ export default class SettingsEmailForm extends Component {
             ];
           }}
         />
-        {!isHosted && (
+        {!MetabaseSettings.isHosted() && (
           <MarginHostingCTA tagline={t`Have your email configured for you.`} />
         )}
       </Flex>

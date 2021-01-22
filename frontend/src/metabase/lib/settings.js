@@ -85,6 +85,14 @@ class Settings {
     return this.get("email-configured?");
   }
 
+  // Right now, all Metabase Cloud hosted instances run on *.metabaseapp.com
+  // We plan on changing this to look at an envvar in the future instead.
+  isHosted() {
+    return this.get("site-url")
+      .toLowerCase()
+      .includes("metabaseapp.com");
+  }
+
   isTrackingEnabled() {
     return this.get("anon-tracking-enabled") || false;
   }

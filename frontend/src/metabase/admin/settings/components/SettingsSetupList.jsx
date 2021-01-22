@@ -10,10 +10,6 @@ import Icon from "metabase/components/Icon";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
-const isHosted = MetabaseSettings.get("site-url")
-  .toLowerCase()
-  .includes("metabaseapp.com");
-
 const TaskList = ({ tasks }) => (
   <ol>
     {tasks.map((task, index) => (
@@ -133,7 +129,7 @@ export default class SettingsSetupList extends Component {
           </LoadingAndErrorWrapper>
         </div>
 
-        {!isHosted && (
+        {!MetabaseSettings.isHosted() && (
           <MarginHostingCTA tagline={t`Have your server maintained for you.`} />
         )}
       </Flex>

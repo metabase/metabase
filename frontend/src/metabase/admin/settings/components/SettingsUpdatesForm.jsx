@@ -9,10 +9,6 @@ import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingI
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 
-const isHosted = MetabaseSettings.get("site-url")
-  .toLowerCase()
-  .includes("metabaseapp.com");
-
 export default class SettingsUpdatesForm extends Component {
   static propTypes = {
     elements: PropTypes.array,
@@ -28,7 +24,7 @@ export default class SettingsUpdatesForm extends Component {
               currentVersion,
             )} which is the latest and greatest!`}
           </div>
-          {!isHosted && <HostingCTA />}
+          {!MetabaseSettings.isHosted() && <HostingCTA />}
         </div>
       );
     } else if (MetabaseSettings.newVersionAvailable()) {
@@ -66,7 +62,7 @@ export default class SettingsUpdatesForm extends Component {
               versionInfo.older.map(version => <Version version={version} />)}
           </div>
 
-          {!isHosted && <HostingCTA />}
+          {!MetabaseSettings.isHosted() && <HostingCTA />}
         </div>
       );
     } else {
