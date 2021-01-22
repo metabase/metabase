@@ -1,6 +1,7 @@
 (ns metabase.models.collection-test
   (:refer-clojure :exclude [ancestors descendants])
-  (:require [clojure.string :as str]
+  (:require [clojure.math.combinatorics :as math.combo]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.api.common :refer [*current-user-permissions-set*]]
             [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
@@ -325,7 +326,7 @@
 ;;; |                                Nested Collections: CRUD Constraints & Behavior                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmacro ^:private with-collection-in-lo [[collection-binding location] & body]
+(defmacro ^:private with-collection-in-location [[collection-binding location] & body]
   `(let [name# (mt/random-name)]
      (try
        (let [~collection-binding (db/insert! Collection :name name#, :color "#ABCDEF", :location ~location)]
@@ -342,11 +343,11 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid Collection location: path is invalid"
-         (with-collection-in-lo [_ "/a/"]))))
+         (with-collection-in-location [_ "/a/"]))))
 
   (testing "We should be able to INSERT a Collection with a *valid* location"
     (mt/with-temp Collection [parent]
-      (with-collection-in-lo [collection (collection/location-path parent)]
+      (with-collection-in-location [collection (collection/location-path parent)]
         (is (= (collection/location-path parent)
                (:location collection))))))
 
@@ -368,7 +369,7 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid Collection location: some or all ancestors do not exist"
-         (with-collection-in-lo [_ (collection/location-path (nonexistent-collection-id))]))))
+         (with-collection-in-location [_ (collection/location-path (nonexistent-collection-id))]))))
 
   (testing "Make sure we can't UPDATE a Collection to give it a non-existent ancestors"
     (mt/with-temp Collection [collection]
@@ -1513,3 +1514,32 @@
     (is (= [{:name "Child", :location "/1/", :id 2, :children [{:name "Grandchild", :location "/1/2/", :id 3}]}]
            (collection/collections->tree [{:name "Child", :location "/1/", :id 2}
                                           {:name "Grandchild", :location "/1/2/", :id 3} ])))))
+
+(deftest collections->tree-permutations-test
+  (testing "The tree should build a proper tree regardless of which order the Collections are passed in (#14280)"
+    (doseq [collections (math.combo/permutations [{:id 1, :name "a", :location "/3/"}
+                                                  {:id 2, :name "a", :location "/3/1/"}
+                                                  {:id 3, :name "a", :location "/"}
+                                                  {:id 4, :name "a", :location "/3/1/"}
+                                                  {:id 5, :name "a", :location "/3/1/2/"}
+                                                  {:id 6, :name "a", :location "/3/"}])]
+      (testing (format "Permutation: %s" (pr-str (map :id collections)))
+        (is (= [{:id       3
+                 :name     "a"
+                 :location "/"
+                 :children [{:id       1
+                             :name     "a"
+                             :location "/3/"
+                             :children [{:id       2
+                                         :name     "a"
+                                         :location "/3/1/"
+                                         :children [{:id       5
+                                                     :name     "a"
+                                                     :location "/3/1/2/"}]}
+                                        {:id       4
+                                         :name     "a"
+                                         :location "/3/1/"}]}
+                            {:id       6
+                             :name     "a"
+                             :location "/3/"}]}]
+               (collection/collections->tree collections)))))))

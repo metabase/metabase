@@ -6,6 +6,8 @@
             [metabase.core :as mbc]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.db.setup :as mdb.setup]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.plugins :as plugins]
@@ -120,3 +122,8 @@
       (catch InterruptedException e
         (a/>!! canceled-chan :cancel)
         (throw e)))))
+
+(defn migrate!
+  "Run migrations for the Metabase application database."
+  []
+  (mdb.setup/migrate! (mdb.connection/jdbc-spec) :up))
