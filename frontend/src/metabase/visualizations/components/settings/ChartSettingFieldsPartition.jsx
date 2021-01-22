@@ -324,7 +324,7 @@ class Column extends React.Component {
             >
               {column.display_name}
               <Icon
-                name="chevrondown"
+                name={expanded ? "chevronup" : "chevrondown"}
                 size="10"
                 className="text-light hover-child hover--inherit ml1"
               />
