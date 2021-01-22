@@ -310,4 +310,60 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").should("not.exist");
     });
   });
+
+  it.skip("should correctly display a revision state after a restore (metabase#12581)", () => {
+    const ORIGINAL_QUERY = "SELECT * FROM ORDERS WHERE {{filter}} LIMIT 2";
+
+    // Start with the original version of the question made with API
+    cy.request("POST", "/api/card", {
+      name: "12581",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: ORIGINAL_QUERY,
+          "template-tags": {
+            filter: {
+              id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
+              name: "filter",
+              "display-name": "Filter",
+              type: "dimension",
+              dimension: ["field-id", ORDERS.CREATED_AT],
+              "widget-type": "date/month-year",
+              default: null,
+            },
+          },
+        },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+    cy.findByText(/Open Editor/i).click();
+    cy.findByText(/Open Editor/i).should("not.exist");
+    // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
+    // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
+    cy.get(".ace_content")
+      .click()
+      .type("{selectall}{backspace}", { delay: 50 });
+    cy.get(".ace_content")
+      .click()
+      .type("{selectall}{backspace}SELECT * FROM ORDERS");
+    cy.findByText("Save").click();
+    modal().within(() => {
+      cy.findByText("Save").click();
+    });
+
+    cy.reload();
+    cy.get(".Icon-pencil").click();
+    cy.findByText(/View revision history/i).click();
+    cy.findByText(/Revert/i).click(); // Revert to the first revision
+    cy.findByText(/Open Editor/i).click();
+
+    cy.log("**Reported failing on v0.35.3**");
+    cy.findByText(ORIGINAL_QUERY);
+    // Filter dropdown field
+    cy.get("fieldset").contains("Filter");
+  });
 });
