@@ -414,6 +414,40 @@ describe("scenarios > collection_defaults", () => {
         });
     });
 
+    it.skip("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
+      cy.visit("/collection/root");
+      cy.log("**Move 'Second collection' to the root");
+      openDropdownFor("First collection");
+      cy.findByText("Second collection").click();
+      cy.get(".Icon-pencil").click();
+      cy.findByText("Edit this collection").click();
+      modal().within(() => {
+        // Open the select dropdown menu
+        cy.findByText("First collection").click();
+      });
+      popover().within(() => {
+        cy.findAllByText("Our analytics")
+          .last()
+          .click();
+      });
+      // Make sure the correct value is selected
+      cy.get(".AdminSelect-content").contains("Our analytics");
+      cy.findByText("Update")
+        .closest(".Button")
+        .should("not.be.disabled")
+        .click();
+      // Make sure modal closed
+      cy.findByText("Update").should("not.exist");
+
+      cy.get("[class*=CollectionSidebar]")
+        .as("sidebar")
+        .within(() => {
+          // This click just gives us time for an UI to update - nothing else worked (not even waiting for XHR)
+          cy.findByText("Second collection").click();
+          cy.findAllByText("Second collection").should("have.length", 1);
+        });
+    });
+
     it.skip("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
       cy.request("POST", "/api/collection", {
         name: "foo:bar",
