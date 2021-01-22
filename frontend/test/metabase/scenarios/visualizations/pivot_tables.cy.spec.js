@@ -311,7 +311,8 @@ describe("scenarios > visualizations > pivot tables", () => {
           assertOnPivotFields();
         });
 
-        it("should display pivot table in an embed preview", () => {
+        // Skipped to avoid flake
+        it.skip("should display pivot table in an embed preview", () => {
           cy.findByText(
             /Embed this (question|dashboard) in an application/,
           ).click();
