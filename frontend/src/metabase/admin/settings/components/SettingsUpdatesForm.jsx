@@ -5,7 +5,7 @@ import { Flex, Box } from "grid-styled";
 import MetabaseSettings from "metabase/lib/settings";
 import SettingsSetting from "./SettingsSetting";
 
-import ExternalLink from "metabase/components/ExternalLink";
+import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 
@@ -140,14 +140,8 @@ function HostingCTA() {
           <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
         </div>
       </Flex>
-      <Box>
-        <ExternalLink
-          className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 mr1 text-bold flex align-center"
-          href={"https://www.metabase.com/migrate/from/selfhosted"}
-          target="_blank"
-        >
-          {t`Learn more`}
-        </ExternalLink>
+      <Box className="pr1">
+        <HostingInfoLink text={t`Learn more`} />
       </Box>
     </Flex>
   );

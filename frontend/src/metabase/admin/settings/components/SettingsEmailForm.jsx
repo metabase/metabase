@@ -5,9 +5,7 @@ import { t } from "ttag";
 import { Flex } from "grid-styled";
 
 import Button from "metabase/components/Button";
-import ExternalLink from "metabase/components/ExternalLink";
-import Icon from "metabase/components/Icon";
-import Text from "metabase/components/type/Text";
+import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
 import SettingsBatchForm from "./SettingsBatchForm";
 
@@ -100,24 +98,7 @@ export default class SettingsEmailForm extends Component {
             ];
           }}
         />
-        <div
-          className="border-left border-brand text-brand px4"
-          style={{ height: 172 }}
-        >
-          <Icon name="cloud" size={48} style={{ color: "#B9D8F4" }} />
-          <div className="pb3">
-            <Text className="text-brand mb0">{t`Have your email configured for you.`}</Text>
-            <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
-          </div>
-
-          <ExternalLink
-            className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 text-bold text-center"
-            href={"https://www.metabase.com/migrate/from/selfhosted"}
-            target="_blank"
-          >
-            {t`Learn more`}
-          </ExternalLink>
-        </div>
+        <MarginHostingCTA tagline={t`Have your email configured for you.`} />
       </Flex>
     );
   }
