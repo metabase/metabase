@@ -10,6 +10,7 @@ import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginH
 import SettingsBatchForm from "./SettingsBatchForm";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
 
 import {
   sendTestEmail,
@@ -22,6 +23,10 @@ const SEND_TEST_BUTTON_STATES = {
   working: t`Sending...`,
   success: t`Sent!`,
 };
+
+const isHosted = MetabaseSettings.get("site-url")
+  .toLowerCase()
+  .includes("metabaseapp.com");
 
 @connect(
   null,
@@ -98,7 +103,9 @@ export default class SettingsEmailForm extends Component {
             ];
           }}
         />
-        <MarginHostingCTA tagline={t`Have your email configured for you.`} />
+        {!isHosted && (
+          <MarginHostingCTA tagline={t`Have your email configured for you.`} />
+        )}
       </Flex>
     );
   }

@@ -4,10 +4,15 @@ import { Flex } from "grid-styled";
 import { SetupApi } from "metabase/services";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
+import MetabaseSettings from "metabase/lib/settings";
 
 import Icon from "metabase/components/Icon";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
+
+const isHosted = MetabaseSettings.get("site-url")
+  .toLowerCase()
+  .includes("metabaseapp.com");
 
 const TaskList = ({ tasks }) => (
   <ol>
@@ -128,7 +133,9 @@ export default class SettingsSetupList extends Component {
           </LoadingAndErrorWrapper>
         </div>
 
-        <MarginHostingCTA tagline={t`Have your server maintained for you.`} />
+        {!isHosted && (
+          <MarginHostingCTA tagline={t`Have your server maintained for you.`} />
+        )}
       </Flex>
     );
   }
