@@ -170,17 +170,12 @@
     :type     :native
     :native   ~inner-native-query})
 
-(defn do-run-mbql-query [query]
-  (try
-    (qp/process-query query)
-    (catch Throwable e
-      (throw (ex-info "Error running MBQL query" {:query query} e)))))
-
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."
   {:style/indent 1}
   [table-name & [query]]
-  `(do-run-mbql-query (mbql-query ~table-name ~(or query {}))))
+  `(qp/process-query
+     (mbql-query ~table-name ~(or query {}))))
 
 (defn format-name
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the driver's
