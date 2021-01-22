@@ -274,7 +274,7 @@ export default class PivotTable extends Component {
         <div
           key={key}
           style={style}
-          className={cx("px1 flex align-center", {
+          className={cx("px1 flex align-center cursor-pointer", {
             "border-bottom border-medium": !hasChildren,
           })}
           onClick={this.getCellClickHander(clicked)}
@@ -430,10 +430,6 @@ function RowToggleIcon({
   const toggle = isCollapsed
     ? value => value.filter(v => v !== rowRef)
     : value => value.concat(rowRef);
-  const update = () => {
-    const updatedValue = updateIn(setting, ["value"], toggle);
-    updateSettings({ [COLLAPSED_ROWS_SETTING]: updatedValue });
-  };
   return (
     <div
       className={cx(
@@ -441,7 +437,11 @@ function RowToggleIcon({
         isCollapsed ? "bg-light" : "bg-medium",
       )}
       style={{ padding: "4px", borderRadius: "4px" }}
-      onClick={update}
+      onClick={e => {
+        e.stopPropagation();
+        const updatedValue = updateIn(setting, ["value"], toggle);
+        updateSettings({ [COLLAPSED_ROWS_SETTING]: updatedValue });
+      }}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
     </div>
