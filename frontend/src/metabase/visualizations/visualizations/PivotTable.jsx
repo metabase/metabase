@@ -490,7 +490,9 @@ function RowToggleIcon({
       style={{ padding: "4px", borderRadius: "4px" }}
       onClick={e => {
         e.stopPropagation();
-        updateSettings({ [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle) });
+        updateSettings({
+          [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle),
+        });
       }}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
