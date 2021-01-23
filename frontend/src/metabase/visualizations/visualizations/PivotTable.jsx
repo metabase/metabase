@@ -221,6 +221,7 @@ export default class PivotTable extends Component {
         hasSubtotal,
         depth,
         path,
+        clicked,
       } = leftHeaderItems[index];
       return (
         <div
@@ -235,6 +236,7 @@ export default class PivotTable extends Component {
             value={value}
             isSubtotal={isSubtotal}
             isGrandTotal={isGrandTotal}
+            onClick={this.getCellClickHander(clicked)}
             icon={
               (isSubtotal || hasSubtotal) && (
                 <RowToggleIcon
@@ -269,14 +271,15 @@ export default class PivotTable extends Component {
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
 
     const topHeaderCellRenderer = ({ index, key, style }) => {
-      const { value, hasChildren } = topHeaderItems[index];
+      const { value, hasChildren, clicked } = topHeaderItems[index];
       return (
         <div
           key={key}
           style={style}
-          className={cx("px1 flex align-center", {
+          className={cx("px1 flex align-center cursor-pointer", {
             "border-bottom border-medium": !hasChildren,
           })}
+          onClick={this.getCellClickHander(clicked)}
         >
           <div
             className={cx("flex flex-full full-height align-center", {
@@ -316,14 +319,7 @@ export default class PivotTable extends Component {
               isSubtotal={isSubtotal}
               isGrandTotal={isGrandTotal}
               isBody
-              onClick={
-                clicked &&
-                (() =>
-                  this.props.onVisualizationClick({
-                    ...clicked,
-                    settings: this.props.settings,
-                  }))
-              }
+              onClick={this.getCellClickHander(clicked)}
             />
           ),
         )}
@@ -416,6 +412,18 @@ export default class PivotTable extends Component {
       </div>
     );
   }
+
+  getCellClickHander(clicked) {
+    if (!clicked) {
+      return null;
+    }
+    return e =>
+      this.props.onVisualizationClick({
+        ...clicked,
+        event: e.nativeEvent,
+        settings: this.props.settings,
+      });
+  }
 }
 
 function RowToggleIcon({
@@ -473,10 +481,6 @@ function RowToggleIcon({
       : // open row or column
         settingValue => settingValue.concat(ref);
 
-  const update = () => {
-    const updatedValue = updateIn(setting, ["value"], toggle);
-    updateSettings({ [COLLAPSED_ROWS_SETTING]: updatedValue });
-  };
   return (
     <div
       className={cx(
@@ -484,7 +488,12 @@ function RowToggleIcon({
         isCollapsed ? "bg-light" : "bg-medium",
       )}
       style={{ padding: "4px", borderRadius: "4px" }}
-      onClick={update}
+      onClick={e => {
+        e.stopPropagation();
+        updateSettings({
+          [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle),
+        });
+      }}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
     </div>
