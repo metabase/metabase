@@ -9,7 +9,7 @@ import type {
   ClickActionProps,
 } from "metabase-types/types/Visualization";
 
-const BLACKLIST_TYPES = [
+const DENYLIST_TYPES = [
   TYPE.PK,
   TYPE.SerializedJSON,
   TYPE.Description,
@@ -23,7 +23,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     clicked.value !== undefined ||
     clicked.column.source !== "fields" ||
     // $FlowFixMe: flow thinks `clicked` or `clicked.column` may be null even though we checked it above
-    _.any(BLACKLIST_TYPES, t => isa(clicked.column.special_type, t))
+    _.any(DENYLIST_TYPES, t => isa(clicked.column.special_type, t))
   ) {
     return [];
   }

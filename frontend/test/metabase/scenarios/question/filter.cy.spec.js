@@ -448,7 +448,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText(AGGREGATED_FILTER);
   });
 
-  it.skip("in a simple question should display popup for custom expression options (metabase#14341)", () => {
+  it("in a simple question should display popup for custom expression options (metabase#14341)", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();

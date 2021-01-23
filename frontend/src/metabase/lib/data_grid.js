@@ -146,6 +146,7 @@ export function multiLevelPivot(
     topHeaderItems,
     rowCount: rowIndex.length,
     columnCount: columnIndex.length,
+    rowIndex,
     getRowSection,
   };
 }
@@ -329,7 +330,11 @@ function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
   for (const value of indexes.map(index => row[index])) {
     prefix.push(value);
     let seenValue = currentLevelSeenValues.find(d => d.value === value);
-    const isCollapsed = collapsedSubtotals.includes(JSON.stringify(prefix));
+    const isCollapsed =
+      // the specific path is collapsed
+      collapsedSubtotals.includes(JSON.stringify(prefix)) ||
+      // the entire column is collapsed
+      collapsedSubtotals.includes(JSON.stringify(prefix.length));
     if (seenValue === undefined) {
       seenValue = { value, children: [], isCollapsed };
       currentLevelSeenValues.push(seenValue);

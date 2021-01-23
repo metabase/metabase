@@ -20,6 +20,7 @@ export const getDashboardActions = (
     isEmpty = false,
     isFullscreen,
     isNightMode,
+    isPublic = false,
     onNightModeChange,
     onFullscreenChange,
     refreshPeriod,
@@ -40,7 +41,7 @@ export const getDashboardActions = (
   */
   const canShareDashboard = Object.keys(dashcardData).length > 0;
 
-  if (!isEditing && !isEmpty) {
+  if (!isEditing && !isEmpty && !isPublic) {
     const extraButtonClassNames =
       "bg-brand-hover text-white-hover py2 px3 text-bold block cursor-pointer";
 

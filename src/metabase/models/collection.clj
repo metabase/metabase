@@ -1022,7 +1022,7 @@
                      (filter all-visible-ids ids)
                      (concat ids [(:id collection)])
                      (interpose :children ids))]
-          (assoc-in m path collection)))
+          (update-in m path merge collection)))
        ;; 3. Once we've build the entire tree structure, go in and convert each ID->Collection map into a flat sequence,
        ;; sorted by the lowercased Collection name. Do this recursively for the `:children` of each Collection e.g.
        ;;
@@ -1035,5 +1035,6 @@
         (let [vs (for [v (vals m)]
                    (cond-> v
                      (:children v) (update :children ->tree)))]
-          (sort-by (comp (fnil u/lower-case-en "") :name) vs))))
+          (sort-by (fn [{coll-name :name, coll-id :id}]
+                     [((fnil u/lower-case-en "") coll-name) coll-id]) vs))))
      collections)))
