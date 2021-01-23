@@ -171,6 +171,22 @@ describe("scenarios > visualizations > pivot tables", () => {
       .find(".Icon-add")
       .click();
     cy.findByText("215"); // ...and it's back!
+
+    // collapse the column
+    cy.findByText("Product → Category")
+      .parent()
+      .find(".Icon-dash")
+      .click();
+    cy.findByText("215").should("not.exist"); // value is hidden
+    cy.findByText("294").should("not.exist"); // value in another section is also hidden
+
+    // uncollapse Doohickey
+    cy.findByText("Totals for Doohickey")
+      .parent()
+      .find(".Icon-add")
+      .click();
+    cy.findByText("215"); // value in doohickey is visible
+    cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
   it("should display an error message for native queries", () => {
