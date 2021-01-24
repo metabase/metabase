@@ -118,7 +118,7 @@
 (def ^:private ^:dynamic ^Integer *query-execution-delay-ms* 10)
 
 (defn- test-query [query-kvs]
-  (merge {:cache-ttl 60, :query :abc} query-kvs))
+  (merge {:cache-ttl 60, :query :abc, :ignore-cache false} query-kvs))
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels
@@ -232,18 +232,16 @@
     (with-mock-cache [save-chan]
       (run-query)
       (mt/wait-for-result save-chan)
-      (binding [cache/*ignore-cached-results* true]
-        (is (= :not-cached
-               (run-query)))))))
+      (is (= :not-cached
+              (run-query :ignore-cache true))))))
 
 (deftest ignore-cached-results-should-still-save-test
   (testing "...but if it's set those results should still be cached for next time."
     (with-mock-cache [save-chan]
-      (binding [cache/*ignore-cached-results* true]
-        (is (= true
-               (cacheable?)))
-        (run-query)
-        (mt/wait-for-result save-chan))
+      (is (= true
+              (cacheable?)))
+      (run-query :ignore-cache true)
+      (mt/wait-for-result save-chan)
       (is (= :cached
              (run-query))))))
 
@@ -405,16 +403,16 @@
 (deftest caching-big-resultsets
   (testing "Make sure we can save large result sets without tripping over internal async buffers"
     (is (= 10000 (count (transduce identity
-                                   (#'cache/save-results-xform 0 {} (byte 0) conj)
+                                   (#'cache/save-results-xform 0 {} (byte 0) false conj)
                                    (repeat 10000 [1]))))))
   (testing "Make sure we don't block somewhere if we decide not to save results"
     (is (= 10000 (count (transduce identity
-                                   (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) conj)
+                                   (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) false conj)
                                    (repeat 10000 [1]))))))
   (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
     (let [max-bytes (* (public-settings/query-caching-max-kb) 1024)]
       (is (= max-bytes (count (transduce identity
-                                         (#'cache/save-results-xform 0 {} (byte 0) conj)
+                                         (#'cache/save-results-xform 0 {} (byte 0) false conj)
                                          (repeat max-bytes [1]))))))))
 
 (deftest perms-checks-should-still-apply-test

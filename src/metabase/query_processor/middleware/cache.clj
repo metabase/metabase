@@ -88,7 +88,7 @@
 
         (log/error (trs "Cannot cache results: expected byte array, got {0}" (class x)))))))
 
-(defn- save-results-xform [start-time metadata query-hash rf]
+(defn- save-results-xform [start-time metadata query-hash ignore-cache rf]
   (let [{:keys [in-chan out-chan]} (impl/serialize-async)
         has-rows?                  (volatile! false)]
     (a/put! in-chan (assoc metadata
@@ -106,7 +106,7 @@
          (log/info (trs "Query took {0} to run; minimum for cache eligibility is {1}"
                         (u/format-milliseconds duration-ms) (u/format-milliseconds (min-duration-ms))))
          (when (and @has-rows?
-                    (> duration-ms (min-duration-ms)))
+                    (or (> duration-ms (min-duration-ms)) ignore-cache))
            (cache-results-async! query-hash out-chan)))
        (rf result))
 
@@ -148,9 +148,9 @@
 
 (defn- maybe-reduce-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
-  [query-hash max-age-seconds rff context]
+  [query-hash max-age-seconds rff context ignore-cache]
   (try
-    (or (when-not *ignore-cached-results*
+    (or (when-not ignore-cache
           (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
                       (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
           (i/with-cached-results *backend* query-hash max-age-seconds [is]
@@ -176,17 +176,17 @@
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (defn- run-query-with-cache
-  [qp {:keys [cache-ttl], :as query} rff context]
+  [qp {:keys [cache-ttl ignore-cache], :as query} rff context]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)
-        result     (maybe-reduce-cached-results query-hash cache-ttl rff context)]
+        result     (maybe-reduce-cached-results query-hash cache-ttl rff context ignore-cache)]
     (when (= result ::miss)
       (let [start-time-ms (System/currentTimeMillis)]
         (log/trace "Running query and saving cached results (if eligible)...")
         (qp query
             (fn [metadata]
-              (save-results-xform start-time-ms metadata query-hash (rff metadata)))
+              (save-results-xform start-time-ms metadata query-hash ignore-cache (rff metadata)))
             context)))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-ttl]}]

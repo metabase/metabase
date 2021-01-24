@@ -600,9 +600,10 @@
   be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
   not met before returning the `StreamingResponse`."
   [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware run]
+   & {:keys [parameters constraints context dashboard-id middleware run ignore-cache]
       :or   {constraints constraints/default-query-constraints
              context     :question
+             ignore-cache false
              ;; param `run` can be used to control how the query is ran, e.g. if you need to
              ;; customize the `context` passed to the QP
              run         (^:once fn* [query info]
@@ -611,7 +612,8 @@
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)
-                         :async? true)
+                         :async? true
+                         :ignore-cache ignore-cache)
                   (assoc-in [:middleware :js-int-to-string?] true))
         info  {:executed-by  api/*current-user-id*
                :context      context
@@ -625,7 +627,7 @@
   [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
   (binding [cache/*ignore-cached-results* ignore_cache]
-    (run-query-for-card-async card-id :api, :parameters parameters)))
+    (run-query-for-card-async card-id :api, :parameters parameters :ignore-cache ignore_cache)))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format. Note that this
@@ -633,15 +635,15 @@
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
-  (binding [cache/*ignore-cached-results* true]
-    (run-query-for-card-async
-     card-id export-format
-     :parameters  (json/parse-string parameters keyword)
-     :constraints nil
-     :context     (dataset-api/export-format->context export-format)
-     :middleware  {:skip-results-metadata? true
-                   :format-rows?           false
-                   :js-int-to-string?      false})))
+  (run-query-for-card-async
+    card-id export-format
+    :parameters  (json/parse-string parameters keyword)
+    :constraints nil
+    :context     (dataset-api/export-format->context export-format)
+    :middleware  {:skip-results-metadata? true
+                  :format-rows?           false
+                  :js-int-to-string?      false}
+    :ignore-cache false))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
