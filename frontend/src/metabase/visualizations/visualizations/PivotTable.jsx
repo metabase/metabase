@@ -118,6 +118,12 @@ export default class PivotTable extends Component {
       getProps: ([{ data }], settings) => ({
         partitions,
         columns: data == null ? [] : data.cols,
+        onChangeTotalsVisibility(column, visibility) {
+          console.log("Change totals visibility", column, visibility); // TODO
+        },
+        onChangeSortOrder(column, direction) {
+          console.log("Change sort order", column, direction); // TODO
+        },
       }),
       getValue: ([{ data, card }], settings = {}) => {
         const storedValue = settings[COLUMN_SPLIT_SETTING];

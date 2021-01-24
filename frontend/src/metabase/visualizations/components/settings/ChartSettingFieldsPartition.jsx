@@ -12,6 +12,8 @@ import Grabber from "metabase/components/Grabber";
 import Text from "metabase/components/type/Text";
 import Toggle from "metabase/components/Toggle";
 
+import { keyForColumn } from "metabase/lib/dataset";
+
 class ShowTotalsOption extends React.Component {
   constructor(props) {
     super(props);
@@ -20,6 +22,7 @@ class ShowTotalsOption extends React.Component {
   toggleTotals = () => {
     const { showTotals } = this.state;
     this.setState({ showTotals: !showTotals });
+    this.props.onChangeTotalsVisibility(!showTotals);
   };
   render() {
     const { showTotals } = this.state;
@@ -33,10 +36,11 @@ class ShowTotalsOption extends React.Component {
 }
 class SortIcon extends React.Component {
   render() {
-    const { name } = this.props;
+    const { name, onClick } = this.props;
     return (
       <Icon
         name={name}
+        onClick={onClick}
         size={16}
         className="sort cursor-pointer text-medium text-brand-hover"
       />
@@ -45,13 +49,19 @@ class SortIcon extends React.Component {
 }
 
 class SortOrderOption extends React.Component {
+  handleSortUp = () => {
+    this.props.onChangeSortOrder("ascending");
+  };
+  handleSortDown = () => {
+    this.props.onChangeSortOrder("descending");
+  };
   render() {
     return (
       <Flex pt={1} justifyContent="space-between" alignItems="center">
         <Text>{t`Sort order`}</Text>
         <div>
-          <SortIcon name="arrow_up" />
-          <SortIcon name="arrow_down" />
+          <SortIcon name="arrow_up" onClick={this.handleSortUp} />
+          <SortIcon name="arrow_down" onClick={this.handleSortDown} />
         </div>
       </Flex>
     );
@@ -63,7 +73,10 @@ class FormattingOptions extends React.Component {
     return (
       <Flex pt={1} justifyContent="space-between" alignItems="center">
         <Text>{t`Formatting`}</Text>
-        <Text className="text-brand text-bold cursor-pointer">{t`See options…`}</Text>
+        <Text
+          onClick={this.props.onEdit}
+          className="text-brand text-bold cursor-pointer"
+        >{t`See options…`}</Text>
       </Flex>
     );
   }
@@ -76,11 +89,13 @@ class ColumnOptionsPanel extends React.Component {
       <div>
         {partitionName !== "values" && (
           <div>
-            <ShowTotalsOption />
-            <SortOrderOption />
+            <ShowTotalsOption
+              onChangeTotalsVisibility={this.props.onChangeTotalsVisibility}
+            />
+            <SortOrderOption onChangeSortOrder={this.props.onChangeSortOrder} />
           </div>
         )}
-        <FormattingOptions />
+        <FormattingOptions onEdit={this.props.onEditFormatting} />
       </div>
     );
   }
@@ -92,6 +107,27 @@ class ChartSettingFieldsPartition extends React.Component {
     this.state = { displayedValue: null };
   }
 
+  handleChangeTotalsVisibility = (column, totalsVisibility) => {
+    const { onChangeTotalsVisibility } = this.props;
+    onChangeTotalsVisibility &&
+      onChangeTotalsVisibility(keyForColumn(column), totalsVisibility);
+  };
+
+  handleChangeSortOrder = (column, direction) => {
+    const { onChangeSortOrder } = this.props;
+    onChangeSortOrder && onChangeSortOrder(keyForColumn(column), direction);
+  };
+
+  handleEditFormatting = column => {
+    if (column) {
+      this.props.onShowWidget({
+        id: "column_settings",
+        props: {
+          initialKey: keyForColumn(column),
+        },
+      });
+    }
+  };
   updateDisplayedValue = displayedValue =>
     this.setState({
       displayedValue: _.mapObject(displayedValue, cols =>
@@ -126,6 +162,9 @@ class ChartSettingFieldsPartition extends React.Component {
             partitionName={name}
             columns={value[name]}
             value={value}
+            onChangeTotalsVisibility={this.handleChangeTotalsVisibility}
+            onChangeSortOrder={this.handleChangeSortOrder}
+            onEditFormatting={this.handleEditFormatting}
             updateDisplayedValue={this.updateDisplayedValue}
             commitDisplayedValue={this.commitDisplayedValue}
           />
@@ -153,6 +192,9 @@ class Partition extends React.Component {
       columns = [],
       partitionName,
       columnFilter,
+      onChangeTotalsVisibility,
+      onChangeSortOrder,
+      onEditFormatting,
       updateDisplayedValue,
       commitDisplayedValue,
       value,
@@ -178,6 +220,9 @@ class Partition extends React.Component {
               index={index}
               columnFilter={columnFilter}
               value={value}
+              onChangeTotalsVisibility={onChangeTotalsVisibility}
+              onChangeSortOrder={onChangeSortOrder}
+              onEditFormatting={onEditFormatting}
               updateDisplayedValue={updateDisplayedValue}
               commitDisplayedValue={commitDisplayedValue}
             />
@@ -289,6 +334,19 @@ class Column extends React.Component {
     const { expanded } = this.state;
     this.setState({ expanded: !expanded });
   };
+  handleChangeTotalsVisibility = totalsVisibility => {
+    const { column, onChangeTotalsVisibility } = this.props;
+    onChangeTotalsVisibility &&
+      onChangeTotalsVisibility(column, totalsVisibility);
+  };
+  handleChangeSortOrder = direction => {
+    const { column, onChangeSortOrder } = this.props;
+    onChangeSortOrder && onChangeSortOrder(column, direction);
+  };
+  handleEditFormatting = () => {
+    const { column, onEditFormatting } = this.props;
+    onEditFormatting && onEditFormatting(column);
+  };
   render() {
     const {
       column,
@@ -335,6 +393,9 @@ class Column extends React.Component {
             <ColumnOptionsPanel
               className="text-medium"
               partitionName={partitionName}
+              onChangeTotalsVisibility={this.handleChangeTotalsVisibility}
+              onChangeSortOrder={this.handleChangeSortOrder}
+              onEditFormatting={this.handleEditFormatting}
             />
           )}
         </div>,
