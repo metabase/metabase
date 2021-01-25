@@ -34,6 +34,8 @@ describe("ProfileLink", () => {
         OPTIONS.forEach(title => {
           screen.getByText(title);
         });
+
+        expect(screen.getAllByRole("listitem").length).toEqual(OPTIONS.length);
       });
     });
 
@@ -48,6 +50,10 @@ describe("ProfileLink", () => {
         ADMIN_OPTIONS.forEach(title => {
           screen.getByText(title);
         });
+
+        expect(screen.getAllByRole("listitem").length).toEqual(
+          ADMIN_OPTIONS.length,
+        );
       });
     });
   });
