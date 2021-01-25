@@ -78,7 +78,7 @@
 (def ^:private ^:const aes256-tag-length 32)
 (def ^:private ^:const aes256-block-size 16)
 
-(defn- possibly-encrypted-string?
+(defn possibly-encrypted-string?
   "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64
   encoded string of the correct length. The correct length is determined by the cipher's type tag and the cipher's
   block size (AES+CBC). To compute this, we need the number of bytes in the input, subtract the bytes used by the
