@@ -26,7 +26,7 @@ Steps:
 
 1. Clone Metabase repository
 
-2. Launch VS Code and open the checkout repository
+2. Launch VS Code and open your cloned Metabase repository
 
 3. From the _View_ menu, choose _Command Palette..._ and then find _Remote-Container: Reopen in Container_. (VS Code may also prompt you to do this with an "Open in container" popup).
 **Note**: VS Code will create the container for the first time and it may take some time. Subsequent loads should be much faster. 
