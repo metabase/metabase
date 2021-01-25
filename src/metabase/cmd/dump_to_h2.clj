@@ -26,12 +26,14 @@
   ([h2-filename]
    (dump-to-h2! h2-filename nil))
 
-  ([h2-filename {:keys [keep-existing?]
-                 :or   {keep-existing? false}}]
+  ([h2-filename {:keys [keep-existing? dump-plaintext?]
+                 :or   {keep-existing? false dump-plaintext? false}}]
    (let [h2-filename  (or h2-filename "metabase_dump.h2")
          h2-jdbc-spec (copy.h2/h2-jdbc-spec h2-filename)]
      (println "Dumping from configured Metabase db to H2 file" h2-filename)
      (when-not keep-existing?
        (copy.h2/delete-existing-h2-database-files! h2-filename))
      (copy/copy!  (mdb.conn/db-type) (mdb.conn/jdbc-spec) :h2 h2-jdbc-spec)
+     (when dump-plaintext?
+       (copy/overwrite-encrypted-fields-to-plaintext! (mdb.conn/db-type) (mdb.conn/jdbc-spec) :h2 h2-jdbc-spec))
      (println "Dump complete"))))
