@@ -78,7 +78,7 @@
 
 (derive :type/PostgresEnum :type/Text)
 
-(derive :type/IPAddressString :type/Text)
+(derive :type/BinaryIPAddress :type/Text)
 
 ;;; DateTime Types
 

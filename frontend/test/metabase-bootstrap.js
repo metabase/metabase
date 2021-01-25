@@ -112,7 +112,7 @@ window.MetabaseBootstrap = {
     "type/UNIXTimestamp": ["type/Integer", "type/Instant"],
     "type/Enum": ["type/Category", "type/*"],
     "type/Binary": ["type/*"],
-    "type/IPAddressString": ["type/String"],
+    "type/BinaryIPAddress": ["type/String"],
   },
   version: {
     tag: "v1",

@@ -64,7 +64,7 @@
             (tt/with-temp Database [database {:engine "mysql", :details details}]
               (sync/sync-database! database)
               (mt/with-db database
-                (db/update! Field (mt/id "network" :ip) :special_type :type/IPAddressString))
+                (db/update! Field (mt/id "network" :ip) :special_type :type/BinaryIPAddress))
               (mt/with-db database
                 (is (= #{["2001:4860:4860::8888"] ["67.51.210.110"]}
                        (set

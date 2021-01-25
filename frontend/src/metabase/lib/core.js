@@ -310,8 +310,8 @@ export const field_special_types = [
     section: t`Other`,
   },
   {
-    id: TYPE.IPAddressString,
-    name: t`IP Address String`,
+    id: TYPE.BinaryIPAddress,
+    name: t`Binary IP Address as String`,
     section: t`Other`,
   }
 ];

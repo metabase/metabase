@@ -166,7 +166,7 @@
   [_driver _special_type expr]
   (hx/->datetime expr))
 
-(defmethod sql.qp/cast-ip-string [:mysql :type/IPAddressString]
+(defmethod sql.qp/cast-ip-string [:mysql :type/BinaryIPAddress]
   [_driver _special_type expr]
   (hsql/call :inet6_ntoa expr))
 

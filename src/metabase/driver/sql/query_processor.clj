@@ -290,7 +290,7 @@
                                                                                      (special-type->unix-timestamp-unit (:special_type field))
                                                                                      field-identifier)
     [:type/Text             (:isa? :type/TemporalString)]  (cast-temporal-string driver (:special_type field) field-identifier)
-    [:type/Binary           (:isa? :type/IPAddressString)] (cast-ip-string driver (:special_type field) field-identifier)
+    [:type/Binary           (:isa? :type/BinaryIPAddress)] (cast-ip-string driver (:special_type field) field-identifier)
     :else field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
