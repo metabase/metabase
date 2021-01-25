@@ -50,7 +50,10 @@ export function maybeUsePivotEndpoint(
     return ref;
   }
 
-  const question = new Question(card, metadata || new Metadata());
+  const question = new Question(
+    card,
+    metadata || new Metadata({ databases: {} }),
+  );
 
   function wrap(api) {
     return (params: ?Data, ...rest: any) => {
@@ -75,7 +78,7 @@ export function maybeUsePivotEndpoint(
     card.display !== "pivot" ||
     !question.isStructured() ||
     // if we have metadata for the db, check if it supports pivots
-    !(question.database() && question.database().supportsPivots())
+    (question.database() && !question.database().supportsPivots())
   ) {
     return api;
   }
