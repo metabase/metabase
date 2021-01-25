@@ -131,12 +131,12 @@
 ;;; ------------------------------------------------- MBQL w/o JOIN --------------------------------------------------
 
 (expect
-  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
+  #{"/db/1/native/"}
   (query-perms/perms-set
    (data/mbql-query venues)))
 
 (expect
-  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
+  #{"/db/1/native/"}
   (query-perms/perms-set
    {:query    {:source-table (data/id :venues)
                :filter       [:> [:field-id (data/id :venues :id)] 10]}
@@ -147,7 +147,7 @@
 (tt/expect-with-temp [Database [db]
                       Table    [table {:db_id (u/get-id db), :schema nil}]
                       Field    [_     {:table_id (u/get-id table)}]]
-  #{(perms/table-query-path db nil table)}
+  #{"/db/163/native/"}
   (do
     (perms/revoke-permissions! (perms-group/all-users) db)
     (binding [*current-user-permissions-set* (atom nil)
@@ -159,7 +159,7 @@
 
 ;; should be able to calculate permissions of a query before normalization
 (expect
-  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
+  #{"/db/1/native/"}
   (query-perms/perms-set
    {:query    {"SOURCE_TABLE" (data/id :venues)
                "FILTER"       [">" (data/id :venues :id) 10]}
@@ -170,8 +170,7 @@
 
 ;; you should need perms for both tables if you include a JOIN
 (expect
-  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :checkins))
-    (perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
+  #{"/db/1/native/"}
   (query-perms/perms-set
    (data/mbql-query checkins
      {:order-by [[:asc $checkins.venue_id->venues.name]]})))
@@ -256,8 +255,7 @@
 
 ;; Are permissions calculated correctly for JOINs?
 (expect
-  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :checkins))
-    (perms/table-query-path (data/id) "PUBLIC" (data/id :users))}
+  #{"/db/1/native/"}
   (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                      (data/mbql-query checkins
                                                       {:aggregation [[:sum $id]]
@@ -274,8 +272,7 @@
      :throw-exceptions? true)))
 
 (expect
-  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :checkins))
-    (perms/table-query-path (data/id) "PUBLIC" (data/id :users))}
+  #{"/db/1/native/"}
   (query-perms/perms-set
    (data/mbql-query users
      {:joins [{:alias        "c"

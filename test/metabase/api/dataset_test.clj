@@ -295,7 +295,7 @@
       (perms/revoke-permissions! (group/all-users) (mt/id))
       (perms/grant-permissions! (group/all-users) (mt/id) "schema_that_does_not_exist")
       (is (schema= {:status   (s/eq "failed")
-                    :error    (s/eq "You do not have permissions to run this query.")
+                    :error    (s/eq "Sorry, you do not have permission to access this database. See https://revolut.atlassian.net/wiki/x/Oe37Xg for more information.")
                     s/Keyword s/Any}
                    (mt/suppress-output
                     ((mt/user->client :rasta) :post "dataset"
@@ -330,7 +330,7 @@
             (perms/revoke-permissions! (group/all-users) (mt/id))
             (perms/grant-permissions! (group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
             (is (schema= {:permissions-error? (s/eq true)
-                          :message            (s/eq "You do not have permissions to run this query.")
+                          :message            (s/eq "Sorry, you do not have permission to access this database. See https://revolut.atlassian.net/wiki/x/Oe37Xg for more information.")
                           s/Any               s/Any}
                          ((mt/user->client :rasta) :post "dataset/native"
                           (mt/mbql-query venues

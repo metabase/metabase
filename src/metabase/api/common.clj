@@ -38,6 +38,9 @@
   "Delay to the set of permissions granted to the current user."
   (atom #{}))
 
+(def ^:dynamic *current-db-permissions-set*
+  "Delay to the set of db permissions granted to the current user."
+  (atom #{}))
 
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 

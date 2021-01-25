@@ -56,11 +56,11 @@
                (mt/mbql-query venues)
                {:object-perms? true, :native-perms? true})))))
     (testing "If you don't have MBQL permissions for the original query it should throw an error"
-      (is (schema= {:error (s/eq "You do not have permissions to run this query.")
+      (is (schema= {:error (s/eq "Sorry, you do not have permission to access this database. See https://revolut.atlassian.net/wiki/x/Oe37Xg for more information.")
                     s/Any  s/Any}
                    (query->native-with-user-perms
                     (mt/mbql-query venues)
-                    {:object-perms? false, :native-perms? true}))))))
+                    {:object-perms? false, :native-perms? false}))))))
 
 (deftest error-test
   (testing "If the query is bad in some way it should return a relevant error (?)"

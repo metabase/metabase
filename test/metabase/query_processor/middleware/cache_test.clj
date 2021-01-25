@@ -429,7 +429,7 @@
             (testing "Shouldn't be allowed to run a query if we don't have perms for it"
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"You do not have permissions to run this query"
+                   #"Sorry, you do not have permission to access this database."
                    (run-forbidden-query))))
             (testing "Run forbidden query as superuser to populate the cache"
               (session/with-current-user (mt/user->id :crowberto)
@@ -446,5 +446,5 @@
             (testing "Run query as regular user, should get perms Exception even though result is cached"
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"You do not have permissions to run this query"
+                   #"Sorry, you do not have permission to access this database."
                    (run-forbidden-query))))))))))

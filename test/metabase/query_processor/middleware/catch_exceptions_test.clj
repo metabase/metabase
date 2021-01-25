@@ -133,7 +133,13 @@
     (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
     (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                   "the query in the error response")
-      (is (schema= {:native (s/eq nil), :preprocessed (s/pred map?), s/Any s/Any}
+      (is (schema= {:status   (s/eq :failed)
+                    :class    (s/eq clojure.lang.ExceptionInfo)
+                    :error    (s/eq "Sorry, you do not have permission to access this database. See https://revolut.atlassian.net/wiki/x/Oe37Xg for more information.")
+                    :ex-data  {:required-permissions (s/eq #{"/db/184/native/"})
+                               :permissions-error?   (s/eq true)
+                               :type                 (s/eq error-type/missing-required-permissions)}
+                    s/Keyword             s/Any}
                    (mt/suppress-output
                      (test-users/with-test-user :rasta
                        (qp/process-userland-query

@@ -7,6 +7,7 @@ import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
+  ERROR_MESSAGE_DB_PERMISSION,
 } from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
@@ -130,6 +131,8 @@ export default class DashCard extends Component {
     } else if (errors.length > 0) {
       if (IS_EMBED_PREVIEW) {
         errorMessage = (errors[0] && errors[0].data) || ERROR_MESSAGE_GENERIC;
+      } else if (errors[0].includes("Sorry, you do not have permission to access this database")) {
+        errorMessage = ERROR_MESSAGE_DB_PERMISSION;
       } else {
         errorMessage = ERROR_MESSAGE_GENERIC;
       }

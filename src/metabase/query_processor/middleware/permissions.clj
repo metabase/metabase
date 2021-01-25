@@ -2,7 +2,7 @@
   "Middleware for checking that the current user has permissions to run the current query."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* *current-db-permissions-set*]]
             [metabase.models
              [card :refer [Card]]
              [interface :as mi]
@@ -28,10 +28,9 @@
                       {:type error-type/missing-required-permissions})))))
 
 (defn- perms-exception [required-perms]
-  (ex-info (tru "You do not have permissions to run this query.")
+  (ex-info (tru "Sorry, you do not have permission to access this database. See https://revolut.atlassian.net/wiki/x/Oe37Xg for more information.")
     {:type                 error-type/missing-required-permissions
      :required-permissions required-perms
-     :actual-permissions   @*current-user-permissions-set*
      :permissions-error?   true}))
 
 (declare check-query-permissions*)
@@ -50,13 +49,22 @@
     (doseq [{:keys [dataset_query]} (qp.resolve-referenced/tags-referenced-cards outer-query)]
       (check-query-permissions* dataset_query))))
 
+(s/defn ^:private check-data-access-perms
+  [outer-query]
+  (let [required-perms (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true)]
+    (log/tracef "Required data acscess perms: %s" (pr-str required-perms))
+    (when-not (perms/set-has-full-permissions-for-set? @*current-db-permissions-set* required-perms)
+      (throw (perms-exception required-perms)))))
+
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [{{:keys [card-id]} :info, :as outer-query} :- su/Map]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (if card-id
-      (check-card-read-perms card-id)
+      (do
+        (check-card-read-perms card-id)
+        (check-data-access-perms (assoc-in outer-query [:type] :view)))
       (check-ad-hoc-query-perms outer-query))))
 
 (defn check-query-permissions

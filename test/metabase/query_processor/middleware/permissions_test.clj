@@ -30,7 +30,7 @@
   [query]
   (do-with-rasta (fn [] (check-perms query))))
 
-(def ^:private perms-error-msg #"^You do not have permissions to run this query\.")
+(def ^:private perms-error-msg #"^Sorry, you do not have permission to access this database\.")
 
 (deftest native-query-perms-test
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms"
@@ -207,9 +207,8 @@
               api/*current-user-permissions-set* (delay #{})]
       (is (schema= {:status   (s/eq :failed)
                     :class    (s/eq clojure.lang.ExceptionInfo)
-                    :error    (s/eq "You do not have permissions to run this query.")
-                    :ex-data  {:required-permissions (s/eq #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))})
-                               :actual-permissions   (s/eq #{})
+                    :error    (s/eq "Sorry, you do not have permission to access this database. See https://revolut.atlassian.net/wiki/x/Oe37Xg for more information.")
+                    :ex-data  {:required-permissions (s/eq #{"/db/1/native/"})
                                :permissions-error?   (s/eq true)
                                :type                 (s/eq error-type/missing-required-permissions)
                                s/Keyword             s/Any}
@@ -225,7 +224,7 @@
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
-        (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+        (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id))
         (mt/with-temp Collection [collection]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (doseq [[card-1-query-type card-1-query] {"MBQL"   (mt/mbql-query venues

@@ -122,7 +122,7 @@
       ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
       (let [{:keys [query database]} (cond-> query
                                        (not already-preprocessed?) preprocess-query)]
-        (tables->permissions-path-set database (query->source-table-ids query) perms-opts)))
+        #{(perms/adhoc-native-query-path database)}))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it (except for superusers who get to see everything)
     (catch Throwable e
@@ -139,6 +139,7 @@
   (cond
     (empty? query)                   #{}
     (= (keyword query-type) :native) #{(perms/adhoc-native-query-path database)}
+    (= (keyword query-type) :view)   #{(perms/all-schemas-path database)}
     (= (keyword query-type) :query)  (mbql-permissions-path-set query perms-opts)
     :else                            (throw (Exception. (tru "Invalid query type: {0}" query-type)))))
 

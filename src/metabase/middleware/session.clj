@@ -8,7 +8,7 @@
              [config :as config]
              [db :as mdb]
              [util :as u]]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *current-db-permissions-set* *is-superuser?*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
@@ -256,6 +256,7 @@
             i18n/*user-locale*             user-locale
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
+            *current-db-permissions-set*   (delay (some-> metabase-user-id user/db-permissions-set))
             *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))]
     (thunk)))
 

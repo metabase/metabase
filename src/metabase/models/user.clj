@@ -282,3 +282,14 @@
                                   :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
                                            [:permissions :p]        [:= :p.group_id :pg.id]]
                                   :where  [:= :pgm.user_id user-id]}))))))
+
+(defn db-permissions-set
+  "Return a set of db permissions object paths that `user-or-id` has been granted access to. (1 DB Calls)"
+  [user-or-id]
+  (set (when-let [user-id (u/get-id user-or-id)]
+          ;; include the other Perms entries for any Group this User is in (1 DB Call)
+         (map :object (db/query {:select [:p.object]
+                                 :from   [[:permissions_group_membership :pgm]]
+                                 :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
+                                          [:permissions :p]        [:= :p.group_id :pg.id]]
+                                 :where  [:= :pgm.user_id user-id]})))))
