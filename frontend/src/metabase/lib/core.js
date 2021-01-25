@@ -313,7 +313,7 @@ export const field_special_types = [
     id: TYPE.BinaryIPAddress,
     name: t`Binary IP Address as String`,
     section: t`Other`,
-  }
+  },
 ];
 
 export const field_special_types_map = field_special_types.reduce(
