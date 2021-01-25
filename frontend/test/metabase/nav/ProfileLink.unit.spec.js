@@ -1,10 +1,19 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
+import MetabaseSettings from "metabase/lib/settings";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
 describe("ProfileLink", () => {
   describe("options", () => {
+    beforeEach(() => {
+      jest.spyOn(MetabaseSettings, "isHosted");
+      MetabaseSettings.isHosted = jest.fn(() => false);
+    });
+
+    afterEach(() => {
+      MetabaseSettings.isHosted.mockRestore();
+    });
     describe("normal user", () => {
       it("should show the proper set of items", () => {
         const normalUser = { is_superuser: false };
