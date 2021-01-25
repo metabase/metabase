@@ -54,7 +54,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod data-warehouse-connection-pool-properties :default
-  [_]
+  [_ spec]
   { ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
    "acquireIncrement"             1
@@ -96,7 +96,7 @@
   (log/debug (u/format-color 'cyan (trs "Creating new connection pool for {0} database {1} ..." driver id)))
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec driver details-with-tunnel)
-        properties          (data-warehouse-connection-pool-properties driver)]
+        properties          (data-warehouse-connection-pool-properties driver spec)]
     (connection-pool/connection-pool-spec spec properties)))
 
 (defn- destroy-pool! [database-id pool-spec]

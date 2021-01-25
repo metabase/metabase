@@ -25,6 +25,9 @@ driver:
     - name: querytimeout
       display-name: Query timeout
       default: 180
+    - name: connection_pool
+      display-name: Connection pool
+      default: 10
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace

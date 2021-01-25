@@ -137,15 +137,27 @@
   (default-base-types column))
 
 (defmethod sql-jdbc.conn/connection-details->spec :exasol
-  [_ {:keys [host port schema querytimeout]
+  [_ {:keys [host port schema querytimeout connection_pool]
       :as   details}]
   (-> (merge {:classname   "com.exasol.jdbc.EXADriver"
               :subprotocol "exa"
               :subname     (str host ":" port)
               :schema schema
-              :querytimeout querytimeout}
+              :querytimeout querytimeout
+              :connection_pool connection_pool}
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
+
+(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :exasol
+  [_ spec]
+  {
+   "acquireIncrement"             1
+   "maxIdleTime"                  (* 3 60 60) ; 3 hours
+   "minPoolSize"                  1
+   "initialPoolSize"              1
+   "maxPoolSize"                  (spec :connection_pool)
+   "testConnectionOnCheckout"     true
+   "maxIdleTimeExcessConnections" (* 15 60)})
 
 (defmethod sql-jdbc.execute/set-timezone-sql :exasol [_]
   "ALTER SESSION SET time_zone = %s;")
