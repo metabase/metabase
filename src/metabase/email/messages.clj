@@ -250,9 +250,10 @@
    :content-type "image/png"
    :content      url})
 
-(defn- pulse-link
-  [{:keys [cards]}]
-  (when-let [dashboard-id (some :dashboard_id cards)]
+(defn- pulse-link-context
+  [{:keys [cards dashboard_id]}]
+  (when-let [dashboard-id (or dashboard_id
+                              (some :dashboard_id cards))]
     {:pulseLink (url/dashboard-url dashboard-id)}))
 
 (defn- pulse-context [pulse]
@@ -262,7 +263,7 @@
           :sectionStyle (render.style/style (render.style/section-style))
           :colorGrey4   render.style/color-gray-4
           :logoFooter   true}
-         (pulse-link pulse)
+         (pulse-link-context pulse)
          (random-quote-context)))
 
 (defn- create-temp-file

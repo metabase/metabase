@@ -7,7 +7,7 @@
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :refer [PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.pulse-test :refer [checkins-query-card]]
+            [metabase.pulse.test-util :refer [checkins-query-card]]
             [metabase.task.send-pulses :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.users :as users]

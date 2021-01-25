@@ -168,8 +168,9 @@
     :pulse))
 
 (defn- subject
-  [{:keys [name cards]}]
-  (if (some :dashboard_id cards)
+  [{:keys [name cards dashboard_id]}]
+  (if (or dashboard_id
+          (some :dashboard_id cards))
     name
     (trs "Pulse: {0}" name)))
 
@@ -271,7 +272,7 @@
                             ;; send the cards instead
                             (for [card  cards
                                   ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                                  :let  [result (execute-card pulse (u/get-id card), :pulse-id pulse-id)]
+                                  :let  [result (execute-card pulse (u/the-id card), :pulse-id pulse-id)]
                                   ;; some cards may return empty results, e.g. if the card has been archived
                                   :when result]
                               result))))
