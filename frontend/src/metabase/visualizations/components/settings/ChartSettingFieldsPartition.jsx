@@ -87,14 +87,15 @@ class ColumnOptionsPanel extends React.Component {
     const { partitionName } = this.props;
     return (
       <div>
-        {partitionName !== "values" && (
+        {/* not yet implemented, but we're including the UI now for string translation
+           partitionName !== "values" && (
           <div>
             <ShowTotalsOption
               onChangeTotalsVisibility={this.props.onChangeTotalsVisibility}
             />
             <SortOrderOption onChangeSortOrder={this.props.onChangeSortOrder} />
           </div>
-        )}
+        )*/}
         <FormattingOptions onEdit={this.props.onEditFormatting} />
       </div>
     );

@@ -8,7 +8,12 @@ import { Grid, Collection, ScrollSync } from "react-virtualized";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import { isDimension } from "metabase/lib/schema_metadata";
-import { isPivotGroupColumn, multiLevelPivot } from "metabase/lib/data_grid";
+import {
+  COLLAPSED_ROWS_SETTING,
+  COLUMN_SPLIT_SETTING,
+  isPivotGroupColumn,
+  multiLevelPivot,
+} from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
@@ -44,9 +49,6 @@ const CELL_HEIGHT = 25;
 // the left header has a wider cell width and some additional spacing on the left to align with the title
 const LEFT_HEADER_LEFT_SPACING = 24;
 const LEFT_HEADER_CELL_WIDTH = 145;
-
-const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
-const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
 
 export default class PivotTable extends Component {
   props: VisualizationProps;
@@ -168,6 +170,23 @@ export default class PivotTable extends Component {
     },
   };
 
+  static columnSettings = {
+    column_title: {
+      title: t`Column title`,
+      widget: "input",
+      getDefault: column => formatColumn(column),
+    },
+  };
+
+  getColumnTitle(columnIndex) {
+    const { data, settings } = this.props;
+    const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+    const { column, column_title: columnTitle } = settings.column(
+      columns[columnIndex],
+    );
+    return columnTitle || formatColumn(column);
+  }
+
   render() {
     const {
       settings,
@@ -179,33 +198,10 @@ export default class PivotTable extends Component {
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
     }
-    const setting = settings["pivot_table.column_split"];
-    if (setting == null) {
-      return null;
-    }
-    const columns = data.cols.filter(col => !isPivotGroupColumn(col));
-
-    const {
-      rows: rowIndexes,
-      columns: columnIndexes,
-      values: valueIndexes,
-    } = _.mapObject(setting, columnFieldRefs =>
-      columnFieldRefs
-        .map(field_ref =>
-          columns.findIndex(col => _.isEqual(col.field_ref, field_ref)),
-        )
-        .filter(index => index !== -1),
-    );
 
     let pivoted;
     try {
-      pivoted = multiLevelPivot(
-        data,
-        columnIndexes,
-        rowIndexes,
-        valueIndexes,
-        settings[COLLAPSED_ROWS_SETTING].value,
-      );
+      pivoted = multiLevelPivot(data, settings);
     } catch (e) {
       console.warn(e);
     }
@@ -216,6 +212,9 @@ export default class PivotTable extends Component {
       columnCount,
       rowIndex,
       getRowSection,
+      rowIndexes,
+      columnIndexes,
+      valueIndexes,
     } = pivoted;
 
     const leftHeaderCellRenderer = ({ index, key, style }) => {
@@ -356,7 +355,7 @@ export default class PivotTable extends Component {
                 >
                   {rowIndexes.map((rowIndex, index) => (
                     <Cell
-                      value={formatColumn(columns[rowIndex])}
+                      value={this.getColumnTitle(rowIndex)}
                       style={{ width: LEFT_HEADER_CELL_WIDTH }}
                       icon={
                         // you can only collapse before the last column

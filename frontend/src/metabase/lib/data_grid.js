@@ -8,13 +8,33 @@ export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
 }
 
-export function multiLevelPivot(
-  data,
-  columnColumnIndexes,
-  rowColumnIndexes,
-  valueColumnIndexes,
-  collapsedSubtotals = [],
-) {
+export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
+export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+
+export function multiLevelPivot(data, settings) {
+  const collapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
+  const columnSplit = settings[COLUMN_SPLIT_SETTING];
+  if (columnSplit == null) {
+    return null;
+  }
+  const columnsWithoutPivotGroup = data.cols.filter(
+    col => !isPivotGroupColumn(col),
+  );
+
+  const {
+    rows: rowColumnIndexes,
+    columns: columnColumnIndexes,
+    values: valueColumnIndexes,
+  } = _.mapObject(columnSplit, columnFieldRefs =>
+    columnFieldRefs
+      .map(field_ref =>
+        columnsWithoutPivotGroup.findIndex(col =>
+          _.isEqual(col.field_ref, field_ref),
+        ),
+      )
+      .filter(index => index !== -1),
+  );
+
   const { pivotData, columns } = splitPivotData(
     data,
     rowColumnIndexes,
@@ -75,7 +95,7 @@ export function multiLevelPivot(
   ].map(indexes =>
     indexes.map(index =>
       _.memoize(
-        value => formatValue(value, { column: columns[index] }),
+        value => formatValue(value, settings.column(columns[index])),
         value => [value, index].join(),
       ),
     ),
@@ -148,6 +168,9 @@ export function multiLevelPivot(
     columnCount: columnIndex.length,
     rowIndex,
     getRowSection,
+    rowIndexes: rowColumnIndexes,
+    columnIndexes: columnColumnIndexes,
+    valueIndexes: valueColumnIndexes,
   };
 }
 
