@@ -129,7 +129,7 @@ describe("scenarios > admin > permissions", () => {
     });
   });
 
-  it.skip("should not display excessive options in localization tab (metabase#14426)", () => {
+  it("should not display excessive options in localization tab (metabase#14426)", () => {
     cy.visit("/admin/settings/localization");
     cy.findByText(/Instance language/i);
     cy.findByText(/Report timezone/i);

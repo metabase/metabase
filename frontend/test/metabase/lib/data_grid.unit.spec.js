@@ -412,7 +412,7 @@ describe("data_grid", () => {
       ]);
     });
 
-    it("hide collapsed rows", () => {
+    describe("row collapsing", () => {
       const cols = [D1, D2, M];
       const primaryGroup = 0;
       const subtotalOne = 2;
@@ -428,16 +428,32 @@ describe("data_grid", () => {
         rows,
         cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
       };
-      const { getRowSection, leftHeaderItems, rowCount } = multiLevelPivot(
-        data,
-        [],
-        [0, 1],
-        [2],
-        ['["a"]'],
-      );
-      expect(rowCount).toEqual(5);
-      expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
-      expect(getRowSection(0, 0)).toEqual([{ isSubtotal: true, value: "3" }]);
+      it("hides single collapsed rows", () => {
+        const { getRowSection, leftHeaderItems, rowCount } = multiLevelPivot(
+          data,
+          [],
+          [0, 1],
+          [2],
+          ['["a"]'],
+        );
+        expect(rowCount).toEqual(5);
+        expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
+        expect(getRowSection(0, 0)).toEqual([{ isSubtotal: true, value: "3" }]);
+      });
+      it("hides collapsed columns", () => {
+        const { getRowSection, leftHeaderItems, rowCount } = multiLevelPivot(
+          data,
+          [],
+          [0, 1],
+          [2],
+          ["1"],
+        );
+        expect(rowCount).toEqual(3);
+        expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
+        expect(leftHeaderItems[1].value).toEqual("Totals for b"); // b is also collapsed
+        expect(getRowSection(0, 0)).toEqual([{ isSubtotal: true, value: "3" }]);
+        expect(getRowSection(0, 1)).toEqual([{ isSubtotal: true, value: "7" }]);
+      });
     });
 
     it("should return multiple levels of subtotals in body cells", () => {

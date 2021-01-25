@@ -2,7 +2,8 @@
   "Tests for /api/collection endpoints."
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
+                                     PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.collection :as collection]
             [metabase.models.collection-test :as collection-test]
             [metabase.models.collection.graph :as graph]
@@ -114,44 +115,51 @@
 ;;; |                                              GET /collection/tree                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- collection-tree-transform [xform collections]
+  (vec (for [collection collections
+             :let       [collection (xform collection)]
+             :when      collection]
+         (cond-> collection
+           (:children collection) (update :children (partial collection-tree-transform xform))))))
+
 (defn- collection-tree-names-only
   "Keep just the names of Collections in `collection-ids-to-keep` in the response returned by the Collection tree
   endpoint."
   [collection-ids-to-keep collections]
-  (for [collection collections
-        :when      (contains? (set collection-ids-to-keep) (:id collection))]
-    (cond-> (select-keys collection [:name :children])
-      (:children collection) (update :children (partial collection-tree-names-only collection-ids-to-keep)))))
+  (collection-tree-transform (fn [collection]
+                               (when (contains? (set collection-ids-to-keep) (:id collection))
+                                 (select-keys collection [:name :children])))
+                             collections))
 
 (deftest collection-tree-test
   (testing "GET /api/collection/tree"
-    (with-collection-hierarchy [a b c d e f g]
-      (let [ids      (set (map :id (cons (collection/user->personal-collection (mt/user->id :rasta))
-                                         [a b c d e f g])))
-            response (mt/user-http-request :rasta :get 200 "collection/tree")]
-        (testing "Make sure overall tree shape of the response is as is expected"
-          (is (= [{:name     "A"
-                   :children [{:name "B"}
-                              {:name     "C"
-                               :children [{:name     "D"
-                                           :children [{:name "E"}]}
-                                          {:name     "F"
-                                           :children [{:name "G"}]}]}]}
-                  {:name "Rasta Toucan's Personal Collection"}]
-                 (collection-tree-names-only ids response))))
-        (testing "Make sure each Collection comes back with the expected keys"
-          (is (= {:description       nil
-                  :archived          false
-                  :slug              "rasta_toucan_s_personal_collection"
-                  :color             "#31698A"
-                  :name              "Rasta Toucan's Personal Collection"
-                  :personal_owner_id (mt/user->id :rasta)
-                  :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
-                  :location          "/"
-                  :namespace         nil}
-                 (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
-                          %)
-                       response))))))))
+    (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
+      (with-collection-hierarchy [a b c d e f g]
+        (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
+              response (mt/user-http-request :rasta :get 200 "collection/tree")]
+          (testing "Make sure overall tree shape of the response is as is expected"
+            (is (= [{:name     "A"
+                     :children [{:name "B"}
+                                {:name     "C"
+                                 :children [{:name     "D"
+                                             :children [{:name "E"}]}
+                                            {:name     "F"
+                                             :children [{:name "G"}]}]}]}
+                    {:name "Rasta Toucan's Personal Collection"}]
+                   (collection-tree-names-only ids response))))
+          (testing "Make sure each Collection comes back with the expected keys"
+            (is (= {:description       nil
+                    :archived          false
+                    :slug              "rasta_toucan_s_personal_collection"
+                    :color             "#31698A"
+                    :name              "Rasta Toucan's Personal Collection"
+                    :personal_owner_id (mt/user->id :rasta)
+                    :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                    :location          "/"
+                    :namespace         nil}
+                   (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
+                            %)
+                         response)))))))))
 
 (deftest collection-tree-child-permissions-test
   (testing "GET /api/collection/tree"
@@ -168,7 +176,39 @@
           (perms/grant-collection-readwrite-permissions! (group/all-users) child-collection)
           (is (= [{:name "Child"}]
                  (collection-tree-names-only (map :id [parent-collection child-collection])
-                                             (mt/user-http-request :rasta :get 200 "collection/tree")))))))))
+                                             (mt/user-http-request :rasta :get 200 "collection/tree")))))))
+
+    (testing "Tree should elide Collections for which we have no permissions (#14280)"
+      ;; Create hierarchy like
+      ;;
+      ;;     +-> B*
+      ;;     |
+      ;; A* -+-> C -+-> D -> E*
+      ;;            |
+      ;;            +-> F* -> G*
+      ;;
+      ;; Grant perms for collections with a `*`. Should see
+      ;;
+      ;;     +-> B*
+      ;;     |
+      ;; A* -+-> E*
+      ;;     |
+      ;;     +-> F* -> G*
+      (collection-test/with-collection-hierarchy [{:keys [a b e f g], :as collections}]
+        (doseq [collection [a b e f g]]
+          (perms/grant-collection-read-permissions! (group/all-users) collection))
+        (is (= [{:name     "A"
+                 :children [{:name "B"}
+                            {:name "E"}
+                            {:name     "F"
+                             :children [{:name "G"}]}]}]
+               (collection-tree-transform
+                (let [ids-to-keep (set (map u/the-id (vals collections)))]
+                  (fn [{collection-id :id, :as collection}]
+                    (when (or (not collection-id)
+                              (ids-to-keep collection-id))
+                      (select-keys collection [:name :children]))))
+                (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -181,13 +221,13 @@
       (mt/with-temp Collection [collection {:name "Coin Collection"}]
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (is (= "Coin Collection"
-               (:name (mt/user-http-request :rasta :get 200 (str "collection/" (u/get-id collection))))))))
+               (:name (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
 
     (testing "check that collections detail properly checks permissions"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (str "collection/" (u/get-id collection))))))))))
+                 (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id collection))))))))))
 
 
 ;;; ------------------------------------------------ Collection Items ------------------------------------------------
@@ -195,7 +235,7 @@
 (defn- do-with-some-children-of-collection [collection-or-id-or-nil f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [collection-id-or-nil (when collection-or-id-or-nil
-                                 (u/get-id collection-or-id-or-nil))]
+                                 (u/the-id collection-or-id-or-nil))]
       (mt/with-temp* [Card       [{card-id :id}
                                   {:name          "Birthday Card"
                                    :collection_id collection-id-or-nil}]
@@ -255,9 +295,9 @@
   (testing "GET /api/collection/:id/items"
     (testing "check that cards are returned with the collection/items endpoint"
       (mt/with-temp* [Collection [collection]
-                      Card       [card        {:collection_id (u/get-id collection)}]]
+                      Card       [card        {:collection_id (u/the-id collection)}]]
         (is (= (mt/obj->json->obj
-                 [{:id                  (u/get-id card)
+                 [{:id                  (u/the-id card)
                    :name                (:name card)
                    :collection_position nil
                    :display             "table"
@@ -265,7 +305,7 @@
                    :favorite            false
                    :model               "card"}])
                (mt/obj->json->obj
-                 (mt/user-http-request :crowberto :get 200 (str "collection/" (u/get-id collection) "/items")))))))
+                 (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items")))))))
 
     (testing "check that you get to see the children as appropriate"
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
@@ -275,7 +315,7 @@
                                     {:name "Dine & Dashboard", :description nil, :model "dashboard"}
                                     {:name "Electro-Magnetic Pulse", :model "pulse"}])
                  (mt/boolean-ids-and-timestamps
-                  (mt/user-http-request :rasta :get 200 (str "collection/" (u/get-id collection) "/items")))))))
+                  (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items")))))))
 
       (testing "...and that you can also filter so that you only see the children you want to see"
         (mt/with-temp Collection [collection {:name "Art Collection"}]
@@ -283,16 +323,16 @@
           (with-some-children-of-collection collection
             (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                    (mt/boolean-ids-and-timestamps
-                    (mt/user-http-request :rasta :get 200 (str "collection/" (u/get-id collection) "/items?model=dashboard")))))))))
+                    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?model=dashboard")))))))))
 
     (testing "Let's make sure the `archived` option works."
       (mt/with-temp Collection [collection {:name "Art Collection"}]
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (with-some-children-of-collection collection
-          (db/update-where! Dashboard {:collection_id (u/get-id collection)} :archived true)
+          (db/update-where! Dashboard {:collection_id (u/the-id collection)} :archived true)
           (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                  (mt/boolean-ids-and-timestamps
-                  (mt/user-http-request :rasta :get 200 (str "collection/" (u/get-id collection) "/items?archived=true"))))))))))
+                  (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true"))))))))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -331,12 +371,12 @@
     :effective_ancestors [{:metabase.models.collection.root/is-root? true, :name "Our analytics", :id "root", :can_write true}]
     :effective_location  "/"
     :parent_id           nil
-    :id                  (u/get-id (collection/user->personal-collection (mt/user->id :lucky)))
+    :id                  (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
     :location            "/"}))
 
 (defn- lucky-personal-collection-id
   []
-  (u/get-id (collection/user->personal-collection (mt/user->id :lucky))))
+  (u/the-id (collection/user->personal-collection (mt/user->id :lucky))))
 
 (defn- api-get-lucky-personal-collection [user-kw & {:keys [expected-status-code], :or {expected-status-code 200}}]
   (mt/user-http-request user-kw :get expected-status-code (str "collection/" (lucky-personal-collection-id))))
@@ -392,12 +432,12 @@
   "Call the API with Rasta to fetch `collection-or-id` and put the `:effective_` results in a nice format for the tests
   below."
   [collection-or-id & additional-get-params]
-  (format-ancestors (mt/user-http-request :rasta :get 200 (str "collection/" (u/get-id collection-or-id)))))
+  (format-ancestors (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection-or-id)))))
 
 (defn- api-get-collection-children
   [collection-or-id & additional-get-params]
   (mt/boolean-ids-and-timestamps (apply mt/user-http-request :rasta
-                                        :get 200 (str "collection/" (u/get-id collection-or-id) "/items")
+                                        :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
                                         additional-get-params)))
 
 (deftest effective-ancestors-and-children-test
@@ -475,7 +515,7 @@
 
   (testing "Let's make sure the 'archived` option works on Collections, nested or not"
     (with-collection-hierarchy [a b c]
-      (db/update! Collection (u/get-id b) :archived true)
+      (db/update! Collection (u/the-id b) :archived true)
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
@@ -519,7 +559,7 @@
         (testing "...but if they have read perms for the Root Collection they should get to see them"
           (with-some-children-of-collection nil
             (mt/with-temp* [PermissionsGroup           [group]
-                            PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                            PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
               (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
                       (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
@@ -531,7 +571,7 @@
 
     (testing "So I suppose my Personal Collection should show up when I fetch the Root Collection, shouldn't it..."
       (is (= [{:name        "Rasta Toucan's Personal Collection"
-               :id          (u/get-id (collection/user->personal-collection (mt/user->id :rasta)))
+               :id          (u/the-id (collection/user->personal-collection (mt/user->id :rasta)))
                :description nil
                :model       "collection"
                :can_write   true}]
@@ -540,7 +580,7 @@
 
     (testing "For admins, only return our own Personal Collection (!)"
       (is (= [{:name        "Crowberto Corv's Personal Collection"
-               :id          (u/get-id (collection/user->personal-collection (mt/user->id :crowberto)))
+               :id          (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
                :description nil
                :model       "collection"
                :can_write   true}]
@@ -552,7 +592,7 @@
                                      :location (collection/children-location
                                                 (collection/user->personal-collection (mt/user->id :lucky)))}]
           (is (= [{:name        "Crowberto Corv's Personal Collection"
-                   :id          (u/get-id (collection/user->personal-collection (mt/user->id :crowberto)))
+                   :id          (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
                    :description nil
                    :model       "collection"
                    :can_write   true}]
@@ -607,7 +647,7 @@
 
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy [a b d e f g]
-        (db/update! Collection (u/get-id a) :archived true)
+        (db/update! Collection (u/the-id a) :archived true)
         (testing "ancestors"
           (is (= {:effective_ancestors []
                   :effective_location  nil}
@@ -705,7 +745,7 @@
       (mt/with-model-cleanup [Collection]
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-collection-readwrite-permissions! group collection/root-collection)
             (is (= (merge
                     (mt/object-defaults Collection)
@@ -732,7 +772,7 @@
                                            {:name        "Trading Card Collection"
                                             :color       "#ABCDEF"
                                             :description "Collection of basketball cards including limited-edition holographic Draymond Green"
-                                            :parent_id   (u/get-id d)})
+                                            :parent_id   (u/the-id d)})
                      (update :location collection-test/location-path-ids->names)
                      (update :id integer?)))))))
 
@@ -760,19 +800,19 @@
       (mt/with-temp Collection [collection]
         (is (= (merge
                 (mt/object-defaults Collection)
-                {:id       (u/get-id collection)
+                {:id       (u/the-id collection)
                  :name     "My Beautiful Collection"
                  :slug     "my_beautiful_collection"
                  :color    "#ABCDEF"
                  :location "/"
                  :parent_id nil})
-               (mt/user-http-request :crowberto :put 200 (str "collection/" (u/get-id collection))
+               (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
                                      {:name "My Beautiful Collection", :color "#ABCDEF"})))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection))
+                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
                                        {:name "My Beautiful Collection", :color "#ABCDEF"}))))))))
 
 (deftest archive-collection-test
@@ -811,7 +851,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection))
+                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
                                        {:archived true})))))
 
       (testing "Perms checking should be recursive as well..."
@@ -822,7 +862,7 @@
                           Collection [collection-b {:location (collection/children-location collection-a)}]]
             (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
+                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                          {:archived true})))))))))
 
 (deftest move-collection-test
@@ -836,9 +876,9 @@
                  :slug     "e"
                  :color    "#ABCDEF"
                  :location "/A/B/"
-                 :parent_id (u/get-id b)})
-               (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/get-id e))
-                                         {:parent_id (u/get-id b)})
+                 :parent_id (u/the-id b)})
+               (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id e))
+                                         {:parent_id (u/the-id b)})
                    (update :location collection-test/location-path-ids->names)
                    (update :id integer?))))))
 
@@ -849,8 +889,8 @@
                           Collection [collection-b]]
             (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
-                                         {:parent_id (u/get-id collection-b)}))))))
+                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
+                                         {:parent_id (u/the-id collection-b)}))))))
 
       (testing "Perms checking should be recursive as well..."
         (testing "Create A, B, and C; B is a child of A."
@@ -864,8 +904,8 @@
                 (doseq [collection [collection-a collection-b]]
                   (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
                 (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
-                                             {:parent_id (u/get-id collection-c)}))))))
+                       (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
+                                             {:parent_id (u/the-id collection-c)}))))))
 
           (testing "Grant perms for A and C. Moving A into C should fail because we need perms for B."
             ;; A* -> B  ==>  C -> A -> B
@@ -877,8 +917,8 @@
                 (doseq [collection [collection-a collection-c]]
                   (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
                 (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
-                                             {:parent_id (u/get-id collection-c)}))))))
+                       (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
+                                             {:parent_id (u/the-id collection-c)}))))))
 
           (testing "Grant perms for B and C. Moving A into C should fail because we need perms for A"
             ;; A -> B*  ==>  C -> A -> B
@@ -890,8 +930,8 @@
                 (doseq [collection [collection-b collection-c]]
                   (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
                 (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
-                                             {:parent_id (u/get-id collection-c)})))))))))))
+                       (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
+                                             {:parent_id (u/the-id collection-c)})))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

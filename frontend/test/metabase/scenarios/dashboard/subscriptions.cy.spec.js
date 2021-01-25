@@ -34,7 +34,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describe("with email and slack set up", () => {
+  describe("with email set up", () => {
     beforeEach(() => {
       setupDummySMTP();
     });
@@ -75,6 +75,26 @@ describe("scenarios > dashboard > subscriptions", () => {
         .within(() => {
           cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
         });
+    });
+
+    it.skip("should not display 'null' day of the week (metabase#14405)", () => {
+      assignRecipient();
+      cy.findByText("To:").click();
+      cy.get(".AdminSelect")
+        .contains("Daily")
+        .click();
+      cy.findByText("Monthly").click();
+      cy.get(".AdminSelect")
+        .contains("First")
+        .click();
+      cy.findByText("15th (Midpoint)").click();
+      cy.get(".AdminSelect")
+        .contains("15th (Midpoint)")
+        .click();
+      cy.findByText("First").click();
+      clickButton("Done");
+      // Implicit assertion (word mustn't contain string "null")
+      cy.findByText(/^Emailed monthly on the first (?!null)/);
     });
   });
 });

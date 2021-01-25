@@ -3,6 +3,7 @@ import {
   restore,
   visitQuestionAdhoc,
   getIframeBody,
+  popover,
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -68,6 +69,35 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.findByText("4,784").should("not.exist");
       cy.findByText("18,760").should("not.exist");
     });
+  });
+
+  it("should allow drill through on cells", () => {
+    createAndVisitTestQuestion();
+    // open actions menu
+    cy.findByText("783").click();
+    // drill through to orders list
+    cy.findByText("View these Orders").click();
+    // filters are applied
+    cy.findByText("Source is Affiliate");
+    cy.findByText("Category is Doohickey");
+    // data loads
+    cy.findByText("45.08");
+  });
+
+  it("should allow drill through on left/top header values", () => {
+    createAndVisitTestQuestion();
+    // open actions menu and filter to that value
+    cy.findByText("Doohickey").click();
+    popover().within(() => cy.findByText("=").click());
+    // filter is applied
+    cy.findByText("Category is Doohickey");
+    // filter out affiliate as a source
+    cy.findByText("Affiliate").click();
+    popover().within(() => cy.findByText("≠").click());
+    // filter is applied and value is gone from the left header
+    cy.findByText("Source is not Affiliate");
+    cy.findByText("Affiliate").should("not.exist");
+    cy.findByText("3,193"); // new grand total
   });
 
   it("should rearrange pivoted columns", () => {
@@ -172,6 +202,22 @@ describe("scenarios > visualizations > pivot tables", () => {
       .find(".Icon-add")
       .click();
     cy.findByText("215"); // ...and it's back!
+
+    // collapse the column
+    cy.findByText("Product → Category")
+      .parent()
+      .find(".Icon-dash")
+      .click();
+    cy.findByText("215").should("not.exist"); // value is hidden
+    cy.findByText("294").should("not.exist"); // value in another section is also hidden
+
+    // uncollapse Doohickey
+    cy.findByText("Totals for Doohickey")
+      .parent()
+      .find(".Icon-add")
+      .click();
+    cy.findByText("215"); // value in doohickey is visible
+    cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
   it("should display an error message for native queries", () => {

@@ -45,6 +45,12 @@ export function multiLevelPivot(
     valuesByKey[valueKey] = {
       values,
       data: row.map((value, index) => ({ value, col: columns[index] })),
+      dimensions: row
+        .map((value, index) => ({
+          value,
+          column: columns[index],
+        }))
+        .filter(({ column }) => column.source === "breakout"),
     };
   }
 
@@ -75,10 +81,11 @@ export function multiLevelPivot(
     ),
   );
 
-  const valueColumns = valueColumnIndexes.map(index => columns[index]);
+  const topIndexColumns = columnColumnIndexes.map(index => columns[index]);
   const formattedColumnTreeWithoutValues = formatValuesInTree(
     columnColumnTree,
     topIndexFormatters,
+    topIndexColumns,
   );
   if (formattedColumnTreeWithoutValues.length > 1) {
     // if there are multiple columns, we should add another for row totals
@@ -93,14 +100,17 @@ export function multiLevelPivot(
   const columnIndex = addEmptyIndexItem(
     formattedColumnTreeWithoutValues.flatMap(enumeratePaths),
   );
+  const valueColumns = valueColumnIndexes.map(index => columns[index]);
   const formattedColumnTree = addValueColumnNodes(
     formattedColumnTreeWithoutValues,
     valueColumns,
   );
 
+  const leftIndexColumns = rowColumnIndexes.map(index => columns[index]);
   const formattedRowTreeWithoutSubtotals = formatValuesInTree(
     rowColumnTree,
     leftIndexFormatters,
+    leftIndexColumns,
   );
   const formattedRowTree = addSubtotals(
     formattedRowTreeWithoutSubtotals,
@@ -136,6 +146,7 @@ export function multiLevelPivot(
     topHeaderItems,
     rowCount: rowIndex.length,
     columnCount: columnIndex.length,
+    rowIndex,
     getRowSection,
   };
 }
@@ -214,9 +225,11 @@ function createRowSectionGetter({
       const otherAttrs = rowValues.length === 0 ? { isGrandTotal: true } : {};
       return getSubtotals(indexes, indexValues, otherAttrs);
     }
-    const { values, data } = valuesByKey[JSON.stringify(indexValues)] || {};
+    const { values, data, dimensions } =
+      valuesByKey[JSON.stringify(indexValues)] || {};
+    console.log({ data, dimensions });
     return formatValues(values).map(o =>
-      data === undefined ? o : { ...o, clicked: { data } },
+      data === undefined ? o : { ...o, clicked: { data, dimensions } },
     );
   };
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
@@ -239,12 +252,17 @@ function enumeratePaths(
     : children.flatMap(child => enumeratePaths(child, pathWithValue));
 }
 
-function formatValuesInTree(rowColumnTree, [formatter, ...formatters]) {
-  return rowColumnTree.map(item => ({
-    ...item,
-    value: formatter(item.value),
-    rawValue: item.value,
-    children: formatValuesInTree(item.children, formatters),
+function formatValuesInTree(
+  rowColumnTree,
+  [formatter, ...formatters],
+  [column, ...columns],
+) {
+  return rowColumnTree.map(({ value, children, ...rest }) => ({
+    ...rest,
+    value: formatter(value),
+    rawValue: value,
+    children: formatValuesInTree(children, formatters, columns),
+    clicked: { value, column },
   }));
 }
 
@@ -312,7 +330,11 @@ function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
   for (const value of indexes.map(index => row[index])) {
     prefix.push(value);
     let seenValue = currentLevelSeenValues.find(d => d.value === value);
-    const isCollapsed = collapsedSubtotals.includes(JSON.stringify(prefix));
+    const isCollapsed =
+      // the specific path is collapsed
+      collapsedSubtotals.includes(JSON.stringify(prefix)) ||
+      // the entire column is collapsed
+      collapsedSubtotals.includes(JSON.stringify(prefix.length));
     if (seenValue === undefined) {
       seenValue = { value, children: [], isCollapsed };
       currentLevelSeenValues.push(seenValue);
