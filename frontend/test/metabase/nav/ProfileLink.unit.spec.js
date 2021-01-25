@@ -4,6 +4,15 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import MetabaseSettings from "metabase/lib/settings";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
+const OPTIONS = [
+  "Account settings",
+  "Activity",
+  "Help",
+  "About Metabase",
+  "Sign out",
+];
+const ADMIN_OPTIONS = [...OPTIONS, "Admin"];
+
 describe("ProfileLink", () => {
   describe("options", () => {
     beforeEach(() => {
@@ -22,13 +31,7 @@ describe("ProfileLink", () => {
         const SETTINGS = screen.getByRole("img", { name: /gear/i });
         fireEvent.click(SETTINGS);
 
-        [
-          "Account settings",
-          "Activity",
-          "Help",
-          "About Metabase",
-          "Sign out",
-        ].forEach(title => {
+        OPTIONS.forEach(title => {
           screen.getByText(title);
         });
       });
@@ -42,14 +45,7 @@ describe("ProfileLink", () => {
         const SETTINGS = screen.getByRole("img", { name: /gear/i });
         fireEvent.click(SETTINGS);
 
-        [
-          "Account settings",
-          "Admin",
-          "Activity",
-          "Help",
-          "About Metabase",
-          "Sign out",
-        ].forEach(title => {
+        ADMIN_OPTIONS.forEach(title => {
           screen.getByText(title);
         });
       });
