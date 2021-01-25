@@ -45,6 +45,14 @@ export default class ProfileLink extends Component {
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
       },
+      ...(MetabaseSettings.isHosted() &&[
+        {
+          title: t`Manage hosting`,
+          icon: 'external',
+          link: 'https://store.metabase.com/login',
+          event: `Navbar;Profile Dropdown;ManageHosting ${tag}`
+        }
+      ]),
       ...(admin && [
         {
           title: adminContext ? t`Exit admin` : t`Admin`,
