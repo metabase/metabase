@@ -49,9 +49,9 @@ export default class ProfileLink extends Component {
         admin && [
           {
             title: t`Manage hosting`,
-            icon: "external",
             link: "https://store.metabase.com/login",
             event: `Navbar;Profile Dropdown;ManageHosting ${tag}`,
+            externalLink: true,
           },
         ]),
       ...(admin && [
