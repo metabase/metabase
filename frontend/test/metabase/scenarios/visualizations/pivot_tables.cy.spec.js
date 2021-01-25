@@ -220,6 +220,33 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
+  it("should allow column formatting", () => {
+    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+
+    cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
+
+    cy.findByText("Settings").click();
+    assertOnPivotSettings();
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Users? → Source/)
+      .click();
+    cy.findByText("Formatting");
+    cy.findByText(/See options/).click();
+
+    cy.log("**-- New panel for the column options --**");
+    cy.findByText(/Column title/);
+
+    cy.log("**-- Change the title for this column --**");
+    cy.get("input[id=column_title]")
+      .clear()
+      .type("ModifiedTITLE");
+    cy.findByText("Done").click();
+    cy.get(".Visualization").within(() => {
+      cy.findByText("ModifiedTITLE");
+    });
+  });
+
   it("should display an error message for native queries", () => {
     cy.server();
     // native queries should use the normal dataset endpoint even when set to pivot
