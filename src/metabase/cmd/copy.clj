@@ -2,7 +2,8 @@
   "Shared lower-level implementation of the `dump-to-h2` and `load-from-h2` commands. The `copy!` function implemented
   here supports loading data from an application database to any empty application database for all combinations of
   supported application database types."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [colorize.core :as color]
             [honeysql.format :as hformat]
@@ -286,14 +287,11 @@
    source-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)
    target-db-type   :- (s/enum :h2 :postgres :mysql)
    target-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)]
-
   (jdbc/with-db-connection [source-conn source-jdbc-spec]
     (binding [db/*db-connection* source-jdbc-spec
               db/*quoting-style* (mdb.conn/quoting-style source-db-type)]
       (jdbc/with-db-connection [target-conn target-jdbc-spec]
-
         (doseq [[key value] (db/select-field->field :key :value Setting)]
           (jdbc/update! target-conn :setting {:value value} ["key = ?" key]))
-
         (doseq [[id details] (db/select-id->field :details Database)]
-          (jdbc/update! target-conn :metabase_database {:details details} ["id = ?" id]))))))
+          (jdbc/update! target-conn :metabase_database {:details (json/encode details)} ["id = ?" id]))))))
