@@ -48,7 +48,6 @@
   [model property-overrides]
   property-overrides)
 
-
 (m/defmethod create-random!* :default
   [model property-overrides]
   (let [properties (merge (tt/with-temp-defaults model)
@@ -56,7 +55,6 @@
     (db/insert! model properties)))
 
 ;;; create-random!* before/after modifiers
-
 (defn- random-query []
   (cond-> (mt/mbql-query venues)
     ;; 50% chance to add an aggregation
@@ -66,15 +64,10 @@
                                              [:field-id (mt/id :venues :price)]
                                              (inc (rand-int 4))])))
 
-
 (m/defmethod create-random!* :before (class Card)
   [_ property-overrides]
   (merge {:dataset_query (random-query)}
          property-overrides))
-
-(m/defmethod create-random!* :after (class Card)
-  [_ card]
-  card)
 
 (m/defmethod create-random!* :before (class Activity)
   [_ property-overrides]
@@ -83,7 +76,6 @@
     (coin-toss?) (assoc :table_id (rand-int 5))
     (coin-toss?) (assoc :details (random-name))
     true (merge property-overrides)))
-
 
 (m/defmethod create-random!* :before (class Field)
   [_ property-overrides]
@@ -113,7 +105,6 @@
         (create-random!* MetricImportantField
                          {:metric_id (:id metric), :field_id (:id field)}))))
   table)
-
 
 (m/defmethod create-random!* :after (class Database)
   [_ database]
@@ -160,9 +151,7 @@
   (when (coin-toss?)
     (create-random!* Collection
                      {:location (str (or (:location collection) "/")
-                                     (:id collection)
-                                     "/")
-                      }))
+                                     (:id collection) "/")}))
   collection)
 
 (defn create-random!
