@@ -1,22 +1,110 @@
 import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
+import { Flex } from "grid-styled";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
-import styled from "styled-components";
 import colors, { lighten } from "metabase/lib/colors";
 
+import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Grabber from "metabase/components/Grabber";
+import Text from "metabase/components/type/Text";
+import Toggle from "metabase/components/Toggle";
 
-const ColumnDragger = styled.div`
-  padding: 12px 14px;
-  box-shadow: 0 2px 3px ${lighten(colors["text-dark"], 1.5)};
-  &:hover {
-    box-shadow: 0 2px 5px ${lighten(colors["text-dark"], 1.3)};
-    transition: all 300ms linear;
+import { keyForColumn } from "metabase/lib/dataset";
+
+// eslint-disable-next-line no-unused-vars
+class ShowTotalsOption extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { showTotals: true };
   }
-`;
+  toggleTotals = () => {
+    const { showTotals } = this.state;
+    this.setState({ showTotals: !showTotals });
+    this.props.onChangeTotalsVisibility(!showTotals);
+  };
+  render() {
+    const { showTotals } = this.state;
+    return (
+      <Flex pt={2} justifyContent="space-between" alignItems="center">
+        <Text>{t`Show totals`}</Text>
+        <Toggle value={showTotals} onChange={this.toggleTotals}></Toggle>
+      </Flex>
+    );
+  }
+}
+
+// eslint-disable-next-line no-unused-vars
+class SortIcon extends React.Component {
+  render() {
+    const { name, onClick } = this.props;
+    return (
+      <Icon
+        name={name}
+        onClick={onClick}
+        size={16}
+        className="sort cursor-pointer text-medium text-brand-hover"
+      />
+    );
+  }
+}
+
+// eslint-disable-next-line no-unused-vars
+class SortOrderOption extends React.Component {
+  handleSortUp = () => {
+    this.props.onChangeSortOrder("ascending");
+  };
+  handleSortDown = () => {
+    this.props.onChangeSortOrder("descending");
+  };
+  render() {
+    return (
+      <Flex pt={1} justifyContent="space-between" alignItems="center">
+        <Text>{t`Sort order`}</Text>
+        <div>
+          <SortIcon name="arrow_up" onClick={this.handleSortUp} />
+          <SortIcon name="arrow_down" onClick={this.handleSortDown} />
+        </div>
+      </Flex>
+    );
+  }
+}
+
+class FormattingOptions extends React.Component {
+  render() {
+    return (
+      <Flex pt={1} justifyContent="space-between" alignItems="center">
+        <Text>{t`Formatting`}</Text>
+        <Text
+          onClick={this.props.onEdit}
+          className="text-brand text-bold cursor-pointer"
+        >{t`See options…`}</Text>
+      </Flex>
+    );
+  }
+}
+
+class ColumnOptionsPanel extends React.Component {
+  render() {
+    // const { partitionName } = this.props;
+    return (
+      <div>
+        {/* not yet implemented, but we're including the UI now for string translation
+           partitionName !== "values" && (
+          <div>
+            <ShowTotalsOption
+              onChangeTotalsVisibility={this.props.onChangeTotalsVisibility}
+            />
+            <SortOrderOption onChangeSortOrder={this.props.onChangeSortOrder} />
+          </div>
+        )*/}
+        <FormattingOptions onEdit={this.props.onEditFormatting} />
+      </div>
+    );
+  }
+}
 
 class ChartSettingFieldsPartition extends React.Component {
   constructor(props) {
@@ -24,6 +112,27 @@ class ChartSettingFieldsPartition extends React.Component {
     this.state = { displayedValue: null };
   }
 
+  handleChangeTotalsVisibility = (column, totalsVisibility) => {
+    const { onChangeTotalsVisibility } = this.props;
+    onChangeTotalsVisibility &&
+      onChangeTotalsVisibility(keyForColumn(column), totalsVisibility);
+  };
+
+  handleChangeSortOrder = (column, direction) => {
+    const { onChangeSortOrder } = this.props;
+    onChangeSortOrder && onChangeSortOrder(keyForColumn(column), direction);
+  };
+
+  handleEditFormatting = column => {
+    if (column) {
+      this.props.onShowWidget({
+        id: "column_settings",
+        props: {
+          initialKey: keyForColumn(column),
+        },
+      });
+    }
+  };
   updateDisplayedValue = displayedValue =>
     this.setState({
       displayedValue: _.mapObject(displayedValue, cols =>
@@ -58,6 +167,9 @@ class ChartSettingFieldsPartition extends React.Component {
             partitionName={name}
             columns={value[name]}
             value={value}
+            onChangeTotalsVisibility={this.handleChangeTotalsVisibility}
+            onChangeSortOrder={this.handleChangeSortOrder}
+            onEditFormatting={this.handleEditFormatting}
             updateDisplayedValue={this.updateDisplayedValue}
             commitDisplayedValue={this.commitDisplayedValue}
           />
@@ -85,6 +197,9 @@ class Partition extends React.Component {
       columns = [],
       partitionName,
       columnFilter,
+      onChangeTotalsVisibility,
+      onChangeSortOrder,
+      onEditFormatting,
       updateDisplayedValue,
       commitDisplayedValue,
       value,
@@ -110,6 +225,9 @@ class Partition extends React.Component {
               index={index}
               columnFilter={columnFilter}
               value={value}
+              onChangeTotalsVisibility={onChangeTotalsVisibility}
+              onChangeSortOrder={onChangeSortOrder}
+              onEditFormatting={onEditFormatting}
               updateDisplayedValue={updateDisplayedValue}
               commitDisplayedValue={commitDisplayedValue}
             />
@@ -213,25 +331,78 @@ class EmptyPartition extends React.Component {
   }),
 )
 class Column extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { expanded: false };
+  }
+  toggleExpand = () => {
+    const { expanded } = this.state;
+    this.setState({ expanded: !expanded });
+  };
+  handleChangeTotalsVisibility = totalsVisibility => {
+    const { column, onChangeTotalsVisibility } = this.props;
+    onChangeTotalsVisibility &&
+      onChangeTotalsVisibility(column, totalsVisibility);
+  };
+  handleChangeSortOrder = direction => {
+    const { column, onChangeSortOrder } = this.props;
+    onChangeSortOrder && onChangeSortOrder(column, direction);
+  };
+  handleEditFormatting = () => {
+    const { column, onEditFormatting } = this.props;
+    onEditFormatting && onEditFormatting(column);
+  };
   render() {
     const {
       column,
       connectDragSource,
       connectDropTarget,
       isDragging,
+      partitionName,
     } = this.props;
+    const { expanded } = this.state;
+    const showOptionsPanel = expanded && !isDragging;
     return connectDropTarget(
       connectDragSource(
-        <div>
-          <ColumnDragger
+        <div
+          className="mb1 bordered rounded"
+          style={{
+            padding: "12px 14px",
+            "box-shadow": `0 2px 3px ${lighten(colors["text-dark"], 1.5)}`,
+            "&:hover": {
+              "box-shadow": `0 2px 5px ${lighten(colors["text-dark"], 1.3)}`,
+              transition: "all 300ms linear",
+            },
+          }}
+        >
+          <div
             className={cx(
-              "text-dark mb1 bordered rounded cursor-grab text-bold flex justify-between",
+              "text-dark text-bold cursor-grab flex justify-between",
               { disabled: isDragging },
             )}
           >
-            {column.display_name}
+            <span
+              onClick={this.toggleExpand}
+              className="cursor-pointer text-brand-hover hover-parent hover--inherit"
+            >
+              {column.display_name}
+              <Icon
+                name={expanded ? "chevronup" : "chevrondown"}
+                size="10"
+                className="text-light hover-child hover--inherit ml1"
+              />
+            </span>
             <Grabber style={{ width: 10 }} />
-          </ColumnDragger>
+          </div>
+          {showOptionsPanel && (
+            <ColumnOptionsPanel
+              className="text-medium"
+              partitionName={partitionName}
+              onChangeTotalsVisibility={this.handleChangeTotalsVisibility}
+              onChangeSortOrder={this.handleChangeSortOrder}
+              onEditFormatting={this.handleEditFormatting}
+            />
+          )}
         </div>,
       ),
     );

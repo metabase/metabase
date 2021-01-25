@@ -8,12 +8,47 @@ export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
 }
 
-export function multiLevelPivot(
+export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
+export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+
+export function multiLevelPivot(data, settings) {
+  const collapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
+  const columnSplit = settings[COLUMN_SPLIT_SETTING];
+  if (columnSplit == null) {
+    return null;
+  }
+  const columnsWithoutPivotGroup = data.cols.filter(
+    col => !isPivotGroupColumn(col),
+  );
+
+  const { rows, columns, values } = _.mapObject(columnSplit, columnFieldRefs =>
+    columnFieldRefs
+      .map(field_ref =>
+        columnsWithoutPivotGroup.findIndex(col =>
+          _.isEqual(col.field_ref, field_ref),
+        ),
+      )
+      .filter(index => index !== -1),
+  );
+  return multiLevelPivotForIndexes(
+    data,
+    columns,
+    rows,
+    values,
+    collapsedSubtotals,
+    settings,
+  );
+}
+
+// TODO: this only exists for unit testing convenience.
+// Instead we should add helpers in the tests so we can use the real function.
+export function multiLevelPivotForIndexes(
   data,
   columnColumnIndexes,
   rowColumnIndexes,
   valueColumnIndexes,
   collapsedSubtotals = [],
+  settings,
 ) {
   const { pivotData, columns } = splitPivotData(
     data,
@@ -75,7 +110,7 @@ export function multiLevelPivot(
   ].map(indexes =>
     indexes.map(index =>
       _.memoize(
-        value => formatValue(value, { column: columns[index] }),
+        value => formatValue(value, settings.column(columns[index])),
         value => [value, index].join(),
       ),
     ),
@@ -148,6 +183,9 @@ export function multiLevelPivot(
     columnCount: columnIndex.length,
     rowIndex,
     getRowSection,
+    rowIndexes: rowColumnIndexes,
+    columnIndexes: columnColumnIndexes,
+    valueIndexes: valueColumnIndexes,
   };
 }
 
@@ -227,7 +265,6 @@ function createRowSectionGetter({
     }
     const { values, data, dimensions } =
       valuesByKey[JSON.stringify(indexValues)] || {};
-    console.log({ data, dimensions });
     return formatValues(values).map(o =>
       data === undefined ? o : { ...o, clicked: { data, dimensions } },
     );
