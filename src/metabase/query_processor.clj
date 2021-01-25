@@ -93,9 +93,9 @@
    #'desugar/desugar
    #'binning/update-binning-strategy
    #'resolve-fields/resolve-fields
+   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
-   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'add-source-metadata/add-source-metadata-for-source-queries
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
