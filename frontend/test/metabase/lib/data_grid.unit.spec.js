@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { pivot, multiLevelPivot } from "metabase/lib/data_grid";
+import { pivot, multiLevelPivotForIndexes } from "metabase/lib/data_grid";
 
 import { TYPE } from "metabase/lib/types";
 
@@ -138,6 +138,16 @@ describe("data_grid", () => {
     const getValues = items => _.pluck(items, "value");
     const getPathsAndValues = items =>
       items.map(item => _.pick(item, "path", "value"));
+
+    const multiLevelPivot = (data, columns, rows, values, collapsedSubtotals) =>
+      multiLevelPivotForIndexes(
+        data,
+        columns,
+        rows,
+        values,
+        collapsedSubtotals,
+        { column: column => ({ column }) },
+      );
 
     const data = makePivotData([
       ["a", "x", 1],

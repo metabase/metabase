@@ -14,6 +14,7 @@ import Toggle from "metabase/components/Toggle";
 
 import { keyForColumn } from "metabase/lib/dataset";
 
+// eslint-disable-next-line no-unused-vars
 class ShowTotalsOption extends React.Component {
   constructor(props) {
     super(props);
@@ -34,6 +35,8 @@ class ShowTotalsOption extends React.Component {
     );
   }
 }
+
+// eslint-disable-next-line no-unused-vars
 class SortIcon extends React.Component {
   render() {
     const { name, onClick } = this.props;
@@ -84,7 +87,7 @@ class FormattingOptions extends React.Component {
 
 class ColumnOptionsPanel extends React.Component {
   render() {
-    const { partitionName } = this.props;
+    // const { partitionName } = this.props;
     return (
       <div>
         {/* not yet implemented, but we're including the UI now for string translation

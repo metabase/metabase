@@ -21,11 +21,7 @@ export function multiLevelPivot(data, settings) {
     col => !isPivotGroupColumn(col),
   );
 
-  const {
-    rows: rowColumnIndexes,
-    columns: columnColumnIndexes,
-    values: valueColumnIndexes,
-  } = _.mapObject(columnSplit, columnFieldRefs =>
+  const { rows, columns, values } = _.mapObject(columnSplit, columnFieldRefs =>
     columnFieldRefs
       .map(field_ref =>
         columnsWithoutPivotGroup.findIndex(col =>
@@ -34,7 +30,26 @@ export function multiLevelPivot(data, settings) {
       )
       .filter(index => index !== -1),
   );
+  return multiLevelPivotForIndexes(
+    data,
+    columns,
+    rows,
+    values,
+    collapsedSubtotals,
+    settings,
+  );
+}
 
+// TODO: this only exists for unit testing convenience.
+// Instead we should add helpers in the tests so we can use the real function.
+export function multiLevelPivotForIndexes(
+  data,
+  columnColumnIndexes,
+  rowColumnIndexes,
+  valueColumnIndexes,
+  collapsedSubtotals = [],
+  settings,
+) {
   const { pivotData, columns } = splitPivotData(
     data,
     rowColumnIndexes,
@@ -250,7 +265,6 @@ function createRowSectionGetter({
     }
     const { values, data, dimensions } =
       valuesByKey[JSON.stringify(indexValues)] || {};
-    console.log({ data, dimensions });
     return formatValues(values).map(o =>
       data === undefined ? o : { ...o, clicked: { data, dimensions } },
     );
