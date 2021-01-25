@@ -48,6 +48,29 @@
                        (mt/rows
                          (mt/run-mbql-query exciting-moments-in-history))))))))))))
 
+(deftest ip-bytes-test
+  (mt/test-driver :mysql
+    (testing "display binary ip addresses as strings"
+      (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
+        (try
+          (doseq [sql ["DROP DATABASE IF EXISTS binary_ip"
+                       "CREATE DATABASE binary_ip"]]
+            (jdbc/execute! spec [sql]))
+          (let [details (tx/dbdef->connection-details :mysql :db {:database-name "binary_ip"})
+                spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+            (doseq [sql ["CREATE TABLE `network` (`ip` varbinary(16));"
+                         "INSERT INTO `network` (`ip`) VALUES (0x4333D26E), (0x20014860486000000000000000008888);"]]
+              (jdbc/execute! spec [sql]))
+            (tt/with-temp Database [database {:engine "mysql", :details details}]
+              (sync/sync-database! database)
+              (mt/with-db database
+                (db/update! Field (mt/id "network" :ip) :special_type :type/IPAddressString))
+              (mt/with-db database
+                (is (= #{["2001:4860:4860::8888"] ["67.51.210.110"]}
+                       (set
+                        (mt/rows
+                          (mt/run-mbql-query network)))))))))))))
+
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
 ;; correct additional options, we should be able to change that -- see
 ;; https://github.com/metabase/metabase/issues/3506
