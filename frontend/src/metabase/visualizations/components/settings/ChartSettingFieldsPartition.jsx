@@ -51,6 +51,7 @@ class SortIcon extends React.Component {
   }
 }
 
+// eslint-disable-next-line no-unused-vars
 class SortOrderOption extends React.Component {
   handleSortUp = () => {
     this.props.onChangeSortOrder("ascending");
