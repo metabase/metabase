@@ -16,7 +16,8 @@
             [metabase.test.data.redshift :as rstest]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [environ.core :as env])
   (:import metabase.plugins.jdbc_proxy.ProxyDriver))
 
 (use-fixtures :once (fixtures/initialize :plugins))
@@ -192,3 +193,22 @@
                    (map
                     (partial into {})
                     (db/select [Field :name :database_type :base_type] :table_id table-id))))))))))
+
+(deftest set-readonly-test
+  (mt/test-driver
+    :redshift
+    (testing "Multiple queries continue to work with a readonly connection"
+      (with-redefs [env/env (assoc env/env :mb-jdbc-data-warehouse-max-connection-pool-size "1")]
+        ;; invalidate the current pool, so a new one will be established with the updated environment variable that
+        ;; set the max pool size to 1
+        (#'sql-jdbc.conn/set-pool! (u/the-id (mt/db)) nil)
+        ;; then, run several queries, with the maxPoolSize having been set to 1
+        ;; the first query will recreate the pool, draw a connection from it, and run the query
+        (is (= [["Polo Lounge"]]
+               (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))
+        ;; subsequent queries will reuse the same connection (setting readonly on it again), and also
+        ;; attempt to set the timezone again (since both happen in the connection-with-timezone method)
+        (is (= [["Dwight Gresham"]]
+               (mt/rows (mt/run-mbql-query users {:filter [:= $id 13] :fields [$name]}))))
+        (is (= [["Thai"]]
+               (mt/rows (mt/run-mbql-query categories {:filter [:= $id 71] :fields [$name]}))))))))

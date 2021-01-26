@@ -135,6 +135,8 @@
         (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
         (catch Throwable e
           (log/debug e (trs "Error setting default holdability for connection"))))
+      (when-not (.isReadOnly conn)
+        (.setReadOnly conn true))
       conn
       (catch Throwable e
         (.close conn)
