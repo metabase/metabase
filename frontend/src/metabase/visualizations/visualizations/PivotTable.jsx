@@ -5,6 +5,8 @@ import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync } from "react-virtualized";
 
+import { areScrollbarsVisible } from "metabase/lib/dom";
+
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import { isDimension } from "metabase/lib/schema_metadata";
@@ -18,6 +20,7 @@ import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
+import { findDOMNode } from "react-dom";
 
 const partitions = [
   {
@@ -178,6 +181,10 @@ export default class PivotTable extends Component {
     },
   };
 
+  setBodyRef = element => {
+    this.bodyRef = element;
+  };
+
   getColumnTitle(columnIndex) {
     const { data, settings } = this.props;
     const columns = data.cols.filter(col => !isPivotGroupColumn(col));
@@ -198,6 +205,28 @@ export default class PivotTable extends Component {
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
     }
+
+    const grid = this.bodyRef && findDOMNode(this.bodyRef);
+
+    // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
+    // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
+    function needsScrollbarOffset() {
+      if (!grid) {
+        return false;
+      }
+      // check to see if the main data container has Y scrolling
+      const scrollsVertically = grid.scrollHeight > parseInt(grid.style.height);
+      const scrollsHorizontally = grid.scrollWidth > parseInt(grid.style.width);
+      // windows always has scrollbars, otherwise check for the Mac setting
+      const hasScrollbars =
+        window.navigator.platform === "Win32" || areScrollbarsVisible();
+
+      console.log("hasScrollbars?", hasScrollbars);
+
+      return scrollsHorizontally && scrollsVertically && hasScrollbars;
+    }
+
+    console.log(needsScrollbarOffset());
 
     let pivoted;
     try {
@@ -390,7 +419,11 @@ export default class PivotTable extends Component {
                     leftHeaderCellSizeAndPositionGetter
                   }
                   width={leftHeaderWidth}
-                  height={height - topHeaderHeight}
+                  height={
+                    needsScrollbarOffset()
+                      ? height - topHeaderHeight - 20
+                      : height - topHeaderHeight
+                  }
                   scrollTop={scrollTop}
                   onScroll={({ scrollTop }) => onScroll({ scrollTop })}
                 />
@@ -407,6 +440,7 @@ export default class PivotTable extends Component {
                   onScroll={({ scrollLeft, scrollTop }) =>
                     onScroll({ scrollLeft, scrollTop })
                   }
+                  ref={this.setBodyRef}
                   scrollTop={scrollTop}
                   scrollLeft={scrollLeft}
                 />
