@@ -828,7 +828,7 @@ msgstr "他ユーザーにも変更理由がわかるよう、このセグメン
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:69
 #: frontend/src/metabase/admin/routes.jsx:137
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:216
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:94
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:103
 #: frontend/src/metabase/nav/containers/Navbar.jsx:113
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:18
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:94
@@ -909,7 +909,7 @@ msgstr "グループもそのメンバーもどちらも大事です。"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:15
 #: frontend/src/metabase/admin/routes.jsx:55
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Admin"
 msgstr "管理者"
 
@@ -1399,19 +1399,19 @@ msgstr "変更が保存されました！"
 msgid "Looks like we ran into some problems"
 msgstr "問題が発生したようです"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:19
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:22
 msgid "Send test email"
 msgstr "テストメールを送信する"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:20
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:23
 msgid "Sending..."
 msgstr "送信中..."
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:21
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:24
 msgid "Sent!"
 msgstr "送信しました！"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:93
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:97
 msgid "Clear"
 msgstr "クリア"
 
@@ -1445,15 +1445,15 @@ msgstr "グループスキーマ"
 msgid "Using "
 msgstr "を利用して"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:105
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:110
 msgid "Getting set up"
 msgstr "開始する"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:111
 msgid "A few things you can do to get the most out of Metabase."
 msgstr "Metabaseを有効活用するためにできること"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:120
 msgid "Recommended next step"
 msgstr "おすすめの次のステップ"
 
@@ -1485,7 +1485,7 @@ msgstr "MetaBotのSlack Botユーザーを作成する"
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
 msgstr "名前を付けて{0}をクリックします。 ボットAPIトークンをコピーし、下のフィールドに貼り付けます。 完了したら、Slackで \"metabase_files\"チャンネルを作成します。 これはMetabaseでグラフをアップロードするために必要な作業です。"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:23
 msgid "You're running Metabase {0} which is the latest and greatest!"
 msgstr "お使いのMetabase {0}は最新です"
 
@@ -1493,13 +1493,13 @@ msgstr "お使いのMetabase {0}は最新です"
 msgid "Metabase {0} is available.  You're running {1}"
 msgstr "Metabase {0}が利用可能です。現在{1}を利用中です。"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:41
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:49
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:115
 msgid "Update"
 msgstr "アップデートする"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:46
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
 msgid "What's Changed:"
 msgstr "変更箇所:"
 
@@ -2447,7 +2447,7 @@ msgstr "結果をダウンロードする"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:52
 #: frontend/src/metabase/components/EntityMenu.info.js:104
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:93
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:94
 msgid "Sharing and embedding"
 msgstr "共有と埋め込み"
 
@@ -2959,19 +2959,19 @@ msgstr "このダッシュボードは空です"
 msgid "Add a question to start making it useful!"
 msgstr "質問を追加して使い易くしましょう！"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Daytime mode"
 msgstr "昼モード"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Nighttime mode"
 msgstr "夜モード"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Exit fullscreen"
 msgstr "フルスクリーンを解除する"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Enter fullscreen"
 msgstr "フルスクリーン"
 
@@ -3308,7 +3308,7 @@ msgid "Unarchive"
 msgstr "アーカイブを取り消す"
 
 #: frontend/src/metabase/home/containers/HomepageApp.jsx:54
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:68
 msgid "Activity"
 msgstr "アクティビティ"
 
@@ -4106,7 +4106,7 @@ msgstr "カテゴリー、タイプ、モデル、レーティング等"
 msgid "Account settings"
 msgstr "アカウント設定"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Exit admin"
 msgstr "管理画面から離れる"
 
@@ -4116,16 +4116,16 @@ msgstr "ログ"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:104
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:22
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:65
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:74
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:100
 msgid "Help"
 msgstr "ヘルプ"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:72
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:81
 msgid "About Metabase"
 msgstr "Metabaseについて"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:78
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:87
 msgid "Sign out"
 msgstr "サインアウト"
 
@@ -4133,19 +4133,19 @@ msgstr "サインアウト"
 msgid "Thanks for using"
 msgstr "ご利用ありがとうございます"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:116
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:125
 msgid "You're on version"
 msgstr "ご利用中のバージョンは"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:119
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
 msgid "Built on"
 msgstr "ビルド年月日: "
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:139
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:148
 msgid "is a Trademark of"
 msgstr "は右記の会社が有する商標です"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:141
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:150
 msgid "and is built with care in San Francisco, CA"
 msgstr "カリフォルニアのサンフランシスコで制作されています"
 
@@ -5313,15 +5313,15 @@ msgstr "質問で問題が発生しました"
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "これは無効な選択または無効な入力値であるために発生することがあります。 入力を再度確認して、クエリを再試行してください。"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:66
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
 msgid "This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific."
 msgstr "お探しの回答ですか？そうではない場合は、回答が特定されすぎないように、フィルターを削除または変更してください。"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:71
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
 msgid "You can also {0} when there are some results."
 msgstr "結果がある場合は、{0}もできます。"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:75
 msgid "get an alert"
 msgstr "アラートを受け取る"
 
@@ -5424,7 +5424,7 @@ msgstr "{0}のローデータを見る"
 msgid "More"
 msgstr "さらに"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:249
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:251
 msgid "Invalid expression"
 msgstr "無効な表現"
 
@@ -5442,6 +5442,8 @@ msgstr "これは、スプレッドシートプログラムで数式を書くよ
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:111
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:281
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:144
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:19
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:71
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:75
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
@@ -6554,32 +6556,32 @@ msgstr "解除する"
 msgid "Rows {0}-{1} of {2}"
 msgstr "{2}の行{0}〜{1}"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:208
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:212
 msgid "Data truncated to {0} rows."
 msgstr "{0}行に切り捨てされたデータ"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:415
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:419
 msgid "Could not find visualization"
 msgstr "ビジュアライゼーションが見つかりませんでした"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:422
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:426
 msgid "Could not display this chart with this data."
 msgstr "このデータではチャートが表示できません"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:541
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:545
 msgid "No results!"
 msgstr "結果が見つかりませんでした"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:562
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:566
 msgid "Still Waiting..."
 msgstr "待機中..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:565
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:569
 msgid "This usually takes an average of {0}."
 msgstr "通常約{0}かかります"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
 msgid "(This is a bit long for a dashboard)"
 msgstr "（通常のダッシュボード処理より時間がかかっています）"
 
@@ -7537,7 +7539,7 @@ msgstr "{0}に保存された質問が多数ありますか？整理するのに
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:238
 #: frontend/src/metabase/home/components/Activity.jsx:87
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:90
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:99
 #: frontend/src/metabase/public/components/LogoBadge.jsx:22
 #: frontend/src/metabase/routes-public.jsx:15
 #: frontend/src/metabase/routes.jsx:141 src/metabase/api/setup.clj
@@ -9376,7 +9378,7 @@ msgstr "管理者"
 msgid "MetaBot"
 msgstr "MetaBot"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:55
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
 msgstr "共有"
@@ -9421,6 +9423,7 @@ msgid "Axes"
 msgstr "軸"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:219
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:79
 #: frontend/src/metabase/visualizations/lib/settings/column.js:62
 msgid "Formatting"
 msgstr "書式"
@@ -9760,6 +9763,7 @@ msgstr "表示列"
 msgid "Conditional Formatting"
 msgstr "条件付き書式"
 
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:175
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:234
 msgid "Column title"
 msgstr "項目名"
@@ -12619,7 +12623,7 @@ msgstr "最大を表示"
 msgid "Get Preview"
 msgstr "プレビューを取得する"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:82
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:84
 msgid "Back to previous results"
 msgstr "前の結果に戻る"
 
@@ -12802,7 +12806,7 @@ msgstr "メトリクスを追加する"
 msgid "Profile"
 msgstr "プロフィール"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:579
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "これはたいていの場合はとても速いですが、現在は時間がかかっているようです。"
 
@@ -13721,19 +13725,19 @@ msgstr "ユーザにGoogleアカウントでサインインすることを許可
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
 msgstr "末尾のapps.googleusercontent.comを含めClient IDの全てを必ず含めてください。"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:30
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:38
 msgid "Metabase {0} is available."
 msgstr "Metabase {0}が入手可能です。"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:31
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:39
 msgid "You're running {0}"
 msgstr "あなたは{0}を実行しています"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:70
 msgid "Sorry, we were unable to check for updates at this time."
 msgstr "申し訳ありません。現在アップデートの有無を確認することができませんでした。"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:96
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:109
 msgid "patch release"
 msgstr "パッチリリース"
 
@@ -14337,41 +14341,41 @@ msgstr "テキストの文字列をすべて大文字で返します。"
 msgid "The column with values to convert to upper case."
 msgstr "大文字に変換する値のあるコラム。"
 
-#: frontend/src/metabase/lib/settings.js:199
+#: frontend/src/metabase/lib/settings.js:210
 msgid "must be {0} and include {1}."
 msgstr "{0}でありかつ{1}を含めなければならない。"
 
-#: frontend/src/metabase/lib/settings.js:201
+#: frontend/src/metabase/lib/settings.js:212
 msgid "must be {0}."
 msgstr "{0}でなければならない。"
 
-#: frontend/src/metabase/lib/settings.js:203
+#: frontend/src/metabase/lib/settings.js:214
 msgid "must include {0}."
 msgstr "{0}を含めなければならない。"
 
-#: frontend/src/metabase/lib/settings.js:216
+#: frontend/src/metabase/lib/settings.js:227
 msgid "at least {0} character long"
 msgid_plural "at least {0} characters long"
 msgstr[0] "最低{0}文字"
 
-#: frontend/src/metabase/lib/settings.js:225
+#: frontend/src/metabase/lib/settings.js:236
 msgid "{0} lower case letter"
 msgid_plural "{0} lower case letters"
 msgstr[0] "{0}個の小文字\n"
 "{0}個の小文字"
 
-#: frontend/src/metabase/lib/settings.js:234
+#: frontend/src/metabase/lib/settings.js:245
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
 msgstr[0] "{0}個の大文字\n"
 "{0}個の大文字"
 
-#: frontend/src/metabase/lib/settings.js:243
+#: frontend/src/metabase/lib/settings.js:254
 msgid "{0} number"
 msgid_plural "{0} numbers"
 msgstr[0] "{0}個の数"
 
-#: frontend/src/metabase/lib/settings.js:248
+#: frontend/src/metabase/lib/settings.js:259
 msgid "{0} special character"
 msgid_plural "{0} special characters"
 msgstr[0] "{0}個の特殊文字\n"
@@ -14385,7 +14389,7 @@ msgstr "有効なメールアドレスでなければなりません"
 msgid "must be {0} characters or less"
 msgstr "{0}文字以下でなければならない"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:113
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:122
 msgid "Thanks for using Metabase!"
 msgstr "Metabaseを使ってくれてありがとう！"
 
@@ -17001,7 +17005,7 @@ msgstr "まず、{0}にしてください。"
 msgid "Rows {0}-{1} of first {2}"
 msgstr "最初の{2}の{0}-{1}の行"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:150
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:268
 msgid "Drag fields here"
 msgstr "ドラッグフィールドはこちら"
 
@@ -17009,15 +17013,15 @@ msgstr "ドラッグフィールドはこちら"
 msgid "Percentage"
 msgstr "割合"
 
-#: frontend/src/metabase/lib/data_grid.js:311
+#: frontend/src/metabase/lib/data_grid.js:340
 msgid "Totals for {0}"
 msgstr "0}の合計"
 
-#: frontend/src/metabase/lib/data_grid.js:135
+#: frontend/src/metabase/lib/data_grid.js:157
 msgid "Grand totals"
 msgstr "総計"
 
-#: frontend/src/metabase/lib/data_grid.js:110
+#: frontend/src/metabase/lib/data_grid.js:128
 msgid "Row totals"
 msgstr "行の合計"
 
@@ -17033,11 +17037,11 @@ msgstr "テーブルのカラムに使用するフィールド"
 msgid "Fields to use for the table values"
 msgstr "テーブルの値に使用するフィールド"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:82
 msgid "Pivot tables can only be used with aggregated queries."
 msgstr "ピボットテーブルは、集約されたクエリでのみ使用できます。"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:54
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:55
 msgid "Pivot Table"
 msgstr "ピボットテーブル"
 
@@ -17641,11 +17645,11 @@ msgstr "時過ぎ"
 msgid "Email sent"
 msgstr "送信されたメール"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:57
 msgid "Add data to share this dashboard"
 msgstr "このダッシュボードを共有するためにデータを追加する"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:79
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:80
 msgid "Dashboard subscriptions"
 msgstr "ダッシュボードのサブスクリプション"
 
@@ -17689,21 +17693,21 @@ msgstr "この購読を{0}に削除しますか？"
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}."
 msgstr "サブスクリプションの{0}チャートは、ダッシュボードと同じように表示されません。{1}."
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:22
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:29
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:36
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:26
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:33
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:40
 msgid "Fields to use for the table {0}"
 msgstr "テーブル{0}に使用するフィールド"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:23
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:27
 msgid "rows"
 msgstr "列"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:30
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:34
 msgid "columns"
 msgstr "柱"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:37
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:41
 msgid "values"
 msgstr "価値観"
 
@@ -17807,4 +17811,61 @@ msgstr "0}のマグニチュードは知られていない"
 #: src/metabase/query_processor/middleware/fetch_source_query.clj
 msgid "Error resolving source query"
 msgstr "ソースクエリの解決エラー"
+
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:103
+msgid "Have your email configured for you."
+msgstr "あなたのためにメールを設定しておきましょう。"
+
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:133
+msgid "Have your server maintained for you."
+msgstr "あなたのサーバーをあなたのためにメンテナンスしてもらいましょう。"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:139
+msgid "Want to have upgrades taken care of for you?"
+msgstr "アップグレードのお世話をしてもらいたいと思いませんか？"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:140
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:16
+msgid "Migrate to Metabase Cloud."
+msgstr "Metabase Cloudに移行します。"
+
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:51
+msgid "Manage Metabase Cloud"
+msgstr "メタベースクラウドの管理"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:32
+msgid "Show totals"
+msgstr "合計を表示"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:65
+msgid "Sort order"
+msgstr "ソート順"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:83
+msgid "See options…"
+msgstr "オプションを見る..."
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:86
+msgid "This database does not support pivot tables."
+msgstr "このデータベースはピボットテーブルをサポートしていません。"
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath."
+msgstr "無効な GeoJSON ファイルの場所: http:// または https:// で始まるか、クラスパス上のファイルへの相対パスでなければなりません。"
+
+#: src/metabase/api/geojson.clj
+msgid "URLs referring to hosts that supply internal hosting metadata are prohibited."
+msgstr "内部でホスティングのメタデータを提供しているホストを参照しているURLは禁止されています。"
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid custom GeoJSON."
+msgstr "無効なカスタム GeoJSON です。"
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
+msgstr "無効な{0}: インデックス{1}でブレークアウトを指定したが、ブレークアウトは{2}しかない。"
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Error generating pivot queries"
+msgstr "ピボットクエリのエラー生成"
 
