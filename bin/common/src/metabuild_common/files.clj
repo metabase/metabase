@@ -6,7 +6,7 @@
             [metabuild-common.shell :as sh]
             [metabuild-common.steps :as steps])
   (:import java.io.File
-           [java.nio.file Files FileVisitOption Path Paths]
+           [java.nio.file Files FileSystems FileVisitOption Path Paths]
            java.util.function.BiPredicate
            org.apache.commons.io.FileUtils))
 
