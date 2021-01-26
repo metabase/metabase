@@ -178,6 +178,27 @@ describe("scenarios > admin > settings", () => {
     cy.contains(/^February 11, 2019, 9:40 PM$/);
   });
 
+  it("should search for and select a new timezone", () => {
+    cy.server();
+    cy.route("PUT", "**/report-timezone").as("reportTimezone");
+
+    cy.visit("/admin/settings/localization");
+    cy.contains("Report Timezone")
+      .closest("li")
+      .find(".AdminSelect")
+      .click();
+
+    cy.focused().type("Centr");
+    cy.focused()
+      .closest(".MB-Select")
+      .find("a")
+      .last()
+      .click({ force: true });
+
+    cy.wait("@reportTimezone");
+    cy.contains("US/Central");
+  });
+
   if (version.edition !== "enterprise") {
     describe(" > embedding settings", () => {
       it("should validate a premium embedding token has a valid format", () => {
