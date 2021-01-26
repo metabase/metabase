@@ -10,7 +10,7 @@
       (u/delete-file-if-exists! uberjar-path)
       (u/copy-file! (u/assert-file-exists c/uberjar-path) uberjar-path)
       (u/assert-file-exists uberjar-path)
-      (u/sh "docker" "build" "-t" (c/docker-tag) docker-dir))))
+      (u/sh "docker" "build" "--no-cache" "--pull" "-t" (c/docker-tag) docker-dir))))
 
 (defn- validate-docker-image []
   (u/step "Validate Docker image"
