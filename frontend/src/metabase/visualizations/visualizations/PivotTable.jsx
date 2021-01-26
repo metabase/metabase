@@ -226,7 +226,6 @@ export default class PivotTable extends Component {
       return scrollsHorizontally && scrollsVertically && hasScrollbars;
     }
 
-    console.log(needsScrollbarOffset());
 
     let pivoted;
     try {
