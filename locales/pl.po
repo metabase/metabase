@@ -838,7 +838,7 @@ msgstr "Będzie to widoczne w historii zmian dla tego segmentu, aby pomóc wszys
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:69
 #: frontend/src/metabase/admin/routes.jsx:137
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:216
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:94
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:103
 #: frontend/src/metabase/nav/containers/Navbar.jsx:113
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:18
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:94
@@ -920,7 +920,7 @@ msgstr "Grupa jest tak dobra jak jej członkowie"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:15
 #: frontend/src/metabase/admin/routes.jsx:55
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Admin"
 msgstr "Admin"
 
@@ -1416,19 +1416,19 @@ msgstr "Zmiany zapisane!"
 msgid "Looks like we ran into some problems"
 msgstr "Natrafiliśmy na problem"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:19
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:22
 msgid "Send test email"
 msgstr "Wyślij testowy email"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:20
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:23
 msgid "Sending..."
 msgstr "Wysyłanie..."
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:21
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:24
 msgid "Sent!"
 msgstr "Wysłano!"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:93
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:97
 msgid "Clear"
 msgstr "Wyczyść"
 
@@ -1462,15 +1462,15 @@ msgstr "Schematu grupy"
 msgid "Using "
 msgstr "Używając "
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:105
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:110
 msgid "Getting set up"
 msgstr "Trwa konfiguracja"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:111
 msgid "A few things you can do to get the most out of Metabase."
 msgstr "Kilka rzeczy, które możesz zrobić, aby jak najlepiej wykorzystać Metabase ."
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:120
 msgid "Recommended next step"
 msgstr "Zalecany następny krok"
 
@@ -1502,7 +1502,7 @@ msgstr "Tworzenie użytkownika Slack bot dla MetaBot"
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
 msgstr "Gdy już tam jesteś, nadaj mu nazwę i kliknij {0}. Następnie skopiuj i wklej token API bota w polu poniżej. Gdy skończysz, utworzyć \"metabase_files\" kanał w Slack. Metabase wymaga tego, aby przesyłać wykresy."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:23
 msgid "You're running Metabase {0} which is the latest and greatest!"
 msgstr "Używasz Metabase {0}, która jest najnowsza i Najlepsza!"
 
@@ -1510,13 +1510,13 @@ msgstr "Używasz Metabase {0}, która jest najnowsza i Najlepsza!"
 msgid "Metabase {0} is available.  You're running {1}"
 msgstr "Dostępny jest Metabase {0}.  Używasz {1}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:41
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:49
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:115
 msgid "Update"
 msgstr "Aktualizuj"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:46
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
 msgid "What's Changed:"
 msgstr "Co się zmieniło:"
 
@@ -2470,7 +2470,7 @@ msgstr "Pobierz wyniki"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:52
 #: frontend/src/metabase/components/EntityMenu.info.js:104
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:93
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:94
 msgid "Sharing and embedding"
 msgstr "Udostępnianie i osadzanie"
 
@@ -2982,19 +2982,19 @@ msgstr "Ten panel jest pusty"
 msgid "Add a question to start making it useful!"
 msgstr "Dodaj zapytanie, aby zaczęło być przydatne!"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Daytime mode"
 msgstr "Tryb dzienny"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Nighttime mode"
 msgstr "Tryb nocny"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Exit fullscreen"
 msgstr "Wyłącz tryb pełnoekranowy"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Enter fullscreen"
 msgstr "Włącz tryb pełnoekranowy"
 
@@ -3331,7 +3331,7 @@ msgid "Unarchive"
 msgstr "Przywróć"
 
 #: frontend/src/metabase/home/containers/HomepageApp.jsx:54
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:68
 msgid "Activity"
 msgstr "Aktywność"
 
@@ -4135,7 +4135,7 @@ msgstr "Kategoria, Typ, Model, Ocena itd."
 msgid "Account settings"
 msgstr "Ustawienia konta"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Exit admin"
 msgstr "Zamknij panel administracyjny"
 
@@ -4145,16 +4145,16 @@ msgstr "Logi"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:104
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:22
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:65
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:74
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:100
 msgid "Help"
 msgstr "Pomoc"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:72
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:81
 msgid "About Metabase"
 msgstr "O Metabase"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:78
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:87
 msgid "Sign out"
 msgstr "Wyloguj się"
 
@@ -4162,19 +4162,19 @@ msgstr "Wyloguj się"
 msgid "Thanks for using"
 msgstr "Dzięki za korzystanie"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:116
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:125
 msgid "You're on version"
 msgstr "Pracujesz z wersją"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:119
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
 msgid "Built on"
 msgstr "Zbudowany na"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:139
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:148
 msgid "is a Trademark of"
 msgstr "jest znakiem towarowym"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:141
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:150
 msgid "and is built with care in San Francisco, CA"
 msgstr "i jest tworzony w San Francisco, CA"
 
@@ -5359,15 +5359,15 @@ msgstr "Wystąpił problem z Twoim zapytaniem"
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "Przez większość czasu jest to spowodowane nieprawidłowym wyborem lub złą wartością wejściową. Dwukrotnie sprawdź dane wejściowe i ponów kwerendę."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:66
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
 msgid "This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific."
 msgstr "Może to być odpowiedź, której szukasz. Jeśli nie, spróbuj usunąć lub zmienić filtry, aby uczynić je mniej szczegółowymi."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:71
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
 msgid "You can also {0} when there are some results."
 msgstr "W przypadku niektórych wyników można również {0}."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:75
 msgid "get an alert"
 msgstr "otrzymał(a) alert"
 
@@ -5470,7 +5470,7 @@ msgstr "Zobacz dane dla {0}"
 msgid "More"
 msgstr "Więcej"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:249
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:251
 msgid "Invalid expression"
 msgstr "Nieprawidłowe wyrażenie"
 
@@ -5488,6 +5488,8 @@ msgstr "Pomyśl o tym jako o rodzaju jak pisanie formuły w programie arkusza ka
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:111
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:281
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:144
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:19
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:71
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:75
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
@@ -6599,32 +6601,32 @@ msgstr "Nie ustawiono"
 msgid "Rows {0}-{1} of {2}"
 msgstr "Wiersze {0}-{1} z {2}"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:208
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:212
 msgid "Data truncated to {0} rows."
 msgstr "Dane obcięte do {0} wierszy."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:415
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:419
 msgid "Could not find visualization"
 msgstr "Nie można odnaleźć wizualizacji"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:422
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:426
 msgid "Could not display this chart with this data."
 msgstr "Nie można wyświetlić tego wykresu z tymi danymi."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:541
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:545
 msgid "No results!"
 msgstr "Brak wyników!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:562
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:566
 msgid "Still Waiting..."
 msgstr "Wciąż czekam..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:565
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:569
 msgid "This usually takes an average of {0}."
 msgstr "Zazwyczaj trwa to średnio {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
 msgid "(This is a bit long for a dashboard)"
 msgstr "(jest to trochę za dużo dla pulpitu)"
 
@@ -7589,7 +7591,7 @@ msgstr "Masz dużo zapisanych zapytań w {0}? Twórz kolekcje, aby ułatwić zar
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:238
 #: frontend/src/metabase/home/components/Activity.jsx:87
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:90
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:99
 #: frontend/src/metabase/public/components/LogoBadge.jsx:22
 #: frontend/src/metabase/routes-public.jsx:15
 #: frontend/src/metabase/routes.jsx:141 src/metabase/api/setup.clj
@@ -9444,7 +9446,7 @@ msgstr "Administratorzy"
 msgid "MetaBot"
 msgstr "MetaBot"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:55
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
 msgstr "Udostępnianie"
@@ -9489,6 +9491,7 @@ msgid "Axes"
 msgstr "Osie"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:219
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:79
 #: frontend/src/metabase/visualizations/lib/settings/column.js:62
 msgid "Formatting"
 msgstr "Formatowanie"
@@ -9828,6 +9831,7 @@ msgstr "Kolumna widoczna"
 msgid "Conditional Formatting"
 msgstr "Formatowanie warunkowe"
 
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:175
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:234
 msgid "Column title"
 msgstr "Tytuł kolumny"
@@ -12721,7 +12725,7 @@ msgstr "Pokaż maksimum"
 msgid "Get Preview"
 msgstr "Pokaż Podgląd"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:82
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:84
 msgid "Back to previous results"
 msgstr "Cofnij do poprzednich wyników"
 
@@ -12909,7 +12913,7 @@ msgstr "Dodaj metrykę"
 msgid "Profile"
 msgstr "Profil"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:579
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "Zazwyczaj jest to dość szybkie, ale wydaje się, że zajmuje to teraz trochę czasu."
 
@@ -13829,19 +13833,19 @@ msgstr "Aby umożliwić użytkownikom logowanie się za pomocą Google, musisz n
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
 msgstr "Pamiętaj o podaniu pełnego client ID, w tym sufiksu apps.googleusercontent.com"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:30
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:38
 msgid "Metabase {0} is available."
 msgstr "Metabase {0} jest dostępna."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:31
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:39
 msgid "You're running {0}"
 msgstr "Używasz {0}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:70
 msgid "Sorry, we were unable to check for updates at this time."
 msgstr "Niestety nie możemy obecnie sprawdzić dostępności aktualizacji."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:96
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:109
 msgid "patch release"
 msgstr "wersja patcha"
 
@@ -14445,19 +14449,19 @@ msgstr "Zwraca ciąg tekstu wielkimi literami."
 msgid "The column with values to convert to upper case."
 msgstr "Kolumna z wartościami do konwersji na wielkie litery."
 
-#: frontend/src/metabase/lib/settings.js:199
+#: frontend/src/metabase/lib/settings.js:210
 msgid "must be {0} and include {1}."
 msgstr "musi być {0} i zawierać {1}."
 
-#: frontend/src/metabase/lib/settings.js:201
+#: frontend/src/metabase/lib/settings.js:212
 msgid "must be {0}."
 msgstr "musi być {0}."
 
-#: frontend/src/metabase/lib/settings.js:203
+#: frontend/src/metabase/lib/settings.js:214
 msgid "must include {0}."
 msgstr "musi zawierać {0}."
 
-#: frontend/src/metabase/lib/settings.js:216
+#: frontend/src/metabase/lib/settings.js:227
 msgid "at least {0} character long"
 msgid_plural "at least {0} characters long"
 msgstr[0] "co najmniej {0} znak"
@@ -14465,7 +14469,7 @@ msgstr[1] "co najmniej {0} znaki"
 msgstr[2] "co najmniej {0} znaków"
 msgstr[3] "co najmniej {0} znaków"
 
-#: frontend/src/metabase/lib/settings.js:225
+#: frontend/src/metabase/lib/settings.js:236
 msgid "{0} lower case letter"
 msgid_plural "{0} lower case letters"
 msgstr[0] "{0} mała litera"
@@ -14473,7 +14477,7 @@ msgstr[1] "{0} małe litery"
 msgstr[2] "{0} małych liter"
 msgstr[3] "{0} małych liter"
 
-#: frontend/src/metabase/lib/settings.js:234
+#: frontend/src/metabase/lib/settings.js:245
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
 msgstr[0] "{0} mała litera"
@@ -14481,7 +14485,7 @@ msgstr[1] "{0} małe litery"
 msgstr[2] "{0} małych liter"
 msgstr[3] "{0} małych liter"
 
-#: frontend/src/metabase/lib/settings.js:243
+#: frontend/src/metabase/lib/settings.js:254
 msgid "{0} number"
 msgid_plural "{0} numbers"
 msgstr[0] "{0} numer "
@@ -14489,7 +14493,7 @@ msgstr[1] "{0} numery"
 msgstr[2] "{0} numerów"
 msgstr[3] "{0} numerów"
 
-#: frontend/src/metabase/lib/settings.js:248
+#: frontend/src/metabase/lib/settings.js:259
 msgid "{0} special character"
 msgid_plural "{0} special characters"
 msgstr[0] "(0} znak specjalny"
@@ -14505,7 +14509,7 @@ msgstr "musi być prawidłowym adresem e-mail"
 msgid "must be {0} characters or less"
 msgstr "musi mieć maksymalnie {0} znaków"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:113
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:122
 msgid "Thanks for using Metabase!"
 msgstr "Dziękujemy za korzystanie z Metabase!"
 
@@ -17136,7 +17140,7 @@ msgstr "Po pierwsze, będziesz musiał {0}"
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Wiersze {0}-{1} z pierwszych {2}"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:150
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:268
 msgid "Drag fields here"
 msgstr "Przeciągnij pola tutaj"
 
@@ -17144,15 +17148,15 @@ msgstr "Przeciągnij pola tutaj"
 msgid "Percentage"
 msgstr "Procent"
 
-#: frontend/src/metabase/lib/data_grid.js:311
+#: frontend/src/metabase/lib/data_grid.js:340
 msgid "Totals for {0}"
 msgstr "Suma dla {0}"
 
-#: frontend/src/metabase/lib/data_grid.js:135
+#: frontend/src/metabase/lib/data_grid.js:157
 msgid "Grand totals"
 msgstr "Podsumowania"
 
-#: frontend/src/metabase/lib/data_grid.js:110
+#: frontend/src/metabase/lib/data_grid.js:128
 msgid "Row totals"
 msgstr "Podsumowania wierszy"
 
@@ -17168,11 +17172,11 @@ msgstr "Pola do użycia jako kolumny"
 msgid "Fields to use for the table values"
 msgstr "Pola do użycia jako wartości w tabeli"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:82
 msgid "Pivot tables can only be used with aggregated queries."
 msgstr "Tabele przestawne mogą być użyte tylko w zapytaniach z agregacją danych."
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:54
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:55
 msgid "Pivot Table"
 msgstr "Tabela przestawna"
 
@@ -17559,7 +17563,7 @@ msgstr "Redukcja błędów Wyniki zapytań Druid"
 
 #: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Don't know how to combine these intervals into a single interval."
-msgstr "OSTRZEŻENIE: Nie wiem, jak połączyć te interwały w jeden odstęp."
+msgstr "OSTRZEŻENIE: Nie wiem, jak połączyć te interwały w jeden."
 
 #: modules/drivers/druid/src/metabase/driver/druid/query_processor.clj
 msgid "Ignoring intervals: {0}"
@@ -17776,13 +17780,13 @@ msgstr "minuty po godzinie"
 msgid "Email sent"
 msgstr "Wysłany e-mail"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:57
 msgid "Add data to share this dashboard"
-msgstr "Dodaj dane, aby udostępnić tę tablicę rozdzielczą"
+msgstr "Dodaj dane, aby udostępnić ten panel"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:79
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:80
 msgid "Dashboard subscriptions"
-msgstr "Abonamenty tablic rozdzielczych"
+msgstr "Subskrypcja paneli"
 
 #: frontend/src/metabase/lib/core.js:228
 msgid "Text as a ISO-8601 timestamp"
@@ -17824,21 +17828,21 @@ msgstr "Skasować tę subskrypcję na {0}?"
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}."
 msgstr "{0} wykresy w subskrypcji nie będą wyglądać tak samo jak w twojej desce rozdzielczej. {1}."
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:22
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:29
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:36
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:26
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:33
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:40
 msgid "Fields to use for the table {0}"
 msgstr "Pola do wykorzystania w tabeli {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:23
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:27
 msgid "rows"
-msgstr "Rzędy"
+msgstr "Wiersze"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:30
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:34
 msgid "columns"
 msgstr "Kolumny"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:37
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:41
 msgid "values"
 msgstr "Wartości"
 
@@ -17921,7 +17925,7 @@ msgstr "Ustawić docelową bazę danych i uruchomić migrację..."
 #. make sure target DB is empty
 #: src/metabase/cmd/copy.clj
 msgid "Testing if target {0} database is already populated..."
-msgstr "Testowanie czy docelowa baza danych {0} jest już zaludniona..."
+msgstr "Testowanie czy docelowa baza danych {0} jest już wyepłniona..."
 
 #: src/metabase/db/env.clj
 msgid "Unsupported application database type: {0} is not currently supported."
@@ -17933,7 +17937,7 @@ msgstr "Sprawdź wartość MB_DB_CONNNECTION_URI."
 
 #: src/metabase/driver/sql/query_processor.clj
 msgid "Driver {0} does not support {1}"
-msgstr "Kierowca {0} nie obsługuje {1}"
+msgstr "Sterownik {0} nie obsługuje {1}"
 
 #: src/metabase/driver/sql/query_processor.clj
 msgid "No magnitude known for {0}"
@@ -17942,4 +17946,61 @@ msgstr "{0}Nie ma wielkości znanej z {0}"
 #: src/metabase/query_processor/middleware/fetch_source_query.clj
 msgid "Error resolving source query"
 msgstr "Usuwanie błędów w zapytaniu o źródło"
+
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:103
+msgid "Have your email configured for you."
+msgstr "Skonfiguruj swój e-mail."
+
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:133
+msgid "Have your server maintained for you."
+msgstr "Niech twój serwer będzie utrzymywany dla ciebie."
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:139
+msgid "Want to have upgrades taken care of for you?"
+msgstr "Chcesz, żeby zadbano o ulepszenia?"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:140
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:16
+msgid "Migrate to Metabase Cloud."
+msgstr "Migruj do Metabase Cloud."
+
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:51
+msgid "Manage Metabase Cloud"
+msgstr "Zarządzaj chmurą metabazową"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:32
+msgid "Show totals"
+msgstr "Pokaż sumy"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:65
+msgid "Sort order"
+msgstr "Kolejność sortowania"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:83
+msgid "See options…"
+msgstr "Zobacz opcje..."
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:86
+msgid "This database does not support pivot tables."
+msgstr "Ta baza danych nie obsługuje tabel przestawnych."
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath."
+msgstr "Nieprawidłowa lokalizacja pliku GeoJSON: musi zaczynać się od http:// lub https:// lub być względną ścieżką do pliku w classpath."
+
+#: src/metabase/api/geojson.clj
+msgid "URLs referring to hosts that supply internal hosting metadata are prohibited."
+msgstr "Zabronione są adresy URL odnoszące się do hostów, które dostarczają wewnętrzne metadane hostingowe."
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid custom GeoJSON."
+msgstr "Nieważny niestandardowy GeoJSON."
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
+msgstr "Nieważne {0}: określony wybuch na indeksie {1}, ale mamy tylko {2} wybuchy"
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Error generating pivot queries"
+msgstr "Zapytania sworzniowe generujące błędy"
 
