@@ -56,4 +56,28 @@ describe("postgres > question > custom columns", () => {
     cy.findByText("Visualize").click();
     cy.findByText("Arnold Adams");
   });
+
+  it.skip("should not remove regex escape characters (metabase#14517)", () => {
+    // Ironically, both Prettier and Cypress remove escape characters from our code as well
+    // We're testing for the literal sting `(?<=\/\/)[^\/]*`, but we need to escape the escape characters to make it work
+    const ESCAPED_REGEX = "(?<=\\/\\/)[^\\/]*";
+
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText(PG_DB_NAME).click();
+    cy.findByText("People").click();
+
+    cy.log("**-- 1. Create custom column using `regexextract()` --**");
+
+    cy.get(".Icon-add_data").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']")
+        .type(`regexextract([State], "${ESCAPED_REGEX}")`)
+        .blur();
+
+      // It removes escaped characters already on blur
+      cy.log("**Reported failing on v0.36.4**");
+      cy.contains(ESCAPED_REGEX);
+    });
+  });
 });
