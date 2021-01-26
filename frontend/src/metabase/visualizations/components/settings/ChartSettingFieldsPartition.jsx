@@ -333,8 +333,11 @@ class EmptyPartition extends React.Component {
 class Column extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { expanded: false };
+    this.state = { hover: false, expanded: false };
   }
+  mouseHover = hover => {
+    this.setState({ hover });
+  };
   toggleExpand = () => {
     const { expanded } = this.state;
     this.setState({ expanded: !expanded });
@@ -360,19 +363,20 @@ class Column extends React.Component {
       isDragging,
       partitionName,
     } = this.props;
-    const { expanded } = this.state;
+    const { hover, expanded } = this.state;
+    const shadowOffset = hover ? "5px" : "3px";
+    const shadowColor = lighten(colors["text-dark"], hover ? 1.3 : 1.5);
     const showOptionsPanel = expanded && !isDragging;
     return connectDropTarget(
       connectDragSource(
         <div
           className="mb1 bordered rounded"
+          onMouseEnter={() => this.mouseHover(true)}
+          onMouseLeave={() => this.mouseHover(false)}
           style={{
             padding: "12px 14px",
-            "box-shadow": `0 2px 3px ${lighten(colors["text-dark"], 1.5)}`,
-            "&:hover": {
-              "box-shadow": `0 2px 5px ${lighten(colors["text-dark"], 1.3)}`,
-              transition: "all 300ms linear",
-            },
+            "box-shadow": `0 2px ${shadowOffset} ${shadowColor}`,
+            transition: "all 300ms linear",
           }}
         >
           <div
