@@ -51,12 +51,12 @@
   (swap! build-options assoc :branch new-branch))
 
 (defn edition
-  "Either `:ce` (Community Edition) or `:ee` (Enterprise Edition)."
+  "Either `:oss` (Community Edition) or `:ee` (Enterprise Edition)."
   []
   (build-option-or-throw :edition))
 
 (defn set-edition! [new-edition]
-  (assert (#{:ce :ee} new-edition))
+  (assert (#{:oss :ee} new-edition))
   (swap! build-options assoc :edition new-edition))
 
 (defn pre-release-version?
@@ -75,12 +75,12 @@
 
 (defn docker-image-name []
   (case (edition)
-    :ce "metabase/metabase"
+    :oss "metabase/metabase"
     :ee "metabase/metabase-enterprise"))
 
 (defn downloads-url []
   (case (edition)
-    :ce "downloads.metabase.com"
+    :oss "downloads.metabase.com"
     :ee "downloads.metabase.com/enterprise"))
 
 (defn artifact-download-url
@@ -96,12 +96,12 @@
 
 (defn website-repo []
   (case (edition)
-    :ce "metabase/metabase.github.io"
+    :oss "metabase/metabase.github.io"
     nil))
 
 (defn heroku-buildpack-repo []
   (case (edition)
-    :ce "metabase/metabase-buildpack"
+    :oss "metabase/metabase-buildpack"
     nil))
 
 (defn metabase-repo
@@ -158,8 +158,8 @@
   []
   (->> ((requiring-resolve 'release.common.github/recent-tags))
        (filter (case (edition)
-                 :ee (partial re-matches #"v1(?:\.\d+){2,}$")
-                 :ce (partial re-matches #"v0(?:\.\d+){2,}$")))))
+                 :ee  (partial re-matches #"v1(?:\.\d+){2,}$")
+                 :oss (partial re-matches #"v0(?:\.\d+){2,}$")))))
 
 (defn- most-recent-tag
   "Given a set of release `tags`, return the most recent one."
