@@ -88,12 +88,8 @@ class Settings {
   // Right now, all Metabase Cloud hosted instances run on *.metabaseapp.com
   // We plan on changing this to look at an envvar in the future instead.
   isHosted() {
-    return (
-      this.get("site-url") &&
-      this.get("site-url")
-        .toLowerCase()
-        .includes("metabaseapp.com")
-    );
+    // matches <custom>.metabaseapp.com and <custom>.metabaseapp.com/
+    return /.+\.metabaseapp.com\/?$/i.test(this.get("site-url"));
   }
 
   isTrackingEnabled() {
