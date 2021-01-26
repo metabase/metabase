@@ -17,10 +17,10 @@
   (:import java.sql.SQLException))
 
 (defmulti load-data!
-  "Load the rows for a specific table into a DB. `load-data-chunked!` is the default implementation (see below); several
-  other implementations like `load-data-all-at-once!` and `load-data-one-at-a-time!` are already defined; see below.
-  It will likely take some experimentation to see which implementation works correctly and performs best with your
-  driver."
+  "Load the rows for a specific table (which has already been created) into a DB. `load-data-chunked!` is the default
+  implementation (see below); several other implementations like `load-data-all-at-once!` and
+  `load-data-one-at-a-time!` are already defined; see below. It will likely take some experimentation to see which
+  implementation works correctly and performs best with your driver."
   {:arglists '([driver dbdef tabledef])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -129,35 +129,35 @@
 ;; You can use one of these alternative implementations instead of `load-data-chunked!` if that doesn't work with your
 ;; DB or one of these other ones performs faster
 
-(def load-data-all-at-once!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-all-at-once!
   "Implementation of `load-data!`. Insert all rows at once."
   (make-load-data-fn))
 
-(def load-data-chunked!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-chunked!
   "Implementation of `load-data!`. Insert rows in chunks of 200 at a time."
   (make-load-data-fn load-data-chunked))
 
-(def load-data-one-at-a-time!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time!
   "Implementation of `load-data!`. Insert rows one at a time."
   (make-load-data-fn load-data-one-at-a-time))
 
-(def load-data-add-ids!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids!
   "Implementation of `load-data!`. Insert all rows at once; add IDs."
   (make-load-data-fn load-data-add-ids))
 
-(def load-data-add-ids-chunked!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-chunked!
   "Implementation of `load-data!`. Insert rows in chunks of 200 at a time; add IDs."
   (make-load-data-fn load-data-add-ids load-data-chunked))
 
-(def load-data-one-at-a-time-add-ids!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time-add-ids!
   "Implementation of `load-data!` that inserts rows one at a time, but adds IDs."
   (make-load-data-fn load-data-add-ids load-data-one-at-a-time))
 
-(def load-data-chunked-parallel!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-chunked-parallel!
   "Implementation of `load-data!`. Insert rows in chunks of 200 at a time, in parallel."
   (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
 
-(def load-data-one-at-a-time-parallel!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time-parallel!
   "Implementation of `load-data!`. Insert rows one at a time, in parallel."
   (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
 ;; ^ the parallel versions aren't neccesarily faster than the sequential versions for all drivers so make sure to do

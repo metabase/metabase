@@ -18,7 +18,7 @@
 
 ;;; --------------------------------------------------- Path Utils ---------------------------------------------------
 
-(defn- get-path-in-filesystem ^Path [^FileSystem filesystem, ^String path-component & more-components]
+(defn- get-path-in-filesystem ^Path [^FileSystem filesystem ^String path-component & more-components]
   (.getPath filesystem path-component (u/varargs String more-components)))
 
 (defn get-path

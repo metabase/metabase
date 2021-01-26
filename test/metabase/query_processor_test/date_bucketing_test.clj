@@ -843,8 +843,11 @@
               ;; generating Java classes here so they'll be in the DB's native timezone. Some DBs refuse to use
               ;; the same timezone we're running the tests from *cough* SQL Server *cough*
               [(u/prog1 (if (and (isa? driver/hierarchy driver/*driver* :sql)
-                                 ;; BigQuery doesn't insert rows using SQL statements
-                                 (not= driver/*driver* :bigquery))
+                                 ;; BigQuery/Vertica don't insert rows using SQL statements
+                                 ;;
+                                 ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
+                                 ;; hardcode the whitelist here.
+                                 (not (#{:vertica :bigquery} driver/*driver*)))
                           (sql.qp/add-interval-honeysql-form driver/*driver*
                                                              (sql.qp/current-datetime-honeysql-form driver/*driver*)
                                                              (* i interval-seconds)
@@ -865,7 +868,7 @@
 
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 
-(defn- count-of-grouping [^TimestampDatasetDef dataset, field-grouping & relative-datetime-args]
+(defn- count-of-grouping [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
   (-> (mt/dataset dataset
         ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
         ;; was created more than (interval-seconds * 5) seconds ago, delete the Database and recreate it to make sure

@@ -191,7 +191,7 @@
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic variable `*get-db*`, which
   can be rebound with `with-db`."
   ([]
-   (u/get-id (db)))
+   (u/the-id (db)))
 
   ([table-name]
    (impl/the-table-id (id) (format-name table-name)))
