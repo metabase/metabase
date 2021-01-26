@@ -221,8 +221,6 @@ export default class PivotTable extends Component {
       const hasScrollbars =
         window.navigator.platform === "Win32" || areScrollbarsVisible();
 
-      console.log("hasScrollbars?", hasScrollbars);
-
       return scrollsHorizontally && scrollsVertically && hasScrollbars;
     }
 
