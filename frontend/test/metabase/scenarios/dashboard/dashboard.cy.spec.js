@@ -266,6 +266,64 @@ describe("scenarios > dashboard", () => {
     });
   });
 
+  it.skip("should display column options for cross-filter (metabase#14473)", () => {
+    cy.log("**-- 1. Create a question --**");
+
+    cy.request("POST", "/api/card", {
+      name: "14473",
+      dataset_query: {
+        type: "native",
+        native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.log("**-- 2. Create a dashboard --**");
+
+      cy.request("POST", "/api/dashboard", {
+        name: "14473D",
+      }).then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.log("**-- 3. Add 4 filters to the dashboard --**");
+
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            { name: "ID", slug: "id", id: "729b6456", type: "id" },
+            { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
+            {
+              name: "Category",
+              slug: "category",
+              id: "89873480",
+              type: "category",
+            },
+            {
+              name: "Category 1",
+              slug: "category_1",
+              id: "cbc045f2",
+              type: "category",
+            },
+          ],
+        });
+
+        cy.log("**-- 4. Add previously created question to the dashboard --**");
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        });
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      });
+    });
+
+    // Add cross-filter click behavior manually
+    cy.get(".Icon-pencil").click();
+    cy.get(".DashCard .Icon-click").click({ force: true });
+    cy.findByText("COUNT(*)").click();
+    cy.findByText("Update a dashboard filter").click();
+
+    checkOptionsForFilter("ID");
+    checkOptionsForFilter("Category");
+  });
+
   describe("revisions screen", () => {
     it("should open and close", () => {
       cy.visit("/dashboard/1");
@@ -295,3 +353,17 @@ describe("scenarios > dashboard", () => {
     });
   });
 });
+
+function checkOptionsForFilter(filter) {
+  cy.findByText("Available filters")
+    .parent()
+    .contains(filter)
+    .click();
+  popover()
+    .should("contain", "Columns")
+    .and("contain", "COUNT(*)")
+    .and("not.contain", "Dashboard filters");
+
+  // Get rid of the open popover to be able to select another filter
+  cy.findByText("Pick one or more filters to update").click();
+}
