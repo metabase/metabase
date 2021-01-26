@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.format-rows-test
-  (:require [clojure.test :refer :all]
+  (:require [buddy.core.codecs :as codecs]
+            [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.query-processor-test :as qp.test]
@@ -182,3 +183,14 @@
                   results (mt/test-qp-middleware format-rows/format-rows query rows)]
               (is (= expected-rows
                      (:post results))))))))))
+
+; (0x4333D26E), (0x20014860486000000000000000008888)
+(deftest convert-binary-ip-test
+  (testing "handles ipv4 addresses"
+    (are [in ex] (= ex (-> in codecs/hex->bytes format-rows/convert-binary-ip))
+      "4333D26E"                         "67.51.210.110"
+      "20014860486000000000000000008888" "2001:4860:4860:0:0:0:0::8888"
+      ;; gibberish?
+      "ab"                               "::ab"
+      )
+    (is (nil? (format-rows/convert-binary-ip nil)))))
