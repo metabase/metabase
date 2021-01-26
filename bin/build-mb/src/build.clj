@@ -59,8 +59,6 @@
   (ordered-map/ordered-map
    :version      (fn [{:keys [version]}]
                    (version-info/generate-version-info-file! version))
-   :translations (fn [_]
-                   (build-translation-resources!))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
    :drivers      (fn [_]
