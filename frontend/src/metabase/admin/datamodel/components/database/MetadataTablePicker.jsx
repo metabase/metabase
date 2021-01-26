@@ -19,8 +19,10 @@ export default class MetadataTablePicker extends Component {
   constructor(props, context) {
     super(props, context);
 
+    const { tables, tableId } = props;
+    const selectedTable = _.findWhere(tables, { id: tableId });
     this.state = {
-      selectedSchema: null,
+      selectedSchema: selectedTable ? selectedTable.schema_name : null,
       showTablePicker: true,
     };
   }
