@@ -18,7 +18,7 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("Migrate to Metabase Cloud.");
     cy.findAllByRole("link", { name: "Learn more" })
       .should("have.attr", "href")
-      .and("include", /migrate/);
+      .and("include", "/migrate/");
   });
 
   it("should surface an error when validation for any field fails (metabase#4506)", () => {
