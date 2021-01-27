@@ -1,7 +1,8 @@
-(ns metabase.search
+(ns metabase.search.scoring
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
-            [metabase.models.table :refer [Table]]
+            [metabase.models :refer :all]
+            [metabase.search.config :refer :all]
             [schema.core :as s]))
 
 ;;; Utility functions
@@ -36,26 +37,6 @@
    ;; like more than enough. Memory is cheap and the items are small, so we may as well skew high
    :fifo/threshold 1000))
 
-;;; Model setup
-
-(defn- model-name->class
-  [model-name]
-  (Class/forName (format "metabase.models.%s.%sInstance" model-name (str/capitalize model-name))))
-
-(defmulti searchable-columns-for-model
-  "The columns that will be searched for the query."
-  {:arglists '([model])}
-  class)
-
-(defmethod searchable-columns-for-model :default
-  [_]
-  [:name])
-
-(defmethod searchable-columns-for-model (class Table)
-  [_]
-  [:name
-   :display_name])
-
 ;;; Scoring
 
 (defn- hits->ratio
@@ -80,13 +61,14 @@
 
 (defn- score-with
   [scoring-fns tokens result]
-  (apply max
+  (apply max-key :score
          (for [column (searchable-columns-for-model (model-name->class (:model result)))
-               :let [haystack (-> result
+               :let [target (-> result
                                   (get column)
-                                  normalize
-                                  tokenize)]]
-           (reduce + (score-ratios tokens haystack scoring-fns)))))
+                                  (column->string (:model result) column))]]
+           {:score  (reduce + (score-ratios tokens (-> target normalize tokenize) scoring-fns))
+            :match  target
+            :column column})))
 
 (def ^:private consecutivity-scorer
   (partial largest-common-subseq-length matches?))
@@ -107,12 +89,36 @@
   [factor scorer]
   (comp (partial * factor) scorer))
 
-(s/defn score :- s/Num
-  [query :- (s/maybe s/Str), result :- s/Any] ;; TODO. It's a map with result columns + :model
-  (if (seq query)
-    (score-with [consecutivity-scorer
-                 total-occurrences-scorer
-                 (weigh-by 1.5 exact-match-scorer)]
-                (tokenize (normalize query))
+(def ^:private match-based-scorers
+  [consecutivity-scorer
+   total-occurrences-scorer
+   (weigh-by 1.5 exact-match-scorer)])
+
+(def ^:private model->sort-position
+  (into {} (map-indexed (fn [i model]
+                          [(str/lower-case (name model)) i])
+                        searchable-models)))
+
+(defn- score-with-match
+  [query-string result]
+  (if (seq query-string)
+    (score-with match-based-scorers
+                (tokenize (normalize query-string))
                 result)
-    0))
+    {:score 0}))
+
+(defn sort-results
+  "Sorts the given results based on internal scoring. Returns them in order, with `:matched_column` and
+  `matched_text` injected in"
+  [query-string results]
+  (let [scores-and-results (for [result results
+                                 :let [{:keys [score column match]} (score-with-match query-string result)]]
+                             [[(- score)
+                               (model->sort-position (:model result))
+                               (:name result)]
+                              (assoc result
+                                     :matched_column column
+                                     :matched_text match)])]
+    (->> scores-and-results
+         (sort-by first)
+         (map second))))

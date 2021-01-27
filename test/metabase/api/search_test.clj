@@ -87,7 +87,7 @@
         coll-data-map (fn [instance-name collection]
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
-                                 {:collection_id (u/get-id collection)})))]
+                                 {:collection_id (u/the-id collection)})))]
     (mt/with-temp* [Collection [coll      (data-map "collection %s collection")]
                     Card       [card      (coll-data-map "card %s card" coll)]
                     Dashboard  [dashboard (coll-data-map "dashboard %s dashboard" coll)]

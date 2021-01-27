@@ -1,6 +1,6 @@
-(ns metabase.search-test
+(ns metabase.search.scoring-test
   (:require [clojure.test :refer :all]
-            [metabase.search :as search]))
+            [metabase.search.scoring :as search]))
 
 (defn- result-row
   ([name]
@@ -22,8 +22,13 @@
     (is (thrown-with-msg? Exception #"does not match schema"
                           (search/tokenize nil)))))
 
+(defn scorer->score
+  [scorer]
+  (comp :score
+        (partial #'search/score-with [scorer])))
+
 (deftest consecutivity-scorer-test
-  (let [score (partial #'search/score-with [#'search/consecutivity-scorer])]
+  (let [score (scorer->score #'search/consecutivity-scorer)]
     (testing "partial matches"
       (is (= 1/3
              (score ["rasta" "el" "tucan"]
@@ -53,7 +58,7 @@
                     (result-row "")))))))
 
 (deftest total-occurrences-scorer-test
-  (let [score (partial #'search/score-with [#'search/total-occurrences-scorer])]
+  (let [score (scorer->score #'search/total-occurrences-scorer)]
     (testing "partial matches"
       (is (= 1/3
              (score ["rasta" "el" "tucan"]
@@ -83,7 +88,7 @@
                     (result-row "")))))))
 
 (deftest exact-match-scorer-test
-  (let [score (partial #'search/score-with [#'search/exact-match-scorer])]
+  (let [score (scorer->score #'search/exact-match-scorer)]
     (is (= 0
            (score ["rasta" "the" "toucan"]
                   (result-row "Crowberto el tucan"))))
