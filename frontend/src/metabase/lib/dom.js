@@ -27,13 +27,10 @@ export const IFRAMED_IN_SELF = (function() {
   }
 })();
 
-export const WINDOWS_SCROLL_BAR_X_HEIGHT = 20;
-export const MAC_SCROLL_BAR_X_HEIGHT = 10;
-
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms
-export const areScrollbarsVisible = _.memoize(() => {
+export const getScrollBarSize = _.memoize(() => {
   const scrollableElem = document.createElement("div"),
     innerElem = document.createElement("div");
   scrollableElem.style.width = "30px";
@@ -46,7 +43,7 @@ export const areScrollbarsVisible = _.memoize(() => {
   document.body.appendChild(scrollableElem); // Elements only have width if they're in the layout
   const diff = scrollableElem.offsetWidth - scrollableElem.clientWidth;
   document.body.removeChild(scrollableElem);
-  return diff > 0;
+  return diff;
 });
 
 // check if we have access to localStorage to avoid handling "access denied"

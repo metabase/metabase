@@ -5,7 +5,7 @@ import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync } from "react-virtualized";
 
-import { areScrollbarsVisible } from "metabase/lib/dom";
+import { getScrollBarSize } from "metabase/lib/dom";
 
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
@@ -210,18 +210,19 @@ export default class PivotTable extends Component {
 
     // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
     // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
-    function needsScrollbarOffset() {
+    function scrollBarOffsetSize() {
       if (!grid) {
-        return false;
+        return 0;
       }
-      // check to see if the main data container has Y scrolling
-      const scrollsVertically = grid.scrollHeight > parseInt(grid.style.height);
+      // get the size of the scrollbars
+      const scrollBarSize = getScrollBarSize();
       const scrollsHorizontally = grid.scrollWidth > parseInt(grid.style.width);
-      // windows always has scrollbars, otherwise check for the Mac setting
-      const hasScrollbars =
-        window.navigator.platform === "Win32" || areScrollbarsVisible();
 
-      return scrollsHorizontally && scrollsVertically && hasScrollbars;
+      if (scrollsHorizontally && scrollBarSize > 0) {
+        return scrollBarSize;
+      } else {
+        return 0;
+      }
     }
 
     let pivoted;
@@ -415,11 +416,7 @@ export default class PivotTable extends Component {
                     leftHeaderCellSizeAndPositionGetter
                   }
                   width={leftHeaderWidth}
-                  height={
-                    needsScrollbarOffset()
-                      ? height - topHeaderHeight - 20
-                      : height - topHeaderHeight
-                  }
+                  height={height - topHeaderHeight - scrollBarOffsetSize()}
                   scrollTop={scrollTop}
                   onScroll={({ scrollTop }) => onScroll({ scrollTop })}
                 />
