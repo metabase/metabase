@@ -145,12 +145,13 @@ describe("data_grid", () => {
     const getPathsAndValues = items =>
       items.map(item => _.pick(item, "path", "value"));
 
+    // This function adds fake field_refs so the settings can be associated with columns in the data
     const multiLevelPivotForIndexes = (
       data,
       columns,
       rows,
       values,
-      collapsedSubtotals,
+      { collapsedRows } = {},
     ) => {
       const settings = {
         column: column => ({ column }),
@@ -158,7 +159,7 @@ describe("data_grid", () => {
           { columns, rows, values },
           indexes => indexes.map(index => ["fake field ref", index]),
         ),
-        [COLLAPSED_ROWS_SETTING]: { value: collapsedSubtotals },
+        [COLLAPSED_ROWS_SETTING]: { value: collapsedRows },
       };
       data = {
         ...data,
@@ -468,7 +469,9 @@ describe("data_grid", () => {
           getRowSection,
           leftHeaderItems,
           rowCount,
-        } = multiLevelPivotForIndexes(data, [], [0, 1], [2], ['["a"]']);
+        } = multiLevelPivotForIndexes(data, [], [0, 1], [2], {
+          collapsedRows: ['["a"]'],
+        });
         expect(rowCount).toEqual(5);
         expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
         expect(getRowSection(0, 0)).toEqual([{ isSubtotal: true, value: "3" }]);
@@ -478,7 +481,9 @@ describe("data_grid", () => {
           getRowSection,
           leftHeaderItems,
           rowCount,
-        } = multiLevelPivotForIndexes(data, [], [0, 1], [2], ["1"]);
+        } = multiLevelPivotForIndexes(data, [], [0, 1], [2], {
+          collapsedRows: ["1"],
+        });
         expect(rowCount).toEqual(3);
         expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
         expect(leftHeaderItems[1].value).toEqual("Totals for b"); // b is also collapsed
