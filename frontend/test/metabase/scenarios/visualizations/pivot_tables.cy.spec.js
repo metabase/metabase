@@ -247,6 +247,35 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
   });
 
+  it("should allow value formatting", () => {
+    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+
+    cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
+
+    cy.findByText("Settings").click();
+    assertOnPivotSettings();
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .parent()
+      .findAllByText(/Count/)
+      .click();
+    cy.findByText(/Formatting/);
+    cy.findByText(/See options/).click();
+
+    cy.log("**-- New panel for the column options --**");
+    cy.findByText("Column title");
+    cy.findByText("Style");
+    cy.findByText("Separator style");
+
+    cy.log("**-- Change the value formatting --**");
+    cy.findByText("Normal").click();
+    cy.findByText("Percent").click();
+    cy.findByText("Done").click();
+    cy.get(".Visualization").within(() => {
+      cy.findByText("78,300%");
+    });
+  });
+
   it("should display an error message for native queries", () => {
     cy.server();
     // native queries should use the normal dataset endpoint even when set to pivot
