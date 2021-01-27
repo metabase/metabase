@@ -38,9 +38,9 @@
 
 (defn- lein-project-map
   "Read the `project.clj` file for `driver` and return it as a map."
-  [driver]
+  [driver & profiles]
   (let [project-filename (u/assert-file-exists (u/filename (driver-project-dir driver) "project.clj"))]
-    (lein.project/read project-filename)))
+    (lein.project/read project-filename profiles)))
 
 (defn has-edition-profile?
   "Whether `driver` has a separate profile for `edition`, e.g. `:ee`. This means this version of the driver is different

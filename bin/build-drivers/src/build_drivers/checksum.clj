@@ -73,7 +73,8 @@
       (let [checksum (str
                       (c/edition-checksum-prefix driver edition)
                       (DigestUtils/md5Hex (str/join (concat [(metabase-source-checksum)]
-                                                            (map driver-checksum (manifest/parent-drivers driver))
+                                                            (map #(driver-checksum % edition)
+                                                                 (manifest/parent-drivers driver))
                                                             (map slurp (driver-source-paths driver))))))]
         (u/safe-println (format "Current checksum of %s driver (%s edition) is %s" driver edition (colorize/cyan checksum)))
         checksum))))
