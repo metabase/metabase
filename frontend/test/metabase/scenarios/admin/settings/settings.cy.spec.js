@@ -188,12 +188,8 @@ describe("scenarios > admin > settings", () => {
       .find(".AdminSelect")
       .click();
 
-    cy.focused().type("Centr");
-    cy.focused()
-      .closest(".MB-Select")
-      .find("a")
-      .last()
-      .click({ force: true });
+    cy.findByPlaceholderText("Find...").type("Centr");
+    cy.findByText("US/Central").click({ force: true });
 
     cy.wait("@reportTimezone");
     cy.contains("US/Central");
