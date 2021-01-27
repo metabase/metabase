@@ -15,7 +15,7 @@ class MetricListApp extends React.Component {
     const { metrics, tableSelector } = this.props;
 
     return (
-      <div className="px3">
+      <div className="px3 pb2">
         <div className="flex py2">
           {tableSelector}
           <Link to={`/admin/datamodel/metric/create`} className="ml-auto">
@@ -25,7 +25,7 @@ class MetricListApp extends React.Component {
         <table className="AdminTable">
           <thead className="text-bold">
             <tr>
-              <th style={{ minWidth: "200px" }}>{t`Name`}</th>
+              <th style={{ minWidth: "320px" }}>{t`Name`}</th>
               <th className="full">{t`Definition`}</th>
               <th>{t`Actions`}</th>
             </tr>
