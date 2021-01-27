@@ -10,7 +10,7 @@
 (defn build-drivers! [edition]
   (u/step (format "Building all drivers (%s edition)" edition)
     (doseq [driver (all-drivers)]
-      (build-driver/build-driver! driver :edition edition))
+      (build-driver/build-driver! driver edition))
     (u/announce "Successfully built all drivers.")))
 
 (defn -main [& [edition]]
