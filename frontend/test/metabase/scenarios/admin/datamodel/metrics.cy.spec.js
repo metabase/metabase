@@ -147,6 +147,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.contains("orders > 10")
         .parent()
         .parent()
+        .parent()
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Retire Metric").click();

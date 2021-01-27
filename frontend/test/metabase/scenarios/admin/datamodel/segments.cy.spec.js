@@ -184,6 +184,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.contains("Orders > 10")
         .parent()
         .parent()
+        .parent()
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Retire Segment").click();
