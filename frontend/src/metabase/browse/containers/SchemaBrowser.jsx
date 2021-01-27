@@ -18,8 +18,8 @@ function SchemaBrowser(props) {
   const { children, schemas, params } = props;
   const { dbId } = params;
   return (
-    <Flex w={"100%"}>
-      <Box className="border-right" w={600}>
+    <Flex w={"100%"} bg="white">
+      <Box>
         {schemas.length === 1 ? (
           <TableBrowser
             {...props}

@@ -22,8 +22,8 @@ function TableExplorer({ table, metadata }) {
 
   return (
     <Box w="100%" bg="white">
-      <Flex p={3} align="center">
-        <Box>
+      <Flex p={3} mt={3} align="center">
+        <Box px={2}>
           <h1>{table.display_name}</h1>
           <p>
             {table.description ? (

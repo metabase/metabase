@@ -7,7 +7,7 @@ import DatabaseBrowser from "../containers/DatabaseBrowser";
 
 export default function BrowseApp({ children }) {
   return (
-    <Flex>
+    <Flex style={{ height: `calc(100vh - 65px)` }}>
       <DatabaseBrowser />
       {children}
     </Flex>
