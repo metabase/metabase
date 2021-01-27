@@ -826,7 +826,7 @@ msgstr "這將顯示在篩選器的修訂歷史記錄中，以幫助每個人記
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:69
 #: frontend/src/metabase/admin/routes.jsx:137
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:216
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:94
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:103
 #: frontend/src/metabase/nav/containers/Navbar.jsx:113
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:18
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:94
@@ -907,7 +907,7 @@ msgstr "群組內成員權限一致"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:15
 #: frontend/src/metabase/admin/routes.jsx:55
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Admin"
 msgstr "系統管理"
 
@@ -1396,19 +1396,19 @@ msgstr "更改已儲存！"
 msgid "Looks like we ran into some problems"
 msgstr "看起來我們遇到了一些問題"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:19
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:22
 msgid "Send test email"
 msgstr "發送測試郵件"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:20
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:23
 msgid "Sending..."
 msgstr "發送中"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:21
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:24
 msgid "Sent!"
 msgstr "已發送"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:93
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:97
 msgid "Clear"
 msgstr "完成"
 
@@ -1442,15 +1442,15 @@ msgstr "群組結構"
 msgid "Using "
 msgstr "使用"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:105
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:110
 msgid "Getting set up"
 msgstr "開始設定精靈"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:111
 msgid "A few things you can do to get the most out of Metabase."
 msgstr "您可以採取一些措施來充分利用Metabase。"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:120
 msgid "Recommended next step"
 msgstr "建議的操作"
 
@@ -1482,7 +1482,7 @@ msgstr "為MetaBot建立一個Slack Bot使用者"
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
 msgstr "進入後，請為其命名並單擊{0}。然後將Bot API令牌複製並黏貼到下面的欄位中。完成後，在Slack中建立“metabase_files”通道。Metabase需要這個來上傳圖表。"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:23
 msgid "You're running Metabase {0} which is the latest and greatest!"
 msgstr "您正在執行的Metabase {0}是最新版本的。"
 
@@ -1490,13 +1490,13 @@ msgstr "您正在執行的Metabase {0}是最新版本的。"
 msgid "Metabase {0} is available.  You're running {1}"
 msgstr "Metabase {0}可更新。您正在執行是{1}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:41
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:49
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:115
 msgid "Update"
 msgstr "更新"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:46
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
 msgid "What's Changed:"
 msgstr "更新內容"
 
@@ -2447,7 +2447,7 @@ msgstr "下載結果資料集"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:52
 #: frontend/src/metabase/components/EntityMenu.info.js:104
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:93
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:94
 msgid "Sharing and embedding"
 msgstr "分享並且編輯"
 
@@ -2959,19 +2959,19 @@ msgstr "這個資訊看板看起來是空的"
 msgid "Add a question to start making it useful!"
 msgstr "新增一個提問來讓它變得有用"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Daytime mode"
 msgstr "白天模式"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Nighttime mode"
 msgstr "夜晚模式"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Exit fullscreen"
 msgstr "退出全螢幕"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Enter fullscreen"
 msgstr "進入全螢幕"
 
@@ -3308,7 +3308,7 @@ msgid "Unarchive"
 msgstr "取消歸檔"
 
 #: frontend/src/metabase/home/containers/HomepageApp.jsx:54
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:68
 msgid "Activity"
 msgstr "活動"
 
@@ -4106,7 +4106,7 @@ msgstr "類別、類型、模型、評分等"
 msgid "Account settings"
 msgstr "帳號設定"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Exit admin"
 msgstr "退出系統管理"
 
@@ -4116,16 +4116,16 @@ msgstr "日誌"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:104
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:22
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:65
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:74
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:100
 msgid "Help"
 msgstr "說明"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:72
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:81
 msgid "About Metabase"
 msgstr "關於Metabase"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:78
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:87
 msgid "Sign out"
 msgstr "登出"
 
@@ -4133,19 +4133,19 @@ msgstr "登出"
 msgid "Thanks for using"
 msgstr "謝謝使用"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:116
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:125
 msgid "You're on version"
 msgstr "目前使用版本"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:119
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
 msgid "Built on"
 msgstr "建置於"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:139
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:148
 msgid "is a Trademark of"
 msgstr "是 Metabase Inc 的註冊商標"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:141
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:150
 msgid "and is built with care in San Francisco, CA"
 msgstr "在加州舊金山精心設計"
 
@@ -5312,15 +5312,15 @@ msgstr "您的提問有故障"
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "大多數情況，是由於無效查詢或錯誤輸入值導致。請確認輸入值，重新執行腳本。"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:66
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
 msgid "This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific."
 msgstr "這可能是您正在尋找的答案。如果不是，請嘗試刪除或更改篩選器，使其不那麼具體。"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:71
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
 msgid "You can also {0} when there are some results."
 msgstr "您也可以{0}，當有一些結果時。"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:75
 msgid "get an alert"
 msgstr "得到一個警示"
 
@@ -5423,7 +5423,7 @@ msgstr "檢視{0}的所有原始資料"
 msgid "More"
 msgstr "更多"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:249
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:251
 msgid "Invalid expression"
 msgstr "不可用的表達式"
 
@@ -5441,6 +5441,8 @@ msgstr "這有點像在EXCEL表中編寫公式，您可以使用數字，欄位�
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:111
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:281
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:144
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:19
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:71
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:75
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
@@ -6552,32 +6554,32 @@ msgstr "撤銷設定"
 msgid "Rows {0}-{1} of {2}"
 msgstr "{2}的{0}~{1}行"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:208
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:212
 msgid "Data truncated to {0} rows."
 msgstr "資料被截斷為{0}行。"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:415
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:419
 msgid "Could not find visualization"
 msgstr "找不到可視化"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:422
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:426
 msgid "Could not display this chart with this data."
 msgstr "無法顯示這個圖表顯示這些資料"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:541
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:545
 msgid "No results!"
 msgstr "沒有結果！"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:562
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:566
 msgid "Still Waiting..."
 msgstr "仍然在等待……"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:565
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:569
 msgid "This usually takes an average of {0}."
 msgstr "這將通常取一個{0}的平均數。"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
 msgid "(This is a bit long for a dashboard)"
 msgstr "（這對於資訊看板來說有點太長了）"
 
@@ -7535,7 +7537,7 @@ msgstr "在{0}中有很多已儲存的問題？建立集合以幫助管理它們
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:238
 #: frontend/src/metabase/home/components/Activity.jsx:87
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:90
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:99
 #: frontend/src/metabase/public/components/LogoBadge.jsx:22
 #: frontend/src/metabase/routes-public.jsx:15
 #: frontend/src/metabase/routes.jsx:141 src/metabase/api/setup.clj
@@ -9375,7 +9377,7 @@ msgstr "系統管理群組"
 msgid "MetaBot"
 msgstr "Meta機器人"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:55
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
 msgstr "分享"
@@ -9420,6 +9422,7 @@ msgid "Axes"
 msgstr "坐標軸"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:219
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:79
 #: frontend/src/metabase/visualizations/lib/settings/column.js:62
 msgid "Formatting"
 msgstr "格式化"
@@ -9758,6 +9761,7 @@ msgstr "可見欄位"
 msgid "Conditional Formatting"
 msgstr "條件格式化"
 
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:175
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:234
 msgid "Column title"
 msgstr "欄位抬頭"
@@ -12615,7 +12619,7 @@ msgstr "顯示最大值"
 msgid "Get Preview"
 msgstr "預覽"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:82
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:84
 msgid "Back to previous results"
 msgstr "返回上一結果集"
 
@@ -12797,7 +12801,7 @@ msgstr "新增量值"
 msgid "Profile"
 msgstr "基本資料"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:579
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "這通常很快，但現在似乎需要一段時間。"
 
@@ -13221,7 +13225,7 @@ msgstr "資料庫任務調度失敗"
 msgid "All elements must be distinct."
 msgstr "所有元素必須唯一"
 
-#:
+#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "選擇需要包含的欄位"
@@ -13716,19 +13720,19 @@ msgstr "To allow users to sign in with Google you'll need to give Metabase a Goo
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
 msgstr "確保包含完整的客戶端ID，包括apps.googleusercontent.com後綴"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:30
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:38
 msgid "Metabase {0} is available."
 msgstr "Metabase {0} 目前有新版本"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:31
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:39
 msgid "You're running {0}"
 msgstr "您正在執行 {0}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:70
 msgid "Sorry, we were unable to check for updates at this time."
 msgstr "抱歉，目前無法檢查有無更新"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:96
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:109
 msgid "patch release"
 msgstr "修訂版本"
 
@@ -14332,39 +14336,39 @@ msgstr "返回大寫文字"
 msgid "The column with values to convert to upper case."
 msgstr "欄位資料轉換成大寫"
 
-#: frontend/src/metabase/lib/settings.js:199
+#: frontend/src/metabase/lib/settings.js:210
 msgid "must be {0} and include {1}."
 msgstr "必須是 {0} 及包含 {1}"
 
-#: frontend/src/metabase/lib/settings.js:201
+#: frontend/src/metabase/lib/settings.js:212
 msgid "must be {0}."
 msgstr "必須是 {0} "
 
-#: frontend/src/metabase/lib/settings.js:203
+#: frontend/src/metabase/lib/settings.js:214
 msgid "must include {0}."
 msgstr "必須包含 {0}"
 
-#: frontend/src/metabase/lib/settings.js:216
+#: frontend/src/metabase/lib/settings.js:227
 msgid "at least {0} character long"
 msgid_plural "at least {0} characters long"
 msgstr[0] "至少 {0} 字元長度"
 
-#: frontend/src/metabase/lib/settings.js:225
+#: frontend/src/metabase/lib/settings.js:236
 msgid "{0} lower case letter"
 msgid_plural "{0} lower case letters"
 msgstr[0] "{0} 小寫字母"
 
-#: frontend/src/metabase/lib/settings.js:234
+#: frontend/src/metabase/lib/settings.js:245
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
 msgstr[0] "{0} 大寫字母"
 
-#: frontend/src/metabase/lib/settings.js:243
+#: frontend/src/metabase/lib/settings.js:254
 msgid "{0} number"
 msgid_plural "{0} numbers"
 msgstr[0] "{0} 數字umbe"
 
-#: frontend/src/metabase/lib/settings.js:248
+#: frontend/src/metabase/lib/settings.js:259
 msgid "{0} special character"
 msgid_plural "{0} special characters"
 msgstr[0] "{0} special character"
@@ -14377,7 +14381,7 @@ msgstr "必須是有效的EMail住址"
 msgid "must be {0} characters or less"
 msgstr "必須含或少於 {0} 個字元 "
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:113
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:122
 msgid "Thanks for using Metabase!"
 msgstr "感謝使用 Metabase ！"
 
@@ -17000,7 +17004,7 @@ msgstr "首先，您必須{0}。"
 msgid "Rows {0}-{1} of first {2}"
 msgstr "前{2}行{0}-{1}行"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:150
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:268
 msgid "Drag fields here"
 msgstr "將字段拖到此處"
 
@@ -17008,15 +17012,15 @@ msgstr "將字段拖到此處"
 msgid "Percentage"
 msgstr "百分比"
 
-#: frontend/src/metabase/lib/data_grid.js:311
+#: frontend/src/metabase/lib/data_grid.js:340
 msgid "Totals for {0}"
 msgstr "{0}的總計"
 
-#: frontend/src/metabase/lib/data_grid.js:135
+#: frontend/src/metabase/lib/data_grid.js:157
 msgid "Grand totals"
 msgstr "總計"
 
-#: frontend/src/metabase/lib/data_grid.js:110
+#: frontend/src/metabase/lib/data_grid.js:128
 msgid "Row totals"
 msgstr "行總計"
 
@@ -17032,11 +17036,11 @@ msgstr "用於表格列的字段"
 msgid "Fields to use for the table values"
 msgstr "用於表值的字段"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:82
 msgid "Pivot tables can only be used with aggregated queries."
 msgstr "數據透視表只能與聚合查詢一起使用。"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:54
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:55
 msgid "Pivot Table"
 msgstr "數據透視表"
 
@@ -17614,12 +17618,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#:
+#: 
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "脈沖正在逐步淘汰"
 
-#:
+#: 
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "您現在可以改為設置{0}。我們將在未來的版本中刪除Pulses，並幫助您遷移所有剩餘的內容。"
@@ -17628,7 +17632,7 @@ msgstr "您現在可以改為設置{0}。我們將在未來的版本中刪除Pul
 msgid "dashboard subscriptions"
 msgstr "儀表板訂閱"
 
-#:
+#: 
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "訂閱中的{0}圖表與儀表板中的圖表不同。 {1}"
 
@@ -17640,11 +17644,11 @@ msgstr "一小時後的幾分鐘"
 msgid "Email sent"
 msgstr "郵件已發送"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:57
 msgid "Add data to share this dashboard"
 msgstr "添加數據以共享此儀表板"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:79
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:80
 msgid "Dashboard subscriptions"
 msgstr "儀表板訂閱"
 
@@ -17688,21 +17692,21 @@ msgstr "刪除對{0}的訂閱？"
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}."
 msgstr "訂閱中的{0}圖表與儀表板中的圖表不同。 {1}。"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:22
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:29
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:36
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:26
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:33
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:40
 msgid "Fields to use for the table {0}"
 msgstr "表{0}使用的字段"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:23
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:27
 msgid "rows"
 msgstr "行數"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:30
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:34
 msgid "columns"
 msgstr "列"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:37
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:41
 msgid "values"
 msgstr "價值觀"
 
@@ -17776,7 +17780,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "設置{0}源數據庫並運行遷移..."
 
 #. make sure the dest DB is up-to-date
-#.
+#. 
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: src/metabase/cmd/copy.clj
 msgid "Set up {0} target database and run migrations..."
@@ -17806,3 +17810,61 @@ msgstr "{0}的幅度未知"
 #: src/metabase/query_processor/middleware/fetch_source_query.clj
 msgid "Error resolving source query"
 msgstr "解決源查詢時出錯"
+
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:103
+msgid "Have your email configured for you."
+msgstr "為您配置電子郵件。"
+
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:133
+msgid "Have your server maintained for you."
+msgstr "為您維護服務器。"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:139
+msgid "Want to have upgrades taken care of for you?"
+msgstr "想要為您照顧升級嗎？"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:140
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:16
+msgid "Migrate to Metabase Cloud."
+msgstr "遷移到元數據庫雲。"
+
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:51
+msgid "Manage Metabase Cloud"
+msgstr "管理元數據庫雲"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:32
+msgid "Show totals"
+msgstr "顯示總計"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:65
+msgid "Sort order"
+msgstr "排序"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:83
+msgid "See options…"
+msgstr "查看選項..."
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:86
+msgid "This database does not support pivot tables."
+msgstr "該數據庫不支持數據透視表。"
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath."
+msgstr "無效的GeoJSON文件位置：必須以http：//或https：//開頭，或者是類路徑上文件的相對路徑。"
+
+#: src/metabase/api/geojson.clj
+msgid "URLs referring to hosts that supply internal hosting metadata are prohibited."
+msgstr "禁止引用提供內部託管元數據的主機的URL。"
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid custom GeoJSON."
+msgstr "無效的自定義GeoJSON。"
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
+msgstr "無效的{0}：在索引{1}處指定了突破，但我們只有{2}個突破"
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Error generating pivot queries"
+msgstr "生成透視查詢時出錯"
+

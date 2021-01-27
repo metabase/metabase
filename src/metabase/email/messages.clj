@@ -250,6 +250,12 @@
    :content-type "image/png"
    :content      url})
 
+(defn- pulse-link-context
+  [{:keys [cards dashboard_id]}]
+  (when-let [dashboard-id (or dashboard_id
+                              (some :dashboard_id cards))]
+    {:pulseLink (url/dashboard-url dashboard-id)}))
+
 (defn- pulse-context [pulse]
   (merge (common-context)
          {:emailType    "pulse"
@@ -257,6 +263,7 @@
           :sectionStyle (render.style/style (render.style/section-style))
           :colorGrey4   render.style/color-gray-4
           :logoFooter   true}
+         (pulse-link-context pulse)
          (random-quote-context)))
 
 (defn- create-temp-file
@@ -357,7 +364,6 @@
 
 (defn- render-message-body [message-template message-context timezone results]
   (let [rendered-cards (binding [render/*include-title* true]
-                         ;; doall to ensure we haven't exited the binding before the valures are created
                          (mapv #(render/render-pulse-section timezone %) results))
         message-body   (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards)))))
         attachments    (apply merge (map :attachments rendered-cards))]

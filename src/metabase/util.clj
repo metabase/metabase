@@ -795,18 +795,45 @@
   ^String [seconds]
   (format-milliseconds (* 1000.0 seconds)))
 
+(def ^:dynamic *profile-level*
+  "Impl for `profile` macro -- don't use this directly. Nesting-level for the `profile` macro e.g. 0 for a top-level
+  `profile` form or 1 for a form inside that."
+  0)
+
+(defn profile-print-time
+  "Impl for `profile` macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
+  `profile`d form."
+  [message start-time]
+  ;; indent the message according to `*profile-level*` and add a little down-left arrow so it (hopefully) points to
+  ;; the parent form
+  (println (format-color :green "%s%s took %s"
+             (if (pos? *profile-level*)
+               (str (str/join (repeat (dec *profile-level*) "  ")) " ↙ ")
+               "")
+             message
+             (format-nanoseconds (- (System/nanoTime) start-time)))))
+
 (defmacro profile
-  "Like `clojure.core/time`, but lets you specify a `message` that gets printed with the total time, and formats the
-  time nicely using `format-nanoseconds`."
+  "Like `clojure.core/time`, but lets you specify a `message` that gets printed with the total time, formats the
+  time nicely using `format-nanoseconds`, and indents nested calls to `profile`.
+
+    (profile \"top-level\"
+      (Thread/sleep 500)
+      (profile \"nested\"
+        (Thread/sleep 100)))
+    ;; ->
+     ↙ nested took 100.1 ms
+    top-level took 602.8 ms"
   {:style/indent 1}
   ([form]
    `(profile ~(str form) ~form))
   ([message & body]
-   `(let [start-time# (System/nanoTime)]
-      (prog1 (do ~@body)
-        (println (format-color '~'green "%s took %s"
-                   ~message
-                   (format-nanoseconds (- (System/nanoTime) start-time#))))))))
+   `(let [message#    ~message
+          start-time# (System/nanoTime)
+          result#     (binding [*profile-level* (inc *profile-level*)]
+                        ~@body)]
+      (profile-print-time message# start-time#)
+      result#)))
 
 (defn seconds->ms
   "Convert `seconds` to milliseconds. More readable than doing this math inline."

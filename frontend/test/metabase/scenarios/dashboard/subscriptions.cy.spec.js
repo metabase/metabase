@@ -77,7 +77,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
     });
 
-    it.skip("should not display 'null' day of the week (metabase#14405)", () => {
+    it("should not display 'null' day of the week (metabase#14405)", () => {
       assignRecipient();
       cy.findByText("To:").click();
       cy.get(".AdminSelect")

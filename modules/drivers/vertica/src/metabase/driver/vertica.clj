@@ -28,24 +28,24 @@
 (defmethod sql-jdbc.sync/database-type->base-type :vertica
   [_ database-type]
   ({:Boolean                   :type/Boolean
-     :Integer                   :type/Integer
-     :Bigint                    :type/BigInteger
-     :Varbinary                 :type/*
-     :Binary                    :type/*
-     :Char                      :type/Text
-     :Varchar                   :type/Text
-     :Money                     :type/Decimal
-     :Numeric                   :type/Decimal
-     :Double                    :type/Decimal
-     :Float                     :type/Float
-     :Date                      :type/Date
-     :Time                      :type/Time
-     :TimeTz                    :type/TimeWithLocalTZ
-     :Timestamp                 :type/DateTime
-     :TimestampTz               :type/DateTimeWithLocalTZ
-     :AUTO_INCREMENT            :type/Integer
-     (keyword "Long Varchar")   :type/Text
-     (keyword "Long Varbinary") :type/*} database-type))
+    :Integer                   :type/Integer
+    :Bigint                    :type/BigInteger
+    :Varbinary                 :type/*
+    :Binary                    :type/*
+    :Char                      :type/Text
+    :Varchar                   :type/Text
+    :Money                     :type/Decimal
+    :Numeric                   :type/Decimal
+    :Double                    :type/Decimal
+    :Float                     :type/Float
+    :Date                      :type/Date
+    :Time                      :type/Time
+    :TimeTz                    :type/TimeWithLocalTZ
+    :Timestamp                 :type/DateTime
+    :TimestampTz               :type/DateTimeWithLocalTZ
+    :AUTO_INCREMENT            :type/Integer
+    (keyword "Long Varchar")   :type/Text
+    (keyword "Long Varbinary") :type/*} database-type))
 
 (defmethod sql-jdbc.conn/connection-details->spec :vertica
   [_ {:keys [host port db dbname]

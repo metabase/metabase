@@ -830,7 +830,7 @@ msgstr "Dette vil vises i revisjonshistorikken for dette segmentet for å hjelpe
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:69
 #: frontend/src/metabase/admin/routes.jsx:137
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:216
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:94
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:103
 #: frontend/src/metabase/nav/containers/Navbar.jsx:113
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:18
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:94
@@ -911,7 +911,7 @@ msgstr "En gruppe er kun like bra som sine medlemmer."
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:15
 #: frontend/src/metabase/admin/routes.jsx:55
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Admin"
 msgstr "Administrator"
 
@@ -1404,19 +1404,19 @@ msgstr "Endringer lagret!"
 msgid "Looks like we ran into some problems"
 msgstr "Ser ut som det har oppstått noen problemer"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:19
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:22
 msgid "Send test email"
 msgstr "Send test e-post"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:20
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:23
 msgid "Sending..."
 msgstr "Sender..."
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:21
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:24
 msgid "Sent!"
 msgstr "Sendt!"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:93
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:97
 msgid "Clear"
 msgstr "Rens"
 
@@ -1450,15 +1450,15 @@ msgstr "Gruppe skjema"
 msgid "Using "
 msgstr "Bruker "
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:105
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:110
 msgid "Getting set up"
 msgstr "Blir satt opp"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:111
 msgid "A few things you can do to get the most out of Metabase."
 msgstr "Ett par ting du kan gjøre for å få mest mulig ut av Metabase."
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:120
 msgid "Recommended next step"
 msgstr "Anbefalt neste steg"
 
@@ -1491,7 +1491,7 @@ msgid "Once you're there, give it a name and click {0}. Then copy and paste the 
 msgstr "Når du er der, gi den ett navn og klikk på {0}.\n"
 "Kopier og lim inn Bot API nøkkel i understående felt. Når du er ferdig, lag en \"metabase_files\" kanal i Slack. Metabase trenger denne til å laste opp grafer."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:23
 msgid "You're running Metabase {0} which is the latest and greatest!"
 msgstr "Du bruker Metabase {0} som er den siste og beste!"
 
@@ -1499,13 +1499,13 @@ msgstr "Du bruker Metabase {0} som er den siste og beste!"
 msgid "Metabase {0} is available.  You're running {1}"
 msgstr "Metabase {0} er tilgjengelig. Du bruker {1}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:41
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:49
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:115
 msgid "Update"
 msgstr "Oppdater"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:46
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
 msgid "What's Changed:"
 msgstr "Hva som blir endret:"
 
@@ -2462,7 +2462,7 @@ msgstr "Last ned resultater"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:52
 #: frontend/src/metabase/components/EntityMenu.info.js:104
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:93
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:94
 msgid "Sharing and embedding"
 msgstr "Deling og innebygging"
 
@@ -2975,19 +2975,19 @@ msgstr "Denne infotavlen ser ut til å være tom."
 msgid "Add a question to start making it useful!"
 msgstr "Legg til ett spørsmål for og gjøre det nyttig!"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Daytime mode"
 msgstr "Dagmodus"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Nighttime mode"
 msgstr "Nattmodus"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Exit fullscreen"
 msgstr "Lukk fullskjerm"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Enter fullscreen"
 msgstr "Åpne fullskjerm"
 
@@ -3325,7 +3325,7 @@ msgid "Unarchive"
 msgstr "Dearkiver"
 
 #: frontend/src/metabase/home/containers/HomepageApp.jsx:54
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:68
 msgid "Activity"
 msgstr "Aktivitet"
 
@@ -4125,7 +4125,7 @@ msgstr "Kategori, Type, Modell, Vurdering, osv."
 msgid "Account settings"
 msgstr "Kontoinnstillinger"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Exit admin"
 msgstr "Lukk admin"
 
@@ -4135,16 +4135,16 @@ msgstr "Logger"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:104
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:22
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:65
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:74
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:100
 msgid "Help"
 msgstr "Hjelp"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:72
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:81
 msgid "About Metabase"
 msgstr "Om Metabase"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:78
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:87
 msgid "Sign out"
 msgstr "Logg ut"
 
@@ -4152,19 +4152,19 @@ msgstr "Logg ut"
 msgid "Thanks for using"
 msgstr "Takk for at du bruker"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:116
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:125
 msgid "You're on version"
 msgstr "Du bruker versjon"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:119
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
 msgid "Built on"
 msgstr "Bygget den"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:139
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:148
 msgid "is a Trademark of"
 msgstr "er et varemerke for"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:141
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:150
 msgid "and is built with care in San Francisco, CA"
 msgstr "og er bygget med omhu i San Francisco, California"
 
@@ -5336,15 +5336,15 @@ msgstr "Det var et problem med spørsmålet ditt"
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "For det meste skyldes dette et ugyldig valg eller feil inntastet verdi. Sjekk input en gang til og prøv spørringen din igjen."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:66
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
 msgid "This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific."
 msgstr "Dette kan være svaret du leter etter. Hvis ikke, prøv å fjern eller endre filterne for å gjøre det mindre spesifisert."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:71
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
 msgid "You can also {0} when there are some results."
 msgstr "Du kan også {0} når det er noen resultater."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:75
 msgid "get an alert"
 msgstr "få en varsel"
 
@@ -5447,7 +5447,7 @@ msgstr "Se rådata for {0}"
 msgid "More"
 msgstr "Mer"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:249
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:251
 msgid "Invalid expression"
 msgstr "Ugyldig uttrykk"
 
@@ -5465,6 +5465,8 @@ msgstr "Tenk på dette litt som å skrive en formel i et regneark: Du kan bruke 
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:111
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:281
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:144
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:19
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:71
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:75
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
@@ -6578,32 +6580,32 @@ msgstr "Ikke satt"
 msgid "Rows {0}-{1} of {2}"
 msgstr "Rader {0}-{1} av {2}"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:208
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:212
 msgid "Data truncated to {0} rows."
 msgstr "Data redusert til {0} rader."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:415
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:419
 msgid "Could not find visualization"
 msgstr "Kunne ikke finne visualisering"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:422
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:426
 msgid "Could not display this chart with this data."
 msgstr "Kunne ikke vise grafen med denne dataen."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:541
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:545
 msgid "No results!"
 msgstr "Ingen resultater!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:562
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:566
 msgid "Still Waiting..."
 msgstr "Venter fortsatt..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:565
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:569
 msgid "This usually takes an average of {0}."
 msgstr "Dette tar vanligvis gjennomsnittlig {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
 msgid "(This is a bit long for a dashboard)"
 msgstr "(dette er litt for langt for en infotavle)"
 
@@ -7569,7 +7571,7 @@ msgstr "Har du mange lagrede spørsmål i {0}? Lag samlinger for å håndtere de
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:238
 #: frontend/src/metabase/home/components/Activity.jsx:87
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:90
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:99
 #: frontend/src/metabase/public/components/LogoBadge.jsx:22
 #: frontend/src/metabase/routes-public.jsx:15
 #: frontend/src/metabase/routes.jsx:141 src/metabase/api/setup.clj
@@ -9422,7 +9424,7 @@ msgstr "Administratorer"
 msgid "MetaBot"
 msgstr "MetaBot"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:55
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
 msgstr "Deling"
@@ -9467,6 +9469,7 @@ msgid "Axes"
 msgstr "Akser"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:219
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:79
 #: frontend/src/metabase/visualizations/lib/settings/column.js:62
 msgid "Formatting"
 msgstr "Formatering"
@@ -9805,6 +9808,7 @@ msgstr "Synlige kolonner"
 msgid "Conditional Formatting"
 msgstr "Betinget Formatering"
 
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:175
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:234
 msgid "Column title"
 msgstr "Kolonnetittel"
@@ -12680,7 +12684,7 @@ msgstr "Vis maksimum"
 msgid "Get Preview"
 msgstr "Hent Forhåndsvisning"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:82
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:84
 msgid "Back to previous results"
 msgstr "Tilbake til forrige resultater"
 
@@ -12864,7 +12868,7 @@ msgstr "Legg til en indikator"
 msgid "Profile"
 msgstr "Profil"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:579
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "Dette går vanligvis ganske fort men ser ut til å bruke litt tid akkurat nå."
 
@@ -13292,7 +13296,7 @@ msgstr "Kunne ikke planlegge oppgaver for Database {0}"
 msgid "All elements must be distinct."
 msgstr "Alle elementer må være unike."
 
-#:
+#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Velg kolonnene du vil inkludere"
@@ -13792,19 +13796,19 @@ msgstr "For å tillate innlogging med Google må du gi Metabase en kliend ID til
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
 msgstr "Pass på å inkludere hele klient-IDen, inkludert suffikset apps.googleusercontent.com."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:30
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:38
 msgid "Metabase {0} is available."
 msgstr "Metabase {0} er tilgjengelig."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:31
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:39
 msgid "You're running {0}"
 msgstr "Du kjører på {0}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:70
 msgid "Sorry, we were unable to check for updates at this time."
 msgstr "Beklager, vi kunne ikke sjekke for oppdateringer akkurat nå."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:96
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:109
 msgid "patch release"
 msgstr "patch-utgivelse"
 
@@ -14408,43 +14412,43 @@ msgstr "Returnerer tekststrengen i store bokstaver"
 msgid "The column with values to convert to upper case."
 msgstr "Kolonnen med verdier som skal konverteres til store bokstaver."
 
-#: frontend/src/metabase/lib/settings.js:199
+#: frontend/src/metabase/lib/settings.js:210
 msgid "must be {0} and include {1}."
 msgstr "må være {0} og inkludere {1}."
 
-#: frontend/src/metabase/lib/settings.js:201
+#: frontend/src/metabase/lib/settings.js:212
 msgid "must be {0}."
 msgstr "må være {0}"
 
-#: frontend/src/metabase/lib/settings.js:203
+#: frontend/src/metabase/lib/settings.js:214
 msgid "must include {0}."
 msgstr "må inkludere  {0}"
 
-#: frontend/src/metabase/lib/settings.js:216
+#: frontend/src/metabase/lib/settings.js:227
 msgid "at least {0} character long"
 msgid_plural "at least {0} characters long"
 msgstr[0] "minst {0} tegn"
 msgstr[1] "minst {0} tegn"
 
-#: frontend/src/metabase/lib/settings.js:225
+#: frontend/src/metabase/lib/settings.js:236
 msgid "{0} lower case letter"
 msgid_plural "{0} lower case letters"
 msgstr[0] "{0} liten bokstav"
 msgstr[1] "{0} små bokstaver"
 
-#: frontend/src/metabase/lib/settings.js:234
+#: frontend/src/metabase/lib/settings.js:245
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
 msgstr[0] "{0} stor bokstav"
 msgstr[1] "{0} store bokstaver"
 
-#: frontend/src/metabase/lib/settings.js:243
+#: frontend/src/metabase/lib/settings.js:254
 msgid "{0} number"
 msgid_plural "{0} numbers"
 msgstr[0] "{0} tall"
 msgstr[1] "{0} tall"
 
-#: frontend/src/metabase/lib/settings.js:248
+#: frontend/src/metabase/lib/settings.js:259
 msgid "{0} special character"
 msgid_plural "{0} special characters"
 msgstr[0] "{0} spesialtegn"
@@ -14458,7 +14462,7 @@ msgstr "må være en gyldig e-postadresse"
 msgid "must be {0} characters or less"
 msgstr "må være mindre enn {0} tegn"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:113
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:122
 msgid "Thanks for using Metabase!"
 msgstr "Takk for at du valgte Metabase!"
 
@@ -17085,7 +17089,7 @@ msgstr "Først må du {0}."
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Rad {0}-{1} av første {2}"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:150
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:268
 msgid "Drag fields here"
 msgstr "Dra felt hit"
 
@@ -17093,15 +17097,15 @@ msgstr "Dra felt hit"
 msgid "Percentage"
 msgstr "Prosenter"
 
-#: frontend/src/metabase/lib/data_grid.js:311
+#: frontend/src/metabase/lib/data_grid.js:340
 msgid "Totals for {0}"
 msgstr "Totalt for {0}"
 
-#: frontend/src/metabase/lib/data_grid.js:135
+#: frontend/src/metabase/lib/data_grid.js:157
 msgid "Grand totals"
 msgstr "Totalsum"
 
-#: frontend/src/metabase/lib/data_grid.js:110
+#: frontend/src/metabase/lib/data_grid.js:128
 msgid "Row totals"
 msgstr "Radtotaler"
 
@@ -17117,11 +17121,11 @@ msgstr "Felt som skal brukes til tabellkolonner"
 msgid "Fields to use for the table values"
 msgstr "Felt som skal brukes til tabellverdier"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:82
 msgid "Pivot tables can only be used with aggregated queries."
 msgstr "Pivottabeller kan bare brukes med aggregerte spørringer."
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:54
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:55
 msgid "Pivot Table"
 msgstr "Pivottabell"
 
@@ -17699,12 +17703,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#:
+#: 
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulser avvikles"
 
-#:
+#: 
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Du kan nå konfigurere {0} i stedet. Vi fjerner Pulses i en fremtidig utgivelse, og hjelper deg med å migrere noe du fortsatt har."
@@ -17713,7 +17717,7 @@ msgstr "Du kan nå konfigurere {0} i stedet. Vi fjerner Pulses i en fremtidig ut
 msgid "dashboard subscriptions"
 msgstr "dashbordabonnement"
 
-#:
+#: 
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} diagrammer i abonnementet ditt vil ikke se ut som i dashbordet ditt. {1}"
 
@@ -17725,11 +17729,11 @@ msgstr "minutter etter timen"
 msgid "Email sent"
 msgstr "Epost sendt"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:57
 msgid "Add data to share this dashboard"
 msgstr "Legg til data for å dele dette dashbordet"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:79
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:80
 msgid "Dashboard subscriptions"
 msgstr "Dashboard-abonnementer"
 
@@ -17773,21 +17777,21 @@ msgstr "Vil du slette dette abonnementet til {0}?"
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}."
 msgstr "{0} diagrammer i abonnementet ditt ser ikke ut som på dashbordet. {1}."
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:22
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:29
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:36
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:26
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:33
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:40
 msgid "Fields to use for the table {0}"
 msgstr "Felter som skal brukes til tabellen {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:23
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:27
 msgid "rows"
 msgstr "rader"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:30
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:34
 msgid "columns"
 msgstr "kolonner"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:37
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:41
 msgid "values"
 msgstr "verdier"
 
@@ -17861,7 +17865,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Konfigurer {0} kildedatabase og kjør overføringer ..."
 
 #. make sure the dest DB is up-to-date
-#.
+#. 
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: src/metabase/cmd/copy.clj
 msgid "Set up {0} target database and run migrations..."
@@ -17891,3 +17895,61 @@ msgstr "Ingen størrelse kjent for {0}"
 #: src/metabase/query_processor/middleware/fetch_source_query.clj
 msgid "Error resolving source query"
 msgstr "Feil ved løsning av kildesøket"
+
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:103
+msgid "Have your email configured for you."
+msgstr "Ha e-posten din konfigurert for deg."
+
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:133
+msgid "Have your server maintained for you."
+msgstr "Få serveren din vedlikeholdt for deg."
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:139
+msgid "Want to have upgrades taken care of for you?"
+msgstr "Vil du ha oppgraderinger tatt vare på for deg?"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:140
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:16
+msgid "Migrate to Metabase Cloud."
+msgstr "Overfør til Metabase Cloud."
+
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:51
+msgid "Manage Metabase Cloud"
+msgstr "Administrer Metabase Cloud"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:32
+msgid "Show totals"
+msgstr "Vis totaler"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:65
+msgid "Sort order"
+msgstr "Sorteringsrekkefølge"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:83
+msgid "See options…"
+msgstr "Se alternativer ..."
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:86
+msgid "This database does not support pivot tables."
+msgstr "Denne databasen støtter ikke pivottabeller."
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath."
+msgstr "Ugyldig GeoJSON-filplassering: må enten starte med http: // eller https: // eller være en relativ bane til en fil på klassestien."
+
+#: src/metabase/api/geojson.clj
+msgid "URLs referring to hosts that supply internal hosting metadata are prohibited."
+msgstr "URL-er som refererer til verter som leverer interne hosting-metadata er forbudt."
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid custom GeoJSON."
+msgstr "Ugyldig tilpasset GeoJSON."
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
+msgstr "Ugyldig {0}: spesifisert breakout i indeksen {1}, men vi har bare {2} breakouts"
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Error generating pivot queries"
+msgstr "Feil under generering av pivot-spørsmål"
+

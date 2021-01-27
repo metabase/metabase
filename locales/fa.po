@@ -843,7 +843,7 @@ msgstr "این در تاریخچه بازنگری، برای این بخش نش�
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:69
 #: frontend/src/metabase/admin/routes.jsx:137
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:216
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:94
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:103
 #: frontend/src/metabase/nav/containers/Navbar.jsx:113
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:18
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:94
@@ -926,7 +926,7 @@ msgstr "گروه فقط به عنوان اعضای آن است."
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:15
 #: frontend/src/metabase/admin/routes.jsx:55
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Admin"
 msgstr "مدیر/ مدیر سیستم"
 
@@ -1418,19 +1418,19 @@ msgstr "تغییرات ذخیره شد!"
 msgid "Looks like we ran into some problems"
 msgstr "به نظر می رسد ما به برخی از مشکلات رسیدگی کردیم"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:19
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:22
 msgid "Send test email"
 msgstr "ارسال ایمیل آزمایشی"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:20
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:23
 msgid "Sending..."
 msgstr "درحال ارسال..."
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:21
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:24
 msgid "Sent!"
 msgstr "ارسال شد!"
 
-#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:93
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:97
 msgid "Clear"
 msgstr "پاک کردن"
 
@@ -1464,15 +1464,15 @@ msgstr "طرح طرح گروه"
 msgid "Using "
 msgstr "درحال استفاده"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:105
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:110
 msgid "Getting set up"
 msgstr "راه اندازی"
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:111
 msgid "A few things you can do to get the most out of Metabase."
 msgstr "چند چیز که می توانید انجام دهید برای به دست آوردن بیشتر از Metabase."
 
-#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:120
 msgid "Recommended next step"
 msgstr "گام بعدی توصیه شده است"
 
@@ -1504,7 +1504,7 @@ msgstr "برای استفاده از MetaBot یک کاربر Slack Bot ایجا�
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
 msgstr "هنگامی که شما آنجا هستید، نام آن را بنویسید و {0} را کلیک کنید. سپس Token Bot API را به فیلد زیر کپی و جایگذاری کنید. پس از اتمام کار، کانال \"metabase_files\" را در Slack ایجاد کنید. Metabase برای بارگذاری نمودارها نیاز دارد."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:23
 msgid "You're running Metabase {0} which is the latest and greatest!"
 msgstr "شما Metabase {0} را اجرا می کنید که آخرین و بزرگترین است!"
 
@@ -1512,13 +1512,13 @@ msgstr "شما Metabase {0} را اجرا می کنید که آخرین و بز�
 msgid "Metabase {0} is available.  You're running {1}"
 msgstr "Metabase {0} در دسترس است شما در حال اجرا {1}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:41
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:49
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:115
 msgid "Update"
 msgstr "به روز رسانی"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:46
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
 msgid "What's Changed:"
 msgstr "تغییر چه چیزی است:"
 
@@ -2472,7 +2472,7 @@ msgstr "نتایج را دانلود کنید"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:52
 #: frontend/src/metabase/components/EntityMenu.info.js:104
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:93
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:94
 msgid "Sharing and embedding"
 msgstr "به اشتراک گذاری و تعبیه"
 
@@ -2984,19 +2984,19 @@ msgstr "این داشبورد خالی است."
 msgid "Add a question to start making it useful!"
 msgstr "یک سوال برای شروع مفید بودن اضافه کنید"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Daytime mode"
 msgstr "حالت روزانه"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:119
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:120
 msgid "Nighttime mode"
 msgstr "حالت شبانه"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Exit fullscreen"
 msgstr "خروج از تمام صفحه"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:137
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:138
 msgid "Enter fullscreen"
 msgstr "ورود به حالت تمام صفحه"
 
@@ -3333,7 +3333,7 @@ msgid "Unarchive"
 msgstr "بازخوانی"
 
 #: frontend/src/metabase/home/containers/HomepageApp.jsx:54
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:68
 msgid "Activity"
 msgstr "فعالیت"
 
@@ -4131,7 +4131,7 @@ msgstr "رده، نوع، مدل، رتبه و غیره"
 msgid "Account settings"
 msgstr "تنظیمات حساب"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:50
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:59
 msgid "Exit admin"
 msgstr "خروج از مدیر"
 
@@ -4141,16 +4141,16 @@ msgstr "سیاههها"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:104
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:22
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:65
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:74
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:100
 msgid "Help"
 msgstr "کمک"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:72
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:81
 msgid "About Metabase"
 msgstr "درباره Metabase"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:78
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:87
 msgid "Sign out"
 msgstr "خروج"
 
@@ -4158,19 +4158,19 @@ msgstr "خروج"
 msgid "Thanks for using"
 msgstr "با تشکر برای استفاده"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:116
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:125
 msgid "You're on version"
 msgstr "شما در نسخه هستید"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:119
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
 msgid "Built on"
 msgstr "ساخته شده بر پایه ی"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:139
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:148
 msgid "is a Trademark of"
 msgstr "علامت تجاری است"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:141
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:150
 msgid "and is built with care in San Francisco, CA"
 msgstr "و با مراقبت در سان فرانسیسکو، کالیفرنیا ساخته شده است"
 
@@ -5336,15 +5336,15 @@ msgstr "مشکلی با سوال شما وجود داشت"
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "اغلب اوقات این مسئله ناشی از انتخاب نامعتبر یا ارزش ورودی بد است. دو ورودی خود را بررسی کنید و درخواست خود را دوباره امتحان کنید."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:66
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
 msgid "This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific."
 msgstr "این ممکن است پاسخ شما به دنبال آن هستید. اگر نه، سعی کنید فیلتر ها را از بین ببرید یا تغییر دهید تا آنها را کمتر مشخص کنید."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:71
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
 msgid "You can also {0} when there are some results."
 msgstr "شما همچنین می توانید {0} زمانی که برخی نتایج وجود دارد."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:73
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:75
 msgid "get an alert"
 msgstr "هشدار بده"
 
@@ -5447,7 +5447,7 @@ msgstr "داده های خام برای {0}"
 msgid "More"
 msgstr "بیشتر"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:249
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:251
 msgid "Invalid expression"
 msgstr "عبارت نادرست"
 
@@ -5465,6 +5465,8 @@ msgstr "از این به عنوان نوعی از نوشتن یک فرمول د�
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:111
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:281
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:144
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:19
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:71
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:75
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
@@ -6577,32 +6579,32 @@ msgstr "گمشده"
 msgid "Rows {0}-{1} of {2}"
 msgstr "ردیف {0} - {1} از {2}"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:208
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:212
 msgid "Data truncated to {0} rows."
 msgstr "داده های کوتاه شده به {0} ردیف."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:415
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:419
 msgid "Could not find visualization"
 msgstr "نمایشی پیدا نشد"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:422
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:426
 msgid "Could not display this chart with this data."
 msgstr "این نمودار را نمیتوان با این اطلاعات نمایش داد."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:541
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:545
 msgid "No results!"
 msgstr "هیچ نتیجه ای!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:562
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:566
 msgid "Still Waiting..."
 msgstr "هنوز منتظرم..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:565
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:569
 msgid "This usually takes an average of {0}."
 msgstr "این معمولا طول می کشد به طور متوسط ​​{0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
 msgid "(This is a bit long for a dashboard)"
 msgstr "(این کمی طولانی برای داشبورد است)"
 
@@ -7562,7 +7564,7 @@ msgstr "سوالهای ذخیره شده زیادی در {0} دارید؟ ایج
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:238
 #: frontend/src/metabase/home/components/Activity.jsx:87
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:90
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:99
 #: frontend/src/metabase/public/components/LogoBadge.jsx:22
 #: frontend/src/metabase/routes-public.jsx:15
 #: frontend/src/metabase/routes.jsx:141 src/metabase/api/setup.clj
@@ -9402,7 +9404,7 @@ msgstr "مدیران"
 msgid "MetaBot"
 msgstr "مِتا بات"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:55
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
 msgstr "اشتراک گذاری"
@@ -9447,6 +9449,7 @@ msgid "Axes"
 msgstr "محورها"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:219
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:79
 #: frontend/src/metabase/visualizations/lib/settings/column.js:62
 msgid "Formatting"
 msgstr "در حال پاک‌سازی"
@@ -9786,6 +9789,7 @@ msgstr "ستونهای قابل مشاهده"
 msgid "Conditional Formatting"
 msgstr "قالب بندی شرطی"
 
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:175
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:234
 msgid "Column title"
 msgstr "عنوان ستون"
@@ -9952,7 +9956,7 @@ msgstr "فقط یک بخش Google Analytics به طور همزمان مجاز ا
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "MONGO AGGREGATION PIPELINE:"
-msgstr ":خط لوله تجمع مونگو"
+msgstr "خط لوله تجمع مونگو:"
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "Error: mismatched columns in results! Expected: {0} Got: {1}"
@@ -12651,7 +12655,7 @@ msgstr "نمایش حداکثر"
 msgid "Get Preview"
 msgstr "پیش نمایش را دریافت کنید"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:82
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:84
 msgid "Back to previous results"
 msgstr "بازگشت به نتایج قبلی"
 
@@ -12833,7 +12837,7 @@ msgstr "متریک اضافه کنید"
 msgid "Profile"
 msgstr "مشخصات"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:579
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "این معمولاً خیلی سریع است اما به نظر می رسد اکنون مدتی طول می کشد."
 
@@ -13257,7 +13261,7 @@ msgstr "برنامه ریزی وظایف برای بانک اطلاعات {0} ا
 msgid "All elements must be distinct."
 msgstr "همه عناصر باید مشخص باشند."
 
-#:
+#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "ستون هایی را که می خواهید گنجانید انتخاب کنید"
@@ -13753,19 +13757,19 @@ msgstr "برای اینکه کاربران بتوانند با Google به سی�
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
 msgstr "حتماً شناسه کامل مشتری ، از جمله پسوند apps.googleusercontent.com را درج کنید."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:30
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:38
 msgid "Metabase {0} is available."
 msgstr "{Metabase {0 در دسترس است."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:31
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:39
 msgid "You're running {0}"
 msgstr "شما در حال {0} اجرا "
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:57
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:70
 msgid "Sorry, we were unable to check for updates at this time."
 msgstr "متأسفیم ، در حال حاضر نتوانستیم بروزرسانی ها را بررسی کنیم."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:96
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:109
 msgid "patch release"
 msgstr "انتشار پچ"
 
@@ -14369,39 +14373,39 @@ msgstr "رشته متن را در تمام موارد بزرگ برمی گردا
 msgid "The column with values to convert to upper case."
 msgstr "ستون با مقادیر برای تبدیل به پرونده بزرگ."
 
-#: frontend/src/metabase/lib/settings.js:199
+#: frontend/src/metabase/lib/settings.js:210
 msgid "must be {0} and include {1}."
 msgstr "باید {0} باشد و {1} را شامل شود."
 
-#: frontend/src/metabase/lib/settings.js:201
+#: frontend/src/metabase/lib/settings.js:212
 msgid "must be {0}."
 msgstr "باید {0} باشد."
 
-#: frontend/src/metabase/lib/settings.js:203
+#: frontend/src/metabase/lib/settings.js:214
 msgid "must include {0}."
 msgstr "باید {0} باشد."
 
-#: frontend/src/metabase/lib/settings.js:216
+#: frontend/src/metabase/lib/settings.js:227
 msgid "at least {0} character long"
 msgid_plural "at least {0} characters long"
 msgstr[0] "حداقل شخصیت {0} شخصیت طولانی"
 
-#: frontend/src/metabase/lib/settings.js:225
+#: frontend/src/metabase/lib/settings.js:236
 msgid "{0} lower case letter"
 msgid_plural "{0} lower case letters"
 msgstr[0] "{0} حروف کوچک"
 
-#: frontend/src/metabase/lib/settings.js:234
+#: frontend/src/metabase/lib/settings.js:245
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
 msgstr[0] "{0} حروف بزرگ"
 
-#: frontend/src/metabase/lib/settings.js:243
+#: frontend/src/metabase/lib/settings.js:254
 msgid "{0} number"
 msgid_plural "{0} numbers"
 msgstr[0] "{0} شماره"
 
-#: frontend/src/metabase/lib/settings.js:248
+#: frontend/src/metabase/lib/settings.js:259
 msgid "{0} special character"
 msgid_plural "{0} special characters"
 msgstr[0] "{0} شخصیت ویژه"
@@ -14414,7 +14418,7 @@ msgstr "می بایست یک ایمیل ادرس معتبر باشد"
 msgid "must be {0} characters or less"
 msgstr "باید نویسه {0 یا کمتر باشد"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:113
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:122
 msgid "Thanks for using Metabase!"
 msgstr "با تشکر از شما برای استفاده از Metabase!"
 
@@ -17036,7 +17040,7 @@ msgstr "ابتدا باید {0} کنید."
 msgid "Rows {0}-{1} of first {2}"
 msgstr "ردیف ها {0} - {1} از اولین {2}"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:150
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:268
 msgid "Drag fields here"
 msgstr "قسمتها را به اینجا بکشید"
 
@@ -17044,15 +17048,15 @@ msgstr "قسمتها را به اینجا بکشید"
 msgid "Percentage"
 msgstr "درصد"
 
-#: frontend/src/metabase/lib/data_grid.js:311
+#: frontend/src/metabase/lib/data_grid.js:340
 msgid "Totals for {0}"
 msgstr "تعداد کل برای {0}"
 
-#: frontend/src/metabase/lib/data_grid.js:135
+#: frontend/src/metabase/lib/data_grid.js:157
 msgid "Grand totals"
 msgstr "جمع کل"
 
-#: frontend/src/metabase/lib/data_grid.js:110
+#: frontend/src/metabase/lib/data_grid.js:128
 msgid "Row totals"
 msgstr "مجموع ردیف"
 
@@ -17068,11 +17072,11 @@ msgstr "زمینه هایی برای استفاده در ستون های جدو�
 msgid "Fields to use for the table values"
 msgstr "قسمتهایی برای استفاده برای مقادیر جدول"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:82
 msgid "Pivot tables can only be used with aggregated queries."
 msgstr "جداول محوری فقط با پرسش های جمع شده قابل استفاده هستند."
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:54
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:55
 msgid "Pivot Table"
 msgstr "جدول محوری"
 
@@ -17650,12 +17654,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#:
+#: 
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "ضربان ها به تدریج خارج می شوند"
 
-#:
+#: 
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "به جای آن می توانید {0} را تنظیم کنید. ما در نسخه بعدی Pulses را حذف خواهیم کرد و به شما کمک می کنیم هر آنچه را که هنوز دارید حمل کنید."
@@ -17664,7 +17668,7 @@ msgstr "به جای آن می توانید {0} را تنظیم کنید. ما د
 msgid "dashboard subscriptions"
 msgstr "اشتراک داشبورد"
 
-#:
+#: 
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} نمودارهای اشتراک شما همانند داشبورد شما به نظر نمی رسند. {1}"
 
@@ -17676,11 +17680,11 @@ msgstr "دقیقه گذشته از ساعت"
 msgid "Email sent"
 msgstr "ایمیل ارسال شد"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:56
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:57
 msgid "Add data to share this dashboard"
 msgstr "داده ها را برای اشتراک این داشبورد اضافه کنید"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:79
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:80
 msgid "Dashboard subscriptions"
 msgstr "اشتراک داشبورد"
 
@@ -17724,21 +17728,21 @@ msgstr "این اشتراک در {0} حذف شود؟"
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}."
 msgstr "{0} نمودارهای اشتراک شما همانند داشبورد شما به نظر نمی رسند. {1}"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:22
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:29
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:36
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:26
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:33
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:40
 msgid "Fields to use for the table {0}"
 msgstr "قسمتهای مورد استفاده برای جدول {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:23
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:27
 msgid "rows"
 msgstr "ردیف ها"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:30
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:34
 msgid "columns"
 msgstr "ستون ها"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:37
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:41
 msgid "values"
 msgstr "ارزش های"
 
@@ -17812,7 +17816,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "{0} پایگاه داده منبع را تنظیم کنید و مهاجرت ها را اجرا کنید ..."
 
 #. make sure the dest DB is up-to-date
-#.
+#. 
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: src/metabase/cmd/copy.clj
 msgid "Set up {0} target database and run migrations..."
@@ -17842,3 +17846,61 @@ msgstr "بزرگی برای {0} مشخص نیست"
 #: src/metabase/query_processor/middleware/fetch_source_query.clj
 msgid "Error resolving source query"
 msgstr "خطا در حل پرس و جو منبع"
+
+#: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:103
+msgid "Have your email configured for you."
+msgstr "ایمیل خود را برای شما پیکربندی کنید."
+
+#: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:133
+msgid "Have your server maintained for you."
+msgstr "از سرور خود استفاده کنید."
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:139
+msgid "Want to have upgrades taken care of for you?"
+msgstr "آیا می خواهید از نسخه های به روز شده مراقبت کنید؟"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:140
+#: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:16
+msgid "Migrate to Metabase Cloud."
+msgstr "به ابر پایگاه داده مهاجرت کنید."
+
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:51
+msgid "Manage Metabase Cloud"
+msgstr "مدیریت ابر پایگاه داده"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:32
+msgid "Show totals"
+msgstr "نمایش کل"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:65
+msgid "Sort order"
+msgstr "ترتیب را مرتب کنید"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:83
+msgid "See options…"
+msgstr "مشاهده گزینه ها"
+
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:86
+msgid "This database does not support pivot tables."
+msgstr "این پایگاه داده از جداول محوری پشتیبانی نمی کند."
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath."
+msgstr "مکان پرونده GeoJSON نامعتبر است: یا باید با http: // یا https: // شروع شود یا مسیر نسبی یک فایل در مسیر class باشد."
+
+#: src/metabase/api/geojson.clj
+msgid "URLs referring to hosts that supply internal hosting metadata are prohibited."
+msgstr "URL هایی که به میزبان هایی که فراداده میزبانی داخلی را ارائه می دهند ممنوع است."
+
+#: src/metabase/api/geojson.clj
+msgid "Invalid custom GeoJSON."
+msgstr "GeoJSON سفارشی نامعتبر است."
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
+msgstr "{0} نامعتبر: برک آوت مشخص شده در فهرست {1} ، اما ما فقط {2} برک آوت داریم"
+
+#: src/metabase/query_processor/pivot.clj
+msgid "Error generating pivot queries"
+msgstr "خطا در ایجاد نمایشگرهای محوری"
+

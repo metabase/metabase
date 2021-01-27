@@ -5,13 +5,13 @@
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
+            [metabase.models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.pulse :as models.pulse]
             [metabase.pulse :as pulse]
             [metabase.pulse.render.body :as render.body]
-            [metabase.pulse.test-util :as pulse.tu]
+            [metabase.pulse.test-util :refer :all]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -22,59 +22,19 @@
 ;;; |                                               Util Fns & Macros                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private card-name "Test card")
+(defn- rasta-pulse-email [& [email]]
+  (mt/email-to :rasta (merge {:subject "Pulse: Pulse Name",
+                              :body  [{"Pulse Name" true}
+                                      png-attachment]}
+                             email)))
 
-(defn checkins-query-card*
-  "Basic query that will return results for an alert"
-  [query-map]
-  {:name          card-name
-   :dataset_query {:database (mt/id)
-                   :type     :query
-                   :query    (merge {:source-table (mt/id :checkins)
-                                     :aggregation  [["count"]]}
-                                    query-map)}})
-
-(defmacro checkins-query-card [query]
-  `(checkins-query-card* (mt/$ids ~'checkins ~query)))
-
-(defn- venues-query-card [aggregation-op]
-  {:name          card-name
-   :dataset_query {:database (mt/id)
-                   :type     :query
-                   :query    {:source-table (mt/id :venues)
-                              :aggregation  [[aggregation-op (mt/id :venues :price)]]}}})
-
-(defn- rasta-id []
-  (mt/user->id :rasta))
-
-(defn- realize-lazy-seqs
-  "It's possible when data structures contain lazy sequences that the database will be torn down before the lazy seq
-  is realized, causing the data returned to be nil. This function walks the datastructure, realizing all the lazy
-  sequences it finds"
-  [data]
-  (walk/postwalk identity data))
-
-(defn- do-with-site-url
-  [f]
-  (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-    (f)))
-
-(defmacro ^:private slack-test-setup
-  "Macro that ensures test-data is present and disables sending of all notifications"
-  [& body]
-  `(with-redefs [metabase.pulse/send-notifications! realize-lazy-seqs
-                 slack/files-channel                (constantly {:name "metabase_files"
-                                                                 :id   "FOO"})]
-     (do-with-site-url (fn [] ~@body))))
-
-(defmacro ^:private email-test-setup
-  "Macro that ensures test-data is present and will use a fake inbox for emails"
-  [& body]
-  `(mt/with-fake-inbox
-     (do-with-site-url (fn [] ~@body))))
+(defn- rasta-alert-email
+  [subject email-body]
+  (mt/email-to :rasta {:subject subject
+                       :body email-body}))
 
 (defn- do-with-pulse-for-card
-  "Creates a Pulse and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if specfied), then
+  "Creates a Pulse and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if specified), then
   invokes
 
     (f pulse)"
@@ -85,7 +45,7 @@
                                 (-> pulse
                                     (merge {:name "Pulse Name"}))]
                   PulseCard    [_ (merge {:pulse_id pulse-id
-                                          :card_id  (u/get-id card)
+                                          :card_id  (u/the-id card)
                                           :position 0}
                                          pulse-card)]
                   PulseChannel [{pc-id :id} (case channel
@@ -171,89 +131,9 @@
     (testing message
       (do-test (merge-with merge common m)))))
 
-(defn- force-bytes-thunk
-  "Grabs the thunk that produces the image byte array and invokes it"
-  [results]
-  ((-> results
-       :attachments
-       first
-       :attachment-bytes-thunk)))
-
-(def ^:private png-attachment
-  {:type         :inline
-   :content-id   true
-   :content-type "image/png"
-   :content      java.net.URL})
-
-(defn- rasta-pulse-email [& [email]]
-  (mt/email-to :rasta (merge {:subject "Pulse: Pulse Name",
-                              :body  [{"Pulse Name" true}
-                                      png-attachment]}
-                             email)))
-
-(def ^:private csv-attachment
-  {:type         :attachment
-   :content-type "text/csv"
-   :file-name    "Test card.csv",
-   :content      java.net.URL
-   :description  "More results for 'Test card'"
-   :content-id   false})
-
-(def ^:private xls-attachment
-  {:type         :attachment
-   :file-name    "Test card.xlsx"
-   :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-   :content      java.net.URL
-   :description  "More results for 'Test card'"
-   :content-id   false})
-
-(defn- rasta-alert-email
-  [subject email-body]
-  (mt/email-to :rasta {:subject subject
-                       :body email-body}))
-
 (def ^:private test-card-result {card-name true})
 (def ^:private test-card-regex  (re-pattern card-name))
 
-(defn- thunk->boolean [{:keys [attachments] :as result}]
-  (assoc result :attachments (for [attachment-info attachments]
-                               (update attachment-info :attachment-bytes-thunk fn?))))
-
-(defprotocol ^:private WrappedFunction
-  (^:private input [_])
-  (^:private output [_]))
-
-(defn- invoke-with-wrapping
-  "Apply `args` to `func`, capturing the arguments of the invocation and the result of the invocation. Store the
-  arguments in `input-atom` and the result in `output-atom`."
-  [input-atom output-atom func args]
-  (swap! input-atom conj args)
-  (let [result (apply func args)]
-    (swap! output-atom conj result)
-    result))
-
-(defn- wrap-function
-  "Return a function that wraps `func`, not interfering with it but recording it's input and output, which is
-  available via the `input` function and `output`function that can be used directly on this object"
-  [func]
-  (let [input (atom nil)
-        output (atom nil)]
-    (reify WrappedFunction
-      (input [_] @input)
-      (output [_] @output)
-      clojure.lang.IFn
-      (invoke [_ x1]
-        (invoke-with-wrapping input output func [x1]))
-      (invoke [_ x1 x2]
-        (invoke-with-wrapping input output func [x1 x2]))
-      (invoke [_ x1 x2 x3]
-        (invoke-with-wrapping input output func [x1 x2 x3]))
-      (invoke [_ x1 x2 x3 x4]
-        (invoke-with-wrapping input output func [x1 x2 x3 x4]))
-      (invoke [_ x1 x2 x3 x4 x5]
-        (invoke-with-wrapping input output func [x1 x2 x3 x4 x5]))
-      (invoke [_ x1 x2 x3 x4 x5 x6]
-        (invoke-with-wrapping input output func [x1 x2 x3 x4 x5 x6])))))
 
 (defn- produces-bytes? [{:keys [attachment-bytes-thunk]}]
   (pos? (alength ^bytes (attachment-bytes-thunk))))
@@ -315,12 +195,15 @@
      :assert
      {:email
       (fn [_ _]
-        (is (= (rasta-pulse-email {:body [{"Pulse Name"                      true
-                                           "More results have been included" false
-                                           "ID</th>"                         true}]})
+        (is (= (rasta-pulse-email {:body [{"Pulse Name"                                         true
+                                           "More results have been included"                    false
+                                           "ID</th>"                                            true
+                                           "<a href=\\\"https://metabase.com/testmb/dashboard/" false}]})
                (mt/summarize-multipart-email
                 #"Pulse Name"
-                #"More results have been included" #"ID</th>"))))
+                #"More results have been included"
+                #"ID</th>"
+                #"<a href=\"https://metabase.com/testmb/dashboard/"))))
 
       :slack
       (fn [{:keys [card-id]} [pulse-results]]
@@ -807,35 +690,21 @@
                     :result (s/pred map?)}
                    (pulse/execute-card {:creator_id (mt/user->id :rasta)} card))))))
 
-(deftest execute-dashboard-test
-  (testing "it runs for each card"
-    (mt/with-temp* [Card          [{card-id-1 :id}]
-                    Card          [{card-id-2 :id}]
-                    Dashboard     [{dashboard-id :id} {:name "Birdfeed Usage"}]
-                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1}]
-                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2}]
-                    User [{user-id :id}]]
-      (let [result (pulse/execute-dashboard {:creator_id user-id} dashboard-id)]
-        (is (= (count result) 2))
-        (is (schema= [{:card   (s/pred map?)
-                       :result (s/pred map?)}]
-                     result))))))
-
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."
-    (letfn [(send-pulse-created-by-user! [user-kw]
+    (letfn [(send-pulse-created-by-user!* [user-kw]
               (mt/with-temp* [Collection [coll]
                               Card       [card {:dataset_query (mt/mbql-query checkins
                                                                  {:order-by [[:asc $id]]
                                                                   :limit    1})
                                                 :collection_id (:id coll)}]]
                 (perms/revoke-collection-permissions! (group/all-users) coll)
-                (pulse.tu/send-pulse-created-by-user! user-kw card)))]
+                (send-pulse-created-by-user! user-kw card)))]
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
-             (send-pulse-created-by-user! :crowberto)))
+             (send-pulse-created-by-user!* :crowberto)))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"^You do not have permissions to view Card [\d,]+."
            (mt/suppress-output
-             (send-pulse-created-by-user! :rasta)))
+             (send-pulse-created-by-user!* :rasta)))
           "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."))))
