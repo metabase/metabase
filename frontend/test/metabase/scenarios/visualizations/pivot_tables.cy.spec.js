@@ -276,6 +276,43 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
   });
 
+  it("should allow sorting fields", () => {
+    // Pivot by a single column with many values (100 bins).
+    // Having many values hides values that are sorted to the end.
+    // This lets us assert on presence of a certain value.
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["binning-strategy", ["field-id", ORDERS.TOTAL], "num-bins", 100],
+          ],
+        },
+        database: 1,
+      },
+      display: "pivot",
+    });
+
+    // open settings and expand Total column settings
+    cy.findByText("Settings").click();
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Total/)
+      .click();
+
+    // sort descending
+    cy.get(".Icon-arrow_down").click();
+    cy.findByText("300 – 302.5");
+    cy.findByText("2.5 – 5").should("not.exist");
+
+    // sort ascending
+    cy.get(".Icon-arrow_up").click();
+    cy.findByText("2.5 – 5");
+    cy.findByText("300 – 302.5").should("not.exist");
+  });
+
   it("should display an error message for native queries", () => {
     cy.server();
     // native queries should use the normal dataset endpoint even when set to pivot
