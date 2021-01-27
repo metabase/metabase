@@ -1,3 +1,4 @@
+import _ from "underscore";
 // IE doesn't support scrollX/scrollY:
 export const getScrollX = () =>
   typeof window.scrollX === "undefined" ? window.pageXOffset : window.scrollX;
@@ -25,6 +26,25 @@ export const IFRAMED_IN_SELF = (function() {
     return false;
   }
 })();
+
+// check whether scrollbars are visible to the user,
+// this is off by default on Macs, but can be changed
+// Always on on most other non mobile platforms
+export const getScrollBarSize = _.memoize(() => {
+  const scrollableElem = document.createElement("div"),
+    innerElem = document.createElement("div");
+  scrollableElem.style.width = "30px";
+  scrollableElem.style.height = "30px";
+  scrollableElem.style.overflow = "scroll";
+  scrollableElem.style.borderWidth = "0";
+  innerElem.style.width = "30px";
+  innerElem.style.height = "60px";
+  scrollableElem.appendChild(innerElem);
+  document.body.appendChild(scrollableElem); // Elements only have width if they're in the layout
+  const diff = scrollableElem.offsetWidth - scrollableElem.clientWidth;
+  document.body.removeChild(scrollableElem);
+  return diff;
+});
 
 // check if we have access to localStorage to avoid handling "access denied"
 // exceptions
