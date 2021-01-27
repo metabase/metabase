@@ -233,6 +233,7 @@ const SECTIONS = updateSectionsWithPlugins({
         ],
         note: t`Not all databases support timezones, in which case this setting won't take effect.`,
         allowValueCollection: true,
+        searchProp: "name",
       },
       {
         key: "start-of-week",

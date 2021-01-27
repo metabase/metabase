@@ -3,7 +3,7 @@ import React from "react";
 import Select, { Option } from "metabase/components/Select";
 
 const SettingSelect = ({
-  setting: { placeholder, value, options, defaultValue },
+  setting: { placeholder, value, options, defaultValue, searchProp },
   onChange,
   disabled,
 }) => (
@@ -12,6 +12,7 @@ const SettingSelect = ({
     placeholder={placeholder}
     value={value}
     defaultValue={defaultValue}
+    searchProp={searchProp}
     onChange={e => onChange(e.target.value)}
   >
     {options.map(option => {
