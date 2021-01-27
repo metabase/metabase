@@ -10,6 +10,9 @@ export function isPivotGroupColumn(col) {
 
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
+export const COLUMN_SORT_ORDER_ASC = "ascending";
+export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
   const collapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
@@ -56,6 +59,8 @@ export function multiLevelPivotForIndexes(
     columnColumnIndexes,
   );
 
+  const columnSettings = columns.map(column => settings.column(column));
+
   // we build a tree for each tuple of pivoted column/row values seen in the data
   const columnColumnTree = [];
   const rowColumnTree = [];
@@ -69,8 +74,19 @@ export function multiLevelPivotForIndexes(
   );
   for (const row of pivotData[primaryRowsKey]) {
     // mutate the trees to add the tuple from the current row
-    updateValueObject(row, columnColumnIndexes, columnColumnTree);
-    updateValueObject(row, rowColumnIndexes, rowColumnTree, collapsedSubtotals);
+    updateValueObject(
+      row,
+      columnColumnIndexes,
+      columnSettings,
+      columnColumnTree,
+    );
+    updateValueObject(
+      row,
+      rowColumnIndexes,
+      columnSettings,
+      rowColumnTree,
+      collapsedSubtotals,
+    );
 
     // save the value columns keyed by the values in the column/row pivoted columns
     const valueKey = JSON.stringify(
@@ -110,7 +126,7 @@ export function multiLevelPivotForIndexes(
   ].map(indexes =>
     indexes.map(index =>
       _.memoize(
-        value => formatValue(value, settings.column(columns[index])),
+        value => formatValue(value, columnSettings[index]),
         value => [value, index].join(),
       ),
     ),
@@ -361,10 +377,17 @@ function addSubtotal(item, [formatter, ...formatters]) {
 }
 
 // Update the tree with a row of data
-function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
+function updateValueObject(
+  row,
+  indexes,
+  columnSettings,
+  seenValues,
+  collapsedSubtotals = [],
+) {
   let currentLevelSeenValues = seenValues;
   const prefix = [];
-  for (const value of indexes.map(index => row[index])) {
+  for (const index of indexes) {
+    const value = row[index];
     prefix.push(value);
     let seenValue = currentLevelSeenValues.find(d => d.value === value);
     const isCollapsed =
@@ -375,6 +398,20 @@ function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
     if (seenValue === undefined) {
       seenValue = { value, children: [], isCollapsed };
       currentLevelSeenValues.push(seenValue);
+      const sortOrder = getIn(columnSettings, [index, COLUMN_SORT_ORDER]);
+      if (sortOrder) {
+        currentLevelSeenValues.sort((a, b) =>
+          // TODO use localeCompare
+          a.value === b.value
+            ? 0
+            : (sortOrder === COLUMN_SORT_ORDER_ASC
+              ? // flip the comparison for ascending vs descending
+                a.value > b.value
+              : a.value < b.value)
+            ? 1
+            : -1,
+        );
+      }
     }
     currentLevelSeenValues = seenValue.children;
   }

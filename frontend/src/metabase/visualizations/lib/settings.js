@@ -204,6 +204,7 @@ function getSettingWidget(
         ? WIDGETS[settingDef.widget]
         : settingDef.widget,
     onChange,
+    onChangeSettings, // this gives a widget access to update other settings
   };
 }
 
