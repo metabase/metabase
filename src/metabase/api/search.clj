@@ -152,6 +152,20 @@
    [:name :table_name]
    [:description :table_description]])
 
+(defmulti ^:private searchable-columns-for-model
+  "The columns that will be searched for the query."
+  {:arglists '([model])}
+  class)
+
+(defmethod searchable-columns-for-model :default
+  [_]
+  [:name])
+
+(defmethod searchable-columns-for-model (class Table)
+  [_]
+  [:name
+   :display_name])
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -234,9 +248,11 @@
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause      (archived-where-clause model archived?)
         search-string-clause (when (seq search-string)
-                               [:like
-                                (hsql/call :lower (hsql/qualify (model->alias model) :name))
-                                (str "%" (str/lower-case search-string) "%")])]
+                               (into [:or]
+                                (for [column (searchable-columns-for-model model)]
+                                  [:like
+                                   (hsql/call :lower (hsql/qualify (model->alias model) column))
+                                   (str "%" (str/lower-case search-string) "%")])))]
     (if search-string-clause
       [:and archived-clause search-string-clause]
       archived-clause)))
