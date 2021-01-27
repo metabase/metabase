@@ -7,4 +7,4 @@
   (u/exit-when-finished-nonzero-on-exception
     (when-not (seq driver)
       (throw (ex-info "Usage: clojure -m build-driver <driver> [edition]" {})))
-    (build-driver/build-driver! (keyword driver) (keyword edition))))
+    (build-driver/build-driver! (keyword driver) (or (keyword edition) :oss))))
