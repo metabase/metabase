@@ -224,7 +224,6 @@ export default class PivotTable extends Component {
       return scrollsHorizontally && scrollsVertically && hasScrollbars;
     }
 
-
     let pivoted;
     try {
       pivoted = multiLevelPivot(data, settings);
