@@ -2,7 +2,7 @@
   (:require [build-drivers.common :as c]
             [build-drivers.plugin-manifest :as manifest]
             [metabuild-common.core :as u])
-  (:import [java.nio.file Files OpenOption]
+  (:import java.io.FileOutputStream
            [java.util.zip ZipEntry ZipFile ZipOutputStream]
            org.apache.commons.io.IOUtils))
 
@@ -10,11 +10,11 @@
   "Files to always include regardless of whether they are present in blacklist JAR."
   #{"metabase-plugin.yaml"})
 
-(defn- files-blacklist
+(defn- jar-contents
   "Get a set of all files in a JAR that we should strip out from the driver JAR -- either the Metabase uberjar itself or
   a parent driver JAR."
-  [^String blacklist-jar-path]
-  (with-open [zip-file (ZipFile. blacklist-jar-path)]
+  [^String jar-path]
+  (with-open [zip-file (ZipFile. jar-path)]
     (set
      (for [^ZipEntry zip-entry (enumeration-seq (.entries zip-file))
            :let                [filename (str zip-entry)]
@@ -23,26 +23,26 @@
 
 (defn- strip-classes! [^String driver-jar-path ^String blacklist-jar-path]
   (u/step (format "Remove classes from %s that are present in %s and recompress" driver-jar-path blacklist-jar-path)
-    (let [files-blacklist (files-blacklist blacklist-jar-path)
+    (let [jar-contents (jar-contents blacklist-jar-path)
           temp-driver-jar-path  "/tmp/driver.jar"
           wrote           (atom 0)
           skipped         (atom 0)]
       (u/delete-file-if-exists! temp-driver-jar-path)
       (with-open [source-zip (ZipFile. (u/assert-file-exists driver-jar-path))
-                  os         (doto (ZipOutputStream. (Files/newOutputStream (u/nio-path temp-driver-jar-path) (u/varargs OpenOption)))
+                  os         (doto (ZipOutputStream. (FileOutputStream. temp-driver-jar-path))
                                (.setMethod ZipOutputStream/DEFLATED)
                                (.setLevel 9))]
         (doseq [^ZipEntry entry (enumeration-seq (.entries source-zip))]
-          (if (files-blacklist (str entry))
+          (if (jar-contents (str entry))
             (swap! skipped inc)
             (with-open [is (.getInputStream source-zip entry)]
               (.putNextEntry os (ZipEntry. (.getName entry)))
               (IOUtils/copy is os)
               (.closeEntry os)
               (swap! wrote inc)))))
-      (u/announce "Done. wrote: %d skipped: %d" @wrote @skipped)
-      (u/announce "Original size: %s" (u/format-bytes (u/file-size driver-jar-path)))
-      (u/announce "Stripped/extra-compressed size: %s" (u/format-bytes (u/file-size temp-driver-jar-path)))
+      (u/announce (format "Done. wrote: %d skipped: %d" @wrote @skipped))
+      (u/safe-println (format "Original size: %s" (u/format-bytes (u/file-size driver-jar-path))))
+      (u/safe-println (format "Stripped/extra-compressed size: %s" (u/format-bytes (u/file-size temp-driver-jar-path))))
       (u/step "replace the original source JAR with the stripped one"
         (u/delete-file-if-exists! driver-jar-path)
         (u/copy-file! temp-driver-jar-path driver-jar-path)))))
