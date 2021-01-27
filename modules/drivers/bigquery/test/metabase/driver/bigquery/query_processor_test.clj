@@ -632,10 +632,10 @@
               "a"
               "_"
               "apple"
-              (repeat 128 "a")))
+              (apply str (repeat 128 "a"))))
       (testing "rejected names"
         (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier? name))
               "have-dataset"
               "have:dataset"
               ""
-              (repeat 129 "a"))))))
+              (apply str (repeat 129 "a")))))))
