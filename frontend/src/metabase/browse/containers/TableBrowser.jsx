@@ -39,7 +39,7 @@ function TableBrowser(props) {
             align="center"
             className="hover-parent hover--visibility border-bottom"
           >
-            <Icon name="table" />
+            <Icon name="table" mr={1} />
             <Link to={Urls.exploreTable(table)}>
               <h3>{table.display_name}</h3>
             </Link>
