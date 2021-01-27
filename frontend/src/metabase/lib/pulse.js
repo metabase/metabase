@@ -46,23 +46,25 @@ export function channelIsValid(channel, channelSpec) {
   return true;
 }
 
-export function pulseIsValid(pulse, channelSpecs) {
-  return (
-    (pulse.name &&
-      pulse.cards.length > 0 &&
-      pulse.channels.filter(c =>
-        channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
-      ).length > 0) ||
-    false
-  );
-}
-
-export function dashboardPulseIsValid(pulse, channelSpecs) {
+function pulseChannelsAreValid(pulse, channelSpecs) {
   return (
     pulse.channels.filter(c =>
       channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
     ).length > 0 || false
   );
+}
+
+export function pulseIsValid(pulse, channelSpecs) {
+  return (
+    (pulse.name &&
+      pulse.cards.length > 0 &&
+      pulseChannelsAreValid(pulse, channelSpecs)) ||
+    false
+  );
+}
+
+export function dashboardPulseIsValid(pulse, channelSpecs) {
+  return pulseChannelsAreValid(pulse, channelSpecs);
 }
 
 export function emailIsEnabled(pulse) {
