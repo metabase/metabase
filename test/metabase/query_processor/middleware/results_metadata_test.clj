@@ -174,8 +174,8 @@
                :name         "DATE"
                :unit         "year"
                :special_type nil
-               :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03"
-                                                                                              :latest   "2015-12-29"}}}}
+               :fingerprint  {:global {:distinct-count 93 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-03-25"
+                                                                                              :latest   "2015-12-24"}}}}
               {:base_type    "type/BigInteger"
                :display_name "Count"
                :name         "count"

@@ -141,10 +141,10 @@
                                            :average-length (s/pred #(< 15 % 16) "between 15 and 16")}}}
                      (db/select-one-field :fingerprint Field :id (mt/id :venues :name)))))
       (testing "date fingerprints"
-        (is (schema= {:global {:distinct-count (s/eq 618)
+        (is (schema= {:global {:distinct-count (s/eq 93)
                                :nil%           (s/eq 0.0)}
-                      :type   {:type/DateTime {:earliest (s/pred #(.startsWith % "2013-01-03"))
-                                               :latest   (s/pred #(.startsWith % "2015-12-29"))}}}
+                      :type   {:type/DateTime {:earliest (s/pred #(.startsWith % "2013-03-25"))
+                                               :latest   (s/pred #(.startsWith % "2015-12-24"))}}}
                      (db/select-one-field :fingerprint Field :id (mt/id :checkins :date)))))
       (testing "number fingerprints"
         (is (schema= {:global {:distinct-count (s/eq 4)

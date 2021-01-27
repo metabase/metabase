@@ -52,18 +52,18 @@
    :database_type    "VARCHAR"
    :special_type     :type/Name
    :name             "NAME"
-   :has_field_values :search
+   :has_field_values :list
    :active           true
    :visibility_type  :normal
    :preview_display  true
    :display_name     "Name"
-   :fingerprint      {:global {:distinct-count 2499
+   :fingerprint      {:global {:distinct-count 100
                                :nil%           0.0}
                       :type   {:type/Text {:percent-json   0.0
                                            :percent-url    0.0
                                            :percent-email  0.0
                                            :percent-state  0.0
-                                           :average-length 13.532}}}
+                                           :average-length 13.46}}}
    :base_type        :type/Text}
   (with-temp-sample-dataset-db [db]
     (-> (field db "PEOPLE" "NAME")
