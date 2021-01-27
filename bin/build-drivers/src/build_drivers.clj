@@ -7,12 +7,12 @@
 (defn- all-drivers []
   (map keyword (.list (io/file (u/filename u/project-root-directory "modules" "drivers")))))
 
-(defn build-drivers! []
-  (u/step "Building all drivers"
+(defn build-drivers! [edition]
+  (u/step (format "Building all drivers (%s edition)" edition)
     (doseq [driver (all-drivers)]
-      (build-driver/build-driver! driver))
+      (build-driver/build-driver! driver :edition edition))
     (u/announce "Successfully built all drivers.")))
 
-(defn -main []
+(defn -main [& [edition]]
   (u/exit-when-finished-nonzero-on-exception
-    (build-drivers!)))
+    (build-drivers! (keyword edition))))

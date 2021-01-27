@@ -3,8 +3,8 @@
   (:require [build-drivers.build-driver :as build-driver]
             [metabuild-common.core :as u]))
 
-(defn -main [& [driver]]
+(defn -main [& [driver edition]]
   (u/exit-when-finished-nonzero-on-exception
     (when-not (seq driver)
-      (throw (ex-info "Usage: clojure -m build-driver <driver>" {})))
-    (build-driver/build-driver! (keyword driver))))
+      (throw (ex-info "Usage: clojure -m build-driver <driver> [edition]" {})))
+    (build-driver/build-driver! (keyword driver) (keyword edition))))

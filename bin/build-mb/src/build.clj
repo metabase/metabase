@@ -60,8 +60,8 @@
                    (build-translation-resources!))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
-   :drivers      (fn [_]
-                   (build-drivers/build-drivers!))
+   :drivers      (fn [{:keys [edition]}]
+                   (build-drivers/build-drivers! edition))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 

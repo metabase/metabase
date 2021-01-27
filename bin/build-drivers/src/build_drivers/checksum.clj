@@ -1,10 +1,10 @@
 (ns build-drivers.checksum
   "Shared code for calculating and reading hex-encoded MD5 checksums for relevant files."
-  (:require [build-drivers
-             [common :as c]
-             [plugin-manifest :as manifest]]
+  (:require [build-drivers.common :as c]
+            [build-drivers.plugin-manifest :as manifest]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [colorize.core :as colorize]
             [metabuild-common.core :as u])
   (:import org.apache.commons.codec.digest.DigestUtils))
 
@@ -15,10 +15,11 @@
     (let [file (io/file filename)]
       (if-not (.exists file)
         (u/announce "%s does not exist" filename)
-        (when-let [[checksum-line] (not-empty (str/split-lines (slurp file)))]
-          (when-let [[_ checksum-hex] (re-matches #"(^[0-9a-f]{32}).*$" checksum-line)]
-            (u/safe-println (format "Saved checksum is %s" checksum-hex))
-            checksum-hex))))))
+        (or (when-let [[checksum-line] (not-empty (str/split-lines (slurp file)))]
+              (when-let [[_ checksum-hex] (re-matches #"(^(?:\w+-)?[0-9a-f]{32}).*$" checksum-line)]
+                (u/safe-println (format "Saved checksum is %s" (colorize/cyan checksum-hex)))
+                checksum-hex))
+            (u/error (format "Checksum file %s exists, but does not contain a valid checksum" filename)))))))
 
 ;;; -------------------------------------------- Metabase source checksum --------------------------------------------
 
@@ -41,7 +42,7 @@
   (let [paths (metabase-source-paths)]
     (u/step (format "Calculate checksum for %d Metabase source files" (count paths))
       (let [checksum (DigestUtils/md5Hex (str/join (map slurp paths)))]
-        (u/safe-println (format "Current checksum is %s" checksum))
+        (u/safe-println (format "Current checksum of Metabase files is %s" (colorize/cyan checksum)))
         checksum))))
 
 
@@ -66,11 +67,13 @@
   file) combined with the checksums for `metabase-core` *and* the parent drivers. After building a driver, we save
   this checksum. Next time the script is ran, we recalculate the checksum to determine whether anything relevant has
   changed -- if it has, and the current checksum doesn't match the saved one, we need to rebuild the driver."
-  ^String [driver]
+  ^String [driver edition]
   (let [source-paths (driver-source-paths driver)]
     (u/step (format "Calculate checksum for %d files: %s ..." (count source-paths) (first source-paths))
-      (let [checksum (DigestUtils/md5Hex (str/join (concat [(metabase-source-checksum)]
-                                                           (map driver-checksum (manifest/parent-drivers driver))
-                                                           (map slurp (driver-source-paths driver)))))]
-        (u/safe-println (format "Current checksum is %s" checksum))
+      (let [checksum (str
+                      (c/edition-checksum-prefix driver edition)
+                      (DigestUtils/md5Hex (str/join (concat [(metabase-source-checksum)]
+                                                            (map driver-checksum (manifest/parent-drivers driver))
+                                                            (map slurp (driver-source-paths driver))))))]
+        (u/safe-println (format "Current checksum of %s driver (%s edition) is %s" driver edition (colorize/cyan checksum)))
         checksum))))
