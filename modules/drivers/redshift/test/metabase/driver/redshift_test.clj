@@ -135,17 +135,22 @@
                          [:data :cols])))))))
 
 (deftest parameters-test
-  (testing "Native query parameters should work with filters."
-    (is (= [[693 "2015-12-29T00:00:00Z" 10 90]]
-           (mt/rows
-             (qp/process-query
-              {:database   (mt/id)
-               :type       :native
-               :native     {:query         "select * from checkins where {{date}} order by date desc limit 1;"
-                            :template-tags {"date" {:name         "date"
-                                                    :display-name "date"
-                                                    :type         :dimension
-                                                    :dimension    [:field-id (mt/id :checkins :date)]}}}
-               :parameters [{:type :date/all-options
-                             :target [:dimension [:template-tag "date"]]
-                             :value "past30years"}]}))))))
+  (mt/test-driver :redshift
+    (testing "Native query parameters should work with filters. (#12984)"
+      (is (= [[693 "2015-12-29T00:00:00Z" 10 90]]
+             (mt/rows
+               (qp/process-query
+                {:database   (mt/id)
+                 :type       :native
+                 :native     {:query         (str "select * "
+                                                  (format "from \"%s\".test_data_checkins " rstest/session-schema-name)
+                                                  "where {{date}} "
+                                                  "order by date desc "
+                                                  "limit 1;")
+                              :template-tags {"date" {:name         "date"
+                                                      :display-name "date"
+                                                      :type         :dimension
+                                                      :dimension    [:field-id (mt/id :checkins :date)]}}}
+                 :parameters [{:type   :date/all-options
+                               :target [:dimension [:template-tag "date"]]
+                               :value  "past30years"}]})))))))
