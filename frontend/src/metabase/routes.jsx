@@ -31,9 +31,9 @@ import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashbo
 
 /* Browse data */
 import BrowseApp from "metabase/browse/components/BrowseApp";
-import DatabaseBrowser from "metabase/browse/containers/DatabaseBrowser";
 import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
+import TableExplorer from "metabase/browse/containers/TableExplorer";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
@@ -238,9 +238,10 @@ export const getRoutes = store => (
         <Route path="/ready" component={PostSetupApp} />
 
         <Route path="browse" component={BrowseApp}>
-          <IndexRoute component={DatabaseBrowser} />
-          <Route path=":dbId" component={SchemaBrowser} />
-          <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
+          <Route path=":dbId" component={SchemaBrowser}>
+            <Route path="schema/:schemaName" component={TableBrowser} />
+            <Route path="table/:tableId" component={TableExplorer} />
+          </Route>
         </Route>
 
         {/* INDIVIDUAL DASHBOARDS */}

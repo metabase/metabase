@@ -178,3 +178,7 @@ export function browseSchema(table) {
 export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
 }
+
+export function exploreTable(table) {
+  return `/browse/${table.db.id}/table/${table.id}`;
+}
