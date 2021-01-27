@@ -1,5 +1,8 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
 // Ported from `databases.e2e.spec.js`
+import { signInAsAdmin, restore } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > databases > table", () => {
   beforeEach(() => {
@@ -52,6 +55,30 @@ describe("scenarios > admin > databases > table", () => {
     it("should see the created_at timestamp field", () => {
       cy.get("input[value='Created At']");
       cy.findByText("Creation timestamp");
+    });
+
+    it("should respect selected Column ordering (metabase#13024)", () => {
+      cy.request("GET", `/api/table/${ORDERS_ID}/query_metadata`).then(
+        ({ body }) => {
+          const DATABASE_ORDER = body.fields.map(field => field.display_name);
+
+          cy.findByText("Column order: Database");
+          // There's currently no better way to select all fields (TODO: sections should have unique CSS class)
+          // The only unique element for each of them is ".Grabber", so its parent is a whole field section
+          cy.get(".Grabber")
+            .parent()
+            .as("columns")
+            .should("have.length", DATABASE_ORDER.length);
+
+          DATABASE_ORDER.forEach((title, i) => {
+            cy.get("@columns")
+              .eq(i)
+              .within(() => {
+                cy.findByDisplayValue(title);
+              });
+          });
+        },
+      );
     });
   });
 });
