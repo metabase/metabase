@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import styles from "./PivotTable.css";
 import { t, jt } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
@@ -258,7 +259,7 @@ export default class PivotTable extends Component {
         <div
           key={key}
           style={style}
-          className={cx("bg-light overflow-hidden", {
+          className={cx(styles["PivotBGLight"], "overflow-hidden", {
             "border-right border-medium": !hasChildren,
           })}
         >
@@ -370,7 +371,7 @@ export default class PivotTable extends Component {
               >
                 {/* top left corner - displays left header columns */}
                 <div
-                  className={cx("flex align-end bg-light", {
+                  className={cx("flex align-end", styles["PivotBGLight"], {
                     "border-right border-bottom border-medium": leftHeaderWidth,
                   })}
                   style={{
@@ -517,7 +518,7 @@ function RowToggleIcon({
     <div
       className={cx(
         "flex align-center cursor-pointer bg-brand-hover text-light text-white-hover",
-        isCollapsed ? "bg-light" : "bg-medium",
+        isCollapsed ? styles["PivotBGLight"] : styles["PivotBGDark"],
       )}
       style={{ padding: "4px", borderRadius: "4px" }}
       onClick={e => {
@@ -549,10 +550,15 @@ function Cell({
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
       }}
-      className={cx("flex-full", className, {
-        "bg-medium text-bold": isSubtotal,
-        "cursor-pointer": onClick,
-      })}
+      className={cx(
+        "flex-full",
+        className,
+        styles[isSubtotal ? "PivotBGDark" : null],
+        {
+          "text-bold": isSubtotal,
+          "cursor-pointer": onClick,
+        },
+      )}
       onClick={onClick}
     >
       <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
