@@ -1,6 +1,6 @@
 :local .PivotBGLight {
-  background-color: #fcfdff;
+  background-color: color(var(--color-brand) alpha(-97%));
 }
 :local .PivotBGDark {
-  background-color: #edf4fc;
+  background-color: color(var(--color-brand) alpha(-90%));
 }
