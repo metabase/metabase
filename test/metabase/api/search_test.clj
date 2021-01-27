@@ -327,26 +327,31 @@
     (mt/with-temp Table [table {:name "Round Table"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Round Table")]
-               (search-request user :q "Round Table")))))
-    (testing "When searching with ?archived=true, normal Tables should not show up in the results"
-      (let [table-name (mt/random-name)]
-        (mt/with-temp Table [table {:name table-name}]
-          (do-test-users [user [:crowberto :rasta]]
-            (is (= []
-                   (search-request user :q table-name :archived true)))))))
-    (testing "*archived* tables should not appear in search results"
-      (let [table-name (mt/random-name)]
-        (mt/with-temp Table [table {:name table-name, :active false}]
-          (do-test-users [user [:crowberto :rasta]]
-            (is (= []
-                   (search-request user :q table-name)))))))
-    (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
-      (mt/with-temp* [Database [{db-id :id}]
-                      Table    [table {:db_id db-id}]]
-        (perms/revoke-permissions! (group/all-users) db-id)
-        (is (= []
-               (binding [*search-request-results-database-id* db-id]
-                 (search-request :rasta :q (:name table)))))))))
+               (search-request user :q "Round Table"))))))
+  (testing "You should be able to search by their display name"
+    (mt/with-temp Table [table {:name "Round Table" :display_name "Lancelot's Favorite Furniture"}]
+      (do-test-users [user [:crowberto :rasta]]
+        (is (= [(assoc (default-table-search-row "Round Table") :display_name "Lancelot's Favorite Furniture")]
+               (search-request user :q "Lancelot"))))))
+  (testing "When searching with ?archived=true, normal Tables should not show up in the results"
+    (let [table-name (mt/random-name)]
+      (mt/with-temp Table [table {:name table-name}]
+        (do-test-users [user [:crowberto :rasta]]
+          (is (= []
+                 (search-request user :q table-name :archived true)))))))
+  (testing "*archived* tables should not appear in search results"
+    (let [table-name (mt/random-name)]
+      (mt/with-temp Table [table {:name table-name, :active false}]
+        (do-test-users [user [:crowberto :rasta]]
+          (is (= []
+                 (search-request user :q table-name)))))))
+  (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [table {:db_id db-id}]]
+      (perms/revoke-permissions! (group/all-users) db-id)
+      (is (= []
+             (binding [*search-request-results-database-id* db-id]
+               (search-request :rasta :q (:name table))))))))
 
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
