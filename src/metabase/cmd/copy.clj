@@ -23,6 +23,8 @@
             [toucan.db :as db])
   (:import java.sql.SQLException))
 
+(def ^:private valid-db-conn-str #"^(jdbc:)?(postgres(ql)?|mysql|h2):")
+
 (defn- println-ok []
   (println (u/colorize 'green "[OK]")))
 
@@ -256,9 +258,9 @@
 (s/defn copy!
   "Copy data from a source application database into an empty destination application database."
   [source-db-type   :- (s/enum :h2 :postgres :mysql)
-   source-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)
+   source-jdbc-spec :- (s/cond-pre valid-db-conn-str su/Map)
    target-db-type   :- (s/enum :h2 :postgres :mysql)
-   target-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)]
+   target-jdbc-spec :- (s/cond-pre valid-db-conn-str su/Map)]
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
     (mdb.setup/setup-db! source-db-type source-jdbc-spec true))
@@ -284,9 +286,9 @@
 
 (s/defn overwrite-encrypted-fields-to-plaintext!
   [source-db-type   :- (s/enum :h2 :postgres :mysql)
-   source-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)
+   source-jdbc-spec :- (s/cond-pre valid-db-conn-str su/Map)
    target-db-type   :- (s/enum :h2 :postgres :mysql)
-   target-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)]
+   target-jdbc-spec :- (s/cond-pre valid-db-conn-str su/Map)]
   (jdbc/with-db-connection [source-conn source-jdbc-spec]
     (binding [db/*db-connection* source-jdbc-spec
               db/*quoting-style* (mdb.conn/quoting-style source-db-type)]
