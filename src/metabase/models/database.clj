@@ -72,8 +72,10 @@
              existing-engine          :engine
              existing-name            :name} (db/select-one [Database
                                                              :metadata_sync_schedule
-                                                             :cache_field_values_schedule]
-                                               :id (u/the-id database))
+                                                             :cache_field_values_schedule
+                                                             :engine
+                                                             :name]
+                                                            :id (u/the-id database))
             ;; if one of the schedules wasn't passed continue using the old one
             new-metadata-schedule            (or new-metadata-schedule old-metadata-schedule)
             new-fieldvalues-schedule         (or new-fieldvalues-schedule old-fieldvalues-schedule)]
