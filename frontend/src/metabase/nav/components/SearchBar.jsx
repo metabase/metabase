@@ -125,7 +125,12 @@ export default class SearchBar extends React.Component {
           {active && (
             <div className="absolute left right text-dark" style={{ top: 60 }}>
               {searchText.length > 0 ? (
-                <Search.ListLoader query={{ q: searchText }} wrapped reload>
+                <Search.ListLoader
+                  query={{ q: searchText }}
+                  wrapped
+                  reload
+                  debounced
+                >
                   {({ list }) => {
                     if (list.length === 0) {
                       return "No results";
