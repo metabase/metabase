@@ -99,9 +99,12 @@ export default class SettingsEmailForm extends Component {
             ];
           }}
         />
-        {!MetabaseSettings.isHosted() && (
-          <MarginHostingCTA tagline={t`Have your email configured for you.`} />
-        )}
+        {!MetabaseSettings.isHosted() &&
+          MetabaseSettings.versionInfo() !== "enterprise" && (
+            <MarginHostingCTA
+              tagline={t`Have your email configured for you.`}
+            />
+          )}
       </Flex>
     );
   }
