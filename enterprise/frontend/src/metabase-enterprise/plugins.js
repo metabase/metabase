@@ -7,7 +7,7 @@ MetabaseSettings.docsTag = () => "latest";
 // NOTE: use the "enterprise" key from version-info.json
 MetabaseSettings.versionInfo = () =>
   MetabaseSettings.get("version-info", {}).enterprise || {};
-
+MetabaseSettings.isEnterprise = () => true;
 // PLUGINS:
 
 // import "./management";

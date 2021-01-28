@@ -179,6 +179,10 @@ class Settings {
     return latest && latest.version;
   }
 
+  isEnterprise() {
+    return false;
+  }
+
   // returns a map that looks like {total: 6, digit: 1}
   passwordComplexityRequirements() {
     return this.get("password-complexity", {});
