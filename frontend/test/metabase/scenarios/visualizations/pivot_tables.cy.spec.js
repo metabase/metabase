@@ -220,6 +220,31 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
+  it("should expand and collapse field options", () => {
+    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+
+    cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
+
+    cy.findByText("Settings").click();
+    assertOnPivotSettings();
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Users? → Source/)
+      .click();
+
+    cy.log("**-- Collapse the options panel --**");
+    cy.get(".Icon-chevronup").click();
+    cy.findByText(/Formatting/).should("not.exist");
+    cy.findByText(/See options/).should("not.exist");
+
+    cy.log("**-- Expand it again --**");
+    cy.get(".Icon-chevrondown")
+      .first()
+      .click();
+    cy.findByText(/Formatting/);
+    cy.findByText(/See options/);
+  });
+
   it("should allow column formatting", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
