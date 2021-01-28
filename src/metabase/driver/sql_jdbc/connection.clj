@@ -86,7 +86,10 @@
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver)]
-    (connection-pool/connection-pool-spec spec properties)))
+    (merge
+      (connection-pool/connection-pool-spec spec properties)
+      ;; also capture entries related to ssh tunneling for later use
+      (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
@@ -112,12 +115,17 @@
         (destroy-pool! database-id old-pool-spec))))
   nil)
 
+(defn invalidate-pool-for-db!
+  "Invalidates the connection pool for the given database by closing it and removing it from the cache."
+  [database]
+  (set-pool! (u/the-id database) nil))
+
 (defn notify-database-updated
   "Default implementation of `driver/notify-database-updated` for JDBC SQL drivers. We are being informed that a
   `database` has been updated, so lets shut down the connection pool (if it exists) under the assumption that the
   connection details have changed."
   [database]
-  (set-pool! (u/get-id database) nil))
+  (invalidate-pool-for-db! database))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
@@ -126,7 +134,7 @@
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
-    (let [database-id (u/get-id db-or-id-or-spec)]
+    (let [database-id (u/the-id db-or-id-or-spec)]
       (or
        ;; we have an existing pool for this database, so use it
        (get @database-id->connection-pool database-id)
@@ -156,6 +164,23 @@
     (throw (ex-info (tru "Not a valid Database/Database ID/JDBC spec")
                     ;; don't log the actual spec lest we accidentally expose credentials
                     {:input (class db-or-id-or-spec)}))))
+
+(defn invalidate-pool-if-ssh-tunnel-closed!
+  "If the pool for the given database uses an ssh tunnel, and that tunnel is closed, then close the pool and
+   remove it from the cache. This will force the next call to db->pooled-connection-spec to reopen the tunnel."
+  [database]
+  (let [conn-spec (db->pooled-connection-spec database)]
+    (if
+      (and
+        (ssh/use-ssh-tunnel? conn-spec)
+        (not (ssh/ssh-tunnel-open? conn-spec)))
+      (do
+        (log/warn
+          (u/format-color
+            'red
+            (trs "ssh tunnel for database {0} appears to have closed; closing the pool so it can be reestablished"
+                 (u/the-id database))))
+        (invalidate-pool-for-db! database)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

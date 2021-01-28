@@ -120,6 +120,11 @@
   [details]
   (:tunnel-enabled details))
 
+(defn ssh-tunnel-open?
+  "Is the SSH tunnel currently open for these connection details?"
+  [details]
+  (.isOpen ^ClientSession (:tunnel-session details)))
+
 (defn include-ssh-tunnel
   "Updates connection details for a data warehouse to use the ssh tunnel host and port
   For drivers that enter hosts including the protocol (https://host), copy the protocol over as well"
@@ -134,6 +139,7 @@
                                                           :host (str proto "localhost") ;; SSH tunnel will always be through localhost
                                                           :tunnel-entrance-host tunnel-entrance-host
                                                           :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
+                                                          :tunnel-enabled true
                                                           :tunnel-session session
                                                           :tunnel-tracker tracker)]
       details-with-tunnel)

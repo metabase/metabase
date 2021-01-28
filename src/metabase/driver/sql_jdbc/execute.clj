@@ -151,6 +151,7 @@
 
 (defmethod connection-with-timezone :sql-jdbc
   [driver database ^String timezone-id]
+  (sql-jdbc.conn/invalidate-pool-if-ssh-tunnel-closed! database)
   (let [conn (.getConnection (datasource database))]
     (try
       (set-best-transaction-level! driver conn)

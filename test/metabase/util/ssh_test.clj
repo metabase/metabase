@@ -2,8 +2,14 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
+            [metabase.models.database :refer [Database]]
+            [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.util :as u]
-            [metabase.util.ssh :as sshu])
+            [metabase.util.ssh :as sshu]
+            [metabase.util.ssh :as ssh])
   (:import [java.io BufferedReader InputStreamReader PrintWriter]
            [java.net InetSocketAddress ServerSocket Socket]
            org.apache.sshd.server.forward.AcceptAllForwardingFilter
@@ -199,3 +205,35 @@
           (u/deref-with-timeout server-thread 12000)
           (with-open [in-client (BufferedReader. (InputStreamReader. (.getInputStream socket)))]
             (is (= "hello from the ssh tunnel" (.readLine in-client)))))))))
+
+(deftest test-ssh-tunnel-reconnection
+  (driver/with-driver :postgres
+    (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
+      (let [real-db-details   (:details (mt/db))
+            tunnel-db-details (assoc real-db-details
+                                     :tunnel-enabled     true
+                                     :tunnel-host        "127.0.0.1"
+                                     :tunnel-auth-option "password"
+                                     ;; trying to use the mock sshd instance doesn't work
+                                     ;; fails with:
+                                     ;;2021-01-28 23:06:04,956 WARN channel.ClientChannelPendingMessagesQueue :: operationComplete(ClientChannelPendingMessagesQueue[channel=TcpipClientChannel[id=0, recipient=-1]-ClientSessionImpl[jsmith@/127.0.0.1:12221], open=false]) SshChannelOpenException[Generic error while opening channel: 0] signaled
+                                     :tunnel-port        ssh-mock-server-with-password-port
+                                     :tunnel-user        ssh-username
+                                     :tunnel-pass        ssh-password
+                                     ;; using my actual, local OS SSH daemon with my local OS user works!
+                                     ;:tunnel-port    22
+                                     ;:tunnel-user    "jeff"
+                                     ;:tunnel-pass    "myRealFakePassword"
+                                     )]
+        (mt/with-temp Database [tunneled-db {:engine :postgres, :details tunnel-db-details}]
+          (mt/with-db tunneled-db
+            (sync/sync-database! (mt/db))
+            (letfn [(check-row [] (is (= [["Polo Lounge"]]
+                                         (mt/rows (mt/run-mbql-query venues
+                                            {:filter [:= $id 60] :fields [$name]})))))]
+              ;; check that some data can be queried
+              (check-row)
+              ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
+              (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))
+              ;; check the query again; the tunnel should have been reestablished
+              (check-row))))))))
