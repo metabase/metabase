@@ -1,11 +1,11 @@
 import React, { Component } from "react";
-import styles from "./PivotTable.css";
 import { t, jt } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync } from "react-virtualized";
 
+import { color, alpha } from "metabase/lib/colors";
 import { getScrollBarSize } from "metabase/lib/dom";
 
 import Ellipsified from "metabase/components/Ellipsified";
@@ -207,6 +207,14 @@ export default class PivotTable extends Component {
       return null;
     }
 
+    const PivotBGLight = {
+      bgColor: alpha(color("brand"), 0.03),
+    };
+
+    const PivotBGDark = {
+      bgColor: alpha(color("brand"), 0.10),
+    };
+
     const grid = this.bodyRef && findDOMNode(this.bodyRef);
 
     // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
@@ -259,7 +267,7 @@ export default class PivotTable extends Component {
         <div
           key={key}
           style={style}
-          className={cx(styles["PivotBGLight"], "overflow-hidden", {
+          className={cx(PivotBGLight, "overflow-hidden", {
             "border-right border-medium": !hasChildren,
           })}
         >
@@ -371,7 +379,7 @@ export default class PivotTable extends Component {
               >
                 {/* top left corner - displays left header columns */}
                 <div
-                  className={cx("flex align-end", styles["PivotBGLight"], {
+                  className={cx("flex align-end", PivotBGLight, {
                     "border-right border-bottom border-medium": leftHeaderWidth,
                   })}
                   style={{
@@ -518,7 +526,7 @@ function RowToggleIcon({
     <div
       className={cx(
         "flex align-center cursor-pointer bg-brand-hover text-light text-white-hover",
-        isCollapsed ? styles["PivotBGLight"] : styles["PivotBGDark"],
+        isCollapsed ? PivotBGLight : PivotBGDark,
       )}
       style={{ padding: "4px", borderRadius: "4px" }}
       onClick={e => {
@@ -553,8 +561,8 @@ function Cell({
       className={cx(
         "flex-full",
         className,
-        styles[isSubtotal ? "PivotBGDark" : null],
         {
+          PivotBGDark: isSubtotal,
           "text-bold": isSubtotal,
           "cursor-pointer": onClick,
         },
