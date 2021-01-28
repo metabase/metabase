@@ -36,6 +36,7 @@ export default class LdapAndEmailForm extends Component {
               }
               placeholder={t`youlooknicetoday@email.com`}
               validate={ldapEnabled ? validate.required() : validate.email()}
+              autoFocus
             />
             <FormField
               name="password"
