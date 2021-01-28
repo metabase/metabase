@@ -6,6 +6,7 @@ import {
   signIn,
   signInAsAdmin,
   selectDashboardFilter,
+  expectedRouteCalls,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -433,6 +434,76 @@ describe("scenarios > dashboard", () => {
         .click();
       cy.findByText(/^January 17, 2020/);
     }
+  });
+
+  it.skip("should cache filter results after the first DB call (metabase#13832)", () => {
+    // In this test we're using already present dashboard ("Orders in a dashboard")
+    const FILTER_ID = "d7988e02";
+
+    cy.log("**-- 1. Add filter to the dashboard --**");
+    cy.request("PUT", "/api/dashboard/1", {
+      parameters: [
+        {
+          id: FILTER_ID,
+          name: "Category",
+          slug: "category",
+          type: "category",
+        },
+      ],
+    });
+
+    cy.log("**-- 2. Connect filter to the existing card --**");
+    cy.request("PUT", "/api/dashboard/1/cards", {
+      cards: [
+        {
+          id: 1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          sizeX: 12,
+          sizeY: 8,
+          parameter_mappings: [
+            {
+              parameter_id: FILTER_ID,
+              card_id: 1,
+              target: [
+                "dimension",
+                [
+                  "fk->",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["field-id", PRODUCTS.CATEGORY],
+                ],
+              ],
+            },
+          ],
+          visualization_settings: {},
+        },
+      ],
+    });
+
+    cy.server();
+    cy.route(`/api/dashboard/1/params/${FILTER_ID}/values`).as("fetchFromDB");
+
+    cy.visit("/dashboard/1");
+
+    cy.get("fieldset")
+      .as("filterWidget")
+      .click();
+    expectedRouteCalls({ route_alias: "fetchFromDB", calls: 1 });
+
+    // Make sure all filters were fetched (should be cached after this)
+    ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(category => {
+      cy.findByText(category);
+    });
+
+    // Get rid of the popover
+    cy.findByText("Orders in a dashboard").click();
+
+    cy.log(
+      "**-- Clicking on the filter again should NOT send another query to the source DB again! Results should have been cached by now. --**",
+    );
+    cy.get("@filterWidget").click();
+    expectedRouteCalls({ route_alias: "fetchFromDB", calls: 1 });
   });
 
   describe("revisions screen", () => {
