@@ -50,8 +50,16 @@
      (let [db-file-name (config/config-str :mb-db-file)]
        (get-db-file db-file-name)))))
 
+(defn- format-connection-uri
+  "Prepends \"jdbc:\" to the connection-uri string if needed."
+  [connection-uri]
+  (if-let [uri connection-uri]
+    (if (re-find #"^jdbc:" uri)
+      uri
+      (str "jdbc:" uri))))
+
 (def ^:private connection-string
-  (delay (config/config-str :mb-db-connection-uri)))
+  (delay (format-connection-uri (config/config-str :mb-db-connection-uri))))
 
 (defn- connection-string->db-type [s]
   (when s
