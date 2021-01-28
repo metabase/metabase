@@ -10,6 +10,9 @@ export function isPivotGroupColumn(col) {
 
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
+export const COLUMN_SORT_ORDER_ASC = "ascending";
+export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
   const collapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
@@ -21,7 +24,11 @@ export function multiLevelPivot(data, settings) {
     col => !isPivotGroupColumn(col),
   );
 
-  const { rows, columns, values } = _.mapObject(columnSplit, columnFieldRefs =>
+  const {
+    columns: columnColumnIndexes,
+    rows: rowColumnIndexes,
+    values: valueColumnIndexes,
+  } = _.mapObject(columnSplit, columnFieldRefs =>
     columnFieldRefs
       .map(field_ref =>
         columnsWithoutPivotGroup.findIndex(col =>
@@ -30,31 +37,14 @@ export function multiLevelPivot(data, settings) {
       )
       .filter(index => index !== -1),
   );
-  return multiLevelPivotForIndexes(
-    data,
-    columns,
-    rows,
-    values,
-    collapsedSubtotals,
-    settings,
-  );
-}
 
-// TODO: this only exists for unit testing convenience.
-// Instead we should add helpers in the tests so we can use the real function.
-export function multiLevelPivotForIndexes(
-  data,
-  columnColumnIndexes,
-  rowColumnIndexes,
-  valueColumnIndexes,
-  collapsedSubtotals = [],
-  settings,
-) {
   const { pivotData, columns } = splitPivotData(
     data,
     rowColumnIndexes,
     columnColumnIndexes,
   );
+
+  const columnSettings = columns.map(column => settings.column(column));
 
   // we build a tree for each tuple of pivoted column/row values seen in the data
   const columnColumnTree = [];
@@ -69,8 +59,19 @@ export function multiLevelPivotForIndexes(
   );
   for (const row of pivotData[primaryRowsKey]) {
     // mutate the trees to add the tuple from the current row
-    updateValueObject(row, columnColumnIndexes, columnColumnTree);
-    updateValueObject(row, rowColumnIndexes, rowColumnTree, collapsedSubtotals);
+    updateValueObject(
+      row,
+      columnColumnIndexes,
+      columnSettings,
+      columnColumnTree,
+    );
+    updateValueObject(
+      row,
+      rowColumnIndexes,
+      columnSettings,
+      rowColumnTree,
+      collapsedSubtotals,
+    );
 
     // save the value columns keyed by the values in the column/row pivoted columns
     const valueKey = JSON.stringify(
@@ -110,7 +111,7 @@ export function multiLevelPivotForIndexes(
   ].map(indexes =>
     indexes.map(index =>
       _.memoize(
-        value => formatValue(value, settings.column(columns[index])),
+        value => formatValue(value, columnSettings[index]),
         value => [value, index].join(),
       ),
     ),
@@ -361,10 +362,17 @@ function addSubtotal(item, [formatter, ...formatters]) {
 }
 
 // Update the tree with a row of data
-function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
+function updateValueObject(
+  row,
+  indexes,
+  columnSettings,
+  seenValues,
+  collapsedSubtotals = [],
+) {
   let currentLevelSeenValues = seenValues;
   const prefix = [];
-  for (const value of indexes.map(index => row[index])) {
+  for (const index of indexes) {
+    const value = row[index];
     prefix.push(value);
     let seenValue = currentLevelSeenValues.find(d => d.value === value);
     const isCollapsed =
@@ -375,9 +383,34 @@ function updateValueObject(row, indexes, seenValues, collapsedSubtotals = []) {
     if (seenValue === undefined) {
       seenValue = { value, children: [], isCollapsed };
       currentLevelSeenValues.push(seenValue);
+      sortLevelOfTree(currentLevelSeenValues, columnSettings[index]);
     }
     currentLevelSeenValues = seenValue.children;
   }
+}
+
+// Sorts the array of nodes in place if a sort order is set for that column
+function sortLevelOfTree(array, { [COLUMN_SORT_ORDER]: sortOrder } = {}) {
+  if (sortOrder == null) {
+    // don't sort unless there's a column sort order set
+    return;
+  }
+  array.sort((a, b) => {
+    if (a.value === b.value) {
+      return 0;
+    }
+    // by default use "<" to compare values
+    let result = a.value < b.value ? -1 : 1;
+    // strings should use localeCompare to handle accents, etc
+    if (typeof a.value === "string") {
+      result = a.value.localeCompare(b.value);
+    }
+    // flip the comparison for descending
+    if (sortOrder === COLUMN_SORT_ORDER_DESC) {
+      result *= -1;
+    }
+    return result;
+  });
 }
 
 // Take a tree and produce a flat list used to layout the top/left headers.

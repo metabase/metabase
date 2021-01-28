@@ -4,14 +4,20 @@ import { t } from "ttag";
 import { Flex } from "grid-styled";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
-import colors, { lighten } from "metabase/lib/colors";
+import { getIn, assocIn } from "icepick";
 
+import colors, { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Grabber from "metabase/components/Grabber";
 import Text from "metabase/components/type/Text";
 import Toggle from "metabase/components/Toggle";
 
+import {
+  COLUMN_SORT_ORDER,
+  COLUMN_SORT_ORDER_ASC,
+  COLUMN_SORT_ORDER_DESC,
+} from "metabase/lib/data_grid";
 import { keyForColumn } from "metabase/lib/dataset";
 
 // eslint-disable-next-line no-unused-vars
@@ -23,8 +29,9 @@ class ShowTotalsOption extends React.Component {
   toggleTotals = () => {
     const { showTotals } = this.state;
     this.setState({ showTotals: !showTotals });
-    this.props.onChangeTotalsVisibility(!showTotals);
+    this.props.onChangeSettings(!showTotals);
   };
+
   render() {
     const { showTotals } = this.state;
     return (
@@ -36,36 +43,43 @@ class ShowTotalsOption extends React.Component {
   }
 }
 
-// eslint-disable-next-line no-unused-vars
-class SortIcon extends React.Component {
+class SortButton extends React.Component {
   render() {
-    const { name, onClick } = this.props;
+    const { iconName, onChange, currentValue, buttonValue } = this.props;
+    const isSelected = buttonValue === currentValue;
     return (
       <Icon
-        name={name}
-        onClick={onClick}
+        name={iconName}
+        onClick={() => onChange(isSelected ? undefined : buttonValue)}
         size={16}
-        className="sort cursor-pointer text-medium text-brand-hover"
+        className={cx("sort cursor-pointer", {
+          "text-brand": isSelected,
+          "text-medium text-brand-hover": !isSelected,
+        })}
       />
     );
   }
 }
 
-// eslint-disable-next-line no-unused-vars
 class SortOrderOption extends React.Component {
-  handleSortUp = () => {
-    this.props.onChangeSortOrder("ascending");
-  };
-  handleSortDown = () => {
-    this.props.onChangeSortOrder("descending");
-  };
   render() {
+    const { value, onChange } = this.props;
     return (
       <Flex pt={1} justifyContent="space-between" alignItems="center">
         <Text>{t`Sort order`}</Text>
         <div>
-          <SortIcon name="arrow_up" onClick={this.handleSortUp} />
-          <SortIcon name="arrow_down" onClick={this.handleSortDown} />
+          <SortButton
+            iconName="arrow_up"
+            onChange={onChange}
+            currentValue={value}
+            buttonValue={COLUMN_SORT_ORDER_ASC}
+          />
+          <SortButton
+            iconName="arrow_down"
+            onChange={onChange}
+            currentValue={value}
+            buttonValue={COLUMN_SORT_ORDER_DESC}
+          />
         </div>
       </Flex>
     );
@@ -87,19 +101,19 @@ class FormattingOptions extends React.Component {
 }
 
 class ColumnOptionsPanel extends React.Component {
+  handleChangeSortOrder = direction =>
+    this.props.onChangeColumnSetting(COLUMN_SORT_ORDER, direction);
+
   render() {
-    // const { partitionName } = this.props;
+    const { partitionName } = this.props;
     return (
       <div>
-        {/* not yet implemented, but we're including the UI now for string translation
-           partitionName !== "values" && (
-          <div>
-            <ShowTotalsOption
-              onChangeTotalsVisibility={this.props.onChangeTotalsVisibility}
-            />
-            <SortOrderOption onChangeSortOrder={this.props.onChangeSortOrder} />
-          </div>
-        )*/}
+        {partitionName !== "values" && (
+          <SortOrderOption
+            value={this.props.getColumnSettingValue(COLUMN_SORT_ORDER)}
+            onChange={this.handleChangeSortOrder}
+          />
+        )}
         <FormattingOptions onEdit={this.props.onEditFormatting} />
       </div>
     );
@@ -112,15 +126,22 @@ class ChartSettingFieldsPartition extends React.Component {
     this.state = { displayedValue: null };
   }
 
-  handleChangeTotalsVisibility = (column, totalsVisibility) => {
-    const { onChangeTotalsVisibility } = this.props;
-    onChangeTotalsVisibility &&
-      onChangeTotalsVisibility(keyForColumn(column), totalsVisibility);
+  handleChangeColumnSetting = (column, columnSetting, value) => {
+    const { settings, onChangeSettings } = this.props;
+    const column_settings = assocIn(
+      settings.column_settings,
+      [keyForColumn(column), columnSetting],
+      value,
+    );
+    onChangeSettings({ column_settings });
   };
 
-  handleChangeSortOrder = (column, direction) => {
-    const { onChangeSortOrder } = this.props;
-    onChangeSortOrder && onChangeSortOrder(keyForColumn(column), direction);
+  getColumnSettingValue = (column, columnSetting) => {
+    return getIn(this.props.settings, [
+      "column_settings",
+      keyForColumn(column),
+      columnSetting,
+    ]);
   };
 
   handleEditFormatting = column => {
@@ -167,8 +188,8 @@ class ChartSettingFieldsPartition extends React.Component {
             partitionName={name}
             columns={value[name]}
             value={value}
-            onChangeTotalsVisibility={this.handleChangeTotalsVisibility}
-            onChangeSortOrder={this.handleChangeSortOrder}
+            getColumnSettingValue={this.getColumnSettingValue}
+            onChangeColumnSetting={this.handleChangeColumnSetting}
             onEditFormatting={this.handleEditFormatting}
             updateDisplayedValue={this.updateDisplayedValue}
             commitDisplayedValue={this.commitDisplayedValue}
@@ -197,8 +218,8 @@ class Partition extends React.Component {
       columns = [],
       partitionName,
       columnFilter,
-      onChangeTotalsVisibility,
-      onChangeSortOrder,
+      onChangeColumnSetting,
+      getColumnSettingValue,
       onEditFormatting,
       updateDisplayedValue,
       commitDisplayedValue,
@@ -225,8 +246,8 @@ class Partition extends React.Component {
               index={index}
               columnFilter={columnFilter}
               value={value}
-              onChangeTotalsVisibility={onChangeTotalsVisibility}
-              onChangeSortOrder={onChangeSortOrder}
+              onChangeColumnSetting={onChangeColumnSetting}
+              getColumnSettingValue={getColumnSettingValue}
               onEditFormatting={onEditFormatting}
               updateDisplayedValue={updateDisplayedValue}
               commitDisplayedValue={commitDisplayedValue}
@@ -339,15 +360,6 @@ class Column extends React.Component {
     const { expanded } = this.state;
     this.setState({ expanded: !expanded });
   };
-  handleChangeTotalsVisibility = totalsVisibility => {
-    const { column, onChangeTotalsVisibility } = this.props;
-    onChangeTotalsVisibility &&
-      onChangeTotalsVisibility(column, totalsVisibility);
-  };
-  handleChangeSortOrder = direction => {
-    const { column, onChangeSortOrder } = this.props;
-    onChangeSortOrder && onChangeSortOrder(column, direction);
-  };
   handleEditFormatting = () => {
     const { column, onEditFormatting } = this.props;
     onEditFormatting && onEditFormatting(column);
@@ -359,6 +371,8 @@ class Column extends React.Component {
       connectDropTarget,
       isDragging,
       partitionName,
+      onChangeColumnSetting,
+      getColumnSettingValue,
     } = this.props;
     const { expanded } = this.state;
     const showOptionsPanel = expanded && !isDragging;
@@ -398,8 +412,8 @@ class Column extends React.Component {
             <ColumnOptionsPanel
               className="text-medium"
               partitionName={partitionName}
-              onChangeTotalsVisibility={this.handleChangeTotalsVisibility}
-              onChangeSortOrder={this.handleChangeSortOrder}
+              onChangeColumnSetting={onChangeColumnSetting.bind(null, column)}
+              getColumnSettingValue={getColumnSettingValue.bind(null, column)}
               onEditFormatting={this.handleEditFormatting}
             />
           )}

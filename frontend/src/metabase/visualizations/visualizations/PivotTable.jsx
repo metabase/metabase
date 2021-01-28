@@ -13,6 +13,7 @@ import { isDimension } from "metabase/lib/schema_metadata";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SPLIT_SETTING,
+  COLUMN_SORT_ORDER,
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/lib/data_grid";
@@ -123,12 +124,7 @@ export default class PivotTable extends Component {
       getProps: ([{ data }], settings) => ({
         partitions,
         columns: data == null ? [] : data.cols,
-        onChangeTotalsVisibility(column, visibility) {
-          console.log("Change totals visibility", column, visibility); // TODO
-        },
-        onChangeSortOrder(column, direction) {
-          console.log("Change sort order", column, direction); // TODO
-        },
+        settings,
       }),
       getValue: ([{ data, card }], settings = {}) => {
         const storedValue = settings[COLUMN_SPLIT_SETTING];
@@ -179,6 +175,7 @@ export default class PivotTable extends Component {
       widget: "input",
       getDefault: column => formatColumn(column),
     },
+    [COLUMN_SORT_ORDER]: { hidden: true },
   };
 
   setBodyRef = element => {
