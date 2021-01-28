@@ -141,6 +141,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.contains(SEGMENT_NAME)
         .parent()
         .parent()
+        .parent()
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Edit Segment").click();
@@ -181,6 +182,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       // clean up
       cy.contains("Orders > 10")
+        .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")
