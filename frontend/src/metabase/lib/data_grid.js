@@ -383,26 +383,34 @@ function updateValueObject(
     if (seenValue === undefined) {
       seenValue = { value, children: [], isCollapsed };
       currentLevelSeenValues.push(seenValue);
-      const sortOrder = getIn(columnSettings, [index, COLUMN_SORT_ORDER]);
-      if (sortOrder) {
-        currentLevelSeenValues.sort((a, b) => {
-          if (a.value === b.value) {
-            return 0;
-          }
-          let result = a.value < b.value ? -1 : 1;
-          if (typeof a.value === "string") {
-            result = a.value.localeCompare(b.value);
-          }
-          if (sortOrder === COLUMN_SORT_ORDER_DESC) {
-            // flip the comparison for descending
-            result *= -1;
-          }
-          return result;
-        });
-      }
+      sortLevelOfTree(currentLevelSeenValues, columnSettings[index]);
     }
     currentLevelSeenValues = seenValue.children;
   }
+}
+
+// Sorts the array of nodes in place if a sort order is set for that column
+function sortLevelOfTree(array, { [COLUMN_SORT_ORDER]: sortOrder } = {}) {
+  if (sortOrder == null) {
+    // don't sort unless there's a column sort order set
+    return;
+  }
+  array.sort((a, b) => {
+    if (a.value === b.value) {
+      return 0;
+    }
+    // by default use "<" to compare values
+    let result = a.value < b.value ? -1 : 1;
+    // strings should use localeCompare to handle accents, etc
+    if (typeof a.value === "string") {
+      result = a.value.localeCompare(b.value);
+    }
+    // flip the comparison for descending
+    if (sortOrder === COLUMN_SORT_ORDER_DESC) {
+      result *= -1;
+    }
+    return result;
+  });
 }
 
 // Take a tree and produce a flat list used to layout the top/left headers.
