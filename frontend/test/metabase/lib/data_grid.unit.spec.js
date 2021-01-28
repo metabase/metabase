@@ -151,10 +151,20 @@ describe("data_grid", () => {
       columns,
       rows,
       values,
-      { collapsedRows } = {},
+      { collapsedRows = [], columnSorts = [] } = {},
     ) => {
       const settings = {
-        column: column => ({ column }),
+        column: column => {
+          const columnSettings = { column };
+          const columnIndex = column.field_ref[1];
+          if (columnSorts[columnIndex]) {
+            return {
+              ...columnSettings,
+              [COLUMN_SORT_ORDER]: columnSorts[columnIndex],
+            };
+          }
+          return columnSettings;
+        },
         [COLUMN_SPLIT_SETTING]: _.mapObject(
           { columns, rows, values },
           indexes => indexes.map(index => ["fake field ref", index]),
@@ -446,6 +456,94 @@ describe("data_grid", () => {
         "7",
         "10",
       ]);
+    });
+    describe("sorting", () => {
+      it("sorts multiple columns ascending", () => {
+        const { leftHeaderItems } = multiLevelPivotForIndexes(
+          data,
+          [],
+          [0, 1],
+          [2],
+          {
+            columnSorts: ["ascending", "ascending"],
+          },
+        );
+        expect(getValues(leftHeaderItems).slice(0, 4)).toEqual([
+          "a",
+          "x",
+          "y",
+          "z",
+        ]);
+      });
+
+      it("sorts multiple columns descending", () => {
+        const { leftHeaderItems } = multiLevelPivotForIndexes(
+          data,
+          [],
+          [0, 1],
+          [2],
+          {
+            columnSorts: ["descending", "descending"],
+          },
+        );
+        expect(getValues(leftHeaderItems).slice(0, 4)).toEqual([
+          "b",
+          "z",
+          "y",
+          "x",
+        ]);
+      });
+
+      it("should sort letters with accents correctly", () => {
+        const data = makePivotData([["a", 0], ["à", 0], ["b", 0]], [D1, M]);
+
+        let { leftHeaderItems } = multiLevelPivotForIndexes(
+          data,
+          [],
+          [0],
+          [1],
+          { columnSorts: ["ascending"] },
+        );
+        expect(getValues(leftHeaderItems).slice(0, 3)).toEqual(["a", "à", "b"]);
+        ({ leftHeaderItems } = multiLevelPivotForIndexes(data, [], [0], [1], {
+          columnSorts: ["descending"],
+        }));
+        expect(getValues(leftHeaderItems).slice(0, 3)).toEqual(["b", "à", "a"]);
+      });
+
+      it("should numbers correctly", () => {
+        const D = {
+          name: "D",
+          display_name: "Dimension",
+          base_type: TYPE.Float,
+          binning_info: { bin_width: 1 },
+          source: "breakout",
+        };
+
+        const data = makePivotData([[0, 0], [1, 0], [2, 0]], [D, M]);
+
+        let { leftHeaderItems } = multiLevelPivotForIndexes(
+          data,
+          [],
+          [0],
+          [1],
+          { columnSorts: ["ascending"] },
+        );
+        expect(getValues(leftHeaderItems).slice(0, 3)).toEqual([
+          "0  –  1",
+          "1  –  2",
+          "2  –  3",
+        ]);
+
+        ({ leftHeaderItems } = multiLevelPivotForIndexes(data, [], [0], [1], {
+          columnSorts: ["descending"],
+        }));
+        expect(getValues(leftHeaderItems).slice(0, 3)).toEqual([
+          "2  –  3",
+          "1  –  2",
+          "0  –  1",
+        ]);
+      });
     });
 
     describe("row collapsing", () => {

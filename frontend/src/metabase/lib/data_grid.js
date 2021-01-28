@@ -385,17 +385,20 @@ function updateValueObject(
       currentLevelSeenValues.push(seenValue);
       const sortOrder = getIn(columnSettings, [index, COLUMN_SORT_ORDER]);
       if (sortOrder) {
-        currentLevelSeenValues.sort((a, b) =>
-          // TODO use localeCompare
-          a.value === b.value
-            ? 0
-            : (sortOrder === COLUMN_SORT_ORDER_ASC
-              ? // flip the comparison for ascending vs descending
-                a.value > b.value
-              : a.value < b.value)
-            ? 1
-            : -1,
-        );
+        currentLevelSeenValues.sort((a, b) => {
+          if (a.value === b.value) {
+            return 0;
+          }
+          let result = a.value < b.value ? -1 : 1;
+          if (typeof a.value === "string") {
+            result = a.value.localeCompare(b.value);
+          }
+          if (sortOrder === COLUMN_SORT_ORDER_DESC) {
+            // flip the comparison for descending
+            result *= -1;
+          }
+          return result;
+        });
       }
     }
     currentLevelSeenValues = seenValue.children;
