@@ -418,15 +418,21 @@ describe("scenarios > dashboard", () => {
     cy.route("POST", "/api/card/*/query").as("cardQuery");
 
     signIn("nodata");
-    cy.visit("/dashboard/1");
 
-    // Wait for both cards to render
-    cy.wait("@cardQuery.2");
-    cy.get(".LegendItem")
-      .as("cardTitle")
-      .contains("Orders")
-      .click();
-    cy.findByText(/^January 17, 2020/);
+    clickThrough("12720_SQL");
+    clickThrough("Orders");
+
+    /**
+     * Helper function related to this test only
+     */
+    function clickThrough(title) {
+      cy.visit("/dashboard/1");
+      cy.wait("@cardQuery.all");
+      cy.get(".LegendItem")
+        .contains(title)
+        .click();
+      cy.findByText(/^January 17, 2020/);
+    }
   });
 
   describe("revisions screen", () => {
