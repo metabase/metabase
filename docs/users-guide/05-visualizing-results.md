@@ -150,9 +150,9 @@ Pivot tables allow you swap rows and columns, group data, and include subtotals 
 
 For a given query result, you can assign fields to one of three "buckets":
 
-- Fields to use for the table rows
-- Fields to use for the table columns
-- Fields to use for the table values 
+- Fields to use for the table **rows**
+- Fields to use for the table **columns**
+- Fields to use for the table **values** 
 
 Let's say we ask the following question in the notebook editor:
 
@@ -162,11 +162,13 @@ From the `Orders` table, we've summarized by the count of orders and the average
 
 ![Pivot table options](images/visualizations/pivot-table-options.png)
 
-We've assigned the fields `User → State` and `Product → Category` to table rows, and assigned the `Created At` field to generate our columns: the years 2016, 2017, and so on. We can drag and drop dimensions between the row and column buckets, and add aggregations to the table values bucket. For example, if we assign a field to the columns bucket, Metabase will pivot that field and render each unique value of that field as a column heading.
+We've assigned the fields `User → State` and `Created At` to table rows, and assigned the `Product -> Category` field to generate our columns: Doohickey, Gadget, and so on. We can drag and drop dimensions between the row and column buckets, and add aggregations to the table values bucket. For example, if we assign a field to the columns bucket, Metabase will pivot that field and render each unique value of that field as a column heading.
 
 You can put multiple fields in the "rows" and "columns" buckets, but note that the order of the fields changes how Metabase displays the table: each additional field will nest within the previous field. 
 
-Where it makes sense, Metabase will automatically include subtotals for grouped rows. For example, as in the image above, because we've grouped our rows first by `State`, then by `Product->Category`, Metabase will list each `Product->Category` (like Gizmo) for each `State`, and aggregate the metric(s) for that subgroup. For orders placed in Wisconsin, Metabase would sum the count of orders for each category, and find the average order total across all product categories in that state. 
+Where it makes sense, Metabase will automatically include subtotals for grouped rows. For example, as in the image above, because we've grouped our rows first by `State`, then by `Created At`, Metabase will list each year for each `State`, and aggregate the metric(s) for that subgroup. For orders placed in Wisconsin, Metabase would sum the count of orders for each category, and find the average annual order total in each product category in Wisconsin.
+
+To collapse a group on a pivot table, you can click on the minus (–) button next to the group's heading (or the plus (+) button to expand it). When you save a pivot table, Metabase will remember which groups were expanded and which were collapsed.
 
 ### Line, bar, and area charts
 
