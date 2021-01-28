@@ -31,7 +31,9 @@ describe("scenarios > auth > signin", () => {
 
   it("should greet users after successful login", () => {
     cy.visit("/auth/login");
-    cy.findByLabelText("Email address").type(USERS.admin.username);
+    cy.findByLabelText("Email address")
+      .should("be.focused")
+      .type(USERS.admin.username);
     cy.findByLabelText("Password").type(USERS.admin.password);
     cy.findByText("Sign in").click();
     cy.contains(/[a-z ]+, Bob/i);
