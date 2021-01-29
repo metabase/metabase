@@ -170,17 +170,14 @@
    remove it from the cache. This will force the next call to db->pooled-connection-spec to reopen the tunnel."
   [database]
   (let [conn-spec (db->pooled-connection-spec database)]
-    (if
-      (and
-        (ssh/use-ssh-tunnel? conn-spec)
-        (not (ssh/ssh-tunnel-open? conn-spec)))
-      (do
-        (log/warn
-          (u/format-color
-            'red
-            (trs "ssh tunnel for database {0} appears to have closed; closing the pool so it can be reestablished"
-                 (u/the-id database))))
-        (invalidate-pool-for-db! database)))))
+    (when (and (ssh/use-ssh-tunnel? conn-spec)
+               (not (ssh/ssh-tunnel-open? conn-spec)))
+      (log/warn
+        (u/format-color
+          'red
+          (trs "ssh tunnel for database {0} appears to have closed; closing the pool so it can be reestablished"
+               (u/the-id database))))
+      (invalidate-pool-for-db! database))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

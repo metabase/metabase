@@ -219,18 +219,17 @@
                                      ;;2021-01-28 23:06:04,956 WARN channel.ClientChannelPendingMessagesQueue :: operationComplete(ClientChannelPendingMessagesQueue[channel=TcpipClientChannel[id=0, recipient=-1]-ClientSessionImpl[jsmith@/127.0.0.1:12221], open=false]) SshChannelOpenException[Generic error while opening channel: 0] signaled
                                      :tunnel-port        ssh-mock-server-with-password-port
                                      :tunnel-user        ssh-username
-                                     :tunnel-pass        ssh-password
+                                     :tunnel-pass        ssh-password)]
                                      ;; using my actual, local OS SSH daemon with my local OS user works!
                                      ;:tunnel-port    22
                                      ;:tunnel-user    "jeff"
                                      ;:tunnel-pass    "myRealFakePassword"
-                                     )]
+
         (mt/with-temp Database [tunneled-db {:engine :postgres, :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
             (letfn [(check-row [] (is (= [["Polo Lounge"]]
-                                         (mt/rows (mt/run-mbql-query venues
-                                            {:filter [:= $id 60] :fields [$name]})))))]
+                                         (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
               ;; check that some data can be queried
               (check-row)
               ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
