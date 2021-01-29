@@ -10,5 +10,7 @@
            (search/tokenize "                Rasta\tthe    \tToucan     ")))
     (is (= []
            (search/tokenize " \t\n\t ")))
+    (is (= []
+           (search/tokenize "")))
     (is (thrown-with-msg? Exception #"does not match schema"
                           (search/tokenize nil)))))

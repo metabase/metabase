@@ -18,6 +18,7 @@
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
+            [metabase.search :as search]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
@@ -244,17 +245,24 @@
     [:= 1 0]  ; No tables should appear in archive searches
     [:= (hsql/qualify (model->alias model) :active) true]))
 
+(defn- search-string-clause
+  [query searchable-columns]
+  (when query
+    (into [:or]
+          (for [column searchable-columns
+                token (search/tokenize (search/normalize query))]
+            [:like
+             (hsql/call :lower column)
+             (str "%" token "%")]))))
+
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
-  (let [archived-clause      (archived-where-clause model archived?)
-        search-string-clause (when (seq search-string)
-                               (into [:or]
-                                (for [column (searchable-columns-for-model model)]
-                                  [:like
-                                   (hsql/call :lower (hsql/qualify (model->alias model) column))
-                                   (str "%" (str/lower-case search-string) "%")])))]
-    (if search-string-clause
-      [:and archived-clause search-string-clause]
+  (let [archived-clause (archived-where-clause model archived?)
+        search-clause   (search-string-clause search-string
+                                              (map (partial hsql/qualify (model->alias model))
+                                                   (searchable-columns-for-model model)))]
+    (if search-clause
+      [:and archived-clause search-clause]
       archived-clause)))
 
 (s/defn ^:private base-query-for-model :- {:select s/Any, :from s/Any, :where s/Any}
