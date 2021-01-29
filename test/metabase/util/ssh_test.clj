@@ -45,6 +45,7 @@
                              (.setPort ssh-mock-server-with-password-port)
                              (.setKeyPairProvider keypair-provider)
                              (.setPasswordAuthenticator password-auth)
+                             (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)
                              .start)]
       (log/debug "ssh mock server (with password) started")
       sshd)
@@ -207,24 +208,17 @@
             (is (= "hello from the ssh tunnel" (.readLine in-client)))))))))
 
 (deftest test-ssh-tunnel-reconnection
+  ;; for now, run against Postgres, although in theory it could run against many different kinds
   (driver/with-driver :postgres
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [real-db-details   (:details (mt/db))
             tunnel-db-details (assoc real-db-details
                                      :tunnel-enabled     true
-                                     :tunnel-host        "127.0.0.1"
+                                     :tunnel-host        "localhost"
                                      :tunnel-auth-option "password"
-                                     ;; trying to use the mock sshd instance doesn't work
-                                     ;; fails with:
-                                     ;;2021-01-28 23:06:04,956 WARN channel.ClientChannelPendingMessagesQueue :: operationComplete(ClientChannelPendingMessagesQueue[channel=TcpipClientChannel[id=0, recipient=-1]-ClientSessionImpl[jsmith@/127.0.0.1:12221], open=false]) SshChannelOpenException[Generic error while opening channel: 0] signaled
                                      :tunnel-port        ssh-mock-server-with-password-port
                                      :tunnel-user        ssh-username
                                      :tunnel-pass        ssh-password)]
-                                     ;; using my actual, local OS SSH daemon with my local OS user works!
-                                     ;:tunnel-port    22
-                                     ;:tunnel-user    "jeff"
-                                     ;:tunnel-pass    "myRealFakePassword"
-
         (mt/with-temp Database [tunneled-db {:engine :postgres, :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
