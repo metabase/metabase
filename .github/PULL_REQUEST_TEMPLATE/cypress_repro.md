@@ -8,7 +8,7 @@ PENDING CI / PENDING REVIEW / READY _(choose one and update accordingly)_
 - `yarn test-cypress-open`
 - `relative/path/to/the/file`
 > _(For still unfixed bug)_
-- Replace `it.skip()` with `it.only()` to run test in isolation
+- Replace `it.skip()` with `it.only()` to run the test in isolation
 - The test should fail until the related issue is fixed
 > _(For a fixed bug)_
 - All tests should pass
