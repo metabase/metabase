@@ -218,7 +218,7 @@
                                        [nil []])]
     (assoc field
       :default_dimension_option default-option
-      :dimension_options all-options)))
+      :dimension_options        all-options)))
 
 (defn- assoc-dimension-options [resp driver]
   (-> resp

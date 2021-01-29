@@ -146,7 +146,7 @@
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-read?         (partial i/current-user-has-partial-permissions? :read)
           :can-write?        i/superuser?}))
 
 
