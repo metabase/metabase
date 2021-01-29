@@ -3,7 +3,6 @@
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [metabase.models.database :refer [Database]]
-            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.sync :as sync]
             [metabase.test :as mt]
@@ -209,7 +208,7 @@
 
 (deftest test-ssh-tunnel-reconnection
   ;; for now, run against Postgres, although in theory it could run against many different kinds
-  (driver/with-driver :postgres
+  (mt/test-driver :postgres
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [real-db-details   (:details (mt/db))
             tunnel-db-details (assoc real-db-details
