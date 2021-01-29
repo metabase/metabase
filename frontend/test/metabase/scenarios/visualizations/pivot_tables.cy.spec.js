@@ -220,6 +220,31 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
+  it("should expand and collapse field options", () => {
+    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+
+    cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
+
+    cy.findByText("Settings").click();
+    assertOnPivotSettings();
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Users? → Source/)
+      .click();
+
+    cy.log("**-- Collapse the options panel --**");
+    cy.get(".Icon-chevronup").click();
+    cy.findByText(/Formatting/).should("not.exist");
+    cy.findByText(/See options/).should("not.exist");
+
+    cy.log("**-- Expand it again --**");
+    cy.get(".Icon-chevrondown")
+      .first()
+      .click();
+    cy.findByText(/Formatting/);
+    cy.findByText(/See options/);
+  });
+
   it("should allow column formatting", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
@@ -274,6 +299,43 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.get(".Visualization").within(() => {
       cy.findByText("78,300%");
     });
+  });
+
+  it("should allow sorting fields", () => {
+    // Pivot by a single column with many values (100 bins).
+    // Having many values hides values that are sorted to the end.
+    // This lets us assert on presence of a certain value.
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["binning-strategy", ["field-id", ORDERS.TOTAL], "num-bins", 100],
+          ],
+        },
+        database: 1,
+      },
+      display: "pivot",
+    });
+
+    // open settings and expand Total column settings
+    cy.findByText("Settings").click();
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Total/)
+      .click();
+
+    // sort descending
+    cy.get(".Icon-arrow_down").click();
+    cy.findByText("300 – 302.5");
+    cy.findByText("2.5 – 5").should("not.exist");
+
+    // sort ascending
+    cy.get(".Icon-arrow_up").click();
+    cy.findByText("2.5 – 5");
+    cy.findByText("300 – 302.5").should("not.exist");
   });
 
   it("should display an error message for native queries", () => {
