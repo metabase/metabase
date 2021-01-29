@@ -35,7 +35,8 @@
 (declare check-query-permissions*)
 
 (s/defn ^:private check-ad-hoc-query-perms
-  [{:keys [gtap-perms], :as outer-query}]
+  {:arglists '([outer-query context])}
+  [outer-query {:keys [gtap-perms]}]
   ;; *If* we're using a GTAP, the User is obviously allowed to run its source query. So subtract the set of
   ;; perms required to run the source query. (See further discussion in
   ;; metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions)
@@ -50,12 +51,12 @@
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{{:keys [card-id]} :info, :as outer-query} :- su/Map]
+  [{{:keys [card-id]} :info, :as outer-query} :- su/Map context]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (if card-id
       (check-card-read-perms card-id)
-      (check-ad-hoc-query-perms outer-query))))
+      (check-ad-hoc-query-perms outer-query context))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
@@ -64,7 +65,7 @@
   'publishing' a Card)."
   [qp]
   (fn [query rff context]
-    (check-query-permissions* query)
+    (check-query-permissions* query context)
     (qp query rff context)))
 
 

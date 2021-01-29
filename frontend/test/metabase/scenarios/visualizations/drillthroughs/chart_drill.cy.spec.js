@@ -1,15 +1,18 @@
 import {
   signInAsAdmin,
+  signInAsNormalUser,
   restore,
   openProductsTable,
   openOrdersTable,
   popover,
   sidebar,
+  USER_GROUPS,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   beforeEach(() => {
@@ -326,6 +329,96 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       popover().within(() => {
         cy.findByText("January 2, 2020");
         cy.findByText("5");
+      });
+    });
+  });
+
+  it.skip("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
+    // Restrict "normal user" (belongs to the DATA_GROUP) from writing native queries
+    cy.log("**-- Fetch permissions graph --**");
+    cy.request("GET", "/api/permissions/graph", {}).then(
+      ({ body: { groups, revision } }) => {
+        // This mutates the original `groups` object => we'll pass it next to the `PUT` request
+        groups[DATA_GROUP] = {
+          // database_id = 1 (SAMPLE_DATASET)
+          1: { schemas: "all", native: "none" },
+        };
+
+        cy.log("**-- Update/save permissions --**");
+        cy.request("PUT", "/api/permissions/graph", {
+          groups,
+          revision,
+        });
+      },
+    );
+
+    // Create a native question
+    cy.request("POST", "/api/card", {
+      name: "14495_SQL",
+      dataset_query: {
+        type: "native",
+        native: { query: "SELECT * FROM ORDERS", "template-tags": {} },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: SQL_ID } }) => {
+      const ALIAS = `Question ${SQL_ID}`;
+
+      // Create a QB question and join it with the previously created native question
+      cy.request("POST", "/api/card", {
+        name: "14495",
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": PEOPLE_ID,
+            joins: [
+              {
+                fields: "all",
+                "source-table": `card__${SQL_ID}`,
+                condition: [
+                  "=",
+                  ["field-id", PEOPLE.ID],
+                  [
+                    "joined-field",
+                    ALIAS,
+                    ["field-literal", "ID", "type/BigInteger"],
+                  ],
+                ],
+                alias: ALIAS,
+              },
+            ],
+            aggregation: [["count"]],
+            breakout: [
+              ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
+            ],
+          },
+          database: 1,
+        },
+        display: "bar",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        // Prepare to wait for certain imporatnt queries
+        cy.server();
+        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+        cy.route("POST", "/api/dataset").as("dataset");
+
+        // Switch to the normal user who has restricted SQL access
+        signInAsNormalUser();
+        cy.visit(`/question/${QUESTION_ID}`);
+
+        // Initial visualization has rendered and we can now drill-through
+        cy.wait("@cardQuery");
+        cy.get(".Visualization .bar")
+          .eq(4)
+          .click({ force: true });
+        cy.findByText(/View these People/i).click();
+
+        // We should see the resulting dataset of that drill-through
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+        cy.findByText("Macy Olson");
       });
     });
   });
