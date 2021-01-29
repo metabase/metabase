@@ -7,16 +7,18 @@ import {
 
 describeWithToken("scenarios > admin > databases > add", () => {
   describe("EE should ship with Oracle and Vertica as options", () => {
-    restore();
-    signInAsAdmin();
-    cy.server();
+    beforeEach(() => {
+      restore();
+      signInAsAdmin();
+      cy.server();
 
-    cy.visit("/admin/databases/create");
+      cy.visit("/admin/databases/create");
 
-    cy.contains("Database type")
-      .parents(".Form-field")
-      .find(".AdminSelect")
-      .click();
+      cy.contains("Database type")
+        .parents(".Form-field")
+        .find(".AdminSelect")
+        .click();
+    });
 
     it("should have Oracle as an option", () => {
       popover().contains("Oracle");
