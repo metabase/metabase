@@ -29,7 +29,8 @@
   (.getAbsolutePath (io/file path)))
 
 (defn- raw-value [key]
-  (:value (first (jdbc/query mdb.connection/*jdbc-spec* "select value from setting where key LIKE '';"))))
+  (:value (first (jdbc/query mdb.connection/*jdbc-spec*
+                             ["select value from setting where key=?;" key]))))
 
 (deftest rotate-keys!-test
   (let [h2-fixture-db-file (abs-path "frontend/test/__runner__/test_db_fixture.db")
@@ -66,12 +67,18 @@
           (eu/with-secret-key k1
             (is (not (= "val0" (:value (first (db/select Setting :key [:= "setting0"]))))))))
 
-        (testing "full rollback when a field looks encrypted with a differnt key than the current one"
+        (testing "full rollback when a field looks encrypted with a different key than the current one"
           (eu/with-secret-key k3
             (db/insert! Setting {:key "setting3", :value "val3"}))
           (eu/with-secret-key k2
-            (db/insert! Setting {:key "setting4", :value "val4"})
+            (db/insert! Setting {:key "setting2", :value "val2"})
             (is (not (rotate-keys! k3))))
           (eu/with-secret-key k3
-            (is (not (= "val4" (:value (first (db/select Setting :key [:= "setting4"]))))))
-            (is (= "val3" (:value (first (db/select Setting :key [:= "setting3"])))))))))))
+            (is (not (= "val2" (:value (first (db/select Setting :key [:= "setting2"]))))))
+            (is (= "val3" (:value (first (db/select Setting :key [:= "setting3"])))))))
+
+        (testing "rotate-keys! to nil decrypts the encrypted keys"
+          (db/delete! Setting :key "setting3")
+          (eu/with-secret-key k2
+            (is (rotate-keys! nil)))
+          (is (= "val0" (raw-value "setting0"))))))))

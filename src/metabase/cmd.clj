@@ -154,9 +154,9 @@
 
 (defn ^:command rotate-keys
   "Rotate the encryption of a metabase database."
-  [to-key]
+  [& args]
   (classloader/require 'metabase.cmd.rotate-encryption-key)
-  ((resolve 'metabase.cmd.rotate-encryption-key/rotate-keys!) to-key))
+  ((resolve 'metabase.cmd.rotate-encryption-key/rotate-keys!) (first args)))
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 

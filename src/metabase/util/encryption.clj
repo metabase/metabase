@@ -20,14 +20,19 @@
                               :iterations 100000}) ; 100,000 iterations takes about ~160ms on my laptop
                  64))
 
+(defn validate-and-hash-secret-key
+  "Check the minimum length of the key and hash it for internal usage."
+  [^String secret-key]
+  (when-let [secret-key secret-key]
+    (when (seq secret-key)
+      (assert (>= (count secret-key) 16)
+              (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
+      (secret-key->hash secret-key))))
+
 ;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
 ;; so you have to do `^{:tag 'bytes}` instead
 (defonce ^:private ^{:tag 'bytes} default-secret-key
-  (when-let [secret-key (env/env :mb-encryption-secret-key)]
-    (when (seq secret-key)
-      (assert (>= (count secret-key) 16)
-        (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
-      (secret-key->hash secret-key))))
+  (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
 
 ;; log a nice message letting people know whether DB details encryption is enabled
 (when-not *compile-files*
