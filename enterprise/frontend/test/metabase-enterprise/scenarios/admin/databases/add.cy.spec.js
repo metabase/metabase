@@ -6,13 +6,11 @@ import {
 } from "__support__/cypress";
 
 describeWithToken("scenarios > admin > databases > add", () => {
-  beforeEach(() => {
+  describe("EE should ship with Oracle and Vertica as options", () => {
     restore();
     signInAsAdmin();
     cy.server();
-  });
 
-  describe("EE should ship with Oracle and Vertica as options", () => {
     cy.visit("/admin/databases/create");
 
     cy.contains("Database type")
