@@ -24,7 +24,9 @@ export default class SettingsUpdatesForm extends Component {
               currentVersion,
             )} which is the latest and greatest!`}
           </div>
-          {!MetabaseSettings.isHosted() && <HostingCTA />}
+          {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
+            <HostingCTA />
+          )}
         </div>
       );
     } else if (MetabaseSettings.newVersionAvailable()) {

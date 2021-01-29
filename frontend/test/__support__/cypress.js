@@ -222,6 +222,10 @@ export const describeWithToken = Cypress.env("HAS_ENTERPRISE_TOKEN")
   ? describe
   : describe.skip;
 
+export const itOpenSourceOnly = Cypress.env("HAS_ENTERPRISE_TOKEN")
+  ? it.skip
+  : it;
+
 // TODO: does this really need to be a global helper function?
 export function createBasicAlert({ firstAlert, includeNormal } = {}) {
   cy.get(".Icon-bell").click();

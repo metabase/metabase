@@ -70,6 +70,7 @@ export default class SettingsEmailForm extends Component {
 
   render() {
     const { sendingEmail } = this.state;
+
     return (
       <Flex justifyContent="space-between">
         <SettingsBatchForm
@@ -99,7 +100,7 @@ export default class SettingsEmailForm extends Component {
             ];
           }}
         />
-        {!MetabaseSettings.isHosted() && (
+        {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
           <MarginHostingCTA tagline={t`Have your email configured for you.`} />
         )}
       </Flex>
