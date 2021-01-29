@@ -218,6 +218,7 @@
     (doto server (.start))))
 
 (deftest test-ssh-tunnel-reconnection
+  ;; for now, run against Postgres, although in theory it could run against many different kinds
   (mt/test-drivers #{:postgres :mysql}
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [tunnel-db-details (assoc (:details (mt/db))
