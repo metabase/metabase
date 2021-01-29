@@ -145,7 +145,7 @@ export default class SearchBar extends React.Component {
                             <li key={`${l.model}:${l.id}`}>
                               <Link to={l.getUrl()}>
                                 <EntityItem
-                                  icon={l.getIcon()}
+                                  iconName={l.getIcon()}
                                   name={l.name}
                                   item={l}
                                   variant="small"
