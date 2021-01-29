@@ -190,7 +190,7 @@
 
 (defn- reconcile-metadata
   [table-id metadata]
-  (map (comp (gtap/table-field-names->cols) :name) metadata))
+  (map (comp (gtap/table-field-names->cols table-id) :name) metadata))
 
 (s/defn ^:private gtap->source :- {:source-query                     s/Any
                                    (s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata]
