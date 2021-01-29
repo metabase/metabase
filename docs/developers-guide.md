@@ -31,7 +31,7 @@ These are the set of tools which are required in order to complete any build of 
 5. [Leiningen (http://leiningen.org/)](http://leiningen.org/) - latest release
 6. [GetText package (https://www.gnu.org/software/gettext/)](https://www.gnu.org/software/gettext/) - latest
 
-On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure and JRE 11, can be installed by using:
+On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure, can be installed by using:
 
 ```
 sudo apt install gettext openjdk-8-jdk nodejs leiningen && sudo npm install --global yarn
