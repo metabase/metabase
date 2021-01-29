@@ -184,9 +184,7 @@
                                                :alias     "v"
                                                :strategy  :left-join
                                                :condition [:= $venue_id &v.venues.id]}]
-                               :aggregation  [[:count]]}
-                  :gtap-perms #{(perms/table-query-path (Table (mt/id :venues)))
-                                (perms/table-query-path (Table (mt/id :checkins)))}})
+                               :aggregation  [[:count]]}})
                (apply-row-level-permissions
                 (mt/mbql-query checkins
                   {:aggregation [[:count]]
@@ -205,8 +203,7 @@
                                :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                            "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
                                                            "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\"")
-                                              :params []}}
-                  :gtap-perms #{(perms/adhoc-native-query-path (mt/id))}})
+                                              :params []}}})
                (apply-row-level-permissions
                 (mt/mbql-query venues
                   {:aggregation [[:count]]}))))))))

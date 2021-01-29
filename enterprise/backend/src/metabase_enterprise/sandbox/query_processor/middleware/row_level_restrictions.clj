@@ -271,11 +271,10 @@
 
 (defn- gtapped-query
   "Apply GTAPs to `query` and return the updated version of `query`."
-  [query table-id->gtap]
-  (-> query
-      (apply-gtaps table-id->gtap)
-      (update :gtap-perms (fn [perms]
-                            (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))))
+  [query table-id->gtap context]
+  {:query   (apply-gtaps query table-id->gtap)
+   :context (update context :gtap-perms (fn [perms]
+                                          (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))})
 
 (defn apply-row-level-permissions
   "Does the work of swapping the given table the user was querying against with a nested subquery that restricts the
@@ -284,9 +283,10 @@
   (fn [query rff context]
     (if-let [table-id->gtap (when *current-user-id*
                               (query->table-id->gtap query))]
-      (qp
-       (gtapped-query query table-id->gtap)
-       (fn [metadata]
-         (rff (merge-metadata query metadata)))
-       context)
+      (let [{query' :query, context' :context} (gtapped-query query table-id->gtap context)]
+        (qp
+         query'
+         (fn [metadata]
+           (rff (merge-metadata query metadata)))
+         context'))
       (qp query rff context))))

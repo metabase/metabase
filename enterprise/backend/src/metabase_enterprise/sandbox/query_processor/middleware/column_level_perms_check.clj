@@ -5,9 +5,10 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.util.i18n :refer [trs tru]]))
 
-(defn- maybe-apply-column-level-perms-check* [{{{source-query-fields :fields} :source-query} :query, :as query}]
-  (let [restricted-field-ids (and (or (:gtap-perms query)
-                                      (get-in query [:query :gtap-perms]))
+(defn- maybe-apply-column-level-perms-check*
+  {:arglists '([query context])}
+  [{{{source-query-fields :fields} :source-query} :query, :as query} {:keys [gtap-perms]}]
+  (let [restricted-field-ids (and gtap-perms
                                   (set (mbql.u/match source-query-fields [:field-id id] id)))]
     (when (seq restricted-field-ids)
       (let [fields-ids-in-query (set (mbql.u/match (m/dissoc-in query [:query :source-query]) [:field-id id] id))]
@@ -20,5 +21,5 @@
   "Check column-level permissions if applicable."
   [qp]
   (fn [query rff context]
-    (maybe-apply-column-level-perms-check* query)
+    (maybe-apply-column-level-perms-check* query context)
     (qp query rff context)))
