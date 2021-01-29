@@ -5,6 +5,7 @@ import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync } from "react-virtualized";
 
+import { color, alpha } from "metabase/lib/colors";
 import { getScrollBarSize } from "metabase/lib/dom";
 
 import Ellipsified from "metabase/components/Ellipsified";
@@ -22,6 +23,9 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import { findDOMNode } from "react-dom";
+
+const PIVOT_BG_LIGHT = alpha(color("brand"), 0.03);
+const PIVOT_BG_DARK = alpha(color("brand"), 0.1);
 
 const partitions = [
   {
@@ -254,8 +258,8 @@ export default class PivotTable extends Component {
       return (
         <div
           key={key}
-          style={style}
-          className={cx("bg-light overflow-hidden", {
+          style={{ ...style, backgroundColor: PIVOT_BG_LIGHT }}
+          className={cx("overflow-hidden", {
             "border-right border-medium": !hasChildren,
           })}
         >
@@ -367,10 +371,11 @@ export default class PivotTable extends Component {
               >
                 {/* top left corner - displays left header columns */}
                 <div
-                  className={cx("flex align-end bg-light", {
+                  className={cx("flex align-end", {
                     "border-right border-bottom border-medium": leftHeaderWidth,
                   })}
                   style={{
+                    backgroundColor: PIVOT_BG_LIGHT,
                     // add left spacing unless the header width is 0
                     paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
                     height: topHeaderHeight,
@@ -514,9 +519,12 @@ function RowToggleIcon({
     <div
       className={cx(
         "flex align-center cursor-pointer bg-brand-hover text-light text-white-hover",
-        isCollapsed ? "bg-light" : "bg-medium",
       )}
-      style={{ padding: "4px", borderRadius: "4px" }}
+      style={{
+        padding: "4px",
+        borderRadius: "4px",
+        backgroundColor: isCollapsed ? PIVOT_BG_LIGHT : PIVOT_BG_DARK,
+      }}
       onClick={e => {
         e.stopPropagation();
         updateSettings({
@@ -545,9 +553,10 @@ function Cell({
         lineHeight: `${CELL_HEIGHT}px`,
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
+        ...(isSubtotal ? { backgroundColor: PIVOT_BG_DARK } : {}),
       }}
       className={cx("flex-full flex-basis-none", className, {
-        "bg-medium text-bold": isSubtotal,
+        "text-bold": isSubtotal,
         "cursor-pointer": onClick,
       })}
       onClick={onClick}
