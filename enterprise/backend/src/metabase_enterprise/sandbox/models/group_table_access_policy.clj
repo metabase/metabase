@@ -60,7 +60,7 @@
   ([table-id :- su/IntGreaterThanZero result-metadata-columns]
    ;; prevent circular refs
    (classloader/require 'metabase.query-processor)
-   (let [table-cols (table-field-names->cols)]
+   (let [table-cols (table-field-names->cols table-id)]
      (doseq [col  result-metadata-columns
              :let [table-col-base-type (get-in table-cols [(:name col) :base_type])]]
        ;; These errors might get triggered by API endpoints or by the QP (this code is used in the

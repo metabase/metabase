@@ -218,7 +218,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
+    it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
       cy.log(
         "**-- 1. Sandbox `People` table on `user_id` attribute for `data` group --**",
       );
@@ -637,7 +637,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
+    it("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
       cy.log("**-- Remap Product ID's display value to `title` --**");
 
       cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
