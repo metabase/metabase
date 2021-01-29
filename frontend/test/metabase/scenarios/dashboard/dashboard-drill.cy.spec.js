@@ -8,7 +8,7 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { REVIEWS, REVIEWS_ID } = SAMPLE_DATASET;
+const { ORDERS, PRODUCTS, REVIEWS, REVIEWS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(() => {
@@ -338,6 +338,68 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
       });
     });
+  });
+
+  it.skip("should drill-through on a foreign key (metabase#8055)", () => {
+    // In this test we're using already present dashboard ("Orders in a dashboard")
+    const FILTER_ID = "7c9ege62";
+
+    cy.log(
+      "**-- 1. Add filter (with the default Category) to the dashboard --**",
+    );
+    cy.request("PUT", "/api/dashboard/1", {
+      parameters: [
+        {
+          id: FILTER_ID,
+          name: "Category",
+          slug: "category",
+          type: "category",
+          default: ["Gadget"],
+        },
+      ],
+    });
+
+    cy.log("**-- 2. Connect filter to the existing card --**");
+    cy.request("PUT", "/api/dashboard/1/cards", {
+      cards: [
+        {
+          id: 1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          sizeX: 12,
+          sizeY: 8,
+          parameter_mappings: [
+            {
+              parameter_id: FILTER_ID,
+              card_id: 1,
+              target: [
+                "dimension",
+                [
+                  "fk->",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["field-id", PRODUCTS.CATEGORY],
+                ],
+              ],
+            },
+          ],
+          visualization_settings: {},
+        },
+      ],
+    });
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    cy.visit("/dashboard/1");
+    // Product ID in the first row (query fails for User ID as well)
+    cy.findByText("105").click();
+    cy.findByText("View details").click();
+
+    cy.log("Reported on v0.29.3");
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+    cy.findByText("Fantastic Wool Shirt");
   });
 });
 
