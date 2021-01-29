@@ -3,7 +3,7 @@ import { t, jt } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn, updateIn } from "icepick";
-import { Grid, Collection, ScrollSync } from "react-virtualized";
+import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
 import { color, alpha } from "metabase/lib/colors";
 import { getScrollBarSize } from "metabase/lib/dom";
@@ -196,13 +196,7 @@ export default class PivotTable extends Component {
   }
 
   render() {
-    const {
-      settings,
-      data,
-      width,
-      height,
-      onUpdateVisualizationSettings,
-    } = this.props;
+    const { settings, data, width, onUpdateVisualizationSettings } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
     }
@@ -359,16 +353,11 @@ export default class PivotTable extends Component {
     );
 
     return (
-      <div className="no-outline text-small">
+      <div className="no-outline text-small full-height">
         <ScrollSync>
           {({ onScroll, scrollLeft, scrollTop }) => (
-            <div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `${leftHeaderWidth}px auto`,
-                }}
-              >
+            <div className="full-height flex flex-column">
+              <div className="flex" style={{ height: topHeaderHeight }}>
                 {/* top left corner - displays left header columns */}
                 <div
                   className={cx("flex align-end", {
@@ -378,6 +367,7 @@ export default class PivotTable extends Component {
                     backgroundColor: PIVOT_BG_LIGHT,
                     // add left spacing unless the header width is 0
                     paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
+                    width: leftHeaderWidth,
                     height: topHeaderHeight,
                   }}
                 >
@@ -409,36 +399,50 @@ export default class PivotTable extends Component {
                   onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                   scrollLeft={scrollLeft}
                 />
+              </div>
+              <div className="flex flex-full">
                 {/* left header */}
-                <Collection
-                  className="scroll-hide-all"
-                  cellCount={leftHeaderItems.length}
-                  cellRenderer={leftHeaderCellRenderer}
-                  cellSizeAndPositionGetter={
-                    leftHeaderCellSizeAndPositionGetter
-                  }
-                  width={leftHeaderWidth}
-                  height={height - topHeaderHeight - scrollBarOffsetSize()}
-                  scrollTop={scrollTop}
-                  onScroll={({ scrollTop }) => onScroll({ scrollTop })}
-                />
+                <div style={{ width: leftHeaderWidth }}>
+                  <AutoSizer>
+                    {({ height }) => (
+                      <Collection
+                        className="scroll-hide-all"
+                        cellCount={leftHeaderItems.length}
+                        cellRenderer={leftHeaderCellRenderer}
+                        cellSizeAndPositionGetter={
+                          leftHeaderCellSizeAndPositionGetter
+                        }
+                        width={leftHeaderWidth}
+                        height={height - scrollBarOffsetSize()}
+                        scrollTop={scrollTop}
+                        onScroll={({ scrollTop }) => onScroll({ scrollTop })}
+                      />
+                    )}
+                  </AutoSizer>
+                </div>
                 {/* pivot table body */}
-                <Grid
-                  width={width - leftHeaderWidth}
-                  height={height - topHeaderHeight}
-                  className="text-dark"
-                  rowCount={rowCount}
-                  columnCount={columnCount}
-                  rowHeight={CELL_HEIGHT}
-                  columnWidth={valueIndexes.length * CELL_WIDTH}
-                  cellRenderer={bodyRenderer}
-                  onScroll={({ scrollLeft, scrollTop }) =>
-                    onScroll({ scrollLeft, scrollTop })
-                  }
-                  ref={this.setBodyRef}
-                  scrollTop={scrollTop}
-                  scrollLeft={scrollLeft}
-                />
+                <div>
+                  <AutoSizer>
+                    {({ height }) => (
+                      <Grid
+                        width={width - leftHeaderWidth}
+                        height={height}
+                        className="text-dark"
+                        rowCount={rowCount}
+                        columnCount={columnCount}
+                        rowHeight={CELL_HEIGHT}
+                        columnWidth={valueIndexes.length * CELL_WIDTH}
+                        cellRenderer={bodyRenderer}
+                        onScroll={({ scrollLeft, scrollTop }) =>
+                          onScroll({ scrollLeft, scrollTop })
+                        }
+                        ref={this.setBodyRef}
+                        scrollTop={scrollTop}
+                        scrollLeft={scrollLeft}
+                      />
+                    )}
+                  </AutoSizer>
+                </div>
               </div>
             </div>
           )}
