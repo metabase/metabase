@@ -301,6 +301,23 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
   });
 
+  it("should not allow sorting of value fields", () => {
+    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
+
+    cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
+
+    cy.findByText("Settings").click();
+    assertOnPivotSettings();
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .parent()
+      .findAllByText(/Count/)
+      .click();
+
+    cy.findByText(/Formatting/);
+    cy.findByText(/Sort order/).should("not.exist");
+  });
+
   it("should allow sorting fields", () => {
     // Pivot by a single column with many values (100 bins).
     // Having many values hides values that are sorted to the end.
