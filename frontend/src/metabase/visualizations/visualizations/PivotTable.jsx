@@ -546,7 +546,7 @@ function Cell({
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
       }}
-      className={cx("flex-full", className, {
+      className={cx("flex-full flex-basis-none", className, {
         "bg-medium text-bold": isSubtotal,
         "cursor-pointer": onClick,
       })}
