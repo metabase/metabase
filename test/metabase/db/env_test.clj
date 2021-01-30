@@ -20,3 +20,11 @@
          clojure.lang.ExceptionInfo
          #"Unsupported application database type: \"sqlserver\""
          (#'mdb.env/connection-string->db-type "jdbc:sqlserver://bad")))))
+
+(deftest format-connection-uri-test
+  (let [conn-uri "postgresql://localhost:metabase?username=johndoe"
+        jdbc-conn-uri (str "jdbc:" conn-uri)]
+    (doseq [[input expected] [[conn-uri jdbc-conn-uri]
+                              [jdbc-conn-uri jdbc-conn-uri]
+                              [nil nil]]]
+      (is (= expected (#'mdb.env/format-connection-uri input))))))
