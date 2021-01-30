@@ -471,7 +471,7 @@ describe("scenarios > question > filter", () => {
     );
   });
 
-  it.skip("should be able to add date filter with calendar collapsed (metabase#14327)", () => {
+  it("should be able to add date filter with calendar collapsed (metabase#14327)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Created At").click();
