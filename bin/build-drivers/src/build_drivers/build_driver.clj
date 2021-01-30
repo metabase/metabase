@@ -1,12 +1,12 @@
 (ns build-drivers.build-driver
   "Logic for building a single driver."
-  (:require [build-drivers
-             [checksum :as checksum]
-             [common :as c]
-             [install-driver-locally :as install-locally]
-             [metabase :as metabase]
-             [plugin-manifest :as manifest]
-             [verify :as verify]]
+  (:require [build-drivers.checksum :as checksum]
+            [build-drivers.common :as c]
+            [build-drivers.install-driver-locally :as install-locally]
+            [build-drivers.metabase :as metabase]
+            [build-drivers.plugin-manifest :as manifest]
+            [build-drivers.strip-and-compress :as strip-and-compress]
+            [build-drivers.verify :as verify]
             [colorize.core :as colorize]
             [environ.core :as env]
             [metabuild-common.core :as u]))
@@ -18,7 +18,7 @@
                   driver
                   (u/assert-file-exists (c/driver-jar-build-path driver))
                   (c/driver-jar-destination-path driver))
-    (u/delete-file! (c/driver-jar-destination-path driver))
+    (u/delete-file-if-exists! (c/driver-jar-destination-path driver))
     (u/create-directory-unless-exists! c/driver-jar-destination-directory)
     (u/copy-file! (c/driver-jar-build-path driver)
                   (c/driver-jar-destination-path driver))))
@@ -27,8 +27,8 @@
   "Delete built JARs of `driver`."
   [driver]
   (u/step (format "Delete %s driver artifacts" driver)
-    (u/delete-file! (c/driver-target-directory driver))
-    (u/delete-file! (c/driver-jar-destination-path driver))))
+    (u/delete-file-if-exists! (c/driver-target-directory driver))
+    (u/delete-file-if-exists! (c/driver-jar-destination-path driver))))
 
 (defn- clean-parents!
   "Delete built JARs and local Maven installations of the parent drivers of `driver`."
@@ -62,34 +62,11 @@
       (build-driver! parent))
     (u/announce "%s parents built successfully." driver)))
 
-(defn- strip-and-compress-uberjar!
-  "Remove any classes in compiled `driver` that are also present in the Metabase uberjar or parent drivers. The classes
-  will be available at runtime, and we don't want to make things unpredictable by including them more than once in
-  different drivers.
 
-  This is only needed because `lein uberjar` does not seem to reliably exclude classes from `:provided` Clojure
-  dependencies like `metabase-core` and the parent drivers."
-  ([driver]
-   (u/step (str (format "Strip out any classes in %s driver JAR found in core Metabase uberjar or parent JARs" driver)
-                " and recompress with higher compression ratio")
-     (let [uberjar (u/assert-file-exists (c/driver-jar-build-path driver))]
-       (u/step "strip out any classes also found in the core Metabase uberjar"
-         (strip-and-compress-uberjar! uberjar (u/assert-file-exists c/metabase-uberjar-path)))
-       (u/step "remove any classes also found in any of the parent JARs"
-         (doseq [parent (manifest/parent-drivers driver)]
-           (strip-and-compress-uberjar! uberjar (u/assert-file-exists (c/driver-jar-build-path parent))))))))
-
-  ([target source]
-   (u/step (format "Remove classes from %s that are present in %s and recompress" target source)
-     (u/sh {:dir u/project-root-directory}
-           "lein"
-           "strip-and-compress"
-           (u/assert-file-exists target)
-           (u/assert-file-exists source)))))
 
 (defn- build-uberjar! [driver]
   (u/step (format "Build %s uberjar" driver)
-    (u/delete-file! (c/driver-target-directory driver))
+    (u/delete-file-if-exists! (c/driver-target-directory driver))
     (u/sh {:dir (c/driver-project-dir driver)} "lein" "clean")
     (u/sh {:dir (c/driver-project-dir driver)
            :env {"LEIN_SNAPSHOTS_IN_RELEASE" "true"
@@ -97,7 +74,7 @@
                  "PATH"                      (env/env :path)
                  "JAVA_HOME"                 (env/env :java-home)}}
           "lein" "uberjar")
-    (strip-and-compress-uberjar! driver)
+    (strip-and-compress/strip-and-compress-uberjar! driver)
     (u/announce "%s uberjar build successfully." driver)))
 
 (defn- build-and-verify!

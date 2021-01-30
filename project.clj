@@ -36,7 +36,6 @@
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
    "repl-ee"                           ["with-profile" "+repl,+ee" "repl"]
-   "strip-and-compress"                ["with-profile" "+strip-and-compress,-user,-dev" "run"]
    "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]
    "uberjar"                           ["uberjar"]
    "uberjar-ee"                        ["with-profile" "+ee" "uberjar"]}
@@ -412,15 +411,6 @@
    :uberjar
    {:auto-clean true
     :aot        :all}
-
-   ;; lein strip-and-compress my-plugin.jar [path/to/metabase.jar]
-   ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.
-   ;; Second arg (other JAR) is optional; defaults to target/uberjar/metabase.jar
-   :strip-and-compress
-   {:aliases      ^:replace {"run" ["run"]}
-    :source-paths ^:replace ["lein-commands/strip-and-compress"]
-    :test-paths   ^:replace []
-    :main         ^:skip-aot metabase.strip-and-compress-module}
 
    ;; Profile Metabase start time with `lein profile`
    :profile
