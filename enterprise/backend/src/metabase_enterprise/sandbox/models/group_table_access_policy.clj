@@ -34,6 +34,17 @@
   :in  (comp i/json-in normalize-attribute-remapping-targets)
   :out (comp normalize-attribute-remapping-targets i/json-out-without-keywordization))
 
+(defn table-field-names->cols
+  "Return a mapping of field names to corresponding cols for given table."
+  [table-id]
+  (classloader/require 'metabase.query-processor)
+  (into {} (for [col (session/with-current-user nil
+                       ((resolve 'metabase.query-processor/query->expected-cols)
+                        {:database (table/table-id->database-id table-id)
+                         :type     :query
+                         :query    {:source-table table-id}}))]
+             [(:name col) col])))
+
 (s/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
   that's getting GTAPped. It's ok to remove columns, but you cannot add new columns. The base types of the Card
@@ -49,12 +60,7 @@
   ([table-id :- su/IntGreaterThanZero result-metadata-columns]
    ;; prevent circular refs
    (classloader/require 'metabase.query-processor)
-   (let [table-cols (into {} (for [col (session/with-current-user nil
-                                         ((resolve 'metabase.query-processor/query->expected-cols)
-                                          {:database (table/table-id->database-id table-id)
-                                           :type     :query
-                                           :query    {:source-table table-id}}))]
-                               [(:name col) col]))]
+   (let [table-cols (table-field-names->cols table-id)]
      (doseq [col  result-metadata-columns
              :let [table-col-base-type (get-in table-cols [(:name col) :base_type])]]
        ;; These errors might get triggered by API endpoints or by the QP (this code is used in the

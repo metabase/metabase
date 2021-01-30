@@ -49,8 +49,10 @@
 (s/defn ^:private source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
-  (for [{field-name :name, base-type :base_type} source-metadata]
-    [:field-literal field-name base-type]))
+  (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
+    (if field-id
+      [:field-id field-id]
+      [:field-literal field-name base-type])))
 
 (s/defn ^:private should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:
@@ -89,7 +91,7 @@
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
         (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))
-                 {:type error-type/invalid-query})))
+                        {:type error-type/invalid-query})))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 

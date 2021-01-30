@@ -91,7 +91,8 @@
                          {:display_name "Category → Name"
                           :source       :fields
                           :field_ref    $category_id->categories.name
-                          :fk_field_id  %category_id})]
+                          :fk_field_id  %category_id
+                          :source_alias "CATEGORIES__via__CATEGORY_ID"})]
                  (doall
                   (annotate/column-info
                    {:type  :query
@@ -108,7 +109,8 @@
           (is (= [(merge (info-for-field :categories :name)
                          {:display_name "Categories → Name"
                           :source       :fields
-                          :field_ref    &Categories.categories.name})]
+                          :field_ref    &Categories.categories.name
+                          :source_alias "Categories"})]
                  (doall
                   (annotate/column-info
                    {:type  :query
@@ -232,8 +234,11 @@
                 [:expression "double-price"])))))
 
     (testing "if there is no matching expression it should give a meaningful error message"
-      (is (= {:message "No expression named double-price found. Found: (\"one-hundred\")"
-              :data    {:type :invalid-query, :clause [:expression "double-price"], :expressions {"one-hundred" 100}}}
+      (is (= {:data    {:expression-name "double-price"
+                        :tried           ["double-price" :double-price]
+                        :found           #{"one-hundred"}
+                        :type            :invalid-query}
+              :message "No expression named 'double-price'"}
              (try
                (mt/$ids venues
                  (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
@@ -431,23 +436,24 @@
          (infered-col-type  [:coalesce "foo" "bar"])))
   (is (= {:base_type    :type/Text
           :special_type :type/Name}
-         (infered-col-type  [:coalesce [:field-id (data/id :venues :name)] "bar"]))))
+         (infered-col-type  [:coalesce [:field-id (mt/id :venues :name)] "bar"]))))
 
 (deftest test-case
   (is (= {:base_type    :type/Text
           :special_type nil}
-         (infered-col-type [:case [[[:> (data/id :venues :price) 2] "big"]]])))
+         (infered-col-type [:case [[[:> [:field-id (mt/id :venues :price)] 2] "big"]]])))
   (is (= {:base_type    :type/Float
           :special_type :type/Number}
-         (infered-col-type [:case [[[:> (data/id :venues :price) 2] [:+ (data/id :venues :price) 1]]]])))
+         (infered-col-type [:case [[[:> [:field-id (mt/id :venues :price)] 2]
+                                    [:+ [:field-id (mt/id :venues :price)] 1]]]])))
   (testing "Make sure we skip nils when infering case return type"
-    (is (= {:base_type    :type/Number
-            :special_type nil}
-           (infered-col-type [:case [[[:< (data/id :venues :price) 10] nil]
-                                     [[:> (data/id :venues :price) 2] 10]]]))))
+    (is (= {:base_type    :type/Float
+            :special_type :type/Number}
+           (infered-col-type [:case [[[:< [:field-id (mt/id :venues :price)] 10] [:value nil {:base_type :type/Number}]]
+                                     [[:> [:field-id (mt/id :venues :price)] 2] 10]]]))))
   (is (= {:base_type    :type/Float
           :special_type :type/Number}
-         (infered-col-type [:case [[[:> (data/id :venues :price) 2] [:+ (data/id :venues :price) 1]]]]))))
+         (infered-col-type [:case [[[:> [:field-id (mt/id :venues :price)] 2] [:+ [:field-id (mt/id :venues :price)] 1]]]]))))
 
 (deftest unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"

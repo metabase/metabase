@@ -54,10 +54,9 @@
 ;;; |                                      Adding :cols info for native queries                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- check-driver-native-columns
+(s/defn ^:private check-driver-native-columns
   "Double-check that the *driver* returned the correct number of `columns` for native query results."
-  [cols rows]
-  {:pre [(sequential? cols) (every? map? cols)]}
+  [cols :- [{s/Any s/Any}], rows]
   (when (seq rows)
     (let [expected-count (count cols)
           actual-count   (count (first rows))]
@@ -180,10 +179,12 @@
     (let [{:keys [fk-field-id], :as join} (join-with-alias inner-query join-alias)]
       (let [recursive-info (col-info-for-field-clause inner-query field)]
         (-> recursive-info
-            (merge (when fk-field-id {:fk_field_id fk-field-id}))
-            (assoc :field_ref (if fk-field-id
-                                [:fk-> [:field-id fk-field-id] field]
-                                (assoc (vec &match) 2 (:field_ref recursive-info))))
+            (merge (when fk-field-id
+                     {:fk_field_id fk-field-id}))
+            (assoc :field_ref    (if fk-field-id
+                                   [:fk-> [:field-id fk-field-id] field]
+                                   (assoc (vec &match) 2 (:field_ref recursive-info)))
+                   :source_alias join-alias)
             (update :display_name display-name-for-joined-field join))))
 
     ;; TODO - should be able to remove this now
@@ -208,19 +209,13 @@
       :field_ref &match)
 
     [:expression expression-name]
-    (if-let [matching-expression (when (seq expressions)
-                                   (some expressions ((juxt keyword u/qualified-name) expression-name)))]
-      (merge
-       ;; There's some inconsistency when expression names are keywords and when strings.
-       ;; TODO: remove this duality once https://github.com/metabase/mbql/issues/5 is resolved.
-       (infer-expression-type matching-expression)
-       {:name            expression-name
-        :display_name    expression-name
-        ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
-        :expression_name expression-name
-        :field_ref       &match})
-      (throw (ex-info (tru "No expression named {0} found. Found: {1}" expression-name (keys expressions))
-               {:type :invalid-query, :clause &match, :expressions expressions})))
+    (merge
+     (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
+     {:name            expression-name
+      :display_name    expression-name
+      ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
+      :expression_name expression-name
+      :field_ref       &match})
 
     [:field-id id]
     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
@@ -234,7 +229,7 @@
     ;; something the user should expect to see
     _
     (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
-             {:field &match}))))
+                    {:field &match}))))
 
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
@@ -456,20 +451,32 @@
     (map merge source-metadata cols)
     cols))
 
+(defn- flow-field-metadata
+  "Merge information about fields from `source-metadata` into the returned `cols`."
+  [source-metadata cols]
+  (let [field-id->metadata (u/key-by :id source-metadata)]
+    (for [col cols]
+      (if-let [source-metadata-for-field (-> col :id field-id->metadata)]
+        (merge source-metadata-for-field col)
+        col))))
+
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
   (if native-source-query
     (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
     (mbql-cols source-query results)))
 
-(s/defn mbql-cols
+(defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
-  [{:keys [source-metadata source-query fields], :as inner-query} :- su/Map, results]
+  [{:keys [source-metadata source-query fields], :as inner-query}, results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
       (and (empty? cols) source-query)
       (cols-for-source-query inner-query results)
+
+      source-query
+      (flow-field-metadata (cols-for-source-query inner-query results) cols)
 
       (every? (partial mbql.u/is-clause? :field-literal) fields)
       (maybe-merge-source-metadata source-metadata cols)

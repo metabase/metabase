@@ -62,9 +62,11 @@
 (defn- source-metadata->fields [{:keys [alias], :as join} source-metadata]
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
-             {:join join})))
-  (for [{field-name :name, base-type :base_type} source-metadata]
-    [:joined-field alias [:field-literal field-name base-type]]))
+                    {:join join})))
+  (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
+    [:joined-field alias (if field-id
+                           [:field-id field-id]
+                           [:field-literal field-name base-type])]))
 
 (s/defn ^:private handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
@@ -141,6 +143,7 @@
   [{:keys [joins], :as query} :- mbql.s/MBQLQuery]
   (u/prog1 (-> query
                (update :joins resolve-references-and-deduplicate)
+               ;; TODO comp?
                (update :joins resolve-join-source-queries)
                merge-joins-fields)
     (check-join-aliases (dissoc <> :source-query))))
