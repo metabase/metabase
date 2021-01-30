@@ -139,17 +139,18 @@ Run `curl http://localhost:port-number-here/api/health`. This should return a re
 
 Make sure to include a `-p 3000:3000` or similar remapping in the `docker run` command you execute to start the Metabase container image.
 
-### Metabase is not able to write or read to/from a file or a folder
+### Metabase can't write or read to/from a file or directory
 
 #### How to detect this:
 
-A message in the logs will clearly indicate an IOError/Permission denied from Java or errors from SQLite with the `org.sqlite.core.NativeDB._open_utf8` form
+A message in the logs will clearly indicate an IOError/Permission denied from Java, or errors from SQLite with the `org.sqlite.core.NativeDB._open_utf8` form.
 
 #### How to fix this:
 
-Ensure that the file you are writing or reading from a file or folder that the user that runs Metabase has access to. E.g.:
-- if you are running Metabase as a `jar` file in your local machine or server, check the user that is running the java process
-- if you are running Metabase from the docker container, make sure that you are using the `/metabase.db` folder which is owned by the metabase user who is the one that runs the java process inside the container
+Ensure that the user who is running Metabase has permission to read and write to the file or directory:
+
+- If you are running Metabase as a JAR file in your local machine or server, check the user who is running the Java process.
+- If you're running Metabase from the Docker container, make sure you're using the `/metabase.db` directory.
 
 If you are running metabase from the jar file in any *nix (Unix like) operating system, in order to see which user is running metabase you have to open a terminal and type `ps -uA | grep metabase`.
 
