@@ -234,9 +234,18 @@ function isHiddenField(field, details) {
   );
 }
 
+function getDefaultValue(field) {
+  return "default" in field ? field.default : null;
+}
+
 function normalizeFieldValue(value, field) {
-  if (field.name === "host") {
-    return value.trim();
+  if (value === "" || value == null) {
+    return getDefaultValue(field);
+  }
+
+  if (typeof value === "string" && field.type !== "password") {
+    const trimmedValue = value.trim();
+    return trimmedValue === "" ? getDefaultValue(field) : trimmedValue;
   }
 
   return value;
@@ -260,13 +269,7 @@ function getEngineFormFields(engine, details, id) {
         placeholder: field.placeholder || field.default,
         options: field.options,
         validate: value => (field.required && !value ? t`required` : null),
-        normalize: value => {
-          if (value === "" || value == null) {
-            return "default" in field ? field.default : null;
-          }
-
-          return normalizeFieldValue(value, field);
-        },
+        normalize: value => normalizeFieldValue(value, field),
         horizontal: field.type === "boolean",
         initial: field.default,
         readOnly: field.readOnly || false,

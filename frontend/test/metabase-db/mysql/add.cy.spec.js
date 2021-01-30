@@ -27,7 +27,7 @@ describe("mysql > admin > add", () => {
     typeAndBlurUsingLabel("Host", "localhost");
     typeAndBlurUsingLabel("Port", "3306");
     typeAndBlurUsingLabel("Database name", "sample");
-    typeAndBlurUsingLabel("Username", "metabase");
+    typeAndBlurUsingLabel("Username", " metabase");
     typeAndBlurUsingLabel("Password", "metasample123");
 
     // Bypass the RSA public key error for MySQL database

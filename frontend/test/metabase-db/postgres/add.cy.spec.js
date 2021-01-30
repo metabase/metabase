@@ -23,7 +23,7 @@ describe("postgres > admin > add", () => {
     cy.contains("PostgreSQL").click({ force: true });
     cy.contains("Additional JDBC connection string options");
 
-    typeAndBlurUsingLabel("Name", "QA Postgres12");
+    typeAndBlurUsingLabel("Name", "QA Postgres12 ");
     typeAndBlurUsingLabel("Host", "localhost");
     typeAndBlurUsingLabel("Port", "5432");
     typeAndBlurUsingLabel("Database name", "sample");

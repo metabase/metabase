@@ -23,7 +23,7 @@ describe("mongodb > admin > add", () => {
     cy.contains("MongoDB").click({ force: true });
     cy.contains("Additional Mongo connection");
 
-    typeAndBlurUsingLabel("Name", "QA Mongo4");
+    typeAndBlurUsingLabel("Name", "QA Mongo4 ");
     typeAndBlurUsingLabel("Host", "localhost");
     typeAndBlurUsingLabel("Port", "27017");
     typeAndBlurUsingLabel("Database name", "sample");
