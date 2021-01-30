@@ -401,6 +401,109 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.findByText("Fantastic Wool Shirt");
   });
+
+  it.skip("should apply correct date range on a graph drill-through (metabase#13785)", () => {
+    cy.log("**-- 1. Create a question --**");
+
+    cy.request("POST", "/api/card", {
+      name: "13785",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": REVIEWS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "month"],
+          ],
+        },
+        type: "query",
+      },
+      display: "bar",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.log("**-- 2. Create a dashboard --**");
+
+      cy.request("POST", "/api/dashboard", {
+        name: "13785D",
+      }).then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.log("**-- 3. Add filter to the dashboard --**");
+
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            {
+              id: "4ff53514",
+              name: "Date Filter",
+              slug: "date_filter",
+              type: "date/all-options",
+            },
+          ],
+        });
+        cy.log("**-- 4. Add question to the dashboard --**");
+
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          cy.log("**-- 5. Connect dashboard filter to the question --**");
+
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 14,
+                sizeY: 10,
+                series: [],
+                // Set "Click behavior"
+                visualization_settings: {
+                  click_behavior: {
+                    type: "crossfilter",
+                    parameterMapping: {
+                      "4ff53514": {
+                        source: {
+                          type: "column",
+                          id: "CREATED_AT",
+                          name: "Created At",
+                        },
+                        target: {
+                          type: "parameter",
+                          id: "4ff53514",
+                        },
+                        id: "4ff53514",
+                      },
+                    },
+                  },
+                },
+                // Connect filter and card
+                parameter_mappings: [
+                  {
+                    parameter_id: "4ff53514",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", REVIEWS.CREATED_AT]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+        cy.server();
+        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+        cy.wait("@cardQuery");
+        cy.get(".bar")
+          .eq(14) // August 2017 (Total of 12 reviews, 9 unique days)
+          .click({ force: true });
+
+        cy.wait("@cardQuery.2");
+        cy.url().should("include", "2017-08-01~2017-08-31");
+        // For this to work, binning would have to change to "group by day"
+        cy.get(".bar").should("have.length", 9);
+      });
+    });
+  });
 });
 
 function createDashboardWithQuestion(
