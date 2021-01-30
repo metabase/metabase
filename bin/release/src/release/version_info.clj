@@ -8,7 +8,7 @@
 
 (defn- version-info-url []
   (case (c/edition)
-    :ce "static.metabase.com/version-info.json"
+    :oss "static.metabase.com/version-info.json"
     nil))
 
 (def ^:private tmp-version-info-filename

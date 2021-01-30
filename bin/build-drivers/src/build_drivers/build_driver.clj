@@ -62,8 +62,6 @@
       (build-driver! parent))
     (u/announce "%s parents built successfully." driver)))
 
-
-
 (defn- build-uberjar! [driver]
   (u/step (format "Build %s uberjar" driver)
     (u/delete-file-if-exists! (c/driver-target-directory driver))
