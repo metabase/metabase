@@ -96,6 +96,7 @@ function ColumnOptionsPanel({
   partitionName,
   getColumnSettingValue,
   onChangeColumnSetting,
+  onEditFormatting,
 }) {
   return (
     <div>
@@ -111,7 +112,7 @@ function ColumnOptionsPanel({
           />
         </div>
       )}
-      <FormattingOptions onEdit={this.props.onEditFormatting} />
+      <FormattingOptions onEdit={onEditFormatting} />
     </div>
   );
 }

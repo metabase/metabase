@@ -235,10 +235,16 @@ function addEmptyIndexItem(index) {
 // A path can't be collapsed if subtotals are turned off for that column.
 // TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
 function filterCollapsedSubtotals(collapsedSubtotals, columnSettings) {
-  const columnIsVisible = columnSettings.map(
+  const columnIsCollapsible = columnSettings.map(
     settings => settings[COLUMN_SHOW_TOTALS] !== false,
   );
-  return collapsedSubtotals.filter(path => columnIsVisible[path.length - 1]);
+  return collapsedSubtotals.filter(pathOrLengthString => {
+    const pathOrLength = JSON.parse(pathOrLengthString);
+    const length = Array.isArray(pathOrLength)
+      ? pathOrLength.length
+      : pathOrLength;
+    return columnIsCollapsible[length - 1];
+  });
 }
 
 // The getter returned from this function returns the value(s) at given (column, row) location
