@@ -15,6 +15,7 @@ import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SPLIT_SETTING,
   COLUMN_SORT_ORDER,
+  COLUMN_SHOW_TOTALS,
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/lib/data_grid";
@@ -179,6 +180,23 @@ export default class PivotTable extends Component {
       widget: "input",
       getDefault: column => formatColumn(column),
     },
+    [COLUMN_SHOW_TOTALS]: {
+      hidden: true,
+      getValue: (column, columnSettings, { settings }) => {
+        const currentValue = columnSettings[COLUMN_SHOW_TOTALS];
+        const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+        // to show totals a column needs to be:
+        //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
+        //  - not the last column
+        const canHaveSubtotal = rows
+          .slice(0, rows.length - 1)
+          .some(row => _.isEqual(row, column.field_ref));
+        if (!canHaveSubtotal) {
+          return null;
+        }
+        return currentValue == null ? true : currentValue;
+      },
+    },
     [COLUMN_SORT_ORDER]: { hidden: true },
   };
 
@@ -193,6 +211,15 @@ export default class PivotTable extends Component {
       columns[columnIndex],
     );
     return columnTitle || formatColumn(column);
+  }
+
+  isColumnCollapsible(columnIndex) {
+    const { data, settings } = this.props;
+    const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+    const { [COLUMN_SHOW_TOTALS]: showTotals } = settings.column(
+      columns[columnIndex],
+    );
+    return showTotals;
   }
 
   render() {
@@ -387,7 +414,8 @@ export default class PivotTable extends Component {
                       style={{ width: LEFT_HEADER_CELL_WIDTH }}
                       icon={
                         // you can only collapse before the last column
-                        index < rowIndexes.length - 1 && (
+                        index < rowIndexes.length - 1 &&
+                        this.isColumnCollapsible(rowIndex) && (
                           <RowToggleIcon
                             value={index + 1}
                             settings={settings}

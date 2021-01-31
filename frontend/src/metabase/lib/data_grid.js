@@ -10,12 +10,12 @@ export function isPivotGroupColumn(col) {
 
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+export const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
 export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
-  const collapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
   const columnSplit = settings[COLUMN_SPLIT_SETTING];
   if (columnSplit == null) {
     return null;
@@ -45,6 +45,11 @@ export function multiLevelPivot(data, settings) {
   );
 
   const columnSettings = columns.map(column => settings.column(column));
+  const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
+  const collapsedSubtotals = filterCollapsedSubtotals(
+    allCollapsedSubtotals,
+    rowColumnIndexes.map(index => columnSettings[index]),
+  );
 
   // we build a tree for each tuple of pivoted column/row values seen in the data
   const columnColumnTree = [];
@@ -148,9 +153,13 @@ export function multiLevelPivot(data, settings) {
     leftIndexFormatters,
     leftIndexColumns,
   );
+  const subtotalSettings = rowColumnIndexes.map(index =>
+    getIn(columnSettings, [index, COLUMN_SHOW_TOTALS]),
+  );
   const formattedRowTree = addSubtotals(
     formattedRowTreeWithoutSubtotals,
     leftIndexFormatters,
+    subtotalSettings,
   );
   if (formattedRowTreeWithoutSubtotals.length > 1) {
     // if there are multiple columns, we should add another for row totals
@@ -221,6 +230,15 @@ function splitPivotData(data, rowIndexes, columnIndexes) {
 function addEmptyIndexItem(index) {
   // we need a single item even if all columns are on the other axis
   return index.length === 0 ? [[]] : index;
+}
+
+// A path can't be collapsed if subtotals are turned off for that column.
+// TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
+function filterCollapsedSubtotals(collapsedSubtotals, columnSettings) {
+  const columnIsVisible = columnSettings.map(
+    settings => settings[COLUMN_SHOW_TOTALS] !== false,
+  );
+  return collapsedSubtotals.filter(path => columnIsVisible[path.length - 1]);
 }
 
 // The getter returned from this function returns the value(s) at given (column, row) location
@@ -329,12 +347,18 @@ function addValueColumnNodes(nodes, valueColumns) {
 
 // This inserts nodes into the left header tree for subtotals.
 // We also mark nodes with `hasSubtotal` to display collapsing UI
-function addSubtotals(rowColumnTree, formatters) {
-  return rowColumnTree.flatMap(item => addSubtotal(item, formatters));
+function addSubtotals(rowColumnTree, formatters, subtotalSettings) {
+  return rowColumnTree.flatMap(item =>
+    addSubtotal(item, formatters, subtotalSettings),
+  );
 }
 
-function addSubtotal(item, [formatter, ...formatters]) {
-  const hasSubtotal = item.children.length > 1;
+function addSubtotal(
+  item,
+  [formatter, ...formatters],
+  [isSubtotalEnabled, ...subtotalSettings],
+) {
+  const hasSubtotal = item.children.length > 1 && isSubtotalEnabled;
   const subtotal = hasSubtotal
     ? [
         {
@@ -354,7 +378,9 @@ function addSubtotal(item, [formatter, ...formatters]) {
     hasSubtotal,
     children: item.children.flatMap(item =>
       // add subtotals until the last level
-      item.children.length > 0 ? addSubtotal(item, formatters) : item,
+      item.children.length > 0
+        ? addSubtotal(item, formatters, subtotalSettings)
+        : item,
     ),
   };
 

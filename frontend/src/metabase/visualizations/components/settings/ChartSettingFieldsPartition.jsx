@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Flex } from "grid-styled";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
-import { getIn, assocIn } from "icepick";
+import { assocIn } from "icepick";
 
 import styled from "styled-components";
 import colors, { lighten } from "metabase/lib/colors";
@@ -15,6 +15,7 @@ import Text from "metabase/components/type/Text";
 import Toggle from "metabase/components/Toggle";
 
 import {
+  COLUMN_SHOW_TOTALS,
   COLUMN_SORT_ORDER,
   COLUMN_SORT_ORDER_ASC,
   COLUMN_SORT_ORDER_DESC,
@@ -30,104 +31,89 @@ const DragWrapper = styled.div`
   }
 `;
 
-// eslint-disable-next-line no-unused-vars
-class ShowTotalsOption extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { showTotals: true };
+function ShowTotalsOption({ value, onChange }) {
+  if (value === null) {
+    return null;
   }
-  toggleTotals = () => {
-    const { showTotals } = this.state;
-    this.setState({ showTotals: !showTotals });
-    this.props.onChangeSettings(!showTotals);
-  };
-
-  render() {
-    const { showTotals } = this.state;
-    return (
-      <Flex pt={2} justifyContent="space-between" alignItems="center">
-        <Text>{t`Show totals`}</Text>
-        <Toggle value={showTotals} onChange={this.toggleTotals}></Toggle>
-      </Flex>
-    );
-  }
+  return (
+    <Flex pt={2} justifyContent="space-between" alignItems="center">
+      <Text>{t`Show totals`}</Text>
+      <Toggle value={value} onChange={() => onChange(!value)}></Toggle>
+    </Flex>
+  );
 }
 
-class SortButton extends React.Component {
-  render() {
-    const { iconName, onChange, currentValue, buttonValue } = this.props;
-    const isSelected = buttonValue === currentValue;
-    return (
-      <Icon
-        name={iconName}
-        onClick={() => onChange(isSelected ? undefined : buttonValue)}
-        size={16}
-        className={cx("sort cursor-pointer", {
-          "text-brand": isSelected,
-          "text-medium text-brand-hover": !isSelected,
-        })}
-      />
-    );
-  }
+function SortButton({ iconName, onChange, currentValue, buttonValue }) {
+  const isSelected = buttonValue === currentValue;
+  return (
+    <Icon
+      name={iconName}
+      onClick={() => onChange(isSelected ? undefined : buttonValue)}
+      size={16}
+      className={cx("sort cursor-pointer", {
+        "text-brand": isSelected,
+        "text-medium text-brand-hover": !isSelected,
+      })}
+    />
+  );
 }
 
-class SortOrderOption extends React.Component {
-  render() {
-    const { value, onChange } = this.props;
-    return (
-      <Flex pt={1} justifyContent="space-between" alignItems="center">
-        <Text>{t`Sort order`}</Text>
+function SortOrderOption({ value, onChange }) {
+  return (
+    <Flex pt={1} justifyContent="space-between" alignItems="center">
+      <Text>{t`Sort order`}</Text>
+      <div>
+        <SortButton
+          iconName="arrow_up"
+          onChange={onChange}
+          currentValue={value}
+          buttonValue={COLUMN_SORT_ORDER_ASC}
+        />
+        <SortButton
+          iconName="arrow_down"
+          onChange={onChange}
+          currentValue={value}
+          buttonValue={COLUMN_SORT_ORDER_DESC}
+        />
+      </div>
+    </Flex>
+  );
+}
+
+function FormattingOptions({ onEdit }) {
+  return (
+    <Flex pt={1} justifyContent="space-between" alignItems="center">
+      <Text>{t`Formatting`}</Text>
+      <Text
+        onClick={onEdit}
+        className="text-brand text-bold cursor-pointer"
+      >{t`See options…`}</Text>
+    </Flex>
+  );
+}
+
+function ColumnOptionsPanel({
+  partitionName,
+  getColumnSettingValue,
+  onChangeColumnSetting,
+}) {
+  return (
+    <div>
+      {partitionName !== "values" && (
         <div>
-          <SortButton
-            iconName="arrow_up"
-            onChange={onChange}
-            currentValue={value}
-            buttonValue={COLUMN_SORT_ORDER_ASC}
+          <ShowTotalsOption
+            value={getColumnSettingValue(COLUMN_SHOW_TOTALS)}
+            onChange={onChangeColumnSetting.bind(null, COLUMN_SHOW_TOTALS)}
           />
-          <SortButton
-            iconName="arrow_down"
-            onChange={onChange}
-            currentValue={value}
-            buttonValue={COLUMN_SORT_ORDER_DESC}
+          <SortOrderOption
+            value={getColumnSettingValue(COLUMN_SORT_ORDER)}
+            onChange={onChangeColumnSetting.bind(null, COLUMN_SORT_ORDER)}
           />
         </div>
-      </Flex>
-    );
-  }
-}
-
-class FormattingOptions extends React.Component {
-  render() {
-    return (
-      <Flex pt={1} justifyContent="space-between" alignItems="center">
-        <Text>{t`Formatting`}</Text>
-        <Text
-          onClick={this.props.onEdit}
-          className="text-brand text-bold cursor-pointer"
-        >{t`See options…`}</Text>
-      </Flex>
-    );
-  }
-}
-
-class ColumnOptionsPanel extends React.Component {
-  handleChangeSortOrder = direction =>
-    this.props.onChangeColumnSetting(COLUMN_SORT_ORDER, direction);
-
-  render() {
-    const { partitionName } = this.props;
-    return (
-      <div>
-        {partitionName !== "values" && (
-          <SortOrderOption
-            value={this.props.getColumnSettingValue(COLUMN_SORT_ORDER)}
-            onChange={this.handleChangeSortOrder}
-          />
-        )}
-        <FormattingOptions onEdit={this.props.onEditFormatting} />
-      </div>
-    );
-  }
+      )}
+      <FormattingOptions onEdit={this.props.onEditFormatting} />
+    </div>
+  );
 }
 
 class ChartSettingFieldsPartition extends React.Component {
@@ -136,22 +122,19 @@ class ChartSettingFieldsPartition extends React.Component {
     this.state = { displayedValue: null };
   }
 
-  handleChangeColumnSetting = (column, columnSetting, value) => {
+  handleChangeColumnSetting = (column, settingName, value) => {
     const { settings, onChangeSettings } = this.props;
     const column_settings = assocIn(
       settings.column_settings,
-      [keyForColumn(column), columnSetting],
+      [keyForColumn(column), settingName],
       value,
     );
     onChangeSettings({ column_settings });
   };
 
-  getColumnSettingValue = (column, columnSetting) => {
-    return getIn(this.props.settings, [
-      "column_settings",
-      keyForColumn(column),
-      columnSetting,
-    ]);
+  getColumnSettingValue = (column, settingName) => {
+    const columnSettings = this.props.settings.column(column);
+    return columnSettings && columnSettings[settingName];
   };
 
   handleEditFormatting = column => {
