@@ -81,7 +81,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Source is Affiliate");
     cy.findByText("Category is Doohickey");
     // data loads
-    cy.findByText("45.08");
+    cy.findByText("45.04");
   });
 
   it("should allow drill through on left/top header values", () => {
@@ -346,13 +346,13 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     // sort descending
     cy.get(".Icon-arrow_down").click();
-    cy.findByText("300 – 302.5");
-    cy.findByText("2.5 – 5").should("not.exist");
+    cy.findByText("158 – 160");
+    cy.findByText("8 – 10").should("not.exist");
 
     // sort ascending
     cy.get(".Icon-arrow_up").click();
-    cy.findByText("2.5 – 5");
-    cy.findByText("300 – 302.5").should("not.exist");
+    cy.findByText("8 – 10");
+    cy.findByText("158 – 160").should("not.exist");
   });
 
   it("should display an error message for native queries", () => {
