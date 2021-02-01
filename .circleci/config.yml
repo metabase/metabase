@@ -758,44 +758,6 @@ jobs:
                   - /home/circleci/metabase/metabase/node_modules
                   - /home/circleci/.cache/Cypress
 
-  fe-linter-eslint:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run ESLint linter
-          command: lint-eslint
-          skip-when-no-change: true
-
-  fe-linter-prettier:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run Prettier formatting linter
-          command: lint-prettier
-          skip-when-no-change: true
-
-  fe-linter-flow:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run Flow type checker
-          command: lint-flow
-          skip-when-no-change: true
-
-  fe-linter-docs-links:
-    executor: node
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: ".MARKDOWN-CHECKSUMS"
-          find-args: ". -type f -name '*.md'"
-      - run-on-change:
-          checksum: '{{ checksum ".MARKDOWN-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}'
-          steps:
-            - run-yarn-command:
-                command-name: Run docs links checker
-                command: lint-docs-links
-
   fe-tests-unit:
     executor: node
     steps:
@@ -1276,18 +1238,6 @@ workflows:
       - fe-deps:
           requires:
             - checkout
-      - fe-linter-eslint:
-          requires:
-            - fe-deps
-      - fe-linter-prettier:
-          requires:
-            - fe-deps
-      - fe-linter-flow:
-          requires:
-            - fe-deps
-      - fe-linter-docs-links:
-          requires:
-            - fe-deps
       - fe-tests-unit:
           requires:
             - fe-deps
