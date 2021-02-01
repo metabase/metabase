@@ -113,10 +113,22 @@ export const DEFAULT_SCHEDULES = {
   },
 };
 
+function concatURL(...urlParts) {
+  return urlParts.reduce(
+    (url, part) =>
+      typeof url !== "string" || typeof part !== "string"
+        ? undefined
+        : url + part.trim(),
+    "",
+  );
+}
+
 function getClientIdDescription(engine, details) {
   if (CREDENTIALS_URL_PREFIXES[engine]) {
-    const credentialsURL =
-      CREDENTIALS_URL_PREFIXES[engine] + (details["project-id"] || "");
+    const credentialsURL = concatURL(
+      CREDENTIALS_URL_PREFIXES[engine],
+      details["project-id"] || "",
+    );
     return (
       <span>
         {jt`${(
@@ -132,22 +144,24 @@ function getClientIdDescription(engine, details) {
 
 function getAuthCodeLink(engine, details) {
   if (AUTH_URL_PREFIXES[engine] && details["client-id"]) {
+    const authCodeURL = concatURL(
+      AUTH_URL_PREFIXES[engine],
+      details["client-id"],
+    );
+    const googleDriveAuthCodeURL = concatURL(
+      AUTH_URL_PREFIXES["bigquery_with_drive"],
+      details["client-id"],
+    );
     return (
       <span>
         {jt`${(
-          <ExternalLink href={AUTH_URL_PREFIXES[engine] + details["client-id"]}>
-            {t`Click here`}
-          </ExternalLink>
+          <ExternalLink href={authCodeURL}>{t`Click here`}</ExternalLink>
         )} to get an auth code.`}
         {engine === "bigquery" && (
           <span>
             {" "}
             ({t`or`}{" "}
-            <ExternalLink
-              href={
-                AUTH_URL_PREFIXES["bigquery_with_drive"] + details["client-id"]
-              }
-            >
+            <ExternalLink href={googleDriveAuthCodeURL}>
               {t`with Google Drive permissions`}
             </ExternalLink>
             )
@@ -167,7 +181,8 @@ function getAuthCodeEnableAPILink(engine, details) {
       details["client-id"] && (details["client-id"].match(/^\d+/) || [])[0];
     if (ENABLE_API_PREFIXES[engine] && projectID) {
       // URL looks like https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project=12343611585
-      const enableAPIURL = ENABLE_API_PREFIXES[engine] + projectID;
+      const enableAPIURL = concatURL(ENABLE_API_PREFIXES[engine], projectID);
+
       return (
         <span>
           {t`To use Metabase with this data you must enable API access in the Google Developers Console.`}{" "}
