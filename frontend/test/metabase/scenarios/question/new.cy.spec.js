@@ -233,7 +233,7 @@ describe("scenarios > question > new", () => {
         cy.findByText("Done").click();
       });
       cy.findByText("Visualize").click();
-      cy.findByText("604.96");
+      cy.findByText("318.7");
     });
 
     it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
