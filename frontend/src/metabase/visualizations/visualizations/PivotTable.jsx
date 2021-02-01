@@ -555,19 +555,18 @@ function Cell({
         ...style,
         ...(isSubtotal ? { backgroundColor: PIVOT_BG_DARK } : {}),
       }}
-      className={cx("flex-full flex-basis-none", className, {
-        "text-bold": isSubtotal,
-        "cursor-pointer": onClick,
-      })}
+      className={cx(
+        "shrink-below-content-size flex-full flex-basis-none",
+        className,
+        {
+          "text-bold": isSubtotal,
+          "cursor-pointer": onClick,
+        },
+      )}
       onClick={onClick}
     >
       <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
-        {isBody ? (
-          // Ellipsified isn't really needed for body cells. Avoiding it helps performance.
-          value
-        ) : (
-          <Ellipsified>{value}</Ellipsified>
-        )}
+        <Ellipsified>{value}</Ellipsified>
         {icon && <div className="pl1">{icon}</div>}
       </div>
     </div>
