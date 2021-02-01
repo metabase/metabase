@@ -290,8 +290,11 @@
   (jdbc/with-db-connection [source-conn source-jdbc-spec]
     (binding [db/*db-connection* source-jdbc-spec
               db/*quoting-style* (mdb.conn/quoting-style source-db-type)]
-      (jdbc/with-db-connection [target-conn target-jdbc-spec]
+      (jdbc/with-db-transaction [target-conn target-jdbc-spec]
+        (doseq [[id details] (db/select-id->field :details Database)]
+          (when (not (map? details))
+            (throw "MB_ENCRYPTION_SECRET_KEY can't properly decode the values of the db"))
+          (jdbc/update! target-conn :metabase_database {:details (json/encode details)} ["id = ?" id]))
         (doseq [[key value] (db/select-field->field :key :value Setting)]
           (jdbc/update! target-conn :setting {:value value} ["key = ?" key]))
-        (doseq [[id details] (db/select-id->field :details Database)]
-          (jdbc/update! target-conn :metabase_database {:details (json/encode details)} ["id = ?" id]))))))
+        true))))
