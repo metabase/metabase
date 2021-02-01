@@ -30,7 +30,7 @@
 
 (defn- raw-value [key]
   (:value (first (jdbc/query mdb.connection/*jdbc-spec*
-                             ["select value from setting where key=?;" key]))))
+                             ["select value from setting where setting.key=?;" key]))))
 
 (deftest rotate-keys!-test
   (let [h2-fixture-db-file (abs-path "frontend/test/__runner__/test_db_fixture.db")

@@ -20,7 +20,7 @@
        (jdbc/with-db-transaction [t-conn (mdb.conn/jdbc-spec)]
          (doseq [[key value] (db/select-field->field :key :value Setting)]
            (when (encrypt/possibly-encrypted-string? value)
-             (println value)
+             (println key value)
              (throw  (Exception. "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt files")))
            (jdbc/update! t-conn
                          :setting
@@ -30,7 +30,10 @@
            (jdbc/update! t-conn
                          :metabase_database
                          {:details (encrypt-fn (json/encode details))}
-                         ["id = ?" id])))
+                         ["id = ?" id])
+           (when (encrypt/possibly-encrypted-string? details)
+             (println id details)
+             (throw  (Exception. "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt files")))))
        true)
      ;; (catch  e (do (println e "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt the existing data")))
      (catch Throwable e (do (println e "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt the existing data"))))))
