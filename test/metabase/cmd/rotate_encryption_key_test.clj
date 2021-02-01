@@ -1,6 +1,7 @@
 (ns metabase.cmd.rotate-encryption-key-test
   (:require [clojure.java.io :as io]
             [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.cmd.load-from-h2 :as load-from-h2]
             [metabase.cmd.rotate-encryption-key :refer [rotate-keys!]]
@@ -35,7 +36,7 @@
 (deftest rotate-keys!-test
   (eu/with-secret-key nil
     (let [h2-fixture-db-file (abs-path "frontend/test/__runner__/test_db_fixture.db")
-          db-name (str "test_" (mt/random-name))
+          db-name (str "test_" (str/lower-case (mt/random-name)))
           [k1 k2 k3] ["89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
                       "yHa/6VEQuIItMyd5CNcgV9nXvzZcX6bWmiY0oOh6pLU="
                       "BCQbKNVu6N8TQ2BwyTC0U0oCBqsvFVr2uhEM/tRgJUM="]]
