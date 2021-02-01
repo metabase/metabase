@@ -374,6 +374,50 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
 
+  it.skip("should work with custom columns (metabase#14604)", () => {
+    const CC_NAME = "Mooooar Taxes!";
+    cy.request("POST", "/api/card", {
+      name: "14604",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: { [CC_NAME]: ["*", ["field-id", ORDERS.TAX], 2] },
+          aggregation: [["count"]],
+          breakout: [
+            ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.SOURCE]],
+            [
+              "fk->",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", PRODUCTS.CATEGORY],
+            ],
+          ],
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+
+    cy.get(".Icon-notebook").click();
+
+    cy.get(".Icon-add")
+      .last()
+      .click();
+    popover().within(() => {
+      cy.findByText(CC_NAME).click();
+    });
+    cy.findAllByText(CC_NAME).should("have.length", 2);
+    cy.findByText("Visualize").click();
+    cy.findByText("Visualization").click();
+    cy.get(".Icon-pivot_table").click({ force: true });
+    cy.findAllByRole("button", { name: "Done" }).click();
+
+    cy.findAllByText(CC_NAME);
+  });
+
   describe("dashboards", () => {
     beforeEach(() => {
       cy.log("**--1. Create a question--**");
