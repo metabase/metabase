@@ -54,12 +54,7 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   it("should trim fields needed to connect to the database", () => {
-    cy.route({
-      method: "POST",
-      url: "/api/database",
-      response: { id: 42 },
-      delay: 1000,
-    }).as("createDatabase");
+    cy.route("POST", "/api/database", { id: 42 }).as("createDatabase");
 
     cy.visit("/admin/databases/create");
 
@@ -70,9 +65,11 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.findByText("Save").click();
 
-    cy.wait("@createDatabase");
-
-    cy.url().should("match", /\/admin\/databases\?created=42$/);
+    cy.wait("@createDatabase").then(({ request }) => {
+      expect(request.body.details.host).to.equal("localhost");
+      expect(request.body.details.dbname).to.equal("test_postgres_db");
+      expect(request.body.details.user).to.equal("uberadmin");
+    });
   });
 
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
