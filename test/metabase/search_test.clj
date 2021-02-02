@@ -22,8 +22,8 @@
     (is (thrown-with-msg? Exception #"does not match schema"
                           (search/tokenize nil)))))
 
-(deftest consecutivity-score-test
-  (let [score #'search/consecutivity-score]
+(deftest consecutivity-scorer-test
+  (let [score (comp first (partial #'search/score-with [#'search/consecutivity-scorer]))]
     (testing "partial matches"
       (is (= 1/3
              (score ["rasta" "el" "tucan"]
@@ -49,5 +49,35 @@
              (score ["rasta"]
                     (result-row "just a straight-up imposter")))
           (= 0
+             (score ["rasta" "the" "toucan"]
+                    (result-row "")))))))
+
+(deftest total-occurrences-scorer-test
+  (let [score (comp first (partial #'search/score-with [#'search/total-occurrences-scorer]))]
+    (testing "partial matches"
+      (is (= 1/3
+             (score ["rasta" "el" "tucan"]
+                    (result-row "Rasta the Toucan"))))
+      (is (= 1/3
+             (score ["rasta" "el" "tucan"]
+                    (result-row "Here is Rasta the hero of many lands"))))
+      (is (= 2/3
+             (score ["Imposter" "the" "toucan"]
+                    (result-row "Rasta the Toucan")))))
+    (testing "full matches"
+      (is (= 1
+             (score ["rasta" "the" "toucan"]
+                    (result-row "Rasta the Toucan"))))
+      (is (= 1
+             (score ["rasta"]
+                    (result-row "Rasta"))))
+      (is (= 1
+             (score ["rasta" "the" "toucan"]
+                    (result-row "Rasta may be my favorite of the toucans")))))
+    (testing "misses"
+      (is (= 0
+             (score ["rasta"]
+                    (result-row "just a straight-up imposter"))))
+      (is (= 0
              (score ["rasta" "the" "toucan"]
                     (result-row "")))))))

@@ -55,21 +55,44 @@
 
 ;;; Scoring
 
-(defn- consecutivity-score
-  "Score in [0, 1] based on the length of the largest matching sub-expression"
-  [tokens result]
-  (->
+(defn- hits->ratio
+  [hits total]
+  (/ hits total))
+
+(defn- matches?
+  [search-term haystack]
+  (str/includes? haystack search-term))
+
+(defn- matches-in?
+  [term haystack-tokens]
+  (some #(matches? term %) haystack-tokens))
+
+(defn- score-with
+  [scoring-fns tokens result]
+  (->>
    (for [column (searchable-columns-for-model (model-name->class (:model result)))
-         :let [target (-> result
+         :let [haystack (-> result
                           (get column)
                           normalize
                           tokenize)]]
-     (largest-common-subseq-length #(str/includes? %2 %1) tokens target))
-   ((partial apply max))
-   (/ (count tokens))))
+     (map #(% tokens haystack) scoring-fns))
+   (map (partial apply max))
+   (map #(hits->ratio % (count tokens)))))
+
+(def ^:private consecutivity-scorer
+  "Score in [0, 1] based on the length of the largest matching sub-expression"
+  (partial largest-common-subseq-length matches?))
+
+(defn- total-occurrences-scorer
+  "Score in [0, 1] based on the number of search terms found"
+  [tokens haystack]
+  (->> tokens
+       (map #(if (matches-in? % haystack) 1 0))
+       (reduce +)))
 
 (s/defn score :- s/Num
   [query :- s/Str, result :- s/Any] ;; TODO. It's a map with result columns + :model
   (let [query-tokens (tokenize query)]
-    (+
-     (consecutivity-score query-tokens result))))
+    (reduce +
+            (score-with [consecutivity-scorer
+                         total-occurrences-scorer]))))
