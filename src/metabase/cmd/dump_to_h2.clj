@@ -41,5 +41,5 @@
                  mdb.conn/*jdbc-spec* h2-jdbc-spec
                  db/*db-connection* h2-jdbc-spec
                  db/*quoting-style* :h2]
-         (rotate-encryption/rotate-keys! nil)))
+         (rotate-encryption/rotate-encryption-key! nil)))
      (println "Dump complete"))))

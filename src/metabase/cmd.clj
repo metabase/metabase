@@ -152,11 +152,12 @@
         {:keys [user]} (cmd-args->map args)]
     (cmd path user)))
 
-(defn ^:command rotate-keys
-  "Rotate the encryption of a metabase database."
-  [& args]
+(defn ^:command rotate-encryption-key
+  "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
+  the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars."
+  [new-key]
   (classloader/require 'metabase.cmd.rotate-encryption-key)
-  ((resolve 'metabase.cmd.rotate-encryption-key/rotate-keys!) (first args)))
+  ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key))
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 

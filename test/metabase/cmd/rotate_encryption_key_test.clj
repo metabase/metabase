@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.cmd.load-from-h2 :as load-from-h2]
-            [metabase.cmd.rotate-encryption-key :refer [rotate-keys!]]
+            [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
             [metabase.db :as mdb]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.spec :as db.spec]
@@ -34,7 +34,7 @@
   (:value (first (jdbc/query mdb.connection/*jdbc-spec*
                              ["select value from setting where setting.key=?;" key]))))
 
-(deftest rotate-keys!-test
+(deftest rotate-encryption-key!-test
   ;; (mdb/setup-db!)
   ;; (metabase.test.data.env/set-test-drivers! #{:mysql})
   (eu/with-secret-key nil
@@ -59,7 +59,7 @@
 
            (testing "rotating with the same key is a noop"
              (eu/with-secret-key k1
-               (is (rotate-keys! k1))
+               (is (rotate-encryption-key! k1))
                ;; plain->newkey
                (is (not (= "val0" (raw-value "setting0"))))
                (is (= "val0" (db/select-one-field :value Setting :key "setting0")))
@@ -68,7 +68,7 @@
                (is (= "val1" (db/select-one-field :value Setting :key "setting1")))))
 
            (testing "rotating with a new key is recoverable"
-             (eu/with-secret-key k1 (is (rotate-keys! k2)))
+             (eu/with-secret-key k1 (is (rotate-encryption-key! k2)))
              (eu/with-secret-key k2
                (is (= "val0" (db/select-one-field :value Setting :key "setting0")))
                (is (= {:db "/tmp/test.db"} (db/select-one-field :details Database :id 1))))
@@ -81,7 +81,7 @@
                (db/insert! Setting {:key "setting3", :value "val3"}))
              (eu/with-secret-key k2
                (db/insert! Setting {:key "setting2", :value "val2"})
-               (is (not (rotate-keys! k3))))
+               (is (not (rotate-encryption-key! k3))))
              (eu/with-secret-key k3
                (is (not (= "val2" (:value (first (db/select Setting :key [:= "setting2"]))))))
                (is (= "val3" (:value (first (db/select Setting :key [:= "setting3"])))))))
@@ -90,13 +90,13 @@
              (eu/with-secret-key k3
                (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"}))
              (eu/with-secret-key k2
-               (is (not (rotate-keys! k3))))
+               (is (not (rotate-encryption-key! k3))))
              (eu/with-secret-key k3
                (is (= {:db "/tmp/test.db"} (db/select-one-field :details Database :id 1)))))
 
-           (testing "rotate-keys! to nil decrypts the encrypted keys"
+           (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
              (db/delete! Setting :key "setting3")
              (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
              (eu/with-secret-key k2
-               (is (rotate-keys! nil)))
+               (is (rotate-encryption-key! nil)))
              (is (= "val0" (raw-value "setting0"))))))))))

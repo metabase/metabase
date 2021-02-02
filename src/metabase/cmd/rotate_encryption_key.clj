@@ -7,7 +7,7 @@
             [metabase.util.encryption :as encrypt]
             [toucan.db :as db]))
 
-(defn rotate-keys!
+(defn rotate-encryption-key!
   "Rotate the current configured db using the current MB_ENCRYPTION_SECRET_KEY env var and `to-key` argument."
   [to-key]
   (mdb/setup-db!)
@@ -19,7 +19,6 @@
       (jdbc/with-db-transaction [t-conn (mdb.conn/jdbc-spec)]
         (doseq [[key value] (db/select-field->field :key :value Setting)]
           (when (encrypt/possibly-encrypted-string? value)
-            (println key value)
             (throw  (Exception. "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt files")))
           (jdbc/update! t-conn
                         :setting
@@ -33,5 +32,4 @@
           (when (encrypt/possibly-encrypted-string? details)
             (throw  (Exception. "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt files")))))
       true)
-    ;; (catch  e (do (println e "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt the existing data")))
-    (catch Throwable e (do (println e "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt the existing data")))))
+    (catch Throwable e (println "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt the existing data"))))
