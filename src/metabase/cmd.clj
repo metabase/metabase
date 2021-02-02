@@ -52,8 +52,9 @@
   (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))
                         :dump-plaintext? (boolean (some #{"--dump-plaintext"} opts)) }
         return-code    ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)]
-    (when (pos-int? return-code)
-      (system-exit! return-code))))
+    (if (pos-int? return-code)
+      (system-exit! return-code)
+      (println "Dump complete"))))
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
