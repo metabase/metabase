@@ -351,7 +351,7 @@ describe("scenarios > collection_defaults", () => {
           cy.findByText(/Our analytics/i);
           cy.findByText(/My personal collection/i);
           cy.log("**Reported failing from v0.34.3**");
-          cy.findByText(/Child collection/i);
+          cy.findByText("Child");
         });
       });
     });
