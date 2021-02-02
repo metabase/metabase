@@ -2,6 +2,7 @@ import {
   describeWithToken,
   openOrdersTable,
   openPeopleTable,
+  openReviewsTable,
   popover,
   restore,
   signInAsAdmin,
@@ -17,6 +18,7 @@ const {
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
+  REVIEWS,
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
@@ -604,6 +606,32 @@ describeWithToken("formatting > sandboxes", () => {
         );
         // The name of this Vendor is visible in "details" only
         cy.findByText("McClure-Lockman");
+      });
+
+      it("simple sandboxing should work (metabase#14629)", () => {
+        cy.log(
+          "**-- 1. Sandbox `Reviews` table based on user attribute `attr_uid` --**",
+        );
+
+        cy.request("POST", "/api/mt/gtap", {
+          table_id: REVIEWS_ID,
+          group_id: COLLECTION_GROUP,
+          card_id: null,
+          attribute_remappings: {
+            [ATTR_UID]: ["dimension", ["field-id", REVIEWS.PRODUCT_ID]],
+          },
+        });
+
+        updatePermissionsGraph({
+          schema: {
+            [REVIEWS_ID]: { query: "segmented", read: "all" },
+            [PRODUCTS_ID]: "all",
+          },
+        });
+
+        signOut();
+        signInAsSandboxedUser();
+        openReviewsTable();
       });
     });
 
