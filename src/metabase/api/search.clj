@@ -153,21 +153,6 @@
    [:name :table_name]
    [:description :table_description]])
 
-(defmulti ^:private searchable-columns-for-model
-  "The columns that will be searched for the query."
-  {:arglists '([model])}
-  class)
-
-(defmethod searchable-columns-for-model :default
-  [_]
-  [:name])
-
-(defmethod searchable-columns-for-model (class Table)
-  [_]
-  [:name
-   :display_name])
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -260,7 +245,7 @@
   (let [archived-clause (archived-where-clause model archived?)
         search-clause   (search-string-clause search-string
                                               (map (partial hsql/qualify (model->alias model))
-                                                   (searchable-columns-for-model model)))]
+                                                   (search/searchable-columns-for-model model)))]
     (if search-clause
       [:and archived-clause search-clause]
       archived-clause)))
@@ -398,12 +383,14 @@
           results      (sort-by (juxt (comp model->sort-position :model)
                                       :name)
                                 (db/query search-query :max-rows search-max-results))]
-      (for [row results
-            :when (check-permissions-for-model row)]
-        ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-        (-> row
-            (update :favorite bit->boolean)
-            (update :archived bit->boolean))))))
+      ;; TODO: reconcile these two sorts
+      (sort-by (comp - (partial search/score (:search-string search-ctx)))
+               (for [row results
+                     :when (check-permissions-for-model row)]
+                 ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
+                 (-> row
+                     (update :favorite bit->boolean)
+                     (update :archived bit->boolean)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

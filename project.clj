@@ -51,7 +51,7 @@
    [joda-time/joda-time "2.10.8"]
    [org.clojure/core.logic "1.0.0"]
    [org.clojure/core.match "0.3.0"]                                   ; optimized pattern matching library for Clojure
-   [org.clojure/core.memoize "1.0.236"]                               ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+   [org.clojure/core.memoize "1.0.236"]                               ; needed by core.match and search; has useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
    [org.clojure/java.classpath "1.0.0"]                               ; examine the Java classpath from Clojure programs
    [org.clojure/java.jdbc "0.7.11"]                                   ; basic JDBC access from Clojure
