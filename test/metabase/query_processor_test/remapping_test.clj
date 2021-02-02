@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
   (:require [clojure.test :refer :all]
+            [clojure.string :as str]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :as qp.test]
@@ -31,14 +32,14 @@
                      ["Artisan"  3 2]
                      ["Asian"    4 2]]
               :cols [(-> (mt/col :categories :name)
-                         (assoc :remapped_from (mt/format-name "category_id"))
-                         (assoc :field_ref [:fk-> [:field-id (mt/id :venues :category_id)]
-                                            [:field-id (mt/id :categories :name)]])
-                         (assoc :fk_field_id (mt/id :venues :category_id))
-                         (assoc :source :breakout))
+                         (assoc :remapped_from (mt/format-name "category_id")
+                                :field_ref     [:fk-> [:field-id (mt/id :venues :category_id)]
+                                                [:field-id (mt/id :categories :name)]]
+                                :fk_field_id   (mt/id :venues :category_id)
+                                :source        :breakout))
                      (-> (mt/col :venues :category_id)
-                         (assoc :remapped_to (mt/format-name "name"))
-                         (assoc :source :breakout))
+                         (assoc :remapped_to (mt/format-name "name")
+                                :source      :breakout))
                      {:field_ref    [:aggregation 0]
                       :source       :aggregation
                       :display_name "Count"
@@ -51,7 +52,7 @@
                       :limit       3}))
                  qp.test/rows-and-cols
                  (update :cols (fn [[c1 c2 agg]]
-                                 [c1 c2 (dissoc agg :base_type)]))))))))
+                                 [(dissoc c1 :source_alias) c2 (dissoc agg :base_type)]))))))))
 
 (deftest nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -60,24 +61,18 @@
                      ["25°"                             11 "Burger"]
                      ["33 Taps"                          7 "Bar"]
                      ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
-              :cols [(-> (mt/col :venues :name)
-                         (assoc :field_ref [:field-literal (mt/format-name "name") :type/Text])
-                         (dissoc :description :parent_id :visibility_type))
+              :cols [(mt/col :venues :name)
                      (-> (mt/col :venues :category_id)
-                         (assoc :remapped_to "Foo")
-                         (assoc :field_ref [:field-literal (mt/format-name"category_id")])
-                         (dissoc :description :parent_id :visibility_type))
+                         (assoc :remapped_to "Foo"))
                      (#'add-dimension-projections/create-remapped-col "Foo" (mt/format-name "category_id") :type/Text)]}
-             (-> (mt/format-rows-by [str int str]
-                   (mt/run-mbql-query venues
-                     {:source-query {:source-table (mt/id :venues)
-                                     :fields       [[:field-id (mt/id :venues :name)]
-                                                    [:field-id  (mt/id :venues :category_id)]]
-                                     :order-by     [[:asc [:field-id (mt/id :venues :name)]]]
-                                     :limit        4}}))
-                 qp.test/rows-and-cols
-                 (update :cols (fn [[c1 c2 c3]]
-                                 [c1 (update c2 :field_ref (comp vec butlast)) c3]))))))))
+             (->> (mt/run-mbql-query venues
+                    {:source-query {:source-table (mt/id :venues)
+                                    :fields       [[:field-id (mt/id :venues :name)]
+                                                   [:field-id (mt/id :venues :category_id)]]
+                                    :order-by     [[:asc [:field-id (mt/id :venues :name)]]]
+                                    :limit        4}})
+                  (mt/format-rows-by [str int str])
+                  qp.test/rows-and-cols))))))
 
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
@@ -112,11 +107,13 @@
                               :name          (mt/format-name "name_2")
                               :remapped_from (mt/format-name "category_id")
                               :field_ref     $category_id->categories.name))]}
-             (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-               (mt/format-rows-by [int str int double double int str]
-                 (mt/run-mbql-query venues
-                   {:order-by [[:asc $name]]
-                    :limit    4}))))))))
+             (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
+                                 (mt/format-rows-by [int str int double double int str]
+                                   (mt/run-mbql-query venues
+                                     {:order-by [[:asc $name]]
+                                      :limit    4})))
+                 (update :cols (fn [[c1 c2 c3]]
+                                 [c1 c2 (dissoc c3 :source_alias)]))))))))
 
 (deftest remappings-with-field-clause-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -136,12 +133,14 @@
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")
                                 :field_ref     $category_id->categories.name))]}
-               (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                 (mt/format-rows-by [str int str str]
-                   (mt/run-mbql-query venues
-                     {:fields   [$name $price $category_id]
-                      :order-by [[:asc $name]]
-                      :limit    4})))))))))
+               (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
+                     (mt/format-rows-by [str int str str]
+                       (mt/run-mbql-query venues
+                         {:fields   [$name $price $category_id]
+                          :order-by [[:asc $name]]
+                          :limit    4})))
+                   (update :cols (fn [[c1 c2 c3]]
+                                   [c1 c2 (dissoc c3 :source_alias)])))))))))
 
 (deftest remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"

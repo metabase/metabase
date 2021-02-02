@@ -94,7 +94,12 @@
   (testing "Limiting to just 1 column on an MBQL query should still get the result metadata from the Field"
     (mt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query venues))]
       (is (= (select-keys mock.u/venue-fingerprints [:longitude])
-             (tu/throw-if-called fprint/fingerprinter (name->fingerprints (query->result-metadata (assoc-in (query-for-card card) [:query :fields] [[:field-id (mt/id :venues :longitude)]]))))))))
+             (tu/throw-if-called fprint/fingerprinter
+               (-> card
+                   query-for-card
+                   (assoc-in [:query :fields] [[:field-id (mt/id :venues :longitude)]])
+                   query->result-metadata
+                   name->fingerprints))))))
 
   (testing "Similar query as above, just native so that we need to calculate the fingerprint"
     (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native, :native {:query "select longitude from venues"}}}]

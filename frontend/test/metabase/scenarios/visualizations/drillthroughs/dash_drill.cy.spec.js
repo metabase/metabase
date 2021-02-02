@@ -65,7 +65,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
       it("should result in a correct query result", () => {
         cy.location("pathname").should("eq", `/question/${Q2.id}`);
-        cy.findByText("5,995");
+        cy.findByText("5,755");
       });
     });
 

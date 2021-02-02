@@ -129,7 +129,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
         .click();
 
       // confirm that the preview updated
-      cy.contains("Result: 18703");
+      cy.contains("Result: 18758");
 
       // update name and description, set a revision note, and save the update
       cy.get('[name="name"]').type("{selectall}orders > 10");

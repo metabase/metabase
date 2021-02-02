@@ -26,7 +26,7 @@
                      [4 "Wurstküche"                   29 33.9997 -118.465 2]
                      [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
               :cols (mapv
-                     (partial qp.test/field-literal-col :venues)
+                     (partial qp.test/col :venues)
                      [:id :name :category_id :latitude :longitude :price])}
              (qp.test/rows-and-cols
                (mt/format-rows-by :venues
@@ -55,17 +55,18 @@
                       :order-by     [[:asc *venues.id]]
                       :limit        5})))))))))
 
-
-(defn- breakout-results [& {:keys [has-source-metadata? has-extra-cols?]
+(defn- breakout-results [& {:keys [has-source-metadata? native-source?]
                             :or   {has-source-metadata? true
-                                   has-extra-cols?      false}}]
+                                   native-source?       false}}]
   {:rows [[1 22]
           [2 59]
           [3 13]
           [4  6]]
-   :cols [(cond-> (qp.test/breakout-col ((if has-extra-cols?
-                                           qp.test/field-literal-col-keep-extra-cols
-                                           qp.test/field-literal-col) :venues :price))
+   :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
+            native-source?
+            (-> (assoc :field_ref [:field-literal "PRICE" :type/Integer])
+                (dissoc :description :parent_id :visibility_type))
+
             (not has-source-metadata?)
             (dissoc :id :special_type :settings :fingerprint :table_id))
           (qp.test/aggregate-col :count)]})
@@ -79,22 +80,22 @@
                  (mt/run-mbql-query venues
                    {:source-query {:source-table $$venues}
                     :aggregation  [:count]
-                    :breakout     [*price]}))))))))
+                    :breakout     [$price]}))))))))
 
 (deftest breakout-fk-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (testing "Test including a breakout of a nested query column that follows an FK")
-    (is (= {:rows [[1 174] [2 474] [3 78] [4 39]]
-            :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
-                   (qp.test/aggregate-col :count)]}
-           (qp.test/rows-and-cols
-             (mt/format-rows-by [int int]
-               (mt/run-mbql-query checkins
-                 {:source-query {:source-table $$checkins
-                                 :filter       [:> $date "2014-01-01"]}
-                  :aggregation  [:count]
-                  :order-by     [[:asc $venue_id->venues.price]]
-                  :breakout     [$venue_id->venues.price]})))))))
+    (testing "Test including a breakout of a nested query column that follows an FK"
+      (is (= {:rows [[1 174] [2 474] [3 78] [4 39]]
+              :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
+                     (qp.test/aggregate-col :count)]}
+             (qp.test/rows-and-cols
+               (mt/format-rows-by [int int]
+                 (mt/run-mbql-query checkins
+                   {:source-query {:source-table $$checkins
+                                   :filter       [:> $date "2014-01-01"]}
+                    :aggregation  [:count]
+                    :order-by     [[:asc $venue_id->venues.price]]
+                    :breakout     [$venue_id->venues.price]}))))))))
 
 (deftest two-breakout-fk-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
@@ -127,7 +128,7 @@
                      [1 4 8]
                      [1 5 10]]
               :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
-                     (qp.test/breakout-col (qp.test/field-literal-col :checkins :user_id))
+                     (qp.test/breakout-col (qp.test/col :checkins :user_id))
                      (qp.test/aggregate-col :count)]}
              (qp.test/rows-and-cols
                (mt/format-rows-by [int int int]
@@ -137,19 +138,19 @@
                     :aggregation  [:count]
                     :filter       [:= $venue_id->venues.price 1]
                     :order-by     [[:asc $venue_id->venues.price]]
-                    :breakout     [$venue_id->venues.price *user_id]
+                    :breakout     [$venue_id->venues.price $user_id]
                     :limit        5}))))))))
 
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
-      (is (= (breakout-results :has-source-metadata? false)
+      (is (= (breakout-results)
              (qp.test/rows-and-cols
                (mt/format-rows-by [int int]
                  (mt/run-mbql-query venues
                    {:source-query {:native (:query (qp/query->native (mt/mbql-query venues)))}
                     :aggregation  [:count]
-                    :breakout     [*price]}))))))))
+                    :breakout     [$price]}))))))))
 
 
 (defn- mbql-card-def
@@ -188,14 +189,14 @@
     ;; This is the format that is actually used by the frontend; it gets translated to the normal `source-query`
     ;; format by middleware. It's provided as a convenience so only minimal changes need to be made to the frontend.
     (mt/with-temp Card [card (venues-mbql-card-def)]
-      (is (= (breakout-results :has-extra-cols? true)
+      (is (= (breakout-results)
              (qp.test/rows-and-cols
                (mt/format-rows-by [int int]
                  (qp/process-query
                   (query-with-source-card card
                     (mt/$ids venues
                       {:aggregation [:count]
-                       :breakout    [*price]}))))))))))
+                       :breakout    [$price]}))))))))))
 
 (deftest card-id-native-source-queries-test
   (let [run-native-query
@@ -208,13 +209,13 @@
                     (mt/$ids venues
                       {:aggregation [:count]
                        :breakout    [*price]})))))))]
-    (is (= (breakout-results :has-source-metadata? false)
+    (is (= (breakout-results :has-source-metadata? false :native-source? true)
            (run-native-query "SELECT * FROM VENUES"))
         "make sure `card__id`-style queries work with native source queries as well")
-    (is (= (breakout-results :has-source-metadata? false)
+    (is (= (breakout-results :has-source-metadata? false :native-source? true)
            (run-native-query "SELECT * FROM VENUES -- small comment here"))
         "Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail")
-    (is (= (breakout-results :has-source-metadata? false)
+    (is (= (breakout-results :has-source-metadata? false :native-source? true)
            (run-native-query "SELECT * FROM VENUES -- small comment here\n"))
         "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail")))
 
@@ -222,7 +223,7 @@
 (deftest filter-by-field-literal-test
   (testing "make sure we can filter by a field literal"
     (is (= {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-            :cols (mapv (partial qp.test/field-literal-col :venues)
+            :cols (mapv (partial qp.test/col :venues)
                         [:id :name :category_id :latitude :longitude :price])}
            (qp.test/rows-and-cols
              (mt/run-mbql-query venues
@@ -372,14 +373,14 @@
 
 (deftest correct-column-metadata-test
   (testing "make sure a query using a source query comes back with the correct columns metadata"
-    (is (= (map (partial qp.test/field-literal-col-keep-extra-cols :venues)
+    (is (= (map (partial qp.test/col :venues)
                 [:id :name :category_id :latitude :longitude :price])
            (mt/cols
              (mt/with-temp Card [card (venues-mbql-card-def)]
                (qp/process-query (query-with-source-card card)))))))
 
   (testing "make sure a breakout/aggregate query using a source query comes back with the correct columns metadata"
-    (is (= [(qp.test/breakout-col (qp.test/field-literal-col-keep-extra-cols :venues :price))
+    (is (= [(qp.test/breakout-col (qp.test/col :venues :price))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card (venues-mbql-card-def)]
@@ -387,7 +388,7 @@
                 (query-with-source-card card
                   (mt/$ids venues
                     {:aggregation [[:count]]
-                     :breakout    [*price]}))))))))
+                     :breakout    [$price]}))))))))
 
   (testing "make sure nested queries return the right columns metadata for SQL source queries and datetime breakouts"
     (is (= [(-> (qp.test/breakout-col (qp.test/field-literal-col :checkins :date))
@@ -419,7 +420,7 @@
                                                  :data :cols)]
                                      (-> (into {} col)
                                          (assoc :source :fields)))]
-          (is (= [(assoc date-col  :field_ref [:field-literal "DATE" :type/Date])
+          (is (= [(assoc date-col  :field_ref [:field-id (mt/id :checkins :date)])
                   (assoc count-col :field_ref [:field-literal "count" (:base_type count-col)])]
                  (mt/cols
                    (qp/process-query (query-with-source-card card))))))))))

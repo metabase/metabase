@@ -10,6 +10,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as pubset]
@@ -91,6 +92,18 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; custom Redshift type handling
+
+(def ^:private database-type->base-type
+  (sql-jdbc.sync/pattern-based-database-type->base-type
+   [[#"(?i)CHARACTER VARYING" :type/Text]       ; Redshift uses CHARACTER VARYING (N) as a synonym for VARCHAR(N)
+    [#"(?i)NUMERIC"           :type/Decimal]])) ; and also has a NUMERIC(P,S) type, which is the same as DECIMAL(P,S)
+
+(defmethod sql-jdbc.sync/database-type->base-type :redshift
+  [driver column-type]
+  (or (database-type->base-type column-type)
+      ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)))
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]

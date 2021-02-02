@@ -305,6 +305,9 @@ describe("scenarios > question > notebook", () => {
         visualization_settings: {},
       });
 
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
       // Join two previously saved questions
       cy.visit("/");
       cy.findByText("Ask a question").click();
@@ -323,12 +326,12 @@ describe("scenarios > question > notebook", () => {
         .click();
       cy.findByText("Visualize").click();
 
-      cy.log("**Reported failing in v1.35.4.1 and `master` on July, 16 2020**");
       cy.findByText("12928_Q1 + 12928_Q2");
+      cy.log("**Reported failing in v1.35.4.1 and `master` on July, 16 2020**");
       // TODO: Add a positive assertion once this issue is fixed
-      cy.findByText("There was a problem with your question").should(
-        "not.exist",
-      );
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
     });
 
     it.skip("should join saved question with sorted metric (metabase#13744)", () => {

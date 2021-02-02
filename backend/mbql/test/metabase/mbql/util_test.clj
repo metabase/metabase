@@ -1046,18 +1046,14 @@
   (mbql.u/datetime-arithmetics? [:+ [:field-id 13] 3]))
 
 (expect
-  (mbql.u/expression-with-name {:database 1
-                                :type     :query
-                                :query    {:expressions  {:two [:+ 1 1]}
-                                           :source-table 1}}
-                               "two"))
+ (mbql.u/expression-with-name {:expressions  {:two [:+ 1 1]}
+                               :source-table 1}
+                              "two"))
 
 ;; Make sure `expression-with-name` knows how to reach into the parent query if need be
 (expect
-  (mbql.u/expression-with-name {:database 1
-                                :type     :query
-                                :query    {:source-query {:expressions  {:two [:+ 1 1]}
-                                                          :source-table 1}}}
+ (mbql.u/expression-with-name {:source-query {:expressions  {:two [:+ 1 1]}
+                                              :source-table 1}}
                                "two"))
 
 (expect

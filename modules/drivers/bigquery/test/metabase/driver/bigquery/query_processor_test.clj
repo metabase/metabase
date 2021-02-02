@@ -132,13 +132,13 @@
 
 (deftest join-alias-test
   (mt/test-driver :bigquery
-    (is (= (str "SELECT `categories__via__category_id`.`name` AS `name`,"
+    (is (= (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
                 " count(*) AS `count` "
                 "FROM `v3_test_data.venues` "
                 "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
                 " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
-                "GROUP BY `name` "
-                "ORDER BY `name` ASC")
+                "GROUP BY `categories__via__category_id__name` "
+                "ORDER BY `categories__via__category_id__name` ASC")
            ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks
            ;; that and make it return `true` so this test proceeds as expected
            (with-redefs [driver/supports? (constantly true)]
