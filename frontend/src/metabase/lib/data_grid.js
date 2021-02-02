@@ -153,13 +153,13 @@ export function multiLevelPivot(data, settings) {
     leftIndexFormatters,
     leftIndexColumns,
   );
-  const subtotalSettings = rowColumnIndexes.map(index =>
-    getIn(columnSettings, [index, COLUMN_SHOW_TOTALS]),
+  const showSubtotalsByColumn = rowColumnIndexes.map(
+    index => getIn(columnSettings, [index, COLUMN_SHOW_TOTALS]) !== false,
   );
   const formattedRowTree = addSubtotals(
     formattedRowTreeWithoutSubtotals,
     leftIndexFormatters,
-    subtotalSettings,
+    showSubtotalsByColumn,
   );
   if (formattedRowTreeWithoutSubtotals.length > 1) {
     // if there are multiple columns, we should add another for row totals
@@ -353,16 +353,16 @@ function addValueColumnNodes(nodes, valueColumns) {
 
 // This inserts nodes into the left header tree for subtotals.
 // We also mark nodes with `hasSubtotal` to display collapsing UI
-function addSubtotals(rowColumnTree, formatters, subtotalSettings) {
+function addSubtotals(rowColumnTree, formatters, showSubtotalsByColumn) {
   return rowColumnTree.flatMap(item =>
-    addSubtotal(item, formatters, subtotalSettings),
+    addSubtotal(item, formatters, showSubtotalsByColumn),
   );
 }
 
 function addSubtotal(
   item,
   [formatter, ...formatters],
-  [isSubtotalEnabled, ...subtotalSettings],
+  [isSubtotalEnabled, ...showSubtotalsByColumn],
 ) {
   const hasSubtotal = item.children.length > 1 && isSubtotalEnabled;
   const subtotal = hasSubtotal
@@ -385,7 +385,7 @@ function addSubtotal(
     children: item.children.flatMap(item =>
       // add subtotals until the last level
       item.children.length > 0
-        ? addSubtotal(item, formatters, subtotalSettings)
+        ? addSubtotal(item, formatters, showSubtotalsByColumn)
         : item,
     ),
   };
