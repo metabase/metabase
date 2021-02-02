@@ -7922,6 +7922,117 @@ databaseChangeLog:
             constraintName: fk_pulse_ref_dashboard_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: 281
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - rename special_type
+      changes:
+        - renameColumn:
+            tableName: metabase_field
+            oldColumnName: special_type
+            newColumnName: semantic_type
+            columnDataType: varchar(255)
+  - changeSet:
+      id: 282
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - add effective type
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: effective_type
+                  type: varchar(255)
+                  remarks: 'The effective type of the field after any coercions.'
+  - changeSet:
+      id: 283
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - add coercion column
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: coercion_strategy
+                  type: varchar(255)
+                  remarks: 'A strategy to coerce the base_type into the effective_type.'
+  - changeSet:
+      id: 284
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - add relation type field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: relation_type
+                  type: varchar(255)
+                  remarks: 'Indicating if the field is a FK, PK, or a value.'
+  - changeSet:
+      id: 285
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - set effective type to base type
+      changes:
+        - sql:
+            sql: UPDATE metabase_field set effective_type = base_type
+  - changeSet:
+      id: 286
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - fill relation_type column
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET relation_type = (CASE semantic_type
+                                    WHEN 'type/PK' THEN 'type/PK'
+                                    WHEN 'type/FK' THEN 'type/FK'
+                                    ELSE NULL
+                                   END),
+                  semantic_type = (CASE semantic_type
+                                    WHEN 'type/PK' THEN NULL
+                                    WHEN 'type/FK' THEN NULL
+                                    ELSE semantic_type
+                                   END)
+  - changeSet:
+      id: 287
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - migrate ISO8601 strings
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET semantic_type     = NULL, -- special type was overriden to provide coercion so no semantic type
+                  effective_type    = (CASE semantic_type
+                                         WHEN 'type/ISO8601DateTimeString' THEN 'type/DateTime'
+                                         WHEN 'type/ISO8601TimeString'     THEN 'type/Time'
+                                         WHEN 'type/ISO8601DateString'     THEN 'type/Date'
+                                       END),
+                  coercion_strategy = (CASE semantic_type
+                                        WHEN 'type/ISO8601DateTimeString' THEN 'CoercionStrategy/ISO8601DateTime->Date'
+                                        WHEN 'type/ISO8601TimeString'     THEN 'CoercionStrategy/ISO8601Time->Date'
+                                        WHEN 'type/ISO8601DateString'     THEN 'CoercionStrategy/ISO8601Date->Date'
+                                       END)
+              WHERE semantic_type IN ('type/ISO8601DateTimeString',
+                                      'type/ISO8601TimeString',
+                                      'type/ISO8601DateString');
+  - changeSet:
+      id: 288
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - migrate unix timestamps
+      changes:
+        - sql:
+              sql: >-
+                UPDATE metabase_field
+                set semantic_type     = null,
+                    effective_type    = 'type/DateTime',
+                    coercion_strategy = (case semantic_type
+                                          WHEN 'type/UNIXTimestampSeconds'      THEN 'CoercionStrategy/UNIXSeconds->DateTime'
+                                          WHEN 'type/UNIXTimestampMilliSeconds' THEN 'CoercionStrategy/UNIXMilliSeconds->DateTime'
+                                          WHEN 'type/UNIXTimestampMicroSeconds' THEN 'CoercionStrategy/UNIXMicroSeconds->DateTime'
+                                         END)
+                WHERE semantic_type IN ('type/UNIXTimestampSeconds',
+                                        'type/UNIXTimestampMilliSeconds',
+                                        'type/UNIXTimestampMicroSeconds')
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
