@@ -180,53 +180,59 @@ function getAuthCodeEnableAPILink(engine, details) {
   }
 }
 
-function getFieldsForEngine(engine, details, id) {
-  let info = (MetabaseSettings.get("engines") || {})[engine];
-  if (engine === "bigquery") {
+function getEngineInfo(engine, details, id) {
+  const engineInfo = (MetabaseSettings.get("engines") || {})[engine];
+  switch (engine) {
     // BigQuery has special logic to switch out forms depending on what style of authenication we use.
-    info = getFieldsForBigQuery(details);
-  }
-  if (engine === "mongo") {
+    case "bigquery":
+      return getFieldsForBigQuery(details);
     // Mongo has special logic to switch between a connection URI and broken out fields
-    info = getFieldsForMongo(details, info, id);
+    case "mongo":
+      return getFieldsForMongo(details, engineInfo, id);
+    default:
+      return engineInfo;
   }
-  if (info) {
-    const fields = [];
-    for (const field of info["details-fields"]) {
-      // NOTE: special case to hide tunnel settings if tunnel is disabled
-      if (
-        field.name.startsWith("tunnel-") &&
-        field.name !== "tunnel-enabled" &&
-        !details["tunnel-enabled"]
-      ) {
-        continue;
-      }
+}
 
-      // hide the auth settings based on which auth method is selected
-      // private key auth needs tunnel-private-key and tunnel-private-key-passphrase
-      if (
-        field.name.startsWith("tunnel-private-") &&
-        details["tunnel-auth-option"] !== "ssh-key"
-      ) {
-        continue;
-      }
+function isHiddenField(field, details) {
+  // NOTE: special case to hide tunnel settings if tunnel is disabled
+  const isDisabledTunnelSettingsField =
+    field.name.startsWith("tunnel-") &&
+    field.name !== "tunnel-enabled" &&
+    !details["tunnel-enabled"];
 
-      // username / password auth uses tunnel-pass
-      if (
-        field.name === "tunnel-pass" &&
-        details["tunnel-auth-option"] === "ssh-key"
-      ) {
-        continue;
-      }
+  // hide the auth settings based on which auth method is selected
+  // private key auth needs tunnel-private-key and tunnel-private-key-passphrase
+  const isTunnelPrivateFieldWithoutProperAuthMethod =
+    field.name.startsWith("tunnel-private-") &&
+    details["tunnel-auth-option"] !== "ssh-key";
 
-      // NOTE: special case to hide the SSL cert field if SSL is disabled
-      if (field.name === "ssl-cert" && !details["ssl"]) {
-        continue;
-      }
+  // username / password auth uses tunnel-pass
+  const isTunnelPassFieldWithoutProperAuthMethod =
+    field.name === "tunnel-pass" && details["tunnel-auth-option"] === "ssh-key";
 
+  // NOTE: special case to hide the SSL cert field if SSL is disabled
+  const isDisabledSslField = field.name === "ssl-cert" && !details["ssl"];
+
+  return (
+    isDisabledTunnelSettingsField ||
+    isTunnelPrivateFieldWithoutProperAuthMethod ||
+    isTunnelPassFieldWithoutProperAuthMethod ||
+    isDisabledSslField
+  );
+}
+
+function getEngineFormFields(engine, details, id) {
+  const engineInfo = getEngineInfo(engine, details, id);
+  const engineFields = engineInfo ? engineInfo["details-fields"] : [];
+
+  // convert database details-fields to Form fields
+  return engineFields
+    .filter(field => !isHiddenField(field, details))
+    .map(field => {
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
-      // convert database details-fields to Form fields
-      fields.push({
+
+      return {
         name: `details.${field.name}`,
         title: field["display-name"],
         type: field.type,
@@ -234,22 +240,19 @@ function getFieldsForEngine(engine, details, id) {
         placeholder: field.placeholder || field.default,
         options: field.options,
         validate: value => (field.required && !value ? t`required` : null),
-        normalize: value =>
-          value === "" || value == null
-            ? "default" in field
-              ? field.default
-              : null
-            : value,
+        normalize: value => {
+          if (value === "" || value == null) {
+            return "default" in field ? field.default : null;
+          }
+
+          return value;
+        },
         horizontal: field.type === "boolean",
         initial: field.default,
         readOnly: field.readOnly || false,
         ...(overrides && overrides(engine, details, id)),
-      });
-    }
-    return fields;
-  } else {
-    return [];
-  }
+      };
+    });
 }
 
 const ENGINE_OPTIONS = Object.entries(MetabaseSettings.get("engines") || {})
@@ -276,7 +279,7 @@ const forms = {
         validate: value => !value && t`required`,
         hidden: !engine,
       },
-      ...(getFieldsForEngine(engine, details, id) || []),
+      ...(getEngineFormFields(engine, details, id) || []),
       {
         name: "auto_run_queries",
         type: "boolean",
