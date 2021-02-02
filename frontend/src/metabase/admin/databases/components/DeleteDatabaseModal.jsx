@@ -32,6 +32,7 @@ export default class DeleteDatabaseModal extends Component {
 
   render() {
     const { confirmValue } = this.state;
+    const { database } = this.props;
 
     let formError;
     if (this.state.error) {
@@ -46,14 +47,12 @@ export default class DeleteDatabaseModal extends Component {
       formError = <span className="text-error px2">{errorMessage}</span>;
     }
 
-    // allow English or localized
     const confirmed =
-      confirmValue.toUpperCase() === "DELETE" ||
-      confirmValue.toUpperCase() === t`DELETE`;
+      confirmValue.trim().toLowerCase() === database.name.trim().toLowerCase();
 
     return (
       <ModalContent
-        title={t`Delete this database?`}
+        title={t`Delete the ${database.name} database?`}
         onClose={this.props.onClose}
       >
         <div className="mb4">
@@ -62,7 +61,7 @@ export default class DeleteDatabaseModal extends Component {
             <strong>{t`This cannot be undone.`}</strong>
           </p>
           <p className="text-paragraph">
-            {t`If you're sure, please type`} <strong>{t`DELETE`}</strong>{" "}
+            {t`If you're sure, please type`} <strong>{database.name}</strong>{" "}
             {t`in this box:`}
           </p>
           <input

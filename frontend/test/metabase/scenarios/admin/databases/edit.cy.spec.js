@@ -197,7 +197,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.visit("/admin/databases/1");
       cy.findByText("Remove this database").click();
       modal().within(() => {
-        cy.get("input").type("DELETE");
+        cy.get("input").type("Sample Dataset");
         cy.get(".Button.Button--danger").click();
       });
 
