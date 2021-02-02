@@ -215,11 +215,13 @@ describe("scenarios > admin > databases > add", () => {
 
       typeField("Client ID", "   999  ");
 
-      cy.findAllByText("Click here").then(els => {
-        for (const el of els) {
-          expect(el.getAttribute("href").includes(" ")).to.be.false;
-        }
-      });
+      cy.findByText("get an auth code", { exact: false })
+        .findByRole("link")
+        .then(el => {
+          expect(el.attr("href")).to.equal(
+            "https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=999",
+          );
+        });
     });
   });
 });
