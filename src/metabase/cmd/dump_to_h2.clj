@@ -14,7 +14,9 @@
     lein run load-from-h2 '/path/to/metabase.db'"
   (:require [metabase.cmd.copy :as copy]
             [metabase.cmd.copy.h2 :as copy.h2]
-            [metabase.db.connection :as mdb.conn]))
+            [metabase.cmd.rotate-encryption-key :as rotate-encryption]
+            [metabase.db.connection :as mdb.conn]
+            [toucan.db :as db]))
 
 (defn dump-to-h2!
   "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
@@ -35,5 +37,9 @@
        (copy.h2/delete-existing-h2-database-files! h2-filename))
      (copy/copy!  (mdb.conn/db-type) (mdb.conn/jdbc-spec) :h2 h2-jdbc-spec)
      (when dump-plaintext?
-       (copy/overwrite-encrypted-fields-to-plaintext! (mdb.conn/db-type) (mdb.conn/jdbc-spec) :h2 h2-jdbc-spec))
+       (binding [mdb.conn/*db-type* :h2
+                 mdb.conn/*jdbc-spec* h2-jdbc-spec
+                 db/*db-connection* h2-jdbc-spec
+                 db/*quoting-style* :h2]
+         (rotate-encryption/rotate-keys! nil)))
      (println "Dump complete"))))
