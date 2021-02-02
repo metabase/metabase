@@ -8,6 +8,7 @@ import {
   popover,
   USERS,
   USER_GROUPS,
+  openOrdersTable,
 } from "__support__/cypress";
 // Ported from initial_collection.e2e.spec.js
 
@@ -337,7 +338,22 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Child");
       });
 
-      it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {});
+      it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
+        const { first_name, last_name } = nocollection;
+
+        openOrdersTable();
+        cy.findByText("Save").click();
+        // Click to choose which collection should this question be saved to
+        cy.findByText(
+          `${first_name} ${last_name}'s Personal Collection`,
+        ).click();
+        popover().within(() => {
+          cy.findByText(/Our analytics/i);
+          cy.findByText(/My personal collection/i);
+          cy.log("**Reported failing from v0.34.3**");
+          cy.findByText(/Child collection/i);
+        });
+      });
     });
 
     it.skip("sub-collection should be available in save and move modals (#14122)", () => {
