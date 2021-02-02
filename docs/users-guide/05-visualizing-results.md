@@ -144,7 +144,7 @@ If your table is a result that contains one numeric column and two grouping colu
 
 This auto-pivoting is distinct from the pivot table visualization, which we cover next.
 
-### Pivot tables
+### Pivot table
 
 Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions. 
 

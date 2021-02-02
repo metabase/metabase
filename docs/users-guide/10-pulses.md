@@ -1,6 +1,6 @@
 ## Dashboard subscriptions will replace Pulses in a future release
 
-[Dashboard subscriptions](dashboard-subscriptions) will be replacing Pulses in a future release of Metabase. Dashboard subscriptions allow you to send the contents of a dashboard on a schedule, without having to manually add each question (which Pulses require you to do). When we remove Pulses, we'll provide help for migrating your remaining Pulses to dashboard subscriptions. So if you're thinking of setting up a Pulse, try out a dashboard subscription instead.
+[Dashboard subscriptions](dashboard-subscriptions.md) will be replacing Pulses in a future release of Metabase. Dashboard subscriptions allow you to send the contents of a dashboard on a schedule, without having to manually add each question (which Pulses require you to do). When we remove Pulses, we'll provide help for migrating your remaining Pulses to dashboard subscriptions. So if you're thinking of setting up a Pulse, try out a dashboard subscription instead.
 
 ## Sharing updates with Pulses
 
