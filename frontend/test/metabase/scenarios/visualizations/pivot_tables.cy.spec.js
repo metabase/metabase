@@ -375,54 +375,36 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it.skip("should work with custom columns (metabase#14604)", () => {
-    const CC_NAME = "Mooooar Taxes!";
-
-    // Create a starting point the using API ("normal" question with a custom column)
-    cy.request("POST", "/api/card", {
-      name: "14604",
+    visitQuestionAdhoc({
       dataset_query: {
         database: 1,
         query: {
           "source-table": ORDERS_ID,
-          expressions: { [CC_NAME]: ["*", ["field-id", ORDERS.TAX], 2] },
-          aggregation: [["count"]],
+          expressions: { "Twice Total": ["*", ["field-id", ORDERS.TOTAL], 2] },
+          aggregation: [
+            ["sum", ["field-id", ORDERS.TOTAL]],
+            ["sum", ["expression", "Twice Total"]],
+          ],
           breakout: [
-            ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.SOURCE]],
-            [
-              "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.CATEGORY],
-            ],
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
           ],
         },
         type: "query",
       },
-      display: "table",
-      visualization_settings: {},
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
+      display: "pivot",
     });
 
-    // Open the "notebook" editor to edit this question
-    cy.get(".Icon-notebook").click();
+    // value headings
+    cy.findByText("Sum of Total");
+    cy.findByText("Sum of Twice Total");
 
-    // This is tricky and a bit fragile - last "plus" icon is used to add one more aggregation option
-    // which is exactly what we need for this test - add custom column as the third field for aggregation
-    cy.get(".Icon-add")
-      .last()
-      .click();
-    popover().within(() => {
-      cy.findByText(CC_NAME).click();
-    });
-    // One is "Custom column" and the other one is an aggregation field/option
-    cy.findAllByText(CC_NAME).should("have.length", 2);
-    // Choose pivot table as a visualization
-    cy.findByText("Visualize").click();
-    cy.findByText("Visualization").click();
-    cy.get(".Icon-pivot_table").click({ force: true });
-    cy.findAllByRole("button", { name: "Done" }).click();
+    // check values in the table
+    cy.findByText("42,156.87"); // sum of total for 2016
+    cy.findByText("84,313.74"); // sum of "twice total" for 2016
 
-    cy.findAllByText(CC_NAME);
+    // check grand totals
+    cy.findByText("1,510,621.68"); // sum of total grand total
+    cy.findByText("3,021,243.37"); // sum of "twice total" grand total
   });
 
   describe("dashboards", () => {
