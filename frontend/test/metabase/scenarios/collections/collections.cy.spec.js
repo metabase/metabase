@@ -334,8 +334,10 @@ describe("scenarios > collection_defaults", () => {
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
         cy.visit("/");
         cy.findByText("Child");
+        cy.findByText("Parent").should("not.exist");
         cy.findByText("Browse all items").click();
         cy.findByText("Child");
+        cy.findByText("Parent").should("not.exist");
       });
 
       it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
