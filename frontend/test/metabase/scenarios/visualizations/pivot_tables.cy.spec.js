@@ -7,7 +7,7 @@ import {
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATASET;
 
 const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
@@ -374,7 +374,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
 
-  it.skip("should work with custom columns (metabase#14604)", () => {
+  it.skip("should work with custom columns as values (metabase#14604)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,
@@ -405,6 +405,29 @@ describe("scenarios > visualizations > pivot tables", () => {
     // check grand totals
     cy.findByText("1,510,621.68"); // sum of total grand total
     cy.findByText("3,021,243.37"); // sum of "twice total" grand total
+  });
+
+  it.skip("should work with custom columns as pivoted columns (metabase#14604)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            category_foo: ["concat", ["field-id", PRODUCTS.CATEGORY], "foo"],
+          },
+          aggregation: [["count"]],
+          breakout: [["expression", "category_foo"]],
+        },
+        database: 1,
+      },
+      display: "pivot",
+    });
+
+    cy.findByText("category_foo");
+    cy.findByText("Doohickeyfoo");
+    cy.findByText("42"); // count of Doohickeyfoo
+    cy.findByText("200"); // grand total
   });
 
   describe("dashboards", () => {
