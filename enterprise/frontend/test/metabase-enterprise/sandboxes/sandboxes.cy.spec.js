@@ -493,111 +493,118 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("97.44"); // Subtotal for order #10
     });
 
-    it("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
-      cy.log("**-- Remap Product ID's display value to `title` --**");
+    describe("with display values remapped to use a foreign key", () => {
+      beforeEach(() => {
+        cy.log("**-- Remap Product ID's display value to `title` --**");
 
-      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-        field_id: ORDERS.PRODUCT_ID,
-        name: "Product ID",
-        human_readable_field_id: PRODUCTS.TITLE,
-        type: "external",
-      });
-      cy.log("**-- 1. Create the first native question with a filter --**");
-
-      cy.request("POST", "/api/card", {
-        name: "EE_520_Q1",
-        dataset_query: {
-          database: 1,
-          native: {
-            query:
-              "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL>10",
-            "template-tags": {
-              sandbox: {
-                "display-name": "Sandbox",
-                id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
-                name: "sandbox",
-                type: "number",
-              },
-            },
-          },
-          type: "native",
-        },
-        display: "table",
-        visualization_settings: {},
-      }).then(({ body: { id: CARD_ID } }) => {
-        cy.log("**-- 1a. Sandbox `Orders` table based on this question --**");
-
-        cy.request("POST", "/api/mt/gtap", {
-          attribute_remappings: {
-            [ATTR_UID]: ["variable", ["template-tag", "sandbox"]],
-          },
-          card_id: CARD_ID,
-          group_id: COLLECTION_GROUP,
-          table_id: ORDERS_ID,
-        });
-      });
-      cy.log("**-- 2. Create the second native question with a filter --**");
-
-      cy.request("POST", "/api/card", {
-        name: "EE_520_Q2",
-        dataset_query: {
-          database: 1,
-          native: {
-            query:
-              "SELECT * FROM PRODUCTS↵WHERE CATEGORY={{sandbox}} AND PRICE>10",
-            "template-tags": {
-              sandbox: {
-                "display-name": "Sandbox",
-                id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
-                name: "sandbox",
-                type: "text",
-              },
-            },
-          },
-          type: "native",
-        },
-        display: "table",
-        visualization_settings: {},
-      }).then(({ body: { id: CARD_ID } }) => {
-        cy.log("**-- 2a. Sandbox `Products` table based on this question --**");
-
-        cy.request("POST", "/api/mt/gtap", {
-          attribute_remappings: {
-            [ATTR_CAT]: ["variable", ["template-tag", "sandbox"]],
-          },
-          card_id: CARD_ID,
-          group_id: COLLECTION_GROUP,
-          table_id: PRODUCTS_ID,
+        cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+          field_id: ORDERS.PRODUCT_ID,
+          name: "Product ID",
+          human_readable_field_id: PRODUCTS.TITLE,
+          type: "external",
         });
       });
 
-      updatePermissionsGraph({
-        schema: {
-          [PRODUCTS_ID]: { query: "segmented", read: "all" },
-          [ORDERS_ID]: { query: "segmented", read: "all" },
-        },
+      it("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
+        cy.log("**-- 1. Create the first native question with a filter --**");
+
+        cy.request("POST", "/api/card", {
+          name: "EE_520_Q1",
+          dataset_query: {
+            database: 1,
+            native: {
+              query:
+                "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL>10",
+              "template-tags": {
+                sandbox: {
+                  "display-name": "Sandbox",
+                  id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
+                  name: "sandbox",
+                  type: "number",
+                },
+              },
+            },
+            type: "native",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: CARD_ID } }) => {
+          cy.log("**-- 1a. Sandbox `Orders` table based on this question --**");
+
+          cy.request("POST", "/api/mt/gtap", {
+            attribute_remappings: {
+              [ATTR_UID]: ["variable", ["template-tag", "sandbox"]],
+            },
+            card_id: CARD_ID,
+            group_id: COLLECTION_GROUP,
+            table_id: ORDERS_ID,
+          });
+        });
+        cy.log("**-- 2. Create the second native question with a filter --**");
+
+        cy.request("POST", "/api/card", {
+          name: "EE_520_Q2",
+          dataset_query: {
+            database: 1,
+            native: {
+              query:
+                "SELECT * FROM PRODUCTS↵WHERE CATEGORY={{sandbox}} AND PRICE>10",
+              "template-tags": {
+                sandbox: {
+                  "display-name": "Sandbox",
+                  id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
+                  name: "sandbox",
+                  type: "text",
+                },
+              },
+            },
+            type: "native",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: CARD_ID } }) => {
+          cy.log(
+            "**-- 2a. Sandbox `Products` table based on this question --**",
+          );
+
+          cy.request("POST", "/api/mt/gtap", {
+            attribute_remappings: {
+              [ATTR_CAT]: ["variable", ["template-tag", "sandbox"]],
+            },
+            card_id: CARD_ID,
+            group_id: COLLECTION_GROUP,
+            table_id: PRODUCTS_ID,
+          });
+        });
+
+        updatePermissionsGraph({
+          schema: {
+            [PRODUCTS_ID]: { query: "segmented", read: "all" },
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
+        });
+
+        signOut();
+        signInAsSandboxedUser();
+
+        openOrdersTable();
+
+        cy.log("**-- Reported failing on v1.36.x --**");
+
+        cy.log(
+          "**It should show remapped Display Values instead of Product ID**",
+        );
+        cy.get(".cellData")
+          .contains("Awesome Concrete Shoes")
+          .click();
+        cy.findByText(/View details/i).click();
+
+        cy.log(
+          "**It should show object details instead of filtering by this Product ID**",
+        );
+        // The name of this Vendor is visible in "details" only
+        cy.findByText("McClure-Lockman");
       });
-
-      signOut();
-      signInAsSandboxedUser();
-
-      openOrdersTable();
-
-      cy.log("**-- Reported failing on v1.36.x --**");
-
-      cy.log(
-        "**It should show remapped Display Values instead of Product ID**",
-      );
-      cy.get(".cellData")
-        .contains("Awesome Concrete Shoes")
-        .click();
-      cy.findByText(/View details/i).click();
-
-      cy.log(
-        "**It should show object details instead of filtering by this Product ID**",
-      );
-      // The name of this Vendor is visible in "details" only
-      cy.findByText("McClure-Lockman");
     });
 
     it.skip("should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (metabase#13642)", () => {
