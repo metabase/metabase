@@ -85,7 +85,6 @@ const Collections = createEntity({
             _.mapObject(state, removeCollectionFromChildren),
           );
 
-          console.log("newState:", newState); // NOCOMMIT
           return newState;
         }
       }
