@@ -36,10 +36,12 @@
      (when-not keep-existing?
        (copy.h2/delete-existing-h2-database-files! h2-filename))
      (copy/copy!  (mdb.conn/db-type) (mdb.conn/jdbc-spec) :h2 h2-jdbc-spec)
-     (when dump-plaintext?
+     (if dump-plaintext?
        (binding [mdb.conn/*db-type* :h2
                  mdb.conn/*jdbc-spec* h2-jdbc-spec
                  db/*db-connection* h2-jdbc-spec
                  db/*quoting-style* :h2]
-         (rotate-encryption/rotate-encryption-key! nil)))
-     (println "Dump complete"))))
+         (if (rotate-encryption/rotate-encryption-key! nil)
+           (println "Dump complete")
+           1))
+       (println "Dump complete")))))

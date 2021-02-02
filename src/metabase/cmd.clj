@@ -157,7 +157,9 @@
   the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars."
   [new-key]
   (classloader/require 'metabase.cmd.rotate-encryption-key)
-  ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key))
+  (let [return-code ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)]
+    (when (pos-int? return-code)
+      (system-exit! 1))))
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 
