@@ -220,6 +220,78 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
+  it("should allow hiding subtotals", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: testQuery.query.breakout,
+          columns: [],
+          values: [],
+        },
+      },
+    });
+
+    cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
+
+    cy.findByText("3,520"); // check for one of the subtotals
+
+    // open settings
+    cy.findByText("Settings").click();
+    assertOnPivotSettings();
+
+    // Confirm that Product -> Category doesn't have the option to hide subtotals
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Product → Category/)
+      .click();
+    cy.findByText("Show totals").should("not.exist");
+
+    // turn off subtotals for User -> Source
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Users? → Source/)
+      .click();
+    cy.findByText("Show totals")
+      .parent()
+      .find("a")
+      .click();
+
+    cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
+  });
+
+  it("should uncollapse a value when hiding the subtotals", () => {
+    const rows = testQuery.query.breakout;
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": { rows, columns: [], values: [] },
+        "pivot_table.collapsed_rows": { value: ['["Affiliate"]'], rows },
+      },
+    });
+
+    cy.findByText("899").should("not.exist"); // confirm that "Affiliate" is collapsed
+    cy.findByText("3,520"); // affiliate subtotal is visible
+
+    // open settings
+    cy.findByText("Settings").click();
+
+    // turn off subtotals for User -> Source
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Users? → Source/)
+      .click();
+    cy.findByText("Show totals")
+      .parent()
+      .find("a")
+      .click();
+
+    cy.findByText("3,520").should("not.exist"); // the subtotal isn't there
+    cy.findByText("899"); // Affiliate is no longer collapsed
+  });
+
   it("should expand and collapse field options", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
