@@ -1,8 +1,5 @@
 /* @flow */
 
-import _ from "underscore";
-import icepick from "icepick";
-
 import { createEntity, undo } from "metabase/lib/entities";
 
 import { color } from "metabase/lib/colors";
@@ -60,36 +57,6 @@ const Collections = createEntity({
     // NOTE: DELETE not currently implemented
     // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
-  },
-
-  reducer: (state = {}, { type, payload, error }) => {
-    if (type === "metabase/entities/collections/UPDATE" && !error) {
-      const collection = payload && payload.collection;
-      if (collection) {
-        const collectionId = collection.id;
-        const newParentId = collection.parent_id;
-
-        if (collectionId) {
-          const removeCollection = collections =>
-            collections &&
-            icepick.filter(
-              collection => collection.id !== collectionId,
-              collections,
-            );
-          const removeCollectionFromChildren = collection =>
-            collection.id === newParentId
-              ? collection
-              : icepick.updateIn(collection, ["children"], removeCollection);
-
-          const newState = icepick.freeze(
-            _.mapObject(state, removeCollectionFromChildren),
-          );
-
-          return newState;
-        }
-      }
-    }
-    return state;
   },
 
   objectSelectors: {

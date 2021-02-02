@@ -1470,20 +1470,20 @@
   (is (= [{:name     "A"
            :id       1
            :location "/"
-           :children [{:name "B", :id 2, :location "/1/"}
+           :children [{:name "B", :id 2, :location "/1/", :children []}
                       {:name     "C"
                        :id       3
                        :location "/1/"
                        :children [{:name     "D"
                                    :id       4
                                    :location "/1/3/"
-                                   :children [{:name "E", :id 5, :location "/1/3/4/"}]}
+                                   :children [{:name "E", :id 5, :location "/1/3/4/", :children []}]}
                                   {:name     "F"
                                    :id       6
                                    :location "/1/3/"
-                                   :children [{:name "G", :id 7, :location "/1/3/6/"}]}]}]}
-          {:name "aaa", :id 9, :location "/"}
-          {:name "H", :id 8, :location "/"}]
+                                   :children [{:name "G", :id 7, :location "/1/3/6/", :children []}]}]}]}
+          {:name "aaa", :id 9, :location "/", :children []}
+          {:name "H", :id 8, :location "/", :children []}]
          (collection/collections->tree
           [{:name "A", :id 1, :location "/"}
            {:name "B", :id 2, :location "/1/"}
@@ -1498,8 +1498,8 @@
          (collection/collections->tree nil)
          (collection/collections->tree [])))
   (testing "Make sure it doesn't throw an NPE if Collection name is nil for some reason (FE test data?)"
-    (is (= [{:name nil, :location "/", :id 1}
-            {:name "a", :location "/", :id 2}]
+    (is (= [{:name nil, :location "/", :id 1, :children []}
+            {:name "a", :location "/", :id 2, :children []}]
            (collection/collections->tree [{:name nil, :location "/", :id 1}
                                           {:name "a", :location "/", :id 2}])))))
 
@@ -1511,7 +1511,10 @@
     ;; +--+ [1] Parent Collection (All Users group has no perms)
     ;;    +--+ [2] Child Collection (All Users group has readwrite perms)
     ;;       +--+ [3] Grandchild collection (All Users group has readwrite perms)
-    (is (= [{:name "Child", :location "/1/", :id 2, :children [{:name "Grandchild", :location "/1/2/", :id 3}]}]
+    (is (= [{:name     "Child"
+             :location "/1/"
+             :id       2
+             :children [{:name "Grandchild", :location "/1/2/", :id 3, :children []}]}]
            (collection/collections->tree [{:name "Child", :location "/1/", :id 2}
                                           {:name "Grandchild", :location "/1/2/", :id 3} ])))))
 
@@ -1535,11 +1538,14 @@
                                          :location "/3/1/"
                                          :children [{:id       5
                                                      :name     "a"
-                                                     :location "/3/1/2/"}]}
+                                                     :location "/3/1/2/"
+                                                     :children []}]}
                                         {:id       4
                                          :name     "a"
-                                         :location "/3/1/"}]}
+                                         :location "/3/1/"
+                                         :children []}]}
                             {:id       6
                              :name     "a"
-                             :location "/3/"}]}]
+                             :location "/3/"
+                             :children []}]}]
                (collection/collections->tree collections)))))))
