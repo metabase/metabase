@@ -11,7 +11,7 @@
                                 [:field-id (mt/id :venues :price)]
                                 [:< [:field-id (mt/id :venues :price)] 4]]]}
                 (mt/run-mbql-query venues)
-                rows
+                mt/rows
                 ffirst
                 double)))
 
@@ -21,7 +21,7 @@
                                   ["field-id" (mt/id :venues :price)]
                                   ["<" ["field-id" (mt/id :venues :price)] 4]]]}
                   (mt/run-mbql-query venues)
-                  rows
+                  mt/rows
                   ffirst
                   double))))))
 
@@ -34,7 +34,7 @@
                                  [:or [:starts-with [:field-id (mt/id :venues :name)] "M"]
                                   [:ends-with [:field-id (mt/id :venues :name)] "t"]]]]]}
                 (mt/run-mbql-query venues)
-                rows
+                mt/rows
                 ffirst
                 double)))))
 
@@ -44,7 +44,7 @@
            (->> {:aggregation [[:sum-where [:field-id (mt/id :venues :price)] [:< [:field-id (mt/id :venues :price)] 4]]]
                  :filter      [:> [:field-id (mt/id :venues :price)] Long/MAX_VALUE]}
                 (mt/run-mbql-query venues)
-                rows
+                mt/rows
                 ffirst)))))
 
 (deftest breakout-test
@@ -60,7 +60,7 @@
                  :limit       4}
                 (mt/run-mbql-query venues)
                 (mt/round-all-decimals 2)
-                rows
+                mt/rows
                 (map (fn [[k v]]
                        [(long k) (double v)])))))))
 
@@ -75,7 +75,7 @@
                                  2]
                                 1]]}
                 (mt/run-mbql-query venues)
-                rows
+                mt/rows
                 ffirst
                 double)))))
 
@@ -87,7 +87,7 @@
       (is (= 179.0
              (->> {:aggregation [[:sum-where [:field-id (mt/id :venues :price)] [:segment segment-id]]]}
                   (mt/run-mbql-query venues)
-                  rows
+                  mt/rows
                   ffirst
                   double))))))
 
@@ -101,6 +101,6 @@
       (is (= 179.0
              (->> {:aggregation [[:metric metric-id]]}
                   (mt/run-mbql-query venues)
-                  rows
+                  mt/rows
                   ffirst
                   double))))))
