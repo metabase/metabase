@@ -222,6 +222,12 @@ export default class PivotTable extends Component {
     return showTotals;
   }
 
+  componentDidUpdate() {
+    // This is needed in case the cell counts didn't change, but the data did
+    this.leftHeaderRef && this.leftHeaderRef.recomputeCellSizesAndPositions();
+    this.topHeaderRef && this.topHeaderRef.recomputeCellSizesAndPositions();
+  }
+
   render() {
     const { settings, data, width, onUpdateVisualizationSettings } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
@@ -418,6 +424,7 @@ export default class PivotTable extends Component {
                 </div>
                 {/* top header */}
                 <Collection
+                  ref={e => (this.topHeaderRef = e)}
                   className="scroll-hide-all text-medium"
                   width={width - leftHeaderWidth}
                   height={topHeaderHeight}
@@ -434,6 +441,7 @@ export default class PivotTable extends Component {
                   <AutoSizer>
                     {({ height }) => (
                       <Collection
+                        ref={e => (this.leftHeaderRef = e)}
                         className="scroll-hide-all"
                         cellCount={leftHeaderItems.length}
                         cellRenderer={leftHeaderCellRenderer}
