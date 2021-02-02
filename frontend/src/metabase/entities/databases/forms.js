@@ -113,19 +113,13 @@ export const DEFAULT_SCHEDULES = {
   },
 };
 
-function concatURL(...urlParts) {
-  return urlParts.reduce(
-    (url, part) =>
-      typeof url !== "string" || typeof part !== "string"
-        ? undefined
-        : url + part.trim(),
-    "",
-  );
+function concatTrimmed(a, b) {
+  return (a || "").trim() + (b || "").trim();
 }
 
 function getClientIdDescription(engine, details) {
   if (CREDENTIALS_URL_PREFIXES[engine]) {
-    const credentialsURL = concatURL(
+    const credentialsURL = concatTrimmed(
       CREDENTIALS_URL_PREFIXES[engine],
       details["project-id"] || "",
     );
@@ -144,11 +138,11 @@ function getClientIdDescription(engine, details) {
 
 function getAuthCodeLink(engine, details) {
   if (AUTH_URL_PREFIXES[engine] && details["client-id"]) {
-    const authCodeURL = concatURL(
+    const authCodeURL = concatTrimmed(
       AUTH_URL_PREFIXES[engine],
       details["client-id"],
     );
-    const googleDriveAuthCodeURL = concatURL(
+    const googleDriveAuthCodeURL = concatTrimmed(
       AUTH_URL_PREFIXES["bigquery_with_drive"],
       details["client-id"],
     );
@@ -181,7 +175,10 @@ function getAuthCodeEnableAPILink(engine, details) {
       details["client-id"] && (details["client-id"].match(/^\d+/) || [])[0];
     if (ENABLE_API_PREFIXES[engine] && projectID) {
       // URL looks like https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project=12343611585
-      const enableAPIURL = concatURL(ENABLE_API_PREFIXES[engine], projectID);
+      const enableAPIURL = concatTrimmed(
+        ENABLE_API_PREFIXES[engine],
+        projectID,
+      );
 
       return (
         <span>

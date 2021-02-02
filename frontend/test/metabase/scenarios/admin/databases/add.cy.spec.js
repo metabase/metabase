@@ -203,24 +203,15 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   describe("Google Analytics ", () => {
-    it("should generate well-formed external auth URLs", () => {
-      cy.route({
-        method: "GET",
-        url: "/api/database/123",
-        response: {
-          id: 123,
-          engine: "googleanalytics",
-          details: {
-            "account-id": "account-id",
-            "client-id": "client-id",
-            "client-secret": "client-secret",
-            "auth-code": "auth-code",
-          },
-        },
-        status: 200,
-        delay: 100,
-      });
-      cy.visit("/admin/databases/123");
+    it.only("should generate well-formed external auth URLs", () => {
+      cy.visit("/admin/databases/create");
+      cy.contains("Database type")
+        .parents(".Form-field")
+        .find(".AdminSelect")
+        .click();
+      popover()
+        .contains("Google Analytics")
+        .click({ force: true });
 
       typeField("Client ID", "   999  ");
 
