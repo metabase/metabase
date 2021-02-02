@@ -292,46 +292,52 @@ describe("scenarios > collection_defaults", () => {
       signInAsAdmin();
     });
 
-    it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
-      // Create Parent collection within `Our analytics`
-      cy.request("POST", "/api/collection", {
-        name: "Parent",
-        color: "#509EE3",
-        parent_id: null,
-      }).then(({ body: { id: PARENT_COLLECTION_ID } }) => {
-        // Create Child collection within Parent collection
+    describe("nested collections with revoked parent access", () => {
+      beforeEach(() => {
+        // Create Parent collection within `Our analytics`
         cy.request("POST", "/api/collection", {
-          name: "Child",
+          name: "Parent",
           color: "#509EE3",
-          parent_id: PARENT_COLLECTION_ID,
-        }).then(({ body: { id: CHILD_COLLECTION_ID } }) => {
-          // Fetch collection permission graph
-          cy.request("GET", "/api/collection/graph").then(
-            ({ body: { groups, revision } }) => {
-              // Give `Data` group permission to "curate" Child collection only
-              // Access to everything else is revoked by default - that's why we chose `Data` group
-              groups[DATA_GROUP][CHILD_COLLECTION_ID] = "write";
+          parent_id: null,
+        }).then(({ body: { id: PARENT_COLLECTION_ID } }) => {
+          // Create Child collection within Parent collection
+          cy.request("POST", "/api/collection", {
+            name: "Child",
+            color: "#509EE3",
+            parent_id: PARENT_COLLECTION_ID,
+          }).then(({ body: { id: CHILD_COLLECTION_ID } }) => {
+            // Fetch collection permission graph
+            cy.request("GET", "/api/collection/graph").then(
+              ({ body: { groups, revision } }) => {
+                // Give `Data` group permission to "curate" Child collection only
+                // Access to everything else is revoked by default - that's why we chose `Data` group
+                groups[DATA_GROUP][CHILD_COLLECTION_ID] = "write";
 
-              // We're chaining these 2 requestes in order to match shema (passing it from GET to PUT)
-              // Similar to what we did in `sandboxes.cy.spec.js` with the permission graph
-              cy.request("PUT", "/api/collection/graph", {
-                // Pass previously mutated `groups` object
-                groups,
-                revision,
-              });
-            },
-          );
+                // We're chaining these 2 requestes in order to match shema (passing it from GET to PUT)
+                // Similar to what we did in `sandboxes.cy.spec.js` with the permission graph
+                cy.request("PUT", "/api/collection/graph", {
+                  // Pass previously mutated `groups` object
+                  groups,
+                  revision,
+                });
+              },
+            );
+          });
         });
+
+        signOut();
+        cy.log("**--Sign in as `nocollection` user--**");
+        cy.request("POST", "/api/session", nocollection);
       });
 
-      signOut();
-      cy.log("**--Sign in as `nocollection` user--**");
-      cy.request("POST", "/api/session", nocollection);
+      it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
+        cy.visit("/");
+        cy.findByText("Child");
+        cy.findByText("Browse all items").click();
+        cy.findByText("Child");
+      });
 
-      cy.visit("/");
-      cy.findByText("Child");
-      cy.findByText("Browse all items").click();
-      cy.findByText("Child");
+      it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {});
     });
 
     it.skip("sub-collection should be available in save and move modals (#14122)", () => {
