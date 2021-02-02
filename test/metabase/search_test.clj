@@ -23,7 +23,7 @@
                           (search/tokenize nil)))))
 
 (deftest consecutivity-scorer-test
-  (let [score (comp first (partial #'search/score-with [#'search/consecutivity-scorer]))]
+  (let [score (partial #'search/score-with [#'search/consecutivity-scorer])]
     (testing "partial matches"
       (is (= 1/3
              (score ["rasta" "el" "tucan"]
@@ -53,7 +53,7 @@
                     (result-row "")))))))
 
 (deftest total-occurrences-scorer-test
-  (let [score (comp first (partial #'search/score-with [#'search/total-occurrences-scorer]))]
+  (let [score (partial #'search/score-with [#'search/total-occurrences-scorer])]
     (testing "partial matches"
       (is (= 1/3
              (score ["rasta" "el" "tucan"]
@@ -81,3 +81,18 @@
       (is (= 0
              (score ["rasta" "the" "toucan"]
                     (result-row "")))))))
+
+(deftest exact-match-scorer-test
+  (let [score (partial #'search/score-with [#'search/exact-match-scorer])]
+    (is (= 0
+           (score ["rasta" "the" "toucan"]
+                  (result-row "Crowberto el tucan"))))
+    (is (= 1/3
+           (score ["rasta" "the" "toucan"]
+                  (result-row "Rasta el tucan"))))
+    (is (= 2/3
+           (score ["rasta" "the" "toucan"]
+                  (result-row "Crowberto the toucan"))))
+    (is (= 1
+           (score ["rasta" "the" "toucan"]
+                  (result-row "Rasta the toucan"))))))

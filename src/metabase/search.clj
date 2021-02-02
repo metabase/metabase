@@ -67,32 +67,47 @@
   [term haystack-tokens]
   (some #(matches? term %) haystack-tokens))
 
+(defn- score-ratios
+  [search-tokens result-tokens fs]
+  (map (fn [f]
+         (hits->ratio
+          (f search-tokens result-tokens)
+          (count search-tokens)))
+       fs))
+
 (defn- score-with
   [scoring-fns tokens result]
-  (->>
-   (for [column (searchable-columns-for-model (model-name->class (:model result)))
-         :let [haystack (-> result
-                          (get column)
-                          normalize
-                          tokenize)]]
-     (map #(% tokens haystack) scoring-fns))
-   (map (partial apply max))
-   (map #(hits->ratio % (count tokens)))))
+  (apply max
+         (for [column (searchable-columns-for-model (model-name->class (:model result)))
+               :let [haystack (-> result
+                                  (get column)
+                                  normalize
+                                  tokenize)]]
+           (reduce + (score-ratios tokens haystack scoring-fns)))))
 
 (def ^:private consecutivity-scorer
-  "Score in [0, 1] based on the length of the largest matching sub-expression"
   (partial largest-common-subseq-length matches?))
 
 (defn- total-occurrences-scorer
-  "Score in [0, 1] based on the number of search terms found"
   [tokens haystack]
   (->> tokens
        (map #(if (matches-in? % haystack) 1 0))
        (reduce +)))
 
+(defn- exact-match-scorer
+  [tokens haystack]
+  (->> tokens
+       (map #(if (some (partial = %) haystack) 1 0))
+       (reduce +)))
+
+(defn- weigh-by
+  [factor scorer]
+  (comp (partial * factor) scorer))
+
 (s/defn score :- s/Num
   [query :- s/Str, result :- s/Any] ;; TODO. It's a map with result columns + :model
-  (let [query-tokens (tokenize query)]
-    (reduce +
-            (score-with [consecutivity-scorer
-                         total-occurrences-scorer]))))
+  (score-with [consecutivity-scorer
+               total-occurrences-scorer
+               (weigh-by 1.5 exact-match-scorer)]
+              (tokenize query)
+              result))
