@@ -2,7 +2,6 @@ import {
   describeWithToken,
   openOrdersTable,
   openPeopleTable,
-  openReviewsTable,
   popover,
   restore,
   signInAsAdmin,
@@ -18,7 +17,6 @@ const {
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
-  REVIEWS,
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
@@ -608,30 +606,39 @@ describeWithToken("formatting > sandboxes", () => {
         cy.findByText("McClure-Lockman");
       });
 
-      it("simple sandboxing should work (metabase#14629)", () => {
+      it.skip("simple sandboxing should work (metabase#14629)", () => {
+        cy.server();
+        cy.route("POST", "/api/dataset").as("dataset");
+
         cy.log(
-          "**-- 1. Sandbox `Reviews` table based on user attribute `attr_uid` --**",
+          "**-- 1. Sandbox `Orders` table based on user attribute `attr_uid` --**",
         );
 
         cy.request("POST", "/api/mt/gtap", {
-          table_id: REVIEWS_ID,
+          table_id: ORDERS_ID,
           group_id: COLLECTION_GROUP,
           card_id: null,
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field-id", REVIEWS.PRODUCT_ID]],
+            [ATTR_UID]: ["dimension", ["field-id", ORDERS.PRODUCT_ID]],
           },
         });
 
         updatePermissionsGraph({
           schema: {
-            [REVIEWS_ID]: { query: "segmented", read: "all" },
+            [ORDERS_ID]: { query: "segmented", read: "all" },
             [PRODUCTS_ID]: "all",
           },
         });
 
         signOut();
         signInAsSandboxedUser();
-        openReviewsTable();
+        openOrdersTable();
+
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+        // Title of the Product ID = 1
+        cy.findAllByText("Rustic Paper Wallet");
       });
     });
 
