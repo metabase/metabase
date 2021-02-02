@@ -192,6 +192,7 @@ export default class PivotTable extends Component {
           .slice(0, rows.length - 1)
           .some(row => _.isEqual(row, column.field_ref));
         if (!canHaveSubtotal) {
+          // when this is null, the setting widget hides the toggle
           return null;
         }
         return currentValue == null ? true : currentValue;
