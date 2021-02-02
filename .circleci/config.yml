@@ -233,7 +233,7 @@ cache-key-metabase-core: &CacheKeyMetabaseCore
 
 # Key for the drivers built by build-uberjar-drivers
 cache-key-drivers: &CacheKeyDrivers
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}-<< parameters.edition >>
 
 # This is also used by the uberjar-build-drivers step; this is a unique situation because the build-drivers script has
 # logic to determine whether to rebuild drivers or not that is quite a bit more sophisticated that the run-on-change
@@ -241,9 +241,9 @@ cache-key-drivers: &CacheKeyDrivers
 # redshift driver.
 cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
   keys:
-    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}
-    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-
+    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}
+    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-
 
 # Key for frontend client built by uberjar-build-frontend step
 cache-key-frontend: &CacheKeyFrontend
@@ -816,6 +816,8 @@ jobs:
   # OSS and EE uberjars.
   build-uberjar-drivers:
     executor: metabase-ci
+    parameters:
+      <<: *Params
     steps:
       - attach-workspace
       - run-on-change:
@@ -835,8 +837,8 @@ jobs:
                 name: Restore cached drivers uberjars from previous runs
                 <<: *CacheKeyDrivers_WithFallbackKeys
             - run:
-                name: Build drivers if needed for cache key drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-                command: ./bin/build-drivers.sh
+                name: Build << parameters.edition >> drivers if needed
+                command: ./bin/build-drivers.sh << parameters.edition >>
                 no_output_timeout: 10m
             - save_cache:
                 name: Cache local Maven installation of metabase-core
@@ -1253,8 +1255,10 @@ workflows:
             - be-deps
 
       - build-uberjar-drivers:
+          name: build-uberjar-drivers-<< matrix.edition >>
           requires:
             - be-deps
+          <<: *Matrix
 
       - build-uberjar-frontend:
           name: build-uberjar-frontend-<< matrix.edition >>
@@ -1265,7 +1269,7 @@ workflows:
       - build-uberjar:
           name: build-uberjar-<< matrix.edition >>
           requires:
-            - build-uberjar-drivers
+            - build-uberjar-drivers-<< matrix.edition >>
             - build-uberjar-frontend-<< matrix.edition >>
           <<: *Matrix
 

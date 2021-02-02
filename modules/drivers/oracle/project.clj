@@ -11,6 +11,10 @@
      [com.oracle.ojdbc/ojdbc8 "19.3.0.0"]
      [metabase-core "1.0.0-SNAPSHOT"]]}
 
+   :ee
+   {:dependencies
+    [[com.oracle.ojdbc/ojdbc8 "19.3.0.0"]]}
+
    :uberjar
    {:auto-clean    true
     :aot           :all
