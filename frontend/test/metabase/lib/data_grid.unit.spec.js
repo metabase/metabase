@@ -589,7 +589,7 @@ describe("data_grid", () => {
     });
 
     it("should hide totals based on a column setting", () => {
-      let { leftHeaderItems } = multiLevelPivotForIndexes(
+      const { leftHeaderItems } = multiLevelPivotForIndexes(
         data,
         [],
         [0, 1],
