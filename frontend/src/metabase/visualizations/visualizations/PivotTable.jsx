@@ -439,7 +439,7 @@ export default class PivotTable extends Component {
               <div className="flex flex-full">
                 {/* left header */}
                 <div style={{ width: leftHeaderWidth }}>
-                  <AutoSizer>
+                  <AutoSizer disableWidth>
                     {({ height }) => (
                       <Collection
                         ref={e => (this.leftHeaderRef = e)}
@@ -459,7 +459,7 @@ export default class PivotTable extends Component {
                 </div>
                 {/* pivot table body */}
                 <div>
-                  <AutoSizer>
+                  <AutoSizer disableWidth>
                     {({ height }) => (
                       <Grid
                         width={width - leftHeaderWidth}
