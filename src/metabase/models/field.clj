@@ -133,12 +133,15 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-          :types          (constantly {:base_type        :keyword
-                                       :special_type     :keyword
-                                       :visibility_type  :keyword
-                                       :has_field_values :keyword
-                                       :fingerprint      :json-for-fingerprints
-                                       :settings         :json})
+          :types          (constantly {:base_type         :keyword
+                                       :semantic_type     :keyword
+                                       :coercion_strategy :keyword
+                                       :relation_type     :keyword
+                                       :effective_type    :keyword
+                                       :visibility_type   :keyword
+                                       :has_field_values  :keyword
+                                       :fingerprint       :json-for-fingerprints
+                                       :settings          :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update})
