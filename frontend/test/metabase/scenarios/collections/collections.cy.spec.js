@@ -421,7 +421,7 @@ describe("scenarios > collection_defaults", () => {
       //   });
     });
 
-    it.skip("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
+    it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
       cy.visit("/collection/root");
       cy.log("**Move 'Second collection' to the root");
       openDropdownFor("First collection");
