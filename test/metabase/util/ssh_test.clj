@@ -4,15 +4,21 @@
             [clojure.tools.logging :as log]
             [metabase.models.database :refer [Database]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.ssh :as sshu]
-            [metabase.util.ssh :as ssh])
+            [metabase.util.ssh :as ssh]
+            [metabase.test.data.interface :as tx])
   (:import [java.io BufferedReader InputStreamReader PrintWriter]
            [java.net InetSocketAddress ServerSocket Socket]
            org.apache.sshd.server.forward.AcceptAllForwardingFilter
-           org.apache.sshd.server.SshServer))
+           org.apache.sshd.server.SshServer
+           org.h2.tools.Server
+           (java.nio.file Files Path)
+           (java.nio.file.attribute FileAttribute)))
 
 (def ^:private ssh-username "jsmith")
 (def ^:private ssh-password "supersecret")
@@ -206,26 +212,81 @@
           (with-open [in-client (BufferedReader. (InputStreamReader. (.getInputStream socket)))]
             (is (= "hello from the ssh tunnel" (.readLine in-client)))))))))
 
+(defn- init-h2-tcp-server [port]
+  (let [args   ["-tcp" "-tcpPort", (str port), "-tcpAllowOthers" "-tcpDaemon"]
+        server (Server/createTcpServer (into-array args))]
+    (doto server (.start))))
+
 (deftest test-ssh-tunnel-reconnection
-  ;; for now, run against Postgres, although in theory it could run against many different kinds
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :mysql}
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
-      (let [real-db-details   (:details (mt/db))
-            tunnel-db-details (assoc real-db-details
-                                     :tunnel-enabled     true
-                                     :tunnel-host        "localhost"
+      (let [tunnel-db-details (assoc (:details (mt/db))
+                                     :tunnel-enabled true
+                                     :tunnel-host "localhost"
                                      :tunnel-auth-option "password"
-                                     :tunnel-port        ssh-mock-server-with-password-port
-                                     :tunnel-user        ssh-username
-                                     :tunnel-pass        ssh-password)]
-        (mt/with-temp Database [tunneled-db {:engine :postgres, :details tunnel-db-details}]
+                                     :tunnel-port ssh-mock-server-with-password-port
+                                     :tunnel-user ssh-username
+                                     :tunnel-pass ssh-password)]
+        (mt/with-temp Database [tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
-            (letfn [(check-row [] (is (= [["Polo Lounge"]]
-                                         (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
+            (letfn [(check-row []
+                      (is (= [["Polo Lounge"]]
+                             (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
               ;; check that some data can be queried
               (check-row)
               ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
               (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))
               ;; check the query again; the tunnel should have been reestablished
               (check-row))))))))
+
+(deftest test-ssh-tunnel-reconnection-h2
+  "We need a customized version of this test for H2. It will bring up a new H2 TCP server, pointing to an existing DB
+   file (stored in source control, called 'tiny-db', with a single table called 'my_tbl' and a GUEST user with
+   password 'guest'); it will then use an SSH tunnel over localhost to connect to this H2 server's TCP port to execute
+   native queries against that table."
+  (mt/test-driver :h2
+    (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
+      (let [h2-port   (+ 49152 (rand-int (- 65535 49152))) ; https://stackoverflow.com/a/2675399
+            server    (init-h2-tcp-server h2-port)
+            h2-url    (format "tcp://localhost:%d/./test_resources/ssh/tiny-db;USER=GUEST;PASSWORD=guest" h2-port)
+            real-db   {:db h2-url :host "localhost" :port h2-port}
+            tunnel-db (assoc real-db
+                             :tunnel-enabled true
+                             :tunnel-host "localhost"
+                             :tunnel-auth-option "password"
+                             :tunnel-port ssh-mock-server-with-password-port
+                             :tunnel-user ssh-username
+                             :tunnel-pass ssh-password)]
+        (mt/with-temp Database [tunneled-db {:engine :h2, :details tunnel-db}]
+          (mt/with-db tunneled-db
+            (try
+              (sync/sync-database! (mt/db))
+              (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text
+                                                     :display_name "COL1"
+                                                     :field_ref    [:field-literal
+                                                                    "COL1"
+                                                                    :type/Text]
+                                                     :name "COL1"
+                                                     :source :native}
+                                                    {:base_type    :type/Decimal
+                                                     :display_name "COL2"
+                                                     :field_ref    [:field-literal
+                                                                    "COL2"
+                                                                    :type/Decimal]
+                                                     :name         "COL2"
+                                                     :source       :native}]
+                                             :rows [["First Row" 19.10M]
+                                                    ["Second Row" 100.40M]
+                                                    ["Third Row" 91884.10M]]}
+                                           (-> {:query "SELECT col1, col2 FROM my_tbl;"}
+                                               (mt/native-query)
+                                               (qp/process-query)
+                                               (qp.test/rows-and-cols)))))]
+                ;; check that some data can be queried
+                (check-data)
+                ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
+                (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))
+                ;; check the query again; the tunnel should have been reestablished
+                (check-data))
+              (finally (.stop ^Server server)))))))))
