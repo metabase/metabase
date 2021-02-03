@@ -974,8 +974,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       previousCard,
     );
 
-    const cardWithVizSettings = new Question()
-      .setCard(cardAfterClick)
+    const cardWithVizSettings = new Question(cardAfterClick)
       .setDisplay(cardAfterClick.display || previousCard.display)
       .setSettings(
         cardAfterClick.visualization_settings ||
