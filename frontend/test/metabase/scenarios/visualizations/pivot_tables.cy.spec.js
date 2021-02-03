@@ -374,60 +374,64 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
 
-  it.skip("should work with custom columns as values (metabase#14604)", () => {
-    visitQuestionAdhoc({
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: { "Twice Total": ["*", ["field-id", ORDERS.TOTAL], 2] },
-          aggregation: [
-            ["sum", ["field-id", ORDERS.TOTAL]],
-            ["sum", ["expression", "Twice Total"]],
-          ],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
-        },
-        type: "query",
-      },
-      display: "pivot",
-    });
-
-    // value headings
-    cy.findByText("Sum of Total");
-    cy.findByText("Sum of Twice Total");
-
-    // check values in the table
-    cy.findByText("42,156.87"); // sum of total for 2016
-    cy.findByText("84,313.74"); // sum of "twice total" for 2016
-
-    // check grand totals
-    cy.findByText("1,510,621.68"); // sum of total grand total
-    cy.findByText("3,021,243.37"); // sum of "twice total" grand total
-  });
-
-  it.skip("should work with custom columns as pivoted columns (metabase#14604)", () => {
-    visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-          expressions: {
-            category_foo: ["concat", ["field-id", PRODUCTS.CATEGORY], "foo"],
+  describe("custom columns (metabase#14604)", () => {
+    it.skip("should work with custom columns as values", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            expressions: {
+              "Twice Total": ["*", ["field-id", ORDERS.TOTAL], 2],
+            },
+            aggregation: [
+              ["sum", ["field-id", ORDERS.TOTAL]],
+              ["sum", ["expression", "Twice Total"]],
+            ],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+            ],
           },
-          aggregation: [["count"]],
-          breakout: [["expression", "category_foo"]],
+          type: "query",
         },
-        database: 1,
-      },
-      display: "pivot",
+        display: "pivot",
+      });
+
+      // value headings
+      cy.findByText("Sum of Total");
+      cy.findByText("Sum of Twice Total");
+
+      // check values in the table
+      cy.findByText("42,156.87"); // sum of total for 2016
+      cy.findByText("84,313.74"); // sum of "twice total" for 2016
+
+      // check grand totals
+      cy.findByText("1,510,621.68"); // sum of total grand total
+      cy.findByText("3,021,243.37"); // sum of "twice total" grand total
     });
 
-    cy.findByText("category_foo");
-    cy.findByText("Doohickeyfoo");
-    cy.findByText("42"); // count of Doohickeyfoo
-    cy.findByText("200"); // grand total
+    it.skip("should work with custom columns as pivoted columns", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+            expressions: {
+              category_foo: ["concat", ["field-id", PRODUCTS.CATEGORY], "foo"],
+            },
+            aggregation: [["count"]],
+            breakout: [["expression", "category_foo"]],
+          },
+          database: 1,
+        },
+        display: "pivot",
+      });
+
+      cy.findByText("category_foo");
+      cy.findByText("Doohickeyfoo");
+      cy.findByText("42"); // count of Doohickeyfoo
+      cy.findByText("200"); // grand total
+    });
   });
 
   describe("dashboards", () => {
