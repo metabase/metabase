@@ -3,6 +3,7 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [metabase.cmd :as cmd]
             [metabase.cmd.load-from-h2 :as load-from-h2]
             [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
             [metabase.db :as mdb]
@@ -33,6 +34,12 @@
 (defn- raw-value [key]
   (:value (first (jdbc/query mdb.connection/*jdbc-spec*
                              ["select value from setting where setting.key=?;" key]))))
+
+(deftest cmd-rotate-encryption-key-errors-when-failed-test
+  (with-redefs [rotate-encryption-key! (constantly nil)
+                cmd/system-exit! identity]
+    (is (= 1 (cmd/rotate-encryption-key
+              "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
 
 (deftest rotate-encryption-key!-test
   ;; (mdb/setup-db!)
@@ -99,4 +106,7 @@
              (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
              (eu/with-secret-key k2
                (is (rotate-encryption-key! nil)))
-             (is (= "val0" (raw-value "setting0"))))))))))
+             (is (= "val0" (raw-value "setting0"))))
+
+           (testing "short keys fail to rotate"
+             (is (not (rotate-encryption-key! "short"))))))))))

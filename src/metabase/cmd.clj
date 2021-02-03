@@ -159,7 +159,7 @@
   [new-key]
   (classloader/require 'metabase.cmd.rotate-encryption-key)
   (let [return-code ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)]
-    (when (pos-int? return-code)
+    (when (not return-code)
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
