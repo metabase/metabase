@@ -379,12 +379,12 @@
                                          :when (seq query)]
                                      query)}
           _            (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          ;; sort results by [model name]
-          results      (sort-by (juxt (comp model->sort-position :model)
-                                      :name)
-                                (db/query search-query :max-rows search-max-results))]
-      ;; TODO: reconcile these two sorts
-      (sort-by (comp - (partial search/score (:search-string search-ctx)))
+          results      (db/query search-query :max-rows search-max-results)]
+      ;; sort by [score model name]
+      (sort-by (juxt
+                (comp - (partial search/score (:search-string search-ctx)))
+                (comp model->sort-position :model)
+                :name)
                (for [row results
                      :when (check-permissions-for-model row)]
                  ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed

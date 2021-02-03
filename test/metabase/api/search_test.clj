@@ -301,9 +301,9 @@
                                     :name             nil}]]
         (is (= []
                (filter (fn [{:keys [model id]}]
-                         (and (= id (u/get-id pulse))
+                         (and (= id (u/the-id pulse))
                               (= "pulse" model)))
-                       ((mt/user->client :crowberto) :get 200 "search"))))))))
+                       (mt/user-http-request :crowberto :get 200 "search"))))))))
 
 (defn- default-table-search-row [table-name]
   (merge

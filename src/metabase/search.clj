@@ -16,7 +16,7 @@
   (filter seq
           (str/split query #"\s+")))
 
-(def largest-common-subseq-length
+(def ^:private largest-common-subseq-length
   (memoize/fifo
    (fn
      ([eq xs ys]
@@ -31,7 +31,10 @@
            (largest-common-subseq-length eq (rest xs) (rest ys) (inc tally))
            tally)
          (largest-common-subseq-length eq xs (rest ys) 0)
-         (largest-common-subseq-length eq (rest xs) ys 0)))))))
+         (largest-common-subseq-length eq (rest xs) ys 0)))))
+   ;; Uses O(n*m) space with k < 2, so this gives us caching for at least a 22*22 search (or 50*10, etc) which sounds
+   ;; like more than enough. Memory is cheap and the items are small, so we may as well skew high
+   :fifo/threshold 1000))
 
 ;;; Model setup
 
@@ -105,9 +108,11 @@
   (comp (partial * factor) scorer))
 
 (s/defn score :- s/Num
-  [query :- s/Str, result :- s/Any] ;; TODO. It's a map with result columns + :model
-  (score-with [consecutivity-scorer
-               total-occurrences-scorer
-               (weigh-by 1.5 exact-match-scorer)]
-              (tokenize query)
-              result))
+  [query :- (s/maybe s/Str), result :- s/Any] ;; TODO. It's a map with result columns + :model
+  (if (seq query)
+    (score-with [consecutivity-scorer
+                 total-occurrences-scorer
+                 (weigh-by 1.5 exact-match-scorer)]
+                (tokenize (normalize query))
+                result)
+    0))
