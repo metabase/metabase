@@ -4,19 +4,21 @@
             [metabase.api.common :as api]
             [metabase.models.database :refer [Database]]
             [metabase.models.table :refer [Table]]
-            [metabase.sync :as sync]))
+            [metabase.sync :as sync]
+            [metabase.sync.sync-metadata :as sync-metadata]))
 
 (api/defendpoint POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single `Table`."
-  [id :as {{:keys [table_id table_name]} :body}]
-  (api/let-404 [database (Database id)]
-    (cond
-      table_id (when-let [table (Table :db_id id, :id (int table_id))]
-                 (future (sync/sync-table! table)))
-      table_name (when-let [table (Table :db_id id, :name table_name)]
-                   (future (sync/sync-table! table)))
-      :else (future (sync/sync-database! database))))
+  [id :as {{:keys [table_id table_name quick]} :body}]
+  (let [sync-fn (if quick sync-metadata/sync-table-metadata! sync/sync-table!)]
+    (api/let-404 [database (Database id)]
+      (cond
+        table_id (when-let [table (Table :db_id id, :id (int table_id))]
+                   (future (sync-fn table)))
+        table_name (when-let [table (Table :db_id id, :name table_name)]
+                     (future (sync-fn table)))
+        :else (future (sync/sync-database! database)))))
   {:success true})
 
 

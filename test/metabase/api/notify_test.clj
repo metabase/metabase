@@ -2,8 +2,11 @@
   (:require [clj-http.client :as client]
             [clojure.test :refer :all]
             [metabase.http-client :as http]
+            [metabase.models.database :as database :refer [Database]]
             [metabase.server.middleware.util :as middleware.u]
-            [metabase.test.fixtures :as fixtures]))
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server))
 
@@ -24,5 +27,29 @@
                                           "Content-Type"      "application/json"}})
                   (catch clojure.lang.ExceptionInfo e
                     (select-keys (:object (ex-data e)) [:status :body]))))))))
+
+(deftest post-db-id-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [table-name (->> (mt/db) database/tables first :name)
+          post (fn [quick]
+                 (try
+                   (mt/user-http-request :rasta :post (format "notify/db/%d" (u/the-id (mt/db)))
+                                         {:quick quick, :table_name table-name})
+                   (catch clojure.lang.ExceptionInfo e
+                     (select-keys (:object (ex-data e)) [:status :body]))))]
+      (testing "sync just table when table is provided"
+        (let [long-sync-called? (atom false), short-sync-called? (atom false)]
+          (with-redefs [metabase.sync/sync-table! (fn [_table] (reset! long-sync-called? true))
+                        metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (reset! short-sync-called? true))]
+            (is (= {:success true} (post false)))
+            (is @long-sync-called?)
+            (is (not @short-sync-called?)))))
+      (testing "only a quick sync when quick parameter is provided"
+        (let [long-sync-called? (atom false), short-sync-called? (atom false)]
+          (with-redefs [metabase.sync/sync-table! (fn [_table] (reset! long-sync-called? true))
+                        metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (reset! short-sync-called? true))]
+            (is (= {:success true} (post true)))
+            (is (not @long-sync-called?))
+            (is @short-sync-called?)))))))
 
 ;; TODO - how can we validate the normal scenario given that it just kicks off a background job?
