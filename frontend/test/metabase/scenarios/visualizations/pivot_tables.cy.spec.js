@@ -486,6 +486,16 @@ describe("scenarios > visualizations > pivot tables", () => {
     it("should display a pivot table on a dashboard (metabase#14465)", () => {
       assertOnPivotFields();
     });
+
+    it("should allow filtering drill through (metabase#14632)", () => {
+      assertOnPivotFields();
+      cy.findByText("Google").click(); // open actions menu
+      popover().within(() => cy.findByText("=").click()); // drill with additional filter
+      cy.findByText("Source is Google"); // filter was added
+      cy.findByText("Row totals"); // it's still a pivot table
+      cy.findByText("1,027"); // primary data value
+      cy.findByText("3,798"); // subtotal value
+    });
   });
 
   describe("sharing (metabase#14447)", () => {
