@@ -67,14 +67,6 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
 
-const EMPTY_METADATA = new Metadata({
-  databases: {},
-  tables: {},
-  fields: {},
-  metrics: {},
-  segments: {},
-});
-
 type QuestionUpdateFn = (q: Question) => ?Promise<void>;
 
 /**
@@ -114,7 +106,15 @@ export default class Question {
     update?: ?QuestionUpdateFn,
   ) {
     this._card = card;
-    this._metadata = metadata || EMPTY_METADATA;
+    this._metadata =
+      metadata ||
+      new Metadata({
+        databases: {},
+        tables: {},
+        fields: {},
+        metrics: {},
+        segments: {},
+      });
     this._parameterValues = parameterValues || {};
     this._update = update;
   }
