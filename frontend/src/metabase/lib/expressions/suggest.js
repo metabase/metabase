@@ -138,14 +138,14 @@ export function suggest({
       // fields, metrics, segments
       const parentRule = ruleStack.slice(-2, -1)[0];
       const isDimension =
-        parentRule === "dimensionExpression" &&
+        parentRule === "identifierExpression" &&
         (isExpressionType(expectedType, "expression") ||
           isExpressionType(expectedType, "boolean"));
       const isSegment =
-        parentRule === "dimensionExpression" &&
+        parentRule === "identifierExpression" &&
         isExpressionType(expectedType, "boolean");
       const isMetric =
-        parentRule === "dimensionExpression" &&
+        parentRule === "identifierExpression" &&
         isExpressionType(expectedType, "aggregation");
 
       if (isDimension) {
@@ -527,7 +527,7 @@ const ALL_RULES = [
   "multiplicationExpression",
   "functionExpression",
   "caseExpression",
-  "dimensionExpression",
+  "identifierExpression",
   "identifier",
   "identifierString",
   "stringLiteral",
