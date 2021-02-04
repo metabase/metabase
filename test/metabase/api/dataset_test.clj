@@ -374,12 +374,12 @@
 
             (let [cols (get-in result [:data :cols])]
               (is (= 7 (count cols)))
-              (is (= {:base_type "type/Text"
-                      :special_type nil
-                      :name "test-expr"
-                      :display_name "test-expr"
-                      :expression_name "test-expr"
-                      :field_ref ["expression" "test-expr"]
+              (is (= {:base_type "type/Integer"
+                      :special_type "type/Number"
+                      :name "pivot-grouping"
+                      :display_name "pivot-grouping"
+                      :expression_name "pivot-grouping"
+                      :field_ref ["expression" "pivot-grouping"]
                       :source "breakout"}
                      (nth cols 3))))
 

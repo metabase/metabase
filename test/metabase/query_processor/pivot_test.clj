@@ -118,23 +118,23 @@
                                                  [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
                                                  [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]
                                                  [:expression "pivot-grouping"]]
-                                   :expressions {"pivot-grouping" [:abs 0]}}}
+                                   :expressions {:pivot-grouping [:abs 0]}}}
                           {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
                                                  [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]
                                                  [:expression "pivot-grouping"]]
-                                   :expressions {"pivot-grouping" [:abs 1]}}}
+                                   :expressions {:pivot-grouping [:abs 1]}}}
                           {:query {:breakout    [[:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]
                                                  [:expression "pivot-grouping"]]
-                                   :expressions {"pivot-grouping" [:abs 3]}}}
+                                   :expressions {:pivot-grouping [:abs 3]}}}
                           {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
                                                  [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
                                                  [:expression "pivot-grouping"]]
-                                   :expressions {"pivot-grouping" [:abs 4]}}}
+                                   :expressions {:pivot-grouping [:abs 4]}}}
                           {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
                                                  [:expression "pivot-grouping"]]
-                                   :expressions {"pivot-grouping" [:abs 5]}}}
+                                   :expressions {:pivot-grouping [:abs 5]}}}
                           {:query {:breakout    [[:expression "pivot-grouping"]]
-                                   :expressions {"pivot-grouping" [:abs 7]}}}]
+                                   :expressions {:pivot-grouping [:abs 7]}}}]
                 expected (map (fn [expected-val] (-> expected-val
                                                      (assoc :type       :query
                                                             :parameters []
