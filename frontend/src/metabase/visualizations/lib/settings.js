@@ -268,8 +268,7 @@ export function updateSettings(
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.
-// Nested settings are merged by column/series.
-export function mergeSettings(first = {}, second = {}) {
+export function mergeSettings(first: Settings, second: Settings) {
   // Note: This hardcoded list of all nested settings is potentially fragile,
   // but both the list of nested settings and the keys used are very stable.
   const nestedSettings = ["series_settings", "column_settings"];
@@ -279,10 +278,10 @@ export function mergeSettings(first = {}, second = {}) {
     if (first[key] != null || second[key] != null) {
       merged[key] = {};
       for (const nestedKey of Object.keys({ ...first[key], ...second[key] })) {
-        const path = (merged[key][nestedKey] = mergeSettings(
-          getIn(first, [key, nestedKey]),
-          getIn(second, [key, nestedKey]),
-        ));
+        merged[key][nestedKey] = mergeSettings(
+          getIn(first, [key, nestedKey]) || {},
+          getIn(second, [key, nestedKey]) || {},
+        );
       }
     }
   }
