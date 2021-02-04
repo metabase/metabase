@@ -53,6 +53,7 @@
 (defn edition
   "Either `:oss` (Community Edition) or `:ee` (Enterprise Edition)."
   []
+  {:post [(#{:oss :ee} %)]}
   (build-option-or-throw :edition))
 
 (defn set-edition! [new-edition]
