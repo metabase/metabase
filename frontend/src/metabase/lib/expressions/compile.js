@@ -88,8 +88,8 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     return mbql;
   }
 
-  dimensionExpression(ctx) {
-    const name = this.visit(ctx.dimensionName);
+  identifierExpression(ctx) {
+    const name = this.visit(ctx.identifierName);
     return this.resolve(ctx.resolveAs, name);
   }
 

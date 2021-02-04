@@ -294,12 +294,12 @@ export class ExpressionParser extends CstParser {
       $.CONSUME(RParen);
     });
 
-    $.RULE("dimensionExpression", () => {
+    $.RULE("identifierExpression", () => {
       $.OR([
         {
-          ALT: () => $.SUBRULE($.identifierString, { LABEL: "dimensionName" }),
+          ALT: () => $.SUBRULE($.identifierString, { LABEL: "identifierName" }),
         },
-        { ALT: () => $.SUBRULE($.identifier, { LABEL: "dimensionName" }) },
+        { ALT: () => $.SUBRULE($.identifier, { LABEL: "identifierName" }) },
       ]);
     });
 
@@ -358,9 +358,9 @@ export class ExpressionParser extends CstParser {
               }),
           },
           {
-            // dimension (or later recasted into metric or segment)
+            // dimension/metric/segment
             ALT: () =>
-              $.SUBRULE($.dimensionExpression, {
+              $.SUBRULE($.identifierExpression, {
                 ARGS: [returnType],
                 LABEL: "expression",
               }),
