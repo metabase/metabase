@@ -11,7 +11,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Card Collection Field Table]]
+            [metabase.models :refer [Card Collection Dimension Field Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
