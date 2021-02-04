@@ -250,7 +250,6 @@ class ChartSettings extends Component {
       !settings.virtual_card
         ? this.handleResetSettings
         : null;
-    console.log({ settings, onReset });
 
     // custom render prop layout:
     if (children) {
