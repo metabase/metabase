@@ -505,6 +505,98 @@ describeWithToken("formatting > sandboxes", () => {
         });
       });
 
+      /**
+       * There isn't an exact issue that this test reproduces, but it is basically a version of (metabase-enterprise#520)
+       * that uses a query builder instead of SQL based questions.
+       */
+      it.skip("should be able to sandbox using query builder saved questions", () => {
+        cy.server();
+        cy.route("POST", "/api/dataset").as("dataset");
+
+        cy.log("**-- 1. Create 'Orders'-based question using QB --**");
+
+        cy.request("POST", "/api/card", {
+          name: "520_Orders",
+          dataset_query: {
+            type: "query",
+            query: {
+              "source-table": ORDERS_ID,
+              filter: [">", ["field-id", ORDERS.TOTAL], 10],
+            },
+            database: 1,
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: CARD_ID } }) => {
+          cy.log(
+            "**-- 1a. Sandbox `Orders` table based on this QB question and user attribute --**",
+          );
+
+          cy.request("POST", "/api/mt/gtap", {
+            attribute_remappings: {
+              [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+            },
+            card_id: CARD_ID,
+            group_id: COLLECTION_GROUP,
+            table_id: ORDERS_ID,
+          });
+        });
+
+        cy.log("**-- 2. Create 'Products'-based question using QB --**");
+        cy.request("POST", "/api/card", {
+          name: "520_Products",
+          dataset_query: {
+            type: "query",
+            query: {
+              "source-table": PRODUCTS_ID,
+              filter: [">", ["field-id", PRODUCTS.PRICE], 10],
+            },
+            database: 1,
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: CARD_ID } }) => {
+          cy.log(
+            "**-- 2a. Sandbox `Products` table based on this QB question and user attribute --**",
+          );
+
+          cy.request("POST", "/api/mt/gtap", {
+            attribute_remappings: {
+              [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+            },
+            card_id: CARD_ID,
+            group_id: COLLECTION_GROUP,
+            table_id: PRODUCTS_ID,
+          });
+        });
+
+        updatePermissionsGraph({
+          schema: {
+            [PRODUCTS_ID]: { query: "segmented", read: "all" },
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
+        });
+
+        signOut();
+        signInAsSandboxedUser();
+
+        openOrdersTable();
+
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+
+        cy.get(".cellData")
+          .contains("Awesome Concrete Shoes")
+          .click();
+        cy.findByText(/View details/i).click();
+
+        cy.log(
+          "**It should show object details instead of filtering by this Product ID**",
+        );
+        cy.findByText("McClure-Lockman");
+      });
+
       // Quarantined until further notice
       // Related issues: #10474, #14629
       it.skip("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
