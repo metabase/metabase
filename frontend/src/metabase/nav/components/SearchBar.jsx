@@ -93,6 +93,30 @@ export default class SearchBar extends React.Component {
     }
   };
 
+  renderResults(results) {
+    if (results.length === 0) {
+      return (
+        <li>
+          <Icon name="alert" />
+          {t`No results`}
+        </li>
+      );
+    } else {
+      return results.map(l => (
+        <li key={`${l.model}:${l.id}`}>
+          <Link to={l.getUrl()}>
+            <EntityItem
+              iconName={l.getIcon()}
+              name={l.name}
+              item={l}
+              variant="small"
+            />
+          </Link>
+        </li>
+      ));
+    }
+  }
+
   render() {
     const { active, searchText } = this.state;
     return (
@@ -132,28 +156,12 @@ export default class SearchBar extends React.Component {
                   debounced
                 >
                   {({ list }) => {
-                    if (list.length === 0) {
-                      return "No results";
-                    }
                     return (
                       <Card
                         className="overflow-y-auto"
                         style={{ maxHeight: 400 }}
                       >
-                        <ol>
-                          {list.map(l => (
-                            <li key={`${l.model}:${l.id}`}>
-                              <Link to={l.getUrl()}>
-                                <EntityItem
-                                  iconName={l.getIcon()}
-                                  name={l.name}
-                                  item={l}
-                                  variant="small"
-                                />
-                              </Link>
-                            </li>
-                          ))}
-                        </ol>
+                        <ol>{this.renderResults(list)}</ol>
                       </Card>
                     );
                   }}
