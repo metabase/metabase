@@ -96,7 +96,7 @@
     (update-in query [:query :expressions] assoc :pivot-grouping [:abs bitmask])
     ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
     ;; grouping expression ref to the breakouts
-    (update-in query [:query :breakout] concat [[:expression "pivot-grouping"]])
+    (assoc-in query [:query :breakout] (concat breakout [[:expression "pivot-grouping"]]))
     (do
       (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
       query)))

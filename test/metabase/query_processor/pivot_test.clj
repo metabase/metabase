@@ -215,6 +215,13 @@
     (is (= (count (mt/rows (pivot/run-pivot-query (pivot.test-utils/pivot-query))))
            (pivot/run-pivot-query (pivot.test-utils/pivot-query) nil {:rff rff})))))
 
+(deftest parameters-query-test
+  (mt/dataset sample-dataset
+    (is (schema= {:status    (s/eq :completed)
+                  :row_count (s/eq 137)
+                  s/Keyword  s/Any}
+                 (pivot/run-pivot-query (pivot.test-utils/parameters-query))))))
+
 (deftest pivots-should-not-return-expressions-test
   (mt/dataset sample-dataset
     (testing "Pivots should not return expression columns in the results (#14604)"
