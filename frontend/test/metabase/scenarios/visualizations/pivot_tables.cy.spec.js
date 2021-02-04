@@ -7,7 +7,7 @@ import {
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATASET;
 
 const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
@@ -220,6 +220,78 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
+  it("should allow hiding subtotals", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: testQuery.query.breakout,
+          columns: [],
+          values: [],
+        },
+      },
+    });
+
+    cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
+
+    cy.findByText("3,520"); // check for one of the subtotals
+
+    // open settings
+    cy.findByText("Settings").click();
+    assertOnPivotSettings();
+
+    // Confirm that Product -> Category doesn't have the option to hide subtotals
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Product → Category/)
+      .click();
+    cy.findByText("Show totals").should("not.exist");
+
+    // turn off subtotals for User -> Source
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Users? → Source/)
+      .click();
+    cy.findByText("Show totals")
+      .parent()
+      .find("a")
+      .click();
+
+    cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
+  });
+
+  it("should uncollapse a value when hiding the subtotals", () => {
+    const rows = testQuery.query.breakout;
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": { rows, columns: [], values: [] },
+        "pivot_table.collapsed_rows": { value: ['["Affiliate"]'], rows },
+      },
+    });
+
+    cy.findByText("899").should("not.exist"); // confirm that "Affiliate" is collapsed
+    cy.findByText("3,520"); // affiliate subtotal is visible
+
+    // open settings
+    cy.findByText("Settings").click();
+
+    // turn off subtotals for User -> Source
+    cy.findAllByText("Fields to use for the table")
+      .parent()
+      .findByText(/Users? → Source/)
+      .click();
+    cy.findByText("Show totals")
+      .parent()
+      .find("a")
+      .click();
+
+    cy.findByText("3,520").should("not.exist"); // the subtotal isn't there
+    cy.findByText("899"); // Affiliate is no longer collapsed
+  });
+
   it("should expand and collapse field options", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
@@ -374,6 +446,66 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
 
+  describe("custom columns (metabase#14604)", () => {
+    it.skip("should work with custom columns as values", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            expressions: {
+              "Twice Total": ["*", ["field-id", ORDERS.TOTAL], 2],
+            },
+            aggregation: [
+              ["sum", ["field-id", ORDERS.TOTAL]],
+              ["sum", ["expression", "Twice Total"]],
+            ],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+            ],
+          },
+          type: "query",
+        },
+        display: "pivot",
+      });
+
+      // value headings
+      cy.findByText("Sum of Total");
+      cy.findByText("Sum of Twice Total");
+
+      // check values in the table
+      cy.findByText("42,156.87"); // sum of total for 2016
+      cy.findByText("84,313.74"); // sum of "twice total" for 2016
+
+      // check grand totals
+      cy.findByText("1,510,621.68"); // sum of total grand total
+      cy.findByText("3,021,243.37"); // sum of "twice total" grand total
+    });
+
+    it.skip("should work with custom columns as pivoted columns", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+            expressions: {
+              category_foo: ["concat", ["field-id", PRODUCTS.CATEGORY], "foo"],
+            },
+            aggregation: [["count"]],
+            breakout: [["expression", "category_foo"]],
+          },
+          database: 1,
+        },
+        display: "pivot",
+      });
+
+      cy.findByText("category_foo");
+      cy.findByText("Doohickeyfoo");
+      cy.findByText("42"); // count of Doohickeyfoo
+      cy.findByText("200"); // grand total
+    });
+  });
+
   describe("dashboards", () => {
     beforeEach(() => {
       cy.log("**--1. Create a question--**");
@@ -413,6 +545,16 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     it("should display a pivot table on a dashboard (metabase#14465)", () => {
       assertOnPivotFields();
+    });
+
+    it("should allow filtering drill through (metabase#14632)", () => {
+      assertOnPivotFields();
+      cy.findByText("Google").click(); // open actions menu
+      popover().within(() => cy.findByText("=").click()); // drill with additional filter
+      cy.findByText("Source is Google"); // filter was added
+      cy.findByText("Row totals"); // it's still a pivot table
+      cy.findByText("1,027"); // primary data value
+      cy.findByText("3,798"); // subtotal value
     });
   });
 

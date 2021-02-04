@@ -238,7 +238,7 @@ export default class DimensionList extends Component {
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
         renderItemExtra={this.renderItemExtra}
-        getItemClassName={() => "hover-parent hover--visibility"}
+        getItemClassName={() => "hover-parent hover--display"}
       />
     );
   }

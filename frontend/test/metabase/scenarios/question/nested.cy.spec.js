@@ -325,4 +325,44 @@ describe("scenarios > question > nested", () => {
       });
     });
   });
+
+  it.skip("should handle remapped display values in a base QB question (metabase#10474)", () => {
+    cy.log(
+      "Related issue [#14629](https://github.com/metabase/metabase/issues/14629)",
+    );
+
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    cy.log("**-- 1. Remap Product ID's display value to `title` --**");
+    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+      field_id: ORDERS.PRODUCT_ID,
+      name: "Product ID",
+      human_readable_field_id: PRODUCTS.TITLE,
+      type: "external",
+    });
+
+    cy.log("**-- 2. Save simple 'Orders' table with remapped values --**");
+    cy.request("POST", "/api/card", {
+      name: "Orders (remapped)",
+      dataset_query: {
+        database: 1,
+        query: { "source-table": ORDERS_ID },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    });
+
+    // Try to use saved question as a base for a new / nested question
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("Orders (remapped)").click();
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+    cy.findAllByText("Awesome Concrete Shoes");
+  });
 });
