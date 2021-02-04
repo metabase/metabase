@@ -9,3 +9,6 @@ export const getDatabaseCreationStep = state =>
 // Database List
 export const getDeletes = state => state.admin.databases.deletes;
 export const getDeletionError = state => state.admin.databases.deletionError;
+
+export const getIsFetchingSampleDataset = state =>
+  state.admin.databases.fetchingSampleDataset;

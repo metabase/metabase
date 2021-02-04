@@ -18,11 +18,16 @@ import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 
 import Database from "metabase/entities/databases";
 
-import { getDeletes, getDeletionError } from "../selectors";
+import {
+  getDeletes,
+  getDeletionError,
+  getIsFetchingSampleDataset,
+} from "../selectors";
 import { deleteDatabase, addSampleDataset } from "../database";
 
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
+  isFetchingSampleDataset: getIsFetchingSampleDataset(state),
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
@@ -62,6 +67,7 @@ export default class DatabaseList extends Component {
     const {
       databases,
       hasSampleDataset,
+      isFetchingSampleDataset,
       created,
       engines,
       deletionError,
@@ -158,10 +164,18 @@ export default class DatabaseList extends Component {
                   "border-top": databases && databases.length > 0,
                 })}
               >
-                <a
-                  className="text-light text-brand-hover no-decoration"
-                  onClick={() => this.props.addSampleDataset()}
-                >{t`Bring the sample dataset back`}</a>
+                {isFetchingSampleDataset ? (
+                  <span className="text-light no-decoration">
+                    {t`Restoring the sample dataset...`}
+                  </span>
+                ) : (
+                  <a
+                    className="text-light text-brand-hover no-decoration"
+                    onClick={() => this.props.addSampleDataset()}
+                  >
+                    {t`Bring the sample dataset back`}
+                  </a>
+                )}
               </span>
             </div>
           ) : null}

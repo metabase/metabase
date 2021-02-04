@@ -39,6 +39,8 @@ export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
 export const INITIALIZE_DATABASE =
   "metabase/admin/databases/INITIALIZE_DATABASE";
 export const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
+export const ADDING_SAMPLE_DATASET =
+  "metabase/admin/databases/ADDING_SAMPLE_DATASET";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 export const SYNC_DATABASE_SCHEMA =
   "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
@@ -139,8 +141,13 @@ export const addSampleDataset = createThunkAction(
   function() {
     return async function(dispatch, getState) {
       try {
+        dispatch.action(ADDING_SAMPLE_DATASET);
         const sampleDataset = await MetabaseApi.db_add_sample_dataset();
-        dispatch(Databases.actions.fetchList(undefined, { reload: true }));
+        await dispatch(
+          Databases.actions.fetchList(undefined, {
+            reload: true,
+          }),
+        );
         MetabaseAnalytics.trackEvent("Databases", "Add Sample Data");
         return sampleDataset;
       } catch (error) {
@@ -346,9 +353,18 @@ const databaseCreationStep = handleActions(
   DB_EDIT_FORM_CONNECTION_TAB,
 );
 
+const fetchingSampleDataset = handleActions(
+  {
+    [ADDING_SAMPLE_DATASET]: () => true,
+    [ADD_SAMPLE_DATASET]: () => false,
+  },
+  false,
+);
+
 export default combineReducers({
   editingDatabase,
   deletionError,
   databaseCreationStep,
   deletes,
+  fetchingSampleDataset,
 });
