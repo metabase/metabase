@@ -1,4 +1,5 @@
 /* @flow */
+import { getIn } from "icepick";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
@@ -263,4 +264,27 @@ export function updateSettings(
     }
   }
   return newSettings;
+}
+
+// Merge two settings objects together.
+// Settings from the second argument take precedence over the first.
+// Nested settings are merged by column/series.
+export function mergeSettings(first = {}, second = {}) {
+  // Note: This hardcoded list of all nested settings is potentially fragile,
+  // but both the list of nested settings and the keys used are very stable.
+  const nestedSettings = ["series_settings", "column_settings"];
+  const merged = { ...first, ...second };
+  for (const key of nestedSettings) {
+    // only set key if one of the objects to be merged has that key set
+    if (first[key] != null || second[key] != null) {
+      merged[key] = {};
+      for (const nestedKey of Object.keys({ ...first[key], ...second[key] })) {
+        const path = (merged[key][nestedKey] = mergeSettings(
+          getIn(first, [key, nestedKey]),
+          getIn(second, [key, nestedKey]),
+        ));
+      }
+    }
+  }
+  return merged;
 }
