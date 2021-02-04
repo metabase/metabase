@@ -244,7 +244,13 @@ class ChartSettings extends Component {
       />
     ));
 
-    const onReset = !_.isEqual(settings, {}) ? this.handleResetSettings : null;
+    const onReset =
+      !_.isEqual(settings, {}) &&
+      // resetting virtual cards wipes the text and broke the UI (metabase#14644)
+      !settings.virtual_card
+        ? this.handleResetSettings
+        : null;
+    console.log({ settings, onReset });
 
     // custom render prop layout:
     if (children) {
