@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
