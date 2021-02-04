@@ -505,7 +505,9 @@ describeWithToken("formatting > sandboxes", () => {
         });
       });
 
-      it("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
+      // Quarantined until further notice
+      // Related issues: #10474, #14629
+      it.skip("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
         cy.log("**-- 1. Create the first native question with a filter --**");
 
         cy.request("POST", "/api/card", {
