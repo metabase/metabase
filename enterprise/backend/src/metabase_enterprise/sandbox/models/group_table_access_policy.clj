@@ -38,12 +38,11 @@
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
   (classloader/require 'metabase.query-processor)
-  (into {} (for [col (session/with-current-user nil
-                       ((resolve 'metabase.query-processor/query->expected-cols)
-                        {:database (table/table-id->database-id table-id)
-                         :type     :query
-                         :query    {:source-table table-id}}))]
-             [(:name col) col])))
+  (m/index-by :name (session/with-current-user nil
+                      ((resolve 'metabase.query-processor/query->expected-cols)
+                       {:database (table/table-id->database-id table-id)
+                        :type     :query
+                        :query    {:source-table table-id}}))))
 
 (s/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
