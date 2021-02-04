@@ -268,7 +268,7 @@ export function updateSettings(
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.
-export function mergeSettings(first: Settings, second: Settings) {
+export function mergeSettings(first: Settings = {}, second: Settings = {}) {
   // Note: This hardcoded list of all nested settings is potentially fragile,
   // but both the list of nested settings and the keys used are very stable.
   const nestedSettings = ["series_settings", "column_settings"];
