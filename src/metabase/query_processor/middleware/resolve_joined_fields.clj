@@ -1,8 +1,10 @@
 (ns metabase.query-processor.middleware.resolve-joined-fields
   "Middleware that wraps field references in `:joined-field` clauses where needed."
-  (:require [metabase.mbql.util :as mbql.u]
+  (:require [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
 (defn- wrap-field-in-joined-field
@@ -24,9 +26,13 @@
                                       (if (or (= (:table_id field) source-table)
                                               (contains? (set &parents) :joined-field))
                                         [:field-id field-id]
-                                        (wrap-field-in-joined-field field joins))))]
-    (cond-> form
-      source-query (assoc :source-query (wrap-fields-in-joined-field-if-needed source-query)))))
+                                        (wrap-field-in-joined-field field joins))))
+        form (cond-> form
+               source-query (assoc :source-query (wrap-fields-in-joined-field-if-needed source-query)))]
+    ;; now deduplicate :fields clauses
+    (mbql.u/replace form
+      (m :guard (every-pred map? :fields))
+      (update m :fields distinct))))
 
 (defn resolve-joined-fields
   "Wrap field references in `:joined-field` clauses where needed."

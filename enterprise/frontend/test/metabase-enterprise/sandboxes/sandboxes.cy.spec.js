@@ -700,7 +700,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.findByText("McClure-Lockman");
       });
 
-      it.skip("simple sandboxing should work (metabase#14629)", () => {
+      it("simple sandboxing should work (metabase#14629)", () => {
         cy.server();
         cy.route("POST", "/api/dataset").as("dataset");
 
