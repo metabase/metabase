@@ -21,13 +21,15 @@ import Database from "metabase/entities/databases";
 import {
   getDeletes,
   getDeletionError,
-  getIsFetchingSampleDataset,
+  getIsAddingSampleDataset,
+  getAddSampleDatasetError,
 } from "../selectors";
 import { deleteDatabase, addSampleDataset } from "../database";
 
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
-  isFetchingSampleDataset: getIsFetchingSampleDataset(state),
+  isAddingSampleDataset: getIsAddingSampleDataset(state),
+  addSampleDatasetError: getAddSampleDatasetError(state),
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
@@ -67,11 +69,14 @@ export default class DatabaseList extends Component {
     const {
       databases,
       hasSampleDataset,
-      isFetchingSampleDataset,
+      isAddingSampleDataset,
+      addSampleDatasetError,
       created,
       engines,
       deletionError,
     } = this.props;
+
+    const error = deletionError || addSampleDatasetError;
 
     return (
       <div className="wrapper">
@@ -82,9 +87,9 @@ export default class DatabaseList extends Component {
           >{t`Add database`}</Link>
           <h2 className="PageTitle">{t`Databases`}</h2>
         </section>
-        {deletionError && (
+        {error && (
           <section>
-            <FormMessage formError={deletionError} />
+            <FormMessage formError={error} />
           </section>
         )}
         <section>
@@ -164,7 +169,7 @@ export default class DatabaseList extends Component {
                   "border-top": databases && databases.length > 0,
                 })}
               >
-                {isFetchingSampleDataset ? (
+                {isAddingSampleDataset ? (
                   <span className="text-light no-decoration">
                     {t`Restoring the sample dataset...`}
                   </span>
