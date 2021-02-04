@@ -80,7 +80,7 @@ export function typeCheck(cst, rootType) {
       });
     }
 
-    dimensionExpression(ctx) {
+    identifierExpression(ctx) {
       const type = this.typeStack[0];
       if (type === "aggregation") {
         ctx.resolveAs = "metric";
@@ -92,7 +92,7 @@ export function typeCheck(cst, rootType) {
           throw new Error("Incorrect type for dimension");
         }
       }
-      return super.dimensionExpression(ctx);
+      return super.identifierExpression(ctx);
     }
   }
   const checker = new TypeChecker();
