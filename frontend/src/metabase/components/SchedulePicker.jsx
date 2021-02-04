@@ -10,9 +10,21 @@ import { t } from "ttag";
 import _ from "underscore";
 
 export const HOUR_OPTIONS = _.times(12, n => ({
-  name: (n === 0 ? 12 : n) + ":00",
+  name: (n === 0 ? 12 : n) + ":00 (Early)",
   value: n,
 }));
+
+// export const HOUR_OPTIONS = [
+//   { name: "1:00", value: 1 },
+//   { name: "2:00", value: 2 },
+//   { name: "3:00", value: 3 },
+//   { name: "4:00", value: 4 },
+//   { name: "5:00", value: 5 },
+//   { name: "6:00", value: 6 },
+//   { name: "7:00", value: 7 },
+//   { name: "11:00", value: 11 },
+//   { name: "12:00", value: 0 },
+// ];
 
 export const AM_PM_OPTIONS = [
   { name: "AM", value: 0 },
@@ -198,6 +210,11 @@ export default class SchedulePicker extends Component {
             }
             options={AM_PM_OPTIONS}
           />
+        </div>
+        <div className="flex align-center">
+          <span className="mr1 h4 text-bold text-medium">
+            Peak hours between 8 and 10 are disallowed. Early hours are recommended.
+          </span>
         </div>
         {textBeforeSendTime && (
           <div className="mt2 h4 text-bold text-medium border-top pt2">
