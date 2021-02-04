@@ -364,26 +364,35 @@
             (is (= [nil nil nil 7 18760 69540] (last rows)))))
 
         (testing "with an added expression"
-          (let [query (-> (pivots/pivot-query)
-                          (assoc-in [:query :fields] [[:expression "test-expr"]])
-                          (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
+         ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
+         ;; comments on `metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test`.
+          (let [query  (-> (pivots/pivot-query)
+                           (assoc-in [:query :fields] [[:expression "test-expr"]])
+                           (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
                 result (mt/user-http-request :rasta :post 202 "dataset/pivot" query)
-                rows (mt/rows result)]
+                rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))
             (is (= 1144 (count rows)))
 
-            (let [cols (get-in result [:data :cols])]
-              (is (= 7 (count cols)))
-              (is (= {:base_type "type/Integer"
-                      :special_type "type/Number"
-                      :name "pivot-grouping"
-                      :display_name "pivot-grouping"
+            (let [cols (mt/cols result)]
+              (is (= ["User → State"
+                      "User → Source"
+                      "Product → Category"
+                      "pivot-grouping"
+                      "Count"
+                      "Sum of Quantity"
+                      "test-expr"]
+                     (map :display_name cols)))
+              (is (= {:base_type       "type/Integer"
+                      :special_type    "type/Number"
+                      :name            "pivot-grouping"
+                      :display_name    "pivot-grouping"
                       :expression_name "pivot-grouping"
-                      :field_ref ["expression" "pivot-grouping"]
-                      :source "breakout"}
+                      :field_ref       ["expression" "pivot-grouping"]
+                      :source          "breakout"}
                      (nth cols 3))))
 
-            (is (= [nil nil nil "wheeee" 7 18760 69540] (last rows)))))))))
+            (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows)))))))))
 
 (deftest pivot-filter-dataset-test
   (mt/test-drivers pivots/applicable-drivers

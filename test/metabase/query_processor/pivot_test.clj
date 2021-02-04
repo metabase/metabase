@@ -189,13 +189,14 @@
 (deftest return-correct-columns-test
   (let [results (pivot/run-pivot-query (pivot.test-utils/pivot-query))
         rows    (mt/rows results)]
-    (is (= ["User → State"
-            "User → Source"
-            "Product → Category"
-            "pivot-grouping"
-            "Count"
-            "Sum of Quantity"]
-           (map :display_name (mt/cols results))))
+    (testing "Columns should come back in the expected order"
+      (is (= ["User → State"
+              "User → Source"
+              "Product → Category"
+              "pivot-grouping"
+              "Count"
+              "Sum of Quantity"]
+             (map :display_name (mt/cols results)))))
     (testing "Rows should have the correct shape"
       (let [Row [(s/one (s/maybe (apply s/enum (distinct-values :people   :state)))    "state")
                  (s/one (s/maybe (apply s/enum (distinct-values :people   :source)))   "source")
@@ -224,14 +225,34 @@
 
 (deftest pivots-should-not-return-expressions-test
   (mt/dataset sample-dataset
-    (testing "Pivots should not return expression columns in the results (#14604)"
-      (let [query (assoc (mt/mbql-query orders
-                           {:aggregation [[:count]]
-                            :breakout    [$user_id->people.source $product_id->products.category]})
-                         :pivot-rows [0]
-                         :pivot-cols [1])]
+    (let [query (assoc (mt/mbql-query orders
+                         {:aggregation [[:count]]
+                          :breakout    [$user_id->people.source $product_id->products.category]})
+                       :pivot-rows [0]
+                       :pivot-cols [1])]
+      (testing (str "Pivots should not return expression columns in the results if they are not explicitly included in "
+                    "`:fields` (#14604)")
         (is (= (pivot/run-pivot-query query)
-               (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))))))
+               (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]})))))
+
+      (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
+        ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle
+        ;; correctly, like #14604. The difference here is that #14064 was including expressions that weren't in
+        ;; `:fields` at all, which was a clear bug -- while returning expressions that are referenced in `:fields` is
+        ;; how the QP normally works in non-pivot-mode.
+        ;;
+        ;; I do not think there are any situations where the frontend actually explicitly specifies `:fields` in a
+        ;; pivot query, so we can revisit this behavior at a later date if needed.
+        (is (= ["User → Source"
+                "Product → Category"
+                "pivot-grouping"
+                "Count"
+                "test-expr"]
+               (map :display_name
+                    (mt/cols
+                      (pivot/run-pivot-query (-> query
+                                                 (assoc-in [:query :fields] [[:expression "test-expr"]])
+                                                 (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))))))))
 
     (testing "We should still be able to use expressions inside the aggregations"
       (is (schema= {:status   (s/eq :completed)
