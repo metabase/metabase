@@ -214,3 +214,23 @@
               ([acc _] (inc acc))))]
     (is (= (count (mt/rows (pivot/run-pivot-query (pivot.test-utils/pivot-query))))
            (pivot/run-pivot-query (pivot.test-utils/pivot-query) nil {:rff rff})))))
+
+(deftest pivots-should-not-return-expressions-test
+  (mt/dataset sample-dataset
+    (testing "Pivots should not return expression columns in the results (#14604)"
+      (let [query (assoc (mt/mbql-query orders
+                           {:aggregation [[:count]]
+                            :breakout    [$user_id->people.source $product_id->products.category]})
+                         :pivot-rows [0]
+                         :pivot-cols [1])]
+        (is (= (pivot/run-pivot-query query)
+               (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))))))
+
+    (testing "We should still be able to use expressions inside the aggregations"
+      (is (schema= {:status   (s/eq :completed)
+                    s/Keyword s/Any}
+                   (pivot/run-pivot-query
+                    (mt/mbql-query orders
+                      {:expressions {"Product Rating + 1" [:+ $product_id->products.rating 1]}
+                       :aggregation [[:count]]
+                       :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
