@@ -122,7 +122,8 @@
      :target target
      :value  (attr-value->param-value field-base-type attr-value)}))
 
-(defn- gtap->parameters [{attribute-remappings :attribute_remappings}]
+(defn- gtap->parameters
+  [{attribute-remappings :attribute_remappings}]
   (mapv (partial attr-remapping->parameter (:login_attributes @*current-user*))
         attribute-remappings))
 
@@ -142,7 +143,8 @@
              concat
              (gtap->parameters gtap)))
 
-(defn- table-gtap->source [{table-id :table_id, :as gtap}]
+(defn- table-gtap->source
+  [{table-id :table_id, :as gtap}]
   {:source-query {:source-table table-id, :parameters (gtap->parameters gtap)}})
 
 ;; If a GTAP source query doesn't have results metadata for whatever reason, we can infer the results metadata by
@@ -207,13 +209,15 @@
   (let [source-query (preprocess-source-query ((if card-id
                                                  card-gtap->source
                                                  table-gtap->source) gtap))
-        source-query (if-not (and run-gtap-source-query-for-metadata?
-                                  (empty? (:source-metadata source-query)))
+        source-query (if-not (or run-gtap-source-query-for-metadata?
+                                 (empty? (:source-metadata source-query)))
                        source-query
                        (let [metadata (run-gtap-source-query-for-metadata table-id source-query)]
                          (update-metadata-for-gtap! gtap metadata)
                          (assoc source-query :source-metadata metadata)))]
-    (update source-query :source-metadata (partial reconcile-metadata table-id))))
+    (if (:native source-query)
+      (update source-query :source-metadata (partial reconcile-metadata table-id))
+      source-query)))
 
 (s/defn ^:private gtap->perms-set :- #{perms/ObjectPath}
   "Calculate the set of permissions needed to run the query associated with a GTAP; this set of permissions is excluded
