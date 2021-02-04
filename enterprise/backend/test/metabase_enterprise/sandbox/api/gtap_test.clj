@@ -2,12 +2,11 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.http-client :as http]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.permissions-group :refer [PermissionsGroup]]
-            [metabase.models.table :refer [Table]]
+            [metabase.models :refer [Card Field PermissionsGroup Table]]
             [metabase.public-settings.metastore :as metastore]
             [metabase.server.middleware.util :as middleware.u]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [schema.core :as s]))
 
 (defmacro ^:private with-sandboxes-enabled [& body]
   `(with-redefs [metastore/enable-sandboxes? (constantly true)]
@@ -80,7 +79,23 @@
             (is (= (assoc default-gtap-results :card_id false)
                    (mt/boolean-ids-and-timestamps post-results)))
             (is (= post-results
-                   (mt/user-http-request :crowberto :get 200 (format "mt/gtap/%s" (:id post-results)))))))))))
+                   (mt/user-http-request :crowberto :get 200 (format "mt/gtap/%s" (:id post-results))))))))
+
+      (testing "Meaningful errors should be returned if you create an invalid GTAP"
+        (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
+                        Card  [{card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :venues)}}}]]
+          (with-gtap-cleanup
+            (is (schema= {:errors   (s/eq {:card_id "Sandbox Cards can't return columns that aren't present in the Table they are sandboxing."})
+                          :expected (s/eq [nil])
+                          :actual   (s/eq ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"])
+                          s/Keyword s/Any}
+                         (mt/user-http-request :crowberto :post 400 "mt/gtap"
+                                               {:table_id             table-id
+                                                :group_id             group-id
+                                                :card_id              card-id
+                                                :attribute_remappings {"foo" 1}})))))))))
 
 (deftest delete-gtap-test
   (testing "DELETE /api/mt/gtap/:id"
