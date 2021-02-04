@@ -48,8 +48,8 @@ describe("type-checker", () => {
       identifierString(ctx) {
         return parseIdentifierString(ctx.IdentifierString[0].image);
       }
-      dimensionExpression(ctx) {
-        const name = this.visit(ctx.dimensionName);
+      identifierExpression(ctx) {
+        const name = this.visit(ctx.identifierName);
         if (ctx.resolveAs === "metric") {
           this.metrics.push(name);
         } else if (ctx.resolveAs === "segment") {
