@@ -2,6 +2,7 @@
   "Tests for pivot table actions for the query processor"
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.api.pivots :as pivot.test-utils]
             [metabase.query-processor :as qp]
             [metabase.query-processor.pivot :as pivot]
@@ -232,8 +233,10 @@
                        :pivot-cols [1])]
       (testing (str "Pivots should not return expression columns in the results if they are not explicitly included in "
                     "`:fields` (#14604)")
-        (is (= (pivot/run-pivot-query query)
-               (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]})))))
+        (is (= (m/dissoc-in (pivot/run-pivot-query query)
+                            [:data :results_metadata :checksum])
+               (m/dissoc-in (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
+                            [:data :results_metadata :checksum]))))
 
       (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
         ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle
