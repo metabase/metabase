@@ -1,10 +1,8 @@
 (ns metabase.query-processor.middleware.resolve-joined-fields
   "Middleware that wraps field references in `:joined-field` clauses where needed."
-  (:require [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
+  (:require [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
 (defn- wrap-field-in-joined-field
