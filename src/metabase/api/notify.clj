@@ -11,14 +11,15 @@
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single `Table`."
   [id :as {{:keys [table_id table_name quick]} :body}]
-  (let [sync-fn (if quick sync-metadata/sync-table-metadata! sync/sync-table!)]
+  (let [table-sync-fn (if quick sync-metadata/sync-table-metadata! sync/sync-table!)
+        db-sync-fn (if quick sync-metadata/sync-db-metadata! sync/sync-database!)]
     (api/let-404 [database (Database id)]
       (cond
         table_id (when-let [table (Table :db_id id, :id (int table_id))]
-                   (future (sync-fn table)))
+                   (future (table-sync-fn table)))
         table_name (when-let [table (Table :db_id id, :name table_name)]
-                     (future (sync-fn table)))
-        :else (future (sync/sync-database! database)))))
+                     (future (table-sync-fn table)))
+        :else (future (db-sync-fn database)))))
   {:success true})
 
 
