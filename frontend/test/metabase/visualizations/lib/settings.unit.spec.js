@@ -174,7 +174,7 @@ describe("settings framework", () => {
     });
   });
 
-  describe("mergeSettings", () => {
+  describe("mergeSettings (metabase#14597)", () => {
     it("should merge with second overriding first", () => {
       expect(
         mergeSettings({ foo: { a: 1 }, bar: { b: 1 } }, { foo: { c: 1 } }),
