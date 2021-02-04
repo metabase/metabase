@@ -166,8 +166,8 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return this.functionExpression(ctx);
   }
 
-  dimensionExpression(ctx) {
-    return syntaxNode(ctx.resolveAs, this.visit(ctx.dimensionName));
+  identifierExpression(ctx) {
+    return syntaxNode(ctx.resolveAs, this.visit(ctx.identifierName));
   }
 
   identifier(ctx) {

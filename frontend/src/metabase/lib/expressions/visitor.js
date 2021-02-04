@@ -64,8 +64,8 @@ export class ExpressionVisitor {
     return (ctx.arguments || []).map(argument => this.visit(argument));
   }
 
-  dimensionExpression(ctx) {
-    return this.visit(ctx.dimensionName);
+  identifierExpression(ctx) {
+    return this.visit(ctx.identifierName);
   }
   identifier(ctx) {
     return (ctx.Identifier || []).map(id => id.image);
