@@ -33,18 +33,23 @@
       ;; -> {:source-table (data/id :venues), :fields [(data/id :venues :name)]}
 
      (There are several variations of this macro; see documentation below for more details.)"
-  (:require [clojure.test :as t]
+  (:require [clojure.string :as str]
+            [clojure.test :as t]
             [colorize.core :as colorize]
             [medley.core :as m]
             [metabase.driver.util :as driver.u]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.impl :as impl]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.mbql-query-impl :as mbql-query-impl]
             [metabase.util :as u]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
@@ -175,7 +180,80 @@
   {:style/indent 1}
   [table-name & [query]]
   `(qp/process-query
-     (mbql-query ~table-name ~(or query {}))))
+    (mbql-query ~table-name ~(or query {}))))
+
+(defn ->$ids
+  "Like `$ids`, but in reverse; attempts to convert forms like `:field-id` to shorthand forms like `$field`."
+  ([form]
+   (->$ids nil form))
+
+  ([source-table-id form]
+   (letfn [(strip-initial-$ [symb]
+             (str/replace-first (str symb) #"^\$" ""))]
+     (let [replaced
+           (mbql.u/replace form
+             ;; `$`  = wrapped Field ID
+             [:field-id id]
+             (let [{table-id :table_id, field-name :name} (db/select-one [Field :name :table_id] :id id)]
+               (symbol (if (= table-id source-table-id)
+                         (str \$ (str/lower-case field-name))
+                         (let [table-name (db/select-one-field :name Table :id table-id)
+                               table-symb (symbol (str/lower-case table-name))]
+                           (format "$%s.%s" table-symb (str/lower-case field-name))))))
+
+             ;; `*`  = field-literal for Field in app DB; `*field/type` for others
+             [:field-literal literal-name base-type]
+             (symbol (format "*%s/%s" literal-name (name base-type)))
+
+             ;; `&`  = wrap in `joined-field`
+             [:joined-field alias-name (field :guard symbol?)]
+             (symbol (format "&%s.%s" alias-name field))
+
+             ;; `!`  = wrap in `:datetime-field`
+             [:datetime-field (field :guard symbol?) unit]
+             (symbol (format "!%s.%s" (name unit) field))
+
+             ;; convert fk-> to $x->y form
+             [:fk-> (source-field :guard symbol?) (dest-field :guard symbol?)]
+             (symbol (format "$%s->%s" (strip-initial-$ source-field) (strip-initial-$ dest-field)))
+
+             ;; `$$` = table ID
+             (query :guard (every-pred map? (comp integer? :source-table)))
+             (update query :source-table (fn [source-table-id]
+                                           (->> (db/select-one-field :name Table :id source-table-id)
+                                                str/lower-case
+                                                (str "$$")
+                                                symbol))))]
+       (if (= form replaced)
+         replaced
+         (recur source-table-id replaced))))))
+
+(defn ->query-shorthand
+  "Convert a normal MBQL query with integer IDs (etc.) to `mt/query` shorthand, which is a little easier to read.
+  Perfect for REPL usage!"
+  [query]
+  (let [source-table-id (when-let [source-table (get-in query [:query :source-table])]
+                          (when (integer? source-table)
+                            source-table))
+        replaced (->$ids source-table-id query)]
+    (list 'mt/mbql-query
+          (some-> (get-in replaced [:query :source-table])
+                  (str/replace #"^\$\$" "")
+                  symbol)
+          (-> replaced
+              (dissoc :database :type)
+              (m/dissoc-in [:query :source-table])))))
+
+(def %query
+  {:database   185,
+   :type       :query,
+   :query
+   {:aggregation  [[:count]],
+    :breakout     [[:fk-> [:field-id 1121] [:field-id 1135]] [:fk-> [:field-id 1122] [:field-id 1113]]],
+    :source-table 381,
+    :expressions  {"Don't include me pls" [:+ 1 1]}},
+   :pivot-rows [0],
+   :pivot-cols [1]})
 
 (defn format-name
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the driver's
@@ -183,8 +261,8 @@
   `clojure.string/upper-case`.) This function DOES NOT quote the identifier."
   [a-name]
   (assert ((some-fn keyword? string? symbol?) a-name)
-    (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"
-         " `$table.field`, or specify a top-level default Table to `$ids` or `mbql-query`.)"))
+          (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"
+               " `$table.field`, or specify a top-level default Table to `$ids` or `mbql-query`.)"))
   (tx/format-name (tx/driver) (name a-name)))
 
 (defn id

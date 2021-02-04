@@ -63,6 +63,7 @@
 (p/import-vars
  [data
   $ids
+  ->$ids
   dataset
   db
   format-name
@@ -70,6 +71,7 @@
   mbql-query
   native-query
   query
+  ->query-shorthand
   run-mbql-query
   with-db
   with-temp-copy-of-db]
