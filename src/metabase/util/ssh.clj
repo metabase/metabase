@@ -1,5 +1,6 @@
 (ns metabase.util.ssh
   (:require [clojure.tools.logging :as log]
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u])
   (:import java.io.ByteArrayInputStream
            java.util.concurrent.TimeUnit
@@ -51,18 +52,20 @@
            tunnel-private-key-passphrase host port]}]
   (let [^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
         ^SessionHolder conn-status (.verify conn-future default-ssh-timeout)
+        hb-sec                     (public-settings/ssh-heartbeat-interval-sec)
         session                    (doto ^ClientSession (.getSession conn-status)
                                      (maybe-add-tunnel-password! tunnel-pass)
                                      (maybe-add-tunnel-private-key! tunnel-private-key tunnel-private-key-passphrase)
                                      (.setSessionHeartbeat SessionHeartbeatController$HeartbeatType/IGNORE
                                                            TimeUnit/SECONDS
-                                                           180)
+                                                           hb-sec)
                                      (.. auth (verify default-ssh-timeout)))
         tracker                    (.createLocalPortForwardingTracker session
                                                                       (SshdSocketAddress. "" 0)
                                                                       (SshdSocketAddress. host port))
         input-port                 (.. tracker getBoundAddress getPort)]
-    (log/trace (u/format-color 'cyan "creating ssh tunnel %s@%s:%s -L %s:%s:%s" tunnel-user tunnel-host tunnel-port input-port host port))
+    (log/trace (u/format-color 'cyan "creating ssh tunnel (heartbeating every %d seconds) %s@%s:%s -L %s:%s:%s"
+                               hb-sec tunnel-user tunnel-host tunnel-port input-port host port))
     [session tracker]))
 
 (def ssh-tunnel-preferences
