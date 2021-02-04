@@ -551,6 +551,7 @@ function CrossfilterOptions({
         isDash
         clickBehavior={clickBehavior}
         updateSettings={updateSettings}
+        excludeParametersSources
       />
     </SidebarContent>
   );
