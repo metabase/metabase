@@ -4,6 +4,7 @@
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.test :as t]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
@@ -304,20 +305,29 @@
               (throw (ex-info "Unexpected response: rows are not sequential!" {:response response})))))))))
 
 (defn data
-  "Return the result `data` from a successful query run, or throw an Exception if processing failed."
+  "Return the result `data` from a successful query run, or record a test failure if the query failed."
   {:style/indent 0}
   [results]
-  (when (#{:failed "failed"} (:status results))
-    (throw (ex-info (str (or (:error results) "Error running query"))
-             (if (map? results) results {:results results}))))
+  (when-not (#{:completed "completed"} (:status results))
+    (t/do-report
+     {:type     :fail
+      :message  "Query did not complete successfully."
+      :expected {:status :completed}
+      :actual   results}))
   (:data results))
 
 (defn rows
-  "Return the result rows from query `results`, or throw an Exception if they're missing."
+  "Return the result rows from query `results`, or record a test failure if the query failed."
   {:style/indent 0}
   [results]
-  (or (some-> (data results) :rows vec)
-      (throw (ex-info "Query does not have any :rows in results." results))))
+  (let [rows (some-> (data results) :rows vec)]
+    (when-not rows
+      (t/do-report
+       {:type     :fail
+        :message  "Query does not have any :rows in results."
+        :expected {:data {:rows [(symbol "...")]}}
+        :actual   results}))
+    rows))
 
 (defn formatted-rows
   "Combines `rows` and `format-rows-by`."
@@ -343,8 +353,14 @@
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (or (some->> (data results) :cols (mapv #(into {} %)))
-      (throw (ex-info "Query does not have any :cols in results." results))))
+  (let [cols (some->> (data results) :cols (mapv #(into {} %)))]
+    (when-not cols
+      (t/do-report
+       {:type     :fail
+        :message  "Query does not have any :cols in results."
+        :expected {:data {:cols [(symbol "...")]}}
+        :actual   results}))
+    cols))
 
 (defn rows-and-cols
   "Return both `:rows` and `:cols` from the results. Equivalent to
