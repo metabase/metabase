@@ -34,13 +34,11 @@
   (mt/test-drivers (mt/normal-drivers)
     (let [table-name (->> (mt/db) database/tables first :name)
           post       (fn [quick]
-                       (mt/user-http-request :crowberto
-                                             :post
-                                             (format "notify/db/%d" (u/the-id (mt/db)))
-                                             {:request-options
-                                              {:headers {"X-METABASE-APIKEY" (auth/api-key)
-                                                         "Content-Type"      "application/json"}}}
-                                             {:quick quick, :table_name table-name}))]
+                       (mt/client :post 200 (format "notify/db/%d" (u/the-id (mt/db)))
+                                  {:request-options
+                                   {:headers {"X-METABASE-APIKEY" (auth/api-key)
+                                              "Content-Type"      "application/json"}}}
+                                  {:quick quick, :table_name table-name}))]
       (testing "sync just table when table is provided"
         (let [long-sync-called? (atom false), short-sync-called? (atom false)]
           (with-redefs [metabase.sync/sync-table!                        (fn [_table] (reset! long-sync-called? true))
