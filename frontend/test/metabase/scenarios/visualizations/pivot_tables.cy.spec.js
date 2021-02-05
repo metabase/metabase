@@ -447,7 +447,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   describe("custom columns (metabase#14604)", () => {
-    it.skip("should work with custom columns as values", () => {
+    it("should work with custom columns as values", () => {
       visitQuestionAdhoc({
         dataset_query: {
           database: 1,
@@ -482,7 +482,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.findByText("3,021,243.37"); // sum of "twice total" grand total
     });
 
-    it.skip("should work with custom columns as pivoted columns", () => {
+    it("should work with custom columns as pivoted columns", () => {
       visitQuestionAdhoc({
         dataset_query: {
           type: "query",
