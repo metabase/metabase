@@ -2,7 +2,6 @@
   "Tests for specific behavior of the Oracle driver."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -16,7 +15,6 @@
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets :refer [expect-with-driver]]
             [metabase.test.data.oracle :as oracle.tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
@@ -54,18 +52,17 @@
            (sql-jdbc.conn/connection-details->spec :oracle details))
         message)))
 
-;; no SID and not Service Name should throw an exception
-(expect
-  AssertionError
-  (sql-jdbc.conn/connection-details->spec :oracle {:host "localhost"
-                                                   :port 1521}))
-
-(expect
-  "You must specify the SID and/or the Service Name."
-  (try (sql-jdbc.conn/connection-details->spec :oracle {:host "localhost"
-                                                        :port 1521})
-       (catch Throwable e
-         (driver/humanize-connection-error-message :oracle (.getMessage e)))))
+(deftest require-sid-or-service-name-test
+  (testing "no SID and no Service Name should throw an exception"
+    (is (thrown?
+         AssertionError
+         (sql-jdbc.conn/connection-details->spec :oracle {:host "localhost"
+                                                          :port 1521})))
+    (is (= "You must specify the SID and/or the Service Name."
+           (try (sql-jdbc.conn/connection-details->spec :oracle {:host "localhost"
+                                                                 :port 1521})
+                (catch Throwable e
+                  (driver/humanize-connection-error-message :oracle (.getMessage e))))))))
 
 (deftest test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"
@@ -96,9 +93,10 @@
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
 
-(expect-with-driver :oracle
-  "UTC"
-  (tu/db-timezone-id))
+(deftest timezone-id-test
+  (mt/test-driver :oracle
+    (is (= "UTC"
+           (tu/db-timezone-id)))))
 
 (deftest insert-rows-ddl-test
   (is (= [[(str "INSERT ALL"
@@ -127,31 +125,32 @@
   `(do-with-temp-user ~username (fn [~username-binding] ~@body)))
 
 
-;; Make sure Oracle CLOBs are returned as text (#9026)
-(expect-with-driver :oracle
-  [[1M "Hello"]
-   [2M nil]]
-  (let [details  (:details (data/db))
-        spec     (sql-jdbc.conn/connection-details->spec :oracle details)
-        execute! (fn [format-string & args]
-                   (jdbc/execute! spec (apply format format-string args)))
-        pk-type  (sql.tx/pk-sql-type :oracle)]
-    (with-temp-user [username]
-      (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
-      (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
-      (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
-      (tt/with-temp* [Table [table    {:schema username, :name "messages", :db_id (data/id)}]
-                      Field [id-field {:table_id (u/get-id table), :name "id", :base_type "type/Integer"}]
-                      Field [_        {:table_id (u/get-id table), :name "message", :base_type "type/Text"}]]
-        (qp.test/rows
-          (qp/process-query
-           {:database (data/id)
-            :type     :query
-            :query    {:source-table (u/get-id table)
-                       :order-by     [[:asc [:field-id (u/get-id id-field)]]]}}))))))
+(deftest return-clobs-as-text-test
+  (mt/test-driver :oracle
+    (testing "Make sure Oracle CLOBs are returned as text (#9026)"
+      (let [details  (:details (data/db))
+            spec     (sql-jdbc.conn/connection-details->spec :oracle details)
+            execute! (fn [format-string & args]
+                       (jdbc/execute! spec (apply format format-string args)))
+            pk-type  (sql.tx/pk-sql-type :oracle)]
+        (with-temp-user [username]
+          (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
+          (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
+          (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
+          (tt/with-temp* [Table [table    {:schema username, :name "messages", :db_id (data/id)}]
+                          Field [id-field {:table_id (u/get-id table), :name "id", :base_type "type/Integer"}]
+                          Field [_        {:table_id (u/get-id table), :name "message", :base_type "type/Text"}]]
+            (is (= [[1M "Hello"]
+                    [2M nil]]
+                   (qp.test/rows
+                     (qp/process-query
+                      {:database (data/id)
+                       :type     :query
+                       :query    {:source-table (u/get-id table)
+                                  :order-by     [[:asc [:field-id (u/get-id id-field)]]]}}))))))))))
 
 (deftest handle-slashes-test
-  (datasets/test-driver :oracle
+  (mt/test-driver :oracle
     (let [details  (:details (data/db))
           spec     (sql-jdbc.conn/connection-details->spec :oracle details)
           execute! (fn [format-string & args]
@@ -170,7 +169,7 @@
 ;; let's make sure we're actually attempting to generate the correctl HoneySQL for joins and source queries so we
 ;; don't sit around scratching our heads wondering why the queries themselves aren't working
 (deftest honeysql-test
-  (datasets/test-driver :oracle
+  (mt/test-driver :oracle
     (is (= {:select [:*]
             :from   [{:select
                       [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id")

@@ -1298,12 +1298,12 @@ workflows:
       - fe-tests-cypress:
           matrix:
             parameters:
-              node: ["1", "2", "3", "4"]
+              node: ["1"]
               edition: ["ee", "oss"]
           name: fe-tests-cypress-<< matrix.node >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          cypress-group: "default"
+          cypress-group: "default-<< matrix.edition >>"
 
       - fe-tests-cypress:
           name: fe-tests-cypress-mongo-4-<< matrix.edition >>

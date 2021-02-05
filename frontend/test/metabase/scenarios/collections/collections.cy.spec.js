@@ -446,7 +446,7 @@ describe("scenarios > collection_defaults", () => {
       //   });
     });
 
-    it.skip("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
+    it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
       cy.visit("/collection/root");
       cy.log("**Move 'Second collection' to the root");
       openDropdownFor("First collection");
@@ -471,12 +471,14 @@ describe("scenarios > collection_defaults", () => {
       // Make sure modal closed
       cy.findByText("Update").should("not.exist");
 
+      // This click is a weird "hack" that simply gives time for an UI to update - nothing else worked (not even waiting for XHR)
+      cy.get(".Icon-info").click();
+
       cy.get("[class*=CollectionSidebar]")
         .as("sidebar")
         .within(() => {
-          // This click just gives us time for an UI to update - nothing else worked (not even waiting for XHR)
-          cy.findByText("Second collection").click();
           cy.findAllByText("Second collection").should("have.length", 1);
+          cy.findAllByText("Third collection").should("have.length", 1);
         });
     });
 
