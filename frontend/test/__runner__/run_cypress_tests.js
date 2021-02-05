@@ -94,9 +94,6 @@ const init = async () => {
             "junit",
             "--reporter-options",
             "mochaFile=cypress/results/results-[hash].xml",
-            "--parallel",
-            "--group",
-            process.env["CYPRESS_GROUP"],
           ]
         : []),
       ...(hasEnterpriseToken ? ["--env", "HAS_ENTERPRISE_TOKEN=true"] : []),
