@@ -2,7 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [honeysql.core :as hsql]
-            [metabase.models :refer :all]))
+            [metabase.models :refer [Card Collection Dashboard Metric Pulse Segment Table]]))
 
 (def ^:const search-max-results
   "Absolute maximum number of search results to return. This number is in place to prevent massive application DB load
@@ -31,7 +31,7 @@
   ->class)
 
 (defmethod searchable-columns-for-model :default
-  [x]
+  [_]
   [:name])
 
 (defmethod searchable-columns-for-model (class Card)

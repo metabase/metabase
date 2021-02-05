@@ -23,9 +23,12 @@
    :favorite            nil
    :table_id            false
    :database_id         false
+   :dataset_query       nil
    :table_schema        nil
    :table_name          nil
-   :table_description   nil})
+   :table_description   nil
+   :matched_column      "display_name"
+   :matched_text        nil})
 
 (defn- table-search-results
   "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
@@ -37,30 +40,25 @@
      :id (mt/id :checkins))))
 
 (defn- sorted-results [results]
-  (sort-by (juxt (comp (var-get #'api.search/model->sort-position) :model) :name) results))
+  (sort-by (juxt (comp (var-get #'metabase.search.scoring/model->sort-position) :model) :name) results))
 
 (defn- default-search-results []
-  (sorted-results
-   [(merge
-     default-search-row
-     {:name "dashboard test dashboard", :model "dashboard", :favorite false})
-    (merge
-     default-search-row
-     {:name "collection test collection", :model "collection", :collection_id true, :collection_name true})
-    (merge
-     default-search-row
-     {:name "card test card", :model "card", :favorite false})
-    (merge
-     default-search-row
-     {:name "pulse test pulse", :model "pulse", :archived nil})
-    (merge
-     default-search-row
-     {:model "metric", :name "metric test metric", :description "Lookin' for a blueberry"}
-     (table-search-results))
-    (merge
-     default-search-row
-     {:model "segment", :name "segment test segment", :description "Lookin' for a blueberry"}
-     (table-search-results))]))
+  (letfn [(make-result [name & kvs]
+            (merge
+             default-search-row
+             {:name name :matched_text name :matched_column "name"}
+             (apply array-map kvs)))]
+    (sorted-results
+     [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
+      (make-result "collection test collection", :model "collection", :collection_id true, :collection_name true)
+      (make-result "card test card", :model "card", :favorite false, :dataset_query "{}")
+      (make-result "pulse test pulse", :model "pulse", :archived nil)
+      (merge
+       (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
+       (table-search-results))
+      (merge
+       (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry")
+       (table-search-results))])))
 
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
@@ -69,6 +67,10 @@
   (for [result (default-search-results)
         :when (false? (:archived result))]
     (assoc result :archived true)))
+
+(defn- update-matched-text
+  [result]
+  (assoc result :matched_text (:name result)))
 
 (defn- on-search-types [model-set f coll]
   (for [search-item coll]
@@ -135,13 +137,9 @@
       (is (= (default-search-results)
              (search-request :crowberto :q "test")))))
 
-  (testing (str "Search with no search string. Note this search everything in the DB, including any stale data left "
-                "behind from previous tests. Instead of an = comparison here, just ensure our default results are "
-                "included")
+  (testing (str "Search with no search string should yield no results.")
     (with-search-items-in-root-collection "test"
-      (is (set/subset?
-           (set (default-search-results))
-           (set (search-request :crowberto))))))
+      (is (empty? (search-request :crowberto)))))
 
   (testing "Basic search should only return substring matches"
     (with-search-items-in-root-collection "test"
@@ -171,14 +169,14 @@
       (with-search-items-in-collection {:keys [collection]} "test"
         (with-search-items-in-root-collection "test2"
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
-            (perms/grant-collection-read-permissions! group (u/get-id collection))
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
+            (perms/grant-collection-read-permissions! group (u/the-id collection))
             (is (= (sorted-results
                     (into
                      (default-results-with-collection)
                      (map #(merge default-search-row % (table-search-results))
-                          [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-                           {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}])))
+                          [{:name "metric test2 metric", :matched_text "metric test2 metric", :description "Lookin' for a blueberry", :model "metric", :matched_column "name"}
+                           {:name "segment test2 segment", :matched_text "segment test2 segment", :description "Lookin' for a blueberry", :model "segment", :matched_column "name"}])))
                    (search-request :rasta :q "test"))))))))
 
   (testing (str "Users with root collection permissions should be able to search root collection data long with "
@@ -187,28 +185,29 @@
       (with-search-items-in-collection {:keys [collection]} "test"
         (with-search-items-in-root-collection "test2"
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (perms/grant-collection-read-permissions! group collection)
             (is (= (sorted-results
                     (into
                      (default-results-with-collection)
-                     (for [row   (default-search-results)
+                     (for [row  (map update-matched-text (default-search-results))
                            :when (not= "collection" (:model row))]
-                       (update row :name #(str/replace % "test" "test2")))))
+                       (update-matched-text
+                        (update row :name #(str/replace % "test" "test2"))))))
                    (search-request :rasta :q "test"))))))))
 
   (testing "Users with access to multiple collections should see results from all collections they have access to"
     (with-search-items-in-collection {coll-1 :collection} "test"
       (with-search-items-in-collection {coll-2 :collection} "test2"
         (mt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
-          (perms/grant-collection-read-permissions! group (u/get-id coll-1))
-          (perms/grant-collection-read-permissions! group (u/get-id coll-2))
+                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
+          (perms/grant-collection-read-permissions! group (u/the-id coll-1))
+          (perms/grant-collection-read-permissions! group (u/the-id coll-2))
           (is (= (sorted-results
                   (into
                    (default-results-with-collection)
-                   (map (fn [row] (update row :name #(str/replace % "test" "test2")))
+                   (map (fn [row] (update-matched-text (update row :name #(str/replace % "test" "test2"))))
                         (default-results-with-collection))))
                  (search-request :rasta :q "test")))))))
 
@@ -217,14 +216,14 @@
       (with-search-items-in-collection {coll-1 :collection} "test"
         (with-search-items-in-collection {coll-2 :collection} "test2"
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
-            (perms/grant-collection-read-permissions! group (u/get-id coll-1))
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
+            (perms/grant-collection-read-permissions! group (u/the-id coll-1))
             (is (= (sorted-results
                     (into
                      (default-results-with-collection)
                      (map #(merge default-search-row % (table-search-results))
-                          [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-                           {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}])))
+                          [{:name "metric test2 metric", :matched_text "metric test2 metric", :description "Lookin' for a blueberry", :model "metric", :matched_column "name"}
+                           {:name "segment test2 segment", :matched_text "segment test2 segment", :description "Lookin' for a blueberry", :model "segment", :matched_column "name"}])))
                    (search-request :rasta :q "test"))))))))
 
   (testing "Metrics on tables for which the user does not have access to should not show up in results"
@@ -250,18 +249,18 @@
 (deftest favorites-test
   (testing "Favorites are per user, so other user's favorites don't cause search results to be favorited"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
-      (mt/with-temp* [CardFavorite      [_ {:card_id  (u/get-id card)
+      (mt/with-temp* [CardFavorite      [_ {:card_id  (u/the-id card)
                                             :owner_id (mt/user->id :rasta)}]
-                      DashboardFavorite [_ {:dashboard_id (u/get-id dashboard)
+                      DashboardFavorite [_ {:dashboard_id (u/the-id dashboard)
                                             :user_id      (mt/user->id :rasta)}]]
         (is (= (default-results-with-collection)
                (search-request :crowberto :q "test"))))))
 
   (testing "Basic search, should find 1 of each entity type and include favorites when available"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
-      (mt/with-temp* [CardFavorite      [_ {:card_id  (u/get-id card)
+      (mt/with-temp* [CardFavorite      [_ {:card_id  (u/the-id card)
                                             :owner_id (mt/user->id :crowberto)}]
-                      DashboardFavorite [_ {:dashboard_id (u/get-id dashboard)
+                      DashboardFavorite [_ {:dashboard_id (u/the-id dashboard)
                                             :user_id      (mt/user->id :crowberto)}]]
         (is (= (on-search-types #{"dashboard" "card"}
                                 #(assoc % :favorite true)
@@ -311,6 +310,7 @@
    {:name         table-name
     :display_name table-name
     :table_name   table-name
+    :matched_text table-name
     :table_id     true
     :archived     nil
     :model        "table"
@@ -329,10 +329,11 @@
         (is (= [(default-table-search-row "Round Table")]
                (search-request user :q "Round Table"))))))
   (testing "You should be able to search by their display name"
-    (mt/with-temp Table [table {:name "Round Table" :display_name "Lancelot's Favorite Furniture"}]
-      (do-test-users [user [:crowberto :rasta]]
-        (is (= [(assoc (default-table-search-row "Round Table") :display_name "Lancelot's Favorite Furniture")]
-               (search-request user :q "Lancelot"))))))
+    (let [lancelot "Lancelot's Favorite Furniture"]
+      (mt/with-temp Table [table {:name "Round Table" :display_name lancelot}]
+        (do-test-users [user [:crowberto :rasta]]
+          (is (= [(assoc (default-table-search-row "Round Table") :display_name lancelot :matched_text lancelot)]
+                 (search-request user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
       (mt/with-temp Table [table {:name table-name}]
