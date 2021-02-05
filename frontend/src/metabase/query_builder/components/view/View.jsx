@@ -7,7 +7,14 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import Subhead from "metabase/components/type/Subhead";
+import Link from "metabase/components/Link";
+import Button from "metabase/components/Button";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import TableBrowser from "metabase/browse/containers/NewTableBrowser";
+
+import Segment from "metabase/entities/segments";
+
+import Database from "metabase/entities/databases";
 
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
@@ -125,15 +132,8 @@ export default class View extends React.Component {
 
     if (isNewQuestion && queryBuilderMode === "view") {
       return (
-        <div className={fitClassNames}>
-          <div className="p4 mx2">
-            <QuestionDataSelector
-              query={query}
-              triggerElement={
-                <Subhead className="mb2">{t`Pick your data`}</Subhead>
-              }
-            />
-          </div>
+        <div className={cx(fitClassNames, "full")}>
+          <NewDataSelector query={query} />
         </div>
       );
     }
@@ -364,4 +364,112 @@ export default class View extends React.Component {
       </div>
     );
   }
+}
+
+import Schema from "metabase/entities/schemas";
+
+class NewDataSelector extends React.Component {
+  state = {
+    database: 6,
+    detail: {},
+  };
+  render() {
+    return (
+      <div className="full">
+        <Sidebar setDatabase={id => this.setState({ database: id })} />
+        <div
+          style={{ marginLeft: 300 }}
+          className="bg-white flex full-height full"
+        >
+          <div
+            className="border-right bg-white full-height p2 "
+            style={{ minWidth: 800 }}
+          >
+            <h2 className="px3 py2">
+              <Database.Name id={this.state.database} />
+            </h2>
+            <Schema.ListLoader query={{ dbId: this.state.database }}>
+              {({ list }) => {
+                return (
+                  <div>
+                    {list.map(l => {
+                      return (
+                        <div className="px3 py2">
+                          <TableBrowser
+                            setDetail={object =>
+                              this.setState({ detail: object })
+                            }
+                            params={{
+                              dbId: this.state.database,
+                              schemaName: l.name,
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }}
+            </Schema.ListLoader>
+          </div>
+          <div className="full-height flex-full flex flex-column">
+            <div className="p4">
+              <div className="py3 border-bottom">
+                <h1>{this.state.detail.display_name}</h1>
+              </div>
+              <div>
+                <h3>Description</h3>
+                <p>{this.state.detail.description}</p>
+              </div>
+              <div>
+                <Segment.ListLoader>
+                  {({ list }) => {
+                    const relevant = list.filter(
+                      l => l.table_id === this.state.detail.id,
+                    );
+                    const hasRelevant = relevant.length > 0;
+                    return hasRelevant ? (
+                      <div>
+                        <h3>Segments</h3>
+                        {relevant.map(s => {
+                          return (
+                            <div className="bordered rounded shadowed p2">
+                              {s.name}
+                              {s.creator.display_name}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null;
+                  }}
+                </Segment.ListLoader>
+              </div>
+              <Link>
+                <Button primary>View</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+
+function Sidebar({ setDatabase }) {
+  return (
+    <div
+      className="bg-white border-right full-height fixed left bottom p4"
+      style={{ width: 300, top: 65 }}
+    >
+      <Database.ListLoader>
+        {({ list }) => (
+          <div>
+            {list.map(l => (
+              <div onClick={() => setDatabase(l.id)}>{l.name}</div>
+            ))}
+          </div>
+        )}
+      </Database.ListLoader>
+    </div>
+  );
 }
