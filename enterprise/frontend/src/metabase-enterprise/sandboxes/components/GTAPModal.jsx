@@ -63,6 +63,7 @@ export default class GTAPModal extends React.Component {
     gtap: null,
     attributesOptions: null,
     simple: true,
+    error: null,
   };
   // $FlowFixMe: componentWillMount expected to return void
   async componentWillMount() {
