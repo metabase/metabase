@@ -41,5 +41,4 @@
                  mdb.conn/*jdbc-spec* h2-jdbc-spec
                  db/*db-connection* h2-jdbc-spec
                  db/*quoting-style* :h2]
-         (when (not (rotate-encryption/rotate-encryption-key! nil))
-           1))))))
+         (rotate-encryption/rotate-encryption-key! nil))))))

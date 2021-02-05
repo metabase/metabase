@@ -49,12 +49,15 @@
   Target H2 file is deleted before dump, unless the --keep-existing flag is given."
   [h2-filename & opts]
   (classloader/require 'metabase.cmd.dump-to-h2)
-  (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))
-                        :dump-plaintext? (boolean (some #{"--dump-plaintext"} opts)) }
-        return-code    ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)]
-    (if (pos-int? return-code)
-      (system-exit! return-code)
-      (println "Dump complete"))))
+  (try
+    (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))
+                          :dump-plaintext? (boolean (some #{"--dump-plaintext"} opts)) }]
+      ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)
+      (println "Dump complete")
+      (system-exit! 0))
+    (catch Exception e
+      (println "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt the existing data")
+      (system-exit! 1))))
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
@@ -158,8 +161,12 @@
   the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars."
   [new-key]
   (classloader/require 'metabase.cmd.rotate-encryption-key)
-  (let [return-code ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)]
-    (when (not return-code)
+  (try
+    ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)
+    (println "Encryption key rotation OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (println "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------

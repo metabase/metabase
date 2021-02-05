@@ -36,7 +36,7 @@
                              ["select value from setting where setting.key=?;" key]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
-  (with-redefs [rotate-encryption-key! (constantly nil)
+  (with-redefs [rotate-encryption-key! #(throw "err")
                 cmd/system-exit! identity]
     (is (= 1 (cmd/rotate-encryption-key
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
@@ -66,7 +66,7 @@
 
            (testing "rotating with the same key is a noop"
              (eu/with-secret-key k1
-               (is (rotate-encryption-key! k1))
+               (rotate-encryption-key! k1)
                ;; plain->newkey
                (is (not (= "val0" (raw-value "setting0"))))
                (is (= "val0" (db/select-one-field :value Setting :key "setting0")))
@@ -75,7 +75,7 @@
                (is (= "val1" (db/select-one-field :value Setting :key "setting1")))))
 
            (testing "rotating with a new key is recoverable"
-             (eu/with-secret-key k1 (is (rotate-encryption-key! k2)))
+             (eu/with-secret-key k1 (rotate-encryption-key! k2))
              (eu/with-secret-key k2
                (is (= "val0" (db/select-one-field :value Setting :key "setting0")))
                (is (= {:db "/tmp/test.db"} (db/select-one-field :details Database :id 1))))
@@ -88,7 +88,7 @@
                (db/insert! Setting {:key "setting3", :value "val3"}))
              (eu/with-secret-key k2
                (db/insert! Setting {:key "setting2", :value "val2"})
-               (is (not (rotate-encryption-key! k3))))
+               (is (thrown? Throwable (rotate-encryption-key! k3))))
              (eu/with-secret-key k3
                (is (not (= "val2" (:value (first (db/select Setting :key [:= "setting2"]))))))
                (is (= "val3" (:value (first (db/select Setting :key [:= "setting3"])))))))
@@ -97,7 +97,7 @@
              (eu/with-secret-key k3
                (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"}))
              (eu/with-secret-key k2
-               (is (not (rotate-encryption-key! k3))))
+               (is (thrown? Throwable (rotate-encryption-key! k3))))
              (eu/with-secret-key k3
                (is (= {:db "/tmp/test.db"} (db/select-one-field :details Database :id 1)))))
 
@@ -105,8 +105,8 @@
              (db/delete! Setting :key "setting3")
              (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
              (eu/with-secret-key k2
-               (is (rotate-encryption-key! nil)))
+               (rotate-encryption-key! nil))
              (is (= "val0" (raw-value "setting0"))))
 
            (testing "short keys fail to rotate"
-             (is (not (rotate-encryption-key! "short"))))))))))
+             (is (thrown? Throwable (rotate-encryption-key! "short"))))))))))
