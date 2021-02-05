@@ -11,6 +11,7 @@ import Link from "metabase/components/Link";
 import Button from "metabase/components/Button";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import TableBrowser from "metabase/browse/containers/NewTableBrowser";
+import Text from "metabase/components/type/Text";
 
 import Segment from "metabase/entities/segments";
 
@@ -134,7 +135,7 @@ export default class View extends React.Component {
 
     if (isNewQuestion && queryBuilderMode === "view") {
       return (
-        <div className={cx(fitClassNames, "full")}>
+        <div className={cx(fitClassNames, "flex full overflow-hidden")}>
           <NewDataSelector query={query} />
         </div>
       );
@@ -377,22 +378,19 @@ class NewDataSelector extends React.Component {
   };
   render() {
     return (
-      <div className="full">
+      <div className="flex full overflow-hidden">
         <Sidebar setDatabase={id => this.setState({ database: id })} />
         <div
           style={{ marginLeft: 300 }}
           className="bg-white flex full-height full"
         >
-          <div
-            className="border-right bg-white full-height p2 "
-            style={{ minWidth: 800 }}
-          >
+          <div className="bg-white full-height p2 " style={{ minWidth: 800 }}>
             <Database.Loader id={this.state.database}>
               {({ database }) => {
                 return (
                   <div className="p4">
                     <h2>{database.name}</h2>
-                    <p>{database.description}</p>
+                    <Text>{database.description}</Text>
                   </div>
                 );
               }}
@@ -405,6 +403,7 @@ class NewDataSelector extends React.Component {
                       return (
                         <div className="px3 py2">
                           <TableBrowser
+                            selected={this.state.detail}
                             setDetail={object =>
                               this.setState({ detail: object })
                             }
@@ -421,59 +420,67 @@ class NewDataSelector extends React.Component {
               }}
             </Schema.ListLoader>
           </div>
-          <div className="full-height flex-full flex flex-column p4">
-            <div className="px4">
-              <div className="py3 border-bottom">
-                <h1>{this.state.detail.display_name}</h1>
-                <h4>{this.state.detail.name}</h4>
+          <div
+            className="full-height flex flex-column p4 overflow-hidden ml-auto border-left"
+            style={{ width: 600 }}
+          >
+            {this.state.detail.id && (
+              <div className="px4 flex flex-column full-height">
+                <div className="py3 border-bottom">
+                  <h1>{this.state.detail.display_name}</h1>
+                  <h4>{this.state.detail.name}</h4>
+                </div>
+                <div style={{ maxWidth: 500 }} className="my4">
+                  <h3>Description</h3>
+                  <Text>
+                    {this.state.detail.description || <a>Add a description</a>}
+                  </Text>
+                </div>
+                <div>
+                  <Segment.ListLoader>
+                    {({ list }) => {
+                      const relevant = list.filter(
+                        l => l.table_id === this.state.detail.id,
+                      );
+                      const hasRelevant = relevant.length > 0;
+                      return hasRelevant ? (
+                        <div>
+                          <h3>Segments</h3>
+                          {relevant.map(s => {
+                            return (
+                              <Link
+                                to={getQuestionUrl({
+                                  dbId:
+                                    this.state.database && this.state.database,
+                                  tableId: this.state.detail.id,
+                                  segmentId: s.id,
+                                })}
+                              >
+                                <div className="bordered rounded shadowed p2">
+                                  {s.name}
+                                  {s.creator.display_name}
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      ) : null;
+                    }}
+                  </Segment.ListLoader>
+                </div>
+                <Link
+                  className="block full mt-auto"
+                  to={getQuestionUrl({
+                    dbId: this.state.database && this.state.database,
+                    tableId: this.state.detail.id,
+                  })}
+                >
+                  <Button primary mt="auto" className="full shadowed">
+                    View
+                  </Button>
+                </Link>
               </div>
-              <div>
-                <h3>Description</h3>
-                <p>
-                  {this.state.detail.description || <a>Add a description</a>}
-                </p>
-              </div>
-              <div>
-                <Segment.ListLoader>
-                  {({ list }) => {
-                    const relevant = list.filter(
-                      l => l.table_id === this.state.detail.id,
-                    );
-                    const hasRelevant = relevant.length > 0;
-                    return hasRelevant ? (
-                      <div>
-                        <h3>Segments</h3>
-                        {relevant.map(s => {
-                          return (
-                            <Link
-                              to={getQuestionUrl({
-                                dbId:
-                                  this.state.database && this.state.database,
-                                tableId: this.state.detail.id,
-                                segmentId: s.id,
-                              })}
-                            >
-                              <div className="bordered rounded shadowed p2">
-                                {s.name}
-                                {s.creator.display_name}
-                              </div>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    ) : null;
-                  }}
-                </Segment.ListLoader>
-              </div>
-              <Link
-                to={getQuestionUrl({
-                  dbId: this.state.database && this.state.database,
-                  tableId: this.state.detail.id,
-                })}
-              >
-                <Button primary>View</Button>
-              </Link>
-            </div>
+            )}
           </div>
         </div>
       </div>

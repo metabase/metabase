@@ -47,7 +47,9 @@ function TableBrowser(props) {
               >
                 <div>
                   <h3 className="mb0">{table.display_name}</h3>
-                  <p className="my0">{table.description}</p>
+                  {table.description && (
+                    <p className="my0">{table.description}</p>
+                  )}
                 </div>
                 <div className="flex align-center ml-auto">
                   <Segment.ListLoader>
