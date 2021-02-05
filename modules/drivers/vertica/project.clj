@@ -11,7 +11,11 @@
      [com.vertica.jdbc/vertica-jdbc "10.0.1-0"]]}
 
    :ee
-   {:dependencies [[com.vertica.jdbc/vertica-jdbc "10.0.1-0"]]}
+   {:dependencies
+    [[com.vertica.jdbc/vertica-jdbc "10.0.1-0"]]
+
+    :resource-paths
+    ^:replace ["resources-ee"]}
 
    :uberjar
    {:auto-clean    true
