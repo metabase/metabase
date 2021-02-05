@@ -1032,9 +1032,8 @@
        ;; [{:name "A"
        ;;   :children [{:name "B"}, ...]}]
        ([m]
-        (let [vs (for [v (vals m)]
-                   (cond-> v
-                     (:children v) (update :children ->tree)))]
-          (sort-by (fn [{coll-name :name, coll-id :id}]
-                     [((fnil u/lower-case-en "") coll-name) coll-id]) vs))))
+        (->> (vals m)
+             (map #(update % :children ->tree))
+             (sort-by (fn [{coll-name :name, coll-id :id}]
+                        [((fnil u/lower-case-en "") coll-name) coll-id])))))
      collections)))
