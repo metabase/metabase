@@ -192,6 +192,18 @@
   [table-id metadata]
   (map (comp (gtap/table-field-names->cols table-id) :name) metadata))
 
+(defn- select-only-cols-in-source-table
+  [table-id source-query]
+  (let [table-cols (gtap/table-field-names->cols table-id)]
+    (update-in source-query [:query :fields]
+               (fn [fields]
+                 (if (not-empty fields)
+                   (filter (comp (into #{} (map (comp u/get-id val)) table-cols) second) fields)
+                   (->> source-query
+                        :source-metadata
+                        (keep (comp table-cols :name))
+                        (mapv (comp (partial vector :field-id) u/get-id))))))))
+
 (s/defn ^:private gtap->source :- {:source-query                     s/Any
                                    (s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata]
                                    s/Keyword                         s/Any}
@@ -213,7 +225,9 @@
                        (let [metadata (run-gtap-source-query-for-metadata table-id source-query)]
                          (update-metadata-for-gtap! gtap metadata)
                          (assoc source-query :source-metadata metadata)))]
-    (update source-query :source-metadata (partial reconcile-metadata table-id))))
+    (if (:native source-query)
+      (update source-query :source-metadata (partial reconcile-metadata table-id))
+      (select-only-cols-in-source-table table-id source-query))))
 
 (s/defn ^:private gtap->perms-set :- #{perms/ObjectPath}
   "Calculate the set of permissions needed to run the query associated with a GTAP; this set of permissions is excluded
