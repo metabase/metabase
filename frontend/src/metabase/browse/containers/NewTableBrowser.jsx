@@ -30,7 +30,7 @@ function TableBrowser(props) {
   } = props;
   return (
     <Box>
-      <h3>{schemaName}</h3>
+      <h4 className="text-medium">{schemaName}</h4>
       <div className="mt2 px2">
         {tables.map(table => {
           // NOTE: currently tables entities doesn't integrate with Metadata objects

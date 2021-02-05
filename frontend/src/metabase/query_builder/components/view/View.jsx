@@ -44,6 +44,8 @@ import { Motion, spring } from "react-motion";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import { getQuestionUrl } from "metabase/reference/utils";
+
 const DEFAULT_POPOVER_STATE = {
   aggregationIndex: null,
   aggregationPopoverTarget: null,
@@ -385,9 +387,16 @@ class NewDataSelector extends React.Component {
             className="border-right bg-white full-height p2 "
             style={{ minWidth: 800 }}
           >
-            <h2 className="px3 py2">
-              <Database.Name id={this.state.database} />
-            </h2>
+            <Database.Loader id={this.state.database}>
+              {({ database }) => {
+                return (
+                  <div className="p4">
+                    <h2>{database.name}</h2>
+                    <p>{database.description}</p>
+                  </div>
+                );
+              }}
+            </Database.Loader>
             <Schema.ListLoader query={{ dbId: this.state.database }}>
               {({ list }) => {
                 return (
@@ -412,14 +421,17 @@ class NewDataSelector extends React.Component {
               }}
             </Schema.ListLoader>
           </div>
-          <div className="full-height flex-full flex flex-column">
-            <div className="p4">
+          <div className="full-height flex-full flex flex-column p4">
+            <div className="px4">
               <div className="py3 border-bottom">
                 <h1>{this.state.detail.display_name}</h1>
+                <h4>{this.state.detail.name}</h4>
               </div>
               <div>
                 <h3>Description</h3>
-                <p>{this.state.detail.description}</p>
+                <p>
+                  {this.state.detail.description || <a>Add a description</a>}
+                </p>
               </div>
               <div>
                 <Segment.ListLoader>
@@ -433,10 +445,19 @@ class NewDataSelector extends React.Component {
                         <h3>Segments</h3>
                         {relevant.map(s => {
                           return (
-                            <div className="bordered rounded shadowed p2">
-                              {s.name}
-                              {s.creator.display_name}
-                            </div>
+                            <Link
+                              to={getQuestionUrl({
+                                dbId:
+                                  this.state.database && this.state.database,
+                                tableId: this.state.detail.id,
+                                segmentId: s.id,
+                              })}
+                            >
+                              <div className="bordered rounded shadowed p2">
+                                {s.name}
+                                {s.creator.display_name}
+                              </div>
+                            </Link>
                           );
                         })}
                       </div>
@@ -444,7 +465,12 @@ class NewDataSelector extends React.Component {
                   }}
                 </Segment.ListLoader>
               </div>
-              <Link>
+              <Link
+                to={getQuestionUrl({
+                  dbId: this.state.database && this.state.database,
+                  tableId: this.state.detail.id,
+                })}
+              >
                 <Button primary>View</Button>
               </Link>
             </div>
