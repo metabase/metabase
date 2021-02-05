@@ -13,6 +13,7 @@ import { generateQueryDescription } from "metabase/lib/query/description";
 import validate from "metabase/lib/validate";
 
 import { t } from "ttag";
+import _ from "underscore";
 
 import "./SaveQuestionModal.css";
 
@@ -25,6 +26,7 @@ export default class SaveQuestionModal extends Component {
     onSave: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     multiStep: PropTypes.bool,
+    clone: PropTypes.bool,
   };
 
   handleSubmit = async details => {
@@ -36,10 +38,10 @@ export default class SaveQuestionModal extends Component {
     //     .setDisplayName(details.name.trim())
     //     .setDescription(details.description ? details.description.trim() : null)
     //     .setCollectionId(details.collection_id)
-    let { card, originalCard, onCreate, onSave } = this.props;
+    let { card, originalCard, onCreate, onSave, clone } = this.props;
 
     card = {
-      ...card,
+      ...(clone ? _.omit(card, "id") : card),
       name:
         details.saveType === "overwrite"
           ? originalCard.name
@@ -90,6 +92,8 @@ export default class SaveQuestionModal extends Component {
 
     const title = this.props.multiStep
       ? t`First, save your question`
+      : this.props.clone
+      ? t`Copy question`
       : t`Save question`;
 
     const showSaveType = !card.id && !!originalCard;

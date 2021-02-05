@@ -41,6 +41,11 @@ export default function QuestionEntityMenu({
           title: `Archive`,
           action: () => onOpenModal("archive"),
         },
+        canWrite && {
+          icon: "clone",
+          title: t`Copy this question`,
+          action: () => onOpenModal("clone"),
+        },
       ]}
     />
   );

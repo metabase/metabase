@@ -181,6 +181,19 @@ export default class QueryModals extends React.Component {
       <Modal full onClose={onCloseModal}>
         <QuestionEmbedWidget card={this.props.card} onClose={onCloseModal} />
       </Modal>
+    ) : modal === "clone" ? (
+      <Modal form onClose={onCloseModal}>
+        <SaveQuestionModal
+          card={this.props.card}
+          tableMetadata={this.props.tableMetadata}
+          onCreate={async card => {
+            await this.props.onCreate(card);
+            onOpenModal("saved");
+          }}
+          onClose={onCloseModal}
+          clone
+        />
+      </Modal>
     ) : null;
   }
 }
