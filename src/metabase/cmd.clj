@@ -17,6 +17,7 @@
   associated with each command's entrypoint function to generate descriptions for each command."
   (:refer-clojure :exclude [load])
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
@@ -55,8 +56,8 @@
       ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)
       (println "Dump complete")
       (system-exit! 0))
-    (catch Exception e
-      (println "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt the existing data")
+    (catch Throwable e
+      (log/error e "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt the existing data")
       (system-exit! 1))))
 
 (defn ^:command profile
