@@ -194,13 +194,14 @@
     (testing "Should substitute appropriate value in native query"
       (mt.tu/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
                          :attributes {"cat" 50}}
-        (is (= (mt/query nil
+        (is (= (mt/query venues
                  {:database   (mt/id)
                   :type       :query
                   :query      {:aggregation  [[:count]]
                                :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                            "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
                                                            "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\"")
+                                              :fields [$id $name $category_id $latitude $longitude $price]
                                               :params []}}})
                (apply-row-level-permissions
                 (mt/mbql-query venues
@@ -437,9 +438,10 @@
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
-      (is (= [[2  1 "Bludso's BBQ" 5]
-              [72 1 "Red Medicine" 4]]
-             (mt/format-rows-by [int int identity int]
+      ;; only columns in the original table should get returned
+      (is (= [[2  1]
+              [72 1]]
+             (mt/format-rows-by [int int]
                (mt/rows
                  (mt/with-gtaps {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
                                  :attributes {"user" 1}}
@@ -478,14 +480,14 @@
       (testing "A query with a simple attributes-based sandbox should have the same metadata"
         (mt/with-gtaps {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                         :attributes {"cat" 50}}
-            (is (= (expected-cols)
-                   (cols)))))
+          (is (= (expected-cols)
+                 (cols)))))
 
       (testing "A query with an equivalent MBQL query sandbox should have the same metadata"
         (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                         :attributes {"cat" 50}}
-            (is (= (expected-cols)
-                   (cols)))))
+          (is (= (expected-cols)
+                 (cols)))))
 
       (testing "A query with an equivalent native query sandbox should have the same metadata"
         (mt/with-gtaps {:gtaps {:venues {:query (mt/native-query
@@ -502,7 +504,7 @@
                  (cols)))))
 
       (testing (str "If columns are added/removed/reordered we should still merge in metadata for the columns we're "
-                      "able to match from the original Table")
+                    "able to match from the original Table. Additional columns should get ignored")
         (mt/with-gtaps {:gtaps {:venues {:query (mt/native-query
                                                   {:query
                                                    (str "SELECT NAME, ID, LONGITUDE, PRICE, 1 AS ONE "
@@ -513,14 +515,9 @@
                                                    {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
                                          :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
                         :attributes {"cat" 50}}
-          (let [[id-col name-col _ _ longitude-col price-col] (expected-cols)
-                one-col                                       {:name         "ONE"
-                                                               :display_name "ONE"
-                                                               :base_type    :type/Integer
-                                                               :source       :fields
-                                                               :field_ref    [:field-literal "ONE" :type/Integer]}]
-              (is (= [name-col id-col longitude-col price-col one-col]
-                     (cols)))))))))
+          (let [[id-col name-col _ _ longitude-col price-col] (expected-cols)]
+            (is (= [name-col id-col longitude-col price-col]
+                   (cols)))))))))
 
 (deftest sandboxing-sql-with-joins-test
   (testing "Should be able to use a Saved Question with no source Metadata as a GTAP (#525)"
@@ -605,7 +602,7 @@
                                             :group_id (:id &group)
                                             :table_id (mt/id :venues))]
                   (is (integer? venues-gtap-card-id))
-                  (testing "GTAP Card should not yet current have result_metadata"
+                  (testing "GTAP Card should not yet have result_metadata"
                     (is (= nil
                            (db/select-one-field :result_metadata Card :id venues-gtap-card-id))))
                   (f {:run-query (fn []
@@ -626,18 +623,6 @@
            (testing "Query without weird stuff going on should work"
              (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
                     (mt/rows (run-query))))))))
-
-      (testing "Don't allow people to add additional columns not present in the original Table"
-        (do-with-sql-gtap
-         (str "SELECT ID, NAME, 100 AS ONE_HUNDRED "
-              "FROM VENUES "
-              "WHERE ID IN ({{sandbox}})")
-         (fn [{:keys [run-query]}]
-           (testing "Should throw an Exception when running the query"
-             (is (thrown-with-msg?
-                  clojure.lang.ExceptionInfo
-                  #"Sandbox Cards can't return columns that aren't present in the Table they are sandboxing"
-                  (run-query)))))))
 
       (testing "Don't allow people to change the types of columns in the original Table"
         (do-with-sql-gtap
@@ -660,6 +645,39 @@
              (testing "Should throw an Exception when running the query"
                (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
                       (mt/rows (run-query))))))))))))
+
+(deftest sandbox-ignore-extra-columns-test
+  (testing "Sandboxes should *ignore* extra columns, rather than failing entirely (#14612)"
+    (testing "native query"
+      (mt/with-gtaps {:gtaps      {:venues   {:query      (mt/native-query
+                                                            {:query         (str "SELECT VENUES.*, 2 AS TWO "
+                                                                                 "FROM VENUES "
+                                                                                 "WHERE VENUES.ID IN ({{sandbox}})")
+                                                             :template-tags {"sandbox"
+                                                                             {:name         "sandbox"
+                                                                              :display-name "Sandbox"
+                                                                              :type         :text}}})
+                                              :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
+                                   :checkins {}}
+                      :attributes {"venue_id" 1}}
+        (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
+               (mt/rows (mt/run-mbql-query venues))))))
+
+    (testing "MBQL query"
+      (mt/with-gtaps {:gtaps      {:venues   {:query      (mt/mbql-query venues
+                                                            {:fields [$id
+                                                                      $name
+                                                                      $category_id
+                                                                      $latitude
+                                                                      $longitude
+                                                                      $price
+                                                                      [:expression "two"]]
+                                                             :expressions {"two" [:+ 1 1]}})
+                                              :remappings {"venue_id" [:variable [:field-id (mt/id :venues :id)]]}}
+                                   :checkins {}}
+                      :attributes {"venue_id" 1}}
+        (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
+               (mt/rows (mt/run-mbql-query venues))))))))
 
 (deftest dont-cache-sandboxes-test
   (cache-test/with-mock-cache [save-chan]

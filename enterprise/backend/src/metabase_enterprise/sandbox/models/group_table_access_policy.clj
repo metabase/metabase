@@ -47,7 +47,7 @@
 
 (s/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
-  that's getting GTAPped. It's ok to remove columns, but you cannot add new columns. The base types of the Card
+  that's getting GTAPped. It's ok to remove columns, but added columns may be ignored. The base types of the Card
   columns can derive from the respective base types of the columns in the Table itself, but you cannot return an
   entirely different type."
   ([{card-id :card_id, table-id :table_id}]
@@ -62,19 +62,11 @@
    (classloader/require 'metabase.query-processor)
    (let [table-cols (table-field-names->cols table-id)]
      (doseq [col  result-metadata-columns
-             :let [table-col-base-type (get-in table-cols [(:name col) :base_type])]]
+             :let [table-col-base-type (get-in table-cols [(:name col) :base_type])]
+             :when table-col-base-type]
        ;; These errors might get triggered by API endpoints or by the QP (this code is used in the
        ;; `row-level-restrictions` middleware). So include `:type` and `:status-code` information in the ExceptionInfo
        ;; data so it can be passed along if applicable.
-       (when-not table-col-base-type
-         (let [msg (tru "Sandbox Cards can''t return columns that aren''t present in the Table they are sandboxing.")]
-           (throw (ex-info msg
-                           {:type        qp.error-type/bad-configuration
-                            :status-code 400
-                            :errors      {:card_id msg}
-                            :new-column  col
-                            :expected    (mapv :name table-cols)
-                            :actual      (mapv :name result-metadata-columns)}))))
        (when-not (isa? (keyword (:base_type col)) table-col-base-type)
          (let [msg (tru "Sandbox Cards can''t return columns that have different types than the Table they are sandboxing.")]
            (throw (ex-info msg

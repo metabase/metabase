@@ -42,7 +42,7 @@
 (defn- table-should-have-segmented-permissions?
   "Determine whether we should apply segmented permissions for `table-or-table-id`."
   [table-id]
-  (let [table (assoc (qp.store/table table-id) :db_id (u/get-id (qp.store/database)))]
+  (let [table (assoc (qp.store/table table-id) :db_id (u/the-id (qp.store/database)))]
     (and
      ;; User does not have full data access
      (not (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/table-query-path table)))
@@ -189,8 +189,27 @@
       (db/update! Card card-id :result_metadata new-metadata))))
 
 (defn- reconcile-metadata
-  [table-id metadata]
-  (map (comp (gtap/table-field-names->cols table-id) :name) metadata))
+  "Reconcile `metadata` columns for a query -- remove any that aren't present in the original Table."
+  [metadata table-id]
+  (let [field-name->table-col (gtap/table-field-names->cols table-id)]
+    (u/prog1 (for [metadata-col metadata
+                  :let         [table-col (get field-name->table-col (:name metadata-col))]
+                  :when        table-col]
+               table-col)
+      (log/tracef "Reconciled metadata: %s" (u/pprint-to-str 'yellow <>)))))
+
+(defn- reconcile-fields
+  "Add a `:fields` clause if needed to `query` so it will only return Fields present in the original Table."
+  [{:keys [source-metadata], {:keys [fields]} :source-query, :as query}]
+  (if (or fields (empty? source-metadata))
+    query
+    (u/prog1 (assoc-in query
+                       [:source-query :fields]
+                       (for [{field-id :id, field-name :name, base-type :base_type, :as field} source-metadata]
+                         (if field-id
+                           [:field-id field-id]
+                           [:field-literal field-name base-type])))
+      (log/tracef "Added :fields to :source-query: %s" (u/pprint-to-str 'magenta <>)))))
 
 (s/defn ^:private gtap->source :- {:source-query                     s/Any
                                    (s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata]
@@ -203,17 +222,17 @@
 
   that will be called if we end up running the GTAP source query in question to infer the metadata. This callback
   should save the metadata so we don't have to run the query again in the future."
-  [{card-id :card_id, table-id :table_id, :as gtap} :- su/Map, run-gtap-source-query-for-metadata?]
-  (let [source-query (preprocess-source-query ((if card-id
-                                                 card-gtap->source
-                                                 table-gtap->source) gtap))
-        source-query (if-not (and run-gtap-source-query-for-metadata?
-                                  (empty? (:source-metadata source-query)))
-                       source-query
-                       (let [metadata (run-gtap-source-query-for-metadata table-id source-query)]
-                         (update-metadata-for-gtap! gtap metadata)
-                         (assoc source-query :source-metadata metadata)))]
-    (update source-query :source-metadata (partial reconcile-metadata table-id))))
+  [{card-id :card_id, table-id :table_id, :as gtap} :- su/Map]
+  (as-> (preprocess-source-query ((if card-id
+                                    card-gtap->source
+                                    table-gtap->source) gtap)) source-query
+    (if-not (empty? (:source-metadata source-query))
+      source-query
+      (let [metadata (run-gtap-source-query-for-metadata table-id source-query)]
+        (update-metadata-for-gtap! gtap metadata)
+        (assoc source-query :source-metadata metadata)))
+    (update source-query :source-metadata reconcile-metadata table-id)
+    (reconcile-fields source-query )))
 
 (s/defn ^:private gtap->perms-set :- #{perms/ObjectPath}
   "Calculate the set of permissions needed to run the query associated with a GTAP; this set of permissions is excluded
@@ -252,13 +271,12 @@
   ;; columns as the Table it replaces, but this constraint is not enforced anywhere. If we infer metadata and the GTAP
   ;; turns out *not* to match exactly, the query could break. So only infer it in cases where the query would
   ;; definitely break otherwise.
-  (let [run-gtap-source-query-for-metadata? (= (:fields m) :all)]
-    (u/prog1 (merge
-              (dissoc m :source-table :source-query)
-              (gtap->source gtap run-gtap-source-query-for-metadata?))
-      (log/tracef "Applied GTAP: replaced\n%swith\n%s"
-                  (u/pprint-to-str 'yellow m)
-                  (u/pprint-to-str 'green <>)))))
+  (u/prog1 (merge
+            (dissoc m :source-table :source-query)
+            (gtap->source gtap))
+    (log/tracef "Applied GTAP: replaced\n%swith\n%s"
+                (u/pprint-to-str 'yellow m)
+                (u/pprint-to-str 'green <>))))
 
 (defn- apply-gtaps
   "Replace `:source-table` entries that refer to Tables for which we have applicable GTAPs with `:source-query` entries

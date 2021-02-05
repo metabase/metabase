@@ -263,8 +263,8 @@
          context  (merge
                    ;; CI is S U P E R  S L O W so give this a longer timeout.
                    {:timeout (if (env/env :ci)
-                               5000
-                               500)
+                               10000
+                               5000)
                     :runf    (fn [query rff context]
                                (try
                                  (when run (run))
