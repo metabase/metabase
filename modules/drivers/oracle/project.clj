@@ -13,7 +13,10 @@
 
    :ee
    {:dependencies
-    [[com.oracle.ojdbc/ojdbc8 "19.3.0.0"]]}
+    [[com.oracle.ojdbc/ojdbc8 "19.3.0.0"]]
+
+    :resource-paths
+    ^:replace ["resources-ee"]}
 
    :uberjar
    {:auto-clean    true
