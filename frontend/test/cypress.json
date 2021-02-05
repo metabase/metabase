@@ -4,7 +4,7 @@
   "pluginsFile": "frontend/test/cypress-plugins.js",
   "integrationFolder": ".",
   "supportFile": "frontend/test/__support__/cypress.js",
-  "videoUploadOnPasses": false,
+  "videoUploadOnPasses": true,
   "viewportHeight": 800,
   "viewportWidth": 1280,
   "retries": {
