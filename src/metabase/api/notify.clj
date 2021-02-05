@@ -5,7 +5,9 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.table :refer [Table]]
             [metabase.sync :as sync]
-            [metabase.sync.sync-metadata :as sync-metadata]))
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 (api/defendpoint POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
@@ -13,20 +15,19 @@
   `Table`. Optional Parameter `:scan` can be `\"full\" or \"schema\" for a full sync or a schema sync, available
   regardless if a `:table_id` or `:table_name` is passed."
   [id :as {{:keys [table_id table_name scan]} :body}]
-  (when scan
-    (or (contains? #{"full" :full "schema" :schema} scan)
-        (throw (ex-info "Optional scan parameter must be either \"full\" or \"scan\""
-                        {:status-code 400}))))
-  (let [schema? (when scan (#{"schema" :schema} scan))
+  {table_id   (s/maybe su/IntGreaterThanZero)
+   table_name (s/maybe su/NonBlankString)
+   scan       (s/maybe (s/enum "full" "schema"))}
+  (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
-        db-sync-fn (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
+        db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
     (api/let-404 [database (Database id)]
       (cond
-        table_id (when-let [table (Table :db_id id, :id (int table_id))]
-                   (future (table-sync-fn table)))
+        table_id   (when-let [table (Table :db_id id, :id (int table_id))]
+                     (future (table-sync-fn table)))
         table_name (when-let [table (Table :db_id id, :name table_name)]
                      (future (table-sync-fn table)))
-        :else (future (db-sync-fn database)))))
+        :else      (future (db-sync-fn database)))))
   {:success true})
 
 

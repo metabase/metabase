@@ -79,5 +79,6 @@
               (is (not @full-sync?))
               (is @smaller-sync))))
         (testing "errors on unrecognized scan options"
-          (is (= "Optional scan parameter must be either \"full\" or \"scan\""
+          (is (= {:errors
+                  {:scan "value may be nil, or if non-nil, value must be one of: `full`, `schema`."}}
                  (post {:scan :unrecognized} 400))))))))
