@@ -144,7 +144,7 @@
     (or (some-> (premium-embedding-token) valid-token->features)
         #{})
     (catch Throwable e
-      (log/error (trs "Error validating token") (ex-message e))
+      (log/error (trs "Error validating token") ":" (ex-message e))
       (log/debug e (trs "Error validating token"))
       #{})))
 
