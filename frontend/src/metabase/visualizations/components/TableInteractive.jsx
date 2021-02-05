@@ -144,7 +144,9 @@ export default class TableInteractive extends Component {
       <div className="cellData">{children}</div>
     ),
     renderTableCellWrapper: children => (
-      <div className="cellData">{children}</div>
+      <div className={cx({ cellData: children != null && children !== "" })}>
+        {children}
+      </div>
     ),
   };
 
