@@ -231,9 +231,8 @@ export default class ChoroplethMap extends Component {
 
     const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
-    const getFeatureClickObject = (row, feature) => {
-      console.log({ row, feature });
-      return row == null
+    const getFeatureClickObject = (row, feature) =>
+      row == null
         ? // This branch lets you click on empty regions. We use in dashboard cross-filtering.
           {
             value: null,
@@ -274,7 +273,6 @@ export default class ChoroplethMap extends Component {
             origin: { row, cols },
             settings,
           };
-    };
 
     const isClickable =
       onVisualizationClick &&
