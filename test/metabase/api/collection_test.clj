@@ -139,13 +139,13 @@
               response (mt/user-http-request :rasta :get 200 "collection/tree")]
           (testing "Make sure overall tree shape of the response is as is expected"
             (is (= [{:name     "A"
-                     :children [{:name "B"}
+                     :children [{:name "B", :children []}
                                 {:name     "C"
                                  :children [{:name     "D"
-                                             :children [{:name "E"}]}
+                                             :children [{:name "E", :children []}]}
                                             {:name     "F"
-                                             :children [{:name "G"}]}]}]}
-                    {:name "Rasta Toucan's Personal Collection"}]
+                                             :children [{:name "G", :children []}]}]}]}
+                    {:name "Rasta Toucan's Personal Collection", :children []}]
                    (collection-tree-names-only ids response))))
           (testing "Make sure each Collection comes back with the expected keys"
             (is (= {:description       nil
@@ -156,7 +156,8 @@
                     :personal_owner_id (mt/user->id :rasta)
                     :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
                     :location          "/"
-                    :namespace         nil}
+                    :namespace         nil
+                    :children          []}
                    (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
                             %)
                          response)))))))))
@@ -174,7 +175,7 @@
                         Collection [child-collection  {:name "Child", :location (format "/%d/" (:id parent-collection))}]]
           (perms/revoke-collection-permissions! (group/all-users) parent-collection)
           (perms/grant-collection-readwrite-permissions! (group/all-users) child-collection)
-          (is (= [{:name "Child"}]
+          (is (= [{:name "Child", :children []}]
                  (collection-tree-names-only (map :id [parent-collection child-collection])
                                              (mt/user-http-request :rasta :get 200 "collection/tree")))))))
 
@@ -198,10 +199,10 @@
         (doseq [collection [a b e f g]]
           (perms/grant-collection-read-permissions! (group/all-users) collection))
         (is (= [{:name     "A"
-                 :children [{:name "B"}
-                            {:name "E"}
+                 :children [{:name "B", :children []}
+                            {:name "E", :children []}
                             {:name     "F"
-                             :children [{:name "G"}]}]}]
+                             :children [{:name "G", :children []}]}]}]
                (collection-tree-transform
                 (let [ids-to-keep (set (map u/the-id (vals collections)))]
                   (fn [{collection-id :id, :as collection}]

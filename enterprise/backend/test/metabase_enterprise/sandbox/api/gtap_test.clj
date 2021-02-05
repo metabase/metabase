@@ -69,39 +69,32 @@
                 (is (= post-results
                        (mt/user-http-request :crowberto :get 200 (format "mt/gtap/%s" (:id post-results)))))))))
 
-        (testing "Test that we can create a new GTAP without a card"
-          (with-gtap-cleanup
-            (let [post-results (gtap-post {:table_id             (mt/id :venues)
-                                           :group_id             group-id
-                                           :card_id              nil
-                                           :attribute_remappings {"foo" 1}})]
-              (is (= (assoc default-gtap-results :card_id false)
-                     (mt/boolean-ids-and-timestamps post-results)))
-              (is (= post-results
-                     (mt/user-http-request :crowberto :get 200 (format "mt/gtap/%s" (:id post-results))))))))
+      (testing "Test that we can create a new GTAP without a card"
+        (with-gtap-cleanup
+          (let [post-results (gtap-post {:table_id             table-id
+                                         :group_id             group-id
+                                         :card_id              nil
+                                         :attribute_remappings {"foo" 1}})]
+            (is (= (assoc default-gtap-results :card_id false)
+                   (mt/boolean-ids-and-timestamps post-results)))
+            (is (= post-results
+                   (mt/user-http-request :crowberto :get 200 (format "mt/gtap/%s" (:id post-results))))))))
 
-        (testing "Meaningful errors should be returned if you create an invalid GTAP"
-          (mt/with-temp* [Card  [{card-id :id} {:dataset_query {:database (mt/id)
-                                                                :type     :query
-                                                                :query    {:source-table (mt/id :venues)
-                                                                           :fields       [[:expression "PRICE"]]
-                                                                           :expressions  {"PRICE" [:ltrim "$100.00"]}}}}]]
-            (with-gtap-cleanup
-              (is (= {:message "Sandbox Cards can't return columns that have different types than the Table they are sandboxing."
-                      :new-col  {:base_type "type/Text"
-                                 :special_type nil
-                                 :name "PRICE"
-                                 :display_name "PRICE"
-                                 :expression_name "PRICE"
-                                 :field_ref ["expression" "PRICE"]
-                                 :source "fields"},
-                      :expected "type/Integer",
-                      :actual   "type/Text"}
-                     (mt/user-http-request :crowberto :post 400 "mt/gtap"
-                                           {:table_id             (mt/id :venues)
-                                            :group_id             group-id
-                                            :card_id              card-id
-                                            :attribute_remappings {"foo" 1}}))))))))))
+      (testing "Meaningful errors should be returned if you create an invalid GTAP"
+        (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
+                        Card  [{card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :venues)}}}]]
+          (with-gtap-cleanup
+            (is (schema= {:message  (s/eq "Sandbox Cards can't return columns that aren't present in the Table they are sandboxing.")
+                          :expected (s/eq [nil])
+                          :actual   (s/eq ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"])
+                          s/Keyword s/Any}
+                         (mt/user-http-request :crowberto :post 400 "mt/gtap"
+                                               {:table_id             table-id
+                                                :group_id             group-id
+                                                :card_id              card-id
+                                                :attribute_remappings {"foo" 1}})))))))))
 
 (deftest delete-gtap-test
   (testing "DELETE /api/mt/gtap/:id"

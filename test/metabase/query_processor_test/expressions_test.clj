@@ -4,7 +4,9 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.sync :as sync]
             [metabase.test :as mt]
@@ -84,6 +86,37 @@
                   :fields      [[:expression :x]]
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
+
+(deftest dont-return-expressions-if-fields-is-explicit-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (let [query (mt/mbql-query venues
+                  {:expressions {"Price + 1" [:+ $price 1]
+                                 "1 + 1"     [:+ 1 1]}
+                   :fields      [$price [:expression "1 + 1"]]
+                   :order-by    [[:asc $id]]
+                   :limit       3})]
+      (testing "If an explicit `:fields` clause is present, expressions *not* in that clause should not come back"
+        (is (= [[3 2] [2 2] [2 2]]
+               (mt/formatted-rows [int int]
+                 (qp/process-query query)))))
+
+      (testing "If `:fields` is not explicit, then return all the expressions"
+        (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4 2]
+                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3 2]
+                [3 "The Apple Pan"         11 34.0406 -118.428 2 3 2]]
+               (mt/formatted-rows [int str int 4.0 4.0 int int int]
+                 (qp/process-query (m/dissoc-in query [:query :fields]))))))
+
+      (testing "When aggregating, expressions that aren't used shouldn't come back"
+        (is (= [[2 22] [3 59] [4 13]]
+               (mt/formatted-rows [int int]
+                 (mt/run-mbql-query venues
+                   {:expressions {"Price + 1" [:+ $price 1]
+                                  "1 + 1"     [:+ 1 1]}
+                    :aggregation [:count]
+                    :breakout    [[:expression "Price + 1"]]
+                    :order-by    [[:asc [:expression "Price + 1"]]]
+                    :limit       3}))))))))
 
 (deftest expressions-in-order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
