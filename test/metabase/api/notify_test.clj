@@ -40,9 +40,6 @@
                     (catch clojure.lang.ExceptionInfo e
                       (select-keys (:object (ex-data e)) [:status :body])))))))))
 
-
-;; TODO - how can we validate the normal scenario given that it just kicks off a background job?
-
 (deftest post-db-id-test
   (with-api-key "testing-api-key"
     (mt/test-drivers (mt/normal-drivers)
