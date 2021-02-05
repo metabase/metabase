@@ -13,22 +13,15 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server))
 
-(defn- do-with-api-key [api-key thunk]
-  (with-redefs [env/env (assoc env/env :mb-api-key api-key)]
-    (thunk)))
-
-(defmacro ^:private with-api-key [api-key & body]
-  `(do-with-api-key ~api-key (fn [] ~@body)))
-
 (deftest unauthenticated-test
-  (with-api-key "testing-api-key"
+  (mt/with-temporary-setting-values [api-key "testing-api-key"]
     (testing "POST /api/notify/db/:id"
       (testing "endpoint should require authentication"
         (is (= (get middleware.u/response-forbidden :body)
                (http/client :post 403 "notify/db/100")))))))
 
 (deftest not-found-test
-  (with-api-key "testing-api-key"
+  (mt/with-temporary-setting-values [api-key "testing-api-key"]
     (testing "POST /api/notify/db/:id"
       (testing "database must exist or we get a 404"
         (is (= {:status 404
@@ -42,7 +35,7 @@
 
 (deftest post-db-id-test
   (binding [notify/*execute-asynchronously* false]
-    (with-api-key "testing-api-key"
+    (mt/with-temporary-setting-values [api-key "testing-api-key"]
       (mt/test-drivers (mt/normal-drivers)
         (let [table-name (->> (mt/db) database/tables first :name)
               post       (fn post-api
