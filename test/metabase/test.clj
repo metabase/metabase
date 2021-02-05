@@ -6,7 +6,7 @@
   (:require clojure.data
             [clojure.test :refer :all]
             [clojure.tools.macro :as tools.macro]
-            [clojure.walk :as walk]
+            [environ.core :as env]
             [java-time :as t]
             [medley.core :as m]
             [metabase.driver :as driver]
@@ -261,7 +261,10 @@
                       middleware-fn
                       [middleware-fn])))
          context  (merge
-                   {:timeout 500
+                   ;; CI is S U P E R  S L O W so give this a longer timeout.
+                   {:timeout (if (env/env :ci)
+                               5000
+                               500)
                     :runf    (fn [query rff context]
                                (try
                                  (when run (run))
