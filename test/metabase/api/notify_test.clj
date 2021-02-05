@@ -5,7 +5,6 @@
             [environ.core :as env]
             [metabase.http-client :as http]
             [metabase.models.database :as database]
-            [metabase.server.middleware.auth :as auth]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]

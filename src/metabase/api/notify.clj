@@ -9,7 +9,9 @@
 
 (api/defendpoint POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
-  Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single `Table`."
+  Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
+  `Table`. Optional Parameter `:scan` can be `\"full\" or \"schema\" for a full sync or a schema sync, available
+  regardless if a `:table_id` or `:table_name` is passed."
   [id :as {{:keys [table_id table_name scan]} :body}]
   (when scan
     (or (contains? #{"full" :full "schema" :schema} scan)
