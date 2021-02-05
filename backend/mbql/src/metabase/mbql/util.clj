@@ -7,22 +7,16 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [metabase.mbql.util.match :as mbql.match]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
-
-(defn qualified-name
-  "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
-  [x]
-  (if (and (keyword? x) (namespace x))
-    (str (namespace x) "/" (name x))
-    (name x)))
 
 (s/defn normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- su/KeywordOrString]
-  (-> (qualified-name token)
+  (-> (u/qualified-name token)
       str/lower-case
       (str/replace #"_" "-")
       keyword))
@@ -508,7 +502,7 @@
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
   [inner-query, expression-name :- (s/cond-pre s/Keyword su/NonBlankString)]
-  (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
+  (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
       (or
        ;; look for either string or keyword version of `expression-name` in `expressions`
@@ -519,7 +513,7 @@
            (recur source-query found)
            ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
            ;; were
-           (throw (ex-info (str (tru "No expression named ''{0}''" (qualified-name expression-name)))
+           (throw (ex-info (str (tru "No expression named ''{0}''" (u/qualified-name expression-name)))
                            {:type            :invalid-query
                             :expression-name expression-name
                             :tried           allowed-names

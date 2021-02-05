@@ -34,6 +34,7 @@
             [medley.core :as m]
             [metabase.mbql.predicates :as mbql.pred]
             [metabase.mbql.util :as mbql.u]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
 (defn- mbql-clause?
@@ -74,7 +75,7 @@
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
   [[_ expression-name]]
   [:expression (if (keyword? expression-name)
-                 (mbql.u/qualified-name expression-name)
+                 (u/qualified-name expression-name)
                  expression-name)])
 
 (defmethod normalize-mbql-clause-tokens :binning-strategy
@@ -90,7 +91,7 @@
   [[_ field-name field-type]]
   [:field-literal
    (if (keyword? field-name)
-     (mbql.u/qualified-name field-name)
+     (u/qualified-name field-name)
      field-name)
    (keyword field-type)])
 
@@ -189,7 +190,7 @@
   it."
   [template-tags]
   (into {} (for [[tag-name tag-def] template-tags]
-             [(mbql.u/qualified-name tag-name)
+             [(u/qualified-name tag-name)
               (let [tag-def (-> (normalize-tokens tag-def :ignore-path)
                                 (update :type mbql.u/normalize-token))]
                 (cond-> tag-def
@@ -221,7 +222,7 @@
       (update :fields mbql.u/normalize-token)
 
       alias
-      (update :alias mbql.u/qualified-name))))
+      (update :alias u/qualified-name))))
 
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."

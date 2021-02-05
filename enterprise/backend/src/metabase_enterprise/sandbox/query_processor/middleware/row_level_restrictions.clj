@@ -153,6 +153,9 @@
 ;; and using `:fields :all` for that join -- we need to know the columns that are produced in order to build the
 ;; surrounding query correctly. (We probably could use `SELECT *`, but at this time we're always selecting every Field
 ;; individually)
+;;
+;; Similar code exists in the GTAP model namespace that runs when we save a GTAP, but we need to do it here as well
+;; because sometimes admins don't have the right params to run the GTAP query.
 
 (s/defn ^:private run-gtap-source-query-for-metadata :- [mbql.s/SourceQueryMetadata]
   [gtapped-table-id :- su/IntGreaterThanZero source-query :- mbql.s/SourceQuery]
@@ -199,17 +202,25 @@
       (log/tracef "Reconciled metadata: %s" (u/pprint-to-str 'yellow <>)))))
 
 (defn- reconcile-fields
-  "Add a `:fields` clause if needed to `query` so it will only return Fields present in the original Table."
-  [{:keys [source-metadata], {:keys [fields]} :source-query, :as query}]
-  (if (or fields (empty? source-metadata))
+  "Add a `:fields` clause if needed to a `query` so it will only return Fields present in the original Table."
+  [{:keys [source-metadata source-query], :as query}]
+  (if (or (:fields query) (:fields source-query) (empty? source-metadata))
+    ;; if `query` or `source-query` already has `:fields`, we don't need to add anything.
     query
-    (u/prog1 (assoc-in query
-                       [:source-query :fields]
-                       (for [{field-id :id, field-name :name, base-type :base_type, :as field} source-metadata]
-                         (if field-id
-                           [:field-id field-id]
-                           [:field-literal field-name base-type])))
-      (log/tracef "Added :fields to :source-query: %s" (u/pprint-to-str 'magenta <>)))))
+    ;; otherwise we need to add Fields. We can't add it at the top level because that's where user-supplied stuff like
+    ;; `:breakout` or `:fields` will go. We need to add it to the `:source-query`.
+    (let [fields (for [{field-id :id, field-name :name, base-type :base_type, :as field} source-metadata]
+                   (if field-id
+                     [:field-id field-id]
+                     [:field-literal field-name base-type]))]
+      (if-not (:native source-query)
+        ;; if source query is an *MBQL* source query, we can add `:fields` directly to the source query
+        (assoc-in query [:source-query :fields] fields)
+        ;; otherwise for a native source query we need to nest it an additional level so we can add `:fields` to it.
+        (u/prog1 (assoc query :source-query {:source-query    source-query
+                                             :source-metadata source-metadata
+                                             :fields fields})
+          (log/tracef "Added :fields to query %s" (u/pprint-to-str 'magenta <>)))))))
 
 (s/defn ^:private gtap->source :- {:source-query                     s/Any
                                    (s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata]
@@ -232,7 +243,7 @@
         (update-metadata-for-gtap! gtap metadata)
         (assoc source-query :source-metadata metadata)))
     (update source-query :source-metadata reconcile-metadata table-id)
-    (reconcile-fields source-query )))
+    (reconcile-fields source-query)))
 
 (s/defn ^:private gtap->perms-set :- #{perms/ObjectPath}
   "Calculate the set of permissions needed to run the query associated with a GTAP; this set of permissions is excluded
