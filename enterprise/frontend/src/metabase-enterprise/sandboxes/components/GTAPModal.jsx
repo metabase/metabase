@@ -49,6 +49,7 @@ type State = {
   gtap: ?GTAP,
   attributesOptions: ?(string[]),
   simple: boolean,
+  error: ?string,
 };
 
 @withRouter
