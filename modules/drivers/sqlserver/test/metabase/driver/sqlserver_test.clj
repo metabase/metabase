@@ -22,7 +22,6 @@
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
-;; Make sure something long doesn't come back as some weird type like `ClobImpl`
 (def ^:private a-gene
   "Really long string representing a gene like \"GGAGCACCTCCACAAGTGCAGGCTATCCTGTCGAGTAAGGCCT...\""
   (apply str (repeatedly 1000 (partial rand-nth [\A \G \C \T]))))
@@ -32,12 +31,14 @@
     [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}}]
     [[a-gene]]]])
 
-(datasets/expect-with-driver :sqlserver
-  [[1 a-gene]]
-  (-> (data/dataset metabase.driver.sqlserver-test/genetic-data (data/run-mbql-query genetic-data))
-      :data
-      :rows
-      obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
+(deftest clobs-should-come-back-as-text-test
+  (mt/test-driver :sqlserver
+    (testing "Make sure something long doesn't come back as some weird type like `ClobImpl`"
+      (is (= [[1 a-gene]]
+             (-> (data/dataset metabase.driver.sqlserver-test/genetic-data (data/run-mbql-query genetic-data))
+                 :data
+                 :rows
+                 obj->json->obj)))))) ; convert to JSON + back so the Clob gets stringified
 
 (deftest connection-spec-test
   (testing "Test that additional connection string options work (#5296)"
@@ -63,84 +64,88 @@
                ;; `<version>`
                (update :applicationName #(str/replace % #"\s.*$" " <version>")))))))
 
-(datasets/expect-with-driver :sqlserver
-  "UTC"
-  (tu/db-timezone-id))
+(deftest timezone-id-test
+  (mt/test-driver :sqlserver
+    (is (= "UTC"
+           (tu/db-timezone-id)))))
 
-;; SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their equivalent of
-;; LIMIT). Make sure we add a max-results LIMIT to the nested query
-(datasets/expect-with-driver :sqlserver
-  {:query  (str
-            "SELECT TOP 1048576 \"source\".\"name\" AS \"name\" "
-            "FROM ("
-            "SELECT TOP 1048576 "
-            "\"dbo\".\"venues\".\"name\" AS \"name\" "
-            "FROM \"dbo\".\"venues\" "
-            "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-            " ) \"source\" ") ; not sure why this generates an extra space before the closing paren, but it does
-   :params nil}
-  (qp/query->native
-   (data/mbql-query venues
-     {:source-query {:source-table $$venues
-                     :fields       [$name]
-                     :order-by     [[:asc $id]]}})))
+(deftest add-max-results-limit-test
+  (mt/test-driver :sqlserver
+    (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
+                  "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
+      (is (= {:query (str "SELECT TOP 1048576 \"source\".\"name\" AS \"name\" "
+                          "FROM ("
+                          "SELECT TOP 1048576 "
+                          "\"dbo\".\"venues\".\"name\" AS \"name\" "
+                          "FROM \"dbo\".\"venues\" "
+                          "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
+                          " ) \"source\" ") ; not sure why this generates an extra space before the closing paren, but it does
+              :params nil}
+             (qp/query->native
+              (mt/mbql-query venues
+                {:source-query {:source-table $$venues
+                                :fields       [$name]
+                                :order-by     [[:asc $id]]}})))))))
 
-;; make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP clauses that may have
-;; been set in the query
-(datasets/expect-with-driver :sqlserver
-  {:query (str "SELECT TOP 10 \"source\".\"name\" AS \"name\" "
-               "FROM ("
-               "SELECT TOP 20 "
-               "\"dbo\".\"venues\".\"name\" AS \"name\" "
-               "FROM \"dbo\".\"venues\" "
-               "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-               " ) \"source\" ")
-   :params nil}
-  (qp/query->native
-   (data/mbql-query venues
-     {:source-query {:source-table $$venues
-                     :fields       [$name]
-                     :order-by     [[:asc $id]]
-                     :limit        20}
-      :limit        10})))
+(deftest preserve-existing-top-clauses
+  (mt/test-driver :sqlserver
+    (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
+                  "clauses that may have been set in the query")
+      (is (= {:query  (str "SELECT TOP 10 \"source\".\"name\" AS \"name\" "
+                           "FROM ("
+                           "SELECT TOP 20 "
+                           "\"dbo\".\"venues\".\"name\" AS \"name\" "
+                           "FROM \"dbo\".\"venues\" "
+                           "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
+                           " ) \"source\" ")
+              :params nil}
+             (qp/query->native
+              (mt/mbql-query venues
+                {:source-query {:source-table $$venues
+                                :fields       [$name]
+                                :order-by     [[:asc $id]]
+                                :limit        20}
+                 :limit        10})))))))
 
-;; We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because of the
-;; max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL
-(datasets/expect-with-driver :sqlserver
-  {:query (str "SELECT \"source\".\"name\" AS \"name\" "
-               "FROM ("
-               "SELECT TOP 1048576 "
-               "\"dbo\".\"venues\".\"name\" AS \"name\" "
-               "FROM \"dbo\".\"venues\" "
-               "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-               " ) \"source\" "
-               "ORDER BY \"source\".\"id\" ASC")
-   :params nil}
-  ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
-  ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
-  (let [preprocessed (-> (data/mbql-query venues
-                           {:source-query {:source-table $$venues
-                                           :fields       [$name]
-                                           :order-by     [[:asc $id]]}
-                            :order-by     [[:asc $id]]})
-                         qp/query->preprocessed
-                         (m/dissoc-in [:query :limit]))]
-    (qp.test-util/with-everything-store
-      (driver/mbql->native :sqlserver preprocessed))))
+(deftest dont-add-top-clauses-for-top-level-test
+  (mt/test-driver :sqlserver
+    (testing (str "We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because "
+                  "of the max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL"))
+    ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
+    ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
+    (let [preprocessed (-> (mt/mbql-query venues
+                             {:source-query {:source-table $$venues
+                                             :fields       [$name]
+                                             :order-by     [[:asc $id]]}
+                              :order-by     [[:asc $id]]})
+                           qp/query->preprocessed
+                           (m/dissoc-in [:query :limit]))]
+      (qp.test-util/with-everything-store
+        (is (= {:query  (str "SELECT \"source\".\"name\" AS \"name\" "
+                             "FROM ("
+                             "SELECT TOP 1048576 "
+                             "\"dbo\".\"venues\".\"name\" AS \"name\" "
+                             "FROM \"dbo\".\"venues\" "
+                             "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
+                             " ) \"source\" "
+                             "ORDER BY \"source\".\"id\" ASC")
+                :params nil}
+               (driver/mbql->native :sqlserver preprocessed)))))))
 
-;; ok, generating all that SQL above is nice, but let's make sure our queries actually work!
-(datasets/expect-with-driver :sqlserver
-  [["Red Medicine"]
-   ["Stout Burgers & Beers"]
-   ["The Apple Pan"]]
-  (qp.test/rows
-    (qp/process-query
-     (data/mbql-query venues
-       {:source-query {:source-table $$venues
-                       :fields       [$name]
-                       :order-by     [[:asc $id]]
-                       :limit        5}
-        :limit        3}))))
+(deftest max-results-should-actually-work-test
+  (mt/test-driver :sqlserver
+    (testing "ok, generating all that SQL above is nice, but let's make sure our queries actually work!"
+      (is (= [["Red Medicine"]
+              ["Stout Burgers & Beers"]
+              ["The Apple Pan"]]
+             (qp.test/rows
+               (qp/process-query
+                (mt/mbql-query venues
+                  {:source-query {:source-table $$venues
+                                  :fields       [$name]
+                                  :order-by     [[:asc $id]]
+                                  :limit        5}
+                   :limit        3}))))))))
 
 (deftest locale-bucketing-test
   (datasets/test-driver :sqlserver
