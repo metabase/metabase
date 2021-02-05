@@ -87,7 +87,7 @@
                                                               :type     :query
                                                               :query    {:source-table (mt/id :venues)}}}]]
           (with-gtap-cleanup
-            (is (schema= {:errors   (s/eq {:card_id "Sandbox Cards can't return columns that aren't present in the Table they are sandboxing."})
+            (is (schema= {:message  (s/eq "Sandbox Cards can't return columns that aren't present in the Table they are sandboxing.")
                           :expected (s/eq [nil])
                           :actual   (s/eq ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"])
                           s/Keyword s/Any}

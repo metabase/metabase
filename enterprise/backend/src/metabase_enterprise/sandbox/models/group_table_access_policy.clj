@@ -71,7 +71,7 @@
            (throw (ex-info msg
                            {:type        qp.error-type/bad-configuration
                             :status-code 400
-                            :errors      {:card_id msg}
+                            :message     msg
                             :new-column  col
                             :expected    (mapv :name table-cols)
                             :actual      (mapv :name result-metadata-columns)}))))
@@ -80,7 +80,7 @@
            (throw (ex-info msg
                            {:type        qp.error-type/bad-configuration
                             :status-code 400
-                            :errors      {:card_id msg}
+                            :message     msg
                             :new-col     col
                             :expected    table-col-base-type
                             :actual      (:base_type col)}))))))))
