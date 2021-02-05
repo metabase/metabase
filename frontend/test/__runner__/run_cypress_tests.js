@@ -98,6 +98,8 @@ const init = async () => {
             "--parallel",
             "--group",
             process.env["CYPRESS_GROUP"],
+            "--ci-build-id",
+            process.env["CIRCLE_WORKFLOW_ID"],
           ]
         : []),
       ...(hasEnterpriseToken ? ["--env", "HAS_ENTERPRISE_TOKEN=true"] : []),
