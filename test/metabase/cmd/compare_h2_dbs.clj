@@ -115,12 +115,3 @@
     (jdbc/with-db-connection [conn-2 (jdbc-spec db-file-2)]
       (or (different-table-names? conn-1 conn-2)
           (different-rows? conn-1 conn-2)))))
-
-(defn -main
-  "Main entrypoint."
-  [db-file-1 db-file-2]
-  (when-let [difference (different-contents? db-file-1 db-file-2)]
-    (println "DB contents are different. Reason:" difference)
-    (System/exit 1))
-  (println "Success: DB contents match.")
-  (System/exit 0))
