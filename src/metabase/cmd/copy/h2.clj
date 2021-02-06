@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [metabase.db.spec :as db.spec]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [trs]]
+            [clojure.tools.logging :as log]))
 
 (defn- add-file-prefix-if-needed [h2-filename]
   (letfn [(prepend-protocol [s]
@@ -31,4 +32,4 @@
                     (str h2-filename ".mv.db")]]
     (when (.exists (io/file filename))
       (io/delete-file filename)
-      (println (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename)))))
+      (log/warn (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename)))))
