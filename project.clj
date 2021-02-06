@@ -26,7 +26,7 @@
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
-                                        "--exclude-profiles" "compare-h2-dbs,dev"]
+                                        "--exclude-profiles" "dev"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
@@ -36,7 +36,6 @@
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
    "repl-ee"                           ["with-profile" "+repl,+ee" "repl"]
-   "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]
    "uberjar"                           ["uberjar"]
    "uberjar-ee"                        ["with-profile" "+ee" "uberjar"]}
 
@@ -422,9 +421,4 @@
    {:main org.h2.tools.Shell}
 
    :generate-automagic-dashboards-pot
-   {:main metabase.automagic-dashboards.rules}
-
-   :compare-h2-dbs
-   {:aliases      ^:replace  {"run" ["run"]}
-    :main         ^:skip-aot metabase.cmd.compare-h2-dbs
-    :source-paths ["test"]}})
+   {:main metabase.automagic-dashboards.rules}})
