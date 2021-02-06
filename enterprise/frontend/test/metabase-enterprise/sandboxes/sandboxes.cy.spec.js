@@ -17,6 +17,7 @@ const {
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
+  REVIEWS,
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
@@ -824,6 +825,117 @@ describeWithToken("formatting > sandboxes", () => {
         expect(xhr.response.body.error).not.to.exist;
       });
       cy.contains("37.65");
+    });
+
+    it("attempt to sandbox based on question with more columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
+      const [ORDERS_ALIAS, PRODUCTS_ALIAS, REVIEWS_ALIAS] = [
+        "Orders",
+        "Products",
+        "Reviews",
+      ];
+      const QUESTION_NAME = "Extra columns question";
+      const ERROR_MESSAGE =
+        "Sandbox Cards can't return columns that aren't present in the Table they are sandboxing.";
+
+      cy.server();
+      cy.route("POST", "/api/mt/gtap").as("sandboxTable");
+
+      cy.log(
+        "**-- 1. Create question that will have more columns (different columns) than the sandboxed table --**",
+      );
+
+      cy.request("POST", "/api/card", {
+        name: QUESTION_NAME,
+        dataset_query: {
+          database: 1,
+          query: {
+            joins: [
+              // a. People join Orders
+              {
+                alias: ORDERS_ALIAS,
+                condition: [
+                  "=",
+                  ["field-id", PEOPLE.ID],
+                  ["joined-field", ORDERS_ALIAS, ["field-id", ORDERS.USER_ID]],
+                ],
+                fields: "all",
+                "source-table": ORDERS_ID,
+                strategy: "inner-join",
+              },
+              // b. Previous results join Products
+              {
+                alias: PRODUCTS_ALIAS,
+                condition: [
+                  "=",
+                  [
+                    "joined-field",
+                    ORDERS_ALIAS,
+                    ["field-id", ORDERS.PRODUCT_ID],
+                  ],
+                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                ],
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+                strategy: "inner-join",
+              },
+              // c. Previous results join Reviews
+              {
+                alias: REVIEWS_ALIAS,
+                condition: [
+                  "=",
+                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                  [
+                    "joined-field",
+                    REVIEWS_ALIAS,
+                    ["field-id", REVIEWS.PRODUCT_ID],
+                  ],
+                ],
+                fields: "all",
+                "source-table": REVIEWS_ID,
+                strategy: "inner-join",
+              },
+            ],
+            "source-table": PEOPLE_ID,
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      });
+
+      cy.visit("/admin/permissions/databases/1/schemas/PUBLIC/tables");
+      // |                | All users | collection |
+      // |--------------- |:---------:|:----------:|
+      // | Orders         |   X (0)   |    X (1)   |
+      cy.get(".Icon-close")
+        .eq(1) // No better way of doing this, undfortunately (see table above)
+        .click();
+      cy.findByText("Grant sandboxed access").click();
+      cy.findAllByRole("button", { name: "Change" }).click();
+      cy.findByText(
+        "Use a saved question to create a custom view for this table",
+      ).click();
+      cy.findByText(QUESTION_NAME).click();
+
+      cy.findByText("Pick a parameter").click();
+      popover().within(() => {
+        // PERSON.ID
+        cy.findAllByText("ID")
+          .first()
+          .click();
+      });
+
+      cy.findByText("Pick a user attribute").click();
+      cy.findByText(ATTR_UID).click();
+      cy.findAllByRole("button", { name: "Save" }).click();
+
+      cy.wait("@sandboxTable").then(xhr => {
+        cy.log(xhr);
+        expect(xhr.status).to.eq(400);
+        expect(xhr.response.body.message).to.eq(ERROR_MESSAGE);
+      });
+      cy.get(".Modal").scrollTo("bottom");
+      cy.findByText(ERROR_MESSAGE);
     });
   });
 });
