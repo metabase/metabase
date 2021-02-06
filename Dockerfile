@@ -2,7 +2,7 @@
 # STAGE 1.1: builder frontend
 ###################
 
-FROM node:15.8.0-alpine as frontend
+FROM node:12.20.1-alpine as frontend
 
 WORKDIR /app/source
 
@@ -10,7 +10,7 @@ ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # frontend dependencies
 COPY yarn.lock package.json .yarnrc ./
-RUN yarn
+RUN yarn install --frozen-lockfile
 
 ###################
 # STAGE 1.2: builder backend
