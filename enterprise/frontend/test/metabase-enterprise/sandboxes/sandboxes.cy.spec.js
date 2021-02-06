@@ -340,7 +340,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("drill-through should work on implicit joined tables with sandboxes (metabase#13641)", () => {
+    it("drill-through should work on implicit joined tables with sandboxes (metabase#13641)", () => {
       const QUESTION_NAME = "13641";
 
       cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
@@ -511,7 +511,7 @@ describeWithToken("formatting > sandboxes", () => {
        * There isn't an exact issue that this test reproduces, but it is basically a version of (metabase-enterprise#520)
        * that uses a query builder instead of SQL based questions.
        */
-      it.skip("should be able to sandbox using query builder saved questions", () => {
+      it("should be able to sandbox using query builder saved questions", () => {
         cy.server();
         cy.route("POST", "/api/dataset").as("dataset");
 
@@ -790,7 +790,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (metabase#13642)", () => {
+    it("should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (metabase#13642)", () => {
       const QUESTION_NAME = "13642";
       const PRODUCTS_ALIAS = "Products";
 
