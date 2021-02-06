@@ -258,7 +258,7 @@
                       expected-cols          (qp/query->expected-cols (mt/mbql-query orders))]
                   (testing "Card results metadata shouldn't differ wildly from QP expected cols"
                     (letfn [(select-keys-to-compare [cols]
-                              (map #(select-keys % [:name #_:display_name :base_type :special_type :id :field_ref]) cols))]
+                              (map #(select-keys % [:name :base_type :id :field_ref]) cols))]
                       (is (= (select-keys-to-compare results-metadata)
                              (select-keys-to-compare expected-cols)))))))]
         (do-test)
