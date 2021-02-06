@@ -240,10 +240,7 @@ export default class Map extends Component {
         options: _.chain(
           Object.entries(MetabaseSettings.get("custom-geojson", {})),
         )
-          .map(
-            // $FlowFixMe:
-            ([key, value]) => ({ name: value.name, value: key }),
-          )
+          .map(([key, value]) => ({ name: value.name, value: key }))
           .sortBy(x => x.name.toLowerCase())
           .value(),
       }),
