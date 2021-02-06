@@ -700,7 +700,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.findByText("McClure-Lockman");
       });
 
-      it.skip("simple sandboxing should work (metabase#14629)", () => {
+      it("simple sandboxing should work (metabase#14629)", () => {
         cy.server();
         cy.route("POST", "/api/dataset").as("dataset");
 
@@ -713,7 +713,7 @@ describeWithToken("formatting > sandboxes", () => {
           group_id: COLLECTION_GROUP,
           card_id: null,
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field-id", ORDERS.PRODUCT_ID]],
+            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
           },
         });
 
@@ -731,8 +731,8 @@ describeWithToken("formatting > sandboxes", () => {
         cy.wait("@dataset").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
         });
-        // Title of the Product ID = 1
-        cy.findAllByText("Rustic Paper Wallet");
+        // Title of the first order for User ID = 1
+        cy.findByText("Awesome Concrete Shoes");
       });
     });
 

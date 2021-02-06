@@ -11,7 +11,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Card Collection Field Table]]
+            [metabase.models :refer [Card Collection Dimension Field Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
@@ -22,6 +22,7 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -285,7 +286,7 @@
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db
         (mt/with-temp* [Collection [collection]
-                        Card       [card        {:collection_id (u/get-id collection)}]]
+                        Card       [card        {:collection_id (u/the-id collection)}]]
           (mt.tu/with-group [group]
             (perms/revoke-permissions! (perms-group/all-users) (mt/id))
             (perms/grant-collection-read-permissions! group collection)
@@ -298,7 +299,7 @@
                           :type     :query
                           :query    {:source-table (mt/id :venues)
                                      :limit        1}
-                          :info     {:card-id    (u/get-id card)
+                          :info     {:card-id    (u/the-id card)
                                      :query-hash (byte-array 0)}}))))))))))
 
     (testing (str "This test isn't covering a row level restrictions feature, but rather checking it it doesn't break "
@@ -313,7 +314,7 @@
                      (qp/process-query
                       {:database (mt/id)
                        :type     :query
-                       :query    {:source-table (format "card__%s" (u/get-id card))
+                       :query    {:source-table (format "card__%s" (u/the-id card))
                                   :aggregation  [["count"]]}}))))))))))
 
 ;; Test that we can follow FKs to related tables and breakout by columns on those related tables. This test has
@@ -696,3 +697,55 @@
                        (:cached result)))
                 (is (= [[9]]
                        (mt/rows result)))))))))))
+
+(deftest remapped-fks-test
+  (testing "Sandboxing should work with remapped FK columns (#14629)"
+    (mt/dataset sample-dataset
+      ;; set up GTAP against reviews
+      (mt/with-gtaps (mt/$ids reviews
+                       {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
+                        :attributes {"user_id" 1}})
+        ;; grant full data perms for products
+        (perms/grant-permissions! (perms-group/all-users) (perms/object-path
+                                                           (mt/id)
+                                                           (db/select-one-field :schema Table :id (mt/id :products))
+                                                           (mt/id :products)))
+        (mt/with-test-user :rasta
+          (testing "Sanity check: should be able to query products"
+            (is (schema= {:status   (s/eq :completed)
+                          s/Keyword s/Any}
+                         (mt/run-mbql-query products))))
+          (testing "Try the sandbox without remapping in place"
+            (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
+              (is (schema= {:status    (s/eq :completed)
+                            :row_count (s/eq 8)
+                            s/Keyword  s/Any}
+                           result))
+              (is (= [1
+                      1
+                      "christ"
+                      5
+                      (str "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et "
+                           "eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia.")
+                      "2018-05-15T20:25:48.517Z"]
+                     (first (mt/rows result))))))
+          (testing "Ok, add remapping and it should still work"
+            (mt/with-temp Dimension [_ (mt/$ids reviews
+                                         {:field_id                %product_id
+                                          :name                    "Product ID"
+                                          :type                    :external
+                                          :human_readable_field_id %products.title})]
+              (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
+                (is (schema= {:status    (s/eq :completed)
+                              :row_count (s/eq 8)
+                              s/Keyword  s/Any}
+                             result))
+                (is (= [1
+                        1
+                        "christ"
+                        5
+                        (str "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et "
+                             "eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia.")
+                        "2018-05-15T20:25:48.517Z"
+                        "Rustic Paper Wallet"] ; <- Includes the remapped column
+                       (first (mt/rows result))))))))))))
