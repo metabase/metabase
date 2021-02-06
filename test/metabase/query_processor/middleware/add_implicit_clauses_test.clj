@@ -106,11 +106,12 @@
 (deftest add-implicit-fields-for-source-queries-test
   (testing "We should add implicit Fields for source queries that have source-metadata as appropriate"
     (let [{{source-query :query} :dataset_query
-           source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
+           source-metadata       :result_metadata}
+          (qp.test-util/card-with-source-metadata-for-query
            (mt/mbql-query checkins
              {:aggregation [[:count]]
               :breakout    [!month.$date]}))]
-      (is (schema= {:fields   (s/eq [[:field-literal "DATE" :type/DateTime]
+      (is (schema= {:fields   (s/eq [[:field-id (mt/id :checkins :date)]
                                      [:field-literal "count" :type/BigInteger]])
                     s/Keyword s/Any}
                    (#'add-implicit-clauses/add-implicit-fields
