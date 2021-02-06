@@ -5,17 +5,18 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.models :refer [Dimension Segment]]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as models]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.models.segment :refer [Segment]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [schema.core :as s]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -176,7 +177,7 @@
   ([card]
    {:database mbql.s/saved-questions-virtual-database-id
     :type     :query
-    :query    {:source-table (str "card__" (u/get-id card))}})
+    :query    {:source-table (str "card__" (u/the-id card))}})
 
   ([card m]
    (update (query-with-source-card card) :query merge m))
@@ -369,7 +370,7 @@
              (qp/query->native
                {:database (mt/id)
                 :type     :query
-                :query    {:source-table (str "card__" (u/get-id card))}}))))))
+                :query    {:source-table (str "card__" (u/the-id card))}}))))))
 
 (deftest correct-column-metadata-test
   (testing "make sure a query using a source query comes back with the correct columns metadata"
@@ -472,7 +473,7 @@
                                                  :definition {:filter [:= $venues.price 1]}})]
                     Card    [card (mbql-card-def
                                     :source-table (mt/id :venues)
-                                    :filter       [:and [:segment (u/get-id segment)]])]]
+                                    :filter       [:and [:segment (u/the-id segment)]])]]
       (is (= [[22]]
              (mt/rows
                (qp/process-query
@@ -483,7 +484,7 @@
   (testing "perms for a Card with a SQL source query\n"
     (testing "reading should require that you have read permissions for the Card's Collection"
       (mt/with-temp* [Collection [collection]
-                      Card       [card {:collection_id (u/get-id collection)
+                      Card       [card {:collection_id (u/the-id collection)
                                         :dataset_query (mt/native-query {:query "SELECT * FROM VENUES"})}]]
         (is (= #{(perms/collection-read-path collection)}
                (query-perms/perms-set (query-with-source-card card :aggregation [:count]))))))
@@ -499,11 +500,11 @@
         (mt/with-temp-copy-of-db
           (perms/revoke-permissions! (group/all-users) (mt/id))
           (mt/with-temp* [Collection [collection]
-                          Card       [card-1 {:collection_id (u/get-id collection)
+                          Card       [card-1 {:collection_id (u/the-id collection)
                                               :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})}]
-                          Card       [card-2 {:collection_id (u/get-id collection)
+                          Card       [card-2 {:collection_id (u/the-id collection)
                                               :dataset_query (mt/mbql-query nil
-                                                               {:source-table (format "card__%d" (u/get-id card-1))})}]]
+                                                               {:source-table (format "card__%d" (u/the-id card-1))})}]]
             (testing "read perms for both Cards should be the same as reading the parent collection")
             (is (= (models/perms-objects-set collection :read)
                    (models/perms-objects-set card-1 :read)
@@ -534,7 +535,7 @@
                          (mt/rows
                            (qp/process-userland-query (assoc (:dataset_query card-2)
                                                              :info {:executed-by (mt/user->id :rasta)
-                                                                    :card-id     (u/get-id card-2)}))))))))))))))
+                                                                    :card-id     (u/the-id card-2)}))))))))))))))
 
 ;; try this in an end-to-end fashion using the API and make sure we can save a Card if we have appropriate read
 ;; permissions for the source query
@@ -543,17 +544,17 @@
   using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
   group."
   [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
-  (mt/with-temp Card [card {:collection_id (some-> source-collection-or-id-or-nil u/get-id)
-                            :dataset_query {:database (u/get-id db-or-id)
+  (mt/with-temp Card [card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
+                            :dataset_query {:database (u/the-id db-or-id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES"}}}]
-    ((mt/user->client :rasta) :post expected-status-code "card"
-     {:name                   (mt/random-name)
-      :collection_id          (some-> dest-collection-or-id-or-nil u/get-id)
-      :display                "scalar"
-      :visualization_settings {}
-      :dataset_query          (query-with-source-card card
-                                :aggregation [:count])})))
+    (mt/user-http-request :rasta :post expected-status-code "card"
+                          {:name                   (mt/random-name)
+                           :collection_id          (some-> dest-collection-or-id-or-nil u/the-id)
+                           :display                "scalar"
+                           :visualization_settings {}
+                           :dataset_query          (query-with-source-card card
+                                                     :aggregation [:count])})))
 
 (deftest save-card-with-source-query-via-api-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -685,36 +686,67 @@
                      (mt/run-mbql-query nil
                        {:source-table (str "card__" card-id)}))))))))))
 
-;; If a field is bucketed as a year in a source query, bucketing it as a year shouldn't break things (#10446)
-;; (Normally, it would break things, but the new `simplify` middleware eliminates the duplicate cast. It is not
-;; currently possible to cast a DateTime field to a year in MBQL, and then cast it a second time in an another query
-;; using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like `2016` rather
-;; than timestamps
 (deftest bucketing-already-bucketed-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-    (is (= [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00Z")]]
-           (mt/rows
-             (mt/run-mbql-query checkins
-               {:source-query {:source-table $$checkins
-                               :fields       [!year.date]
-                               :order-by     [[:asc !year.date]]
-                               :limit        1}
-                :fields       [!year.*date]}))))))
+    (testing "If a field is bucketed as a year in a source query, bucketing it as a year shouldn't break things (#10446)"
+      ;; (Normally, it would break things, but the new `simplify` middleware eliminates the duplicate cast. It is not
+      ;; currently possible to cast a DateTime field to a year in MBQL, and then cast it a second time in an another
+      ;; query using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like
+      ;; `2016` rather than timestamps
+      (is (= [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00Z")]]
+             (mt/rows
+               (mt/run-mbql-query checkins
+                 {:source-query {:source-table $$checkins
+                                 :fields       [!year.date]
+                                 :order-by     [[:asc !year.date]]
+                                 :limit        1}
+                  :fields       [!year.*date]})))))))
 
-;; https://github.com/metabase/metabase/issues/10511
 (deftest correctly-alias-duplicate-names-in-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :foreign-keys)
-    (testing "Do we correctly alias name clashes in breakout"
+    (testing "Do we correctly alias name clashes in breakout (#10511)"
       (is (= [[ "20th Century Cafe" "Café" 1 ]
               [ "25°" "Burger" 1 ]
               [ "33 Taps" "Bar" 1 ]]
              (mt/formatted-rows [str str int]
                (mt/run-mbql-query venues
                  {:source-query {:source-table $$venues
-                                 :aggregation [[:count]]
-                                 :breakout    [$name [:joined-field "c" $categories.name]]
-                                 :joins       [{:source-table $$categories
-                                                :alias        "c"
-                                                :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}
+                                 :aggregation  [[:count]]
+                                 :breakout     [$name [:joined-field "c" $categories.name]]
+                                 :joins        [{:source-table $$categories
+                                                 :alias        "c"
+                                                 :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}
                   :filter       [:> [:field-literal "count" :type/Number] 0]
                   :limit        3})))))))
+
+(deftest remapped-fks-test
+  (testing "Should be able to use a question with remapped FK columns as a Saved Question (#10474)"
+    (mt/dataset sample-dataset
+      ;; Add column remapping from Orders Product ID -> Products.Title
+      (mt/with-temp Dimension [_ (mt/$ids orders
+                                   {:field_id                %product_id
+                                    :name                    "Product ID"
+                                    :type                    :external
+                                    :human_readable_field_id %products.title})]
+        (let [card-results-metadata (let [result (mt/run-mbql-query orders {:limit 10})]
+                                      (testing "Sanity check: should be able to query Orders"
+                                        (is (schema= {:status   (s/eq :completed)
+                                                      s/Keyword s/Any}
+                                                     result)))
+                                      (get-in result [:data :results_metadata :columns]))
+              expected-cols         (qp/query->expected-cols (mt/mbql-query orders))]
+          ;; Save a question with a query against orders. Should work regardless of whether Card has result_metadata
+          (doseq [[description result-metadata] {"NONE"                   nil
+                                                 "from running the query" card-results-metadata
+                                                 "with QP expected cols"  expected-cols}]
+            (testing (format "with Card with result metadata %s cols => %s"
+                             description (pr-str (mapv :display_name result-metadata)))
+              (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query orders)
+                                                 :result_metadata result-metadata}]
+                ;; now try using this Card as a saved question,  should work
+                (is (= {:rows    [[1 1  14  37.65 2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
+                                  [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 "Mediocre Wooden Bench"]]
+                        :columns ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY" "TITLE"]}
+                       (mt/rows+column-names
+                         (mt/run-mbql-query orders
+                           {:source-table (str "card__" card-id), :limit 2, :order-by [[:asc $id]]}))))))))))))

@@ -5,6 +5,7 @@
   time."
   (:require [clojure.tools.logging :as log]
             [metabase.mbql.predicates :as mbql.preds]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.sync.analyze.fingerprint.insights :as insights]
@@ -29,7 +30,10 @@
    :base_type                     su/FieldTypeKeywordOrString
    (s/optional-key :special_type) (s/maybe su/FieldTypeKeywordOrString)
    (s/optional-key :unit)         (s/maybe DateTimeUnitKeywordOrString)
-   (s/optional-key :fingerprint)  (s/maybe i/Fingerprint)})
+   (s/optional-key :fingerprint)  (s/maybe i/Fingerprint)
+   (s/optional-key :id)           su/IntGreaterThanZero
+   ;; only optional because it's not present right away, but it should be present at the end.
+   (s/optional-key :field_ref)    mbql.s/FieldOrAggregationReference})
 
 (def ResultsMetadata
   "Schema for valid values of the `result_metadata` column."
@@ -59,7 +63,9 @@
   (merge
    {:base_type    :type/*
     :display_name (:name column)}
-   (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint])))
+   (u/select-non-nil-keys
+    column
+    [:name :display_name :description :base_type :special_type :unit :fingerprint :id :field_ref])))
 
 (defn insights-rf
   "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
