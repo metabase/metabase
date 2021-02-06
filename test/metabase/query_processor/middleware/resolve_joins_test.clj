@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.resolve-joins-test
   (:require [clojure.test :refer :all]
+            [metabase.models :refer [Database Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
             [metabase.query-processor.store :as qp.store]
