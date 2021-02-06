@@ -94,7 +94,7 @@
                                                {:table_id             table-id
                                                 :group_id             group-id
                                                 :card_id              card-id
-                                                :attribute_remappings {"foo" 1}})))))))))
+                                                :attribute_remappings {"foo" 1}}))))))))))
 
 (deftest delete-gtap-test
   (testing "DELETE /api/mt/gtap/:id"
