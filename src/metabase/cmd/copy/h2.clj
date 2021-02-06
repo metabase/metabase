@@ -2,10 +2,10 @@
   "Functions for working with H2 databases shared between the `load-from-h2` and `dump-to-h2` commands."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.db.spec :as db.spec]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [clojure.tools.logging :as log]))
+            [metabase.util.i18n :refer [trs]]))
 
 (defn- add-file-prefix-if-needed [h2-filename]
   (letfn [(prepend-protocol [s]
