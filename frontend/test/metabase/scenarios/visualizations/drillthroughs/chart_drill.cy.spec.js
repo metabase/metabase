@@ -7,7 +7,6 @@ import {
   popover,
   sidebar,
   USER_GROUPS,
-  visitQuestionAdhoc,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -450,43 +449,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Gizmo").should("not.exist");
       cy.findByText("Doohickey").should("not.exist");
     });
-  });
-
-  it("should 'View these...' on region map", () => {
-    visitQuestionAdhoc({
-      dataset_query: {
-        database: 1,
-        type: "query",
-        query: {
-          "source-table": PEOPLE_ID,
-          breakout: [["field-id", PEOPLE.STATE]],
-          aggregation: [["count"]],
-        },
-      },
-      display: "map",
-      visualization_settings: {
-        "map.type": "region",
-        "map.region": "us_states",
-      },
-    });
-    cy.get(".Visualization")
-      .find("path")
-      .first()
-      .as("minnesota");
-
-    // hover to see the tooltip
-    cy.get("@minnesota").trigger("mousemove");
-
-    // check tooltip content
-    cy.findByText("State:"); // column name key
-    cy.findByText("Minnesota"); // feature name as value
-
-    // open actions menu and drill within it
-    cy.get("@minnesota").click();
-    cy.findByText("View these People").click();
-    // check that the drill through worked
-    cy.findByText("State is MN");
-    cy.findByText("Showing 96 rows");
   });
 });
 
