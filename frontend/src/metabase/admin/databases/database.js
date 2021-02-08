@@ -39,6 +39,10 @@ export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
 export const INITIALIZE_DATABASE =
   "metabase/admin/databases/INITIALIZE_DATABASE";
 export const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
+export const ADD_SAMPLE_DATASET_FAILED =
+  "metabase/admin/databases/ADD_SAMPLE_DATASET_FAILED";
+export const ADDING_SAMPLE_DATASET =
+  "metabase/admin/databases/ADDING_SAMPLE_DATASET";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 export const SYNC_DATABASE_SCHEMA =
   "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
@@ -133,18 +137,23 @@ export const initializeDatabase = function(databaseId) {
   };
 };
 
-// addSampleDataset
 export const addSampleDataset = createThunkAction(
   ADD_SAMPLE_DATASET,
   function() {
     return async function(dispatch, getState) {
       try {
+        dispatch.action(ADDING_SAMPLE_DATASET);
         const sampleDataset = await MetabaseApi.db_add_sample_dataset();
-        dispatch(Databases.actions.fetchList(undefined, { reload: true }));
+        await dispatch(
+          Databases.actions.fetchList(undefined, {
+            reload: true,
+          }),
+        );
         MetabaseAnalytics.trackEvent("Databases", "Add Sample Data");
         return sampleDataset;
       } catch (error) {
         console.error("error adding sample dataset", error);
+        dispatch.action(ADD_SAMPLE_DATASET_FAILED, { error });
         return error;
       }
     };
@@ -346,9 +355,19 @@ const databaseCreationStep = handleActions(
   DB_EDIT_FORM_CONNECTION_TAB,
 );
 
+const sampleDataset = handleActions(
+  {
+    [ADDING_SAMPLE_DATASET]: () => ({ loading: true }),
+    [ADD_SAMPLE_DATASET]: state => ({ ...state, loading: false }),
+    [ADD_SAMPLE_DATASET_FAILED]: (state, { payload: { error } }) => ({ error }),
+  },
+  { error: undefined, loading: false },
+);
+
 export default combineReducers({
   editingDatabase,
   deletionError,
   databaseCreationStep,
   deletes,
+  sampleDataset,
 });
