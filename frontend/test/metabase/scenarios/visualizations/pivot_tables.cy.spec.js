@@ -23,7 +23,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     signInAsAdmin();
   });
 
-  it.skip("should be created from an ad-hoc question", () => {
+  it("should be created from an ad-hoc question", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
@@ -292,7 +292,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("899"); // Affiliate is no longer collapsed
   });
 
-  it.skip("should expand and collapse field options", () => {
+  it("should expand and collapse field options", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
@@ -317,7 +317,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText(/See options/);
   });
 
-  it.skip("should allow column formatting", () => {
+  it("should allow column formatting", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
@@ -344,7 +344,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
   });
 
-  it.skip("should allow value formatting", () => {
+  it("should allow value formatting", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
@@ -373,7 +373,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
   });
 
-  it.skip("should not allow sorting of value fields", () => {
+  it("should not allow sorting of value fields", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
@@ -390,7 +390,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText(/Sort order/).should("not.exist");
   });
 
-  it.skip("should allow sorting fields", () => {
+  it("should allow sorting fields", () => {
     // Pivot by a single column with many values (100 bins).
     // Having many values hides values that are sorted to the end.
     // This lets us assert on presence of a certain value.
