@@ -39,3 +39,20 @@
                               :joins  [{:source-table $$users
                                         :alias        "u"
                                         :condition    [:= $user_id &u.users.id]}]}}))))))
+
+(deftest deduplicate-fields-test
+  (testing "resolve-joined-fields should deduplicate :fields after resolving stuff"
+    (is (= (mt/mbql-query checkins
+             {:fields [[:joined-field "u" [:field-id (mt/id :users :name)]]]
+              :filter [:!= [:joined-field "u" [:field-id (mt/id :users :name)]] nil]
+              :joins  [{:source-table $$users
+                        :alias        "u"
+                        :condition    [:= $user_id &u.users.id]}]})
+           (wrap-joined-fields
+            (mt/mbql-query checkins
+              {:fields [[:field-id (mt/id :users :name)]
+                        [:joined-field "u" [:field-id (mt/id :users :name)]]]
+               :filter [:!= [:field-id (mt/id :users :name)] nil]
+               :joins  [{:source-table $$users
+                         :alias        "u"
+                         :condition    [:= $user_id &u.users.id]}]}))))))

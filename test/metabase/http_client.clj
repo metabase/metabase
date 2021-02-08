@@ -6,6 +6,7 @@
             [clojure.test :as t]
             [clojure.walk :as walk]
             [clojure.tools.logging :as log]
+            [environ.core :as env]
             [java-time :as java-time]
             [metabase.config :as config]
             [metabase.server.middleware.session :as mw.session]
@@ -224,7 +225,11 @@
      :url-param-kwargs url-param-kwargs
      :request-options  request-options}))
 
-(def ^:private response-timeout-ms (u/seconds->ms 15))
+(def ^:private response-timeout-ms
+  ;; CircleCI is crazy slow and likes to randomly pause, so use a much larger timeout when running on CI
+  (u/seconds->ms (if (env/env :ci)
+                   45
+                   15)))
 
 (defn client-full-response
   "Identical to `client` except returns the full HTTP response map, not just the body of the response"
