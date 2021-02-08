@@ -40,6 +40,7 @@ describe("scenarios > admin > databases > add", () => {
     ).should("have.attr", "aria-checked", "true");
 
     typeField("Name", "Test db name");
+    typeField("Host", "localhost");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
@@ -50,6 +51,25 @@ describe("scenarios > admin > databases > add", () => {
     cy.wait("@createDatabase");
 
     cy.url().should("match", /\/admin\/databases\?created=42$/);
+  });
+
+  it("should trim fields needed to connect to the database", () => {
+    cy.route("POST", "/api/database", { id: 42 }).as("createDatabase");
+
+    cy.visit("/admin/databases/create");
+
+    typeField("Name", "Test db name");
+    typeField("Host", "localhost  \n  ");
+    typeField("Database name", " test_postgres_db");
+    typeField("Username", "   uberadmin   ");
+
+    cy.findByText("Save").click();
+
+    cy.wait("@createDatabase").then(({ request }) => {
+      expect(request.body.details.host).to.equal("localhost");
+      expect(request.body.details.dbname).to.equal("test_postgres_db");
+      expect(request.body.details.user).to.equal("uberadmin");
+    });
   });
 
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
