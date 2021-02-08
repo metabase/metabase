@@ -11,7 +11,7 @@
 (deftest normalize-attribute-remappings-test
   (testing "make sure attribute-remappings come back from the DB normalized the way we'd expect"
     (mt/with-temp GroupTableAccessPolicy [gtap {:table_id             (mt/id :venues)
-                                                :group_id             (u/get-id (group/all-users))
+                                                :group_id             (u/the-id (group/all-users))
                                                 :attribute_remappings {"venue_id"
                                                                        {:type   "category"
                                                                         :target ["variable" ["field-id" (mt/id :venues :id)]]
@@ -19,20 +19,20 @@
       (is (= {"venue_id" {:type   :category
                           :target [:variable [:field-id (mt/id :venues :id)]]
                           :value  5}}
-             (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/get-id gtap)))))
+             (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap)))))
 
     (testing (str "apparently sometimes they are saved with just the target, but not type or value? Make sure these "
                   "get normalized correctly.")
       (mt/with-temp GroupTableAccessPolicy [gtap {:table_id             (mt/id :venues)
-                                                  :group_id             (u/get-id (group/all-users))
+                                                  :group_id             (u/the-id (group/all-users))
                                                   :attribute_remappings {"user" ["variable" ["field-id" (mt/id :venues :id)]]}}]
         (is (= {"user" [:variable [:field-id (mt/id :venues :id)]]}
-               (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/get-id gtap))))))))
+               (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap))))))))
 
 (deftest disallow-changing-table-id-test
   (testing "You can't change the table_id of a GTAP after it has been created."
     (mt/with-temp GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
-                                                :group_id (u/get-id (group/all-users))}]
+                                                :group_id (u/the-id (group/all-users))}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"You cannot change the Table ID of a GTAP once it has been created"
@@ -45,7 +45,7 @@
                        (mt/with-temp* [Card                   [card {:dataset_query   query
                                                                      :result_metadata (qp/query->expected-cols query)}]
                                        GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
-                                                                     :group_id (u/get-id (group/all-users))
+                                                                     :group_id (u/the-id (group/all-users))
                                                                      :card_id  (:id card)}]]
                          :ok))
 
@@ -54,7 +54,7 @@
                        (mt/with-temp* [Card                   [card {:dataset_query   query
                                                                      :result_metadata (qp/query->expected-cols query)}]
                                        GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
-                                                                     :group_id (u/get-id (group/all-users))}]]
+                                                                     :group_id (u/the-id (group/all-users))}]]
                          (db/update! GroupTableAccessPolicy (:id gtap) :card_id (:id card))
                          :ok))
 
@@ -63,7 +63,7 @@
                        (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query :venues)
                                                                      :result_metadata (qp/query->expected-cols (mt/mbql-query :venues))}]
                                        GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
-                                                                     :group_id (u/get-id (group/all-users))
+                                                                     :group_id (u/the-id (group/all-users))
                                                                      :card_id  (:id card)}]]
                          (db/update! Card (:id card) :dataset_query query)
                          :ok))}]
@@ -74,7 +74,7 @@
         (testing "adding new columns = not ok"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Sandbox Cards can't return columns that arent present in the Table they are sandboxing"
+               #"Sandbox Cards can't return columns that aren't present in the Table they are sandboxing"
                (f (mt/mbql-query checkins)))))
         (testing "removing columns = ok"
           (is (= :ok
@@ -92,7 +92,7 @@
                        (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query :venues)
                                                                      :result_metadata metadata}]
                                        GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
-                                                                     :group_id (u/get-id (group/all-users))
+                                                                     :group_id (u/the-id (group/all-users))
                                                                      :card_id  (:id card)}]]
                          :ok))
 
@@ -101,7 +101,7 @@
                        (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query :venues)
                                                                      :result_metadata metadata}]
                                        GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
-                                                                     :group_id (u/get-id (group/all-users))}]]
+                                                                     :group_id (u/the-id (group/all-users))}]]
                          (db/update! GroupTableAccessPolicy (:id gtap) :card_id (:id card))
                          :ok))
 
@@ -110,7 +110,7 @@
                        (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query :venues)
                                                                      :result_metadata (qp/query->expected-cols (mt/mbql-query :venues))}]
                                        GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
-                                                                     :group_id (u/get-id (group/all-users))
+                                                                     :group_id (u/the-id (group/all-users))
                                                                      :card_id  (:id card)}]]
                          (db/update! Card (:id card) :result_metadata metadata)
                          :ok))}]

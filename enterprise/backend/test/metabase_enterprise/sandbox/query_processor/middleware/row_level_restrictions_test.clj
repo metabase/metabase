@@ -637,7 +637,7 @@
            (testing "Should throw an Exception when running the query"
              (is (thrown-with-msg?
                   clojure.lang.ExceptionInfo
-                  #"Sandbox Cards can't return columns that arent present in the Table they are sandboxing"
+                  #"Sandbox Cards can't return columns that aren't present in the Table they are sandboxing"
                   (run-query)))))))
 
       (testing "Don't allow people to change the types of columns in the original Table"
