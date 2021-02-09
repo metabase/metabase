@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-joined-fields
   "Middleware that wraps field references in `:joined-field` clauses where needed."
   (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
