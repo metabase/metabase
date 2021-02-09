@@ -34,7 +34,7 @@
    (sync-database! database nil))
 
   ([database                         :- i/DatabaseInstance
-    {:keys [scan], :or {scan :full}} :- {(s/optional-key :scan) (s/maybe (s/enum :scan :full))}]
+    {:keys [scan], :or {scan :full}} :- (s/maybe {(s/optional-key :scan) (s/maybe (s/enum :scan :full))})]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (mapv (fn [[f step-name]] (assoc (f database) :name step-name))
            (filter
