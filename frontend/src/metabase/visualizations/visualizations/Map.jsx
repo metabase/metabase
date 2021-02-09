@@ -237,10 +237,9 @@ export default class Map extends Component {
         return null;
       },
       getProps: () => ({
-        options: _.chain(
-          Object.entries(MetabaseSettings.get("custom-geojson", {})),
-        )
-          .map(([key, value]) => ({ name: value.name, value: key }))
+        options: _.chain(MetabaseSettings.get("custom-geojson", {}))
+          .pairs()
+          .map(([key, value]) => ({ name: value.name || "", value: key }))
           .sortBy(x => x.name.toLowerCase())
           .value(),
       }),
