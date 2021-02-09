@@ -4,9 +4,9 @@
   enviornment variables e.g. `MB_DB_TYPE`, `MB_DB_HOST`, etc. `MB_DB_CONNECTION_URI` is used preferentially if both
   are specified.
 
-  The `MB_DB_CONNECTION_URI` is unparsed and passed to the jdbc driver with once exception: if it includes the
-  password like `username:password@host:port`. In this case we parse this and log. This functionality will be removed
-  at some point so.
+  The `MB_DB_CONNECTION_URI` is unparsed and passed to the jdbc driver with once exception: if it includes credentials
+  like `username:password@host:port`. In this case we parse this and log. This functionality will be removed at some
+  point so.
 
   There are two ways we specify JDBC connection information in Metabase code:
 
@@ -58,7 +58,7 @@
        (get-db-file db-file-name)))))
 
 (def ^:private jdbc-connection-regex
-  "Regex to be used only when `:mb-db-connection-uri` includes a password like `username:password@host:port`."
+  "Regex to be used only when `:mb-db-connection-uri` includes credentials like `username:password@host:port`."
   #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
 
 (declare connection-details->jdbc-spec)
@@ -66,8 +66,8 @@
 (defn- parse-connection-string
   "Parse a DB connection URI like
   `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and
-  return a broken-out map. This should not be used unless the connection string uses the old style where the password
-  is included in the like `username:password@host:port`."
+  return a broken-out map. This should not be used unless the connection string uses the old style where the
+  credentials are included in the like `username:password@host:port`."
   [uri]
   (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
     (connection-details->jdbc-spec
@@ -108,7 +108,7 @@
       (str "jdbc:" connection-uri))))
 
 (defn old-credential-style?
-  "Parse a jdbc connection uri to check for older style password passing like:
+  "Parse a jdbc connection uri to check for older style credential passing like:
   mysql://foo:password@172.17.0.2:3306/metabase"
   [connection-uri]
   (when connection-uri
@@ -125,14 +125,14 @@
     (or (when-not (old-credential-style? conn-string)
           ;; prefer not parsing as we don't handle all features of connection strings
           (ensure-jdbc-protocol conn-string))
-        (do (log/warn (trs "Warning: using password provided inline is deprecated.")
-                      (trs "Change to using the password as a query parameter: `?password=your-password`."))
+        (do (log/warn (trs "Warning: using credentials provided inline is deprecated.")
+                      (trs "Change to using the credentials as a query parameter: `?password=your-password&user=user`."))
             (parse-connection-string conn-string)))))
 
 (def ^:private connection-string-or-spec
   "Uses `:mb-db-connection-uri` and is either:
-  - the jdbc connection string if it does not use an inline password, or
-  - a db-spec parsed by this code if it does use an inline password, or
+  - the jdbc connection string if it does not use inline credentials, or
+  - a db-spec parsed by this code if it does use inline credentials, or
   - nil when this value is not set."
   (delay (when-let [conn-uri (config/config-str :mb-db-connection-uri)]
            (connection-from-jdbc-string conn-uri))))
