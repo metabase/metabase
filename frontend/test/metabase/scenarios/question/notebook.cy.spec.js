@@ -6,6 +6,7 @@ import {
   openProductsTable,
   popover,
   modal,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -68,6 +69,27 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Visualize").click();
     cy.contains("2372"); // user's id in the table
     cy.contains("Showing 1 row"); // ensure only one user was returned
+  });
+
+  it.skip("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["between", ["field-id", ORDERS.ID], 96, 97],
+        },
+        type: "query",
+      },
+      display: "table",
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("ID 96 97").click();
+    cy.get("[contenteditable='true']").contains("between([ID], 96, 97)");
   });
 
   describe("joins", () => {
