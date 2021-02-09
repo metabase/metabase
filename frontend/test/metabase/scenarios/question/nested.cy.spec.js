@@ -366,7 +366,7 @@ describe("scenarios > question > nested", () => {
     cy.findAllByText("Awesome Concrete Shoes");
   });
 
-  it.skip("should use question with joins as a base for a new question (metabase#14724)", () => {
+  it("should use question with joins as a base for a new question (metabase#14724)", () => {
     const QUESTION_NAME = "14724";
 
     cy.server();
