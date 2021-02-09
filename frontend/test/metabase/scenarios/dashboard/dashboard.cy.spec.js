@@ -268,7 +268,7 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  it.skip("should display column options for cross-filter (metabase#14473)", () => {
+  it("should display column options for cross-filter (metabase#14473)", () => {
     cy.log("**-- 1. Create a question --**");
 
     cy.request("POST", "/api/card", {
