@@ -340,7 +340,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it("drill-through should work on implicit joined tables with sandboxes (metabase#13641)", () => {
+    it.skip("drill-through should work on implicit joined tables with sandboxes (metabase#13641)", () => {
       const QUESTION_NAME = "13641";
 
       cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
@@ -790,7 +790,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it("should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (metabase#13642)", () => {
+    it.skip("should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (metabase#13642)", () => {
       const QUESTION_NAME = "13642";
       const PRODUCTS_ALIAS = "Products";
 
