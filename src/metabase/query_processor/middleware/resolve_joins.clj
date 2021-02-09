@@ -130,14 +130,22 @@
     (cond-> inner-query
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 
-(defn- check-join-aliases [{:keys [joins], :as query}]
+(defn- check-join-aliases [{:keys [joins source-query], :as query}]
   (let [aliases (set (map :alias joins))]
-    (doseq [alias (mbql.u/match query [:joined-field alias _] alias)]
+    ;; only check stuff at the current level. We'll recursively check stuff below
+    (doseq [alias (mbql.u/match (dissoc query :source-query :joins) [:joined-field alias _] alias)]
       (when-not (aliases alias)
         (throw
          (IllegalArgumentException.
-           (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
-                alias aliases)))))))
+          (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
+               alias aliases)))))
+    ;; recursively check joins and source queries
+    (when source-query
+      (check-join-aliases source-query))
+    (when (seq joins)
+      (doseq [join joins]
+        (when-let [join-source-query (:source-query join)]
+          (check-join-aliases join-source-query))))))
 
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [{:keys [joins], :as query} :- mbql.s/MBQLQuery]

@@ -154,9 +154,9 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod field->identifier :sql [_ field]
+(defmethod field->identifier :sql
+  [_ field]
   (apply hsql/qualify (field/qualified-name-components field)))
-
 
 (defmulti ^String field->alias
   "Return the string alias that should be used to for `field`, an instance of the Field model, i.e. in an `AS` clause.
@@ -167,9 +167,9 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod field->alias :sql [_ field]
+(defmethod field->alias :sql
+  [_ field]
   (:name field))
-
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL

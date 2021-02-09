@@ -749,3 +749,73 @@
                         "2018-05-15T20:25:48.517Z"
                         "Rustic Paper Wallet"] ; <- Includes the remapped column
                        (first (mt/rows result))))))))))))
+
+(deftest drill-thru-on-joins-test
+  (testing "should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (#13642)"
+    ;; Sandbox ORDERS and PRODUCTS
+    (mt/dataset sample-dataset
+      (mt/with-gtaps (mt/$ids nil
+                       {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
+                                     :products {:remappings {:user_cat [:dimension $products.category]}}}
+                        :attributes {:user_id  "1"
+                                     :user_cat "Widget"}})
+        ;; create query with joins
+        (let [query (mt/mbql-query orders
+                      {:aggregation [[:count]]
+                       :breakout    [[:joined-field "products" $products.category]]
+                       :joins       [{:fields       :all
+                                      :source-table $$products
+                                      :condition    [:= $product_id [:joined-field "products" $products.id]]
+                                      :alias        "products"}]
+                       :limit       10})]
+          (testing "Should be able to run the query"
+            (is (schema= {:data      {:rows     (s/eq [[nil 5] ["Widget" 6]])
+                                      s/Keyword s/Any}
+                          :status    (s/eq :completed)
+                          :row_count (s/eq 2)
+                          s/Keyword  s/Any}
+                         (qp/process-query query))))
+          (testing "should be able to save the query as a Card and run it"
+            (mt/with-temp* [Collection [{collection-id :id}]
+                            Card       [{card-id :id} {:dataset_query query, :collection_id collection-id}]]
+              (perms/grant-collection-read-permissions! &group collection-id)
+              (is (schema= {:data      {:rows     (s/eq [[nil 5] ["Widget" 6]])
+                                        s/Keyword s/Any}
+                            :status    (s/eq "completed")
+                            :row_count (s/eq 2)
+                            s/Keyword  s/Any}
+                           (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
+          (testing "Drill-thru question should work"
+            (let [drill-thru-query   (mt/mbql-query orders
+                                       {:filter [:= $products.category "Widget"]
+                                        :joins  [{:fields       :all
+                                                  :source-table $$products
+                                                  :condition    [:= $product_id [:joined-field "products" $products.id]]
+                                                  :alias        "products"}]
+                                        :limit  10})
+                  test-preprocessing (fn []
+                                       (testing "`resolve-joined-fields` middleware should infer `:joined-field` correctly"
+                                         (is (= [:=
+                                                 [:joined-field "products" [:field-id (mt/id :products :category)]]
+                                                 [:value "Widget" {:base_type     :type/Text
+                                                                   :special_type  :type/Category
+                                                                   :database_type "VARCHAR"
+                                                                   :name          "CATEGORY"}]]
+                                                (get-in (qp/query->preprocessed drill-thru-query) [:query :filter])))))]
+              (testing "As an admin"
+                (println (u/colorize 'green "GOOD")) ; NOCOMMIT
+                (mt/with-test-user :crowberto
+                  (test-preprocessing)
+                  (mt/with-log-level :trace ; NOCOMMIT
+                    (is (schema= {:status    (s/eq :completed)
+                                  :row_count (s/eq 10)
+                                  s/Keyword  s/Any}
+                                 (qp/process-query drill-thru-query))))))
+              (testing "As a sandboxed user"
+                (println (u/colorize 'cyan "BAD")) ; NOCOMMIT
+                (test-preprocessing)
+                (mt/with-log-level :trace ;; NOCOMMIT
+                  (is (schema= {:status    (s/eq :completed)
+                                :row_count (s/eq 6)
+                                s/Keyword  s/Any}
+                               (qp/process-query drill-thru-query))))))))))))

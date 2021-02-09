@@ -741,6 +741,18 @@
            (mbql.u/negate-filter-clause
             [:inside [:field-id 1] [:field-id 2] 10.0 -20.0 -10.0 20.0])))))
 
+(deftest join->source-table-id-test
+  (let [join {:strategy     :left-join
+               :condition    [:=
+                              [:field-id 48]
+                              [:joined-field "products" [:field-id 44]]]
+               :alias        "products"}]
+    (is (= 5
+           (mbql.u/join->source-table-id (assoc join :source-table 5))))
+    (is (= 5
+           (mbql.u/join->source-table-id (assoc join :source-query {:source-table 5}))))))
+
+
 ;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
 
 (def ^:private query-with-some-nesting
