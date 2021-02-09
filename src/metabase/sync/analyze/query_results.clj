@@ -4,6 +4,7 @@
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
   (:require [clojure.tools.logging :as log]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.predicates :as mbql.preds]
             [metabase.mbql.schema :as mbql.s]
             [metabase.sync.analyze.classifiers.name :as classify-name]
@@ -24,6 +25,8 @@
 
 (def ^:private ResultColumnMetadata
   "Result metadata for a single column"
+  ;; this schema is used for both the API and the QP, so it should handle either normalized or unnormalized values. In
+  ;; the QP, everything will be normalized.
   {:name                          s/Str
    :display_name                  s/Str
    (s/optional-key :description)  (s/maybe su/NonBlankString)
@@ -31,9 +34,14 @@
    (s/optional-key :special_type) (s/maybe su/FieldTypeKeywordOrString)
    (s/optional-key :unit)         (s/maybe DateTimeUnitKeywordOrString)
    (s/optional-key :fingerprint)  (s/maybe i/Fingerprint)
-   (s/optional-key :id)           su/IntGreaterThanZero
+   (s/optional-key :id)           (s/maybe su/IntGreaterThanZero)
    ;; only optional because it's not present right away, but it should be present at the end.
-   (s/optional-key :field_ref)    mbql.s/FieldOrAggregationReference})
+   (s/optional-key :field_ref)    (s/cond-pre
+                                   mbql.s/FieldOrAggregationReference
+                                   (s/pred
+                                    (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
+                                          mbql.normalize/normalize-tokens )
+                                    "Field or aggregation reference as it comes in to the API"))})
 
 (def ResultsMetadata
   "Schema for valid values of the `result_metadata` column."

@@ -912,16 +912,21 @@
     (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
 
 
-;;; -------------------------------------------- putting it all togetrher --------------------------------------------
+;;; -------------------------------------------- putting it all together --------------------------------------------
 
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
   [driver honeysql-form {:keys [source-query source-metadata native], :as inner-query}]
   (let [field-metadata (when-not native
-                         (->> (mbql.u/match inner-query #{:field-id :joined-field})
-                              (map (partial annotate/col-info-for-field-clause inner-query))
-                              (u/key-by :id)))]
+                         (letfn [(col-info [inner-query]
+                                   (->> (mbql.u/match inner-query #{:field-id :joined-field})
+                                        (map (partial annotate/col-info-for-field-clause inner-query))
+                                        (u/key-by :id)))]
+                           ;; prefer metadata that comes from the source query over stuff at the top level. This makes
+                           ;; sure we refer to it correctly e.g. `:joined-field` instead of `:field` etc.
+                           (merge (col-info (dissoc inner-query :source-query))
+                                  (col-info (select-keys inner-query [:source-query])))))]
     (binding [*query* (assoc inner-query :field-metadata field-metadata)]
       (if source-query
         (apply-clauses-with-aliased-source-query-table

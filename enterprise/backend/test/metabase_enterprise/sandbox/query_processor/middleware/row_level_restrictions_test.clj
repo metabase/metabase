@@ -798,7 +798,7 @@
                                          (is (= [:=
                                                  [:joined-field "products" [:field-id (mt/id :products :category)]]
                                                  [:value "Widget" {:base_type     :type/Text
-                                                                   :special_type  :type/Category
+                                                                   :special_type  nil
                                                                    :database_type "VARCHAR"
                                                                    :name          "CATEGORY"}]]
                                                 (get-in (qp/query->preprocessed drill-thru-query) [:query :filter])))))]

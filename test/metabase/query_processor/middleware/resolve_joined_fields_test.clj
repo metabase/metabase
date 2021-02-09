@@ -1,22 +1,14 @@
 (ns metabase.query-processor.middleware.resolve-joined-fields-test
   (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
             [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
-            [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
             [metabase.util :as u]
             [schema.core :as s]))
 
 (defn- wrap-joined-fields [query]
-  (driver/with-driver (tx/driver)
-    (qp.store/with-store
-      (qp.store/fetch-and-store-database! (mt/id))
-      (-> query
-          ((var resolve-fields/resolve-fields*)) ; load fields into the QP store
-          (update :query #'resolve-joined-fields/wrap-fields-in-joined-field-if-needed)))))
+  (mt/with-everything-store
+    (:pre (mt/test-qp-middleware resolve-joined-fields/resolve-joined-fields query))))
 
 (deftest wrap-fields-in-joined-field-test
   (is (= (mt/mbql-query checkins
@@ -150,3 +142,17 @@
                        (assoc-in [:query :joins 1 :source-query :filter]
                                  (mt/$ids [:= [:joined-field "products-2" $products.category] "Widget"])))
                    (wrap-joined-fields joins-in-joins-query)))))))))
+
+(deftest no-op-test
+  (testing "Make sure a query that doesn't need anything wrapped is returned as-is"
+    (let [query (mt/mbql-query venues
+                  {:source-query {:source-table $$venues
+                                  :aggregation  [[:count]]
+                                  :breakout     [$name [:joined-field "c" $categories.name]]
+                                  :joins        [{:source-table $$categories
+                                                  :alias        "c"
+                                                  :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}
+                   :filter       [:> [:field-literal "count" :type/Number] 0]
+                   :limit        3})]
+      (is (= query
+             (wrap-joined-fields query))))))
