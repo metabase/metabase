@@ -8,7 +8,7 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > question > nested (metabase#12568)", () => {
   beforeEach(() => {
@@ -364,5 +364,48 @@ describe("scenarios > question > nested", () => {
       expect(xhr.response.body.error).not.to.exist;
     });
     cy.findAllByText("Awesome Concrete Shoes");
+  });
+
+  it.skip("should use question with joins as a base for a new question (metabase#14724)", () => {
+    const QUESTION_NAME = "14724";
+
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    cy.request("POST", "/api/card", {
+      name: QUESTION_NAME,
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+              ],
+              alias: "Products",
+            },
+          ],
+        },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    });
+
+    // Start new question from a saved one
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText(QUESTION_NAME).click();
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+    cy.findByText("37.65");
   });
 });
