@@ -803,19 +803,15 @@
                                                                    :name          "CATEGORY"}]]
                                                 (get-in (qp/query->preprocessed drill-thru-query) [:query :filter])))))]
               (testing "As an admin"
-                (println (u/colorize 'green "GOOD")) ; NOCOMMIT
                 (mt/with-test-user :crowberto
                   (test-preprocessing)
-                  (mt/with-log-level :trace ; NOCOMMIT
-                    (is (schema= {:status    (s/eq :completed)
-                                  :row_count (s/eq 10)
-                                  s/Keyword  s/Any}
-                                 (qp/process-query drill-thru-query))))))
-              (testing "As a sandboxed user"
-                (println (u/colorize 'cyan "BAD")) ; NOCOMMIT
-                (test-preprocessing)
-                (mt/with-log-level :trace ;; NOCOMMIT
                   (is (schema= {:status    (s/eq :completed)
-                                :row_count (s/eq 6)
+                                :row_count (s/eq 10)
                                 s/Keyword  s/Any}
-                               (qp/process-query drill-thru-query))))))))))))
+                               (qp/process-query drill-thru-query)))))
+              (testing "As a sandboxed user"
+                (test-preprocessing)
+                (is (schema= {:status    (s/eq :completed)
+                              :row_count (s/eq 6)
+                              s/Keyword  s/Any}
+                             (qp/process-query drill-thru-query)))))))))))
