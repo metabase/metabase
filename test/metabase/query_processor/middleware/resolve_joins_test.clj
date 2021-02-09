@@ -123,7 +123,7 @@
 (deftest validate-aliases-test
   (testing "Should throw an Exception if a Joined Field using an alias that doesn't exist is used"
     (is (thrown-with-msg?
-         IllegalArgumentException
+         clojure.lang.ExceptionInfo
          #"Bad :joined-field clause: join with alias 'x' does not exist"
          (resolve-joins
           (mt/mbql-query venues
