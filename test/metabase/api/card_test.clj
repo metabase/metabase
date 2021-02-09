@@ -14,14 +14,17 @@
                                      PulseChannelRecipient Table ViewLog]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
@@ -308,6 +311,30 @@
                          (update :collection map?)
                          (update :result_metadata (partial every? map?))
                          (update :creator dissoc :is_qbnewb)))))))))))
+
+(deftest save-empty-card-test
+  (testing "POST /api/card"
+    (testing "Should be able to save an empty Card"
+      (let [query (mt/native-query {:query "SELECT * FROM VENUES WHERE false;"})]
+        (mt/with-model-cleanup [Card]
+          (testing "without result metadata"
+            (is (schema= {:id       su/IntGreaterThanZero
+                          s/Keyword s/Any}
+                         (mt/user-http-request :rasta :post 202 "card"
+                                               (merge (tt/with-temp-defaults Card)
+                                                      {:dataset_query query})))))
+          (let [metadata (-> (qp/process-query query)
+                             :data
+                             :results_metadata
+                             :columns)]
+            (testing (format "with result metadata\n%s" (u/pprint-to-str metadata))
+              (is (some? metadata))
+              (is (schema= {:id       su/IntGreaterThanZero
+                            s/Keyword s/Any}
+                           (mt/user-http-request :rasta :post 202 "card"
+                                                 (merge (tt/with-temp-defaults Card)
+                                                        {:dataset_query   query
+                                                         :result_metadata metadata})))))))))))
 
 (deftest saving-card-saves-query-metadata
   (testing "Make sure when saving a Card the query metadata is saved (if correct)"
