@@ -340,7 +340,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("drill-through should work on implicit joined tables with sandboxes (metabase#13641)", () => {
+    it("drill-through should work on implicit joined tables with sandboxes (metabase#13641)", () => {
       const QUESTION_NAME = "13641";
 
       cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
