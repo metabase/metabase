@@ -72,16 +72,14 @@ const getGreeting = createSelector(
   wrapped: true,
 })
 @connect(
-  (state, props) => {
-    return {
-      // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
-      ...getParitionedCollections(state, props),
-      user: getUser(state, props),
-      showHomepageData: getShowHomepageData(state),
-      showHomepageXrays: getShowHomepageXrays(state),
-      greeting: getGreeting(state, props),
-    };
-  },
+  (state, props) => ({
+    // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
+    ...getParitionedCollections(state, props),
+    user: getUser(state, props),
+    showHomepageData: getShowHomepageData(state),
+    showHomepageXrays: getShowHomepageXrays(state),
+    greeting: getGreeting(state, props),
+  }),
   { updateSetting },
 )
 class Overworld extends React.Component {
