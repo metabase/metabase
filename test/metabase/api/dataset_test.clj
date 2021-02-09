@@ -48,9 +48,17 @@
        [k v]))))
 
 (defn- most-recent-query-execution-for-query [query]
-  (db/select-one QueryExecution
-    :hash (qp-util/query-hash query)
-    {:order-by [[:started_at :desc]]}))
+  ;; it might take a fraction of a second for the QueryExecution to show up, it's saved asynchronously. So wait a bit
+  ;; and retry if it's not there yet.
+  (letfn [(thunk []
+            (db/select-one QueryExecution
+                           :hash (qp-util/query-hash query)
+                           {:order-by [[:started_at :desc]]}))]
+    (loop [retries 3]
+      (or (thunk)
+          (when (pos? retries)
+            (Thread/sleep 100)
+            (recur (dec retries)))))))
 
 (def ^:private query-defaults
   {:middleware {:add-default-userland-constraints? true

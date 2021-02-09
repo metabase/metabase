@@ -11,7 +11,14 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+} = SAMPLE_DATASET;
 
 function saveDashboard() {
   cy.findByText("Save").click();
@@ -268,7 +275,7 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  it.skip("should display column options for cross-filter (metabase#14473)", () => {
+  it("should display column options for cross-filter (metabase#14473)", () => {
     cy.log("**-- 1. Create a question --**");
 
     cy.request("POST", "/api/card", {
@@ -504,6 +511,90 @@ describe("scenarios > dashboard", () => {
     );
     cy.get("@filterWidget").click();
     expectedRouteCalls({ route_alias: "fetchFromDB", calls: 1 });
+  });
+
+  it.skip("should not send additional card queries for all filters (metabase#13150)", () => {
+    cy.log("**-- 1. Create a question --**");
+
+    cy.request("POST", "/api/card", {
+      name: "13150 (Products)",
+      dataset_query: {
+        database: 1,
+        query: { "source-table": PRODUCTS_ID },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.log("**-- 2. Create a dashboard --**");
+
+      cy.request("POST", "/api/dashboard", {
+        name: "13150D",
+      }).then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.log("**-- 3. Add 3 filters to the dashboard --**");
+
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            { name: "Title", slug: "title", id: "9f20a0d5", type: "category" },
+            {
+              name: "Category",
+              slug: "category",
+              id: "719fe1c2",
+              type: "category",
+            },
+            { name: "Vendor", slug: "vendor", id: "a73b7c9", type: "category" },
+          ],
+        });
+
+        cy.log("**-- 4. Add previously created qeustion to the dashboard --**");
+
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          cy.log("**-- 5. Connect all filters to the card --**");
+
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 14,
+                sizeY: 12,
+                parameter_mappings: [
+                  {
+                    parameter_id: "9f20a0d5",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.TITLE]],
+                  },
+                  {
+                    parameter_id: "719fe1c2",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                  },
+                  {
+                    parameter_id: "a73b7c9",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.VENDOR]],
+                  },
+                ],
+                visualization_settings: {},
+              },
+            ],
+          });
+          cy.server();
+          cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+          cy.visit(
+            `/dashboard/${DASHBOARD_ID}?title=Awesome Concrete Shoes&category=Widget&vendor=McClure-Lockman`,
+          );
+
+          cy.wait("@cardQuery.all");
+          expectedRouteCalls({ route_alias: "cardQuery", calls: 1 });
+        });
+      });
+    });
   });
 
   describe("revisions screen", () => {

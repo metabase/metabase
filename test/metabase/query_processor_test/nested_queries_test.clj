@@ -733,7 +733,7 @@
                   {:name         "count"
                    :display_name "Count"
                    :field_ref    [:field-literal "count" :type/BigInteger]
-                   :base_type    :type/BigInteger}])
+                   :base_type    (:base_type (qp.test/aggregate-col :count))}])
                (for [col (mt/cols results)]
                  (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
 
