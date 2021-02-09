@@ -24,7 +24,7 @@ import { getParameters } from "metabase/dashboard/selectors";
   const metadata = getMetadata(state, props);
   let parameters = getParameters(state, props);
 
-  if (this.props.excludeParametersSources) {
+  if (props.excludeParametersSources) {
     // Remove parameters as possible sources.
     // We still include any that were already in use prior to this code change.
     const parametersUsedAsSources = Object.values(
