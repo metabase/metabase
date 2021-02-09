@@ -22,7 +22,6 @@
   Normally you should use the equivalent functions in `metabase.db.connection` which can be overridden rather than
   using this namespace directly."
   (:require [clojure.java.io :as io]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.config :as config]
@@ -108,14 +107,14 @@
       connection-uri
       (str "jdbc:" connection-uri))))
 
-(defn old-password-style?
+(defn old-credential-style?
   "Parse a jdbc connection uri to check for older style password passing like:
   mysql://foo:password@172.17.0.2:3306/metabase"
   [connection-uri]
   (when connection-uri
     (let [uri (URI. connection-uri)]
       ;; this is how clojure.java.jdbc does it
-      (= 2 (count (str/split (.getUserInfo uri) #":"))))))
+      (some? (.getUserInfo uri)))))
 
 (defn- connection-from-jdbc-string
   "If connection string uses the form `username:password@host:port`, use our custom parsing to return a jdbc spec and
@@ -123,7 +122,7 @@
   the options of using a raw jdbc string."
   [conn-string]
   (when conn-string
-    (or (when-not (old-password-style? conn-string)
+    (or (when-not (old-credential-style? conn-string)
           ;; prefer not parsing as we don't handle all features of connection strings
           (ensure-jdbc-protocol conn-string))
         (do (log/warn (trs "Warning: using password provided inline is deprecated.")

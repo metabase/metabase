@@ -43,25 +43,29 @@
                               [nil nil]]]
       (is (= expected (#'mdb.env/ensure-jdbc-protocol input))))))
 
-(deftest old-password-style?-test
-  (are [old? conn-uri] (is (= old? (#'mdb.env/old-password-style? conn-uri)))
-    false  "mysql://foo@172.17.0.2:3306/metabase?password=password"
-    true "mysql://foo:password@172.17.0.2:3306/metabase"))
+(deftest old-credential-style?-test
+  (are [old? conn-uri] (is (= old? (#'mdb.env/old-credential-style? conn-uri)) conn-uri)
+    false "jdbc:mysql://172.17.0.2:3306/metabase?password=password&user=user"
+    false "mysql://172.17.0.2:3306/metabase?password=password&user=user"
+    true  "mysql://foo@172.17.0.2:3306/metabase?password=password"
+    true  "mysql://foo:password@172.17.0.2:3306/metabase"))
 
 (deftest connection-from-jdbc-string-test
-  (testing "handles old style just fine"
-    (let [conn-uri "mysql://foo@172.17.0.2:3306/metabase?password=password"]
-      (is (= (str "jdbc:" conn-uri)
-             (#'mdb.env/connection-from-jdbc-string conn-uri)))))
-  (testing "When using old-style passwords parses and returns jdbc specs"
-    (let [conn-uri "mysql://foo:password@172.17.0.2:3306/metabase"]
-      (is (= {:classname   "org.mariadb.jdbc.Driver"
-              :subprotocol "mysql"
-              :subname     "//172.17.0.2:3306/metabase"
-              :type        :mysql
-              :user        "foo"
-              :password    "password"
-              :dbname      "metabase"}
-             (#'mdb.env/connection-from-jdbc-string conn-uri)))))
+  (let [parsed {:classname   "org.mariadb.jdbc.Driver"
+                :subprotocol "mysql"
+                :subname     "//172.17.0.2:3306/metabase"
+                :type        :mysql
+                :user        "foo"
+                :password    "password"
+                :dbname      "metabase"}]
+    (testing "handles mixed (just password in query params) old style just fine"
+      (let [conn-uri "mysql://foo@172.17.0.2:3306/metabase?password=password"]
+        (is (= parsed (#'mdb.env/connection-from-jdbc-string conn-uri)))))
+    (testing "When using old-style passwords parses and returns jdbc specs"
+      (let [conn-uri "mysql://foo:password@172.17.0.2:3306/metabase"]
+        (is (= parsed (#'mdb.env/connection-from-jdbc-string conn-uri))))))
+  (testing "handles credentials in query params"
+    (let [conn-uri "mysql://172.17.0.2:3306/metabase?user=user&password=password"]
+        (is (= (str "jdbc:" conn-uri) (#'mdb.env/connection-from-jdbc-string conn-uri)))))
   (testing "handles nil"
     (is (nil? (#'mdb.env/connection-from-jdbc-string nil)))))
