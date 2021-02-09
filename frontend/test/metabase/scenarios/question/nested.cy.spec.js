@@ -406,6 +406,6 @@ describe("scenarios > question > nested", () => {
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).not.to.exist;
     });
-    cy.findByText("37.65");
+    cy.contains("37.65");
   });
 });
