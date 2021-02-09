@@ -157,7 +157,8 @@
    (s/optional-key :base_type)     (s/maybe su/FieldType)
    (s/optional-key :special_type)  (s/maybe su/FieldType)
    (s/optional-key :unit)          (s/maybe DatetimeFieldUnit)
-   (s/optional-key :name)          (s/maybe su/NonBlankString)})
+   (s/optional-key :name)          (s/maybe su/NonBlankString)
+   s/Keyword                       s/Any})
 
 ;; Arguments to filter clauses are automatically replaced with [:value <value> <type-info>] clauses by the
 ;; `wrap-value-literals` middleware. This is done to make it easier to implement query processors, because most driver

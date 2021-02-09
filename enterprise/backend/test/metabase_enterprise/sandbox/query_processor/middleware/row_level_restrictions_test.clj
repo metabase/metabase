@@ -345,9 +345,9 @@
   (if-not (= driver/*driver* :bigquery)
     (f)
     (tu/with-temp-vals-in-db Field (mt/id :checkins :user_id) {:fk_target_field_id (mt/id :users :id)
-                                                                 :special_type       "type/FK"}
+                                                               :special_type       "type/FK"}
       (tu/with-temp-vals-in-db Field (mt/id :checkins :venue_id) {:fk_target_field_id (mt/id :venues :id)
-                                                                    :special_type       "type/FK"}
+                                                                  :special_type       "type/FK"}
         (f)))))
 
 (defmacro ^:private with-bigquery-fks [& body]
@@ -857,7 +857,7 @@
                         (is (schema= {:status   (s/eq :completed)
                                       s/Keyword s/Any}
                                      (mt/run-mbql-query orders
-                                       {:filter   [:= #_$products.category $product_id->products.category "Doohickey"]
+                                       {:filter   [:= $product_id->products.category "Doohickey"]
                                         :order-by [[:asc $product_id->products.category]]
                                         :limit    5}))))]
                 (testing "as admin"
