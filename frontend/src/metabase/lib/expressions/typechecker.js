@@ -126,7 +126,6 @@ export function compactSyntaxTree(node) {
     return;
   }
   const { name, children } = node;
-  let result = { name, children };
 
   switch (name) {
     case "any":
@@ -138,24 +137,19 @@ export function compactSyntaxTree(node) {
     case "expression":
     case "parenthesisExpression":
     case "string":
-      {
-        if (children.expression) {
-          const expression = children.expression.map(compactSyntaxTree);
-          result =
-            expression.length === 1
-              ? expression[0]
-              : { name, children: { expression: expression } };
-        }
+      if (children.expression) {
+        const expression = children.expression.map(compactSyntaxTree);
+        return expression.length === 1
+          ? expression[0]
+          : { name, children: { expression: expression } };
       }
       break;
 
     case "logicalNotExpression":
-      {
-        if (children.operands) {
-          const operands = children.operands.map(compactSyntaxTree);
-          const operators = children.operators;
-          result = { name, children: { operators, operands } };
-        }
+      if (children.operands) {
+        const operands = children.operands.map(compactSyntaxTree);
+        const operators = children.operators;
+        return { name, children: { operators, operands } };
       }
       break;
 
@@ -164,35 +158,30 @@ export function compactSyntaxTree(node) {
     case "logicalAndExpression":
     case "logicalOrExpression":
     case "relationalExpression":
-      {
-        if (children.operands) {
-          const operands = children.operands.map(compactSyntaxTree);
-          const operators = children.operators;
-          result =
-            operands.length === 1
-              ? operands[0]
-              : { name, children: { operators, operands } };
-        }
+      if (children.operands) {
+        const operands = children.operands.map(compactSyntaxTree);
+        const operators = children.operators;
+        return operands.length === 1
+          ? operands[0]
+          : { name, children: { operators, operands } };
       }
       break;
 
     case "functionExpression":
-    case "caseExpression":
-      {
-        const { functionName, LParen, RParen } = children;
-        const args = children.arguments
-          ? children.arguments.map(compactSyntaxTree)
-          : [];
-        result = {
-          name,
-          children: { functionName, arguments: args, LParen, RParen },
-        };
-      }
-      break;
+    case "caseExpression": {
+      const { functionName, LParen, RParen } = children;
+      const args = children.arguments
+        ? children.arguments.map(compactSyntaxTree)
+        : [];
+      return {
+        name,
+        children: { functionName, arguments: args, LParen, RParen },
+      };
+    }
 
     default:
       break;
   }
 
-  return result;
+  return { name, children };
 }
