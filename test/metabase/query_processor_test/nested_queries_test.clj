@@ -720,12 +720,12 @@
                (mt/formatted-rows [str str int]
                  results)))
         (is (= (mt/$ids venues
-                 [{:name         "NAME"
+                 [{:name         (mt/format-name "name")
                    :display_name "Name"
                    :id           %name
                    :field_ref    $name
                    :base_type    :type/Text}
-                  {:name         "NAME_2"
+                  {:name         (mt/format-name "name_2")
                    :display_name "Name"
                    :id           %categories.name
                    :field_ref    $categories.name
