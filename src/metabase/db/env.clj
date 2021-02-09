@@ -164,7 +164,7 @@
   (log/warn
    (u/format-color 'red
        (str
-        (trs "Warning: using credentials provided inline is deprecated.")
+        (trs "Warning: using credentials provided inline is deprecated. ")
         (trs "Change to using the credentials as a query parameter: `?password=your-password&user=user`.")))))
 
 (defn- log-postgres-ssl []
