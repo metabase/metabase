@@ -36,7 +36,7 @@
       (is (= :mysql (#'mdb.env/connection-string-or-spec->db-type spec))))))
 
 (deftest fixup-connection-string-test
-  (let [correct-uri     "jdbc:postgresql://localhost:metabase?username=johndoe"]
+  (let [correct-uri "jdbc:postgresql://localhost:metabase?username=johndoe"]
     (doseq [[input expected-diags expected]
             [["postgres://localhost:metabase?username=johndoe"
               #{:env.info/prepend-jdbc :env.info/change-to-postgresql}
@@ -54,6 +54,8 @@
   (are [old? conn-uri] (is (= old? (#'mdb.env/old-credential-style? conn-uri)) conn-uri)
     false "jdbc:mysql://172.17.0.2:3306/metabase?password=password&user=user"
     false "mysql://172.17.0.2:3306/metabase?password=password&user=user"
+    ;; prefixed with jdbc makes an "opaque" URI which doesn't parse
+    true  "jdbc:mysql://foo@172.17.0.2:3306/metabase?password=password"
     true  "mysql://foo@172.17.0.2:3306/metabase?password=password"
     true  "mysql://foo:password@172.17.0.2:3306/metabase"))
 

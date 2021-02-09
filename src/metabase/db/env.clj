@@ -132,7 +132,7 @@
                       (when (re-find #"postgres(?:ql)?:" conn)
                         ;; jdbc:postgresql: is an opaque URI not subject to further parsing. Strip that off and we can
                         ;; use the structural .getQuery from the URI rather than parsing ourselves
-                        (when-let [details (some-> (.getQuery (URI. (str/replace conn #"jdbc:" "")))
+                        (when-let [details (some-> (.getQuery (URI. (str/replace conn #"^jdbc:" "")))
                                                    codec/form-decode
                                                    walk/keywordize-keys)]
                           (suspicious-postgres-details? details))))
