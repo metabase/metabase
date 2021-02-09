@@ -11,11 +11,6 @@
 
 (def ^:private ^:dynamic *execute-asynchronously* true)
 
-(defmacro ^:private execute
-  "Emit a runtime check whether to run off thread or on thread. Intended to remove race conditions from tests."
-  [form]
-  `(if *execute-asynchronously* (future ~form) ~form))
-
 (api/defendpoint POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
@@ -27,14 +22,18 @@
    scan       (s/maybe (s/enum "full" "schema"))}
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
-        db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
+        db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)
+        execute!      (fn [thunk]
+                        (if *execute-asynchronously*
+                          (future (thunk))
+                          (thunk)))]
     (api/let-404 [database (Database id)]
       (cond
         table_id   (when-let [table (Table :db_id id, :id (int table_id))]
-                     (execute (table-sync-fn table)))
+                     (execute! #(table-sync-fn table)))
         table_name (when-let [table (Table :db_id id, :name table_name)]
-                     (execute (table-sync-fn table)))
-        :else      (execute (db-sync-fn database)))))
+                     (execute! #(table-sync-fn table)))
+        :else      (execute! #(db-sync-fn database)))))
   {:success true})
 
 
