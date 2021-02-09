@@ -168,7 +168,7 @@
                                                                          :special_type  :type/FK
                                                                          :database_type "INTEGER"
                                                                          :name          "USER_ID"}]]]
-                                              :gtap?        true}
+                                              ::row-level-restrictions/gtap?        true}
                                :joins        [{:source-query
                                                {:source-table $$venues
                                                 :fields       [$venues.id $venues.name $venues.category_id
@@ -179,7 +179,7 @@
                                                                           :special_type  :type/Category
                                                                           :database_type "INTEGER"
                                                                           :name          "PRICE"}]]
-                                                :gtap?        true}
+                                                ::row-level-restrictions/gtap?        true}
                                                :alias     "v"
                                                :strategy  :left-join
                                                :condition [:= $venue_id &v.venues.id]}]
@@ -447,7 +447,7 @@
                    (mt/run-mbql-query checkins
                      {:limit 2})))))))
 
-    (testing (str "#230: If we modify the query in a way that would cause the original to get nested as a source query, "
+    (testing (str "EE #230: If we modify the query in a way that would cause the original to get nested as a source query, "
                   "do things work?")
       (is (= [[5 69]]
              (mt/format-rows-by [int int]
@@ -460,7 +460,7 @@
 
 (deftest correct-metadata-test
   (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
-                "Table (#390)\n")
+                "Table (EE #390)\n")
     (let [cols          (fn []
                           (mt/cols
                             (mt/run-mbql-query venues
@@ -518,13 +518,13 @@
                 one-col                                       {:name         "ONE"
                                                                :display_name "ONE"
                                                                :base_type    :type/Integer
-                                                               :source       :fields
+                                                               :source       :native
                                                                :field_ref    [:field-literal "ONE" :type/Integer]}]
               (is (= [name-col id-col longitude-col price-col one-col]
                      (cols)))))))))
 
 (deftest sandboxing-sql-with-joins-test
-  (testing "Should be able to use a Saved Question with no source Metadata as a GTAP (#525)"
+  (testing "Should be able to use a Saved Question with no source Metadata as a GTAP (EE #525)"
     (mt/with-gtaps (mt/$ids
                      {:gtaps      {:venues   {:query      (mt/native-query
                                                             {:query         (str "SELECT DISTINCT VENUES.* "
@@ -815,3 +815,53 @@
                               :row_count (s/eq 6)
                               s/Keyword  s/Any}
                              (qp/process-query drill-thru-query)))))))))))
+
+(deftest drill-thru-on-implicit-joins-test
+  (testing "drill-through should work on implicit joined tables with sandboxes should have correct metadata (#13641)"
+    (mt/dataset sample-dataset
+      ;; create Sandbox on ORDERS
+      (mt/with-gtaps (mt/$ids nil
+                       {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
+                        :attributes {:user_id "1"}})
+        ;; make sure the sandboxed group can still access the Products table, which is referenced below.
+        (perms/grant-permissions! &group (perms/object-path (mt/id) "PUBLIC" (mt/id :products)))
+        ;; create a query based on the sandboxed Table
+        (let [query (mt/mbql-query orders
+                      {:aggregation [[:count]]
+                       :breakout    [$product_id->products.category]
+                       :order-by    [[:asc $product_id->products.category]]
+                       :limit       5})]
+          (testing "should be able to run the query. Results should come back with correct metadata"
+            (letfn [(test-metadata []
+                      (is (schema= {:status   (s/eq :completed)
+                                    :data     {:results_metadata
+                                               {:columns  [(s/one {:name      (s/eq "CATEGORY")
+                                                                   :field_ref (s/eq (mt/$ids $orders.product_id->products.category))
+                                                                   s/Keyword  s/Any}
+                                                                  "results metadata for products.category")
+                                                           (s/one {:name      (s/eq "count")
+                                                                   :field_ref (s/eq [:aggregation 0])
+                                                                   s/Keyword  s/Any}
+                                                                  "results metadata for count aggregation")]
+                                                s/Keyword s/Any}
+                                               s/Keyword         s/Any}
+                                    s/Keyword s/Any}
+                                   (qp/process-query query))))]
+              (testing "as an admin"
+                (mt/with-test-user :crowberto
+                  (test-metadata)))
+              (testing "as a sandboxed user"
+                (test-metadata))))
+          (testing "Drill-thru question should work"
+              (letfn [(test-drill-thru-query []
+                        (is (schema= {:status   (s/eq :completed)
+                                      s/Keyword s/Any}
+                                     (mt/run-mbql-query orders
+                                       {:filter   [:= #_$products.category $product_id->products.category "Doohickey"]
+                                        :order-by [[:asc $product_id->products.category]]
+                                        :limit    5}))))]
+                (testing "as admin"
+                  (mt/with-test-user :crowberto
+                    (test-drill-thru-query)))
+                (testing "as sandboxed user"
+                  (test-drill-thru-query)))))))))

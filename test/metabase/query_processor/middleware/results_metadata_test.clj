@@ -14,6 +14,7 @@
             [metabase.util :as u]
             [metabase.util.encryption :as encrypt]
             [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (defn- card-metadata [card]
@@ -270,3 +271,47 @@
                                         :type                    :external
                                         :human_readable_field_id %products.title})]
             (do-test)))))))
+
+(deftest field-refs-should-be-correct-fk-forms-test
+  (testing "Field refs included in results metadata should be wrapped correctly e.g. in `fk->` form"
+    (mt/dataset sample-dataset
+      (doseq [[description query]
+              {"simple query"
+               (mt/mbql-query orders
+                 {:aggregation [[:count]]
+                  :breakout    [$product_id->products.category]
+                  :order-by    [[:asc $product_id->products.category]]
+                  :limit       5})
+
+               "query with source query"
+               (mt/mbql-query orders
+                 {:source-query {:source-table $$orders}
+                  :aggregation  [[:count]]
+                  :breakout     [$product_id->products.category]
+                  :order-by     [[:asc $product_id->products.category]]
+                  :limit        5})}]
+        (testing (str description "\n" (u/pprint-to-str query))
+          (is (schema= {:status   (s/eq :completed)
+                        :data     (mt/$ids orders
+                                    {:cols             [(s/one {:name      (s/eq "CATEGORY")
+                                                                :field_ref (s/eq $product_id->products.category)
+                                                                :id        (s/eq %products.category)
+                                                                s/Keyword  s/Any}
+                                                               "products.category")
+                                                        (s/one {:name      (s/eq "count")
+                                                                :field_ref (s/eq [:aggregation 0])
+                                                                s/Keyword  s/Any}
+                                                               "count aggregation")]
+                                     :results_metadata {:columns  [(s/one {:name      (s/eq "CATEGORY")
+                                                                           :field_ref (s/eq $product_id->products.category)
+                                                                           :id        (s/eq %products.category)
+                                                                           s/Keyword  s/Any}
+                                                                          "results metadata for products.category")
+                                                                   (s/one {:name      (s/eq "count")
+                                                                           :field_ref (s/eq [:aggregation 0])
+                                                                           s/Keyword  s/Any}
+                                                                          "results metadata for count aggregation")]
+                                                        s/Keyword s/Any}
+                                     s/Keyword         s/Any})
+                        s/Keyword s/Any}
+                       (qp/process-query query))))))))

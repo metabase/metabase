@@ -11,7 +11,6 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -29,7 +28,7 @@
    (reduce
     concat
     (mbql.u/match m
-      (_ :guard (every-pred map? :source-table (complement :gtap?)))
+      (_ :guard (every-pred map? :source-table (complement ::gtap?)))
       (let [recursive-ids (all-table-ids (dissoc &match :source-table))]
         (cons (:source-table &match) recursive-ids))))))
 
@@ -132,7 +131,7 @@
                       :type     :query
                       :query    source-query}
         preprocessed (binding [api/*current-user-id* nil]
-                       ((resolve 'metabase.query-processor/query->preprocessed) query))]
+                       ((requiring-resolve 'metabase.query-processor/query->preprocessed) query))]
     (select-keys (:query preprocessed) [:source-query :source-metadata])))
 
 (s/defn ^:private card-gtap->source
@@ -160,7 +159,7 @@
                :type     :query
                :query    source-query}
         cols  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                (-> ((resolve 'metabase.query-processor/process-query) (assoc query :limit 0))
+                (-> ((requiring-resolve 'metabase.query-processor/process-query) (assoc query :limit 0))
                     :data :cols))]
     (u/prog1 (for [col cols]
                (select-keys col [:name :base_type :display_name :special_type]))
@@ -264,45 +263,33 @@
   "Replace `:source-table` entries that refer to Tables for which we have applicable GTAPs with `:source-query` entries
   from their GTAPs."
   [m table-id->gtap]
-  ;; replace maps that have `:source-table` key and a matching entry in `table-id->gtap`, but do not have `:gtap?` key
+  ;; replace maps that have `:source-table` key and a matching entry in `table-id->gtap`, but do not have `::gtap?` key
   (mbql.u/replace m
-    (_ :guard (every-pred map? (complement :gtap?) :source-table #(get table-id->gtap (:source-table %))))
+    (_ :guard (every-pred map? (complement ::gtap?) :source-table #(get table-id->gtap (:source-table %))))
     (let [updated             (apply-gtap &match (get table-id->gtap (:source-table &match)))
           ;; now recursively apply gtaps anywhere else they might exist at this level, e.g. `:joins`
           recursively-updated (merge
                                (select-keys updated [:source-table :source-query])
                                (apply-gtaps (dissoc updated :source-table :source-query) table-id->gtap))]
-      ;; add a `:gtap?` key next to every `:source-table` key so when we do a second pass after adding JOINs they
+      ;; add a `::gtap?` key next to every `:source-table` key so when we do a second pass after adding JOINs they
       ;; don't get processed again
       (mbql.u/replace recursively-updated
         (_ :guard (every-pred map? :source-table))
-        (assoc &match :gtap? true)))))
-
-(defn- id->col-info [query field-id]
-  (when field-id
-    (annotate/col-info-for-field-clause (:query query) [:field-id field-id])))
-
-(defn- update-col-metadata [query field-name->id-delay {:keys [id source], field-ref :field_ref, field-name :name, :as col}]
-  (let [id (or id (when (and (= (first field-ref) :field-literal)
-                             field-name)
-                    (get @field-name->id-delay field-name)))]
-    (merge
-     col
-     (id->col-info query id)
-     (when (= source :native)
-       {:source :fields}))))
+        (assoc &match ::gtap? true)))))
 
 (defn- merge-metadata
-  "Merge column metadata from the source Table into the current results `metadata`. This way the final results metadata
-  coming back matches what we'd get if the query was not running with a GTAP."
-  [query metadata]
-  (let [source-table-id      (mbql.u/query->source-table-id query)
-        field-name->id-delay (delay
-                               (u/prog1 (when source-table-id
-                                          (db/select-field->id :name Field :table_id source-table-id))
-                                 (qp.store/fetch-and-store-fields! (vals <>))))]
-    (update metadata :cols (fn [cols]
-                             (mapv (partial update-col-metadata query field-name->id-delay) cols)))))
+  "Merge column metadata from the non-GTAPped version of the query into the GTAPped results `metadata`. This way the
+  final results metadata coming back matches what we'd get if the query was not running with a GTAP."
+  [original-query metadata]
+  (letfn [(merge-cols [cols]
+            (let [expected-cols          (binding [*current-user-permissions-set* (atom #{"/"})]
+                                           ((requiring-resolve 'metabase.query-processor/query->expected-cols) original-query))
+                  col-name->expected-col (u/key-by :name expected-cols)]
+              (for [col cols]
+                (merge
+                 col
+                 (get col-name->expected-col (:name col))))))]
+    (update metadata :cols merge-cols)))
 
 (defn- gtapped-query
   "Apply GTAPs to `query` and return the updated version of `query`."
