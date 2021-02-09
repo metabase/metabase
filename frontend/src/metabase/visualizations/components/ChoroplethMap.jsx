@@ -254,10 +254,7 @@ export default class ChoroplethMap extends Component {
             column: cols[metricIndex],
             dimensions: [
               {
-                value:
-                  feature != null
-                    ? getFeatureName(feature)
-                    : row[dimensionIndex],
+                value: row[dimensionIndex],
                 column: cols[dimensionIndex],
               },
             ],
