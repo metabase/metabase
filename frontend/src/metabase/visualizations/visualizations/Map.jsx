@@ -237,10 +237,11 @@ export default class Map extends Component {
         return null;
       },
       getProps: () => ({
-        options: Object.entries(MetabaseSettings.get("custom-geojson", {})).map(
-          // $FlowFixMe:
-          ([key, value]) => ({ name: value.name, value: key }),
-        ),
+        options: _.chain(MetabaseSettings.get("custom-geojson", {}))
+          .pairs()
+          .map(([key, value]) => ({ name: value.name || "", value: key }))
+          .sortBy(x => x.name.toLowerCase())
+          .value(),
       }),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
