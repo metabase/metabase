@@ -1,6 +1,7 @@
 import { parse } from "metabase/lib/expressions/parser";
 import { ExpressionVisitor } from "metabase/lib/expressions/visitor";
 import { parseIdentifierString } from "metabase/lib/expressions/index";
+import { compactSyntaxTree } from "metabase/lib/expressions/typechecker";
 
 // Since the type checking is inserted as the last stage in the expression parser,
 // the whole tests must continue to pass (i.e. none of them should thrown
@@ -163,6 +164,69 @@ describe("type-checker", () => {
     it("should resolve dimensions and metrics correctly", () => {
       expect(aggregation("[X]+Sum([Y])").dimensions).toEqual(["Y"]);
       expect(aggregation("[X]+Sum([Y])").metrics).toEqual(["X"]);
+    });
+  });
+
+  describe("compactSyntaxTree", () => {
+    function exprRoot(source) {
+      const tokenVector = null;
+      const startRule = "expression";
+      const { cst } = parse({ source, tokenVector, startRule });
+      const compactCst = compactSyntaxTree(cst);
+      const { name } = compactCst;
+      return name;
+    }
+    function filterRoot(source) {
+      const tokenVector = null;
+      const startRule = "boolean";
+      const { cst } = parse({ source, tokenVector, startRule });
+      const compactCst = compactSyntaxTree(cst);
+      const { name } = compactCst;
+      return name;
+    }
+
+    it("should handle literals", () => {
+      expect(exprRoot("42")).toEqual("numberLiteral");
+      expect(exprRoot("(43)")).toEqual("numberLiteral");
+      expect(exprRoot("'Answer'")).toEqual("stringLiteral");
+      expect(exprRoot('"Answer"')).toEqual("stringLiteral");
+      expect(exprRoot('("The Answer")')).toEqual("stringLiteral");
+    });
+    it("should handle binary expressions", () => {
+      expect(exprRoot("1+2")).toEqual("additionExpression");
+      expect(exprRoot("3-4")).toEqual("additionExpression");
+      expect(exprRoot("1+2-3")).toEqual("additionExpression");
+      expect(exprRoot("(1+2-3)")).toEqual("additionExpression");
+      expect(exprRoot("(1+2)-3")).toEqual("additionExpression");
+      expect(exprRoot("1+(2-3)")).toEqual("additionExpression");
+      expect(exprRoot("5*6")).toEqual("multiplicationExpression");
+      expect(exprRoot("7/8")).toEqual("multiplicationExpression");
+      expect(exprRoot("5*6/7")).toEqual("multiplicationExpression");
+      expect(exprRoot("(5*6/7)")).toEqual("multiplicationExpression");
+      expect(exprRoot("5*(6/7)")).toEqual("multiplicationExpression");
+      expect(exprRoot("(5*6)/7")).toEqual("multiplicationExpression");
+    });
+    it("should handle function expressions", () => {
+      expect(exprRoot("LOWER(A)")).toEqual("functionExpression");
+      expect(exprRoot("UPPER(B)")).toEqual("functionExpression");
+      expect(filterRoot("BETWEEN(C,0,9)")).toEqual("functionExpression");
+    });
+    it("should handle case expressions", () => {
+      expect(exprRoot("CASE(X,1)")).toEqual("caseExpression");
+      expect(exprRoot("CASE(Y,2,3)")).toEqual("caseExpression");
+    });
+    it("should handle relational expressions", () => {
+      expect(filterRoot("1<2")).toEqual("relationalExpression");
+      expect(filterRoot("3>4")).toEqual("relationalExpression");
+      expect(filterRoot("5=6")).toEqual("relationalExpression");
+      expect(filterRoot("7!=8")).toEqual("relationalExpression");
+    });
+    it("should handle logical expressions", () => {
+      expect(filterRoot("A AND B")).toEqual("logicalAndExpression");
+      expect(filterRoot("C OR D")).toEqual("logicalOrExpression");
+      expect(filterRoot("A AND B OR C")).toEqual("logicalOrExpression");
+      expect(filterRoot("NOT E")).toEqual("logicalNotExpression");
+      expect(filterRoot("NOT NOT F")).toEqual("logicalNotExpression");
     });
   });
 });
