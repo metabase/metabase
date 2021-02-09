@@ -45,10 +45,10 @@
              [sync-metadata/sync-db-metadata! "metadata"]
              ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types
              ;; accordingly
-             (when (= :scan :full)
+             (when (= scan :full)
                [analyze/analyze-db! "analyze"])
              ;; Finally, update cached FieldValues
-             (when (= :scan :full)
+             (when (= scan :full)
                [field-values/update-field-values! "field-values"])])))))
 
 (s/defn sync-table!
