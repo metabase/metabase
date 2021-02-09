@@ -22,6 +22,7 @@
   Normally you should use the equivalent functions in `metabase.db.connection` which can be overridden rather than
   using this namespace directly."
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.config :as config]
@@ -63,6 +64,13 @@
 
 (declare connection-details->jdbc-spec)
 
+(defn- suspicious-postgres-details?
+  "If postgres connection seems iffy. #8908
+  https://github.com/metabase/metabase/issues/8908"
+  [details]
+  (and (= (:ssl details) "true")
+       (not (:sslmode details))))
+
 (defn- parse-connection-string
   "Parse a DB connection URI like
   `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and
@@ -70,42 +78,66 @@
   credentials are included in the like `username:password@host:port`."
   [uri]
   (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
-    (connection-details->jdbc-spec
-     (keyword protocol)
-     (u/prog1 (merge {:type (case (keyword protocol)
-                              :postgres   :postgres
-                              :postgresql :postgres
-                              :mysql      :mysql
-                              :h2         :h2)}
+    (let [protocol (case (keyword protocol)
+                     :postgres   :postgres
+                     :postgresql :postgres
+                     :mysql      :mysql
+                     :h2         :h2)
+          details
+          (connection-details->jdbc-spec
+           protocol
+           (merge {:type protocol}
 
-                     (case (keyword protocol)
-                       :h2 {:db db}
-                       {:user     user
-                        :password pass
-                        :host     host
-                        :port     port
-                        :dbname   db})
-                     (some-> query
-                             codec/form-decode
-                             walk/keywordize-keys))
-       ;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let
-       ;; them know about that to make their lives a little easier. See https://github.com/metabase/metabase/issues/8908
-       ;; for more details.
-       (when (and (= (:type <>) :postgres)
-                  (= (:ssl <>) "true")
-                  (not (:sslmode <>)))
-         (log/warn (trs "Warning: Postgres connection string with `ssl=true` detected.")
-                   (trs "You may need to add `?sslmode=require` to your application DB connection string.")
-                   (trs "If Metabase fails to launch, please add it and try again.")
-                   (trs "See https://github.com/metabase/metabase/issues/8908 for more details.")))))))
+                  (case (keyword protocol)
+                    :h2 {:db db}
+                    {:user     user
+                     :password pass
+                     :host     host
+                     :port     port
+                     :dbname   db})
+                  (some-> query
+                          codec/form-decode
+                          walk/keywordize-keys)))]
+      ;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let
+      ;; them know about that to make their lives a little easier. See
+      ;; https://github.com/metabase/metabase/issues/8908 for more details.
+      {:connection details
+       :diags (cond-> #{:env.warning/inline-credentials}
+                (and (= protocol :postgres) (suspicious-postgres-details? details))
+                (conj :env.warning/postgres-ssl))})))
 
-(defn- ensure-jdbc-protocol
-  "Prepends \"jdbc:\" to the connection-uri string if needed."
+(defn- fixup-connection-string
+  "When we allow a raw connection string as our connection, we still perform a few fixups:
+  - ensure it begins with jdbc:
+  - we allow `postgres:` and must change that to `postgresql:`
+  - warn if postgres ssl settings might cause issues
+
+  Return is a map of {:connection string|spec :diags #{info or warnings}}"
   [connection-uri]
   (when connection-uri
-    (if (re-find #"^jdbc:" connection-uri)
-      connection-uri
-      (str "jdbc:" connection-uri))))
+    (reduce (fn [{:keys [connection] :as m} {:keys [pred diag fix]}]
+              (if (pred connection)
+                (-> m (update :connection fix) (update :diags conj diag))
+                m))
+            {:connection connection-uri
+             :diags #{}}
+            [{:pred #(not (.startsWith ^String % "jdbc:"))
+              :diag :env.info/prepend-jdbc
+              :fix  #(str "jdbc:" %)}
+             {:pred #(re-find #"postgres:" %)
+              :diag :env.info/change-to-postgresql
+              :fix #(str/replace % "postgres:" "postgresql:")}
+             {:pred (fn parse-query-for-postgres
+                      [^String conn]
+                      (when (re-find #"postgres(?:ql)?:" conn)
+                        ;; jdbc:postgresql: is an opaque URI not subject to further parsing. Strip that off and we can
+                        ;; use the structural .getQuery from the URI rather than parsing ourselves
+                        (when-let [details (some-> (.getQuery (URI. (str/replace conn #"jdbc:" "")))
+                                                   codec/form-decode
+                                                   walk/keywordize-keys)]
+                          (suspicious-postgres-details? details))))
+              :fix identity
+              :diag :env.warning/postgres-ssl}])))
 
 (defn old-credential-style?
   "Parse a jdbc connection uri to check for older style credential passing like:
@@ -119,15 +151,35 @@
 (defn- connection-from-jdbc-string
   "If connection string uses the form `username:password@host:port`, use our custom parsing to return a jdbc spec and
   warn about this deprecated behavior. If not, return the jdbc string as is since our parsing does not offer all of
-  the options of using a raw jdbc string."
+  the options of using a raw jdbc string.
+  Return is a map of {:connection string|spec :diags #{info or warnings}}"
   [conn-string]
   (when conn-string
-    (or (when-not (old-credential-style? conn-string)
-          ;; prefer not parsing as we don't handle all features of connection strings
-          (ensure-jdbc-protocol conn-string))
-        (do (log/warn (trs "Warning: using credentials provided inline is deprecated.")
-                      (trs "Change to using the credentials as a query parameter: `?password=your-password&user=user`."))
-            (parse-connection-string conn-string)))))
+    (if (old-credential-style? conn-string)
+        ;; prefer not parsing as we don't handle all features of connection strings
+        (parse-connection-string conn-string)
+        (fixup-connection-string conn-string))))
+
+(defn- log-inline-credentials! []
+  (log/warn
+   (u/format-color 'red
+       (str
+        (trs "Warning: using credentials provided inline is deprecated.")
+        (trs "Change to using the credentials as a query parameter: `?password=your-password&user=user`.")))))
+
+(defn- log-postgres-ssl []
+  (log/warn (trs "Warning: Postgres connection string with `ssl=true` detected.")
+            (trs "You may need to add `?sslmode=require` to your application DB connection string.")
+            (trs "If Metabase fails to launch, please add it and try again.")
+            (trs "See https://github.com/metabase/metabase/issues/8908 for more details.")))
+
+(defn- emit-diags! [diagnostic]
+  (case diagnostic
+    :env.info/change-to-postgresql  (log/info (trs "Replaced 'postgres:' with 'postgresql:' in connection string"))
+    :env.info/prepend-jdbc          (log/info (trs "Prepended 'jdbc:' onto connection string"))
+    :env.warning/inline-credentials (log-inline-credentials!)
+    :env.warning/postgres-ssl       (log-postgres-ssl)
+    (log/warn (trs "Unknown diagnostic in db connection: {0}" diagnostic))))
 
 (def ^:private connection-string-or-spec
   "Uses `:mb-db-connection-uri` and is either:
@@ -135,7 +187,9 @@
   - a db-spec parsed by this code if it does use inline credentials, or
   - nil when this value is not set."
   (delay (when-let [conn-uri (config/config-str :mb-db-connection-uri)]
-           (connection-from-jdbc-string conn-uri))))
+           (let [{:keys [connection diags]} (connection-from-jdbc-string conn-uri)]
+             (run! emit-diags! diags)
+             connection))))
 
 (defn- connection-string-or-spec->db-type [x]
   (cond
