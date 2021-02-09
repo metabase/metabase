@@ -104,8 +104,9 @@
 (def ^:private chunk-size 100)
 
 (defn- insert-chunk!
-  "Insert of `chunk` of rows into the target database table with `table-name`."
+  "Insert of `chunkk` of rows into the target database table with `table-name`."
   [target-db-type target-db-conn table-name chunkk]
+  (log/debugf "Inserting chunk of %d rows" (count chunkk))
   (try
     (let [{:keys [cols vals]} (objects->colums+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn table-name cols vals {:transaction? false}))
@@ -126,6 +127,8 @@
                                              results (jdbc/reducible-query source-conn sql)]]
       (transduce
        (partition-all chunk-size)
+       ;; cnt    = the total number we've inserted so far
+       ;; chunkk = current chunk to insert
        (fn
          ([cnt]
           (when (pos? cnt)
