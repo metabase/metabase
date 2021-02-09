@@ -42,7 +42,7 @@
 (defn- table-should-have-segmented-permissions?
   "Determine whether we should apply segmented permissions for `table-or-table-id`."
   [table-id]
-  (let [table (assoc (qp.store/table table-id) :db_id (u/get-id (qp.store/database)))]
+  (let [table (assoc (qp.store/table table-id) :db_id (u/the-id (qp.store/database)))]
     (and
      ;; User does not have full data access
      (not (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/table-query-path table)))

@@ -24,9 +24,13 @@
                                       (if (or (= (:table_id field) source-table)
                                               (contains? (set &parents) :joined-field))
                                         [:field-id field-id]
-                                        (wrap-field-in-joined-field field joins))))]
-    (cond-> form
-      source-query (assoc :source-query (wrap-fields-in-joined-field-if-needed source-query)))))
+                                        (wrap-field-in-joined-field field joins))))
+        form (cond-> form
+               source-query (assoc :source-query (wrap-fields-in-joined-field-if-needed source-query)))]
+    ;; now deduplicate :fields clauses
+    (mbql.u/replace form
+      (m :guard (every-pred map? :fields))
+      (update m :fields distinct))))
 
 (defn resolve-joined-fields
   "Wrap field references in `:joined-field` clauses where needed."

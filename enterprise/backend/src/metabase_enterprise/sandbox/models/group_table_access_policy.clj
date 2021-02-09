@@ -67,19 +67,23 @@
        ;; `row-level-restrictions` middleware). So include `:type` and `:status-code` information in the ExceptionInfo
        ;; data so it can be passed along if applicable.
        (when-not table-col-base-type
-         (throw (ex-info (tru "Sandbox Cards can''t return columns that aren't present in the Table they are sandboxing.")
-                         {:type        qp.error-type/bad-configuration
-                          :status-code 400
-                          :new-column  col
-                          :expected    (mapv :name table-cols)
-                          :actual      (mapv :name result-metadata-columns)})))
+         (let [msg (tru "Sandbox Cards can''t return columns that aren''t present in the Table they are sandboxing.")]
+           (throw (ex-info msg
+                           {:type        qp.error-type/bad-configuration
+                            :status-code 400
+                            :message     msg
+                            :new-column  col
+                            :expected    (mapv :name table-cols)
+                            :actual      (mapv :name result-metadata-columns)}))))
        (when-not (isa? (keyword (:base_type col)) table-col-base-type)
-         (throw (ex-info (tru "Sandbox Cards can''t return columns that have different types than the Table they are sandboxing.")
-                         {:type        qp.error-type/bad-configuration
-                          :status-code 400
-                          :new-col     col
-                          :expected    table-col-base-type
-                          :actual      (:base_type col)})))))))
+         (let [msg (tru "Sandbox Cards can''t return columns that have different types than the Table they are sandboxing.")]
+           (throw (ex-info msg
+                           {:type        qp.error-type/bad-configuration
+                            :status-code 400
+                            :message     msg
+                            :new-col     col
+                            :expected    table-col-base-type
+                            :actual      (:base_type col)}))))))))
 
 ;; TODO -- should we only check these constraints if EE features are enabled??
 (defn update-card-check-gtaps

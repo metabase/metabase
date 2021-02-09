@@ -144,7 +144,8 @@
     (or (some-> (premium-embedding-token) valid-token->features)
         #{})
     (catch Throwable e
-      (log/error e (trs "Error validating token"))
+      (log/error (trs "Error validating token") ":" (ex-message e))
+      (log/debug e (trs "Error validating token"))
       #{})))
 
 (defsetting hide-embed-branding?

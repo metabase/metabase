@@ -1,12 +1,14 @@
 (ns metabase.query-processor.pivot
   "Pivot table actions for the query processor"
   (:require [clojure.core.async :as a]
+            [clojure.tools.logging :as log]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.query-processor :as qp]
             [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
 (defn powerset
@@ -84,29 +86,30 @@
         ;; bottom right corner [_ _ _ _] => 1111 => Group #15
         [[]]))))))
 
-(defn add-grouping-field
+(defn- add-grouping-field
   "Add the grouping field and expression to the query"
   [query breakout bitmask]
-  (let [new-query (-> query
-                      ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
-                      (update-in [:query :fields]
-                                 #(conj % [:expression "pivot-grouping"]))
-                      ;;TODO: replace this value with a bitmask or something to indicate the source better
-                      (update-in [:query :expressions]
-                                 #(assoc % "pivot-grouping" [:abs bitmask])))]
-    ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts
-    (assoc-in new-query [:query :breakout]
-              (concat breakout (map (fn [expr] [:expression (name expr)])
-                                    (keys (get-in new-query [:query :expressions])))))))
+  (as-> query query
+    ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
+    (update-in query [:query :fields] concat [[:expression "pivot-grouping"]])
+    ;;TODO: replace this value with a bitmask or something to indicate the source better
+    (update-in query [:query :expressions] assoc :pivot-grouping [:abs bitmask])
+    ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
+    ;; grouping expression ref to the breakouts
+    (assoc-in query [:query :breakout] (concat breakout [[:expression "pivot-grouping"]]))
+    (do
+      (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
+      query)))
 
 (defn- generate-queries
   "Generate the additional queries to perform a generic pivot table"
   [{{all-breakouts :breakout} :query, :keys [pivot-rows pivot-cols query], :as outer-query}]
   (try
-    (for [breakout-indices (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
-          :let             [group-bitmask    (group-bitmask (count all-breakouts) breakout-indices)
+    (for [breakout-indices (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
+                             (log/tracef "Using breakout combinations: %s" (pr-str <>)))
+          :let             [group-bitmask (group-bitmask (count all-breakouts) breakout-indices)
                             new-breakouts (for [i breakout-indices]
-                                             (nth all-breakouts i))]]
+                                            (nth all-breakouts i))]]
       (add-grouping-field outer-query new-breakouts group-bitmask))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")

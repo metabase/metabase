@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
@@ -95,10 +96,10 @@ export default class DashCard extends Component {
 
     const mainCard = {
       ...dashcard.card,
-      visualization_settings: {
-        ...dashcard.card.visualization_settings,
-        ...dashcard.visualization_settings,
-      },
+      visualization_settings: mergeSettings(
+        dashcard.card.visualization_settings,
+        dashcard.visualization_settings,
+      ),
     };
     const cards = [mainCard].concat(dashcard.series || []);
     const dashboardId = dashcard.dashboard_id;

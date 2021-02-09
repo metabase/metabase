@@ -4,12 +4,7 @@ import { t } from "ttag";
 import EntityMenu from "metabase/components/EntityMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
-export default function CollectionEditMenu({
-  isRoot,
-  isAdmin,
-  collectionId,
-  tooltip,
-}) {
+export default function CollectionEditMenu({ isRoot, collectionId, tooltip }) {
   const items = [];
   if (!isRoot) {
     items.push({

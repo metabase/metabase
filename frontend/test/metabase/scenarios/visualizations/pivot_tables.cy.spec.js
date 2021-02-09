@@ -447,7 +447,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   describe("custom columns (metabase#14604)", () => {
-    it.skip("should work with custom columns as values", () => {
+    it("should work with custom columns as values", () => {
       visitQuestionAdhoc({
         dataset_query: {
           database: 1,
@@ -482,7 +482,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.findByText("3,021,243.37"); // sum of "twice total" grand total
     });
 
-    it.skip("should work with custom columns as pivoted columns", () => {
+    it("should work with custom columns as pivoted columns", () => {
       visitQuestionAdhoc({
         dataset_query: {
           type: "query",
@@ -630,7 +630,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             .then($value => {
               cy.visit($value);
             });
-          cy.findAllByText(test.subject); // the inspector only saw one, but findByText failed due to multiple elements
+          cy.get(".EmbedFrame-header").contains(test.subject);
           assertOnPivotFields();
         });
 
@@ -652,7 +652,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           // visit the iframe src directly to ensure it's not sing preview endpoints
           cy.get("iframe").then($iframe => {
             cy.visit($iframe[0].src);
-            cy.findByText(test.subject);
+            cy.get(".EmbedFrame-header").contains(test.subject);
             assertOnPivotFields();
           });
         });

@@ -188,7 +188,8 @@
   Integer  (->temporal [this] (->temporal (t/instant this)))
   ChronoLocalDateTime (->temporal [this] (.toInstant this (ZoneOffset/UTC)))
   ChronoZonedDateTime (->temporal [this] (.toInstant this))
-  Temporal (->temporal [this] this))
+  Temporal (->temporal [this] this)
+  java.util.Date (->temporal [this] (t/instant this)))
 
 (deffingerprinter :type/DateTime
   ((map ->temporal)

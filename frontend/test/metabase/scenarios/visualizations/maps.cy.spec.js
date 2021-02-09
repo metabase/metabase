@@ -3,7 +3,11 @@ import {
   signInAsAdmin,
   restore,
   popover,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 
 describe("scenarios > visualizations > maps", () => {
   beforeEach(() => {
@@ -99,5 +103,48 @@ describe("scenarios > visualizations > maps", () => {
         .parent()
         .should("have.css", "opacity", "1");
     });
+  });
+
+  it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": PEOPLE_ID,
+          aggregation: [["count"]],
+          breakout: [["field-id", PEOPLE.STATE]],
+        },
+        type: "query",
+      },
+      display: "map",
+      visualization_settings: {
+        "map.type": "region",
+        "map.region": "us_states",
+      },
+    });
+
+    cy.get(".CardVisualization svg path")
+      .eq(22)
+      .as("texas");
+
+    // hover to see the tooltip
+    cy.get("@texas").trigger("mousemove");
+
+    // check tooltip content
+    cy.findByText("State:"); // column name key
+    cy.findByText("Texas"); // feature name as value
+
+    cy.server();
+    cy.route("POST", `/api/dataset`).as("dataset");
+    // open actions menu and drill within it
+    cy.get("@texas").click();
+    cy.findByText(/View these People/i).click();
+
+    cy.log("**Reported as a regression since v0.37.0**");
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.request.body.query.filter).not.to.contain("Texas");
+    });
+    cy.findByText("State is TX");
+    cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
 });
