@@ -131,16 +131,13 @@
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 
 (defn- check-join-aliases [query]
-  (letfn [(available-aliases [{:keys [joins alias]}]
-            (set (concat (map :alias joins)
-                         (when alias
-                           [alias]))))
-          (referenced-aliases [form]
+  (letfn [(referenced-aliases [form]
             (mbql.u/match form
               [:joined-field alias _]
               alias))
-          (check-join-aliases* [{:keys [joins source-query], :as query}]
-            (let [aliases (available-aliases query)]
+          (check-join-aliases* [{:keys [joins source-query], :as query} aliases-from-parent-level]
+            (let [aliases (into (set aliases-from-parent-level)
+                                (map :alias joins))]
               ;; only check stuff at the current level. We'll recursively check stuff below
               (doseq [alias (referenced-aliases (dissoc query :source-query :joins))]
                 (when-not (aliases alias)
@@ -152,12 +149,12 @@
                              :aliases aliases}))))
               ;; recursively check joins and source queries
               (doseq [join joins]
-                (check-join-aliases* join))
+                (check-join-aliases* join aliases))
               (when source-query
-                (check-join-aliases source-query))))]
+                (check-join-aliases* source-query nil))))]
     (mbql.u/match query
       (m :guard (every-pred map? :joins))
-      (check-join-aliases* m))))
+      (check-join-aliases* m nil))))
 
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [{:keys [joins], :as query} :- mbql.s/MBQLQuery]
