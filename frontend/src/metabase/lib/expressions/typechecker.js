@@ -134,6 +134,9 @@ export function compactSyntaxTree(node) {
     case "atomicExpression":
     case "boolean":
     case "booleanExpression":
+    case "booleanUnaryExpression":
+    case "expression":
+    case "parenthesisExpression":
     case "string":
       {
         if (children.expression) {
@@ -142,17 +145,6 @@ export function compactSyntaxTree(node) {
             expression.length === 1
               ? expression[0]
               : { name, children: { expression: expression } };
-        }
-      }
-      break;
-
-    case "expression":
-    case "booleanUnaryExpression":
-    case "parenthesisExpression":
-      {
-        if (children.expression) {
-          const expression = children.expression.map(compactSyntaxTree);
-          result = expression[0];
         }
       }
       break;
