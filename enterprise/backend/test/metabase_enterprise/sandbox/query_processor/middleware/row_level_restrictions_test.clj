@@ -714,7 +714,7 @@
           (testing "Sanity check: should be able to query products"
             (is (schema= {:status   (s/eq :completed)
                           s/Keyword s/Any}
-                         (mt/run-mbql-query products))))
+                         (mt/run-mbql-query products {:limit 10}))))
           (testing "Try the sandbox without remapping in place"
             (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
               (is (schema= {:status    (s/eq :completed)

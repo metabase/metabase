@@ -511,7 +511,7 @@ describeWithToken("formatting > sandboxes", () => {
        * There isn't an exact issue that this test reproduces, but it is basically a version of (metabase-enterprise#520)
        * that uses a query builder instead of SQL based questions.
        */
-      it.skip("should be able to sandbox using query builder saved questions", () => {
+      it("should be able to sandbox using query builder saved questions", () => {
         cy.server();
         cy.route("POST", "/api/dataset").as("dataset");
 

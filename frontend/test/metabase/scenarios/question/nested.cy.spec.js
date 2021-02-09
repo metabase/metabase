@@ -55,14 +55,14 @@ describe("scenarios > question > nested (metabase#12568)", () => {
         type: "native",
         native: {
           query: `WITH tmp_user_order_dates as (
-              SELECT 
+              SELECT
                 o.USER_ID,
                 o.CREATED_AT,
                 o.QUANTITY
-              FROM 
+              FROM
                 ORDERS o
             ),
-            
+
             tmp_prior_orders_by_date as (
               select
                   tbod.USER_ID,
@@ -71,7 +71,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
                   (select count(*) from tmp_user_order_dates tbod2 where tbod2.USER_ID = tbod.USER_ID and tbod2.CREATED_AT < tbod.CREATED_AT ) as PRIOR_ORDERS
               from tmp_user_order_dates tbod
             )
-            
+
             select
               date_trunc('day', tpobd.CREATED_AT) as "Date",
               case when tpobd.PRIOR_ORDERS > 0 then 'Return' else 'New' end as "Customer Type",
@@ -326,7 +326,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it.skip("should handle remapped display values in a base QB question (metabase#10474)", () => {
+  it("should handle remapped display values in a base QB question (metabase#10474)", () => {
     cy.log(
       "Related issue [#14629](https://github.com/metabase/metabase/issues/14629)",
     );

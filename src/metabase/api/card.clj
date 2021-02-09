@@ -232,7 +232,6 @@
     ;; Return a channel
     out-chan))
 
-
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
