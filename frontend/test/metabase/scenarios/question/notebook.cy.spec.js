@@ -403,6 +403,44 @@ describe("scenarios > question > notebook", () => {
         });
       });
     });
+
+    it.skip("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
+      cy.request("POST", "/api/card", {
+        name: "14649_min",
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              aggregation: [
+                [
+                  "aggregation-options",
+                  ["sum", ["field-id", ORDERS.SUBTOTAL]],
+                  { "display-name": "Revenue" },
+                ],
+              ],
+              breakout: [
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ],
+            },
+            aggregation: [["min", ["field-literal", "Revenue", "type/Float"]]],
+          },
+          database: 1,
+        },
+        display: "scalar",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.server();
+        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+        cy.visit(`/question/${QUESTION_ID}`);
+        cy.wait("@cardQuery").then(xhr => {
+          expect(xhr.response.body.error).to.not.exist;
+        });
+
+        cy.findByText("49.54");
+      });
+    });
   });
 
   describe("nested", () => {
