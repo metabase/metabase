@@ -2,6 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -195,6 +196,9 @@
           (jdbc/print-sql-exception-chain e)
           (throw e))))))
 
+(defonce ^:private reference-load-durations
+  (delay (edn/read-string (slurp "test_resources/load-durations.edn"))))
+
 (defn create-db!
   "Default implementation of `create-db!` for SQL drivers."
   {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
@@ -211,8 +215,12 @@
     ;; DB rather than on `:server` (no DB in particular)
     (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
   ;; Now load the data for each Table
-  (doseq [tabledef table-definitions]
-    (u/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
+  (doseq [tabledef table-definitions
+          :let [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
+                                               u/format-nanoseconds)
+                                       "NONE")]]
+    (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
+                       (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
       (load-data! driver dbdef tabledef))))
 
 (defn destroy-db!

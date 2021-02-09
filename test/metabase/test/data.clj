@@ -200,8 +200,8 @@
    (apply impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))
 
 (defmacro dataset
-  "Load and sync a temporary Database defined by `dataset`, make it the current DB (for `metabase.test.data` functions
-  like `id` and `db`), and execute `body`.
+  "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
+  current DB (for `metabase.test.data` functions like `id` and `db`), and execute `body`.
 
   `dataset` can be one of the following:
 

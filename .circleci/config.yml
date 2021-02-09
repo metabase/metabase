@@ -148,7 +148,7 @@ executors:
       - image: circleci/clojure:lein-2.8.1
       - image: metabase/presto-mb-ci
         environment:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
+          JAVA_TOOL_OPTIONS: "-Xmx1g"
 
   sparksql:
     working_directory: /home/circleci/metabase/metabase/
@@ -691,7 +691,7 @@ jobs:
             - run:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
-                  DRIVERS: h2,<< parameters.driver >>
+                  DRIVERS: << parameters.driver >>
                 command: lein with-profile +ci,+junit,+ee test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:

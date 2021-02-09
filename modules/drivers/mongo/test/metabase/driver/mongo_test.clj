@@ -11,6 +11,7 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.t :refer [rows]]
+            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [taoensso.nippy :as nippy]
@@ -148,6 +149,8 @@
 (deftest all-num-columns-test
   (mt/test-driver :mongo
     (mt/dataset all-null-columns
+      ;; do a full sync on the DB to get the correct special type info
+      (sync/sync-database! (mt/db))
       (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
               {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :special_type nil}
               {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :special_type :type/Name}]
