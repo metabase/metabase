@@ -630,7 +630,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             .then($value => {
               cy.visit($value);
             });
-          cy.findAllByText(test.subject); // the inspector only saw one, but findByText failed due to multiple elements
+          cy.get(".EmbedFrame-header").contains(test.subject);
           assertOnPivotFields();
         });
 
@@ -652,7 +652,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           // visit the iframe src directly to ensure it's not sing preview endpoints
           cy.get("iframe").then($iframe => {
             cy.visit($iframe[0].src);
-            cy.findByText(test.subject);
+            cy.get(".EmbedFrame-header").contains(test.subject);
             assertOnPivotFields();
           });
         });
