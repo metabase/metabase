@@ -10,35 +10,14 @@ export function typeCheck(cst, rootType) {
       this.errors = [];
     }
 
-    expression(ctx) {
-      this.typeStack.unshift(rootType);
-      const result = super.expression(ctx);
-      this.typeStack.shift();
-      return result;
-    }
-    aggregation(ctx) {
-      this.typeStack.unshift("aggregation");
-      const result = super.aggregation(ctx);
-      this.typeStack.shift();
-      return result;
-    }
-    boolean(ctx) {
-      this.typeStack.unshift("boolean");
-      const result = super.boolean(ctx);
-      this.typeStack.shift();
-      return result;
-    }
-
     logicalOrExpression(ctx) {
-      const type = ctx.operands.length > 1 ? "boolean" : this.typeStack[0];
-      this.typeStack.unshift(type);
+      this.typeStack.unshift("boolean");
       const result = super.logicalOrExpression(ctx);
       this.typeStack.shift();
       return result;
     }
     logicalAndExpression(ctx) {
-      const type = ctx.operands.length > 1 ? "boolean" : this.typeStack[0];
-      this.typeStack.unshift(type);
+      this.typeStack.unshift("boolean");
       const result = super.logicalAndExpression(ctx);
       this.typeStack.shift();
       return result;
@@ -50,14 +29,27 @@ export function typeCheck(cst, rootType) {
       return result;
     }
     relationalExpression(ctx) {
-      const type = ctx.operands.length > 1 ? "expression" : this.typeStack[0];
-      this.typeStack.unshift(type);
+      this.typeStack.unshift("expression");
       const result = super.relationalExpression(ctx);
       this.typeStack.shift();
       return result;
     }
 
-    // TODO check for matching argument signature
+    caseExpression(ctx) {
+      const type = this.typeStack[0];
+      const args = ctx.arguments || [];
+      return args.map((arg, index) => {
+        // argument 0, 2, 4, ...(even) is always a boolean, ...
+        const argType = index & 1 ? type : "boolean";
+        // ... except the very last one
+        const lastArg = index === args.length - 1;
+        this.typeStack.unshift(lastArg ? type : argType);
+        const result = this.visit(arg);
+        this.typeStack.shift();
+        return result;
+      });
+    }
+
     functionExpression(ctx) {
       const args = ctx.arguments || [];
       const functionToken = ctx.functionName[0].tokenType;
@@ -71,13 +63,19 @@ export function typeCheck(cst, rootType) {
           expectedArgsLength,
         );
         this.errors.push({ message });
+      } else {
+        return args.map((arg, index) => {
+          const argType = clause.args[index];
+          const genericType =
+            argType === "number" || argType === "string"
+              ? "expression"
+              : argType;
+          this.typeStack.unshift(genericType);
+          const result = this.visit(arg);
+          this.typeStack.shift();
+          return result;
+        });
       }
-      return args.map(arg => {
-        this.typeStack.unshift("expression");
-        const result = this.visit(arg);
-        this.typeStack.unshift();
-        return result;
-      });
     }
 
     identifierExpression(ctx) {
@@ -96,7 +94,8 @@ export function typeCheck(cst, rootType) {
     }
   }
   const checker = new TypeChecker();
-  checker.visit(cst);
+  const compactCst = compactSyntaxTree(cst);
+  checker.visit(compactCst);
   return { typeErrors: checker.errors };
 }
 
