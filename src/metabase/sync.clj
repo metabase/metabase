@@ -26,15 +26,17 @@
 (s/defn sync-database! :- SyncDatabaseResults
   "Perform all the different sync operations synchronously for `database`.
 
-  This is considered a 'full sync' in that all the different sync operations are performed at consecutively. Please
-  note that this function is *not* what is called by the scheduled tasks; those call different steps independently.
-  This function is called when a Database is first added."
+  By default, does a `:full` sync that performs all the different sync operations consecutively. You may instead
+  specify only a `:schema` sync that will sync just the schema but skip analysis.
+
+  Please note that this function is *not* what is called by the scheduled tasks; those call different steps
+  independently. This function is called when a Database is first added."
   {:style/indent 1}
   ([database]
    (sync-database! database nil))
 
   ([database                         :- i/DatabaseInstance
-    {:keys [scan], :or {scan :full}} :- (s/maybe {(s/optional-key :scan) (s/maybe (s/enum :scan :full))})]
+    {:keys [scan], :or {scan :full}} :- (s/maybe {(s/optional-key :scan) (s/maybe (s/enum :schema :full))})]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (mapv (fn [[f step-name]] (assoc (f database) :name step-name))
            (filter
