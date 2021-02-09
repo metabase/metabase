@@ -99,3 +99,89 @@ export function typeCheck(cst, rootType) {
   checker.visit(cst);
   return { typeErrors: checker.errors };
 }
+
+/*
+
+  Create a copy of the syntax tree where the unnecessary intermediate nodes
+  are not present anymore.
+
+  Example:
+  For a simple expression "42", the syntax tree produced by the parser is
+
+  expression <-- this is the root node
+    relationalExpression
+      additionExpression
+        multiplicationExpression
+          atomicExpression
+            numberLiteral
+
+  Meanwhile, the compact variant of the syntax tree:
+
+    numberLiteral
+
+*/
+
+export function compactSyntaxTree(node) {
+  if (!node) {
+    return;
+  }
+  const { name, children } = node;
+
+  switch (name) {
+    case "any":
+    case "aggregation":
+    case "atomicExpression":
+    case "boolean":
+    case "booleanExpression":
+    case "booleanUnaryExpression":
+    case "expression":
+    case "parenthesisExpression":
+    case "string":
+      if (children.expression) {
+        const expression = children.expression.map(compactSyntaxTree);
+        return expression.length === 1
+          ? expression[0]
+          : { name, children: { expression: expression } };
+      }
+      break;
+
+    case "logicalNotExpression":
+      if (children.operands) {
+        const operands = children.operands.map(compactSyntaxTree);
+        const operators = children.operators;
+        return { name, children: { operators, operands } };
+      }
+      break;
+
+    case "additionExpression":
+    case "multiplicationExpression":
+    case "logicalAndExpression":
+    case "logicalOrExpression":
+    case "relationalExpression":
+      if (children.operands) {
+        const operands = children.operands.map(compactSyntaxTree);
+        const operators = children.operators;
+        return operands.length === 1
+          ? operands[0]
+          : { name, children: { operators, operands } };
+      }
+      break;
+
+    case "functionExpression":
+    case "caseExpression": {
+      const { functionName, LParen, RParen } = children;
+      const args = children.arguments
+        ? children.arguments.map(compactSyntaxTree)
+        : [];
+      return {
+        name,
+        children: { functionName, arguments: args, LParen, RParen },
+      };
+    }
+
+    default:
+      break;
+  }
+
+  return { name, children };
+}
