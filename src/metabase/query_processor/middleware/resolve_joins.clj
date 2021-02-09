@@ -141,10 +141,8 @@
               alias))
           (check-join-aliases* [{:keys [joins source-query], :as query}]
             (let [aliases (available-aliases query)]
-              (println "aliases:" aliases) ; NOCOMMIT
               ;; only check stuff at the current level. We'll recursively check stuff below
               (doseq [alias (referenced-aliases (dissoc query :source-query :joins))]
-                (println "alias:" alias) ; NOCOMMIT
                 (when-not (aliases alias)
                   (throw
                    (ex-info (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
