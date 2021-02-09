@@ -85,6 +85,12 @@ describe("type-checker", () => {
     it("should resolve dimensions and segments correctly", () => {
       expect(expr("[X]+CASE([Y],4,5)").dimensions).toEqual(["X"]);
       expect(expr("[X]+CASE([Y],4,5)").segments).toEqual(["Y"]);
+      expect(expr("CASE([Z]>100,'Pricey')").dimensions).toEqual(["Z"]);
+      expect(expr("CASE([Z]>100,'Pricey')").segments).toEqual([]);
+      expect(expr("CASE(A,B,C)").dimensions).toEqual(["B", "C"]);
+      expect(expr("CASE(A,B,C)").segments).toEqual(["A"]);
+      expect(expr("CASE(P,Q,R,S)").dimensions).toEqual(["Q", "S"]);
+      expect(expr("CASE(P,Q,R,S)").segments).toEqual(["P", "R"]);
     });
 
     it("should allow any number of arguments in a variadic function", () => {
@@ -127,6 +133,8 @@ describe("type-checker", () => {
       expect(filter("[X]=4 AND NOT [Y]").dimensions).toEqual(["X"]);
       expect(filter("T OR Between([R],0,9)").segments).toEqual(["T"]);
       expect(filter("T OR Between([R],0,9)").dimensions).toEqual(["R"]);
+      expect(filter("NOT between(P, 3, 14) OR Q").dimensions).toEqual(["P"]);
+      expect(filter("NOT between(P, 3, 14) OR Q").segments).toEqual(["Q"]);
     });
 
     it("should catch mismatched number of function parameters", () => {
