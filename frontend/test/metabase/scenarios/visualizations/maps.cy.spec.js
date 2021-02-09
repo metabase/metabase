@@ -3,6 +3,7 @@ import {
   signInAsAdmin,
   restore,
   popover,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -104,9 +105,8 @@ describe("scenarios > visualizations > maps", () => {
     });
   });
 
-  it.skip("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
-    cy.request("POST", "/api/card", {
-      name: "People, Count, Grouped by State",
+  it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
+    visitQuestionAdhoc({
       dataset_query: {
         database: 1,
         query: {
@@ -121,19 +121,23 @@ describe("scenarios > visualizations > maps", () => {
         "map.type": "region",
         "map.region": "us_states",
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.server();
-      cy.route("POST", `/api/dataset`).as("dataset");
-      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
-
-      cy.visit(`/question/${QUESTION_ID}`);
     });
 
-    cy.wait("@cardQuery");
     cy.get(".CardVisualization svg path")
-      .as("states")
-      .eq(22) // Texas
-      .click({ force: true });
+      .eq(22)
+      .as("texas");
+
+    // hover to see the tooltip
+    cy.get("@texas").trigger("mousemove");
+
+    // check tooltip content
+    cy.findByText("State:"); // column name key
+    cy.findByText("Texas"); // feature name as value
+
+    cy.server();
+    cy.route("POST", `/api/dataset`).as("dataset");
+    // open actions menu and drill within it
+    cy.get("@texas").click();
     cy.findByText(/View these People/i).click();
 
     cy.log("**Reported as a regression since v0.37.0**");

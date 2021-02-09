@@ -108,7 +108,7 @@
             (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
                                (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
               ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-              (sync/sync-database! db (when quick-sync? {:quick? true}))
+              (sync/sync-database! db (when quick-sync? {:scan :schema}))
               ;; add extra metadata for fields
               (try
                 (add-extra-metadata! database-definition db)
