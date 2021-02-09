@@ -107,7 +107,7 @@ export default class SearchBar extends React.Component {
           <Link to={l.getUrl()}>
             <EntityItem
               iconName={l.getIcon()}
-              name={l.name}
+              name={l.getDisplayName()}
               item={l}
               variant="small"
             />

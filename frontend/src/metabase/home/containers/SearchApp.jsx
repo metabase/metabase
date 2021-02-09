@@ -144,6 +144,16 @@ export default class SearchApp extends React.Component {
   }
 }
 
+function searchContext(item) {
+  if (
+    item.matched_column !== "name" &&
+    item.matched_column !== "display_name"
+  ) {
+    return <p>{item.matched_text}</p>;
+  }
+  return null;
+}
+
 const SearchResultSection = ({ title, items }) => (
   <Card>
     {items.map(item => {
@@ -165,16 +175,19 @@ const SearchResultSection = ({ title, items }) => (
           break;
         default:
           extraInfo = (
-            <div className="inline-block">
-              <Flex align="center" color={color("text-medium")}>
-                <Icon name="folder" size={10} mr="4px" />
-                <span
-                  className="text-small text-bold"
-                  style={{ lineHeight: 1 }}
-                >
-                  {item.collection_name || t`Our Analytics`}
-                </span>
-              </Flex>
+            <div>
+              {searchContext(item)}
+              <div className="inline-block">
+                <Flex align="center" color={color("text-medium")}>
+                  <Icon name="folder" size={10} mr="4px" />
+                  <span
+                    className="text-small text-bold"
+                    style={{ lineHeight: 1 }}
+                  >
+                    {item.collection_name || t`Our Analytics`}
+                  </span>
+                </Flex>
+              </div>
             </div>
           );
           break;
@@ -188,7 +201,7 @@ const SearchResultSection = ({ title, items }) => (
         >
           <EntityItem
             variant="list"
-            name={item.getName()}
+            name={item.getDisplayName()}
             iconName={item.getIcon()}
             iconColor={item.getColor()}
             item={item}

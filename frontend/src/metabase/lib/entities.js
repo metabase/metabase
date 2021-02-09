@@ -548,6 +548,9 @@ export function createEntity(def: EntityDefinition): Entity {
   };
 
   entity.objectSelectors = {
+    getDisplayName(object) {
+      return object.display_name || object.name;
+    },
     getName(object) {
       return object.name;
     },
