@@ -33,7 +33,8 @@
   ([database]
    (sync-database! database nil))
 
-  ([database :- i/DatabaseInstance {:keys [quick?], :or {quick? false}}]
+  ([database                         :- i/DatabaseInstance
+    {:keys [scan], :or {scan :full}} :- {(s/optional-key :scan) (s/maybe (s/enum :scan :full))}]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (mapv (fn [[f step-name]] (assoc (f database) :name step-name))
            (filter
@@ -42,10 +43,10 @@
              [sync-metadata/sync-db-metadata! "metadata"]
              ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types
              ;; accordingly
-             (when-not quick?
+             (when (= :scan :full)
                [analyze/analyze-db! "analyze"])
              ;; Finally, update cached FieldValues
-             (when-not quick?
+             (when (= :scan :full)
                [field-values/update-field-values! "field-values"])])))))
 
 (s/defn sync-table!
