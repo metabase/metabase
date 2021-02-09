@@ -144,7 +144,8 @@
   mysql://foo:password@172.17.0.2:3306/metabase"
   [connection-uri]
   (when connection-uri
-    (let [uri (URI. connection-uri)]
+    ;; strip the jdbc prefix off so its a parseable and not opaque URI
+    (let [uri (URI. (str/replace connection-uri #"^jdbc:" ""))]
       ;; this is how clojure.java.jdbc does it
       (some? (.getUserInfo uri)))))
 
