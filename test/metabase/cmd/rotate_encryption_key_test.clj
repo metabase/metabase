@@ -6,7 +6,6 @@
             [metabase.cmd :as cmd]
             [metabase.cmd.load-from-h2 :as load-from-h2]
             [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
-            [metabase.db :as mdb]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
@@ -42,7 +41,6 @@
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
 
 (deftest rotate-encryption-key!-test
-  ;; (mdb/setup-db!)
   ;; (metabase.test.data.env/set-test-drivers! #{:mysql})
   (eu/with-secret-key nil
     (let [h2-fixture-db-file (abs-path "frontend/test/__runner__/test_db_fixture.db")
