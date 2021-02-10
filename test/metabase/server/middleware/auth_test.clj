@@ -128,4 +128,14 @@
     (testing "invalid apikey, expect 403"
       (is (= middleware.u/response-forbidden
              (api-key-enforced-handler
-              (request-with-api-key "foobar")))))))
+              (request-with-api-key "foobar"))))))
+
+  (testing "no apikey is set, expect 403"
+    (mt/with-temporary-setting-values [api-key nil]
+      (is (= middleware.u/response-forbidden
+             (api-key-enforced-handler
+              (mock/request :get "/anyurl")))))
+    (mt/with-temporary-setting-values [api-key ""]
+      (is (= middleware.u/response-forbidden
+             (api-key-enforced-handler
+              (mock/request :get "/anyurl")))))))
