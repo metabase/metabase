@@ -71,11 +71,6 @@
         (testing "sanity check"
           (is (= :ok
                  (f (mt/mbql-query venues)))))
-        (testing "adding new columns = not ok"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Sandbox Cards can't return columns that aren't present in the Table they are sandboxing"
-               (f (mt/mbql-query checkins)))))
         (testing "removing columns = ok"
           (is (= :ok
                  (f (mt/mbql-query venues {:fields [$id $name]})))))
@@ -117,7 +112,7 @@
       (testing (str "\n" msg "\n")
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Sandbox Cards can't return columns that have different types than the Table they are sandboxing"
+             #"Sandbox Questions can't return columns that have different types than the Table they are sandboxing"
              (f (-> (vec (qp/query->expected-cols (mt/mbql-query venues)))
                     (assoc-in [0 :base_type] :type/Text)))))
         (testing "type changes to a descendant type = ok"

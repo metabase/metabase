@@ -20,8 +20,8 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.config :as config]
+            [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
@@ -127,7 +127,7 @@
   [args]
   (into {}
         (for [[k v] (partition 2 args)]
-          [(qp.util/normalize-token (subs k 2)) v])))
+          [(mbql.u/normalize-token (subs k 2)) v])))
 
 (defn- resolve-enterprise-command [symb]
   (try
@@ -148,7 +148,7 @@
    (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
      (cmd path (->> args
                     cmd-args->map
-                    (m/map-vals qp.util/normalize-token))))))
+                    (m/map-vals mbql.u/normalize-token))))))
 
 (defn ^:command dump
   "Serialized metabase instance into directory `path`."
@@ -164,10 +164,10 @@
   (classloader/require 'metabase.cmd.rotate-encryption-key)
   (try
     ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)
-    (println "Encryption key rotation OK.")
+    (log/info "Encryption key rotation OK.")
     (system-exit! 0)
     (catch Throwable e
-      (println "ERROR ROTATING KEY.")
+      (log/error "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
