@@ -864,6 +864,17 @@
                 (testing "as sandboxed user"
                   (test-drill-thru-query)))))))))
 
+(defn- set-query-metadata-for-gtap-card! [group table-name param-name param-value]
+  (let [card-id (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
+        query   (db/select-one-field :dataset_query Card :id (u/the-id card-id))
+        results (mt/with-test-user :crowberto
+                  (qp/process-query (assoc query :parameters [{:type   :category
+                                                               :target [:variable [:template-tag param-name]]
+                                                               :value  param-value}])))
+        metadata (get-in results [:data :results_metadata :columns])]
+    (is (seq metadata))
+    (db/update! Card card-id :result_metadata metadata)))
+
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
     (mt/dataset sample-dataset
@@ -873,32 +884,324 @@
                                                  :attributes {"user_id" 1, "user_cat" "Widget"}}
                                    (mt/with-column-remappings [orders.product_id products.title]
                                      (mt/run-mbql-query orders)))]
-        (mt/with-gtaps {:gtaps      {:orders   {:query      (mt/native-query
-                                                              {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
-                                                               :template-tags {"uid" {:display-name "User ID"
-                                                                                      :id           "1"
-                                                                                      :name         "uid"
-                                                                                      :type         :number
-                                                                                      :required     true}}})
-                                                :remappings {"user_id" [:variable [:template-tag "uid"]]}}
-                                     :products {:query      (mt/native-query
-                                                              {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
-                                                               :template-tags {"cat" {:display-name "Category"
-                                                                                      :id           "2"
-                                                                                      :name         "cat"
-                                                                                      :type         :text
-                                                                                      :required     true}}})
-                                                :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
-                        :attributes {"user_id" "1", "user_cat" "Widget"}}
-          (mt/with-column-remappings [orders.product_id products.title]
-            (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
-              (letfn [(format-col [col]
-                        (dissoc col :field_ref :id :table_id :fk_field_id))
-                      (format-results [results]
-                        (-> results
-                            (update-in [:data :cols] (partial map format-col))
-                            (m/dissoc-in [:data :native_form])
-                            (m/dissoc-in [:data :results_metadata :checksum])
-                            (update-in [:data :results_metadata :columns] (partial map format-col))))]
-                (is (= (format-results mbql-sandbox-results)
-                       (format-results (mt/run-mbql-query orders))))))))))))
+        (doseq [orders-gtap-card-has-metadata?   [true false]
+                products-gtap-card-has-metadata? [true false]]
+          (testing (format "\nwith GTAP metadata for Orders? %s Products? %s"
+                           (pr-str orders-gtap-card-has-metadata?)
+                           (pr-str products-gtap-card-has-metadata?))
+            (mt/with-gtaps {:gtaps      {:orders   {:query      (mt/native-query
+                                                                  {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
+                                                                   :template-tags {"uid" {:display-name "User ID"
+                                                                                          :id           "1"
+                                                                                          :name         "uid"
+                                                                                          :type         :number}}})
+                                                    :remappings {"user_id" [:variable [:template-tag "uid"]]}}
+                                         :products {:query      (mt/native-query
+                                                                  {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
+                                                                   :template-tags {"cat" {:display-name "Category"
+                                                                                          :id           "2"
+                                                                                          :name         "cat"
+                                                                                          :type         :text}}})
+                                                    :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
+                            :attributes {"user_id" "1", "user_cat" "Widget"}}
+              (when orders-gtap-card-has-metadata?
+                (set-query-metadata-for-gtap-card! &group :orders "uid" 1))
+              (when products-gtap-card-has-metadata?
+                (set-query-metadata-for-gtap-card! &group :products "cat" "Widget"))
+              (mt/with-column-remappings [orders.product_id products.title]
+                (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
+                  (letfn [(format-col [col]
+                            (dissoc col :field_ref :id :table_id :fk_field_id))
+                          (format-results [results]
+                            (-> results
+                                (update-in [:data :cols] (partial map format-col))
+                                (m/dissoc-in [:data :native_form])
+                                (m/dissoc-in [:data :results_metadata :checksum])
+                                (update-in [:data :results_metadata :columns] (partial map format-col))))]
+                    (is (= (format-results mbql-sandbox-results)
+                           (format-results (mt/run-mbql-query orders))))))
+
+                (testing "Should be able to run a query against Orders"
+                  (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
+                         (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
+
+(defn x-test []
+  (mt/with-current-user (db/select-one-id 'User :email "u1@metabase.test")
+    (qp/process-query
+     {:database 1, :query {:source-table 2}, :type :query, :parameters [], :limit 1})))
+
+(defn y-test []
+  (mt/with-current-user (db/select-one-id 'User :email "u1@metabase.test")
+    (qp/process-query
+     '{:database 1,
+       :query
+       {:limit        10
+        :source-metadata
+        [{:description     "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.",
+          :table_id        2,
+          :special_type    :type/PK,
+          :name            "ID",
+          :settings        nil,
+          :source          :fields,
+          :field_ref       [:field-id 17],
+          :parent_id       nil,
+          :id              17,
+          :visibility_type :normal,
+          :display_name    "ID",
+          :fingerprint     nil,
+          :base_type       :type/BigInteger}
+         {:description
+          "The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.",
+          :table_id        2,
+          :special_type    :type/FK,
+          :name            "USER_ID",
+          :settings        nil,
+          :source          :fields,
+          :field_ref       [:field-id 11],
+          :parent_id       nil,
+          :id              11,
+          :visibility_type :normal,
+          :display_name    "User ID",
+          :fingerprint     {:global {:distinct-count 929, :nil% 0.0}},
+          :base_type       :type/Integer}
+         {:description     "The product ID. This is an internal identifier for the product, NOT the SKU.",
+          :table_id        2,
+          :special_type    :type/FK,
+          :name            "PRODUCT_ID",
+          :settings        nil,
+          :source          :fields,
+          :field_ref       [:field-id 13],
+          :parent_id       nil,
+          :id              13,
+          :visibility_type :normal,
+          :display_name    "Product ID",
+          :fingerprint     {:global {:distinct-count 200, :nil% 0.0}},
+          :base_type       :type/Integer}
+         {:description     "The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.",
+          :table_id        2,
+          :special_type    nil,
+          :name            "SUBTOTAL",
+          :settings        nil,
+          :source          :fields,
+          :field_ref       [:field-id 14],
+          :parent_id       nil,
+          :id              14,
+          :visibility_type :normal,
+          :display_name    "Subtotal",
+          :fingerprint
+          {:global {:distinct-count 340, :nil% 0.0},
+           :type
+           #:type{:Number
+                  {:min 15.691943673970439, :q1 49.74894519060184, :q3 105.42965746993103, :max 148.22900526552291, :sd 32.53705013056317, :avg 77.01295465356547}}},
+          :base_type       :type/Float}
+         {:description
+          "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.",
+          :table_id        2,
+          :special_type    nil,
+          :name            "TAX",
+          :settings        nil,
+          :source          :fields,
+          :field_ref       [:field-id 16],
+          :parent_id       nil,
+          :id              16,
+          :visibility_type :normal,
+          :display_name    "Tax",
+          :fingerprint
+          {:global {:distinct-count 797, :nil% 0.0},
+           :type   #:type{:Number {:min 0.0, :q1 2.273340386603857, :q3 5.337275338216307, :max 11.12, :sd 2.3206651358900316, :avg 3.8722100000000004}}},
+          :base_type       :type/Float}
+         {:description     "The total billed amount.",
+          :table_id        2,
+          :special_type    nil,
+          :name            "TOTAL",
+          :settings        nil,
+          :source          :fields,
+          :field_ref       [:field-id 15],
+          :parent_id       nil,
+          :id              15,
+          :visibility_type :normal,
+          :display_name    "Total",
+          :fingerprint
+          {:global {:distinct-count 4426, :nil% 0.0},
+           :type
+           #:type{:Number
+                  {:min 8.93914247937167, :q1 51.34535490743823, :q3 110.29428389265787, :max 159.34900526552292, :sd 34.26469575709948, :avg 80.35871658771228}}},
+          :base_type       :type/Float}
+         {:description     "Discount amount.",
+          :table_id        2,
+          :special_type    :type/Discount,
+          :name            "DISCOUNT",
+          :settings        nil,
+          :source          :fields,
+          :field_ref       [:field-id 9],
+          :parent_id       nil,
+          :id              9,
+          :visibility_type :normal,
+          :display_name    "Discount",
+          :fingerprint
+          {:global {:distinct-count 701, :nil% 0.898},
+           :type
+           #:type{:Number
+                  {:min 0.17088996672584322, :q1 2.9786226681458743, :q3 7.338187788658235, :max 61.69684269960571, :sd 3.053663125001991, :avg 5.161255547580326}}},
+          :base_type       :type/Float}
+         {:description     "The date and time an order was submitted.",
+          :table_id        2,
+          :special_type    :type/CreationTimestamp,
+          :unit            :default,
+          :name            "CREATED_AT",
+          :settings        nil,
+          :source          :fields,
+          :field_ref       [:datetime-field [:field-id 12] :default],
+          :parent_id       nil,
+          :id              12,
+          :visibility_type :normal,
+          :display_name    "Created At",
+          :fingerprint     {:global {:distinct-count 9998, :nil% 0.0}, :type #:type{:DateTime {:earliest "2016-04-30T18:56:13.352Z", :latest "2020-04-19T14:07:15.657Z"}}},
+          :base_type       :type/DateTime}
+         {:description     "Number of products bought.",
+          :table_id        2,
+          :special_type    :type/Quantity,
+          :name            "QUANTITY",
+          :settings        nil,
+          :source          :fields,
+          :field_ref       [:field-id 10],
+          :parent_id       nil,
+          :id              10,
+          :visibility_type :normal,
+          :display_name    "Quantity",
+          :fingerprint
+          {:global {:distinct-count 62, :nil% 0.0},
+           :type   #:type{:Number {:min 0.0, :q1 1.755882607764982, :q3 4.882654507928044, :max 100.0, :sd 4.214258386403798, :avg 3.7015}}},
+          :base_type       :type/Integer}],
+        :fields
+        [[:field-id 17] [:field-id 11] [:field-id 13] [:field-id 14] [:field-id 16] [:field-id 15] [:field-id 9] [:field-id 12] [:field-id 10] [:joined-field "PRODUCTS__via__PRODUCT_ID" [:field-id 5]]],
+        :joins
+        [{:source-query {:params ["Widget"], :native "SELECT * FROM PRODUCTS WHERE CATEGORY=? AND PRICE > 10"},
+          :strategy     :left-join,
+          :alias        "PRODUCTS__via__PRODUCT_ID",
+          :fk-field-id  13,
+          :condition    [:= [:field-id 13] [:joined-field "PRODUCTS__via__PRODUCT_ID" [:field-id 8]]],
+          :source-metadata
+          [{:description     "The numerical product number. Only used internally. All external communication should use the title or EAN.",
+            :table_id        1,
+            :special_type    :type/PK,
+            :name            "ID",
+            :settings        nil,
+            :source          :fields,
+            :field_ref       [:field-id 8],
+            :parent_id       nil,
+            :id              8,
+            :visibility_type :normal,
+            :display_name    "ID",
+            :fingerprint     nil,
+            :base_type       :type/BigInteger}
+           {:description     "The international article number. A 13 digit number uniquely identifying the product.",
+            :table_id        1,
+            :special_type    nil,
+            :name            "EAN",
+            :settings        nil,
+            :source          :fields,
+            :field_ref       [:field-id 2],
+            :parent_id       nil,
+            :id              2,
+            :visibility_type :normal,
+            :display_name    "Ean",
+            :fingerprint
+            {:global {:distinct-count 200, :nil% 0.0},
+             :type   #:type{:Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.0}}},
+            :base_type       :type/Text}
+           {:description     "The name of the product as it should be displayed to customers.",
+            :table_id        1,
+            :special_type    :type/Title,
+            :name            "TITLE",
+            :settings        nil,
+            :source          :fields,
+            :field_ref       [:field-id 5],
+            :parent_id       nil,
+            :id              5,
+            :visibility_type :normal,
+            :display_name    "Title",
+            :fingerprint
+            {:global {:distinct-count 199, :nil% 0.0},
+             :type   #:type{:Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 21.495}}},
+            :base_type       :type/Text}
+           {:description     "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            :table_id        1,
+            :special_type    :type/Category,
+            :name            "CATEGORY",
+            :settings        nil,
+            :source          :fields,
+            :field_ref       [:field-id 4],
+            :parent_id       nil,
+            :id              4,
+            :visibility_type :normal,
+            :display_name    "Category",
+            :fingerprint
+            {:global {:distinct-count 4, :nil% 0.0},
+             :type   #:type{:Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 6.375}}},
+            :base_type       :type/Text}
+           {:description     "The source of the product.",
+            :table_id        1,
+            :special_type    :type/Company,
+            :name            "VENDOR",
+            :settings        nil,
+            :source          :fields,
+            :field_ref       [:field-id 3],
+            :parent_id       nil,
+            :id              3,
+            :visibility_type :normal,
+            :display_name    "Vendor",
+            :fingerprint
+            {:global {:distinct-count 200, :nil% 0.0},
+             :type   #:type{:Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 20.6}}},
+            :base_type       :type/Text}
+           {:description     "The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.",
+            :table_id        1,
+            :special_type    nil,
+            :name            "PRICE",
+            :settings        nil,
+            :source          :fields,
+            :field_ref       [:field-id 1],
+            :parent_id       nil,
+            :id              1,
+            :visibility_type :normal,
+            :display_name    "Price",
+            :fingerprint
+            {:global {:distinct-count 170, :nil% 0.0},
+             :type
+             #:type{:Number
+                    {:min 15.691943673970439, :q1 37.25154462926434, :q3 75.45898071609447, :max 98.81933684368194, :sd 21.711481557852057, :avg 55.74639966792074}}},
+            :base_type       :type/Float}
+           {:description     "The average rating users have given the product. This ranges from 1 - 5",
+            :table_id        1,
+            :special_type    :type/Score,
+            :name            "RATING",
+            :settings        nil,
+            :source          :fields,
+            :field_ref       [:field-id 6],
+            :parent_id       nil,
+            :id              6,
+            :visibility_type :normal,
+            :display_name    "Rating",
+            :fingerprint
+            {:global {:distinct-count 23, :nil% 0.0},
+             :type   #:type{:Number {:min 0.0, :q1 3.5120465053408525, :q3 4.216124969497314, :max 5.0, :sd 1.3605488657451452, :avg 3.4715}}},
+            :base_type       :type/Float}
+           {:description     "The date the product was added to our catalog.",
+            :table_id        1,
+            :special_type    :type/CreationTimestamp,
+            :unit            :default,
+            :name            "CREATED_AT",
+            :settings        nil,
+            :source          :fields,
+            :field_ref       [:datetime-field [:field-id 7] :default],
+            :parent_id       nil,
+            :id              7,
+            :visibility_type :normal,
+            :display_name    "Created At",
+            :fingerprint     {:global {:distinct-count 200, :nil% 0.0}, :type #:type{:DateTime {:earliest "2016-04-26T19:29:55.147Z", :latest "2019-04-15T13:34:19.931Z"}}},
+            :base_type       :type/DateTime}]}],
+        :source-query {:params [], :native "SELECT * FROM ORDERS WHERE USER_ID=1 AND TOTAL > 10"}},
+       :type     :query,
+       :limit    1}))
+  )
