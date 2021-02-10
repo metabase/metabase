@@ -315,26 +315,31 @@
 (deftest save-empty-card-test
   (testing "POST /api/card"
     (testing "Should be able to save an empty Card"
-      (let [query (mt/native-query {:query "SELECT * FROM VENUES WHERE false;"})]
-        (mt/with-model-cleanup [Card]
-          (testing "without result metadata"
-            (is (schema= {:id       su/IntGreaterThanZero
-                          s/Keyword s/Any}
-                         (mt/user-http-request :rasta :post 202 "card"
-                                               (merge (tt/with-temp-defaults Card)
-                                                      {:dataset_query query})))))
-          (let [metadata (-> (qp/process-query query)
-                             :data
-                             :results_metadata
-                             :columns)]
-            (testing (format "with result metadata\n%s" (u/pprint-to-str metadata))
-              (is (some? metadata))
+      (doseq [[query-description query] {"native query"
+                                         (mt/native-query {:query "SELECT * FROM VENUES WHERE false;"})
+
+                                         "MBQL query"
+                                         (mt/mbql-query venues {:filter [:= $id 0]})}]
+        (testing query-description
+          (mt/with-model-cleanup [Card]
+            (testing "without result metadata"
               (is (schema= {:id       su/IntGreaterThanZero
                             s/Keyword s/Any}
                            (mt/user-http-request :rasta :post 202 "card"
                                                  (merge (tt/with-temp-defaults Card)
-                                                        {:dataset_query   query
-                                                         :result_metadata metadata})))))))))))
+                                                        {:dataset_query query})))))
+            (let [metadata (-> (qp/process-query query)
+                               :data
+                               :results_metadata
+                               :columns)]
+              (testing (format "with result metadata\n%s" (u/pprint-to-str metadata))
+                (is (some? metadata))
+                (is (schema= {:id       su/IntGreaterThanZero
+                              s/Keyword s/Any}
+                             (mt/user-http-request :rasta :post 202 "card"
+                                                   (merge (tt/with-temp-defaults Card)
+                                                          {:dataset_query   query
+                                                           :result_metadata metadata}))))))))))))
 
 (deftest saving-card-saves-query-metadata
   (testing "Make sure when saving a Card the query metadata is saved (if correct)"
