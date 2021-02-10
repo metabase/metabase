@@ -65,18 +65,43 @@ describe("user > settings", () => {
     cy.findByText("Password").should("exist");
   });
 
-  it("should hide change password tab when user is auth'd via ldap", () => {
-    cy.server();
-    cy.route(
-      "GET",
-      "/api/user/current",
-      Object.assign({}, CURRENT_USER, {
-        ldap_auth: true,
-      }),
-    ).as("getUser");
+  describe("when user is authenticated via ldap", () => {
+    beforeEach(() => {
+      cy.server();
+      cy.route(
+        "GET",
+        "/api/user/current",
+        Object.assign({}, CURRENT_USER, {
+          ldap_auth: true,
+        }),
+      ).as("getUser");
 
-    cy.visit("/user/edit_current");
-    cy.wait("@getUser");
-    cy.findByText("Password").should("not.exist");
+      cy.visit("/user/edit_current");
+      cy.wait("@getUser");
+    });
+
+    it("should hide change password tab", () => {
+      cy.findByText("Password").should("not.exist");
+    });
+  });
+
+  describe("when user is authenticated via google", () => {
+    beforeEach(() => {
+      cy.server();
+      cy.route(
+        "GET",
+        "/api/user/current",
+        Object.assign({}, CURRENT_USER, {
+          google_auth: true,
+        }),
+      ).as("getUser");
+
+      cy.visit("/user/edit_current");
+      cy.wait("@getUser");
+    });
+
+    it("should hide change password tab", () => {
+      cy.findByText("Password").should("not.exist");
+    });
   });
 });
