@@ -18,7 +18,7 @@
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
-            [metabase.search.config :refer :all]
+            [metabase.search.config :as search-config]
             [metabase.search.scoring :as scoring]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -33,7 +33,7 @@
    :current-user-perms #{perms/UserPath}})
 
 (def ^:private SearchableModel
-  (apply s/enum searchable-models))
+  (apply s/enum search-config/searchable-models))
 
 (def ^:private HoneySQLColumn
   (s/cond-pre
@@ -133,7 +133,7 @@
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `all-search-columns`."
   [model :- SearchableModel]
-  (let [entity-columns                (columns-for-model model)
+  (let [entity-columns                (search-config/columns-for-model model)
         column-alias->honeysql-clause (u/key-by ->column-alias entity-columns)
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
@@ -173,7 +173,7 @@
   (let [archived-clause (archived-where-clause model archived?)
         search-clause   (search-string-clause search-string
                                               (map (partial hsql/qualify (model->alias model))
-                                                   (searchable-columns-for-model model)))]
+                                                   (search-config/searchable-columns-for-model model)))]
     (if search-clause
       [:and archived-clause search-clause]
       archived-clause)))
@@ -302,12 +302,12 @@
             (if (number? v)
               (not (zero? v))
               v))]
-    (let [search-query {:union-all (for [model searchable-models
+    (let [search-query {:union-all (for [model search-config/searchable-models
                                          :let  [query (search-query-for-model model search-ctx)]
                                          :when (seq query)]
                                      query)}
           _            (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          results      (db/query search-query :max-rows search-max-results)]
+          results      (db/query search-query :max-rows search-config/search-max-results)]
       (scoring/sort-results
        (:search-string search-ctx)
        (for [row results

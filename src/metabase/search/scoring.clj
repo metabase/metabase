@@ -1,7 +1,7 @@
 (ns metabase.search.scoring
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
-            [metabase.search.config :refer :all]
+            [metabase.search.config :as search-config]
             [schema.core :as s]))
 
 ;;; Utility functions
@@ -60,10 +60,10 @@
 
 (defn- score-with
   [scoring-fns tokens result]
-  (let [scores (for [column (searchable-columns-for-model (model-name->class (:model result)))
+  (let [scores (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model result)))
                      :let   [target (-> result
                                         (get column)
-                                        (column->string (:model result) column))
+                                        (search-config/column->string (:model result) column))
                              score (reduce + (score-ratios tokens
                                                            (-> target normalize tokenize)
                                                            scoring-fns))]
@@ -101,7 +101,7 @@
 (def ^:private model->sort-position
   (into {} (map-indexed (fn [i model]
                           [(str/lower-case (name model)) i])
-                        searchable-models)))
+                        search-config/searchable-models)))
 
 (defn- score-with-match
   [query-string result]
