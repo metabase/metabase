@@ -9,6 +9,7 @@ import {
   signInAsNormalUser,
   signOut,
   USER_GROUPS,
+  remapDisplayValueToFK,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -346,12 +347,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         if (test === "remapped") {
           cy.log("**-- Remap Product ID's display value to `title` --**");
-          cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-            field_id: ORDERS.PRODUCT_ID,
-            name: "Product ID",
-            human_readable_field_id: PRODUCTS.TITLE,
-            type: "external",
-          });
+          remapDisplayValueToFK(ORDERS.PRODUCT_ID, PRODUCTS.TITLE);
         }
 
         cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
@@ -1082,14 +1078,5 @@ function createJoinedQuestion(name) {
     },
     display: "table",
     visualization_settings: {},
-  });
-}
-
-function remapDisplayValueToFK(display_value, fk) {
-  cy.request("POST", `/api/field/${display_value}/dimension`, {
-    field_id: display_value,
-    name: "Product ID",
-    human_readable_field_id: fk,
-    type: "external",
   });
 }
