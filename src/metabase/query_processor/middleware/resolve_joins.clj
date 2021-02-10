@@ -2,7 +2,9 @@
   "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
   the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
-  (:require [metabase.mbql.schema :as mbql.s]
+  (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
@@ -130,14 +132,31 @@
     (cond-> inner-query
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 
-(defn- check-join-aliases [{:keys [joins], :as query}]
-  (let [aliases (set (map :alias joins))]
-    (doseq [alias (mbql.u/match query [:joined-field alias _] alias)]
-      (when-not (aliases alias)
-        (throw
-         (IllegalArgumentException.
-           (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
-                alias aliases)))))))
+(defn- check-join-aliases [query]
+  (letfn [(referenced-aliases [form]
+            (mbql.u/match form
+              [:joined-field alias _]
+              alias))
+          (check-join-aliases* [{:keys [joins source-query], :as query} aliases-from-parent-level]
+            (let [aliases (into (set aliases-from-parent-level)
+                                (map :alias joins))]
+              ;; only check stuff at the current level. We'll recursively check stuff below
+              (doseq [alias (referenced-aliases (dissoc query :source-query :joins))]
+                (when-not (aliases alias)
+                  (throw
+                   (ex-info (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
+                                 alias aliases)
+                            {:query   query
+                             :alias   alias
+                             :aliases aliases}))))
+              ;; recursively check joins and source queries
+              (doseq [join joins]
+                (check-join-aliases* join aliases))
+              (when source-query
+                (check-join-aliases* source-query nil))))]
+    (mbql.u/match query
+      (m :guard (every-pred map? :joins))
+      (check-join-aliases* m nil))))
 
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [{:keys [joins], :as query} :- mbql.s/MBQLQuery]
@@ -181,4 +200,8 @@
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [qp]
   (fn [query rff context]
-    (qp (resolve-joins* query) rff context)))
+    (let [query' (resolve-joins* query)]
+      (when-not (= query query')
+        (let [[before after] (data/diff query query')]
+          (log/tracef "Resolved joins: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
+      (qp query' rff context))))

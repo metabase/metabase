@@ -705,19 +705,37 @@
 (deftest correctly-alias-duplicate-names-in-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :foreign-keys)
     (testing "Do we correctly alias name clashes in breakout (#10511)"
-      (is (= [[ "20th Century Cafe" "Café" 1 ]
-              [ "25°" "Burger" 1 ]
-              [ "33 Taps" "Bar" 1 ]]
-             (mt/formatted-rows [str str int]
-               (mt/run-mbql-query venues
-                 {:source-query {:source-table $$venues
-                                 :aggregation  [[:count]]
-                                 :breakout     [$name [:joined-field "c" $categories.name]]
-                                 :joins        [{:source-table $$categories
-                                                 :alias        "c"
-                                                 :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}
-                  :filter       [:> [:field-literal "count" :type/Number] 0]
-                  :limit        3})))))))
+      (let [results (mt/run-mbql-query venues
+                      {:source-query {:source-table $$venues
+                                      :aggregation  [[:count]]
+                                      :breakout     [$name [:joined-field "c" $categories.name]]
+                                      :joins        [{:source-table $$categories
+                                                      :alias        "c"
+                                                      :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}
+                       :filter       [:> [:field-literal "count" :type/Number] 0]
+                       :limit        3})]
+        (is (= [[ "20th Century Cafe" "Café" 1 ]
+                [ "25°" "Burger" 1 ]
+                [ "33 Taps" "Bar" 1 ]]
+               (mt/formatted-rows [str str int]
+                 results)))
+        (is (= (mt/$ids venues
+                 [{:name         (mt/format-name "name")
+                   :display_name "Name"
+                   :id           %name
+                   :field_ref    $name
+                   :base_type    :type/Text}
+                  {:name         (mt/format-name "name_2")
+                   :display_name "Name"
+                   :id           %categories.name
+                   :field_ref    $categories.name
+                   :base_type    :type/Text}
+                  {:name         "count"
+                   :display_name "Count"
+                   :field_ref    [:field-literal "count" :type/BigInteger]
+                   :base_type    (:base_type (qp.test/aggregate-col :count))}])
+               (for [col (mt/cols results)]
+                 (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
 
 (deftest remapped-fks-test
   (testing "Should be able to use a question with remapped FK columns as a Saved Question (#10474)"

@@ -498,13 +498,7 @@ describeWithToken("formatting > sandboxes", () => {
     describe("with display values remapped to use a foreign key", () => {
       beforeEach(() => {
         cy.log("**-- Remap Product ID's display value to `title` --**");
-
-        cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-          field_id: ORDERS.PRODUCT_ID,
-          name: "Product ID",
-          human_readable_field_id: PRODUCTS.TITLE,
-          type: "external",
-        });
+        remapDisplayValueToFK(ORDERS.PRODUCT_ID, PRODUCTS.TITLE);
       });
 
       /**
@@ -790,94 +784,105 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (metabase#13642)", () => {
-      const QUESTION_NAME = "13642";
-      const PRODUCTS_ALIAS = "Products";
+    ["remapped", "default"].forEach(test => {
+      it(`${test.toUpperCase()} version:\n should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (metabase#13642)`, () => {
+        const QUESTION_NAME = "13642";
+        const PRODUCTS_ALIAS = "Products";
 
-      cy.log("**-- 1. Sandbox `Orders` table --**");
+        if (test === "remapped") {
+          cy.log("**-- Remap Product ID's display value to `title` --**");
+          remapDisplayValueToFK(ORDERS.PRODUCT_ID, PRODUCTS.TITLE);
+        }
 
-      cy.request("POST", "/api/mt/gtap", {
-        attribute_remappings: {
-          user_id: ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-        card_id: null,
-        table_id: ORDERS_ID,
-        group_id: COLLECTION_GROUP,
-      });
+        cy.log("**-- 1. Sandbox `Orders` table --**");
 
-      cy.log("**-- 2. Sandbox `Products` table --**");
-
-      cy.request("POST", "/api/mt/gtap", {
-        attribute_remappings: {
-          user_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
-        },
-        card_id: null,
-        table_id: PRODUCTS_ID,
-        group_id: COLLECTION_GROUP,
-      });
-
-      updatePermissionsGraph({
-        schema: {
-          [PRODUCTS_ID]: { query: "segmented", read: "all" },
-          [ORDERS_ID]: { query: "segmented", read: "all" },
-        },
-      });
-
-      cy.log("**-- 3. Create question with joins --**");
-
-      cy.request("POST", "/api/card", {
-        name: QUESTION_NAME,
-        dataset_query: {
-          database: 1,
-          query: {
-            aggregation: [["count"]],
-            breakout: [
-              ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.CATEGORY]],
-            ],
-            joins: [
-              {
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-                condition: [
-                  "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
-                ],
-                alias: PRODUCTS_ALIAS,
-              },
-            ],
-            "source-table": ORDERS_ID,
+        cy.request("POST", "/api/mt/gtap", {
+          attribute_remappings: {
+            user_id: ["dimension", ["field-id", ORDERS.USER_ID]],
           },
-          type: "query",
-        },
-        display: "bar",
-        visualization_settings: {},
+          card_id: null,
+          table_id: ORDERS_ID,
+          group_id: COLLECTION_GROUP,
+        });
+
+        cy.log("**-- 2. Sandbox `Products` table --**");
+
+        cy.request("POST", "/api/mt/gtap", {
+          attribute_remappings: {
+            user_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+          },
+          card_id: null,
+          table_id: PRODUCTS_ID,
+          group_id: COLLECTION_GROUP,
+        });
+
+        updatePermissionsGraph({
+          schema: {
+            [PRODUCTS_ID]: { query: "segmented", read: "all" },
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
+        });
+
+        cy.log("**-- 3. Create question with joins --**");
+
+        cy.request("POST", "/api/card", {
+          name: QUESTION_NAME,
+          dataset_query: {
+            database: 1,
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "joined-field",
+                  PRODUCTS_ALIAS,
+                  ["field-id", PRODUCTS.CATEGORY],
+                ],
+              ],
+              joins: [
+                {
+                  fields: "all",
+                  "source-table": PRODUCTS_ID,
+                  condition: [
+                    "=",
+                    ["field-id", ORDERS.PRODUCT_ID],
+                    ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                  ],
+                  alias: PRODUCTS_ALIAS,
+                },
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+          display: "bar",
+          visualization_settings: {},
+        });
+
+        signOut();
+        signInAsSandboxedUser();
+
+        cy.server();
+        cy.route("POST", "/api/card/*/query").as("cardQuery");
+        cy.route("POST", "/api/dataset").as("dataset");
+
+        cy.visit("/collection/root");
+        cy.findByText(QUESTION_NAME).click();
+
+        cy.wait("@cardQuery");
+        // Drill-through
+        cy.get(".Visualization").within(() => {
+          // Click on the second bar in a graph (Category: "Widget")
+          cy.get(".bar")
+            .eq(1)
+            .click({ force: true });
+        });
+        cy.findByText("View these Orders").click();
+
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+        cy.contains("37.65");
       });
-
-      signOut();
-      signInAsSandboxedUser();
-
-      cy.server();
-      cy.route("POST", "/api/card/*/query").as("cardQuery");
-      cy.route("POST", "/api/dataset").as("dataset");
-
-      cy.visit("/collection/root");
-      cy.findByText(QUESTION_NAME).click();
-
-      cy.wait("@cardQuery");
-      // Drill-through
-      cy.get(".Visualization").within(() => {
-        // Click on the second bar in a graph (Category: "Widget")
-        cy.get(".bar")
-          .eq(1)
-          .click({ force: true });
-      });
-      cy.findByText("View these Orders").click();
-
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
-      cy.contains("37.65");
     });
 
     it("attempt to sandbox based on question with more columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
@@ -1065,5 +1070,14 @@ function createJoinedQuestion(name) {
     },
     display: "table",
     visualization_settings: {},
+  });
+}
+
+function remapDisplayValueToFK(display_value, fk) {
+  cy.request("POST", `/api/field/${display_value}/dimension`, {
+    field_id: display_value,
+    name: "Product ID",
+    human_readable_field_id: fk,
+    type: "external",
   });
 }
