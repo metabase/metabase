@@ -7959,42 +7959,12 @@ databaseChangeLog:
   - changeSet:
       id: 284
       author: dpsutton
-      comment: Added 0.39 - Semantic type system - add relation type field
-      changes:
-        - addColumn:
-            tableName: metabase_field
-            columns:
-              - column:
-                  name: relation_type
-                  type: varchar(255)
-                  remarks: 'Indicating if the field is a FK, PK, or a value.'
-  - changeSet:
-      id: 285
-      author: dpsutton
       comment: Added 0.39 - Semantic type system - set effective type to base type
       changes:
         - sql:
             sql: UPDATE metabase_field set effective_type = base_type
   - changeSet:
-      id: 286
-      author: dpsutton
-      comment: Added 0.39 - Semantic type system - fill relation_type column
-      changes:
-        - sql:
-            sql: >-
-              UPDATE metabase_field
-              SET relation_type = (CASE semantic_type
-                                    WHEN 'type/PK' THEN 'type/PK'
-                                    WHEN 'type/FK' THEN 'type/FK'
-                                    ELSE NULL
-                                   END),
-                  semantic_type = (CASE semantic_type
-                                    WHEN 'type/PK' THEN NULL
-                                    WHEN 'type/FK' THEN NULL
-                                    ELSE semantic_type
-                                   END)
-  - changeSet:
-      id: 287
+      id: 285
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate ISO8601 strings
       changes:
@@ -8016,7 +7986,7 @@ databaseChangeLog:
                                       'type/ISO8601TimeString',
                                       'type/ISO8601DateString');
   - changeSet:
-      id: 288
+      id: 286
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate unix timestamps
       changes:

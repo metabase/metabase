@@ -136,7 +136,6 @@
           :types          (constantly {:base_type         :keyword
                                        :semantic_type     :keyword
                                        :coercion_strategy :keyword
-                                       :relation_type     :keyword
                                        :effective_type    :keyword
                                        :visibility_type   :keyword
                                        :has_field_values  :keyword

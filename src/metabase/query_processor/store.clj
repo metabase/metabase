@@ -95,7 +95,6 @@
    :id
    :name
    :parent_id
-   :relation_type
    :semantic_type
    :settings
    :table_id
@@ -110,7 +109,6 @@
     :database_type     su/NonBlankString
     :base_type         su/FieldType
     :semantic_type     (s/maybe su/FieldType)
-    :relation_type     (s/maybe su/FieldType)
     :coercion_strategy (s/maybe su/FieldType)
     :effective_type    (s/maybe su/FieldType)
     :fingerprint       (s/maybe su/Map)
