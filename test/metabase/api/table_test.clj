@@ -14,7 +14,6 @@
             [metabase.server.middleware.util :as middleware.u]
             [metabase.sync :as sync]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
             [metabase.test.mock.util :as mutil]
             [metabase.test.util :as tu]
             [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -522,12 +521,12 @@
 
 (deftest query-metadata-remappings-test
   (testing "GET /api/table/:id/query_metadata"
-    (data/with-venue-category-remapping "Foo"
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (testing "Ensure internal remapped dimensions and human_readable_values are returned"
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name "Foo", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
+                 :dimensions {:name "Category ID", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -542,7 +541,7 @@
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name "Foo", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
+                 :dimensions {:name "Category ID", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -553,12 +552,12 @@
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
                                  (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))
 
-    (data/with-venue-category-fk-remapping "Foo"
+    (mt/with-column-remappings [venues.category_id categories.name]
       (testing "Ensure FK remappings are returned"
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Foo"
+                 :dimensions {:name                    "Category ID"
                               :field_id                (mt/id :venues :category_id)
                               :human_readable_field_id (mt/id :categories :name)
                               :type                    "external"}}

@@ -619,11 +619,6 @@ describeWithToken("formatting > sandboxes", () => {
 
       ["normal", "workaround"].forEach(test => {
         it(`${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`, () => {
-          // Remove of comment-out to enable test run for both scenarios
-          test === "normal"
-            ? cy.state("runnable").skip() // https://github.com/cypress-io/cypress-skip-test/blob/master/index.js#L72
-            : null;
-
           cy.server();
           cy.route("POST", "/api/card/*/query").as("cardQuery");
           cy.route("PUT", "/api/card/*").as("questionUpdate");
