@@ -9,7 +9,7 @@
             [metabase.util.i18n :refer [tru]]))
 
 (defn- wrap-field-in-joined-field
-  [{table-id :table_id, field-id :id} joins]
+  [{table-id :table_id, field-id :id, :as field} joins]
   (let [candidate-tables (filter (fn [join]
                                    (when-let [source-table-id (mbql.u/join->source-table-id join)]
                                      (= source-table-id table-id)))
@@ -17,11 +17,18 @@
     (case (count candidate-tables)
       1 [:joined-field (-> candidate-tables first :alias) [:field-id field-id]]
       0 [:field-id field-id]
-      (let [{:keys [id name]} (qp.store/table table-id)]
-        (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to wrap field references in explicit :joined-field clauses."
-                             name field-id)
-                        {:error error-type/invalid-query
-                         :joins joins}))))))
+      ;; if there are multiple candidates, try ignoring the implicit ones
+      ;; presence of `:fk-field-id` indicates that the join was implicit, as the result of an `fk->` form
+      (let [explicit-joins (remove :fk-field-id joins)]
+        (if (= (count explicit-joins) 1)
+          (recur field explicit-joins)
+          (let [{:keys [id name]} (qp.store/table table-id)]
+            (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to wrap field references in explicit :joined-field clauses."
+                                 name field-id)
+                            {:field      field
+                             :error      error-type/invalid-query
+                             :joins      joins
+                             :candidates candidate-tables}))))))))
 
 (defn- wrap-fields-in-joined-field-if-needed*
   "Wrap Field clauses in a form that has `:joins`."
@@ -70,5 +77,6 @@
   (fn [query rff context]
     (let [query' (wrap-fields-in-joined-field-if-needed query)]
       (when-not (= query query')
-        (log/tracef "Inferred :joined-field clauses: %s" (u/pprint-to-str 'yellow (take 2 (data/diff query query')))))
+        (let [[before after] (data/diff query query')]
+          (log/tracef "Inferred :joined-field clauses: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
       (qp query' rff context))))

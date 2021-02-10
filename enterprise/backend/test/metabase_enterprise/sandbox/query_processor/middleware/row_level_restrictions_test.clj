@@ -785,33 +785,42 @@
                             :row_count (s/eq 2)
                             s/Keyword  s/Any}
                            (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
-          (testing "Drill-thru question should work"
-            (let [drill-thru-query   (mt/mbql-query orders
-                                       {:filter [:= $products.category "Widget"]
-                                        :joins  [{:fields       :all
-                                                  :source-table $$products
-                                                  :condition    [:= $product_id [:joined-field "products" $products.id]]
-                                                  :alias        "products"}]
-                                        :limit  10})
-                  test-preprocessing (fn []
-                                       (testing "`resolve-joined-fields` middleware should infer `:joined-field` correctly"
-                                         (is (= [:=
-                                                 [:joined-field "products" [:field-id (mt/id :products :category)]]
-                                                 [:value "Widget" {:base_type     :type/Text
-                                                                   :special_type  nil
-                                                                   :database_type "VARCHAR"
-                                                                   :name          "CATEGORY"}]]
-                                                (get-in (qp/query->preprocessed drill-thru-query) [:query :filter])))))]
-              (testing "As an admin"
-                (mt/with-test-user :crowberto
-                  (test-preprocessing)
-                  (is (schema= {:status    (s/eq :completed)
-                                :row_count (s/eq 10)
-                                s/Keyword  s/Any}
-                               (qp/process-query drill-thru-query)))))
-              (testing "As a sandboxed user"
-                (test-preprocessing)
-                (is (schema= {:status    (s/eq :completed)
-                              :row_count (s/eq 6)
-                              s/Keyword  s/Any}
-                             (qp/process-query drill-thru-query)))))))))))
+          (letfn [(test-drill-thru []
+                    (testing "Drill-thru question should work"
+                      (let [drill-thru-query   (mt/mbql-query orders
+                                                 {:filter [:= $products.category "Widget"]
+                                                  :joins  [{:fields       :all
+                                                            :source-table $$products
+                                                            :condition    [:= $product_id [:joined-field "products" $products.id]]
+                                                            :alias        "products"}]
+                                                  :limit  10})
+                            test-preprocessing (fn []
+                                                 (testing "`resolve-joined-fields` middleware should infer `:joined-field` correctly"
+                                                   (is (= [:=
+                                                           [:joined-field "products" [:field-id (mt/id :products :category)]]
+                                                           [:value "Widget" {:base_type     :type/Text
+                                                                             :special_type  :type/Category
+                                                                             :database_type "VARCHAR"
+                                                                             :name          "CATEGORY"}]]
+                                                          (get-in (qp/query->preprocessed drill-thru-query) [:query :filter])))))]
+                        (testing "As an admin"
+                          (mt/with-test-user :crowberto
+                            (test-preprocessing)
+                            (is (schema= {:status    (s/eq :completed)
+                                          :row_count (s/eq 10)
+                                          s/Keyword  s/Any}
+                                         (qp/process-query drill-thru-query)))))
+                        (testing "As a sandboxed user"
+                          (test-preprocessing)
+                          (is (schema= {:status    (s/eq :completed)
+                                        :row_count (s/eq 6)
+                                        s/Keyword  s/Any}
+                                       (qp/process-query drill-thru-query)))))))]
+            (test-drill-thru)
+            (testing "With an FK field remapping of orders.product_id -> products.title in place"
+              (mt/with-temp Dimension [_ (mt/$ids orders
+                                           {:field_id                %product_id
+                                            :name                    "Product ID"
+                                            :type                    :external
+                                            :human_readable_field_id %products.title})]
+                (test-drill-thru)))))))))

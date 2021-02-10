@@ -47,7 +47,7 @@
                                        [Table :target-table] [:= :target-pk.table_id :target-table.id]]
                            :where     [:and
                                        [:in :source-fk.id (set fk-field-ids)]
-                                       [:= :target-table.db_id (u/get-id (qp.store/database))]
+                                       [:= :target-table.db_id (u/the-id (qp.store/database))]
                                        (mdb.u/isa :source-fk.special_type :type/FK)]})]
       (for [{:keys [fk-name table-name], :as info} infos]
         (assoc info :alias (join-alias table-name fk-name))))))
@@ -74,7 +74,7 @@
                                  :left-join [[Table :table] [:= :field.table_id :table.id]]
                                  :where     [:and
                                              [:in :field.id (set dest-ids)]
-                                             [:= :table.db_id (u/get-id (qp.store/database))]]})
+                                             [:= :table.db_id (u/the-id (qp.store/database))]]})
           dest->table (zipmap (map :id results) (map :table results))]
       ;; validate that all our Fields are in the map
       (doseq [dest-id dest-ids]

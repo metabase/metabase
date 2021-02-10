@@ -2,7 +2,9 @@
   "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
   the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
-  (:require [metabase.mbql.schema :as mbql.s]
+  (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
@@ -198,4 +200,8 @@
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [qp]
   (fn [query rff context]
-    (qp (resolve-joins* query) rff context)))
+    (let [query' (resolve-joins* query)]
+      (when-not (= query query')
+        (let [[before after] (data/diff query query')]
+          (log/tracef "Resolved joins: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
+      (qp query' rff context))))
