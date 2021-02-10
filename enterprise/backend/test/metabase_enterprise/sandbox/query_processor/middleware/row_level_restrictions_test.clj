@@ -787,22 +787,26 @@
                            (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
           (letfn [(test-drill-thru []
                     (testing "Drill-thru question should work"
-                      (let [drill-thru-query   (mt/mbql-query orders
-                                                 {:filter [:= $products.category "Widget"]
-                                                  :joins  [{:fields       :all
-                                                            :source-table $$products
-                                                            :condition    [:= $product_id [:joined-field "products" $products.id]]
-                                                            :alias        "products"}]
-                                                  :limit  10})
-                            test-preprocessing (fn []
-                                                 (testing "`resolve-joined-fields` middleware should infer `:joined-field` correctly"
-                                                   (is (= [:=
-                                                           [:joined-field "products" [:field-id (mt/id :products :category)]]
-                                                           [:value "Widget" {:base_type     :type/Text
-                                                                             :special_type  :type/Category
-                                                                             :database_type "VARCHAR"
-                                                                             :name          "CATEGORY"}]]
-                                                          (get-in (qp/query->preprocessed drill-thru-query) [:query :filter])))))]
+                      (let [drill-thru-query
+                            (mt/mbql-query orders
+                              {:filter [:= $products.category "Widget"]
+                               :joins  [{:fields       :all
+                                         :source-table $$products
+                                         :condition    [:= $product_id [:joined-field "products" $products.id]]
+                                         :alias        "products"}]
+                               :limit  10})
+
+                            test-preprocessing
+                            (fn []
+                              (testing "`resolve-joined-fields` middleware should infer `:joined-field` correctly"
+                                (is (= [:=
+                                        [:joined-field "products" [:field-id (mt/id :products :category)]]
+                                        [:value "Widget" {:base_type     :type/Text
+                                                          :special_type  (db/select-one-field :special_type Field
+                                                                           :id (mt/id :products :category))
+                                                          :database_type "VARCHAR"
+                                                          :name          "CATEGORY"}]]
+                                       (get-in (qp/query->preprocessed drill-thru-query) [:query :filter])))))]
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)
