@@ -4,7 +4,7 @@
   supported application database types."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [colorize.core :as color]
+            [clojure.tools.logging :as log]
             [honeysql.format :as hformat]
             [metabase.db.connection :as mdb.conn]
             [metabase.db.data-migrations :refer [DataMigrations]]
@@ -21,19 +21,19 @@
             [schema.core :as s])
   (:import java.sql.SQLException))
 
-(defn- println-ok []
-  (println (u/colorize 'green "[OK]")))
+(defn- log-ok []
+  (log/info (u/colorize 'green "[OK]")))
 
 (defn- do-step [msg f]
-  (print (str (u/colorize 'blue msg) " "))
+  (log/info (str (u/colorize 'blue msg) " "))
   (try
     (f)
     (catch Throwable e
-      (println (u/colorize 'red "[FAIL]\n"))
+      (log/error (u/colorize 'red "[FAIL]\n"))
       (throw (ex-info (trs "ERROR {0}" msg)
                       {}
                       e))))
-  (println-ok))
+  (log-ok))
 
 (defmacro ^:private step
   "Convenience for executing `body` with some extra logging."
@@ -104,15 +104,14 @@
 (def ^:private chunk-size 100)
 
 (defn- insert-chunk!
-  "Insert of `chunk` of rows into the target database table with `table-name`."
+  "Insert of `chunkk` of rows into the target database table with `table-name`."
   [target-db-type target-db-conn table-name chunkk]
-  (print (color/blue \.))
-  (flush)
+  (log/debugf "Inserting chunk of %d rows" (count chunkk))
   (try
     (let [{:keys [cols vals]} (objects->colums+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn table-name cols vals {:transaction? false}))
     (catch SQLException e
-      (jdbc/print-sql-exception-chain e)
+      (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
       (throw e))))
 
 (def ^:private table-select-fragments
@@ -128,14 +127,16 @@
                                              results (jdbc/reducible-query source-conn sql)]]
       (transduce
        (partition-all chunk-size)
+       ;; cnt    = the total number we've inserted so far
+       ;; chunkk = current chunk to insert
        (fn
          ([cnt]
           (when (pos? cnt)
-            (println (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
+            (log/info (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
          ([cnt chunkk]
           (when (seq chunkk)
             (when (zero? cnt)
-              (print (u/colorize 'blue (trs "Copying instances of {0}..." (name entity)))))
+              (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name entity)))))
             (try
               (insert-chunk! target-db-type target-db-conn table-name chunkk)
               (catch Throwable e

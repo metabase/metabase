@@ -2,9 +2,10 @@
   "Utility functions for comparing the contents of two H2 DBs, for testing the `load-from-h2 and `dump-to-h2` commands."
   (:require [clojure.data :as data]
             [clojure.java.jdbc :as jdbc]
-            [clojure.pprint :as pprint]
             [clojure.string :as str]
-            metabase.db.jdbc-protocols))
+            [clojure.tools.logging :as log]
+            metabase.db.jdbc-protocols
+            [metabase.util :as u]))
 
 (comment metabase.db.jdbc-protocols/keep-me)
 
@@ -76,14 +77,12 @@
   "True if the set of tables names is different between DBs represented by `conn-1` and `conn-2`."
   [conn-1 conn-2]
   (let [[table-names-1 table-names-2] (map table-names [conn-1 conn-2])
-        _                             (printf "Diffing %d/%d table names...\n" (count table-names-1) (count table-names-2))
+        _                             (log/infof "Diffing %d/%d table names..." (count table-names-1) (count table-names-2))
         [only-in-1 only-in-2]         (data/diff table-names-1 table-names-2)]
     (when (or (seq only-in-1) (seq only-in-2))
-      (println "Tables are different!")
-      (println "Only in first DB:")
-      (pprint/pprint only-in-1)
-      (println "Only in second DB:")
-      (pprint/pprint only-in-2)
+      (log/error "Tables are different!")
+      (log/errorf "Only in first DB:\n%s" (u/pprint-to-str only-in-1))
+      (log/errorf "Only in second DB:\n%s" (u/pprint-to-str only-in-2))
       :table-names-are-different)))
 
 (defn- different-rows-for-table?
@@ -91,14 +90,12 @@
   [conn-1 conn-2 table-name]
   (let [rows-1                (rows conn-1 table-name)
         rows-2                (rows conn-2 table-name)
-        _                     (printf "Diffing %d/%d rows for table %s...\n" (count rows-1) (count rows-2) table-name)
+        _                     (log/infof "Diffing %d/%d rows for table %s..." (count rows-1) (count rows-2) table-name)
         [only-in-1 only-in-2] (data/diff rows-1 rows-2)]
     (when (or (seq only-in-1) (seq only-in-2))
-      (printf "DBs have different sets of rows for Table %s\n" table-name)
-      (println "Only in first DB:")
-      (pprint/pprint only-in-1)
-      (println "Only in second DB:")
-      (pprint/pprint only-in-2)
+      (log/errorf "DBs have different sets of rows for Table %s" table-name)
+      (log/errorf "Only in first DB:\n%s" (u/pprint-to-str only-in-1))
+      (log/errorf "Only in second DB:\n%s" (u/pprint-to-str only-in-2))
       :table-rows-are-different)))
 
 (defn- different-rows?
@@ -118,12 +115,3 @@
     (jdbc/with-db-connection [conn-2 (jdbc-spec db-file-2)]
       (or (different-table-names? conn-1 conn-2)
           (different-rows? conn-1 conn-2)))))
-
-(defn -main
-  "Main entrypoint."
-  [db-file-1 db-file-2]
-  (when-let [difference (different-contents? db-file-1 db-file-2)]
-    (println "DB contents are different. Reason:" difference)
-    (System/exit 1))
-  (println "Success: DB contents match.")
-  (System/exit 0))
