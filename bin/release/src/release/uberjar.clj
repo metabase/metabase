@@ -19,8 +19,7 @@
 (defn- validate-uberjar []
   (u/step "Validate uberjar(s) on downloads.metabase.com"
     (doseq [url   [(c/artifact-download-url "metabase.jar")
-                   (when (and (= (c/edition) :ee)
-                              (c/latest-version?))
+                   (when (c/latest-version?)
                      (c/artifact-download-url "latest" "metabase.jar"))]
             :when url]
       (u/step (format "Validate %s" url)

@@ -4,6 +4,7 @@ import {
   popover,
   createNativeQuestion,
   openOrdersTable,
+  remapDisplayValueToFK,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -335,11 +336,10 @@ describe("scenarios > question > nested", () => {
     cy.route("POST", "/api/dataset").as("dataset");
 
     cy.log("**-- 1. Remap Product ID's display value to `title` --**");
-    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-      field_id: ORDERS.PRODUCT_ID,
+    remapDisplayValueToFK({
+      display_value: ORDERS.PRODUCT_ID,
       name: "Product ID",
-      human_readable_field_id: PRODUCTS.TITLE,
-      type: "external",
+      fk: PRODUCTS.TITLE,
     });
 
     cy.log("**-- 2. Save simple 'Orders' table with remapped values --**");
@@ -366,46 +366,58 @@ describe("scenarios > question > nested", () => {
     cy.findAllByText("Awesome Concrete Shoes");
   });
 
-  it("should use question with joins as a base for a new question (metabase#14724)", () => {
-    const QUESTION_NAME = "14724";
+  ["remapped", "default"].forEach(test => {
+    it(`${test.toUpperCase()} version:\n should use question with joins as a base for a new question (metabase#14724)`, () => {
+      const QUESTION_NAME = "14724";
 
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+      if (test === "remapped") {
+        cy.state("runnable").skip(); // Unskip or remove this line when "remapped" version of the issue is fixed
+        cy.log("**-- Remap Product ID's display value to `title` --**");
+        remapDisplayValueToFK({
+          display_value: ORDERS.PRODUCT_ID,
+          name: "Product ID",
+          fk: PRODUCTS.TITLE,
+        });
+      }
 
-    cy.request("POST", "/api/card", {
-      name: QUESTION_NAME,
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-              ],
-              alias: "Products",
-            },
-          ],
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.request("POST", "/api/card", {
+        name: QUESTION_NAME,
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ],
+                alias: "Products",
+              },
+            ],
+          },
+          database: 1,
         },
-        database: 1,
-      },
-      display: "table",
-      visualization_settings: {},
-    });
+        display: "table",
+        visualization_settings: {},
+      });
 
-    // Start new question from a saved one
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
-    cy.findByText("Saved Questions").click();
-    cy.findByText(QUESTION_NAME).click();
+      // Start new question from a saved one
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText(QUESTION_NAME).click();
 
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).not.to.exist;
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+      cy.contains("37.65");
     });
-    cy.contains("37.65");
   });
 });
