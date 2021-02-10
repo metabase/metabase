@@ -382,30 +382,7 @@ describe("scenarios > question > nested", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
-      cy.request("POST", "/api/card", {
-        name: QUESTION_NAME,
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-                condition: [
-                  "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-                ],
-                alias: "Products",
-              },
-            ],
-          },
-          database: 1,
-        },
-        display: "table",
-        visualization_settings: {},
-      });
+      ordersJoinProducts(QUESTION_NAME);
 
       // Start new question from a saved one
       cy.visit("/question/new");
@@ -420,3 +397,30 @@ describe("scenarios > question > nested", () => {
     });
   });
 });
+
+function ordersJoinProducts(name) {
+  return cy.request("POST", "/api/card", {
+    name,
+    dataset_query: {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ],
+            alias: "Products",
+          },
+        ],
+      },
+      database: 1,
+    },
+    display: "table",
+    visualization_settings: {},
+  });
+}
