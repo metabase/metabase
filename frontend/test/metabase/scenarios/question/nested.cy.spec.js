@@ -400,7 +400,7 @@ describe("scenarios > question > nested", () => {
         cy.contains("37.65");
       });
 
-      it.skip("should handle multi-level nesting", () => {
+      it("should handle multi-level nesting", () => {
         // Use the original question qith joins, then save it again
         ordersJoinProducts(QUESTION_NAME).then(
           ({ body: { id: ORIGINAL_QUESTION_ID } }) => {
