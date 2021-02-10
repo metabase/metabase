@@ -396,6 +396,40 @@ describe("scenarios > question > nested", () => {
       cy.contains("37.65");
     });
   });
+
+  it.skip("should handle multi-level nesting with original question having joins (metabase#14724)", () => {
+    const QUESTION_NAME = "14724";
+    const SECOND_QUESTION_NAME = "14724_second";
+
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    ordersJoinProducts(QUESTION_NAME).then(
+      ({ body: { id: ORIGINAL_QUESTION_ID } }) => {
+        cy.request("POST", "/api/card", {
+          name: SECOND_QUESTION_NAME,
+          dataset_query: {
+            database: 1,
+            query: { "source-table": `card__${ORIGINAL_QUESTION_ID}` },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        });
+      },
+    );
+
+    // Start new question from already saved nested question
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText(SECOND_QUESTION_NAME).click();
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+    cy.contains("37.65");
+  });
 });
 
 function ordersJoinProducts(name) {
