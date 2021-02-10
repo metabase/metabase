@@ -149,23 +149,18 @@ export default class SearchBar extends React.Component {
           {active && (
             <div className="absolute left right text-dark" style={{ top: 60 }}>
               {searchText.length > 0 ? (
-                <Search.ListLoader
-                  query={{ q: searchText }}
-                  wrapped
-                  reload
-                  debounced
-                >
-                  {({ list }) => {
-                    return (
-                      <Card
-                        className="overflow-y-auto"
-                        style={{ maxHeight: 400 }}
-                      >
-                        <ol>{this.renderResults(list)}</ol>
-                      </Card>
-                    );
-                  }}
-                </Search.ListLoader>
+                <Card className="overflow-y-auto" style={{ maxHeight: 400 }}>
+                  <Search.ListLoader
+                    query={{ q: searchText }}
+                    wrapped
+                    reload
+                    debounced
+                  >
+                    {({ list }) => {
+                      return <ol>{this.renderResults(list)}</ol>;
+                    }}
+                  </Search.ListLoader>
+                </Card>
               ) : null}
             </div>
           )}
