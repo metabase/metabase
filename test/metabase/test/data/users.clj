@@ -85,14 +85,14 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  ;; NOCOMMIT
-  (fn
-    ([]
-     (zipmap usernames (map user->id usernames)))
+  (memoize
+   (fn
+     ([]
+      (zipmap usernames (map user->id usernames)))
 
-    ([user-name]
-     {:pre [(contains? usernames user-name)]}
-     (u/get-id (fetch-user user-name)))))
+     ([user-name]
+      {:pre [(contains? usernames user-name)]}
+      (u/the-id (fetch-user user-name))))))
 
 (s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
   "Return a map with `:username` and `:password` for User with `username`.
@@ -175,4 +175,4 @@
 (defn test-user?
   "Does this User or User ID belong to one of the predefined test birds?"
   [user-or-id]
-  (contains? (set (vals (user->id))) (u/get-id user-or-id)))
+  (contains? (set (vals (user->id))) (u/the-id user-or-id)))

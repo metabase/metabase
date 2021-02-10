@@ -19,6 +19,7 @@
             [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.data.env :as tx.env]
@@ -46,6 +47,7 @@
   i18n.tu/keep-me
   initialize/keep-me
   mt.tu/keep-me
+  mw.session/keep-me
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
@@ -106,6 +108,9 @@
 
  [initialize
   initialize-if-needed!]
+
+ [mw.session
+  with-current-user]
 
  [qp
   process-query
