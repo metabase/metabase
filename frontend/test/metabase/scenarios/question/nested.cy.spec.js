@@ -336,11 +336,10 @@ describe("scenarios > question > nested", () => {
     cy.route("POST", "/api/dataset").as("dataset");
 
     cy.log("**-- 1. Remap Product ID's display value to `title` --**");
-    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-      field_id: ORDERS.PRODUCT_ID,
+    remapDisplayValueToFK({
+      display_value: ORDERS.PRODUCT_ID,
       name: "Product ID",
-      human_readable_field_id: PRODUCTS.TITLE,
-      type: "external",
+      fk: PRODUCTS.TITLE,
     });
 
     cy.log("**-- 2. Save simple 'Orders' table with remapped values --**");
@@ -374,7 +373,11 @@ describe("scenarios > question > nested", () => {
       if (test === "remapped") {
         cy.state("runnable").skip(); // Unskip or remove this line when "remapped" version of the issue is fixed
         cy.log("**-- Remap Product ID's display value to `title` --**");
-        remapDisplayValueToFK(ORDERS.PRODUCT_ID, PRODUCTS.TITLE);
+        remapDisplayValueToFK({
+          display_value: ORDERS.PRODUCT_ID,
+          name: "Product ID",
+          fk: PRODUCTS.TITLE,
+        });
       }
 
       cy.server();
