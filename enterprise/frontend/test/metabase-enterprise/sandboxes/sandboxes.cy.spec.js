@@ -347,7 +347,11 @@ describeWithToken("formatting > sandboxes", () => {
 
         if (test === "remapped") {
           cy.log("**-- Remap Product ID's display value to `title` --**");
-          remapDisplayValueToFK(ORDERS.PRODUCT_ID, PRODUCTS.TITLE);
+          remapDisplayValueToFK({
+            display_value: ORDERS.PRODUCT_ID,
+            name: "Product ID",
+            fk: PRODUCTS.TITLE,
+          });
         }
 
         cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
@@ -506,7 +510,11 @@ describeWithToken("formatting > sandboxes", () => {
     describe("with display values remapped to use a foreign key", () => {
       beforeEach(() => {
         cy.log("**-- Remap Product ID's display value to `title` --**");
-        remapDisplayValueToFK(ORDERS.PRODUCT_ID, PRODUCTS.TITLE);
+        remapDisplayValueToFK({
+          display_value: ORDERS.PRODUCT_ID,
+          name: "Product ID",
+          fk: PRODUCTS.TITLE,
+        });
       });
 
       /**
@@ -799,7 +807,11 @@ describeWithToken("formatting > sandboxes", () => {
 
         if (test === "remapped") {
           cy.log("**-- Remap Product ID's display value to `title` --**");
-          remapDisplayValueToFK(ORDERS.PRODUCT_ID, PRODUCTS.TITLE);
+          remapDisplayValueToFK({
+            display_value: ORDERS.PRODUCT_ID,
+            name: "Product ID",
+            fk: PRODUCTS.TITLE,
+          });
         }
 
         cy.log("**-- 1. Sandbox `Orders` table --**");
