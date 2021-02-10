@@ -282,6 +282,17 @@ export function suggest({
           .filter(clause => database.hasFeature(clause.requiresFeature))
           .map(clause => functionSuggestion("functions", clause.name)),
       );
+      if (nextTokenType === Case) {
+        const caseSuggestion = {
+          type: "functions",
+          name: "case",
+          text: "case(",
+          postfixText: ")",
+          prefixTrim: /\w+$/,
+          postfixTrim: /^\w+(\(\)?|$)/,
+        };
+        finalSuggestions.push(caseSuggestion);
+      }
     } else if (nextTokenType === LParen) {
       finalSuggestions.push({
         type: "other",
