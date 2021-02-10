@@ -42,17 +42,18 @@
        (if (types/temporal-field? field)
          ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
          ;; default bucketing of `:day`
-         [:datetime-field [:field-id (u/get-id field)] :default]
-         [:field-id (u/get-id field)]))
+         [:datetime-field [:field-id (u/the-id field)] :default]
+         [:field-id (u/the-id field)]))
      fields)))
 
 (s/defn ^:private source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
-  (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
-    (if field-id
-      [:field-id field-id]
-      [:field-literal field-name base-type])))
+  (distinct
+   (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
+     (if field-id
+       [:field-id field-id]
+       [:field-literal field-name base-type]))))
 
 (s/defn ^:private should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:

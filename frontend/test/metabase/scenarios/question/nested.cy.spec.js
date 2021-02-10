@@ -371,7 +371,6 @@ describe("scenarios > question > nested", () => {
       const QUESTION_NAME = "14724";
 
       if (test === "remapped") {
-        cy.state("runnable").skip(); // Unskip or remove this line when "remapped" version of the issue is fixed
         cy.log("**-- Remap Product ID's display value to `title` --**");
         remapDisplayValueToFK({
           display_value: ORDERS.PRODUCT_ID,

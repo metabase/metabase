@@ -768,3 +768,33 @@
                        (mt/rows+column-names
                          (mt/run-mbql-query orders
                            {:source-table (str "card__" card-id), :limit 2, :order-by [[:asc $id]]}))))))))))))
+
+(deftest nested-query-with-joins-test
+  (testing "Should be able to use a query that contains joins as a source query (#14724)"
+    (mt/dataset sample-dataset
+      (letfn [(test-query [f]
+                (let [results (mt/run-mbql-query orders
+                                {:source-query {:source-table $$orders
+                                                :joins        [{:fields       :all
+                                                                :source-table $$products
+                                                                :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                                                :alias        "Products"}]}
+                                 :limit        10})]
+                  (is (schema= {:status    (s/eq :completed)
+                                :row_count (s/eq 10)
+                                s/Keyword  s/Any}
+                               results))
+                  (f results)))]
+        (test-query
+         (fn [results]
+           (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+                   14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
+                   4.0 "2017-12-31T14:41:56.87Z"]
+                  (first (mt/rows results))))))
+        (mt/with-column-remappings [orders.product_id products.title]
+          (test-query
+           (fn [results]
+             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
+                     14 "8833419218504" "Widget" "McClure-Lockman" 25.1                                ; <- Remapped col not repeated
+                     4.0 "2017-12-31T14:41:56.87Z"]
+                    (first (mt/rows results)))))))))))
