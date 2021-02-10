@@ -160,6 +160,7 @@
   round-all-decimals
   scheduler-current-tasks
   throw-if-called
+  with-column-remappings
   with-discarded-collections-perms-changes
   with-locale
   with-log-level

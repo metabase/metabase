@@ -1,25 +1,23 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
   (:require [clojure.test :refer :all]
-            [clojure.string :as str]
-            [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
             [toucan.db :as db]))
 
 (deftest basic-remapping-test
   (mt/test-drivers (mt/normal-drivers)
-    (data/with-venue-category-remapping "Foo"
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (is (= {:rows [["20th Century Cafe"               12 "Café"]
                      ["25°"                             11 "Burger"]
                      ["33 Taps"                          7 "Bar"]
                      ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
               :cols [(mt/col :venues :name)
-                     (assoc (mt/col :venues :category_id) :remapped_to "Foo")
-                     (#'add-dimension-projections/create-remapped-col "Foo" (mt/format-name "category_id") :type/Text)]}
+                     (assoc (mt/col :venues :category_id) :remapped_to "Category ID")
+                     (#'add-dimension-projections/create-remapped-col "Category ID" (mt/format-name "category_id") :type/Text)]}
              (qp.test/rows-and-cols
                (mt/format-rows-by [str int str]
                  (mt/run-mbql-query venues
@@ -27,11 +25,11 @@
                     :order-by [[:asc $name]]
                     :limit    4})))))))
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
-    (data/with-venue-category-fk-remapping "Name"
+    (mt/with-column-remappings [venues.category_id categories.name]
       (is (= {:rows [["American" 2 8]
                      ["Artisan"  3 2]
                      ["Asian"    4 2]]
-              :cols [(-> (mt/col :categories :name)
+              :cols [(-> (assoc (mt/col :categories :name) :display_name "Category ID")
                          (assoc :remapped_from (mt/format-name "category_id")
                                 :field_ref     [:fk-> [:field-id (mt/id :venues :category_id)]
                                                 [:field-id (mt/id :categories :name)]]
@@ -56,15 +54,15 @@
 
 (deftest nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-    (data/with-venue-category-remapping "Foo"
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (is (= {:rows [["20th Century Cafe"               12 "Café"]
                      ["25°"                             11 "Burger"]
                      ["33 Taps"                          7 "Bar"]
                      ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
               :cols [(mt/col :venues :name)
                      (-> (mt/col :venues :category_id)
-                         (assoc :remapped_to "Foo"))
-                     (#'add-dimension-projections/create-remapped-col "Foo" (mt/format-name "category_id") :type/Text)]}
+                         (assoc :remapped_to "Category ID"))
+                     (#'add-dimension-projections/create-remapped-col "Category ID" (mt/format-name "category_id") :type/Text)]}
              (->> (mt/run-mbql-query venues
                     {:source-query {:source-table (mt/id :venues)
                                     :fields       [[:field-id (mt/id :venues :name)]
@@ -93,7 +91,7 @@
 
 (deftest foreign-keys-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
-    (data/with-venue-category-fk-remapping "Foo"
+    (mt/with-column-remappings [venues.category_id categories.name]
       (is (= {:rows [["20th Century Cafe"               2 "Café"]
                      ["25°"                             2 "Burger"]
                      ["33 Taps"                         2 "Bar"]
@@ -103,7 +101,7 @@
                      (mt/$ids venues
                        (assoc (mt/col :categories :name)
                               :fk_field_id   %category_id
-                              :display_name  "Foo"
+                              :display_name  "Category ID"
                               :name          (mt/format-name "name_2")
                               :remapped_from (mt/format-name "category_id")
                               :field_ref     $category_id->categories.name))]}
@@ -119,7 +117,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing (str "Check that we can have remappings when we include a `:fields` clause that restricts the query "
                   "fields returned")
-      (data/with-venue-category-fk-remapping "Foo"
+      (mt/with-column-remappings [venues.category_id categories.name]
         (is (= {:rows [["20th Century Cafe"               2 "Café"]
                        ["25°"                             2 "Burger"]
                        ["33 Taps"                         2 "Bar"]
@@ -129,7 +127,7 @@
                        (mt/$ids venues
                          (assoc (mt/col :categories :name)
                                 :fk_field_id   %category_id
-                                :display_name  "Foo"
+                                :display_name  "Category ID"
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")
                                 :field_ref     $category_id->categories.name))]}
@@ -145,10 +143,7 @@
 (deftest remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"
     (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
-      (mt/with-temp Dimension [_ {:field_id                (mt/id :checkins :venue_id)
-                                  :name                    "venue-remapping"
-                                  :type                    :external
-                                  :human_readable_field_id (mt/id :venues :name)}]
+      (mt/with-column-remappings [checkins.venue_id venues.name]
         (is (= ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
                (->> (mt/run-mbql-query checkins
                       {:order-by [[:asc $date]]
@@ -160,7 +155,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing (str "Test a remapping with conflicting names, in the case below there are two name fields, one from "
                   "Venues and the other from Categories")
-      (data/with-venue-category-fk-remapping "Foo"
+      (mt/with-column-remappings [venues.category_id categories.name]
         (is (= ["20th Century Cafe" "25°" "33 Taps" "800 Degrees Neapolitan Pizzeria"]
                (->> (mt/rows
                       (mt/run-mbql-query venues
@@ -176,11 +171,8 @@
   ;; this is https://github.com/metabase/metabase/issues/8510
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
     (mt/dataset test-data-self-referencing-user
-      (mt/with-temp Dimension [_ {:field_id                (mt/id :users :created_by)
-                                  :name                    "created-by-mapping"
-                                  :type                    :external
-                                  :human_readable_field_id (mt/id :users :name)}]
-        (db/update! 'Field (mt/id :users :created_by)
+      (mt/with-column-remappings [users.created_by users.name]
+        (db/update! Field (mt/id :users :created_by)
           {:fk_target_field_id (mt/id :users :id)})
         (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
                (->> (mt/run-mbql-query users
@@ -188,3 +180,22 @@
                        :limit    4})
                     mt/rows
                     (map last))))))))
+
+(deftest native-query-remapping-test
+  (testing "Remapping should work for native queries"
+    (mt/dataset sample-dataset
+      (letfn [(remappings-with-metadata [metadata]
+                (mt/with-column-remappings [orders.product_id products.title]
+                  (mt/rows
+                    (mt/run-mbql-query nil
+                      {:source-query    {:native "SELECT * FROM ORDERS WHERE USER_ID = 1 AND TOTAL > 10 ORDER BY ID ASC LIMIT 2;"}
+                       :source-metadata metadata}))))]
+        (testing "With the metadata from an MBQL query"
+          (let [metadata (get-in (qp/process-query (mt/mbql-query orders))
+                                 [:data :results_metadata :columns])]
+            (is (seq metadata))
+            (is (= [[1 1  14 37.65  2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
+                    [2 1 123 110.93  6.1 117.03 nil  "2018-05-15T08:04:04.58Z" 3 "Mediocre Wooden Bench"]]
+                   (remappings-with-metadata metadata)))))
+        ;; doesn't currently work with any other metadata.
+        ))))

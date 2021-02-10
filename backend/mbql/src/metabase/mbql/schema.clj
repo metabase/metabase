@@ -874,7 +874,7 @@
     (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
     (s/optional-key :fields)       Fields
     (s/optional-key :filter)       Filter
-    (s/optional-key :limit)        su/IntGreaterThanZero
+    (s/optional-key :limit)        su/IntGreaterThanOrEqualToZero
     (s/optional-key :order-by)     (su/distinct (su/non-empty [OrderBy]))
     ;; page = page num, starting with 1. items = number of items per page.
     ;; e.g.

@@ -68,16 +68,16 @@
 
 (deftest internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
-    (data/with-venue-category-remapping "Foo"
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (let [{:keys [rows cols]} (qp.test/rows-and-cols
                                   (mt/format-rows-by [int int str]
                                     (mt/run-mbql-query venues
                                       {:aggregation [[:count]]
                                        :breakout    [$category_id]
                                        :limit       5})))]
-        (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Foo")
+        (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Category ID")
                 (qp.test/aggregate-col :count)
-                (#'add-dim-projections/create-remapped-col "Foo" (mt/format-name "category_id") :type/Text)]
+                (#'add-dim-projections/create-remapped-col "Category ID" (mt/format-name "category_id") :type/Text)]
                cols))
         (is (= [[2 8 "American"]
                 [3 2 "Artisan"]
@@ -89,7 +89,7 @@
 (deftest order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (mt/with-temp Dimension [_ {:field_id                (data/id :venues :category_id)
-                                :name                    "Foo"
+                                :name                    "Category ID"
                                 :type                    :external
                                 :human_readable_field_id (data/id :categories :name)}]
       (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"

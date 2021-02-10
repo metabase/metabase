@@ -85,14 +85,14 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (memoize
-   (fn
-     ([]
-      (zipmap usernames (map user->id usernames)))
+  ;; NOCOMMIT
+  (fn
+    ([]
+     (zipmap usernames (map user->id usernames)))
 
-     ([user-name]
-      {:pre [(contains? usernames user-name)]}
-      (u/get-id (fetch-user user-name))))))
+    ([user-name]
+     {:pre [(contains? usernames user-name)]}
+     (u/get-id (fetch-user user-name)))))
 
 (s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
   "Return a map with `:username` and `:password` for User with `username`.
