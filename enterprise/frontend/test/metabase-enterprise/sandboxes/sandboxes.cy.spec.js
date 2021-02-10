@@ -340,78 +340,90 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it("drill-through should work on implicit joined tables with sandboxes (metabase#13641)", () => {
-      const QUESTION_NAME = "13641";
+    ["remapped", "default"].forEach(test => {
+      it(`${test.toUpperCase()} version:\n drill-through should work on implicit joined tables with sandboxes (metabase#13641)`, () => {
+        const QUESTION_NAME = "13641";
 
-      cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
+        if (test === "remapped") {
+          cy.log("**-- Remap Product ID's display value to `title` --**");
+          cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+            field_id: ORDERS.PRODUCT_ID,
+            name: "Product ID",
+            human_readable_field_id: PRODUCTS.TITLE,
+            type: "external",
+          });
+        }
 
-      cy.request("POST", "/api/mt/gtap", {
-        attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-        card_id: null,
-        group_id: COLLECTION_GROUP,
-        table_id: ORDERS_ID,
-      });
+        cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
 
-      updatePermissionsGraph({
-        schema: {
-          [PRODUCTS_ID]: "all",
-          [ORDERS_ID]: { query: "segmented", read: "all" },
-        },
-      });
-
-      cy.log(
-        "**-- 2. Create question based on steps in [#13641](https://github.com/metabase/metabase/issues/13641)--**",
-      );
-      cy.request("POST", "/api/card", {
-        name: QUESTION_NAME,
-        dataset_query: {
-          database: 1,
-          query: {
-            aggregation: [["count"]],
-            breakout: [
-              [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.CATEGORY],
-              ],
-            ],
-            "source-table": ORDERS_ID,
+        cy.request("POST", "/api/mt/gtap", {
+          attribute_remappings: {
+            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
           },
-          type: "query",
-        },
-        display: "bar",
-        visualization_settings: {},
+          card_id: null,
+          group_id: COLLECTION_GROUP,
+          table_id: ORDERS_ID,
+        });
+
+        updatePermissionsGraph({
+          schema: {
+            [PRODUCTS_ID]: "all",
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
+        });
+
+        cy.log(
+          "**-- 2. Create question based on steps in [#13641](https://github.com/metabase/metabase/issues/13641)--**",
+        );
+        cy.request("POST", "/api/card", {
+          name: QUESTION_NAME,
+          dataset_query: {
+            database: 1,
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "fk->",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["field-id", PRODUCTS.CATEGORY],
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+          display: "bar",
+          visualization_settings: {},
+        });
+
+        signOut();
+        signInAsSandboxedUser();
+
+        cy.server();
+        cy.route("POST", "/api/card/*/query").as("cardQuery");
+        cy.route("POST", "/api/dataset").as("dataset");
+
+        // Find saved question in "Our analytics"
+        cy.visit("/collection/root");
+        cy.findByText(QUESTION_NAME).click();
+
+        cy.wait("@cardQuery");
+        // Drill-through
+        cy.get(".Visualization").within(() => {
+          // Click on the first bar in a graph (Category: "Doohickey")
+          cy.get(".bar")
+            .eq(0)
+            .click({ force: true });
+        });
+        cy.findByText("View these Orders").click();
+
+        cy.log("**Reported failing on v1.37.0.2**");
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+        cy.findByText("Category is Doohickey");
+        cy.findByText("97.44"); // Subtotal for order #10
       });
-
-      signOut();
-      signInAsSandboxedUser();
-
-      cy.server();
-      cy.route("POST", "/api/card/*/query").as("cardQuery");
-      cy.route("POST", "/api/dataset").as("dataset");
-
-      // Find saved question in "Our analytics"
-      cy.visit("/collection/root");
-      cy.findByText(QUESTION_NAME).click();
-
-      cy.wait("@cardQuery");
-      // Drill-through
-      cy.get(".Visualization").within(() => {
-        // Click on the first bar in a graph (Category: "Doohickey")
-        cy.get(".bar")
-          .eq(0)
-          .click({ force: true });
-      });
-      cy.findByText("View these Orders").click();
-
-      cy.log("**Reported failing on v1.37.0.2**");
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
-      cy.findByText("Category is Doohickey");
-      cy.findByText("97.44"); // Subtotal for order #10
     });
 
     it("should allow drill-through for sandboxed user (metabase-enterprise#535)", () => {
