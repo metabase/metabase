@@ -659,6 +659,12 @@ describe("scenarios > visualizations > pivot tables", () => {
       });
     });
   });
+
+  it("should open the download popover (metabase#14750)", () => {
+    createAndVisitTestQuestion();
+    cy.get(".Icon-download").click();
+    popover().within(() => cy.findByText("Download full results"));
+  });
 });
 
 const testQuery = {
