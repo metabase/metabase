@@ -304,19 +304,21 @@
   (->honeysql driver (hx/identifier :field *table-alias* field-name)))
 
 (defmethod ->honeysql [:sql :joined-field]
-  [driver [_ alias [_ field-id, :as field-id-clause]]]
+  [driver [_ alias field-clause]]
   (let [join-is-at-current-level?  (some #(= (:alias %) alias) (:joins *query*))]
     ;; suppose we have a `joined-field` clause like `[:joined-field "Products" [:field-id 1]]`
     ;; where Field `1` is `"EAN"`
-    (if join-is-at-current-level?
-      ;; if `:joined-field` is referring to a join at the current level, we need to generate SQL like
+    (if (or join-is-at-current-level?
+            (not (mbql.u/match-one field-clause :field-id)))
+      ;; if `:joined-field` wrapping a `field-id` is referring to a join at the current level, or is a `field-literal`
+      ;; form, we need to generate SQL like
       ;;
       ;; ```
       ;; SELECT Products.EAN as Products__EAN
       ;; ```
       (binding [*table-alias*   alias
                 *joined-field?* true]
-        (->honeysql driver field-id-clause))
+        (->honeysql driver field-clause))
       ;; if `:joined-field` is referring to a join in a nested source query (i.e., not the current level), we need to
       ;; generate SQL like
       ;;
@@ -324,7 +326,12 @@
       ;; SELECT source.Products__EAN as Products__EAN
       ;; ```
       (binding [*joined-field?* false]
-        (->honeysql driver (hx/identifier :field *table-alias* (unambiguous-field-alias driver field-id)))))))
+        (->honeysql driver (hx/identifier
+                            :field
+                            *table-alias*
+                            (mbql.u/match-one field-clause
+                              [:field-id field-id]
+                              (unambiguous-field-alias driver field-id))))))))
 
 (defmethod ->honeysql [:sql :datetime-field]
   [driver [_ field unit]]
