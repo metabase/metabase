@@ -1010,6 +1010,30 @@ describeWithToken("formatting > sandboxes", () => {
       cy.get(".Modal").scrollTo("bottom");
       cy.findByText(ERROR_MESSAGE);
     });
+
+    it.skip("should be able to use summarize columns from joined table based on a saved question (metabase#14766)", () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      createJoinedQuestion("14766_joined");
+
+      cy.visit("/question/new");
+      cy.findByText("Custom question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("14766_joined").click();
+      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText(/Products? → ID/).click();
+      cy.findByText("Visualize").click();
+
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+
+      // Number of products with ID = 1 (and ID = 19)
+      cy.findAllByText("93");
+    });
   });
 });
 
