@@ -245,8 +245,10 @@
                 :source-metadata (concat
                                   (let [[lat-col] (venues-source-metadata :latitude)]
                                     [(assoc lat-col :field_ref (mt/$ids venues
-                                                                 [:binning-strategy $latitude
-                                                                  :bin-width nil
+                                                                 [:binning-strategy
+                                                                  $latitude
+                                                                  :bin-width
+                                                                  5.0
                                                                   {:min-value 10.0
                                                                    :max-value 45.0
                                                                    :num-bins  7

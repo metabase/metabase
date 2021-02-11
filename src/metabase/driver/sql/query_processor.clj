@@ -295,10 +295,9 @@
   (let [join-is-at-current-level?  (some #(= (:alias %) alias) (:joins *query*))]
     ;; suppose we have a `joined-field` clause like `[:joined-field "Products" [:field-id 1]]`
     ;; where Field `1` is `"EAN"`
-    (if (or join-is-at-current-level?
-            (not (mbql.u/match-one wrapped-field-clause :field-id)))
-      ;; if `:joined-field` wrapping a `field-id` is referring to a join at the current level, or is a `field-literal`
-      ;; form, we need to generate SQL like
+    (if join-is-at-current-level?
+      ;; if `:joined-field` wrapping a `field-id` is referring to a join at the current level, we need to generate SQL
+      ;; like
       ;;
       ;; ```
       ;; SELECT Products.EAN as Products__EAN
@@ -316,7 +315,12 @@
         (->honeysql driver (hx/identifier
                             :field
                             *table-alias*
-                            (unambiguous-field-alias driver joined-field-clause)))))))
+                            (mbql.u/match-one wrapped-field-clause
+                              [:field-literal field-name _]
+                              field-name
+
+                              _
+                              (unambiguous-field-alias driver joined-field-clause))))))))
 
 (defmethod ->honeysql [:sql :datetime-field]
   [driver [_ field unit]]

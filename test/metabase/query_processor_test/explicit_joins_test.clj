@@ -491,3 +491,29 @@
                              :condition    [:= $id &attempts_joined.id]
                              :fields       [&attempts_joined.datetime_tz]
                              :source-table $$attempts}]}))))))))
+
+(deftest expressions-referencing-joined-aggregation-expressions-test
+  (testing (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)
+    (testing "Should be able to use expressions against columns that come from aggregation expressions in joins"
+      (is (= [[1 "Red Medicine"          4  10.065 -165.374 3 1.5  4 3 2 1]
+              [2 "Stout Burgers & Beers" 11 34.1   -118.329 2 2.0 11 2 1 1]
+              [3 "The Apple Pan"         11 34.041 -118.428 2 2.0 11 2 1 1]]
+             (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
+               (mt/run-mbql-query venues
+                 {:fields      [$id
+                                $name
+                                $category_ID
+                                $latitude
+                                $longitude
+                                $price
+                                [:expression "RelativePrice"]]
+                  :expressions {:RelativePrice [:/ $price &CategoriesStats.*AvgPrice/Integer]},
+                  :joins       [{:condition    [:= $category_id &CategoriesStats.venues.category_id]
+                                 :source-query {:source-table $$venues
+                                                :aggregation  [[:aggregation-options [:max $price] {:name "MaxPrice"}]
+                                                               [:aggregation-options [:avg $price] {:name "AvgPrice"}]
+                                                               [:aggregation-options [:min $price] {:name "MinPrice"}]],
+                                                :breakout     [$category_id]}
+                                 :alias        "CategoriesStats"
+                                 :fields       :all}]
+                  :limit       3})))))))

@@ -13,7 +13,7 @@
 
 ;; see docstring for `process-query-debug` for descriptions of what these do.
 
-(def ^:private ^:dynamic *print-full?*     false)
+(def ^:private ^:dynamic *print-full?*     true)
 (def ^:private ^:dynamic *print-metadata?* false)
 (def ^:private ^:dynamic *print-names?*    true)
 (def ^:private ^:dynamic *validate-query?* false)
@@ -181,7 +181,7 @@
     breaking it. (TODO -- `mbql-to-native` middleware currently leaves the old mbql `:query` in place,
     which cases query to fail at that point -- manually comment that behavior out if needed"
   [query & {:keys [print-full? print-metadata? print-names? validate-query? context]
-            :or   {print-full? false, print-metadata? false, print-names? true, validate-query? false}}]
+            :or   {print-full? true, print-metadata? false, print-names? true, validate-query? false}}]
   (binding [*print-full?*               print-full?
             *print-metadata?*           print-metadata?
             *print-names?*              print-names?
