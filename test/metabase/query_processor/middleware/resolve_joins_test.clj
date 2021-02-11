@@ -8,13 +8,8 @@
             [metabase.test :as mt]))
 
 (defn- resolve-joins [{{:keys [source-table]} :query, :as query}]
-  (if-not (qp.store/initialized?)
-    (qp.store/with-store
-      (resolve-joins query))
-    (do
-      (qp.test-util/store-referenced-database! query)
-      (qp.store/fetch-and-store-tables! [source-table])
-      (#'resolve-joins/resolve-joins* query))))
+  (mt/with-everything-store
+    (#'resolve-joins/resolve-joins* query)))
 
 (deftest no-op-test
   (testing "Does the middleware function if the query has no joins?"
