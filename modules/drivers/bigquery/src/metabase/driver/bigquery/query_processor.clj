@@ -14,7 +14,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.setting :as setting]
             [metabase.models.table :as table]
-            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -511,7 +511,7 @@
       ((partial apply h/group) (for [breakout breakouts
                                      :let     [alias (or (sql.qp/field-clause->alias driver breakout)
                                                          (throw (ex-info (tru "Error compiling SQL: breakout does not have an alias")
-                                                                         {:type     qp.error-type/qp
+                                                                         {:type     error-type/qp
                                                                           :breakout breakout
                                                                           :query    query})))]]
                                  alias))
