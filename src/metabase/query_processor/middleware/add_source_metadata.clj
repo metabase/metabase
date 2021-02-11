@@ -52,7 +52,9 @@
                    ((requiring-resolve 'metabase.query-processor/query->expected-cols)
                     {:database (:id (qp.store/database))
                      :type     :query
-                     :query    source-query}))]
+                     ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
+                     ;; to end up adding it again when the middleware runs at the top level
+                     :query    (assoc-in source-query [:middleware :disable-remaps? true])}))]
         (for [col cols]
           (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings :source_alias :field_ref])))
       (catch Throwable e
