@@ -80,7 +80,7 @@
          (hformat/quote-identifier component, :split false)))))
   PrettyPrintable
   (pretty [_]
-    (cons 'identifier (cons identifier-type components))))
+    (cons 'hx/identifier (cons identifier-type components))))
 
 ;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
 (alter-meta! #'->Identifier    assoc :private true)
