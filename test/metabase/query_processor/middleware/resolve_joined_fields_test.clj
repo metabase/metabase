@@ -193,3 +193,24 @@
                         :row_count (s/eq 10)
                         s/Keyword  s/Any}
                        (qp/process-query query))))))))
+
+(deftest handle-unwrapped-joined-fields-correctly-test
+  (mt/dataset sample-dataset
+    (testing "References to joined fields in a join in a source query should be resolved correctly #(14766)"
+      (is (= (mt/mbql-query orders
+               {:source-query {:source-table $$orders
+                               :joins        [{:source-table $$products
+                                               :condition    [:= $product_id &Products.products.id]
+                                               :alias        "Products"}]}
+                :aggregation  [[:count]]
+                :breakout     [&Products.products.id]
+                :limit        5})
+             (wrap-joined-fields
+              (mt/mbql-query orders
+                {:source-query {:source-table $$orders
+                                :joins        [{:source-table $$products
+                                                :condition    [:= $product_id &Products.products.id]
+                                                :alias        "Products"}]}
+                 :aggregation  [[:count]]
+                 :breakout     [$products.id]
+                 :limit        5})))))))

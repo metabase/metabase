@@ -868,3 +868,34 @@
                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
                         "2017-12-31T14:41:56.87Z"]
                        (mt/first-row result)))))))))))
+
+(deftest handle-unwrapped-joined-fields-correctly-test
+  (mt/dataset sample-dataset
+    (testing "References to joined fields should be handled correctly (#14766)"
+      ;; using `$products.id` should give you the same results as properly referring to it with `&Products.products.id`
+      (let [expected-result (mt/run-mbql-query orders
+                              {:source-query {:source-table $$orders
+                                              :joins        [{:fields       :all
+                                                              :source-table $$products
+                                                              :condition    [:= $product_id &Products.products.id]
+                                                              :alias        "Products"}]}
+                               :aggregation  [[:count]]
+                               :breakout     [$products.id]
+                               :limit        5})
+            actual-result   (mt/run-mbql-query orders
+                              {:source-query {:source-table $$orders
+                                              :joins        [{:fields       :all
+                                                              :source-table $$products
+                                                              :condition    [:= $product_id &Products.products.id]
+                                                              :alias        "Products"}]}
+                               :aggregation  [[:count]]
+                               :breakout     [&Products.products.id]
+                               :limit        5})]
+        (is (schema= {:status   (s/eq :completed)
+                      s/Keyword s/Any}
+                     expected-result))
+        (is (schema= {:status   (s/eq :completed)
+                      s/Keyword s/Any}
+                     actual-result))
+        (is (= (mt/rows expected-result)
+               (mt/rows actual-result)))))))

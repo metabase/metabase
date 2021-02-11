@@ -6,17 +6,30 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]))
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
-(defn- wrap-field-in-joined-field
-  [{table-id :table_id, field-id :id, :as field} joins]
+(def ^:private InnerQueryOrJoin
+  (s/constrained su/Map (some-fn :source-table :source-query)))
+
+(s/defn ^:private wrap-field-in-joined-field
+  [{table-id :table_id, field-id :id, :as field} {:keys [joins source-query]} :- InnerQueryOrJoin]
   (let [candidate-tables (filter (fn [join]
                                    (when-let [source-table-id (mbql.u/join->source-table-id join)]
                                      (= source-table-id table-id)))
                                  joins)]
     (case (count candidate-tables)
-      1 [:joined-field (-> candidate-tables first :alias) [:field-id field-id]]
-      0 [:field-id field-id]
+      1
+      [:joined-field (-> candidate-tables first :alias) [:field-id field-id]]
+
+      ;; if there are no candidates, try looking for one in the source query if we have a source query. Otherwise we
+      ;; can't do anything, so return field as-is
+      0
+      (if (empty? source-query)
+        [:field-id field-id]
+        (recur field source-query))
+
       ;; if there are multiple candidates, try ignoring the implicit ones
       ;; presence of `:fk-field-id` indicates that the join was implicit, as the result of an `fk->` form
       (let [explicit-joins (remove :fk-field-id joins)]
@@ -30,9 +43,9 @@
                              :joins      joins
                              :candidates candidate-tables}))))))))
 
-(defn- wrap-fields-in-joined-field-if-needed*
+(s/defn ^:private wrap-fields-in-joined-field-if-needed*
   "Wrap Field clauses in a form that has `:joins`."
-  [{:keys [source-table source-query joins] :as form}]
+  [{:keys [source-table source-query joins], :as form} :- InnerQueryOrJoin]
   ;; don't replace stuff in child `:join` or `:source-query` forms -- remove these from `form` when we call `replace`
   (let [form (mbql.u/replace (dissoc form :joins :source-query)
                ;; don't wrap a `:joined-field`.
@@ -44,7 +57,7 @@
                (let [field (qp.store/field field-id)]
                  (if (= (:table_id field) source-table)
                    [:field-id field-id]
-                   (wrap-field-in-joined-field field joins))))
+                   (wrap-field-in-joined-field field form))))
         ;; add :joins and :source-query back which we removed above.
         form (cond-> form
                (seq joins)  (assoc :joins joins)
@@ -58,7 +71,7 @@
   [form]
   ;; look for any form that has `:joins`, then wrap stuff as needed
   (mbql.u/replace form
-    (m :guard (every-pred map? :joins))
+    (m :guard (every-pred map? (some-fn :source-table :source-query)))
     (cond-> m
       ;; recursively wrap stuff in nested joins or source queries in the form
       (:source-query m)
