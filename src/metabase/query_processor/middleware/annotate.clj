@@ -546,7 +546,7 @@
   ;; merge in `:cols` if returned by the driver, then make sure the `:name` of each map in `:cols` is unique, since
   ;; the FE uses it as a key for stuff like column settings
   (deduplicate-cols-names
-   (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
+   (merge-cols-returned-by-driver (map (partial into {}) (column-info query result)) cols-returned-by-driver)))
 
 (defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.
@@ -569,8 +569,9 @@
                                                           (assoc col :base_type base-type)))
                             base-types)]
        (rf (cond-> result
-             (map? result) (assoc-in [:data :cols] (merged-column-info query
-                                                                       (assoc metadata :rows truncated-rows)))))))))
+             (map? result) (assoc-in [:data :cols] (merged-column-info
+                                                    query
+                                                    (assoc metadata :rows truncated-rows)))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
