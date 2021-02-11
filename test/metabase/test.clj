@@ -123,6 +123,7 @@
   first-row
   format-rows-by
   formatted-rows
+  nest-query
   normal-drivers
   normal-drivers-except
   normal-drivers-with-feature
@@ -246,7 +247,7 @@
 
     * `:result`   ­ final result
     * `:pre`      ­ `query` after preprocessing
-    * `:metadata` ­ `metadata` after post-processing
+    * `:metadata` ­ `metadata` after post-processing. Should be a map e.g. with `:cols`
     * `:post`     ­ `rows` after post-processing transduction"
   ([middleware-fn]
    (test-qp-middleware middleware-fn {}))
@@ -261,6 +262,7 @@
    (test-qp-middleware middleware-fn query metadata rows nil))
 
   ([middleware-fn query metadata rows {:keys [run async?], :as context}]
+   {:pre [((some-fn nil? map?) metadata)]}
    (let [async-qp (qp.reducible/async-qp
                    (qp.reducible/combine-middleware
                     (if (sequential? middleware-fn)
