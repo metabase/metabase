@@ -88,10 +88,10 @@
 
 (deftest order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
-    (mt/with-temp Dimension [_ {:field_id                (data/id :venues :category_id)
+    (mt/with-temp Dimension [_ {:field_id                (mt/id :venues :category_id)
                                 :name                    "Category ID"
                                 :type                    :external
-                                :human_readable_field_id (data/id :categories :name)}]
+                                :human_readable_field_id (mt/id :categories :name)}]
       (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"
                                             "Steakhouse" "Steakhouse" "Southern"]
                                      :asc  ["American" "American" "American" "American" "American" "American" "American"
@@ -206,7 +206,7 @@
 (deftest binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (mt/suppress-output
-      (mt/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
+      (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
         (is (= {:status :failed
                 :class  clojure.lang.ExceptionInfo
                 :error  "Unable to bin Field without a min/max value"}

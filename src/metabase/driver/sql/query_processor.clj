@@ -262,8 +262,9 @@
 (s/defn ^:private unambiguous-field-alias :- su/NonBlankString
   [driver field-clause :- (s/pred #(mbql.u/match-one % :field-id)
                                   "field-id clause or something wrapping one")]
-  (let [col-info (annotate/col-info-for-field-clause *query* field-clause)
-        alias    (field->alias driver (qp.store/field (:id col-info)))
+  (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
+        alias    (field->alias driver (qp.store/field field-id))
+        col-info (when *query* (annotate/col-info-for-field-clause *query* field-clause))
         prefix   (:source_alias col-info)]
     (if (and prefix alias
              (not= prefix *table-alias*)
@@ -523,7 +524,7 @@
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn field-clause->alias
+(s/defn field-clause->alias :- (s/cond-pre su/NonBlankString Identifier)
   "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a Field clause of any type, or `nil` if
   the Field should not be aliased (e.g. if `field->alias` returns `nil`).
 
@@ -533,12 +534,10 @@
    (field-clause->alias driver field-clause identity))
 
   ([driver field-clause unique-name-fn]
-   (when-let [alias (mbql.u/match-one field-clause
-                      [:expression expression-name] expression-name
-                      [:field-literal field-name _] field-name
-                      _
-                      (when (mbql.u/match-one &match :field-id)
-                        (unambiguous-field-alias driver &match)))]
+   (when-let [alias (or (mbql.u/match-one field-clause
+                          [:expression expression-name] expression-name
+                          [:field-literal field-name _] field-name)
+                        (unambiguous-field-alias driver field-clause))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
 (defn as
