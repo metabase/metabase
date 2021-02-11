@@ -945,7 +945,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText(ERROR_MESSAGE);
     });
 
-    it.skip("should be able to use summarize columns from joined table based on a saved question (metabase#14766)", () => {
+    it("should be able to use summarize columns from joined table based on a saved question (metabase#14766)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
