@@ -12,6 +12,7 @@
             [metabase.models :refer [Database Setting]]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
+            [metabase.util.encryption :as encrypt]
             [metabase.util.encryption-test :as eu]
             [toucan.db :as db]))
 
@@ -45,6 +46,7 @@
   (eu/with-secret-key nil
     (let [h2-fixture-db-file (abs-path "frontend/test/__runner__/test_db_fixture.db")
           db-name (str "test_" (str/lower-case (mt/random-name)))
+          original-timestamp  "2021-02-11 18:38:56.042236+00"
           [k1 k2 k3] ["89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
                       "yHa/6VEQuIItMyd5CNcgV9nXvzZcX6bWmiY0oOh6pLU="
                       "BCQbKNVu6N8TQ2BwyTC0U0oCBqsvFVr2uhEM/tRgJUM="]]
@@ -58,6 +60,7 @@
              (tx/create-db! driver/*driver* {:database-name db-name}))
            (load-from-h2/load-from-h2! h2-fixture-db-file)
            (db/insert! Setting {:key "setting0", :value "val0"})
+           (db/insert! Setting {:key "settings-last-updated", :value original-timestamp})
            (eu/with-secret-key k1
              (db/insert! Setting {:key "setting1", :value "val1"})
              (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"}))
@@ -71,6 +74,10 @@
                ;; oldkey->newkey
                (is (not (= "val1" (raw-value "setting1"))))
                (is (= "val1" (db/select-one-field :value Setting :key "setting1")))))
+
+           (testing "settings-last-updated is updated AND plaintext"
+             (is (not (= original-timestamp (raw-value "settings-last-updated"))))
+             (is (not (encrypt/possibly-encrypted-string? (raw-value "settings-last-updated")))))
 
            (testing "rotating with a new key is recoverable"
              (eu/with-secret-key k1 (rotate-encryption-key! k2))
