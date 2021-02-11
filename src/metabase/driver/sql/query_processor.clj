@@ -913,8 +913,7 @@
                                          (mbql.u/match #{:field-literal :field-id :joined-field :expression})
                                          distinct)))]
     (-> query
-        (mbql.u/replace [:joined-field _ field]       field
-                        [:expression expression-name] [:field-literal expression-name
+        (mbql.u/replace [:expression expression-name] [:field-literal expression-name
                                                        (->> &match
                                                             (annotate/col-info-for-field-clause query)
                                                             :base_type)])

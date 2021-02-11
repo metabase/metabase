@@ -243,7 +243,7 @@
 
 (defn- pretty-sql [s]
   (-> s
-      (str/replace #"\"" "")
+      (str/replace #"\"([\w\d_]+)\"" "$1")
       (str/replace #"PUBLIC\." "")))
 
 (deftest joined-field-clauses-test
@@ -323,3 +323,80 @@
                                   &Products.products.title]}))
                    :query
                    pretty-sql)))))))
+
+(deftest multiple-joins-with-expressions-test
+  (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
+    (mt/dataset sample-dataset
+      (mt/with-driver :h2
+        (mt/with-everything-store
+          (is (= (str "SELECT source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY,"
+                      " source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE,"
+                      " parsedatetime(year(source.CREATED_AT), 'yyyy') AS CREATED_AT,"
+                      " source.\"pivot-grouping\" AS \"pivot-grouping\", count(*) AS count "
+                      "FROM ("
+                      "SELECT PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY,"
+                      " PEOPLE__via__USER_ID.SOURCE AS PEOPLE__via__USER_ID__SOURCE,"
+                      " ORDERS.CREATED_AT AS CREATED_AT, abs(0) AS \"pivot-grouping\","
+                      " ORDERS.PRODUCT_ID AS PRODUCT_ID,"
+                      " PRODUCTS__via__PRODUCT_ID.ID AS PRODUCTS__via__PRODUCT_ID__ID,"
+                      " ORDERS.USER_ID AS USER_ID, PEOPLE__via__USER_ID.ID AS PEOPLE__via__USER_ID__ID "
+                      "FROM ORDERS"
+                      " LEFT JOIN PRODUCTS PRODUCTS__via__PRODUCT_ID"
+                      " ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID "
+                      "LEFT JOIN PEOPLE PEOPLE__via__USER_ID"
+                      " ON ORDERS.USER_ID = PEOPLE__via__USER_ID.ID"
+                      ") source "
+                      "WHERE ((source.PEOPLE__via__USER_ID__SOURCE = ? OR source.PEOPLE__via__USER_ID__SOURCE = ?)"
+                      " AND (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?"
+                      " OR source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?)"
+                      " AND parsedatetime(year(source.CREATED_AT), 'yyyy')"
+                      " BETWEEN parsedatetime(year(dateadd('year', CAST(-2 AS long), now())), 'yyyy')"
+                      " AND parsedatetime(year(dateadd('year', CAST(-1 AS long), now())), 'yyyy')) "
+                      "GROUP BY source.PRODUCTS__via__PRODUCT_ID__CATEGORY,"
+                      " source.PEOPLE__via__USER_ID__SOURCE,"
+                      " parsedatetime(year(source.CREATED_AT), 'yyyy'),"
+                      " source.\"pivot-grouping\" "
+                      "ORDER BY source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC,"
+                      " source.PEOPLE__via__USER_ID__SOURCE ASC,"
+                      " parsedatetime(year(source.CREATED_AT), 'yyyy') ASC,"
+                      " source.\"pivot-grouping\" ASC")
+                 (->> (mt/mbql-query orders
+                        {:aggregation [[:aggregation-options [:count] {:name "count"}]]
+                         :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
+                                       &PEOPLE__via__USER_ID.people.source
+                                       !year.created_at
+                                       [:expression "pivot-grouping"]]
+                         :filter      [:and
+                                       [:or
+                                        [:=
+                                         &PEOPLE__via__USER_ID.people.source
+                                         [:value "Facebook" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR", :name "SOURCE"}]]
+                                        [:=
+                                         &PEOPLE__via__USER_ID.people.source
+                                         [:value "Google" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR", :name "SOURCE"}]]]
+                                       [:or
+                                        [:=
+                                         &PRODUCTS__via__PRODUCT_ID.products.category
+                                         [:value "Doohickey" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]
+                                        [:=
+                                         &PRODUCTS__via__PRODUCT_ID.products.category
+                                         [:value "Gizmo" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]]
+                                       [:between !year.created_at [:relative-datetime -2 :year] [:relative-datetime -1 :year]]]
+                         :expressions {:pivot-grouping [:abs 0]}
+                         :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
+                                       [:asc &PEOPLE__via__USER_ID.people.source]
+                                       [:asc !year.created_at]
+                                       [:asc [:expression "pivot-grouping"]]]
+                         :joins       [{:source-table $$products
+                                        :strategy     :left-join
+                                        :alias        "PRODUCTS__via__PRODUCT_ID"
+                                        :fk-field-id  %product_id
+                                        :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}
+                                       {:source-table $$people
+                                        :strategy     :left-join
+                                        :alias        "PEOPLE__via__USER_ID",
+                                        :fk-field-id  %user_id
+                                        :condition    [:= $user_id &PEOPLE__via__USER_ID.people.id]}]})
+                      (sql.qp/mbql->native :h2)
+                      :query
+                      pretty-sql))))))))

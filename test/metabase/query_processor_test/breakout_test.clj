@@ -182,7 +182,7 @@
         ;; base_type can differ slightly between drivers and it's really not important for the purposes of this test
         (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
                       :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
-                      :field_ref    [:binning-strategy (data/$ids venues $latitude) :bin-width nil
+                      :field_ref    [:binning-strategy (data/$ids venues $latitude) :bin-width 10.0
                                      {:min-value 10.0, :max-value 50.0, :num-bins 4, :bin-width 10.0}])
                (-> (mt/run-mbql-query venues
                      {:aggregation [[:count]]
@@ -219,8 +219,8 @@
 (defn- nested-venues-query [card-or-card-id]
   {:database mbql.s/saved-questions-virtual-database-id
    :type     :query
-   :query    {:source-table (str "card__" (u/get-id card-or-card-id))
-              :aggregation  [:count]
+   :query    {:source-table (str "card__" (u/the-id card-or-card-id))
+              :aggregation  [[:count]]
               :breakout     [[:binning-strategy [:field-literal (mt/format-name :latitude) :type/Float] :num-bins 20]]}})
 
 (deftest bin-nested-queries-test
@@ -231,8 +231,7 @@
                                   {:source-query {:source-table $$venues}}))]
         (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
                (mt/formatted-rows [1.0 int]
-                 (qp/process-query
-                  (nested-venues-query card)))))))
+                 (qp/process-query (nested-venues-query card)))))))
 
     (testing "should be able to use :default binning in a nested query"
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]

@@ -3,6 +3,7 @@
             [clojure.pprint :as pprint]
             [clojure.walk :as walk]
             [medley.core :as m]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Field Table]]
             [metabase.query-processor :as qp]
@@ -10,16 +11,12 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
-(def ^:private ^:dynamic *print-full?*
-  "Whether to print the full query/metadata/result/row after each transformation."
-  false)
+;; see docstring for `process-query-debug` for descriptions of what these do.
 
-(def ^:private ^:dynamic *print-metadata?*
-  "With to print metadata about the fields in the query/results."
-  false)
-
-(def ^:private ^:dynamic *print-names?*
-  false)
+(def ^:private ^:dynamic *print-full?*     false)
+(def ^:private ^:dynamic *print-metadata?* false)
+(def ^:private ^:dynamic *print-names?*    true)
+(def ^:private ^:dynamic *validate-query?* false)
 
 (defn- remove-metadata
   "Replace field metadata in `x` with `...`."
@@ -72,6 +69,15 @@
           (when-not (= query-before query-after)
             (println (format "[pre] %s transformed query:" middleware-var))
             (print-diff query-before query-after))
+          (when *validate-query?*
+            (try
+              (mbql.s/validate-query query-after)
+              (catch Throwable e
+                (throw (ex-info (format "%s middleware produced invalid query" middleware-var)
+                                {:middleware middleware-var
+                                 :before     query-before
+                                 :query      query-after}
+                                e)))))
           (next-middleware query-after rff context)))
        query-before rff context))))
 
@@ -165,14 +171,21 @@
   Options:
 
   * `:print-full?` -- whether to print the entire query/result/etc. after each transformation
+
   * `:print-metadata?` -- whether to print metadata columns such as `:cols`or `:source-metadata`
     in the query/results
-  * `:print-names?` -- whether to print comments with the names of fields as part of `:field-id` forms"
-  [query & {:keys [print-full? print-metadata? print-names?]
-            :or   {print-full? false, print-metadata? false, print-names? true}}]
+
+  * `:print-names?` -- whether to print comments with the names of fields as part of `:field-id` forms
+
+  * `:validate-query?` -- whether to validate the query after each preprocessing step, so you can figure out who's
+    breaking it. (TODO -- `mbql-to-native` middleware currently leaves the old mbql `:query` in place,
+    which cases query to fail at that point -- manually comment that behavior out if needed"
+  [query & {:keys [print-full? print-metadata? print-names? validate-query? context]
+            :or   {print-full? false, print-metadata? false, print-names? true, validate-query? false}}]
   (binding [*print-full?*               print-full?
             *print-metadata?*           print-metadata?
             *print-names?*              print-names?
+            *validate-query?*           validate-query?
             pprint/*print-right-margin* 80]
     (let [middleware (for [middleware-var qp/default-middleware
                            :when          middleware-var]
@@ -182,4 +195,6 @@
                             (debug-result-changes middleware-var)
                             (debug-row-changes middleware-var)))
           qp         (qp.reducible/sync-qp (#'qp/base-qp middleware))]
-      (qp query))))
+      (if context
+        (qp query context)
+        (qp query)))))
