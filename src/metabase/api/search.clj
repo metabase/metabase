@@ -310,12 +310,13 @@
           results      (db/query search-query :max-rows search-config/search-max-results)]
       (scoring/sort-results
        (:search-string search-ctx)
-       (for [row results
-             :when (check-permissions-for-model row)]
+       (sequence
+        (comp
+         (filter check-permissions-for-model)
          ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-         (-> row
-             (update :favorite bit->boolean)
-             (update :archived bit->boolean)))))))
+         (map #(update % :favorite bit->boolean))
+         (map #(update % :archived bit->boolean)))
+        results)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
