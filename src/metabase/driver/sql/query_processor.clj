@@ -65,22 +65,10 @@
 (defmulti ->honeysql
   "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
   making this easy to override in any places needed for a given driver."
-  {:arglists '([driver x]), :style/indent 1}
+  {:arglists '([driver x])}
   (fn [driver x]
     [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
   :hierarchy #'driver/hierarchy)
-
-(defmulti ^{:deprecated "0.34.2"} current-datetime-fn
-  "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`.
-
-  DEPRECATED: `current-datetime-fn` is a misnomer, since the result can actually be any valid HoneySQL form.
-  `current-datetime-honeysql-form` replaces this method; implement and call that method instead. This method will be
-  removed in favor of `current-datetime-honeysql-form` at some point in the future."
-  {:arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod current-datetime-fn :sql [_] :%now)
 
 (defmulti current-datetime-honeysql-form
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`."
@@ -90,7 +78,7 @@
 
 (defmethod current-datetime-honeysql-form :sql
   [driver]
-  (current-datetime-fn driver))
+  :%now)
 
 ;; TODO - rename this to `date-bucket` or something that better describes what it actually does
 (defmulti date
@@ -109,7 +97,6 @@
   ;; Some DBs truncate when doing integer division, therefore force float arithmetics
   (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
 
-
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
 
@@ -119,9 +106,6 @@
   {:arglists '([driver hsql-form amount unit])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
-
-(defmethod add-interval-honeysql-form :sql [driver hsql-form amount unit]
-  (driver/date-add driver hsql-form amount unit))
 
 (defn adjust-start-of-week
   "Truncate to the day the week starts on."
