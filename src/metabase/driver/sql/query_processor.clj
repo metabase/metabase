@@ -287,7 +287,7 @@
   identifier)
 
 (def ^:dynamic ^:private *joined-field?*
-  "Are we inside a joined field?"
+  "Are we inside a joined field whose join is at the current level of the query?"
   false)
 
 (defn- unambiguous-field-alias
@@ -320,26 +320,27 @@
   (->honeysql driver (hx/identifier :field *table-alias* field-name)))
 
 (defmethod ->honeysql [:sql :joined-field]
-  [driver [_ alias field]]
-  (binding [*table-alias*   alias
-            *joined-field?* true]
-    (->honeysql driver field)))
-
-;; (p.types/defrecord+ AtTimezone [expr timezone-id]
-;;   PrettyPrintable
-;;   (pretty [_]
-;;     (list 'at-timezone expr timezone-id))
-
-;;   hformat/ToSql
-;;   (to-sql [_]
-;;     (format "(%s at time zone '%s')" (hformat/to-sql expr) timezone-id)))
-
-;; (defn at-timezone
-;;   ([expr]
-;;    (at-timezone expr (qp.timezone/results-timezone-id)))
-
-;;   ([expr timezone-id]
-;;    (AtTimezone. expr timezone-id)))
+  [driver [_ alias [_ field-id, :as field-id-clause]]]
+  (let [join-is-at-current-level?  (some #(= (:alias %) alias) (:joins *query*))]
+    ;; suppose we have a `joined-field` clause like `[:joined-field "Products" [:field-id 1]]`
+    ;; where Field `1` is `"EAN"`
+    (if join-is-at-current-level?
+      ;; if `:joined-field` is referring to a join at the current level, we need to generate SQL like
+      ;;
+      ;; ```
+      ;; SELECT Products.EAN as Products__EAN
+      ;; ```
+      (binding [*table-alias*   alias
+                *joined-field?* true]
+        (->honeysql driver field-id-clause))
+      ;; if `:joined-field` is referring to a join in a nested source query (i.e., not the current level), we need to
+      ;; generate SQL like
+      ;;
+      ;; ```
+      ;; SELECT source.Products__EAN as Products__EAN
+      ;; ```
+      (binding [*joined-field?* false]
+        (->honeysql driver (hx/identifier :field *table-alias* (unambiguous-field-alias driver field-id)))))))
 
 (defmethod ->honeysql [:sql :datetime-field]
   [driver [_ field unit]]
@@ -750,7 +751,7 @@
    (s/one (s/pred sequential?) "join condition")])
 
 (s/defmethod join->honeysql :sql :- HoneySQLJoin
-  [driver, {:keys [condition alias], :as join} :- mbql.s/Join]
+  [driver {:keys [condition alias], :as join} :- mbql.s/Join]
   [[(join-source driver join)
     (->honeysql driver (hx/identifier :table-alias alias))]
    (->honeysql driver condition)])
@@ -834,7 +835,6 @@
 
 (defn format-honeysql
   "Convert `honeysql-form` to a vector of SQL string and params, like you'd pass to JDBC."
-  {:style/indent 1}
   [driver honeysql-form]
   (try
     (binding [hformat/*subquery?* false]
@@ -970,7 +970,6 @@
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
-  {:style/indent 1}
   [driver {inner-query :query, database :database, :as outer-query}]
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]

@@ -239,3 +239,43 @@
                 :joins       [{:source-table $$users
                                :alias        "u"
                                :condition    [:= $user_id &u.users.id]}]}))))))
+
+(deftest joined-field-clauses-test
+  (mt/with-everything-store
+    (driver/with-driver :h2
+      (testing "Should correctly compile `:joined-field` clauses"
+        (testing "when the join is at the same level"
+          (is (= (str "SELECT \"c\".\"NAME\" AS \"c__NAME\" "
+                      "FROM \"PUBLIC\".\"VENUES\" "
+                      "LEFT JOIN \"PUBLIC\".\"CATEGORIES\" \"c\" "
+                      "ON \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = \"c\".\"ID\"")
+                 (:query
+                  (sql.qp/mbql->native
+                   :h2
+                   (mt/mbql-query venues
+                     {:fields [[:joined-field "c" $categories.name]]
+                      :joins  [{:fields       [[:joined-field "c" $categories.name]]
+                                :source-table $$categories
+                                :strategy     :left-join
+                                :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                                :alias        "c"}]}))))))
+        (testing "when the join is NOT at the same level"
+          (is (= (str "SELECT \"source\".\"c__NAME\" AS \"c__NAME\" "
+                      "FROM ("
+                      "SELECT \"c\".\"NAME\" AS \"c__NAME\" "
+                      "FROM \"PUBLIC\".\"VENUES\" "
+                      "LEFT JOIN \"PUBLIC\".\"CATEGORIES\" \"c\" "
+                      "ON \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = \"c\".\"ID\""
+                      ") \"source\"")
+                 (:query
+                  (sql.qp/mbql->native
+                   :h2
+                   (mt/mbql-query venues
+                     {:fields       [[:joined-field "c" $categories.name]]
+                      :source-query {:source-table $$venues
+                                     :fields       [[:joined-field "c" $categories.name]]
+                                     :joins        [{:fields       [[:joined-field "c" $categories.name]]
+                                                     :source-table $$categories
+                                                     :strategy     :left-join
+                                                     :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                                                     :alias        "c"}]}}))))))))))
