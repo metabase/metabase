@@ -5,7 +5,7 @@ import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
-import { color, alpha } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import { getScrollBarSize } from "metabase/lib/dom";
 
 import Ellipsified from "metabase/components/Ellipsified";
@@ -25,8 +25,8 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import { findDOMNode } from "react-dom";
 
-const PIVOT_BG_LIGHT = alpha(color("brand"), 0.03);
-const PIVOT_BG_DARK = alpha(color("brand"), 0.1);
+const PIVOT_BG_LIGHT = lighten(color("brand"), 0.65);
+const PIVOT_BG_DARK = lighten(color("brand"), 0.6);
 
 const partitions = [
   {
@@ -559,7 +559,7 @@ function RowToggleIcon({
   return (
     <div
       className={cx(
-        "flex align-center cursor-pointer bg-brand-hover text-light text-white-hover",
+        "flex align-center cursor-pointer text-brand-hover text-light",
       )}
       style={{
         padding: "4px",
