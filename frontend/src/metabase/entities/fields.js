@@ -82,7 +82,7 @@ const Fields = createEntity({
     }),
 
     // Docstring from m.api.field:
-    // Update the human-readable values for a `Field` whose special type is
+    // Update the human-readable values for a `Field` whose semantic type is
     // `category`/`city`/`state`/`country` or whose base type is `type/Boolean`."
     updateFieldValues: createThunkAction(
       UPDATE_FIELD_VALUES,

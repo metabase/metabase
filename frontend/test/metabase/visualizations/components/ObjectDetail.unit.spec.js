@@ -38,7 +38,7 @@ const invalidObjectDetailCard = {
 
 describe("ObjectDetail", () => {
   describe("json field rendering", () => {
-    it("should properly display JSON special type data as JSON", () => {
+    it("should properly display JSON semantic type data as JSON", () => {
       render(
         <ObjectDetail
           data={objectDetailCard.data}

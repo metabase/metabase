@@ -526,13 +526,13 @@ describe("Dimension", () => {
           return aggregation(["sum", ["field-id", column.id]]);
         }
 
-        it("should clear unaggregated special types", () => {
+        it("should clear unaggregated semantic types", () => {
           const { semantic_type } = sumOf(ORDERS.PRODUCT_ID).column();
 
           expect(semantic_type).toBe(undefined);
         });
 
-        it("should retain aggregated special types", () => {
+        it("should retain aggregated semantic types", () => {
           const { semantic_type } = sumOf(ORDERS.TOTAL).column();
 
           expect(semantic_type).toBe("type/Currency");

@@ -36,7 +36,7 @@
           [
            ;; First make sure Tables, Fields, and FK information is up-to-date
            [sync-metadata/sync-db-metadata! "metadata"]
-           ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types accordingly
+           ;; Next, run the 'analysis' step where we do things like scan values of fields and update semantic types accordingly
            [analyze/analyze-db! "analyze"]
            ;; Finally, update cached FieldValues
            [field-values/update-field-values! "field-values"]])))

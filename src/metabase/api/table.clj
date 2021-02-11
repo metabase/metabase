@@ -277,7 +277,7 @@
           (assoc
            :table_id     (str "card__" card-id)
            :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-           ;; Assoc semantic_type at least temprorarily. We need the correct special type in place to make decisions
+           ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
            ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
            ;; the dimension options
            :semantic_type (keyword (:semantic_type col)))
@@ -305,7 +305,7 @@
                                                                            (:result_metadata card))))))
 
 (defn- remove-nested-pk-fk-semantic-types
-  "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a special
+  "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
   type confuses the frontend and it can really used in the same way"
   [{:keys [fields] :as metadata-response}]
   (assoc metadata-response :fields (for [{:keys [semantic_type] :as field} fields]

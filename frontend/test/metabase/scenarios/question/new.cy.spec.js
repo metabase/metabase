@@ -114,7 +114,7 @@ describe("scenarios > question > new", () => {
     });
 
     it.skip("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
-      // set ID to `No special type`
+      // set ID to `No semantic type`
       cy.request("PUT", `/api/field/${ORDERS.ID}`, {
         semantic_type: null,
       });
@@ -270,7 +270,7 @@ describe("scenarios > question > new", () => {
       cy.log(
         "**The point of failure for ANY non-numeric value reported in v0.36.4**",
       );
-      // the default type for "Reviewer" is "No special type"
+      // the default type for "Reviewer" is "No semantic type"
       cy.findByText("Fields")
         .parent()
         .contains("Reviewer");

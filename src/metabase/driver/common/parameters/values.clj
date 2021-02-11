@@ -237,8 +237,8 @@
 
 (s/defn ^:private parse-value-for-field-type :- s/Any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
-  to parse it as appropriate based on the base type and special type of the Field associated with it). These are
-  special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
+  to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
+  semantic cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
   UUID fields."
   [base-type :- su/FieldType semantic-type :- (s/maybe su/FieldType) value]
   (cond
@@ -253,8 +253,8 @@
     value))
 
 (s/defn ^:private update-filter-for-field-type :- ParsedParamValue
-  "Update a Field Filter with a textual, or sequence of textual, values. The base type and special type of the field
-  are used to determine what 'special' type interpretation is required (e.g. for UUID fields)."
+  "Update a Field Filter with a textual, or sequence of textual, values. The base type and semantic type of the field
+  are used to determine what 'semantic' type interpretation is required (e.g. for UUID fields)."
   [{{base-type :base_type, semantic-type :semantic_type} :field, {value :value} :value, :as field-filter} :- FieldFilter]
   (let [new-value (cond
                     (string? value)
@@ -273,7 +273,7 @@
   "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
   created, `value` here might be a raw value or a map including information about the Field it references as well as a
   value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
-  additionally attempt handle special cases based on the base type of the Field, for example, parsing params for UUID
+  additionally attempt handle semantic cases based on the base type of the Field, for example, parsing params for UUID
   base type Fields as UUIDs."
   [param-type :- ParamType value]
   (cond
@@ -295,7 +295,7 @@
    (i/map->MultipleValues {:values (for [v value]
                                      (parse-value-for-type param-type v))})
 
-   ;; Field Filters with "special" base types
+   ;; Field Filters with "semantic" base types
    (and (= param-type :dimension)
         (get-in value [:field :base_type]))
    (update-filter-for-field-type value)

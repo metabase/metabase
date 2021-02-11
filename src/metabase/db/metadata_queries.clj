@@ -90,7 +90,7 @@
 
 (def max-sample-rows
   "The maximum number of values we should return when using `table-rows-sample`. This many is probably fine for
-  inferring special types and what-not; we don't want to scan millions of values at any rate."
+  inferring semantic types and what-not; we don't want to scan millions of values at any rate."
   10000)
 
 (def TableRowsSampleOptions

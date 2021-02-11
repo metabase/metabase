@@ -3,15 +3,15 @@
   type. Each 'classifier' takes the information available to it and decides whether or not to run. We currently have
   the following classifiers:
 
-  1.  `name`: Looks at the name of a Field and infers a special type if possible
+  1.  `name`: Looks at the name of a Field and infers a semantic type if possible
   2.  `no-preview-display`: Looks at average length of text Field recorded in fingerprint and decides whether or not we
       should hide this Field
   3.  `category`: Looks at the number of distinct values of Field and determines whether it can be a Category
-  4.  `text-fingerprint`: Looks at percentages recorded in a text Fields' TextFingerprint and infers a special type if
+  4.  `text-fingerprint`: Looks at percentages recorded in a text Fields' TextFingerprint and infers a semantic type if
       possible
 
   All classifier functions take two arguments, a `FieldInstance` and a possibly `nil` `Fingerprint`, and should return
-  the Field with any appropriate changes (such as a new special type). If no changes are appropriate, a classifier may
+  the Field with any appropriate changes (such as a new semantic type). If no changes are appropriate, a classifier may
   return nil. Error handling is handled by `run-classifiers` below, so individual classiers do not need to handle
   errors themselves.
 
@@ -106,7 +106,7 @@
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private fields-to-classify :- (s/maybe [i/FieldInstance])
-  "Return a sequences of Fields belonging to `table` for which we should attempt to determine special type. This
+  "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
   (seq (db/select Field
@@ -116,7 +116,7 @@
 
 (s/defn classify-fields!
   "Run various classifiers on the appropriate FIELDS in a TABLE that have not been previously analyzed. These do things
-  like inferring (and setting) the special types and preview display status for Fields belonging to TABLE."
+  like inferring (and setting) the semantic types and preview display status for Fields belonging to TABLE."
   [table :- i/TableInstance]
   (when-let [fields (fields-to-classify table)]
     {:fields-classified (count fields)

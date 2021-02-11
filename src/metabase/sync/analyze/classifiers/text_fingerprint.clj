@@ -1,6 +1,6 @@
 (ns metabase.sync.analyze.classifiers.text-fingerprint
-  "Logic for inferring the special types of *Text* fields based on their TextFingerprints.
-   These tests only run against Fields that *don't* have existing special types."
+  "Logic for inferring the semantic types of *Text* fields based on their TextFingerprints.
+   These tests only run against Fields that *don't* have existing semantic types."
   (:require [clojure.tools.logging :as log]
             [metabase.sync.interface :as i]
             [metabase.sync.util :as sync-util]
@@ -9,12 +9,12 @@
 
 (def ^:private ^:const ^Double percent-valid-threshold
   "Fields that have at least this percent of values that are satisfy some predicate (such as `u/email?`)
-   should be given the corresponding special type (such as `:type/Email`)."
+   should be given the corresponding semantic type (such as `:type/Email`)."
   0.95)
 
 (def ^:private ^Double lower-percent-valid-threshold
   "Fields that have at least this lower percent of values that satisfy some predicate (such as `u/state?`) should be
-  given the corresponding special type (such as `:type/State`)"
+  given the corresponding semantic type (such as `:type/State`)"
   0.7)
 
 (s/defn ^:private percent-key-above-threshold? :- s/Bool
@@ -25,7 +25,7 @@
      (>= percent threshold))))
 
 (def ^:private percent-key->semantic-type
-  "Map of keys inside the `TextFingerprint` to the corresponding special types we should mark a Field as if the value of
+  "Map of keys inside the `TextFingerprint` to the corresponding semantic types we should mark a Field as if the value of
   the key is over `percent-valid-thresold`."
   {:percent-json  [:type/SerializedJSON percent-valid-threshold]
    :percent-url   [:type/URL            percent-valid-threshold]

@@ -1,5 +1,5 @@
 (ns metabase.sync.analyze.classifiers.name
-  "Classifier that infers the special type of a Field based on its name and base type."
+  "Classifier that infers the semantic type of a Field based on its name and base type."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]

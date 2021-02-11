@@ -42,7 +42,7 @@
           :type/*)))
 
 (defn- calculated-semantic-type
-  "Get an appropriate special type for a column with `column-name` of type `database-type`."
+  "Get an appropriate semantic type for a column with `column-name` of type `database-type`."
   [driver ^String column-name ^String database-type]
   (when-let [semantic-type (i/column->semantic-type driver database-type column-name)]
     (assert (isa? semantic-type :type/*)

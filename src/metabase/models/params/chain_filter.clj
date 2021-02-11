@@ -9,8 +9,8 @@
 
   1. Human-readable values remapping where you go assign string values to things like enum integers
 
-  2. Implicit PK Field-> [Name] Field remapping. This happens automatically for any Field with `:type/PK` special type
-  that has another Field with `:type/Name` special type in the same Table. e.g. `venue.id` is automatically
+  2. Implicit PK Field-> [Name] Field remapping. This happens automatically for any Field with `:type/PK` semantic type
+  that has another Field with `:type/Name` semantic type in the same Table. e.g. `venue.id` is automatically
   remapped (displayed) as `venue.name`.
 
   3. Explicit FK Field->Field remapping. FK Fields can be manually remapped to a Field in the Table they point to.

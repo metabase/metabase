@@ -229,7 +229,7 @@ describe("formatting", () => {
         ),
       ).toEqual(true);
     });
-    it("should not add mailto prefix if there's a different special type", () => {
+    it("should not add mailto prefix if there's a different semantic type", () => {
       expect(
         formatValue("foobar@example.com", {
           jsx: true,
