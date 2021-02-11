@@ -307,15 +307,18 @@
                                          :when (seq query)]
                                      query)}
           _            (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          results      (db/query search-query :max-rows search-config/search-max-results)]
-      (scoring/sort-results
-       (:search-string search-ctx)
-       (for [row results
-             :when (check-permissions-for-model row)]
-         ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-         (-> row
-             (update :favorite bit->boolean)
-             (update :archived bit->boolean)))))))
+          results      (db/reducible-query search-query :max-rows search-config/db-max-results)
+          xf           (comp
+                        (filter check-permissions-for-model)
+                        ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
+                        (map #(update % :favorite bit->boolean))
+                        (map #(update % :archived bit->boolean))
+                        (map (partial scoring/score-and-result (:search-string search-ctx)))
+                        (filter some?))]
+      (->> results
+           (transduce xf scoring/accumulate-top-results)
+           ;; Pluck out the result; discard the score
+           (map second)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -2,7 +2,8 @@
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [metabase.search.config :as search-config]
-            [schema.core :as s]))
+            [schema.core :as s])
+    (:import java.util.PriorityQueue))
 
 ;;; Utility functions
 
@@ -110,19 +111,41 @@
                 (tokenize (normalize query-string))
                 result)))
 
-(defn sort-results
-  "Sorts the given results based on internal scoring. Returns them in order, with `:matched_column` and
-  `matched_text` injected in"
-  [query-string results]
-  (let [scores-and-results (for [result results
-                                 :let [{:keys [score column match] :as hit} (score-with-match query-string result)]
-                                 :when hit]
-                             [[(- score)
-                               (model->sort-position (:model result))
-                               (:name result)]
-                              (assoc result
-                                     :matched_column column
-                                     :matched_text match)])]
-    (->> scores-and-results
-         (sort-by first)
-         (map second))))
+(defn- compare-score-and-result
+  "Compare [score result] pairs. Must return -1, 0, or 1. The score is assumed to be a vector, and will be compared in
+  order."
+  [[score-1 _result-1] [score-2 _result-2]]
+  (compare score-1 score-2))
+
+(defn accumulate-top-results
+  "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) sent to it"
+  ([] (PriorityQueue. search-config/max-filtered-results compare-score-and-result))
+  ([^PriorityQueue q]
+   (loop [acc []]
+     (if-let [x (.poll q)]
+       (recur (conj acc x))
+       acc)))
+  ([^PriorityQueue q item]
+   (if (>= (.size q) search-config/max-filtered-results)
+     (let [smallest (.peek q)]
+       (if (pos? (compare-score-and-result item smallest))
+         (doto q
+           (.poll)
+           (.offer item))
+         q))
+     (doto q
+       (.offer item)))))
+
+(defn score-and-result
+  "Returns a pair of [score, result] or nil. The score is a vector of comparable things in priority order. The result
+  has `:matched_column` and `matched_text` injected in"
+  [query-string result]
+  (println query-string)
+  (let [{:keys [score column match] :as hit} (score-with-match query-string result)]
+    (and hit
+         [[(- score)
+           (model->sort-position (:model result))
+           (:name result)]
+          (assoc result
+                 :matched_column column
+                 :matched_text match)])))

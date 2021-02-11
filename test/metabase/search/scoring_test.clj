@@ -1,5 +1,6 @@
 (ns metabase.search.scoring-test
   (:require [clojure.test :refer :all]
+            [metabase.search.config :as search-config]
             [metabase.search.scoring :as search]))
 
 (defn- result-row
@@ -101,3 +102,14 @@
     (is (= 1
            (score ["rasta" "the" "toucan"]
                   (result-row "Rasta the toucan"))))))
+
+(deftest accumulate-top-results-test
+  (let [xf (map identity)]
+    (testing "a non-full queue behaves normally"
+      (let [items (map (fn [i] [[2 2 i] (str "item " i)]) (range 10))]
+        (is (= items
+               (transduce xf search/accumulate-top-results items)))))
+    (testing "a full queue only saves the top items"
+      (let [sorted-items (map (fn [i] [[1 2 3 i] (str "item " i)]) (range (+ 10 search-config/max-filtered-results)))]
+        (is (= (drop 10 sorted-items)
+               (transduce xf search/accumulate-top-results (shuffle sorted-items))))))))

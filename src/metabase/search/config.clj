@@ -4,11 +4,15 @@
             [honeysql.core :as hsql]
             [metabase.models :refer [Card Collection Dashboard Metric Pulse Segment Table]]))
 
-(def ^:const search-max-results
-  "Absolute maximum number of search results to return. This number is in place to prevent massive application DB load
-  by returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
+(def ^:const db-max-results
+  "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
+  returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
   that results are truncated."
   1000)
+
+(def ^:const max-filtered-results
+  "Number of results to return in an API response"
+  50)
 
 (def searchable-models
   "Models that can be searched. The order of this list also influences the order of the results."
