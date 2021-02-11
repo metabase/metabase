@@ -50,10 +50,16 @@
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
   (distinct
-   (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
-     (if field-id
-       [:field-id field-id]
-       [:field-literal field-name base-type]))))
+   (for [{field-name :name, base-type :base_type, field-id :id, field-ref :field_ref} source-metadata]
+     (or
+      ;; If field-ref is a `:joined-field`, or wraps one, return the `:joined-field` -- we need this information for
+      ;; later.
+      (mbql.u/match-one field-ref :joined-field &match)
+      (if field-id
+        ;; otherwise return a `field-id` clause if we have a Field ID to make it with.
+        [:field-id field-id]
+        ;; otherwise return a `field-literal` clause, e.g. for an aggregation.
+        [:field-literal field-name base-type])))))
 
 (s/defn ^:private should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:

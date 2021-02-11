@@ -118,3 +118,36 @@
                     (:query (mt/mbql-query checkins
                               {:source-query    source-query
                                :source-metadata source-metadata}))))))))
+
+(deftest joined-field-test
+  (testing "When adding implicit `:fields` clauses, should use `joined-field` clauses for joined fields (#14745)"
+    (doseq [field-ref (mt/$ids
+                        [[:joined-field "c" $categories.name]
+                         [:datetime-field [:joined-field "c" $categories.name] :default]])]
+      (testing (format "field ref = %s" (pr-str field-ref))
+        (let [query (mt/mbql-query venues
+                      {:source-query    {:source-table $$venues
+                                         :fields       [$id [:joined-field "c" $categories.name]]
+                                         :joins        [{:fields       [[:joined-field "c" $categories.name]]
+                                                         :source-table $$categories
+                                                         :strategy     :left-join
+                                                         :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                                                         :alias        "c"}]}
+                       :source-metadata [{:table_id     $$venues
+                                          :special_type :type/PK
+                                          :name         "ID"
+                                          :field_ref    $id
+                                          :id           %id
+                                          :display_name "ID"
+                                          :base_type    :type/BigInteger}
+                                         {:table_id     $$categories
+                                          :special_type :type/Name
+                                          :name         "NAME"
+                                          :field_ref    field-ref
+                                          :id           %categories.name
+                                          :display_name "c → Name"
+                                          :base_type    :type/Text
+                                          :source_alias "c"}]})]
+          (is (= (mt/$ids [$venues.id [:joined-field "c" $categories.name]])
+                 (get-in (mt/test-qp-middleware add-implicit-clauses/add-implicit-clauses query)
+                         [:pre :query :fields]))))))))

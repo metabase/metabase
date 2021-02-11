@@ -92,12 +92,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private join-with-alias :- (s/maybe mbql.s/Join)
-  [{:keys [joins]} :- su/Map, join-alias :- su/NonBlankString]
-  (some
-   (fn [{:keys [alias], :as join}]
-     (when (= alias join-alias)
-       join))
-   joins))
+  [{:keys [joins source-query]} :- su/Map, join-alias :- su/NonBlankString]
+  (or (some
+       (fn [{:keys [alias], :as join}]
+         (when (= alias join-alias)
+           join))
+       joins)
+      (when source-query
+        (join-with-alias source-query join-alias))))
 
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
