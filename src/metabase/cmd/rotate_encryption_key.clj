@@ -4,6 +4,7 @@
             [metabase.db :as mdb]
             [metabase.db.connection :as mdb.conn]
             [metabase.models :refer [Database Setting]]
+            [metabase.models.setting.cache :as cache]
             [metabase.util.encryption :as encrypt]
             [toucan.db :as db]))
 
@@ -19,10 +20,12 @@
       (doseq [[key value] (db/select-field->field :key :value Setting)]
         (when (encrypt/possibly-encrypted-string? value)
           (throw (Exception. "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt files")))
-        (jdbc/update! t-conn
-                      :setting
-                      {:value (encrypt-fn value)}
-                      ["setting.key = ?" key]))
+        (if (= key "settings-last-updated")
+          (cache/update-settings-last-updated!)
+          (jdbc/update! t-conn
+                        :setting
+                        {:value (encrypt-fn value)}
+                        ["setting.key = ?" key])))
       (doseq [[id details] (db/select-id->field :details Database)]
         (jdbc/update! t-conn
                       :metabase_database
