@@ -1,5 +1,6 @@
 (ns metabase.driver.sql.query-processor-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -240,42 +241,85 @@
                                :alias        "u"
                                :condition    [:= $user_id &u.users.id]}]}))))))
 
+(defn- pretty-sql [s]
+  (-> s
+      (str/replace #"\"" "")
+      (str/replace #"PUBLIC\." "")))
+
 (deftest joined-field-clauses-test
   (mt/with-everything-store
     (driver/with-driver :h2
       (testing "Should correctly compile `:joined-field` clauses"
         (testing "when the join is at the same level"
-          (is (= (str "SELECT \"c\".\"NAME\" AS \"c__NAME\" "
-                      "FROM \"PUBLIC\".\"VENUES\" "
-                      "LEFT JOIN \"PUBLIC\".\"CATEGORIES\" \"c\" "
-                      "ON \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = \"c\".\"ID\"")
-                 (:query
-                  (sql.qp/mbql->native
-                   :h2
-                   (mt/mbql-query venues
-                     {:fields [[:joined-field "c" $categories.name]]
-                      :joins  [{:fields       [[:joined-field "c" $categories.name]]
-                                :source-table $$categories
-                                :strategy     :left-join
-                                :condition    [:= $category_id [:joined-field "c" $categories.id]]
-                                :alias        "c"}]}))))))
+          (is (= "SELECT c.NAME AS c__NAME FROM VENUES LEFT JOIN CATEGORIES c ON VENUES.CATEGORY_ID = c.ID"
+                 (pretty-sql
+                  (:query
+                   (sql.qp/mbql->native
+                    :h2
+                    (mt/mbql-query venues
+                      {:fields [[:joined-field "c" $categories.name]]
+                       :joins  [{:fields       [[:joined-field "c" $categories.name]]
+                                 :source-table $$categories
+                                 :strategy     :left-join
+                                 :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                                 :alias        "c"}]})))))))
         (testing "when the join is NOT at the same level"
-          (is (= (str "SELECT \"source\".\"c__NAME\" AS \"c__NAME\" "
+          (is (= (str "SELECT source.c__NAME AS c__NAME "
                       "FROM ("
-                      "SELECT \"c\".\"NAME\" AS \"c__NAME\" "
-                      "FROM \"PUBLIC\".\"VENUES\" "
-                      "LEFT JOIN \"PUBLIC\".\"CATEGORIES\" \"c\" "
-                      "ON \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = \"c\".\"ID\""
-                      ") \"source\"")
-                 (:query
-                  (sql.qp/mbql->native
-                   :h2
-                   (mt/mbql-query venues
-                     {:fields       [[:joined-field "c" $categories.name]]
-                      :source-query {:source-table $$venues
-                                     :fields       [[:joined-field "c" $categories.name]]
-                                     :joins        [{:fields       [[:joined-field "c" $categories.name]]
-                                                     :source-table $$categories
-                                                     :strategy     :left-join
-                                                     :condition    [:= $category_id [:joined-field "c" $categories.id]]
-                                                     :alias        "c"}]}}))))))))))
+                      "SELECT c.NAME AS c__NAME "
+                      "FROM VENUES"
+                      " LEFT JOIN CATEGORIES c"
+                      " ON VENUES.CATEGORY_ID = c.ID"
+                      ") source")
+                 (pretty-sql
+                  (:query
+                   (sql.qp/mbql->native
+                    :h2
+                    (mt/mbql-query venues
+                      {:fields       [[:joined-field "c" $categories.name]]
+                       :source-query {:source-table $$venues
+                                      :fields       [[:joined-field "c" $categories.name]]
+                                      :joins        [{:fields       [[:joined-field "c" $categories.name]]
+                                                      :source-table $$categories
+                                                      :strategy     :left-join
+                                                      :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                                                      :alias        "c"}]}})))))))))))
+
+(deftest ambiguous-field-metadata-test
+  (testing "With queries that refer to the same field more than once, can we generate sane SQL?"
+    (mt/dataset sample-dataset
+      (is (= (str "SELECT"
+                  " ORDERS.ID AS ID,"
+                  " ORDERS.PRODUCT_ID AS PRODUCT_ID,"
+                  " PRODUCTS__via__PRODUCT_ID.TITLE AS PRODUCTS__via__PRODUCT_ID__TITLE,"
+                  " Products.ID AS Products__ID,"
+                  " Products.TITLE AS Products__TITLE "
+                  "FROM ORDERS "
+                  "LEFT JOIN PRODUCTS Products"
+                  " ON ORDERS.PRODUCT_ID = Products.ID"
+                  " LEFT JOIN PRODUCTS PRODUCTS__via__PRODUCT_ID"
+                  " ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID "
+                  "ORDER BY ORDERS.ID ASC "
+                  "LIMIT 2")
+             (mt/with-everything-store
+               (-> (sql.qp/mbql->native
+                    :h2
+                    (mt/mbql-query orders
+                      {:joins    [{:strategy     :left-join
+                                   :source-table $$products
+                                   :condition    [:= $product_id &Products.products.id]
+                                   :alias        "Products"}
+                                  {:strategy     :left-join
+                                   :source-table $$products
+                                   :alias        "PRODUCTS__via__PRODUCT_ID"
+                                   :fk-field-id  %product_id
+                                   :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
+                       :order-by [[:asc $id]]
+                       :limit    2
+                       :fields   [$id
+                                  $product_id
+                                  &PRODUCTS__via__PRODUCT_ID.products.title
+                                  &Products.products.id
+                                  &Products.products.title]}))
+                   :query
+                   pretty-sql)))))))

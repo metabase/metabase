@@ -20,6 +20,7 @@
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
@@ -27,10 +28,8 @@
            metabase.util.honeysql_extensions.Identifier))
 
 ;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
-(def ^:dynamic *query*
-  "The outer query currently being processed.
-  (This is only used to power `[:aggregation <index>]` and expression references, because they need to be able to find
-  the corresponding clauses outside of where they're being processed.)"
+(def ^:dynamic ^:private *query*
+  "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
 (def ^:dynamic *nested-query-level*
@@ -167,15 +166,6 @@
 
 (defmethod quote-style :sql [_] :ansi)
 
-(defmulti ^{:deprecated "0.35.0"} unix-timestamp->timestamp
-  "DEPRECATED -- use `unix-timestamp->honeysql` instead.
-
-  This has been deprecated because the name isn't entirely clear or accurate. `unix-timestamp->honeysql` is a better
-  explanation of the purpose of this method. For the time being, `unix-timestamp->honeysql` will fall back to
-  implementations of `unix-timestamp->timestamp`; this will be removed in a future release."
-  {:arglists '([driver seconds-or-milliseconds expr]), :deprecated "0.35.0"}
-  (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds]))
-
 (defmulti unix-timestamp->honeysql
   "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL Timestamp.
   `seconds-or-milliseconds` refers to the resolution of the int in question and with be either `:seconds` or
@@ -203,11 +193,6 @@
 (defmethod unix-timestamp->honeysql [:sql :microseconds]
   [driver _ expr]
   (unix-timestamp->honeysql driver :seconds (hx// expr 1000000)))
-
-(defmethod unix-timestamp->honeysql :default
-  [driver seconds-or-milliseconds expr]
-  (unix-timestamp->timestamp driver seconds-or-milliseconds expr))
-
 
 (defmulti apply-top-level-clause
   "Implementations of this methods define how the SQL Query Processor handles various top-level MBQL clauses. Each
@@ -274,10 +259,12 @@
   "Are we inside a joined field whose join is at the current level of the query?"
   false)
 
-(defn- unambiguous-field-alias
-  [driver field-id]
-  (let [alias  (field->alias driver (qp.store/field field-id))
-        prefix (-> *query* :field-metadata (get field-id) :source_alias)]
+(s/defn ^:private unambiguous-field-alias :- su/NonBlankString
+  [driver field-clause :- (s/pred #(mbql.u/match-one % :field-id)
+                                  "field-id clause or something wrapping one")]
+  (let [col-info (annotate/col-info-for-field-clause *query* field-clause)
+        alias    (field->alias driver (qp.store/field (:id col-info)))
+        prefix   (:source_alias col-info)]
     (if (and prefix alias
              (not= prefix *table-alias*)
              (not *joined-field?*))
@@ -288,7 +275,7 @@
   [driver {field-name :name, table-id :table_id, :as field}]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
   (->> (if *table-alias*
-         [*table-alias* (unambiguous-field-alias driver (:id field))]
+         [*table-alias* (unambiguous-field-alias driver [:field-id (:id field)])]
          (let [{schema :schema, table-name :name} (qp.store/table table-id)]
            [schema table-name field-name]))
        (apply hx/identifier :field)
@@ -304,12 +291,12 @@
   (->honeysql driver (hx/identifier :field *table-alias* field-name)))
 
 (defmethod ->honeysql [:sql :joined-field]
-  [driver [_ alias field-clause]]
+  [driver [_ alias wrapped-field-clause :as joined-field-clause]]
   (let [join-is-at-current-level?  (some #(= (:alias %) alias) (:joins *query*))]
     ;; suppose we have a `joined-field` clause like `[:joined-field "Products" [:field-id 1]]`
     ;; where Field `1` is `"EAN"`
     (if (or join-is-at-current-level?
-            (not (mbql.u/match-one field-clause :field-id)))
+            (not (mbql.u/match-one wrapped-field-clause :field-id)))
       ;; if `:joined-field` wrapping a `field-id` is referring to a join at the current level, or is a `field-literal`
       ;; form, we need to generate SQL like
       ;;
@@ -318,7 +305,7 @@
       ;; ```
       (binding [*table-alias*   alias
                 *joined-field?* true]
-        (->honeysql driver field-clause))
+        (->honeysql driver wrapped-field-clause))
       ;; if `:joined-field` is referring to a join in a nested source query (i.e., not the current level), we need to
       ;; generate SQL like
       ;;
@@ -329,9 +316,7 @@
         (->honeysql driver (hx/identifier
                             :field
                             *table-alias*
-                            (mbql.u/match-one field-clause
-                              [:field-id field-id]
-                              (unambiguous-field-alias driver field-id))))))))
+                            (unambiguous-field-alias driver joined-field-clause)))))))
 
 (defmethod ->honeysql [:sql :datetime-field]
   [driver [_ field unit]]
@@ -545,9 +530,11 @@
 
   ([driver field-clause unique-name-fn]
    (when-let [alias (mbql.u/match-one field-clause
-                      [:expression expression-name]              expression-name
-                      [:field-literal field-name _]              field-name
-                      [:field-id field-id]                       (unambiguous-field-alias driver field-id))]
+                      [:expression expression-name] expression-name
+                      [:field-literal field-name _] field-name
+                      _
+                      (when (mbql.u/match-one &match :field-id)
+                        (unambiguous-field-alias driver &match)))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
 (defn as
@@ -908,23 +895,14 @@
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
-  [driver honeysql-form {:keys [source-query source-metadata native], :as inner-query}]
-  (let [field-metadata (when-not native
-                         (letfn [(col-info [inner-query]
-                                   (->> (mbql.u/match inner-query #{:field-id :joined-field})
-                                        (map (partial annotate/col-info-for-field-clause inner-query))
-                                        (u/key-by :id)))]
-                           ;; prefer metadata that comes from the source query over stuff at the top level. This makes
-                           ;; sure we refer to it correctly e.g. `:joined-field` instead of `:field` etc.
-                           (merge (col-info (dissoc inner-query :source-query))
-                                  (col-info (select-keys inner-query [:source-query])))))]
-    (binding [*query* (assoc inner-query :field-metadata field-metadata)]
-      (if source-query
-        (apply-clauses-with-aliased-source-query-table
-         driver
-         (apply-source-query driver honeysql-form inner-query)
-         inner-query)
-        (apply-top-level-clauses driver honeysql-form inner-query)))))
+  [driver honeysql-form {:keys [source-query], :as inner-query}]
+  (binding [*query* inner-query]
+    (if source-query
+      (apply-clauses-with-aliased-source-query-table
+       driver
+       (apply-source-query driver honeysql-form inner-query)
+       inner-query)
+      (apply-top-level-clauses driver honeysql-form inner-query))))
 
 (defn- expressions->subselect
   [query]

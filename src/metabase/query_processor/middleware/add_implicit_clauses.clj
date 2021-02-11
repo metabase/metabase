@@ -53,9 +53,9 @@
   (distinct
    (for [{field-name :name, base-type :base_type, field-id :id, field-ref :field_ref} source-metadata]
      (or
-      ;; If field-ref is a `:joined-field`, or wraps one, return the `:joined-field` -- we need this information for
-      ;; later.
-      (mbql.u/match-one field-ref :joined-field &match)
+      ;; If field ref is something that includes information needed to be able to refer to the Field, return that
+      ;; directly.
+      (mbql.u/match-one field-ref #{:joined-field :fk->} &match)
       (if field-id
         ;; otherwise return a `field-id` clause if we have a Field ID to make it with.
         [:field-id field-id]

@@ -726,9 +726,9 @@
                    :field_ref    $name
                    :base_type    :type/Text}
                   {:name         (mt/format-name "name_2")
-                   :display_name "Name"
+                   :display_name "c → Name"
                    :id           %categories.name
-                   :field_ref    $categories.name
+                   :field_ref    &c.categories.name
                    :base_type    :type/Text}
                   {:name         "count"
                    :display_name "Count"
@@ -769,7 +769,7 @@
                          (mt/run-mbql-query orders
                            {:source-table (str "card__" card-id), :limit 2, :order-by [[:asc $id]]}))))))))))))
 
-(deftest nested-query-with-joins-test
+(deftest nested-query-with-joins-test-2
   (testing "Should be able to use a query that contains joins as a source query (#14724)"
     (mt/dataset sample-dataset
       (letfn [(do-test [f]
@@ -795,7 +795,7 @@
           (do-test
            (fn [results]
              (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
-                     14 "8833419218504" "Widget" "McClure-Lockman" 25.1                                ; <- Remapped col not repeated
+                     14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
                      4.0 "2017-12-31T14:41:56.87Z"]
                     (first (mt/rows results)))))))))))
 

@@ -127,11 +127,11 @@
       (testing (format "field ref = %s" (pr-str field-ref))
         (let [query (mt/mbql-query venues
                       {:source-query    {:source-table $$venues
-                                         :fields       [$id [:joined-field "c" $categories.name]]
-                                         :joins        [{:fields       [[:joined-field "c" $categories.name]]
+                                         :fields       [$id &c.categories.name $category_id->categories.name]
+                                         :joins        [{:fields       [&c.categories.name]
                                                          :source-table $$categories
                                                          :strategy     :left-join
-                                                         :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                                                         :condition    [:= $category_id &c.categories.id]
                                                          :alias        "c"}]}
                        :source-metadata [{:table_id     $$venues
                                           :special_type :type/PK
@@ -147,7 +147,14 @@
                                           :id           %categories.name
                                           :display_name "c → Name"
                                           :base_type    :type/Text
-                                          :source_alias "c"}]})]
-          (is (= (mt/$ids [$venues.id [:joined-field "c" $categories.name]])
+                                          :source_alias "c"}
+                                         {:table_id     $$categories
+                                          :name         "NAME"
+                                          :field_ref    $category_id->categories.name
+                                          :id           %categories.name
+                                          :display_name "Category → Name"
+                                          :base_type    :type/Text
+                                          :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
+          (is (= (mt/$ids [$venues.id &c.categories.name $venues.category_id->categories.name])
                  (get-in (mt/test-qp-middleware add-implicit-clauses/add-implicit-clauses query)
                          [:pre :query :fields]))))))))
