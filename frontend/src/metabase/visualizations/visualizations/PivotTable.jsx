@@ -6,7 +6,7 @@ import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
 import { color, lighten } from "metabase/lib/colors";
-import { styles } from "metabase/visualizations/components/TableInteractive.css";
+import "metabase/visualizations/components/TableInteractive.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 
 import Ellipsified from "metabase/components/Ellipsified";
