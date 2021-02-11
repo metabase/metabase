@@ -63,9 +63,6 @@
          (when source-query
            (visible-joins source-query)))))
 
-(defn- visible-join-aliases [form]
-  (set (map :alias (visible-joins form))))
-
 (defn- replace-fk-forms
   "Replace `:fk->` forms in `form` with `:joined-field` forms using the corresponding join."
   [form]
@@ -92,7 +89,7 @@
   [{{source-query-fields :fields} :source-query, :keys [joins], :as form}]
   (if (empty? source-query-fields)
     form
-    (let [needed (set (map (comp ::needs meta) joins))]
+    (let [needed (set (filter some? (map (comp ::needs meta) joins)))]
       (update-in form [:source-query :fields] (fn [existing-fields]
                                                 (distinct
                                                  (concat existing-fields needed)))))))
