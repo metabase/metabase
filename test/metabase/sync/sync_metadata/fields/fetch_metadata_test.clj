@@ -19,58 +19,51 @@
               :database-type     "SERIAL"
               :base-type         :type/Integer
               :semantic-type     :type/PK
-              :pk?               true
-              :database-position 1}
+              :pk?               true}
              {:name              "buyer"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary
               :pk?               false
-              :database-position 2
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
-                                    :pk?               false
-                                    :database-position 2}
+                                    :pk?               false}
                                    {:name              "cc"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
-                                    :pk?               false
-                                    :database-position 2}}}
+                                    :pk?               false}}}
              {:name              "ts"
               :database-type     "BIGINT"
               :base-type         :type/BigInteger
               :semantic-type     :type/UNIXTimestampMilliseconds
-              :pk?               false
-              :database-position 0}
+              :pk?               false}
              {:name              "toucan"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary
               :pk?               false
-              :database-position 3
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
-                                    :pk?               false
-                                    :database-position 3}
+                                    :pk?               false}
                                    {:name              "details"
                                     :database-type     "OBJECT"
                                     :base-type         :type/Dictionary
                                     :pk?               false
-                                    :database-position 3
                                     :nested-fields     #{{:name              "weight"
                                                           :database-type     "DECIMAL"
                                                           :base-type         :type/Decimal
                                                           :semantic-type     :type/Category
-                                                          :pk?               false
-                                                          :database-position 3}
+                                                          :pk?               false}
                                                          {:name              "age"
                                                           :database-type     "INT"
                                                           :base-type         :type/Integer
-                                                          :pk?               false
-                                                          :database-position 3}}}}}}
+                                                          :pk?               false}}}}}}
 
            (let [transactions-table-id   (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))
                  remove-ids-and-nil-vals (partial walk/postwalk #(if-not (map? %)
                                                                    %
-                                                                   (m/filter-vals some? (dissoc % :id))))]
+                                                                   ;; database-position isn't stable since they are
+                                                                   ;; defined in sets. changing keys will change the
+                                                                   ;; order in the set implementation
+                                                                   (m/filter-vals some? (dissoc % :id :database-position))))]
              (remove-ids-and-nil-vals (#'sync-fields.fetch-metadata/our-metadata (Table transactions-table-id))))))))
