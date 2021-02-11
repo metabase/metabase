@@ -304,7 +304,7 @@
                                                                            database_id
                                                                            (:result_metadata card))))))
 
-(defn- remove-nested-pk-fk-special-types
+(defn- remove-nested-pk-fk-semantic-types
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a special
   type confuses the frontend and it can really used in the same way"
   [{:keys [fields] :as metadata-response}]
@@ -324,7 +324,7 @@
         api/read-check
         (card->virtual-table :include-fields? true)
         (assoc-dimension-options (driver.u/database->driver database_id))
-        remove-nested-pk-fk-special-types)))
+        remove-nested-pk-fk-semantic-types)))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint

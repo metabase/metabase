@@ -114,7 +114,7 @@
 ;;; |                                                NEW TYPE SYSTEM                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const old-special-type->new-type
+(def ^:private ^:const old-semantic-type->new-type
     {"avatar"                 "type/AvatarURL"
      "category"               "type/Category"
      "city"                   "type/City"
@@ -136,7 +136,7 @@
 
 ;; make sure the new types are all valid
 (when-not config/is-prod?
-  (doseq [[_ t] old-special-type->new-type]
+  (doseq [[_ t] old-semantic-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
 (def ^:private ^:const old-base-type->new-type
@@ -159,11 +159,11 @@
   (doseq [[_ t] old-base-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
-;; migrate all of the old base + special types to the new ones.  This also takes care of any types that are already
+;; migrate all of the old base + semantic types to the new ones.  This also takes care of any types that are already
 ;; correct other than the fact that they're missing :type/ in the front.  This was a bug that existed for a bit in
 ;; 0.20.0-SNAPSHOT but has since been corrected
 (defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
-  (doseq [[old-type new-type] old-special-type->new-type]
+  (doseq [[old-type new-type] old-semantic-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
     (db/update-where! 'Field {:%lower.semantic_type (str/lower-case old-type)}
       :semantic_type new-type)
@@ -237,10 +237,10 @@
     (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
 
 ;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
-;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+;; would be marked as semantic type Category if they should have FieldValues. In 29+, the Category semantic type no
 ;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
 ;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
-;; meaning of the Category special type.
+;; meaning of the Category semantic type.
 ;;
 ;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
 ;; their behavior doesn't suddenly change.

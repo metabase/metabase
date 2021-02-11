@@ -35,8 +35,8 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti column->special-type
-  "Attempt to determine the special-type of a field given the column name and native type. For example, the Postgres
+(defmulti column->semantic-type
+  "Attempt to determine the semantic-type of a field given the column name and native type. For example, the Postgres
   driver can mark Postgres JSON type columns as `:type/SerializedJSON` special type.
 
   `database-type` and `column-name` will be strings."

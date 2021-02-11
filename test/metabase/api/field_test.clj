@@ -77,7 +77,7 @@
 
 (deftest update-field-test
   (testing "PUT /api/field/:id"
-    (testing "test that we can do basic field update work, including unsetting some fields such as special-type"
+    (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
       (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
         (let [original-val (simple-field-details (Field field-id))]
           (testing "orignal value"
@@ -115,16 +115,16 @@
                       :fk_target_field_id nil}
                      (simple-field-details (Field field-id)))))))))))
 
-(deftest remove-fk-special-type-test
+(deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
-    (testing "when we set the special-type from `:type/FK` to something else, make sure `:fk_target_field_id` is set to nil"
+    (testing "when we set the semantic-type from `:type/FK` to something else, make sure `:fk_target_field_id` is set to nil"
       (mt/with-temp* [Field [{fk-field-id :id}]
                       Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id fk-field-id}]]
         (let [original-val (boolean (db/select-one-field :fk_target_field_id Field, :id field-id))]
           (testing "before API call"
             (is (= true
                    original-val)))
-          ;; unset the :type/FK special-type
+          ;; unset the :type/FK semantic-type
           ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
           (testing "after API call"
             (is (= nil
@@ -369,7 +369,7 @@
         (is (= "You don't have permissions to do that."
                ((mt/user->client :rasta) :delete 403 (format "field/%d/dimension" field-id))))))))
 
-(deftest clear-external-dimension-when-fk-special-type-is-removed-test
+(deftest clear-external-dimension-when-fk-semantic-type-is-removed-test
   (testing "PUT /api/field/:id"
     (testing "When an FK field gets it's semantic_type removed, we should clear the external dimension"
       (mt/with-temp* [Field [{field-id-1 :id} {:name          "Field Test 1"
@@ -417,8 +417,8 @@
             (is (= expected
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1))))))))))
 
-(deftest remove-fk-special-type-test
-  (testing "When removing the FK special type, the fk_target_field_id should be cleared as well"
+(deftest remove-fk-semantic-type-test
+  (testing "When removing the FK semantic type, the fk_target_field_id should be cleared as well"
     (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                     Field [{field-id-2 :id} {:name               "Field Test 2"
                                              :semantic_type      :type/FK

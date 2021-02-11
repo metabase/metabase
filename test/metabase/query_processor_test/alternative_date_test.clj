@@ -12,8 +12,8 @@
 
 (deftest semantic-type->unix-timestamp-unit-test
   (testing "every descendant of `:type/UNIXTimestamp` has a unit associated with it"
-    (doseq [special-type (descendants :type/UNIXTimestamp)]
-      (is (sql.qp/semantic-type->unix-timestamp-unit special-type))))
+    (doseq [semantic-type (descendants :type/UNIXTimestamp)]
+      (is (sql.qp/semantic-type->unix-timestamp-unit semantic-type))))
   (testing "throws if argument is not a descendant of `:type/UNIXTimestamp`"
     (is (thrown? AssertionError (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
 
@@ -22,7 +22,7 @@
                   :base-type  :type/Integer}
                  {:field-name   "timestamp"
                   :base-type    :type/BigInteger
-                  :special-type :type/UNIXTimestampMicroseconds}]
+                  :semantic-type :type/UNIXTimestampMicroseconds}]
     [[4 1433587200000000]
      [0 1433965860000000]]]])
 
@@ -138,10 +138,10 @@
                    :base-type :type/Text}
                   {:field-name "ts"
                    :base-type :type/Text
-                   :special-type :type/ISO8601DateTimeString}
+                   :semantic-type :type/ISO8601DateTimeString}
                   {:field-name "d"
                    :base-type :type/Text
-                   :special-type :type/ISO8601DateString}]
+                   :semantic-type :type/ISO8601DateString}]
     [["foo" "2004-10-19 10:23:54" "2004-10-19"]
      ["bar" "2008-10-19 10:23:54" "2008-10-19"]
      ["baz" "2012-10-19 10:23:54" "2012-10-19"]]]])
@@ -151,13 +151,13 @@
              :base-type :type/Text}
             {:field-name "ts"
              :base-type :type/Text
-             :special-type :type/ISO8601DateTimeString}
+             :semantic-type :type/ISO8601DateTimeString}
             {:field-name "d"
              :base-type :type/Text
-             :special-type :type/ISO8601DateString}
+             :semantic-type :type/ISO8601DateString}
             {:field-name "t"
              :base-type :type/Text
-             :special-type :type/ISO8601TimeString}]
+             :semantic-type :type/ISO8601TimeString}]
   [["foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
    ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
    ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])

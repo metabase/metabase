@@ -183,9 +183,9 @@
                {:field-name "category_id"
                 :base-type  :type/Integer
                 :fk         :categories}
-               {:field-name   "timestamp"
-                :base-type    :type/BigInteger
-                :special-type :type/UNIXTimestampSeconds}]
+               {:field-name    "timestamp"
+                :base-type     :type/BigInteger
+                :semantic-type :type/UNIXTimestampSeconds}]
   [[23 14 927183600]
    [65 13 978854400]
    [60 10 886752000]
