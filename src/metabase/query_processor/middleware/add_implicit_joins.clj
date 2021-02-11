@@ -152,22 +152,48 @@
 ;;; |                                               Generating :joins                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- visible-joins
+  "Find all the joins that are visible to the current level of the query -- including ones in source queries."
+  [{:keys [joins source-query]}]
+  (m/distinct-by
+   :alias
+   (concat
+    joins
+    (when source-query
+      (visible-joins source-query)))))
+
+(defn- join=-keys
+  "Select keys that are relevant for considering whether joins should be considered the same."
+  [join]
+  (select-keys join [:source-table :alias :strategy :fk-field-id :condition]))
+
+(defn- join=
+  "Should join `x` and `y` be considered equal?"
+  [x y]
+  (= (join=-keys x)
+     (join=-keys y)))
+
 (s/defn ^:private add-joins :- mbql.s/MBQLQuery
   "Add `:joins` to a `query` by converting `join-infos` to the appropriate format."
-  [{:keys [joins] :as query}, join-infos :- [JoinInfo]]
+  [{:keys [joins] :as query} join-infos :- [JoinInfo]]
   (if (seq join-infos)
-    (assoc query :joins (->> (for [{:keys [fk-id pk-id table-id alias]} join-infos]
-                               {:source-table table-id
-                                :alias        alias
-                                :fields       :none
-                                :strategy     :left-join
-                                :fk-field-id  fk-id
-                                :condition    [:=
-                                               [:field-id fk-id]
-                                               [:joined-field alias [:field-id pk-id]]]})
-                             (concat joins)
-                             (m/distinct-by #(select-keys % [:source-table :alias :strategy :fk-field-id :condition]))
-                             mbql.u/deduplicate-join-aliases))
+    (let [visible-joins (visible-joins query)
+          new-joins     (for [{:keys [fk-id pk-id table-id alias]} join-infos
+                              :let  [join {:source-table table-id
+                                           :alias        alias
+                                           :fields       :none
+                                           :strategy     :left-join
+                                           :fk-field-id  fk-id
+                                           :condition    [:=
+                                                          [:field-id fk-id]
+                                                          [:joined-field alias [:field-id pk-id]]]}]
+                              :when (not (some (partial join= join) visible-joins))]
+                          join)]
+      (cond-> query
+        (seq new-joins) (assoc :joins (->> new-joins
+                                           (concat joins)
+                                           (m/distinct-by join=-keys)
+                                           mbql.u/deduplicate-join-aliases))))
     query))
 
 
@@ -208,17 +234,17 @@
    (-> form
        (mbql.u/replace
            (query :guard (every-pred can-add-joins-here? (complement ::recursive?)))
-         (let [joins     (atom [])
-               add-join! (partial swap! joins conj)]
-           (-> (recursive-resolve query (assoc context :add-join! add-join!))
-               (add-joins @joins)))
+           (let [joins     (atom [])
+                 add-join! (partial swap! joins conj)]
+             (-> (recursive-resolve query (assoc context :add-join! add-join!))
+                 (add-joins @joins)))
 
-         ;; join with an alias
-         (join-clause :guard (every-pred join? (complement ::recursive?)))
-         (recursive-resolve join-clause (assoc context :current-alias (:alias join-clause)))
+           ;; join with an alias
+           (join-clause :guard (every-pred join? (complement ::recursive?)))
+           (recursive-resolve join-clause (assoc context :current-alias (:alias join-clause)))
 
-         :fk->
-         (resolve-fk context &match))
+           :fk->
+           (resolve-fk context &match))
        (m/update-existing :fields (fn [fields]
                                     (if (keyword? fields)
                                       fields

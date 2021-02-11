@@ -1,11 +1,13 @@
 (ns metabase.query-processor.middleware.add-implicit-joins-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Field Table]]
             [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]))
+            [metabase.test.data.interface :as tx]
+            [metabase.util :as u]))
 
 (defn- add-implicit-joins [query]
   (driver/with-driver (tx/driver)
@@ -48,27 +50,83 @@
                 :fields       [$name $category_id->categories.name]}}))))))
 
 (deftest reuse-existing-joins-test
-  (is (= (mt/mbql-query venues
-           {:source-query
-            {:source-table $$venues
-             :fields       [$name &CATEGORIES__via__CATEGORY_ID.categories.name]
-             :joins        [{:source-table $$categories
-                             :alias        "CATEGORIES__via__CATEGORY_ID"
-                             :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
-                             :strategy     :left-join
-                             :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
-                             :fk-field-id  %category_id}]}})
-         (add-implicit-joins
-          (mt/mbql-query venues
-            {:source-query
-             {:source-table $$venues
-              :fields       [$name $category_id->categories.name]
-              :joins        [{:source-table $$categories
-                              :alias        "CATEGORIES__via__CATEGORY_ID"
-                              :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
-                              :strategy     :left-join
-                              :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
-                              :fk-field-id  %category_id}]}})))))
+  (testing "Should reuse existing joins rather than creating new ones"
+    (is (= (mt/mbql-query venues
+             {:source-query
+              {:source-table $$venues
+               :fields       [$name &CATEGORIES__via__CATEGORY_ID.categories.name]
+               :joins        [{:source-table $$categories
+                               :alias        "CATEGORIES__via__CATEGORY_ID"
+                               :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                               :strategy     :left-join
+                               :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                               :fk-field-id  %category_id}]}})
+           (add-implicit-joins
+            (mt/mbql-query venues
+              {:source-query
+               {:source-table $$venues
+                :fields       [$name $category_id->categories.name]
+                :joins        [{:source-table $$categories
+                                :alias        "CATEGORIES__via__CATEGORY_ID"
+                                :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                                :strategy     :left-join
+                                :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                                :fk-field-id  %category_id}]}}))))
+
+    (testing "Should work at arbitrary levels of nesting"
+      (mt/dataset sample-dataset
+        (doseq [level (range 4)]
+          (testing (format "(%d levels of nesting)" level)
+            (let [query (-> (mt/mbql-query orders
+                              {:source-table $$orders
+                               :fields       [$id
+                                              &Products.products.title
+                                              $product_id->products.title]
+                               :joins        [{:fields       :all
+                                               :source-table $$products
+                                               :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                               :alias        "Products"}]
+                               :order-by     [[:asc $id]]
+                               :limit        2})
+                            (mt/nest-query level))]
+              (doseq [query [query
+                             (assoc-in query [:query :source-metadata] (mt/$ids orders
+                                                                         [{:name         "ID"
+                                                                           :display_name "ID"
+                                                                           :base_type    :type/Integer
+                                                                           :id           %id
+                                                                           :field_ref    $id}
+                                                                          {:name         "TITLE"
+                                                                           :display_name "Title"
+                                                                           :base_type    :type/Text
+                                                                           :id           %products.title
+                                                                           :field_ref    &Products.products.title}
+                                                                          {:name         "TITLE"
+                                                                           :display_name "Title"
+                                                                           :base_type    :type/Text
+                                                                           :id           %products.title
+                                                                           :field_ref    $product_id->products.title}]))]]
+                (testing (format "\nquery =\n%s" (u/pprint-to-str query))
+                  (is (= (-> (mt/mbql-query orders
+                               {:source-table $$orders
+                                :fields       [$id
+                                               &Products.products.title
+                                               &PRODUCTS__via__PRODUCT_ID.products.title]
+                                :joins        [{:source-table $$products
+                                                :alias        "Products"
+                                                :fields       :all
+                                                :condition    [:= $product_id &Products.products.id]}
+                                               {:source-table $$products
+                                                :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                :strategy     :left-join
+                                                :fields       :none
+                                                :fk-field-id  %product_id
+                                                :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
+                                :order-by     [[:asc $id]]
+                                :limit        2})
+                             (mt/nest-query level))
+                         (-> (add-implicit-joins query)
+                             (m/dissoc-in [:query :source-metadata])))))))))))))
 
 (deftest nested-nested-queries-test
   (testing "we should handle nested-nested queries correctly as well"
