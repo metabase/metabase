@@ -772,7 +772,7 @@
 (deftest nested-query-with-joins-test
   (testing "Should be able to use a query that contains joins as a source query (#14724)"
     (mt/dataset sample-dataset
-      (letfn [(test-query [f]
+      (letfn [(do-test [f]
                 (let [results (mt/run-mbql-query orders
                                 {:source-query {:source-table $$orders
                                                 :joins        [{:fields       :all
@@ -785,16 +785,86 @@
                                 s/Keyword  s/Any}
                                results))
                   (f results)))]
-        (test-query
+        (do-test
          (fn [results]
            (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                    14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
                    4.0 "2017-12-31T14:41:56.87Z"]
                   (first (mt/rows results))))))
         (mt/with-column-remappings [orders.product_id products.title]
-          (test-query
+          (do-test
            (fn [results]
              (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
                      14 "8833419218504" "Widget" "McClure-Lockman" 25.1                                ; <- Remapped col not repeated
                      4.0 "2017-12-31T14:41:56.87Z"]
                     (first (mt/rows results)))))))))))
+
+(deftest inception-metadata-test
+  (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
+    (mt/dataset sample-dataset
+      ;; these tests look at the metadata for just one column so it's easier to spot the differences.
+      (letfn [(ean-metadata [result]
+                (as-> result result
+                  (get-in result [:data :results_metadata :columns])
+                  (u/key-by :name result)
+                  (get result "EAN")
+                  (select-keys result [:name :display_name :base_type :special_type :id :field_ref])))]
+        (testing "Make sure metadata is correct for the 'EAN' column with"
+          (let [base-query (mt/mbql-query orders
+                             {:source-table $$orders
+                              :fields       [$id [:joined-field "Products" $products.ean]]
+                              :joins        [{:fields       [[:joined-field "Products" $products.ean]]
+                                              :source-table $$products
+                                              :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                              :alias        "Products"}]
+                              :limit        10})]
+            (doseq [level (range 4)]
+              (testing (format "%d level(s) of nesting" level)
+                (let [query (mt/nest-query base-query level)]
+                  (testing (format "\nQuery = %s" (u/pprint-to-str query))
+                    #_(dev/process-query-debug query :print-metadata? true)
+                    (is (= (mt/$ids products
+                             {:name         "EAN"
+                              :display_name "Products → Ean"
+                              :base_type    :type/Text
+                              :special_type nil
+                              :id           %ean
+                              :field_ref    [:joined-field "Products" $ean]})
+                           (ean-metadata (qp/process-query query))))))))))))))
+
+(deftest inception-test
+  (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
+    (mt/dataset sample-dataset
+      (doseq [level (range 0 4)]
+        (testing (format "with %d level(s) of nesting" level)
+          (letfn [(run-query []
+                    (let [query (-> (mt/mbql-query orders
+                                      {:source-table $$orders
+                                       :joins        [{:fields       :all
+                                                       :source-table $$products
+                                                       :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                                       :alias        "Products"}]
+                                       :order-by     [[:asc $id]]
+                                       :limit        2})
+                                    (mt/nest-query level))]
+                      (qp/process-query query)))]
+            (testing "with no FK remappings"
+              (let [result (run-query)]
+                (is (schema= {:status    (s/eq :completed)
+                              :row_count (s/eq 2)
+                              s/Keyword  s/Any}
+                             result))
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+                        14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
+                        "2017-12-31T14:41:56.87Z"]
+                       (mt/first-row result)))))
+            (mt/with-column-remappings [orders.product_id products.title]
+              (let [result (run-query)]
+                (is (schema= {:status    (s/eq :completed)
+                              :row_count (s/eq 2)
+                              s/Keyword  s/Any}
+                             result))
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
+                        14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
+                        "2017-12-31T14:41:56.87Z"]
+                       (mt/first-row result)))))))))))
