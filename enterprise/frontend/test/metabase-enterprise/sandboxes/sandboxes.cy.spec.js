@@ -19,7 +19,6 @@ const {
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
-  REVIEWS,
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
@@ -900,77 +899,24 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it("attempt to sandbox based on question with more columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
-      const [ORDERS_ALIAS, PRODUCTS_ALIAS, REVIEWS_ALIAS] = [
-        "Orders",
-        "Products",
-        "Reviews",
-      ];
-      const QUESTION_NAME = "Extra columns question";
+    it("attempt to sandbox based on question with differently-typed columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
+      const QUESTION_NAME = "Different type";
       const ERROR_MESSAGE =
-        "Sandbox Cards can't return columns that aren't present in the Table they are sandboxing.";
+        "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.";
 
       cy.server();
       cy.route("POST", "/api/mt/gtap").as("sandboxTable");
 
       cy.log(
-        "**-- 1. Create question that will have more columns (different columns) than the sandboxed table --**",
+        "**-- 1. Create question that will have differently-typed columns than the sandboxed table --**",
       );
 
       cy.request("POST", "/api/card", {
         name: QUESTION_NAME,
         dataset_query: {
           database: 1,
-          query: {
-            joins: [
-              // a. People join Orders
-              {
-                alias: ORDERS_ALIAS,
-                condition: [
-                  "=",
-                  ["field-id", PEOPLE.ID],
-                  ["joined-field", ORDERS_ALIAS, ["field-id", ORDERS.USER_ID]],
-                ],
-                fields: "all",
-                "source-table": ORDERS_ID,
-                strategy: "inner-join",
-              },
-              // b. Previous results join Products
-              {
-                alias: PRODUCTS_ALIAS,
-                condition: [
-                  "=",
-                  [
-                    "joined-field",
-                    ORDERS_ALIAS,
-                    ["field-id", ORDERS.PRODUCT_ID],
-                  ],
-                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
-                ],
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-                strategy: "inner-join",
-              },
-              // c. Previous results join Reviews
-              {
-                alias: REVIEWS_ALIAS,
-                condition: [
-                  "=",
-                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
-                  [
-                    "joined-field",
-                    REVIEWS_ALIAS,
-                    ["field-id", REVIEWS.PRODUCT_ID],
-                  ],
-                ],
-                fields: "all",
-                "source-table": REVIEWS_ID,
-                strategy: "inner-join",
-              },
-            ],
-            "source-table": PEOPLE_ID,
-          },
-          type: "query",
+          type: "native",
+          native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
         },
         display: "table",
         visualization_settings: {},
@@ -989,21 +935,9 @@ describeWithToken("formatting > sandboxes", () => {
         "Use a saved question to create a custom view for this table",
       ).click();
       cy.findByText(QUESTION_NAME).click();
-
-      cy.findByText("Pick a parameter").click();
-      popover().within(() => {
-        // PERSON.ID
-        cy.findAllByText("ID")
-          .first()
-          .click();
-      });
-
-      cy.findByText("Pick a user attribute").click();
-      cy.findByText(ATTR_UID).click();
       cy.findAllByRole("button", { name: "Save" }).click();
 
       cy.wait("@sandboxTable").then(xhr => {
-        cy.log(xhr);
         expect(xhr.status).to.eq(400);
         expect(xhr.response.body.message).to.eq(ERROR_MESSAGE);
       });

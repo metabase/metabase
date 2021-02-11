@@ -45,18 +45,6 @@
                          :query    {:source-table table-id}}))]
              [(:name col) col])))
 
-(defn- check-column-is-present
-  [table-cols result-metadata-columns col {table-col-base-type :base_type}]
-  (when-not table-col-base-type
-    (let [msg (tru "Sandbox Cards can''t return columns that aren''t present in the Table they are sandboxing.")]
-      (throw (ex-info msg
-                      {:type        qp.error-type/bad-configuration
-                       :status-code 400
-                       :message     msg
-                       :new-column  col
-                       :expected    (mapv :name table-cols)
-                       :actual      (mapv :name result-metadata-columns)})))))
-
 (defn check-column-types-match
   "Assert that the base type of `col`, returned by a GTAP source query, matches the base type of `table-col`, a column
   from the original Table being sandboxed."
@@ -65,15 +53,16 @@
   ;; These errors might get triggered by API endpoints or by the QP (this code is used in the
   ;; `row-level-restrictions` middleware). So include `:type` and `:status-code` information in the ExceptionInfo
   ;; data so it can be passed along if applicable.
-  (when-not (isa? (keyword (:base_type col)) table-col-base-type)
-    (let [msg (tru "Sandbox Cards can''t return columns that have different types than the Table they are sandboxing.")]
-      (throw (ex-info msg
-                      {:type        qp.error-type/bad-configuration
-                       :status-code 400
-                       :message     msg
-                       :new-col     col
-                       :expected    table-col-base-type
-                       :actual      (:base_type col)})))))
+  (when table-col-base-type
+    (when-not (isa? (keyword (:base_type col)) table-col-base-type)
+      (let [msg (tru "Sandbox Questions can''t return columns that have different types than the Table they are sandboxing.")]
+        (throw (ex-info msg
+                        {:type        qp.error-type/bad-configuration
+                         :status-code 400
+                         :message     msg
+                         :new-col     col
+                         :expected    table-col-base-type
+                         :actual      (:base_type col)}))))))
 
 (s/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
@@ -93,7 +82,6 @@
    (let [table-cols (table-field-names->cols table-id)]
      (doseq [col  result-metadata-columns
              :let [table-col (get table-cols (:name col))]]
-       (check-column-is-present table-cols result-metadata-columns col table-col)
        (check-column-types-match col table-col)))))
 
 ;; TODO -- should we only check these constraints if EE features are enabled??
@@ -123,7 +111,6 @@
     (check-columns-match-table gtap)))
 
 (defn- pre-update [{:keys [id], :as updates}]
-  ;; TODO -- consider whether it even makes sense to let
   (u/prog1 updates
     (let [original (GroupTableAccessPolicy id)
           updated  (merge original updates)]

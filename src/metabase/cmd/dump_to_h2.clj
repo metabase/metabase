@@ -12,7 +12,8 @@
   Validate with:
 
     lein run load-from-h2 '/path/to/metabase.db'"
-  (:require [metabase.cmd.copy :as copy]
+  (:require [clojure.tools.logging :as log]
+            [metabase.cmd.copy :as copy]
             [metabase.cmd.copy.h2 :as copy.h2]
             [metabase.cmd.rotate-encryption-key :as rotate-encryption]
             [metabase.db.connection :as mdb.conn]
@@ -32,7 +33,7 @@
                  :or   {keep-existing? false dump-plaintext? false}}]
    (let [h2-filename  (or h2-filename "metabase_dump.h2")
          h2-jdbc-spec (copy.h2/h2-jdbc-spec h2-filename)]
-     (println "Dumping from configured Metabase db to H2 file" h2-filename)
+     (log/infof "Dumping from configured Metabase db to H2 file %s" h2-filename)
      (when-not keep-existing?
        (copy.h2/delete-existing-h2-database-files! h2-filename))
      (copy/copy!  (mdb.conn/db-type) (mdb.conn/jdbc-spec) :h2 h2-jdbc-spec)

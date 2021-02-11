@@ -641,7 +641,7 @@
            (testing "Should throw an Exception when running the query"
              (is (thrown-with-msg?
                   clojure.lang.ExceptionInfo
-                  #"Sandbox Cards can't return columns that have different types than the Table they are sandboxing"
+                  #"Sandbox Questions can't return columns that have different types than the Table they are sandboxing"
                   (run-query))))))
 
         (testing "Should be ok if you change the type of the column to a *SUBTYPE* of the original Type"
