@@ -8,7 +8,7 @@
             [metabase.driver.bigquery.params :as bigquery.params]
             [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.google :as google]
-            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util :as qputil]
@@ -222,7 +222,7 @@
          (get-query-results client proj-id job-id location nil)))
      (catch Throwable e
        (throw (ex-info (tru "Error executing query")
-                       {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}))))))
+                       {:type error-type/invalid-query, :sql sql, :parameters parameters}))))))
 
 (defn- post-process-native
   "Parse results of a BigQuery query. `respond` is the same function passed to
