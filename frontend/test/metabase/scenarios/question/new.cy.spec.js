@@ -116,11 +116,11 @@ describe("scenarios > question > new", () => {
     it.skip("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
       // set ID to `No special type`
       cy.request("PUT", `/api/field/${ORDERS.ID}`, {
-        special_type: null,
+        semantic_type: null,
       });
       // set Quantity to `Entity Key`
       cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
-        special_type: "type/PK",
+        semantic_type: "type/PK",
       });
 
       openOrdersTable();

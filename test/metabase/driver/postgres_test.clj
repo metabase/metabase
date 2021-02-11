@@ -223,7 +223,7 @@
                      [{:field-name "address", :base-type {:native "json"}}]
                      [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
         (is (= :type/SerializedJSON
-               (db/select-one-field :special_type Field, :id (mt/id :venues :address))))))))
+               (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
 (mt/defdataset ^:private with-uuid
   [["users"

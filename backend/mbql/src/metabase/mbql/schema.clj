@@ -155,7 +155,7 @@
   filter clauses based on the Field in the clause."
   {(s/optional-key :database_type) (s/maybe su/NonBlankString)
    (s/optional-key :base_type)     (s/maybe su/FieldType)
-   (s/optional-key :special_type)  (s/maybe su/FieldType)
+   (s/optional-key :semantic_type) (s/maybe su/FieldType)
    (s/optional-key :unit)          (s/maybe DatetimeFieldUnit)
    (s/optional-key :name)          (s/maybe su/NonBlankString)})
 
@@ -727,15 +727,15 @@
   form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
   `:source-query`s."
   ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
-  {:name                          su/NonBlankString
-   :base_type                     su/FieldType
+  {:name                           su/NonBlankString
+   :base_type                      su/FieldType
    ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
    ;; able to remove this as a requirement
-   :display_name                  su/NonBlankString
-   (s/optional-key :special_type) (s/maybe su/FieldType)
+   :display_name                   su/NonBlankString
+   (s/optional-key :semantic_type) (s/maybe su/FieldType)
    ;; you'll need to provide this in order to use BINNING
-   (s/optional-key :fingerprint)  (s/maybe su/Map)
-   s/Any                          s/Any})
+   (s/optional-key :fingerprint)   (s/maybe su/Map)
+   s/Any                           s/Any})
 
 (def ^java.util.regex.Pattern source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."

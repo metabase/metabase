@@ -26,11 +26,11 @@ export const databaseToForeignKeys = database =>
         // ignore tables without primary key
         .filter(
           table =>
-            table && table.fields.find(field => isPK(field.special_type)),
+            table && table.fields.find(field => isPK(field.semantic_type)),
         )
         .map(table => ({
           table: table,
-          field: table && table.fields.find(field => isPK(field.special_type)),
+          field: table && table.fields.find(field => isPK(field.semantic_type)),
         }))
         .map(({ table, field }) => ({
           id: field.id,
@@ -49,7 +49,7 @@ export const fieldsToFormFields = fields =>
   Object.keys(fields)
     .map(key => [
       `${key}.display_name`,
-      `${key}.special_type`,
+      `${key}.semantic_type`,
       `${key}.fk_target_field_id`,
     ])
     .reduce((array, keys) => array.concat(keys), []);

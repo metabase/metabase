@@ -46,11 +46,11 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
           {isEditing ? (
             <Select
               placeholder={t`Select a field type`}
-              value={formField.special_type.value || field.special_type}
+              value={formField.semantic_type.value || field.semantic_type}
               onChange={({ target: { value } }) =>
-                formField.special_type.onChange(value)
+                formField.semantic_type.onChange(value)
               }
-              options={MetabaseCore.field_special_types
+              options={MetabaseCore.field_semantic_types
                 .concat({
                   id: null,
                   name: t`No field type`,
@@ -71,16 +71,16 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               </div>
               <span
                 className={
-                  getIn(MetabaseCore.field_special_types_map, [
-                    field.special_type,
+                  getIn(MetabaseCore.field_semantic_types_map, [
+                    field.semantic_type,
                     "name",
                   ])
                     ? "text-medium"
                     : "text-light"
                 }
               >
-                {getIn(MetabaseCore.field_special_types_map, [
-                  field.special_type,
+                {getIn(MetabaseCore.field_semantic_types_map, [
+                  field.semantic_type,
                   "name",
                 ]) || t`No field type`}
               </span>
@@ -92,9 +92,9 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
       <div className={cx(S.itemSubtitle, F.fieldSecondary, { mt1: true })}>
         <div className={F.fieldForeignKey}>
           {isEditing
-            ? (isFK(formField.special_type.value) ||
-                (isFK(field.special_type) &&
-                  formField.special_type.value === undefined)) && (
+            ? (isFK(formField.semantic_type.value) ||
+                (isFK(field.semantic_type) &&
+                  formField.semantic_type.value === undefined)) && (
                 <Select
                   placeholder={t`Select a target`}
                   value={
@@ -108,7 +108,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                   optionValueFn={o => o.id}
                 />
               )
-            : isFK(field.special_type) && (
+            : isFK(field.semantic_type) && (
                 <span>
                   {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                 </span>

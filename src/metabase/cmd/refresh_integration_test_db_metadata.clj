@@ -31,7 +31,7 @@
     ;; well so we can be sure those will be set to the correct values
     (db/debug-print-queries
       (db/update! Field {:set {:fingerprint_version 0
-                               :special_type        nil
+                               :semantic_type       nil
                                :has_field_values    nil
                                :fk_target_field_id  nil}}))
     ;; now re-run sync

@@ -92,21 +92,21 @@
 
 (api/defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest special_type
+  [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
                    visibility_type has_field_values settings]
-            :as body} :body}]
+            :as   body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
    display_name       (s/maybe su/NonBlankString)
    fk_target_field_id (s/maybe su/IntGreaterThanZero)
    points_of_interest (s/maybe su/NonBlankString)
-   special_type       (s/maybe FieldType)
+   semantic_type      (s/maybe FieldType)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
-        new-special-type   (keyword (get body :special_type (:special_type field)))
-        removed-fk?        (removed-fk-special-type? (:special_type field) new-special-type)
+        new-special-type   (keyword (get body :semantic_type (:semantic_type field)))
+        removed-fk?        (removed-fk-special-type? (:semantic_type field) new-special-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
     ;; validate that fk_target_field_id is a valid Field
@@ -124,7 +124,7 @@
         (clear-dimension-on-type-change! field (:base_type field) new-special-type)
         (db/update! Field id
           (u/select-keys-when (assoc body :fk_target_field_id (when-not removed-fk? fk-target-field-id))
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type
+            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
                        :has_field_values}
             :non-nil #{:display_name :settings})))))
     ;; return updated field
@@ -312,8 +312,8 @@
 
   This is used below to seamlessly handle either PK or FK Fields without having to think about which is which in the
   `search-values` and `remapped-value` functions."
-  [{special-type :special_type, fk-target-field-id :fk_target_field_id, :as field}]
-  (if (and (isa? special-type :type/FK)
+  [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
+  (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
     (db/select-one Field :id fk-target-field-id)
     field))

@@ -34,8 +34,8 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb.u/isa :special_type :type/PK)]
-            [:= :special_type nil]]
+            [:not (mdb.u/isa :semantic_type :type/PK)]
+            [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not= :base_type "type/Structured"]
            [:or
@@ -49,8 +49,8 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb.u/isa :special_type :type/PK)]
-            [:= :special_type nil]]
+            [:not (mdb.u/isa :semantic_type :type/PK)]
+            [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not= :base_type "type/Structured"]
            [:or
@@ -69,8 +69,8 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :special_type :type/PK)]
-              [:= :special_type nil]]
+              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not= :base_type "type/Structured"]
              [:or
@@ -90,8 +90,8 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :special_type :type/PK)]
-              [:= :special_type nil]]
+              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not= :base_type "type/Structured"]
              [:or
@@ -116,8 +116,8 @@
     (is (= {:where [:and
                     [:= :active true]
                     [:or
-                     [:not (mdb.u/isa :special_type :type/PK)]
-                     [:= :special_type nil]]
+                     [:not (mdb.u/isa :semantic_type :type/PK)]
+                     [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
                     [:not= :base_type "type/Structured"]]}
            (binding [fingerprint/*refingerprint?* true]

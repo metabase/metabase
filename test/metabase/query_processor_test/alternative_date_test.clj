@@ -10,12 +10,12 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(deftest special-type->unix-timestamp-unit-test
+(deftest semantic-type->unix-timestamp-unit-test
   (testing "every descendant of `:type/UNIXTimestamp` has a unit associated with it"
     (doseq [special-type (descendants :type/UNIXTimestamp)]
-      (is (sql.qp/special-type->unix-timestamp-unit special-type))))
+      (is (sql.qp/semantic-type->unix-timestamp-unit special-type))))
   (testing "throws if argument is not a descendant of `:type/UNIXTimestamp`"
-    (is (thrown? AssertionError (sql.qp/special-type->unix-timestamp-unit :type/Integer)))))
+    (is (thrown? AssertionError (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
 
 (mt/defdataset toucan-microsecond-incidents
   [["incidents" [{:field-name "severity"
@@ -163,7 +163,7 @@
    ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
 
 (deftest iso-8601-text-fields
-  (testing "text fields with special_type :type/ISO8601DateTimeString"
+  (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "return as dates"
       (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :oracle :sparksql)
         (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19" #t "10:23:54"]

@@ -375,7 +375,7 @@
             (let [cols (get-in result [:data :cols])]
               (is (= 7 (count cols)))
               (is (= {:base_type "type/Text"
-                      :special_type nil
+                      :semantic_type nil
                       :name "test-expr"
                       :display_name "test-expr"
                       :expression_name "test-expr"

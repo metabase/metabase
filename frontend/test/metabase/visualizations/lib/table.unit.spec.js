@@ -106,7 +106,7 @@ describe("metabase/visualization/lib/table", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.Number,
+          semantic_type: TYPE.Number,
         }),
       ).toBe(true);
     });
@@ -114,13 +114,13 @@ describe("metabase/visualization/lib/table", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.Latitude,
+          semantic_type: TYPE.Latitude,
         }),
       ).toBe(true);
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.Longitude,
+          semantic_type: TYPE.Longitude,
         }),
       ).toBe(true);
     });
@@ -128,7 +128,7 @@ describe("metabase/visualization/lib/table", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.ZipCode,
+          semantic_type: TYPE.ZipCode,
         }),
       ).toBe(false);
     });
@@ -136,13 +136,13 @@ describe("metabase/visualization/lib/table", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.FK,
+          semantic_type: TYPE.FK,
         }),
       ).toBe(false);
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.FK,
+          semantic_type: TYPE.FK,
         }),
       ).toBe(false);
     });

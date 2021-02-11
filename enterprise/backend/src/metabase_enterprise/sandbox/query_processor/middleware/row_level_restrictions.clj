@@ -163,7 +163,7 @@
                 (-> ((resolve 'metabase.query-processor/process-query) (assoc query :limit 0))
                     :data :cols))]
     (u/prog1 (for [col cols]
-               (select-keys col [:name :base_type :display_name :special_type]))
+               (select-keys col [:name :base_type :display_name :semantic_type]))
       (log/tracef "Inferred source query metadata:\n%s" (u/pprint-to-str 'magenta <>))
       ;; Make sure the columns returned when running a source query match up with those in the original Table. A GTAP
       ;; can *remove* columns from the original Table, but it cannot add new ones. Columns cannot change types

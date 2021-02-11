@@ -145,7 +145,7 @@
                :display_name "Users"
                :entity_type  "entity/UserTable"
                :fields       [(assoc (field-details (Field (mt/id :users :id)))
-                                     :special_type     "type/PK"
+                                     :semantic_type    "type/PK"
                                      :table_id         (mt/id :users)
                                      :name             "ID"
                                      :display_name     "ID"
@@ -154,7 +154,7 @@
                                      :visibility_type  "normal"
                                      :has_field_values "none")
                               (assoc (field-details (Field (mt/id :users :name)))
-                                     :special_type             "type/Name"
+                                     :semantic_type            "type/Name"
                                      :table_id                 (mt/id :users)
                                      :name                     "NAME"
                                      :display_name             "Name"
@@ -179,7 +179,7 @@
                                      :position                 2
                                      :database_position        2)
                               (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
-                                     :special_type     "type/Category"
+                                     :semantic_type    "type/Category"
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"
                                      :display_name     "Password"
@@ -205,7 +205,7 @@
                :entity_type  "entity/UserTable"
                :fields       [(assoc (field-details (Field (mt/id :users :id)))
                                      :table_id         (mt/id :users)
-                                     :special_type     "type/PK"
+                                     :semantic_type    "type/PK"
                                      :name             "ID"
                                      :display_name     "ID"
                                      :database_type    "BIGINT"
@@ -213,7 +213,7 @@
                                      :has_field_values "none")
                               (assoc (field-details (Field (mt/id :users :name)))
                                      :table_id         (mt/id :users)
-                                     :special_type     "type/Name"
+                                     :semantic_type    "type/Name"
                                      :name             "NAME"
                                      :display_name     "Name"
                                      :database_type    "VARCHAR"
@@ -244,9 +244,9 @@
       (mt/with-temp* [Database [db]
                       Table    [table-1    {:db_id (u/get-id db)}]
                       Table    [table-2    {:db_id (u/get-id db)}]
-                      Field    [table-1-id {:table_id (u/get-id table-1), :name "id", :base_type :type/Integer, :special_type :type/PK}]
-                      Field    [table-2-id {:table_id (u/get-id table-2), :name "id", :base_type :type/Integer, :special_type :type/PK}]
-                      Field    [table-2-fk {:table_id (u/get-id table-2), :name "fk", :base_type :type/Integer, :special_type :type/FK, :fk_target_field_id (u/get-id table-1-id)}]]
+                      Field    [table-1-id {:table_id (u/get-id table-1), :name "id", :base_type :type/Integer, :semantic_type :type/PK}]
+                      Field    [table-2-id {:table_id (u/get-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}]
+                      Field    [table-2-fk {:table_id (u/get-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/get-id table-1-id)}]]
         ;; grant permissions only to table-2
         (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
         (perms/grant-permissions! (perms-group/all-users) (u/get-id db) (:schema table-2) (u/get-id table-2))
@@ -322,7 +322,7 @@
                                             :display_name  "User ID"
                                             :database_type "INTEGER"
                                             :base_type     "type/Integer"
-                                            :special_type  "type/FK"
+                                            :semantic_type "type/FK"
                                             :database_position 2
                                             :position          2
                                             :table         (merge
@@ -340,7 +340,7 @@
                                             :display_name  "ID"
                                             :base_type     "type/BigInteger"
                                             :database_type "BIGINT"
-                                            :special_type  "type/PK"
+                                            :semantic_type "type/PK"
                                             :table         (merge
                                                             (dissoc (table-defaults) :db :segments :field_values :metrics)
                                                             (db/select-one [Table :id :created_at :updated_at]
@@ -366,7 +366,7 @@
              :fields       [(merge
                              (field-details (Field (mt/id :categories :id)))
                              {:table_id         (mt/id :categories)
-                              :special_type     "type/PK"
+                              :semantic_type    "type/PK"
                               :name             "ID"
                               :display_name     "ID"
                               :database_type    "BIGINT"
@@ -375,7 +375,7 @@
                             (merge
                              (field-details (Field (mt/id :categories :name)))
                              {:table_id                 (mt/id :categories)
-                              :special_type             "type/Name"
+                              :semantic_type            "type/Name"
                               :name                     "NAME"
                               :display_name             "Name"
                               :database_type            "VARCHAR"
@@ -393,7 +393,7 @@
 
 (defn- default-card-field-for-venues [table-id]
   {:table_id                 table-id
-   :special_type             nil
+   :semantic_type            nil
    :default_dimension_option nil
    :dimension_options        []})
 
@@ -428,28 +428,28 @@
                   :dimension_options (default-dimension-options)
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                                 with-field-literal-id)
-                                          [{:name         "NAME"
-                                            :display_name "NAME"
-                                            :base_type    "type/Text"
-                                            :special_type "type/Name"
-                                            :fingerprint  (:name mutil/venue-fingerprints)}
-                                           {:name         "ID"
-                                            :display_name "ID"
-                                            :base_type    "type/BigInteger"
-                                            :special_type nil
-                                            :fingerprint  (:id mutil/venue-fingerprints)}
+                                          [{:name          "NAME"
+                                            :display_name  "NAME"
+                                            :base_type     "type/Text"
+                                            :semantic_type "type/Name"
+                                            :fingerprint   (:name mutil/venue-fingerprints)}
+                                           {:name          "ID"
+                                            :display_name  "ID"
+                                            :base_type     "type/BigInteger"
+                                            :semantic_type nil
+                                            :fingerprint   (:id mutil/venue-fingerprints)}
                                            (with-numeric-dimension-options
-                                             {:name         "PRICE"
-                                              :display_name "PRICE"
-                                              :base_type    "type/Integer"
-                                              :special_type nil
-                                              :fingerprint  (:price mutil/venue-fingerprints)})
+                                             {:name          "PRICE"
+                                              :display_name  "PRICE"
+                                              :base_type     "type/Integer"
+                                              :semantic_type nil
+                                              :fingerprint   (:price mutil/venue-fingerprints)})
                                            (with-coordinate-dimension-options
-                                             {:name         "LATITUDE"
-                                              :display_name "LATITUDE"
-                                              :base_type    "type/Float"
-                                              :special_type "type/Latitude"
-                                              :fingerprint  (:latitude mutil/venue-fingerprints)})])})
+                                             {:name          "LATITUDE"
+                                              :display_name  "LATITUDE"
+                                              :base_type     "type/Float"
+                                              :semantic_type "type/Latitude"
+                                              :fingerprint   (:latitude mutil/venue-fingerprints)})])})
                (->> card
                     u/get-id
                     (format "table/card__%d/query_metadata")
@@ -481,7 +481,7 @@
                                          :base_type                "type/Text"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field-literal" "NAME" "type/Text"]
-                                         :special_type             "type/Name"
+                                         :semantic_type            "type/Name"
                                          :default_dimension_option nil
                                          :dimension_options        []
                                          :fingerprint              (:fingerprint name-metadata)}
@@ -490,7 +490,7 @@
                                          :base_type                "type/DateTime"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
-                                         :special_type             nil
+                                         :semantic_type            nil
                                          :default_dimension_option (var-get #'table-api/date-default-index)
                                          :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                                          :fingerprint              (:fingerprint last-login-metadata)}]}
@@ -507,11 +507,11 @@
                                 (dissoc dim :id :created_at :updated_at)
                                 dim))))))
 
-(defn- category-id-special-type
-  "Field values will only be returned when the field's special type is set to type/Category. This function will change
+(defn- category-id-semantic-type
+  "Field values will only be returned when the field's semantic type is set to type/Category. This function will change
   that for `category_id`, then invoke `f` and roll it back afterwards"
-  [special-type f]
-  (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:special_type special-type}
+  [semantic-type f]
+  (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:semantic_type semantic-type}
     (f)))
 
 (deftest query-metadata-remappings-test
@@ -526,7 +526,7 @@
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
                  :dimensions []}]
-               (category-id-special-type
+               (category-id-semantic-type
                 :type/Category
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
@@ -541,7 +541,7 @@
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
                  :dimensions []}]
-               (category-id-special-type
+               (category-id-semantic-type
                 :type/Enum
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
@@ -560,7 +560,7 @@
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
                  :dimensions []}]
-               (category-id-special-type
+               (category-id-semantic-type
                 :type/Category
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
@@ -598,8 +598,8 @@
           (is (= #{nil "bin-width" "default"}
                  (extract-dimension-options response "latitude")))))
 
-      (testing "Number columns without a special type should use \"num-bins\""
-        (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:special_type nil}
+      (testing "Number columns without a semantic type should use \"num-bins\""
+        (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:semantic_type nil}
           (let [response ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
             (is (= #{nil "num-bins" "default"}
                    (extract-dimension-options response "price"))))))

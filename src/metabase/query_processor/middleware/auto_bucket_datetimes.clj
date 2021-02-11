@@ -14,9 +14,9 @@
             [toucan.db :as db]))
 
 (def ^:private FieldTypeInfo
-  {:base_type                     (s/maybe su/FieldType)
-   (s/optional-key :special_type) (s/maybe su/FieldType)
-   s/Keyword                      s/Any})
+  {:base_type                      (s/maybe su/FieldType)
+   (s/optional-key :semantic_type) (s/maybe su/FieldType)
+   s/Keyword                       s/Any})
 
 (def ^:private FieldIDOrName->TypeInfo
   {(s/cond-pre su/NonBlankString su/IntGreaterThanZero) (s/maybe FieldTypeInfo)})
@@ -36,7 +36,7 @@
               [field-name {:base_type base-type}]))
    ;; build map of field ID -> <info from DB>
    (when-let [field-ids (seq (filter integer? (map second unbucketed-fields)))]
-     (u/key-by :id (db/select [Field :id :base_type :special_type]
+     (u/key-by :id (db/select [Field :id :base_type :semantic_type]
                      :id [:in (set field-ids)])))))
 
 (defn- yyyy-MM-dd-date-string? [x]
@@ -68,11 +68,11 @@
    (and (mbql.preds/Field? x)
         (not (mbql.u/is-clause? #{:field-id :field-literal :joined-field} x)))))
 
-(defn- date-or-datetime-field? [{base-type :base_type, special-type :special_type}]
+(defn- date-or-datetime-field? [{base-type :base_type, semantic-type :semantic_type}]
   (some (fn [field-type]
           (some #(isa? field-type %)
                 [:type/Date :type/DateTime]))
-        [base-type special-type]))
+        [base-type semantic-type]))
 
 (s/defn ^:private wrap-unbucketed-fields
   "Wrap Fields in breakouts and filters in a `:datetime-field` clause if appropriate; look at corresponing type

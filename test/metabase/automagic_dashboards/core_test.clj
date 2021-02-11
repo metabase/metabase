@@ -372,7 +372,7 @@
   :num-fields 2}
  (tt/with-temp* [Database [{db-id :id}]
                  Table    [{table-id :id} {:db_id db-id}]
-                 Field    [_ {:table_id table-id :special_type :type/PK}]
+                 Field    [_ {:table_id table-id :semantic_type :type/PK}]
                  Field    [_ {:table_id table-id}]]
    (mt/with-test-user :rasta
      (with-dashboard-cleanup
@@ -386,9 +386,9 @@
    :num-fields 3}
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
-                  Field    [_ {:table_id table-id :special_type :type/PK}]
-                  Field    [_ {:table_id table-id :special_type :type/FK}]
-                  Field    [_ {:table_id table-id :special_type :type/FK}]]
+                  Field    [_ {:table_id table-id :semantic_type :type/PK}]
+                  Field    [_ {:table_id table-id :semantic_type :type/FK}]
+                  Field    [_ {:table_id table-id :semantic_type :type/FK}]]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup
         (-> (#'magic/enhance-table-stats [(Table table-id)])

@@ -86,11 +86,9 @@
   query results. Try to keep this set pared down to just what's needed by the QP and frontend, since it has to be done
   for every MBQL query."
   [:base_type
-   :coercion_strategy
    :database_type
    :description
    :display_name
-   :effective_type
    :fingerprint
    :id
    :name
@@ -109,8 +107,6 @@
     :database_type     su/NonBlankString
     :base_type         su/FieldType
     :semantic_type     (s/maybe su/FieldType)
-    :coercion_strategy (s/maybe su/FieldType)
-    :effective_type    (s/maybe su/FieldType)
     :fingerprint       (s/maybe su/Map)
     :parent_id         (s/maybe su/IntGreaterThanZero)
     s/Any              s/Any}))

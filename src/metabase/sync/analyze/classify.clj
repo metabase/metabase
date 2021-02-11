@@ -36,7 +36,7 @@
 
 (def ^:private values-that-can-be-set
   "Columns of Field that classifiers are allowed to set."
-  #{:special_type :preview_display :has_field_values :entity_type})
+  #{:semantic_type :preview_display :has_field_values :entity_type})
 
 (def ^:private FieldOrTableInstance (s/either i/FieldInstance i/TableInstance))
 
@@ -69,10 +69,10 @@
 
   A classifier may see the original field (before any classifiers were run) in the metadata of the field at
   `:sync.classify/original`."
-  [name/infer-and-assoc-special-type
+  [name/infer-and-assoc-semantic-type
    category/infer-is-category-or-list
    no-preview-display/infer-no-preview-display
-   text-fingerprint/infer-special-type])
+   text-fingerprint/infer-semantic-type])
 
 (s/defn run-classifiers :- i/FieldInstance
   "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with

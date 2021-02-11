@@ -204,13 +204,13 @@
 
 (defmulti cast-temporal-string
   "Cast a string representing "
-  {:arglists '([driver special_type expr]), :added "0.38.0"}
-  (fn [driver special_type _] [(driver/dispatch-on-initialized-driver driver) special_type])
+  {:arglists '([driver semantic_type expr]), :added "0.38.0"}
+  (fn [driver semantic_type _] [(driver/dispatch-on-initialized-driver driver) semantic_type])
   :hierarchy #'driver/hierarchy)
 
 (defmethod cast-temporal-string :default
-  [driver special_type _expr]
-  (throw (Exception. (tru "Driver {0} does not support {1}" driver special_type))))
+  [driver semantic_type _expr]
+  (throw (Exception. (tru "Driver {0} does not support {1}" driver semantic_type))))
 
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
@@ -259,26 +259,26 @@
   [driver [_ expression-name]]
   (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
 
-(defn special-type->unix-timestamp-unit
+(defn semantic-type->unix-timestamp-unit
   "Translates types like `:type/UNIXTimestampSeconds` to the corresponding unit of time to use in
   `unix-timestamp->honeysql`.  Throws an AssertionError if the argument does not descend from `:type/UNIXTimestamp`
   and an exception if the type does not have an associated unit."
-  [special-type]
-  (assert (isa? special-type :type/UNIXTimestamp) "Special type must be a UNIXTimestamp")
+  [semantic-type]
+  (assert (isa? semantic-type :type/UNIXTimestamp) "Semantic type must be a UNIXTimestamp")
   (or (get {:type/UNIXTimestampMicroseconds :microseconds
             :type/UNIXTimestampMilliseconds :milliseconds
             :type/UNIXTimestampSeconds      :seconds}
-           special-type)
-      (throw (Exception. (tru "No magnitude known for {0}" special-type)))))
+           semantic-type)
+      (throw (Exception. (tru "No magnitude known for {0}" semantic-type)))))
 
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
-  (match [(:base_type field) (:special_type field)]
+  (match [(:base_type field) (:semantic_type field)]
     [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql driver
-                                                                                    (special-type->unix-timestamp-unit (:special_type field))
+                                                                                    (semantic-type->unix-timestamp-unit (:semantic_type field))
                                                                                     field-identifier)
-    [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:special_type field) field-identifier)
+    [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:semantic_type field) field-identifier)
     :else field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed

@@ -12,7 +12,7 @@
 
 (defn- results-metadata [query-results]
   (for [col (-> query-results :data :cols)]
-    (select-keys col [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings])))
+    (select-keys col [:id :table_id :name :display_name :base_type :semantic_type :unit :fingerprint :settings])))
 
 (defn- venues-source-metadata
   ([]
@@ -27,10 +27,10 @@
 
 (defn- venues-source-metadata-for-field-literals
   "Metadata we'd expect to see from a `:field-literal` clause. The same as normal metadata, but field literals don't
-  include special-type info."
+  include semantic-type info."
   [& field-names]
   (for [field (apply venues-source-metadata field-names)]
-    (dissoc field :special_type)))
+    (dissoc field :semantic_type)))
 
 (deftest basic-test
   (testing "Can we automatically add source metadata to the parent level of a query? If the source query has `:fields`"
@@ -73,11 +73,11 @@
                                 :breakout     [$price]}
               :source-metadata (concat
                                 (venues-source-metadata :price)
-                                [{:name         "avg"
-                                  :display_name "Average of ID"
-                                  :base_type    :type/BigInteger
-                                  :special_type :type/PK
-                                  :settings     nil}])})
+                                [{:name          "avg"
+                                  :display_name  "Average of ID"
+                                  :base_type     :type/BigInteger
+                                  :semantic_type :type/PK
+                                  :settings      nil}])})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-table $$venues
@@ -98,11 +98,11 @@
                                   :breakout     [$price]}
                 :source-metadata (concat
                                   (venues-source-metadata :price)
-                                  [{:name         "some_generated_name"
-                                    :display_name "My Cool Ag"
-                                    :base_type    :type/BigInteger
-                                    :special_type :type/PK
-                                    :settings     nil}])})
+                                  [{:name          "some_generated_name"
+                                    :display_name  "My Cool Ag"
+                                    :base_type     :type/BigInteger
+                                    :semantic_type :type/PK
+                                    :settings      nil}])})
              (add-source-metadata
               (mt/mbql-query venues
                 {:source-query {:source-table $$venues
@@ -112,11 +112,11 @@
                                 :breakout     [$price]}})))))
 
     (testing "w/ `:name` only"
-      (is (= [{:name         "some_generated_name"
-               :display_name "Average of ID"
-               :base_type    :type/BigInteger
-               :special_type :type/PK
-               :settings     nil}]
+      (is (= [{:name          "some_generated_name"
+               :display_name  "Average of ID"
+               :base_type     :type/BigInteger
+               :semantic_type :type/PK
+               :settings      nil}]
              (source-metadata
               (add-source-metadata
                (mt/mbql-query venues
@@ -124,11 +124,11 @@
                                  :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}}))))))
 
     (testing "w/ `:display-name` only"
-      (is (= [{:name         "avg"
-               :display_name "My Cool Ag"
-               :base_type    :type/BigInteger
-               :special_type :type/PK
-               :settings     nil}]
+      (is (= [{:name          "avg"
+               :display_name  "My Cool Ag"
+               :base_type     :type/BigInteger
+               :semantic_type :type/PK
+               :settings      nil}]
              (source-metadata
               (add-source-metadata
                (mt/mbql-query venues

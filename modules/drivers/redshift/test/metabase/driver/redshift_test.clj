@@ -108,7 +108,7 @@
    (testing "expects spectrum schema to exist"
      (is (= [{:description     nil
               :table_id        (mt/id :extsales)
-              :special_type    nil
+              :semantic_type    nil
               :name            "buyerid"
               :settings        nil
               :source          :fields
@@ -120,7 +120,7 @@
               :base_type       :type/Integer}
              {:description     nil
               :table_id        (mt/id :extsales)
-              :special_type    nil
+              :semantic_type    nil
               :name            "salesid"
               :settings        nil
               :source          :fields

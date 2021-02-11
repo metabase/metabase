@@ -15,7 +15,7 @@ describe("Reference utils.js", () => {
             fields: [
               {
                 id: 1,
-                special_type: TYPE.PK,
+                semantic_type: TYPE.PK,
                 display_name: "bar",
                 description: "foobar",
               },
@@ -28,7 +28,7 @@ describe("Reference utils.js", () => {
             fields: [
               {
                 id: 2,
-                special_type: TYPE.PK,
+                semantic_type: TYPE.PK,
                 display_name: "foo",
                 description: "barfoo",
               },

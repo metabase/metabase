@@ -305,7 +305,7 @@
      :order-by [[:%lower.name :asc]]}))
 
 (defn- autocomplete-fields [db-id prefix]
-  (db/select [Field :name :base_type :special_type :id :table_id [:table.name :table_name]]
+  (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
     :%lower.metabase_field.name     [:like (str (str/lower-case prefix) "%")]
     :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
@@ -317,12 +317,12 @@
 (defn- autocomplete-results [tables fields]
   (concat (for [{table-name :name} tables]
             [table-name "Table"])
-          (for [{:keys [table_name base_type special_type name]} fields]
+          (for [{:keys [table_name base_type semantic_type name]} fields]
             [name (str table_name
                        " "
                        base_type
-                       (when special_type
-                         (str " " special_type)))])))
+                       (when semantic_type
+                         (str " " semantic_type)))])))
 
 (defn- autocomplete-suggestions [db-id prefix]
   (let [tables (filter mi/can-read? (autocomplete-tables db-id prefix))
@@ -336,7 +336,7 @@
   and `Fields` in this `Database`.
 
   Tables are returned in the format `[table_name \"Table\"]`;
-  Fields are returned in the format `[field_name \"table_name base_type special_type\"]`"
+  Fields are returned in the format `[field_name \"table_name base_type semantic_type\"]`"
   [id prefix]
   {prefix su/NonBlankString}
   (api/read-check Database id)
@@ -352,17 +352,17 @@
   "Get a list of all `Fields` in `Database`."
   [id]
   (api/read-check Database id)
-  (let [fields (filter mi/can-read? (-> (db/select [Field :id :display_name :table_id :base_type :special_type]
+  (let [fields (filter mi/can-read? (-> (db/select [Field :id :display_name :table_id :base_type :semantic_type]
                                           :table_id        [:in (db/select-field :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
-    (for [{:keys [id display_name table base_type special_type]} fields]
-      {:id           id
-       :name         display_name
-       :base_type    base_type
-       :special_type special_type
-       :table_name   (:display_name table)
-       :schema       (:schema table)})))
+    (for [{:keys [id display_name table base_type semantic_type]} fields]
+      {:id            id
+       :name          display_name
+       :base_type     base_type
+       :semantic_type semantic_type
+       :table_name    (:display_name table)
+       :schema        (:schema table)})))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------

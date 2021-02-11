@@ -58,13 +58,13 @@
 
 (models/defmodel Field :metabase_field)
 
-(defn- check-valid-types [{base-type :base_type, special-type :special_type}]
+(defn- check-valid-types [{base-type :base_type, semantic-type :semantic_type}]
   (when base-type
     (assert (isa? (keyword base-type) :type/*)
       (str "Invalid base type: " base-type)))
-  (when special-type
-    (assert (isa? (keyword special-type) :type/*)
-      (str "Invalid special type: " special-type))))
+  (when semantic-type
+    (assert (isa? (keyword semantic-type) :type/*)
+      (str "Invalid semantic type: " semantic-type))))
 
 (defn- pre-insert [field]
   (check-valid-types field)
@@ -112,21 +112,21 @@
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
     (perms-objects-set* table-id)))
 
-(defn- maybe-parse-special-numeric-values [maybe-double-value]
+(defn- maybe-parse-semantic-numeric-values [maybe-double-value]
   (if (string? maybe-double-value)
     (u/ignore-exceptions (Double/parseDouble maybe-double-value))
     maybe-double-value))
 
-(defn- update-special-numeric-values
+(defn- update-semantic-numeric-values
   "When fingerprinting decimal columns, NaN and Infinity values are possible. Serializing these values to JSON just
   yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
   [fingerprint]
   (m/update-existing-in fingerprint [:type :type/Number]
-                        (partial m/map-vals maybe-parse-special-numeric-values)))
+                        (partial m/map-vals maybe-parse-semantic-numeric-values)))
 
 (models/add-type! :json-for-fingerprints
   :in  i/json-in
-  :out (comp update-special-numeric-values i/json-out-with-keywordization))
+  :out (comp update-semantic-numeric-values i/json-out-with-keywordization))
 
 
 (u/strict-extend (class Field)
@@ -135,8 +135,6 @@
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
           :types          (constantly {:base_type         :keyword
                                        :semantic_type     :keyword
-                                       :coercion_strategy :keyword
-                                       :effective_type    :keyword
                                        :visibility_type   :keyword
                                        :has_field_values  :keyword
                                        :fingerprint       :json-for-fingerprints
@@ -156,8 +154,8 @@
 
 (defn target
   "Return the FK target `Field` that this `Field` points to."
-  [{:keys [special_type fk_target_field_id]}]
-  (when (and (isa? special_type :type/FK)
+  [{:keys [semantic_type fk_target_field_id]}]
+  (when (and (isa? semantic_type :type/FK)
              fk_target_field_id)
     (Field fk_target_field_id)))
 
@@ -253,7 +251,7 @@
   {:batched-hydrate :target}
   [fields]
   (let [target-field-ids (set (for [field fields
-                                    :when (and (isa? (:special_type field) :type/FK)
+                                    :when (and (isa? (:semantic_type field) :type/FK)
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (u/key-by :id (when (seq target-field-ids)
@@ -301,6 +299,6 @@
 
 (defn unix-timestamp?
   "Is field a UNIX timestamp?"
-  [{:keys [base_type special_type]}]
+  [{:keys [base_type semantic_type]}]
   (and (isa? base_type :type/Integer)
-       (isa? special_type :type/Temporal)))
+       (isa? semantic_type :type/Temporal)))

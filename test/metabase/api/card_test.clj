@@ -311,10 +311,10 @@
 (deftest saving-card-saves-query-metadata
   (testing "Make sure when saving a Card the query metadata is saved (if correct)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/Integer
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"
-                        :special_type :type/Number}]
+      (let [metadata  [{:base_type     :type/Integer
+                        :display_name  "Count Chocula"
+                        :name          "count_chocula"
+                        :semantic_type :type/Number}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -325,10 +325,10 @@
                                                                  :result_metadata    metadata
                                                                  :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
             ;; now check the metadata that was saved in the DB
-            (is (= [{:base_type    :type/Integer
-                     :display_name "Count Chocula"
-                     :name         "count_chocula"
-                     :special_type :type/Number}]
+            (is (= [{:base_type     :type/Integer
+                     :display_name  "Count Chocula"
+                     :name          "count_chocula"
+                     :semantic_type :type/Number}]
                    (db/select-one-field :result_metadata Card :name card-name)))))))))
 
 (deftest save-card-with-empty-result-metadata-test
@@ -352,12 +352,12 @@
                 "should ensure that integer and floating point values hash the same so we don't needlessly rerun the "
                 "query"))
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [metadata  [{:base_type    :type/Integer
-                      :display_name "Count Chocula"
-                      :name         "count_chocula"
-                      :special_type :type/Number
-                      :fingerprint  {:global {:distinct-count 285},
-                                     :type {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
+    (let [metadata  [{:base_type     :type/Integer
+                      :display_name  "Count Chocula"
+                      :name          "count_chocula"
+                      :semantic_type :type/Number
+                      :fingerprint   {:global {:distinct-count 285},
+                                      :type   {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
           card-name (mt/random-name)]
       (mt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -370,21 +370,21 @@
                                          :result_metadata    (map fingerprint-integers->doubles metadata)
                                          :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
             (testing "check the metadata that was saved in the DB"
-              (is (= [{:base_type    :type/Integer
-                       :display_name "Count Chocula"
-                       :name         "count_chocula"
-                       :special_type :type/Number
-                       :fingerprint  {:global {:distinct-count 285},
-                                      :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
+              (is (= [{:base_type     :type/Integer
+                       :display_name  "Count Chocula"
+                       :name          "count_chocula"
+                       :semantic_type :type/Number
+                       :fingerprint   {:global {:distinct-count 285},
+                                       :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/BigInteger
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"
-                        :special_type :type/Quantity}]
+      (let [metadata  [{:base_type     :type/BigInteger
+                        :display_name  "Count Chocula"
+                        :name          "count_chocula"
+                        :semantic_type :type/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -396,27 +396,27 @@
                                          ;; bad checksum
                                          :metadata_checksum  "ABCDEF"))
             (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (= [{:base_type    :type/BigInteger
-                       :display_name "Count"
-                       :name         "count"
-                       :special_type :type/Quantity
-                       :fingerprint  {:global {:distinct-count 1
-                                               :nil%           0.0},
-                                      :type   {:type/Number {:min 100.0
-                                                             :max 100.0
-                                                             :avg 100.0
-                                                             :q1  100.0
-                                                             :q3  100.0
-                                                             :sd  nil}}}}]
+              (is (= [{:base_type     :type/BigInteger
+                       :display_name  "Count"
+                       :name          "count"
+                       :semantic_type :type/Quantity
+                       :fingerprint   {:global {:distinct-count 1
+                                                :nil%           0.0},
+                                       :type   {:type/Number {:min 100.0
+                                                              :max 100.0
+                                                              :avg 100.0
+                                                              :q1  100.0
+                                                              :q3  100.0
+                                                              :sd  nil}}}}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/Integer
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"
-                        :special_type :type/Quantity}]
+      (let [metadata  [{:base_type     :type/Integer
+                        :display_name  "Count Chocula"
+                        :name          "count_chocula"
+                        :semantic_type :type/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -435,13 +435,13 @@
                                              :result_metadata    metadata
                                              :metadata_checksum  "ABCDEF"))) ; bad checksum
               (testing "check the correct metadata was fetched and was saved in the DB"
-                (is (= [{:base_type    (count-base-type)
-                         :display_name "Count"
-                         :name         "count"
-                         :special_type :type/Quantity
-                         :fingerprint  {:global {:distinct-count 1
-                                                 :nil%           0.0},
-                                        :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
+                (is (= [{:base_type     (count-base-type)
+                         :display_name  "Count"
+                         :name          "count"
+                         :semantic_type :type/Quantity
+                         :fingerprint   {:global {:distinct-count 1
+                                                  :nil%           0.0},
+                                         :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
                        (db/select-one-field :result_metadata Card :name card-name))))
               (testing "Was the user id found in the generated SQL?"
                 (is (= true
@@ -599,10 +599,10 @@
                  (db/select-one-field :embedding_params Card :id (u/get-id card)))))))))
 
 (deftest make-sure-when-updating-a-card-the-query-metadata-is-saved--if-correct-
-  (let [metadata [{:base_type    :type/Integer
-                   :display_name "Count Chocula"
-                   :name         "count_chocula"
-                   :special_type :type/Number}]]
+  (let [metadata [{:base_type     :type/Integer
+                   :display_name  "Count Chocula"
+                   :name          "count_chocula"
+                   :semantic_type :type/Number}]]
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
@@ -611,17 +611,17 @@
                                :result_metadata   metadata
                                :metadata_checksum (#'results-metadata/metadata-checksum metadata)})
         ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type    :type/Integer
-                 :display_name "Count Chocula"
-                 :name         "count_chocula"
-                 :special_type :type/Number}]
+        (is (= [{:base_type     :type/Integer
+                 :display_name  "Count Chocula"
+                 :name          "count_chocula"
+                 :semantic_type :type/Number}]
                (db/select-one-field :result_metadata Card :id (u/get-id card))))))))
 
 (deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
-  (let [metadata [{:base_type    :type/BigInteger
-                   :display_name "Count Chocula"
-                   :name         "count_chocula"
-                   :special_type :type/Quantity}]]
+  (let [metadata [{:base_type     :type/BigInteger
+                   :display_name  "Count Chocula"
+                   :name          "count_chocula"
+                   :semantic_type :type/Quantity}]]
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
@@ -630,13 +630,13 @@
                                :result_metadata   metadata
                                :metadata_checksum "ABC123"}) ; invalid checksum
         ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type    :type/BigInteger
-                 :display_name "Count"
-                 :name         "count"
-                 :special_type :type/Quantity
-                 :fingerprint  {:global {:distinct-count 1
-                                         :nil%           0.0},
-                                :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
+        (is (= [{:base_type     :type/BigInteger
+                 :display_name  "Count"
+                 :name          "count"
+                 :semantic_type :type/Quantity
+                 :fingerprint   {:global {:distinct-count 1
+                                          :nil%           0.0},
+                                 :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
                (db/select-one-field :result_metadata Card :id (u/get-id card))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-

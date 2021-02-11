@@ -1,6 +1,6 @@
 (ns metabase.sync.sync-metadata.fields.sync-metadata
   "Logic for updating metadata properties of `Field` instances in the application database as needed -- this includes
-  the base type, database type, special type, and comment/remark (description) properties. This primarily affects
+  the base type, database type, semantic type, and comment/remark (description) properties. This primarily affects
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -16,19 +16,19 @@
 
 (s/defn ^:private update-field-metadata-if-needed! :- (s/enum 0 1)
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
-  base type, database type, special type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
+  base type, database type, semantic type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
   [table :- i/TableInstance, field-metadata :- i/TableMetadataField, metabase-field :- common/TableMetadataFieldWithID]
   (let [{old-database-type     :database-type
          old-base-type         :base-type
          old-field-comment     :field-comment
-         old-special-type      :special-type
+         old-semantic-type     :semantic-type
          old-database-position :database-position}  metabase-field
         {new-database-type     :database-type
          new-base-type         :base-type
          new-field-comment     :field-comment
          new-database-position :database-position} field-metadata
         new-database-type                          (or new-database-type "NULL")
-        new-special-type                           (common/special-type field-metadata)
+        new-semantic-type                          (common/semantic-type field-metadata)
 
         new-db-type?
         (not= old-database-type new-database-type)
@@ -37,9 +37,9 @@
         (not= old-base-type new-base-type)
 
         ;; only sync comment if old value was blank so we don't overwrite user-set values
-        new-special-type?
-        (and (nil? old-special-type)
-             (not= old-special-type new-special-type))
+        new-semantic-type?
+        (and (nil? old-semantic-type)
+             (not= old-semantic-type new-semantic-type))
 
         new-comment?
         (and (str/blank? old-field-comment)
@@ -63,12 +63,12 @@
                           old-base-type
                           new-base-type))
            {:base_type new-base-type})
-         (when new-special-type?
-           (log/info (trs "Special type of {0} has changed from ''{1}'' to ''{2}''."
+         (when new-semantic-type?
+           (log/info (trs "Semantic type of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)
-                          old-special-type
-                          new-special-type))
-           {:special_type new-special-type})
+                          old-semantic-type
+                          new-semantic-type))
+           {:semantic_type new-semantic-type})
          (when new-comment?
            (log/info (trs "Comment has been added for {0}."
                           (common/field-metadata-name-for-logging table metabase-field)))

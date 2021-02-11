@@ -12,7 +12,7 @@ const objectDetailCard = {
     cols: [
       {
         display_name: "Details",
-        special_type: TYPE.SerializedJSON,
+        semantic_type: TYPE.SerializedJSON,
       },
     ],
     columns: ["details"],
@@ -28,7 +28,7 @@ const invalidObjectDetailCard = {
     cols: [
       {
         display_name: "Details",
-        special_type: TYPE.SerializedJSON,
+        semantic_type: TYPE.SerializedJSON,
       },
     ],
     columns: ["details"],

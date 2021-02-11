@@ -25,20 +25,20 @@
            {:filter [:>
                      $id
                      [:value 50 {:base_type     :type/BigInteger
-                                 :special_type  :type/PK
+                                 :semantic_type :type/PK
                                  :database_type "BIGINT"
-                                 :name "ID"}]]})
+                                 :name          "ID"}]]})
          (wrap-value-literals
            (mt/mbql-query venues
              {:filter [:> $id 50]}))))
   (is (= (mt/mbql-query venues
            {:filter [:and
                      [:> $id [:value 50 {:base_type     :type/BigInteger
-                                         :special_type  :type/PK
+                                         :semantic_type :type/PK
                                          :database_type "BIGINT"
                                          :name "ID"}]]
                      [:< $price [:value 5 {:base_type     :type/Integer
-                                           :special_type  :type/Category
+                                           :semantic_type  :type/Category
                                            :database_type "INTEGER"
                                            :name "PRICE"}]]]})
          (wrap-value-literals
@@ -114,7 +114,7 @@
                 {:filter [:and
                           [:> !day.timestamp "2015-06-01"]
                           [:< !day.timestamp "2015-06-03"]]})))))
-      "should also apply if the Fields are UNIX timestamps or other things with special type of :type/Datetime")
+      "should also apply if the Fields are UNIX timestamps or other things with semantic type of :type/Datetime")
 
   (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
     (is (= (:query
@@ -137,7 +137,7 @@
              {:filter [:starts-with
                        !month.date
                        [:value "2018-10-01" {:base_type     :type/Date
-                                             :special_type  nil
+                                             :semantic_type nil
                                              :database_type "DATE"
                                              :unit          :month
                                              :name          "DATE"}]]})

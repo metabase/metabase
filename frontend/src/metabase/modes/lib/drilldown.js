@@ -13,7 +13,7 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 // Helpers for defining drill-down progressions
-const CategoryDrillDown = type => [field => isa(field.special_type, type)];
+const CategoryDrillDown = type => [field => isa(field.semantic_type, type)];
 const DateTimeDrillDown = unit => [["datetime-field", isDate, unit]];
 
 const LatLonDrillDown = (binningStrategy, binWidth) => [

@@ -48,7 +48,7 @@
                            :where     [:and
                                        [:in :source-fk.id (set fk-field-ids)]
                                        [:= :target-table.db_id (u/get-id (qp.store/database))]
-                                       (mdb.u/isa :source-fk.special_type :type/FK)]})]
+                                       (mdb.u/isa :source-fk.semantic_type :type/FK)]})]
       (for [{:keys [fk-name table-name], :as info} infos]
         (assoc info :alias (join-alias table-name fk-name))))))
 

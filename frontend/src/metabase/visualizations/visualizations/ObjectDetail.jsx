@@ -159,7 +159,7 @@ export class ObjectDetail extends Component {
     } else {
       if (value === null || value === undefined || value === "") {
         cellValue = <span className="text-light">{t`Empty`}</span>;
-      } else if (isa(column.special_type, TYPE.SerializedJSON)) {
+      } else if (isa(column.semantic_type, TYPE.SerializedJSON)) {
         let formattedJson;
         try {
           formattedJson = JSON.stringify(JSON.parse(value), null, 2);

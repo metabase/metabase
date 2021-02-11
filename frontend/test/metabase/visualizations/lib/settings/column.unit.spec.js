@@ -11,7 +11,7 @@ function seriesWithColumn(col) {
           {
             name: "foo",
             base_type: "type/Float",
-            special_type: "type/Currency",
+            semantic_type: "type/Currency",
             ...col,
           },
         ],
@@ -100,7 +100,7 @@ describe("column settings", () => {
     const series = seriesWithColumn({
       unit: "hour-of-day",
       base_type: "type/DateTime",
-      special_type: undefined,
+      semantic_type: undefined,
     });
     const defs = { ...columnSettings() };
     const computed = getComputedSettings(defs, series, {});

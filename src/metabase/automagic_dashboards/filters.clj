@@ -59,16 +59,16 @@
            (field/unix-timestamp? field))))
 
 (defn- interestingness
-  [{:keys [base_type special_type fingerprint] :as field}]
+  [{:keys [base_type semantic_type fingerprint] :as field}]
   (cond-> 0
     (some-> fingerprint :global :distinct-count (< 10)) inc
     (some-> fingerprint :global :distinct-count (> 20)) dec
-    ((descendants :type/Category) special_type)         inc
+    ((descendants :type/Category) semantic_type)        inc
     (field/unix-timestamp? field)                       inc
     (isa? base_type :type/Temporal)                     inc
-    ((descendants :type/Temporal) special_type)         inc
-    (isa? special_type :type/CreationTimestamp)         inc
-    (#{:type/State :type/Country} special_type)         inc))
+    ((descendants :type/Temporal) semantic_type)        inc
+    (isa? semantic_type :type/CreationTimestamp)        inc
+    (#{:type/State :type/Country} semantic_type)        inc))
 
 (defn- interleave-all
   [& colls]
@@ -84,7 +84,7 @@
        (partition-by :interestingness)
        (mapcat (fn [fields]
                  (->> fields
-                      (group-by (juxt :base_type :special_type))
+                      (group-by (juxt :base_type :semantic_type))
                       vals
                       (apply interleave-all))))))
 
@@ -92,9 +92,9 @@
   "Pick out interesting fields and sort them by interestingness."
   [fields]
   (->> fields
-       (filter (fn [{:keys [special_type] :as field}]
+       (filter (fn [{:keys [semantic_type] :as field}]
                  (or (datetime? field)
-                     (isa? special_type :type/Category))))
+                     (isa? semantic_type :type/Category))))
        sort-by-interestingness))
 
 (defn- candidates-for-filtering
@@ -139,12 +139,12 @@
 
 (defn- filter-type
   "Return filter type for a given field."
-  [{:keys [base_type special_type] :as field}]
+  [{:keys [base_type semantic_type] :as field}]
   (cond
-    (datetime? field)                  "date/all-options"
-    (isa? special_type :type/State)    "location/state"
-    (isa? special_type :type/Country)  "location/country"
-    (isa? special_type :type/Category) "category"))
+    (datetime? field)                   "date/all-options"
+    (isa? semantic_type :type/State)    "location/state"
+    (isa? semantic_type :type/Country)  "location/country"
+    (isa? semantic_type :type/Category) "category"))
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]

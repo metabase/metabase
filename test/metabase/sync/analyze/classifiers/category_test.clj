@@ -5,7 +5,7 @@
 
 (defn- field-with-distinct-count [distinct-count]
   {:database_type       "VARCHAR"
-   :special_type        :type/Name
+   :semantic_type       :type/Name
    :name                "NAME"
    :fingerprint_version 1
    :has_field_values    nil

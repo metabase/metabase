@@ -224,5 +224,5 @@
   "True if a Metabase `Field` instance has a temporal base or special type, i.e. if this Field represents a value
   relating to a moment in time."
   {:arglists '([field])}
-  [{base-type :base_type, special-type :special_type}]
-  (some #(isa? % :type/Temporal) [base-type special-type]))
+  [{base-type :base_type, semantic-type :semantic_type}]
+  (some #(isa? % :type/Temporal) [base-type semantic-type]))

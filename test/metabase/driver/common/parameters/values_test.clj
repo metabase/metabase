@@ -32,11 +32,11 @@
   (testing "specified"
     (testing "date range for a normal :type/Temporal field"
       (is (= {:field (map->FieldInstance
-                      {:name         "DATE"
-                       :parent_id    nil
-                       :table_id     (mt/id :checkins)
-                       :base_type    :type/Date
-                       :special_type nil})
+                      {:name          "DATE"
+                       :parent_id     nil
+                       :table_id      (mt/id :checkins)
+                       :base_type     :type/Date
+                       :semantic_type nil})
               :value {:type  :date/range
                       :value "2015-04-01~2015-05-01"}}
              (into {} (#'values/value-for-tag
@@ -52,11 +52,11 @@
       (mt/dataset tupac-sightings
         (mt/$ids sightings
           (is (= {:field (map->FieldInstance
-                          {:name         "TIMESTAMP"
-                           :parent_id    nil
-                           :table_id     $$sightings
-                           :base_type    :type/BigInteger
-                           :special_type :type/UNIXTimestampSeconds})
+                          {:name          "TIMESTAMP"
+                           :parent_id     nil
+                           :table_id      $$sightings
+                           :base_type     :type/BigInteger
+                           :semantic_type :type/UNIXTimestampSeconds})
                   :value {:type  :date/range
                           :value "2020-02-01~2020-02-29"}}
                  (into {} (#'values/value-for-tag
@@ -71,11 +71,11 @@
 
   (testing "unspecified"
     (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value i/no-value}
            (into {} (#'values/value-for-tag
                      {:name         "checkin_date"
@@ -86,11 +86,11 @@
 
   (testing "id requiring casting"
     (is (= {:field (map->FieldInstance
-                    {:name         "ID"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/BigInteger
-                     :special_type :type/PK})
+                    {:name          "ID"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/BigInteger
+                     :semantic_type :type/PK})
             :value {:type  :id
                     :value 5}}
            (into {} (#'values/value-for-tag
@@ -106,11 +106,11 @@
 
   (testing "required and default specified"
     (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value {:type  :dimension
                     :value "2015-04-01~2015-05-01"}}
            (into {} (#'values/value-for-tag
@@ -125,11 +125,11 @@
 
   (testing "multiple values for the same tag should return a vector with multiple params instead of a single param"
     (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value [{:type  :date/range
                      :value "2015-01-01~2016-09-01"}
                     {:type  :date/single
@@ -141,11 +141,11 @@
 
   (testing "Make sure defaults values get picked up for field filter clauses"
     (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value {:type  :date/all-options
                     :value "past5days"}}
            (into {} (#'values/parse-tag

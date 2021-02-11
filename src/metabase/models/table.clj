@@ -87,9 +87,9 @@
                   {:order-by (case (:field_order table)
                                :custom       [[:custom_position :asc]]
                                :smart        [[(hsql/call :case
-                                                 (mdb.u/isa :special_type :type/PK)       0
-                                                 (mdb.u/isa :special_type :type/Name)     1
-                                                 (mdb.u/isa :special_type :type/Temporal) 2
+                                                 (mdb.u/isa :semantic_type :type/PK)       0
+                                                 (mdb.u/isa :semantic_type :type/Name)     1
+                                                 (mdb.u/isa :semantic_type :type/Temporal) 2
                                                  :else                                    3)
                                                :asc]
                                               [:%lower.name :asc]]
@@ -154,7 +154,7 @@
   [{:keys [id]}]
   (db/select-one-id Field
     :table_id        id
-    :special_type    (mdb.u/isa :type/PK)
+    :semantic_type   (mdb.u/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
 
 

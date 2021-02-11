@@ -22,7 +22,7 @@ export type Field = {
   display_name: string,
   description: string,
   base_type: BaseType,
-  special_type: SpecialType,
+  semantic_type: SpecialType,
   active: boolean,
   visibility_type: FieldVisibilityType,
   preview_display: boolean,

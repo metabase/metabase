@@ -137,23 +137,23 @@ export class SpecialTypeAndTargetPicker extends Component {
     selectSeparator?: React$Element<any>,
   };
 
-  handleChangeSpecialType = async ({ target: { value: special_type } }) => {
+  handleChangeSpecialType = async ({ target: { value: semantic_type } }) => {
     const { field, updateField } = this.props;
 
     // If we are changing the field from a FK to something else, we should delete any FKs present
-    if (field.target && field.target.id != null && isFK(field.special_type)) {
+    if (field.target && field.target.id != null && isFK(field.semantic_type)) {
       await updateField({
-        special_type,
+        semantic_type,
         fk_target_field_id: null,
       });
     } else {
-      await updateField({ special_type });
+      await updateField({ semantic_type });
     }
 
     MetabaseAnalytics.trackEvent(
       "Data Model",
       "Update Field Special-Type",
-      special_type,
+      semantic_type,
     );
   };
 
@@ -181,7 +181,7 @@ export class SpecialTypeAndTargetPicker extends Component {
     const { field, className, selectSeparator } = this.props;
 
     let specialTypes = [
-      ...MetabaseCore.field_special_types,
+      ...MetabaseCore.field_semantic_types,
       {
         id: null,
         name: t`No special type`,
@@ -193,7 +193,7 @@ export class SpecialTypeAndTargetPicker extends Component {
       specialTypes = specialTypes.filter(f => !isa(f.id, TYPE.UNIXTimestamp));
     }
 
-    const showFKTargetSelect = isFK(field.special_type);
+    const showFKTargetSelect = isFK(field.semantic_type);
 
     const showCurrencyTypeSelect = isCurrency(field);
 
@@ -212,7 +212,7 @@ export class SpecialTypeAndTargetPicker extends Component {
       <div className={cx(selectSeparator ? "flex align-center" : null)}>
         <Select
           className={cx("TableEditor-field-special-type mt0", className)}
-          value={field.special_type}
+          value={field.semantic_type}
           onChange={this.handleChangeSpecialType}
           options={specialTypes}
           optionValueFn={o => o.id}

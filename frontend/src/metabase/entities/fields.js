@@ -19,7 +19,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import {
   field_visibility_types,
-  field_special_types,
+  field_semantic_types,
   has_field_values_options,
 } from "metabase/lib/core";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
@@ -177,14 +177,14 @@ const Fields = createEntity({
           })),
         },
         {
-          name: "special_type",
+          name: "semantic_type",
           type: "select",
-          options: field_special_types.map(type => ({
+          options: field_semantic_types.map(type => ({
             name: type.name,
             value: type.id,
           })),
         },
-        values.special_type === TYPE.FK && {
+        values.semantic_type === TYPE.FK && {
           name: "fk_target_field_id",
         },
         {

@@ -27,7 +27,7 @@
                                     false
 
                                     {:has_field_values :list
-                                     :special_type     :type/Category
+                                     :semantic_type    :type/Category
                                      :visibility_type  :normal
                                      :base_type        "type/Boolean"}
                                     true}

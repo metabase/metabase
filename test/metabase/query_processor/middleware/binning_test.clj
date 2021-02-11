@@ -95,7 +95,7 @@
 ;; does `resolve-default-strategy` work the way we'd expect?
 (expect
   [:num-bins {:num-bins 8, :bin-width 28.28321}]
-  (#'binning/resolve-default-strategy {:special_type :type/Income} 12.061602936923117 238.32732001721533))
+  (#'binning/resolve-default-strategy {:semantic_type :type/Income} 12.061602936923117 238.32732001721533))
 
 ;; does `nicer-breakout` make things NICER?
 (expect
@@ -110,7 +110,7 @@
   (field/map->FieldInstance
    {:database_type "DOUBLE"
     :table_id      (data/id :checkins)
-    :special_type  :type/Income
+    :semantic_type :type/Income
     :name          "TOTAL"
     :display_name  "Total"
     :fingerprint   {:global {:distinct-count 10000}

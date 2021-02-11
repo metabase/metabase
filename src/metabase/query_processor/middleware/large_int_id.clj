@@ -36,8 +36,8 @@
                             (let [field-id (mbql.u/field-clause->id-or-literal val)]
                               (when-let [field (when (number? field-id)
                                                  (Field field-id))]
-                                (when (and (or (isa? (:special_type field) :type/PK)
-                                               (isa? (:special_type field) :type/FK))
+                                (when (and (or (isa? (:semantic_type field) :type/PK)
+                                               (isa? (:semantic_type field) :type/FK))
                                            (isa? (:base_type field) :type/Integer))
                                   idx))))
                           (:fields (:query query)))]

@@ -100,7 +100,7 @@
   the DB too much since this is unlike to change often, if ever."
   (memoize/ttl
    (fn [field-id]
-     (types/temporal-field? (db/select-one [Field :base_type :special_type] :id field-id)))
+     (types/temporal-field? (db/select-one [Field :base_type :semantic_type] :id field-id)))
    :ttl/threshold (u/minutes->ms 10)))
 
 (defn- filter-clause
@@ -500,8 +500,8 @@
                                                                    [Field :dest] [:= :dest.table_id :table.id]]
                                                        :where     [:and
                                                                    [:= :source.id field-id]
-                                                                   (mdb.u/isa :source.special_type :type/PK)
-                                                                   (mdb.u/isa :dest.special_type :type/Name)]
+                                                                   (mdb.u/isa :source.semantic_type :type/PK)
+                                                                   (mdb.u/isa :dest.semantic_type :type/Name)]
                                                        :limit     1})]}
                                             :ids]]
                                   :limit  1})]

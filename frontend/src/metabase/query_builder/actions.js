@@ -1172,7 +1172,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     // extract the value we will use to filter our new query
     let originValue;
     for (let i = 0; i < queryResult.data.cols.length; i++) {
-      if (isPK(queryResult.data.cols[i].special_type)) {
+      if (isPK(queryResult.data.cols[i].semantic_type)) {
         originValue = queryResult.data.rows[0][i];
       }
     }
@@ -1208,7 +1208,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
       function getObjectDetailIdValue(data) {
         for (let i = 0; i < data.cols.length; i++) {
           const coldef = data.cols[i];
-          if (isPK(coldef.special_type)) {
+          if (isPK(coldef.semantic_type)) {
             return data.rows[0][i];
           }
         }

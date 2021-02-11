@@ -455,7 +455,7 @@
       "1": {
         "description": "The date and time an order was submitted.",
         "table_id": 1,
-        "special_type": null,
+        "semantic_type": null,
         "name": "CREATED_AT",
         "caveats": null,
         "fk_target_field_id": null,
@@ -477,7 +477,7 @@
       "2": {
         "description": "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.",
         "table_id": 1,
-        "special_type": "type/PK",
+        "semantic_type": "type/PK",
         "name": "ID",
         "caveats": null,
         "fk_target_field_id": null,
@@ -499,7 +499,7 @@
       "3": {
         "description": "The product ID. This is an internal identifier for the product, NOT the SKU.",
         "table_id": 1,
-        "special_type": "type/FK",
+        "semantic_type": "type/FK",
         "name": "PRODUCT_ID",
         "caveats": null,
         "fk_target_field_id": 24,
@@ -521,7 +521,7 @@
       "4": {
         "description": "The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.",
         "table_id": 1,
-        "special_type": "type/Category",
+        "semantic_type": "type/Category",
         "name": "SUBTOTAL",
         "caveats": null,
         "fk_target_field_id": null,
@@ -550,7 +550,7 @@
       "5": {
         "description": "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.",
         "table_id": 1,
-        "special_type": null,
+        "semantic_type": null,
         "name": "TAX",
         "caveats": null,
         "fk_target_field_id": null,
@@ -572,7 +572,7 @@
       "6": {
         "description": "The total billed amount.",
         "table_id": 1,
-        "special_type": "type/Currency",
+        "semantic_type": "type/Currency",
         "name": "TOTAL",
         "caveats": null,
         "fk_target_field_id": null,
@@ -626,7 +626,7 @@
       "7": {
         "description": "The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.",
         "table_id": 1,
-        "special_type": "type/FK",
+        "semantic_type": "type/FK",
         "name": "USER_ID",
         "caveats": null,
         "fk_target_field_id": 13,
@@ -648,7 +648,7 @@
       "8": {
         "description": "The street address of the account’s billing address",
         "table_id": 2,
-        "special_type": null,
+        "semantic_type": null,
         "name": "ADDRESS",
         "caveats": null,
         "fk_target_field_id": null,
@@ -670,7 +670,7 @@
       "9": {
         "description": "The date of birth of the user",
         "table_id": 2,
-        "special_type": null,
+        "semantic_type": null,
         "name": "BIRTH_DATE",
         "caveats": null,
         "fk_target_field_id": null,
@@ -692,7 +692,7 @@
       "10": {
         "description": "The city of the account’s billing address",
         "table_id": 2,
-        "special_type": "type/City",
+        "semantic_type": "type/City",
         "name": "CITY",
         "caveats": null,
         "fk_target_field_id": null,
@@ -714,7 +714,7 @@
       "11": {
         "description": "The date the user record was created. Also referred to as the user’s \"join date\"",
         "table_id": 2,
-        "special_type": null,
+        "semantic_type": null,
         "name": "CREATED_AT",
         "caveats": null,
         "fk_target_field_id": null,
@@ -736,7 +736,7 @@
       "12": {
         "description": "The contact email for the account.",
         "table_id": 2,
-        "special_type": "type/Email",
+        "semantic_type": "type/Email",
         "name": "EMAIL",
         "caveats": null,
         "fk_target_field_id": null,
@@ -758,7 +758,7 @@
       "13": {
         "description": "A unique identifier given to each user.",
         "table_id": 2,
-        "special_type": "type/PK",
+        "semantic_type": "type/PK",
         "name": "ID",
         "caveats": null,
         "fk_target_field_id": null,
@@ -780,7 +780,7 @@
       "14": {
         "description": "This is the latitude of the user on sign-up. It might be updated in the future to the last seen location.",
         "table_id": 2,
-        "special_type": "type/Latitude",
+        "semantic_type": "type/Latitude",
         "name": "LATITUDE",
         "caveats": null,
         "fk_target_field_id": null,
@@ -802,7 +802,7 @@
       "15": {
         "description": "This is the longitude of the user on sign-up. It might be updated in the future to the last seen location.",
         "table_id": 2,
-        "special_type": "type/Longitude",
+        "semantic_type": "type/Longitude",
         "name": "LONGITUDE",
         "caveats": null,
         "fk_target_field_id": null,
@@ -824,7 +824,7 @@
       "16": {
         "description": "The name of the user who owns an account",
         "table_id": 2,
-        "special_type": "type/Name",
+        "semantic_type": "type/Name",
         "name": "NAME",
         "caveats": null,
         "fk_target_field_id": null,
@@ -846,7 +846,7 @@
       "17": {
         "description": "This is the salted password of the user. It should not be visible",
         "table_id": 2,
-        "special_type": null,
+        "semantic_type": null,
         "name": "PASSWORD",
         "caveats": null,
         "fk_target_field_id": null,
@@ -868,7 +868,7 @@
       "18": {
         "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
         "table_id": 2,
-        "special_type": "type/Category",
+        "semantic_type": "type/Category",
         "name": "SOURCE",
         "caveats": null,
         "fk_target_field_id": null,
@@ -897,7 +897,7 @@
       "19": {
         "description": "The state or province of the account’s billing address",
         "table_id": 2,
-        "special_type": "type/State",
+        "semantic_type": "type/State",
         "name": "STATE",
         "caveats": null,
         "fk_target_field_id": null,
@@ -989,7 +989,7 @@
       "20": {
         "description": "The postal code of the account’s billing address",
         "table_id": 2,
-        "special_type": "type/ZipCode",
+        "semantic_type": "type/ZipCode",
         "name": "ZIP",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1011,7 +1011,7 @@
       "21": {
         "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
         "table_id": 3,
-        "special_type": "type/Category",
+        "semantic_type": "type/Category",
         "name": "CATEGORY",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1041,7 +1041,7 @@
       "22": {
         "description": "The date the product was added to our catalog.",
         "table_id": 3,
-        "special_type": null,
+        "semantic_type": null,
         "name": "CREATED_AT",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1063,7 +1063,7 @@
       "23": {
         "description": "The international article number. A 13 digit number uniquely identifying the product.",
         "table_id": 3,
-        "special_type": "type/Category",
+        "semantic_type": "type/Category",
         "name": "EAN",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1092,7 +1092,7 @@
       "24": {
         "description": "The numerical product number. Only used internally. All external communication should use the title or EAN.",
         "table_id": 3,
-        "special_type": "type/PK",
+        "semantic_type": "type/PK",
         "name": "ID",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1114,7 +1114,7 @@
       "25": {
         "description": "The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.",
         "table_id": 3,
-        "special_type": "type/Category",
+        "semantic_type": "type/Category",
         "name": "PRICE",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1143,7 +1143,7 @@
       "26": {
         "description": "The average rating users have given the product. This ranges from 1 - 5",
         "table_id": 3,
-        "special_type": "type/Category",
+        "semantic_type": "type/Category",
         "name": "RATING",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1198,7 +1198,7 @@
       "27": {
         "description": "The name of the product as it should be displayed to customers.",
         "table_id": 3,
-        "special_type": "type/Category",
+        "semantic_type": "type/Category",
         "name": "TITLE",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1227,7 +1227,7 @@
       "28": {
         "description": "The source of the product.",
         "table_id": 3,
-        "special_type": "type/Category",
+        "semantic_type": "type/Category",
         "name": "VENDOR",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1256,7 +1256,7 @@
       "29": {
         "description": "The review the user left. Limited to 2000 characters.",
         "table_id": 4,
-        "special_type": "type/Description",
+        "semantic_type": "type/Description",
         "name": "BODY",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1278,7 +1278,7 @@
       "30": {
         "description": "The day and time a review was written by a user.",
         "table_id": 4,
-        "special_type": null,
+        "semantic_type": null,
         "name": "CREATED_AT",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1300,7 +1300,7 @@
       "31": {
         "description": "A unique internal identifier for the review. Should not be used externally.",
         "table_id": 4,
-        "special_type": "type/PK",
+        "semantic_type": "type/PK",
         "name": "ID",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1322,7 +1322,7 @@
       "32": {
         "description": "The product the review was for",
         "table_id": 4,
-        "special_type": "type/FK",
+        "semantic_type": "type/FK",
         "name": "PRODUCT_ID",
         "caveats": null,
         "fk_target_field_id": 24,
@@ -1344,7 +1344,7 @@
       "33": {
         "description": "The rating (on a scale of 1-5) the user left.",
         "table_id": 4,
-        "special_type": "type/Category",
+        "semantic_type": "type/Category",
         "name": "RATING",
         "caveats": null,
         "fk_target_field_id": null,
@@ -1373,7 +1373,7 @@
       "34": {
         "description": "The user who left the review",
         "table_id": 4,
-        "special_type": null,
+        "semantic_type": null,
         "name": "REVIEWER",
         "caveats": null,
         "fk_target_field_id": null,

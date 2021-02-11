@@ -148,12 +148,12 @@
 (deftest all-num-columns-test
   (mt/test-driver :mongo
     (mt/dataset all-null-columns
-      (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
-              {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :special_type nil}
-              {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :special_type :type/Name}]
+      (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :semantic_type :type/PK}
+              {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :semantic_type nil}
+              {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Name}]
              (map
               (partial into {})
-              (db/select [Field :name :database_type :base_type :special_type]
+              (db/select [Field :name :database_type :base_type :semantic_type]
                 :table_id (mt/id :bird_species)
                 {:order-by [:name]})))))))
 
@@ -188,24 +188,24 @@
 (deftest sync-fields-test
   (mt/test-driver :mongo
     (testing "Test that Fields got synced correctly, and types are correct"
-      (is (= [[{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:special_type :type/Name,      :base_type :type/Text,     :name "name"}]
-              [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:special_type nil,             :base_type :type/Instant,  :name "date"}
-               {:special_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
-               {:special_type nil,             :base_type :type/Integer,  :name "venue_id"}]
-              [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:special_type nil,             :base_type :type/Instant,  :name "last_login"}
-               {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:special_type :type/Category,  :base_type :type/Text,     :name "password"}]
-              [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:special_type :type/Category,  :base_type :type/Integer,  :name "category_id"}
-               {:special_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
-               {:special_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
-               {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:special_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
+      (is (= [[{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}]
+              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type nil,             :base_type :type/Instant,  :name "date"}
+               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
+               {:semantic_type nil,             :base_type :type/Integer,  :name "venue_id"}]
+              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type nil,             :base_type :type/Instant,  :name "last_login"}
+               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
+               {:semantic_type :type/Category,  :base_type :type/Text,     :name "password"}]
+              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "category_id"}
+               {:semantic_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
+               {:semantic_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
+               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
+               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
-                    (vec (for [field (db/select [Field :name :base_type :special_type]
+                    (vec (for [field (db/select [Field :name :base_type :semantic_type]
                                        :active   true
                                        :table_id (mt/id table-name)
                                        {:order-by [:name]})]

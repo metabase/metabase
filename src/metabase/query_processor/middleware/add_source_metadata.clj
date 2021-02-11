@@ -51,7 +51,7 @@
                                                                             :type     :query
                                                                             :query    source-query}))]
       (for [col cols]
-        (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings :source_alias])))
+        (select-keys col [:name :id :table_id :display_name :base_type :semantic_type :unit :fingerprint :settings :source_alias])))
     (catch Throwable e
       (log/error e (str (trs "Error determining expected columns for query")))
       nil)))

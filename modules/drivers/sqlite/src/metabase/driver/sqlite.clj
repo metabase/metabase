@@ -217,15 +217,15 @@
   (->datetime expr (hx/literal "unixepoch")))
 
 (defmethod sql.qp/cast-temporal-string [:sqlite :type/ISO8601DateTimeString]
-  [_driver _special_type expr]
+  [_driver _semantic_type expr]
   (->datetime expr))
 
 (defmethod sql.qp/cast-temporal-string [:sqlite :type/ISO8601DateString]
-  [_driver _special_type expr]
+  [_driver _semantic_type expr]
   (->date expr))
 
 (defmethod sql.qp/cast-temporal-string [:sqlite :type/ISO8601TimeString]
-  [_driver _special_type expr]
+  [_driver _semantic_type expr]
   (->time expr))
 
 ;; SQLite doesn't like Temporal values getting passed in as prepared statement args, so we need to convert them to
