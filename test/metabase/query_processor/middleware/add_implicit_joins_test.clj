@@ -6,6 +6,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
+            [metabase.util :as u]
             [schema.core :as s]))
 
 (deftest resolve-implicit-joins-test
