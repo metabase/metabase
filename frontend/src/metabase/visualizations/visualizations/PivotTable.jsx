@@ -6,6 +6,7 @@ import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
 import { color, lighten } from "metabase/lib/colors";
+import { styles } from "metabase/visualizations/components/TableInteractive.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 
 import Ellipsified from "metabase/components/Ellipsified";
@@ -597,7 +598,7 @@ function Cell({
         ...(isSubtotal ? { backgroundColor: PIVOT_BG_DARK } : {}),
       }}
       className={cx(
-        "shrink-below-content-size flex-full flex-basis-none",
+        "shrink-below-content-size flex-full flex-basis-none TableInteractive-cellWrapper",
         className,
         {
           "text-bold": isSubtotal,
