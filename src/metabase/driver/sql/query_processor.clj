@@ -524,7 +524,7 @@
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn field-clause->alias :- (s/cond-pre su/NonBlankString Identifier)
+(s/defn field-clause->alias :- (s/pred some? "non-nil")
   "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a Field clause of any type, or `nil` if
   the Field should not be aliased (e.g. if `field->alias` returns `nil`).
 
