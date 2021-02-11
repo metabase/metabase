@@ -899,10 +899,10 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it("attempt to sandbox based on question with more columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
-      const QUESTION_NAME = "Extra columns question";
+    it("attempt to sandbox based on question with differently-typed columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
+      const QUESTION_NAME = "Different type";
       const ERROR_MESSAGE =
-        "Sandbox Questions can't return columns that have different types than the Table they are sandboxing";
+        "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.";
 
       cy.server();
       cy.route("POST", "/api/mt/gtap").as("sandboxTable");
@@ -916,7 +916,7 @@ describeWithToken("formatting > sandboxes", () => {
         dataset_query: {
           database: 1,
           type: "native",
-          native: { query: "SELECT ID, 100 AS NAME FROM VENUES;" },
+          native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
         },
         display: "table",
         visualization_settings: {},
@@ -935,21 +935,9 @@ describeWithToken("formatting > sandboxes", () => {
         "Use a saved question to create a custom view for this table",
       ).click();
       cy.findByText(QUESTION_NAME).click();
-
-      cy.findByText("Pick a parameter").click();
-      popover().within(() => {
-        // PERSON.ID
-        cy.findAllByText("ID")
-          .first()
-          .click();
-      });
-
-      cy.findByText("Pick a user attribute").click();
-      cy.findByText(ATTR_UID).click();
       cy.findAllByRole("button", { name: "Save" }).click();
 
       cy.wait("@sandboxTable").then(xhr => {
-        cy.log(xhr);
         expect(xhr.status).to.eq(400);
         expect(xhr.response.body.message).to.eq(ERROR_MESSAGE);
       });
