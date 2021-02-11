@@ -115,35 +115,6 @@
                        {:source-table $$categories
                         :condition    [:= $category_id 2]}]}))))))
 
-(deftest validate-aliases-test
-  (testing "Should throw an Exception if a Joined Field using an alias that doesn't exist is used"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Bad :joined-field clause: join with alias 'x' does not exist"
-         (resolve-joins
-          (mt/mbql-query venues
-            {:joins [{:source-table $$categories
-                      :condition    [:= $category_id [:joined-field "x" $categories.id]]}]})))))
-  (testing "Should be ok when a join `:condition` references itself"
-    (is (some?
-         (resolve-joins
-          (mt/mbql-query venues
-            {:joins [{:source-table $$categories
-                      :alias        "x"
-                      :condition    [:= $category_id [:joined-field "x" $categories.id]]}]})))))
-  (testing "Should be ok when joins refer to one another"
-    (is (some?
-         (resolve-joins
-          (mt/mbql-query users
-            {:joins [{:source-table $$checkins
-                      :alias        "checkins"
-                      :condition    [:= $id [:joined-field "checkins" $checkins.user_id]]}
-                     {:source-table $$venues
-                      :alias        "venues"
-                      :condition    [:=
-                                     [:joined-field "checkins" $checkins.venue_id]
-                                     [:joined-field "venues" $venues.id]]}]}))))))
-
 (deftest disallow-joins-against-table-on-different-db-test
   (testing "Test that joining against a table in a different DB throws an Exception"
     (mt/with-temp* [Database [{database-id :id}]

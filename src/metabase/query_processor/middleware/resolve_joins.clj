@@ -132,40 +132,11 @@
     (cond-> inner-query
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 
-(defn- check-join-aliases [query]
-  (letfn [(referenced-aliases [form]
-            (mbql.u/match form
-              [:joined-field alias _]
-              alias))
-          (check-join-aliases* [{:keys [joins source-query], :as query} aliases-from-parent-level]
-            (let [aliases (into (set aliases-from-parent-level)
-                                (map :alias joins))]
-              ;; only check stuff at the current level. We'll recursively check stuff below
-              (doseq [alias (referenced-aliases (dissoc query :source-query :joins))]
-                (when-not (aliases alias)
-                  (throw
-                   (ex-info (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
-                                 alias aliases)
-                            {:query   query
-                             :alias   alias
-                             :aliases aliases}))))
-              ;; recursively check joins and source queries
-              (doseq [join joins]
-                (check-join-aliases* join aliases))
-              (when source-query
-                (check-join-aliases* source-query nil))))]
-    (mbql.u/match query
-      (m :guard (every-pred map? :joins))
-      (check-join-aliases* m nil))))
-
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [{:keys [joins], :as query} :- mbql.s/MBQLQuery]
-  (u/prog1 (-> query
-               (update :joins resolve-references-and-deduplicate)
-               ;; TODO comp?
-               (update :joins resolve-join-source-queries)
-               merge-joins-fields)
-    (check-join-aliases (dissoc <> :source-query))))
+  (-> query
+      (update :joins (comp resolve-join-source-queries resolve-references-and-deduplicate))
+      merge-joins-fields))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
