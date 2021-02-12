@@ -463,6 +463,61 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("49.54");
       });
     });
+
+    it.skip("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+      cy.route("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": REVIEWS_ID,
+            joins: [
+              {
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field-id", REVIEWS.PRODUCT_ID],
+                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ],
+                alias: "Products",
+              },
+            ],
+            aggregation: [
+              [
+                "sum",
+                ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
+              ],
+            ],
+            breakout: [
+              ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "year"],
+            ],
+          },
+          database: 1,
+        },
+        display: "line",
+      });
+
+      cy.wait("@dataset");
+      cy.get(".dot")
+        .eq(2)
+        .click({ force: true });
+      cy.findByText("X-ray").click();
+
+      cy.wait("@xray").then(xhr => {
+        expect(xhr.response.body.cause).not.to.exist;
+        expect(xhr.status).not.to.eq(500);
+      });
+      // Main title
+      cy.contains(/^A closer look at/);
+      // Metric title
+      cy.findByText("How this metric is distributed across different numbers");
+      // Make sure at least one card is rendered
+      cy.get(".DashCard");
+    });
   });
 
   describe("nested", () => {
