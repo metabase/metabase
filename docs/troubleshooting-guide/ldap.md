@@ -14,6 +14,18 @@ services:
       - 3000:3000
     networks:
       - metanet1
+    environment:
+      - "MB_LDAP_BIND_DN=cn=admin,dc=example,dc=org"
+      - "MB_LDAP_ENABLED=true"
+      - "MB_LDAP_GROUP_BASE=cn=readers"
+      - "MB_LDAP_HOST=openldap"
+      - "MB_LDAP_PASSWORD=adminpassword"
+      - "MB_LDAP_PORT=1389"
+      - "MB_LDAP_USER_BASE=ou=users,dc=example,dc=org"
+      - "MB_LDAP_ATTRIBUTE_EMAIL=uid"
+      # We are using the same field for email and first name, just for this example to work without modifications to the LDAP objects
+      - "MB_LDAP_ATTRIBUTE_FIRSTNAME=uid"
+      - "MB_LDAP_ATTRIBUTE_LASTNAME=sn"
   openldap:
     image: bitnami/openldap:2.4.57
     hostname: openldap
@@ -36,7 +48,7 @@ networks:
     driver: bridge
 ```
 
-Now go to Metabase and in the LDAP configuration enter the following values:
+If you don't pass environment variables to Metabase and you want to configure the environment manually, you can go to Admin->Settings->Authentication-> LDAP configuration enter the following values:
 
 USERNAME OR DN: `cn=admin,dc=example,dc=org`
 PASSWORD: `adminpassword`
