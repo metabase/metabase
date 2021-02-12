@@ -201,7 +201,8 @@
         ))))
 
 (deftest remappings-with-implicit-joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+  ;; Redshift excluded for now since the sample dataset seems to hang for Redshift.
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift)
     (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
       (mt/dataset sample-dataset
         (mt/with-column-remappings [orders.product_id products.title]
