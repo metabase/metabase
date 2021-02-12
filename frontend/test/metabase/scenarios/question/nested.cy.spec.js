@@ -457,7 +457,7 @@ describe("scenarios > question > nested", () => {
     // It can potentially fail at two more places. See [1] and [2]
     cy.get(".Icon-notebook").click();
     cy.get("[class*=NotebookCellItem]")
-      .contains("Products → Category") /* [1] */
+      .contains(/^Products → Category$/) /* [1] */
       .click();
     popover().within(() => {
       isSelected("Products → Category"); /* [2] */
