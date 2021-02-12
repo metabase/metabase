@@ -430,6 +430,54 @@ describe("scenarios > question > nested", () => {
       });
     });
   });
+
+  it.skip("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
+    // Set the display really wide and really tall to avoid any scrolling
+    cy.viewport(1600, 1200);
+
+    ordersJoinProducts("14787");
+    // This repro depends on these exact steps - it has to be opened from the saved questions
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("14787").click();
+
+    // The column title
+    cy.findByText("Products → Category").click();
+    cy.findByText("Distribution").click();
+    cy.contains("Summarize").click();
+    cy.findByText("Group by")
+      .parent()
+      .within(() => {
+        cy.log("**Regression that worked on 0.37.9**");
+        isSelected("Products → Category");
+      });
+
+    // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
+    // It can potentially fail at two more places. See [1] and [2]
+    cy.get(".Icon-notebook").click();
+    cy.get("[class*=NotebookCellItem]")
+      .contains("Products → Category") /* [1] */
+      .click();
+    popover().within(() => {
+      isSelected("Products → Category"); /* [2] */
+    });
+
+    /**
+     * Helper function related to this test only
+     * TODO:
+     *  Extract it if we have the need for it anywhere else
+     */
+    function isSelected(text) {
+      cy.findByText(text)
+        .closest(".List-item")
+        .should($el => {
+          const className = $el[0].className;
+
+          expect(className).to.contain("selected");
+        });
+    }
+  });
 });
 
 function ordersJoinProducts(name) {
