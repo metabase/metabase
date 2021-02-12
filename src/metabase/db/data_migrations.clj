@@ -39,12 +39,20 @@
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
   been run.
 
-     (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
+     (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)
+
+  Migrations may provide metadata with `:catch?` to indicate if errors should be caught or propagated."
   [ran-migrations migration-var]
-  (let [migration-name (name (:name (meta migration-var)))]
+  (let [{migration-name :name catch? :catch?} (meta migration-var)
+        migration-name (name migration-name)]
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
-      (@migration-var)
+      (try
+        (@migration-var)
+        (catch Exception e
+          (if catch?
+            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
+            (throw e))))
       (db/insert! DataMigrations
         :id        migration-name
         :timestamp :%now))))
@@ -114,7 +122,11 @@
 ;;; |                                                NEW TYPE SYSTEM                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const old-semantic-type->new-type
+;; this is the old new type system. as of v30 these are migrated from a field named special_type to
+;; semantic_type. These migrations target the world before this migration so they are left as is. The migrations talk
+;; about special_type as a column and a try/catch is introduced to the migration runner to allow migrations to
+;; fail. It is opt in.
+(def ^:private ^:const old-special-type->new-type
     {"avatar"                 "type/AvatarURL"
      "category"               "type/Category"
      "city"                   "type/City"
@@ -136,7 +148,7 @@
 
 ;; make sure the new types are all valid
 (when-not config/is-prod?
-  (doseq [[_ t] old-semantic-type->new-type]
+  (doseq [[_ t] old-special-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
 (def ^:private ^:const old-base-type->new-type
@@ -159,17 +171,17 @@
   (doseq [[_ t] old-base-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
-;; migrate all of the old base + semantic types to the new ones.  This also takes care of any types that are already
+;; migrate all of the old base + special types to the new ones.  This also takes care of any types that are already
 ;; correct other than the fact that they're missing :type/ in the front.  This was a bug that existed for a bit in
 ;; 0.20.0-SNAPSHOT but has since been corrected
-(defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
-  (doseq [[old-type new-type] old-semantic-type->new-type]
+(defmigration ^{:author "camsaul", :added "0.20.0", :catch? true} migrate-field-types
+  (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:%lower.semantic_type (str/lower-case old-type)}
-      :semantic_type new-type)
+    (db/update-where! 'Field {:%lower.special_type (str/lower-case old-type)}
+      :special_type new-type)
     ;; migrate things like :UNIXTimestampMilliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:semantic_type (name (keyword new-type))}
-      :semantic_type new-type))
+    (db/update-where! 'Field {:special_type (name (keyword new-type))}
+      :special_type new-type))
   (doseq [[old-type new-type] old-base-type->new-type]
     ;; migrate things like :DateTimeField -> :type/DateTime
     (db/update-where! 'Field {:%lower.base_type (str/lower-case old-type)}
@@ -180,11 +192,11 @@
 
 ;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't
 ;; blow up
-(defmigration ^{:author "camsaul", :added "0.20.0"} fix-invalid-field-types
+(defmigration ^{:author "camsaul", :added "0.20.0", :catch? true} fix-invalid-field-types
   (db/update-where! 'Field {:base_type [:not-like "type/%"]}
     :base_type "type/*")
-  (db/update-where! 'Field {:semantic_type [:not-like "type/%"]}
-    :semantic_type nil))
+  (db/update-where! 'Field {:special_type [:not-like "type/%"]}
+    :special_type nil))
 
 ;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored
 ;; internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
@@ -237,16 +249,20 @@
     (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
 
 ;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
-;; would be marked as semantic type Category if they should have FieldValues. In 29+, the Category semantic type no
+;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
 ;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
 ;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
-;; meaning of the Category semantic type.
+;; meaning of the Category special type.
 ;;
 ;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
 ;; their behavior doesn't suddenly change.
-(defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
+
+;; Note that since v39 special_type became semantic_type. All of these migrations concern data from before this
+;; change. Therefore, the migration is set to `:catch? true` and the old name is used. If the column is semantic then
+;; the data shouldn't be bad.
+(defmigration ^{:author "camsaul", :added "0.29.0", :catch? true} mark-category-fields-as-list
   (db/update-where! Field {:has_field_values nil
-                           :semantic_type    (mdb.u/isa :type/Category)
+                           :special_type     (mdb.u/isa :type/Category)
                            :active           true}
     :has_field_values "list"))
 
