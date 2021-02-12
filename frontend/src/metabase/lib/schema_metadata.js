@@ -33,15 +33,15 @@ export const UNKNOWN = "UNKNOWN";
 const TYPES = {
   [TEMPORAL]: {
     base: [TYPE.Temporal],
-    special: [TYPE.Temporal],
+    semantic: [TYPE.Temporal],
   },
   [NUMBER]: {
     base: [TYPE.Number],
-    special: [TYPE.Number],
+    semantic: [TYPE.Number],
   },
   [STRING]: {
     base: [TYPE.Text],
-    special: [TYPE.Text],
+    semantic: [TYPE.Text],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
@@ -50,19 +50,19 @@ const TYPES = {
     base: [TYPE.Boolean],
   },
   [COORDINATE]: {
-    special: [TYPE.Coordinate],
+    semantic: [TYPE.Coordinate],
   },
   [LOCATION]: {
-    special: [TYPE.Address],
+    semantic: [TYPE.Address],
   },
   [ENTITY]: {
-    special: [TYPE.FK, TYPE.PK, TYPE.Name],
+    semantic: [TYPE.FK, TYPE.PK, TYPE.Name],
   },
   [FOREIGN_KEY]: {
-    special: [TYPE.FK],
+    semantic: [TYPE.FK],
   },
   [PRIMARY_KEY]: {
-    special: [TYPE.PK],
+    semantic: [TYPE.PK],
   },
   [SUMMABLE]: {
     include: [NUMBER],
@@ -70,7 +70,7 @@ const TYPES = {
   },
   [CATEGORY]: {
     base: [TYPE.Boolean],
-    special: [TYPE.Category],
+    semantic: [TYPE.Category],
     include: [LOCATION],
   },
   // NOTE: this is defunct right now.  see definition of isDimension below.
@@ -86,7 +86,7 @@ export function isFieldType(type, field) {
 
   const typeDefinition = TYPES[type];
   // check to see if it belongs to any of the field types:
-  for (const prop of ["base", "special"]) {
+  for (const prop of ["base", "semantic"]) {
     const allowedTypes = typeDefinition[prop];
     if (!allowedTypes) {
       continue;
