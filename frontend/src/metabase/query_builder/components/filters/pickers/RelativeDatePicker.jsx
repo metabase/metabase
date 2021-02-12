@@ -22,13 +22,13 @@ export const DATE_PERIODS: RelativeDatetimeUnit[] = [
 
 const TIME_PERIODS: RelativeDatetimeUnit[] = ["minute", "hour"];
 
-const ALL_PERIODS = DATE_PERIODS.concat(TIME_PERIODS);
+// define ALL_PERIODS in increasing order of duration
+const ALL_PERIODS = TIME_PERIODS.concat(DATE_PERIODS);
 
 type Props = {
   filter: TimeIntervalFilter,
   onFilterChange: (filter: TimeIntervalFilter) => void,
   formatter: (value: any) => any,
-  hideTimeSelectors?: boolean,
   className?: string,
 };
 
@@ -83,7 +83,7 @@ export default class RelativeDatePicker extends Component {
             }
             intervals={intervals}
             formatter={formatter}
-            periods={this.props.hideTimeSelectors ? DATE_PERIODS : ALL_PERIODS}
+            periods={ALL_PERIODS}
           />
         </div>
       </div>
