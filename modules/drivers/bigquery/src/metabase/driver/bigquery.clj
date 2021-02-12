@@ -13,6 +13,7 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
@@ -205,19 +206,23 @@
 
   ([^Bigquery client ^String project-id ^String sql parameters]
    {:pre [client (seq project-id) (seq sql)]}
-   (let [request (doto (QueryRequest.)
-                   (.setTimeoutMs (* query-timeout-seconds 1000))
-                   ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                   (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
-                   (.setQuery sql)
-                   (bigquery.params/set-parameters! parameters))
-         query-response ^QueryResponse (google/execute (.query (.jobs client) project-id request))
-         job-ref (.getJobReference query-response)
-         location (.getLocation job-ref)
-         job-id (.getJobId job-ref)
-         proj-id (.getProjectId job-ref)]
-     (with-finished-response [_ query-response]
-       (get-query-results client proj-id job-id location nil)))))
+   (try
+     (let [request        (doto (QueryRequest.)
+                     (.setTimeoutMs (* query-timeout-seconds 1000))
+                     ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+                     (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
+                     (.setQuery sql)
+                     (bigquery.params/set-parameters! parameters))
+           query-response ^QueryResponse (google/execute (.query (.jobs client) project-id request))
+           job-ref        (.getJobReference query-response)
+           location       (.getLocation job-ref)
+           job-id         (.getJobId job-ref)
+           proj-id        (.getProjectId job-ref)]
+       (with-finished-response [_ query-response]
+         (get-query-results client proj-id job-id location nil)))
+     (catch Throwable e
+       (throw (ex-info (tru "Error executing query")
+                       {:type error-type/invalid-query, :sql sql, :parameters parameters}))))))
 
 (defn- post-process-native
   "Parse results of a BigQuery query. `respond` is the same function passed to

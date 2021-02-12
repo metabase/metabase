@@ -137,3 +137,27 @@
                    {:aggregation [[:count]]
                     :breakout    [$sender_id->users.name]
                     :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
+
+(deftest implicit-joins-with-expressions-test
+  ;; Redshift excluded for now since the sample dataset seems to hang for Redshift.
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :expressions) :redshift)
+    (testing "Should be able to run query with multiple implicit joins and breakouts"
+      (mt/dataset sample-dataset
+        (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0 263]
+                ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
+                ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0 276]
+                ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
+                ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0 361]]
+               (mt/formatted-rows [str str str int int]
+                 (mt/run-mbql-query orders
+                   {:aggregation [[:count]]
+                    :breakout    [$product_id->products.category
+                                  $user_id->people.source
+                                  !year.orders.created_at
+                                  [:expression "pivot-grouping"]]
+                    :filter      [:and
+                                  [:= $user_id->people.source "Facebook" "Google"]
+                                  [:= $product_id->products.category "Doohickey" "Gizmo"]
+                                  [:time-interval $created_at -2 :year]]
+                    :expressions {:pivot-grouping [:abs 0]}
+                    :limit       5}))))))))

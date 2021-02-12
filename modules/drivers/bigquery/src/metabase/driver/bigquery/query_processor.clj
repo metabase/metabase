@@ -498,17 +498,23 @@
   ;; currently only used for SQL params so it's not a huge deal at this point
   ;;
   ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (let [table-name (db/select-one-field :name table/Table :id (u/get-id table-id))]
+  (let [table-name (db/select-one-field :name table/Table :id (u/the-id table-id))]
     (with-temporal-type (hx/identifier :field table-name field-name) (temporal-type field))))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery :breakout]
-  [driver _ honeysql-form {breakouts :breakout, fields :fields}]
+  [driver _ honeysql-form {breakouts :breakout, fields :fields, :as query}]
   (-> honeysql-form
       ;; Group by all the breakout fields.
       ;;
       ;; Unlike other SQL drivers, BigQuery requires that we refer to Fields using the alias we gave them in the
       ;; `SELECT` clause, rather than repeating their definitions.
-      ((partial apply h/group) (map (partial sql.qp/field-clause->alias driver) breakouts))
+      ((partial apply h/group) (for [breakout breakouts
+                                     :let     [alias (or (sql.qp/field-clause->alias driver breakout)
+                                                         (throw (ex-info (tru "Error compiling SQL: breakout does not have an alias")
+                                                                         {:type     error-type/qp
+                                                                          :breakout breakout
+                                                                          :query    query})))]]
+                                 alias))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
       ;; twice, or HoneySQL will barf
       ((partial apply h/merge-select) (for [field-clause breakouts

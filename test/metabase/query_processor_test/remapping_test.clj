@@ -199,3 +199,18 @@
                    (remappings-with-metadata metadata)))))
         ;; doesn't currently work with any other metadata.
         ))))
+
+(deftest remappings-with-implicit-joins-test
+  ;; Redshift excluded for now since the sample dataset seems to hang for Redshift.
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift)
+    (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
+      (mt/dataset sample-dataset
+        (mt/with-column-remappings [orders.product_id products.title]
+          (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
+                 (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
+                   (mt/run-mbql-query orders
+                     {:source-query {:source-table $$orders
+                                     :filter       [:= $user_id 1]}
+                      :filter       [:= $product_id->products.category "Doohickey"]
+                      :order-by     [[:asc $id] [:asc $product_id->products.category]]
+                      :limit        1})))))))))

@@ -8,13 +8,8 @@
             [metabase.test :as mt]))
 
 (defn- resolve-joins [{{:keys [source-table]} :query, :as query}]
-  (if-not (qp.store/initialized?)
-    (qp.store/with-store
-      (resolve-joins query))
-    (do
-      (qp.test-util/store-referenced-database! query)
-      (qp.store/fetch-and-store-tables! [source-table])
-      (#'resolve-joins/resolve-joins* query))))
+  (mt/with-everything-store
+    (#'resolve-joins/resolve-joins* query)))
 
 (deftest no-op-test
   (testing "Does the middleware function if the query has no joins?"
@@ -119,35 +114,6 @@
                         :condition    [:= $category_id 1]}
                        {:source-table $$categories
                         :condition    [:= $category_id 2]}]}))))))
-
-(deftest validate-aliases-test
-  (testing "Should throw an Exception if a Joined Field using an alias that doesn't exist is used"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Bad :joined-field clause: join with alias 'x' does not exist"
-         (resolve-joins
-          (mt/mbql-query venues
-            {:joins [{:source-table $$categories
-                      :condition    [:= $category_id [:joined-field "x" $categories.id]]}]})))))
-  (testing "Should be ok when a join `:condition` references itself"
-    (is (some?
-         (resolve-joins
-          (mt/mbql-query venues
-            {:joins [{:source-table $$categories
-                      :alias        "x"
-                      :condition    [:= $category_id [:joined-field "x" $categories.id]]}]})))))
-  (testing "Should be ok when joins refer to one another"
-    (is (some?
-         (resolve-joins
-          (mt/mbql-query users
-            {:joins [{:source-table $$checkins
-                      :alias        "checkins"
-                      :condition    [:= $id [:joined-field "checkins" $checkins.user_id]]}
-                     {:source-table $$venues
-                      :alias        "venues"
-                      :condition    [:=
-                                     [:joined-field "checkins" $checkins.venue_id]
-                                     [:joined-field "venues" $venues.id]]}]}))))))
 
 (deftest disallow-joins-against-table-on-different-db-test
   (testing "Test that joining against a table in a different DB throws an Exception"

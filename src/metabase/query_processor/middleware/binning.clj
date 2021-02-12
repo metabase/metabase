@@ -191,13 +191,16 @@
         metadata                        (matching-metadata field-id-or-name source-metadata)
         {:keys [min-value max-value]
          :as   min-max}                 (extract-bounds (when (integer? field-id-or-name) field-id-or-name)
-                                                        (:fingerprint metadata)
-                                                        field-id->filters)
+         (:fingerprint metadata)
+         field-id->filters)
         [new-strategy resolved-options] (resolve-options strategy strategy-param metadata min-value max-value)
         resolved-options                (merge min-max resolved-options)]
     ;; Bail out and use unmodifed version if we can't converge on a nice version.
-    [:binning-strategy field-clause new-strategy strategy-param (or (nicer-breakout new-strategy resolved-options)
-                                                                    resolved-options)]))
+    (let [new-options (or (nicer-breakout new-strategy resolved-options)
+                          resolved-options)
+          strategy-param (or (get new-options new-strategy)
+                             strategy-param)]
+      [:binning-strategy field-clause new-strategy strategy-param new-options])))
 
 (defn update-binning-strategy-in-inner-query
   "Update `:binning-strategy` clauses in an `inner` [MBQL] query."

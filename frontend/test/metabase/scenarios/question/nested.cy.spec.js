@@ -367,57 +367,94 @@ describe("scenarios > question > nested", () => {
   });
 
   ["remapped", "default"].forEach(test => {
-    it(`${test.toUpperCase()} version:\n should use question with joins as a base for a new question (metabase#14724)`, () => {
+    describe(`${test.toUpperCase()} version: question with joins as a base for new quesiton(s) (metabase#14724)`, () => {
       const QUESTION_NAME = "14724";
+      const SECOND_QUESTION_NAME = "14724_2";
 
-      if (test === "remapped") {
-        cy.state("runnable").skip(); // Unskip or remove this line when "remapped" version of the issue is fixed
-        cy.log("**-- Remap Product ID's display value to `title` --**");
-        remapDisplayValueToFK({
-          display_value: ORDERS.PRODUCT_ID,
-          name: "Product ID",
-          fk: PRODUCTS.TITLE,
+      beforeEach(() => {
+        if (test === "remapped") {
+          cy.log("**-- Remap Product ID's display value to `title` --**");
+          remapDisplayValueToFK({
+            display_value: ORDERS.PRODUCT_ID,
+            name: "Product ID",
+            fk: PRODUCTS.TITLE,
+          });
+        }
+
+        cy.server();
+        cy.route("POST", "/api/dataset").as("dataset");
+      });
+
+      it("should handle single-level nesting", () => {
+        ordersJoinProducts(QUESTION_NAME);
+
+        // Start new question from a saved one
+        cy.visit("/question/new");
+        cy.findByText("Simple question").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText(QUESTION_NAME).click();
+
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
         });
-      }
+        cy.contains("37.65");
+      });
 
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
-      cy.request("POST", "/api/card", {
-        name: QUESTION_NAME,
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-                condition: [
-                  "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-                ],
-                alias: "Products",
+      it("should handle multi-level nesting", () => {
+        // Use the original question qith joins, then save it again
+        ordersJoinProducts(QUESTION_NAME).then(
+          ({ body: { id: ORIGINAL_QUESTION_ID } }) => {
+            cy.request("POST", "/api/card", {
+              name: SECOND_QUESTION_NAME,
+              dataset_query: {
+                database: 1,
+                query: { "source-table": `card__${ORIGINAL_QUESTION_ID}` },
+                type: "query",
               },
-            ],
+              display: "table",
+              visualization_settings: {},
+            });
           },
-          database: 1,
-        },
-        display: "table",
-        visualization_settings: {},
-      });
+        );
 
-      // Start new question from a saved one
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
-      cy.findByText("Saved Questions").click();
-      cy.findByText(QUESTION_NAME).click();
+        // Start new question from already saved nested question
+        cy.visit("/question/new");
+        cy.findByText("Simple question").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText(SECOND_QUESTION_NAME).click();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+        cy.contains("37.65");
       });
-      cy.contains("37.65");
     });
   });
 });
+
+function ordersJoinProducts(name) {
+  return cy.request("POST", "/api/card", {
+    name,
+    dataset_query: {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ],
+            alias: "Products",
+          },
+        ],
+      },
+      database: 1,
+    },
+    display: "table",
+    visualization_settings: {},
+  });
+}

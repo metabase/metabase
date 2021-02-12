@@ -823,46 +823,50 @@
                         :attributes {:user_id "1"}})
         ;; make sure the sandboxed group can still access the Products table, which is referenced below.
         (perms/grant-permissions! &group (perms/object-path (mt/id) "PUBLIC" (mt/id :products)))
-        ;; create a query based on the sandboxed Table
-        (let [query (mt/mbql-query orders
-                      {:aggregation [[:count]]
-                       :breakout    [$product_id->products.category]
-                       :order-by    [[:asc $product_id->products.category]]
-                       :limit       5})]
-          (testing "should be able to run the query. Results should come back with correct metadata"
-            (letfn [(test-metadata []
-                      (is (schema= {:status   (s/eq :completed)
-                                    :data     {:results_metadata
-                                               {:columns  [(s/one {:name      (s/eq "CATEGORY")
-                                                                   :field_ref (s/eq (mt/$ids $orders.product_id->products.category))
-                                                                   s/Keyword  s/Any}
-                                                                  "results metadata for products.category")
-                                                           (s/one {:name      (s/eq "count")
-                                                                   :field_ref (s/eq [:aggregation 0])
-                                                                   s/Keyword  s/Any}
-                                                                  "results metadata for count aggregation")]
-                                                s/Keyword s/Any}
-                                               s/Keyword         s/Any}
-                                    s/Keyword s/Any}
-                                   (qp/process-query query))))]
-              (testing "as an admin"
-                (mt/with-test-user :crowberto
-                  (test-metadata)))
-              (testing "as a sandboxed user"
-                (test-metadata))))
-          (testing "Drill-thru question should work"
-              (letfn [(test-drill-thru-query []
-                        (is (schema= {:status   (s/eq :completed)
-                                      s/Keyword s/Any}
-                                     (mt/run-mbql-query orders
-                                       {:filter   [:= $product_id->products.category "Doohickey"]
-                                        :order-by [[:asc $product_id->products.category]]
-                                        :limit    5}))))]
-                (testing "as admin"
-                  (mt/with-test-user :crowberto
-                    (test-drill-thru-query)))
-                (testing "as sandboxed user"
-                  (test-drill-thru-query)))))))))
+        (letfn [(do-tests []
+                  ;; create a query based on the sandboxed Table
+                  (testing "should be able to run the query. Results should come back with correct metadata"
+                    (let [query (mt/mbql-query orders
+                                  {:aggregation [[:count]]
+                                   :breakout    [$product_id->products.category]
+                                   :order-by    [[:asc $product_id->products.category]]
+                                   :limit       5})]
+                      (letfn [(test-metadata []
+                                (is (schema= {:status   (s/eq :completed)
+                                              :data     {:results_metadata
+                                                         {:columns  [(s/one {:name      (s/eq "CATEGORY")
+                                                                             :field_ref (s/eq (mt/$ids $orders.product_id->products.category))
+                                                                             s/Keyword  s/Any}
+                                                                            "results metadata for products.category")
+                                                                     (s/one {:name      (s/eq "count")
+                                                                             :field_ref (s/eq [:aggregation 0])
+                                                                             s/Keyword  s/Any}
+                                                                            "results metadata for count aggregation")]
+                                                          s/Keyword s/Any}
+                                                         s/Keyword s/Any}
+                                              s/Keyword s/Any}
+                                             (qp/process-query query))))]
+                        (testing "as an admin"
+                          (mt/with-test-user :crowberto
+                            (test-metadata)))
+                        (testing "as a sandboxed user"
+                          (test-metadata)))))
+                  (testing "Drill-thru question should work"
+                    (letfn [(test-drill-thru-query []
+                              (is (schema= {:status   (s/eq :completed)
+                                            s/Keyword s/Any}
+                                           (mt/run-mbql-query orders
+                                             {:filter   [:= $product_id->products.category "Doohickey"]
+                                              :order-by [[:asc $product_id->products.category]]
+                                              :limit    5}))))]
+                      (testing "as admin"
+                        (mt/with-test-user :crowberto
+                          (test-drill-thru-query)))
+                      (testing "as sandboxed user"
+                        (test-drill-thru-query)))))]
+          (do-tests)
+          (mt/with-column-remappings [orders.product_id products.title]
+            (do-tests)))))))
 
 (defn- set-query-metadata-for-gtap-card! [group table-name param-name param-value]
   (let [card-id (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
@@ -874,6 +878,10 @@
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
     (db/update! Card card-id :result_metadata metadata)))
+
+(defn- unset-query-metadata-for-gtap-card! [group table-name]
+  (let [card-id (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))]
+    (db/update! Card card-id :result_metadata nil)))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
