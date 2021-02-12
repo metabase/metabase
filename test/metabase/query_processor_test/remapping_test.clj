@@ -209,7 +209,8 @@
                  (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
                    (mt/run-mbql-query orders
                      {:source-query {:source-table $$orders
-                                     :filter       [:= $user_id 1]}
+                                     :filter       [:= $user_id 1]
+                                     :order-by     [[:asc $id]]}
                       :filter       [:= $product_id->products.category "Doohickey"]
                       :order-by     [[:asc $product_id->products.category]]
                       :limit        1})))))))))
