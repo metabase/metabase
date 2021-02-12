@@ -2,13 +2,15 @@
   "Middleware that creates corresponding `:joins` for Tables referred to by `:fk->` clauses and replaces those clauses
   with `:joined-field` clauses."
   (:refer-clojure :exclude [alias])
-  (:require [medley.core :as m]
+  (:require [clojure.set :as set]
+            [medley.core :as m]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -83,6 +85,12 @@
                 [:joined-field (fk-field-id->join-alias fk-field-id) dest-field]))
       (sequential? (:fields form)) (update :fields distinct))))
 
+(defn- already-has-join? [{:keys [joins source-query]} {join-alias :alias, :as join}]
+  (or (some #(= (:alias %) join-alias)
+            joins)
+      (when source-query
+        (recur source-query join))))
+
 (defn- add-condition-fields-to-source
   "Add any fields that are needed for newly-added join conditions to source query `:fields` if they're not already
   present."
@@ -94,21 +102,49 @@
                                                 (distinct
                                                  (concat existing-fields needed)))))))
 
+(defn- add-referenced-fields-to-source [form reused-joins]
+  (let [reused-join-alias? (set (map :alias reused-joins))
+        referenced-fields  (set (mbql.u/match (dissoc form :source-query :joins)
+                                  [:joined-field (_ :guard reused-join-alias?) _]
+                                  &match))]
+    (update-in form [:source-query :fields] (fn [existing-fields]
+                                              (distinct
+                                               (concat existing-fields referenced-fields))))))
+
+(defn- add-fields-to-source
+  [{{source-query-fields :fields, :as source-query} :source-query, :as form} reused-joins]
+  (cond
+    (not source-query)
+    form
+
+    (seq ((some-fn :aggregation :breakout) source-query))
+    form
+
+    :else
+    (let [form (cond-> form
+                 (empty? source-query-fields) (update :source-query add-implicit-clauses/add-implicit-mbql-clauses))]
+      (if (empty? (get-in form [:source-query :fields]))
+        form
+        (-> form
+            add-condition-fields-to-source
+            (add-referenced-fields-to-source reused-joins))))))
+
 (defn- resolve-implicit-joins-this-level
   "Add new `:joins` for tables referenced by `:fk->` forms. Replace `fk->` forms with `:joined-field` forms. Add
   additional `:fields` to source query if needed to perform the join."
   [form]
-  (let [fk-references (fk-references form)
-        new-joins     (fk-references->joins fk-references)]
-    ;; TODO -- it would be nice to optimize things a bit and skip adding joins if they're visible from a source query.
-    ;; It's easier said than done. See commented out test in the test namespace
+  (let [fk-references  (fk-references form)
+        new-joins      (fk-references->joins fk-references)
+        required-joins (remove (partial already-has-join? form) new-joins)
+        reused-joins   (set/difference (set new-joins) (set required-joins))]
     (cond-> form
-      (seq new-joins) (update :joins (fn [existing-joins]
-                                       (m/distinct-by
-                                        :alias
-                                        (concat existing-joins new-joins))))
-      true            replace-fk-forms
-      true            add-condition-fields-to-source)))
+      (seq required-joins) (update :joins (fn [existing-joins]
+                                            (m/distinct-by
+                                             :alias
+                                             (concat existing-joins required-joins))))
+      true                 replace-fk-forms
+      ;; true            add-condition-fields-to-source
+      true                 (add-fields-to-source reused-joins))))
 
 (defn- resolve-implicit-joins [{:keys [source-query joins], :as inner-query}]
   (let [recursively-resolved (cond-> inner-query

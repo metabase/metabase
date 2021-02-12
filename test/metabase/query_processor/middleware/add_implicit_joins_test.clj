@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-joins-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
@@ -85,6 +86,23 @@
                {:source-table $$venues
                 :fields       [$name $category_id->categories.name]}}))))))
 
+(deftest already-has-join?-test
+  (is (#'add-implicit-joins/already-has-join?
+       {:joins [{:alias "x"}]}
+       {:alias "x"}))
+  (is (not (#'add-implicit-joins/already-has-join?
+            {:joins [{:alias "x"}]}
+            {:alias "y"})))
+  (is (#'add-implicit-joins/already-has-join?
+       {:source-query {:joins [{:alias "x"}]}}
+       {:alias "x"}))
+  (is (not (#'add-implicit-joins/already-has-join?
+            nil
+            {:alias "x"})))
+  (is (not (#'add-implicit-joins/already-has-join?
+            {:joins [{:source-query {:joins [{:alias "x"}]}}]}
+            {:alias "x"}))))
+
 (deftest reuse-existing-joins-test
   (testing "Should reuse existing joins rather than creating new ones"
     (is (= (mt/mbql-query venues
@@ -155,31 +173,91 @@
                         (is (schema= {:status   (s/eq :completed)
                                       s/Keyword s/Any}
                                      (qp/process-query query-with-metadata)))))))
-                ;; TODO FIXME -- we should optimize the code here so we don't generate joins we don't *actually* need.
-                ;; But that's easier said than done. Ok to have it just working for now
-                #_(is (= (-> (mt/mbql-query orders
-                               {:source-table $$orders
-                                :fields       [$id
-                                               &Products.products.title
-                                               &PRODUCTS__via__PRODUCT_ID.products.title]
-                                :joins        [{:source-table $$products
-                                                :alias        "Products"
-                                                :fields       :all
-                                                :condition    [:= $product_id &Products.products.id]}
-                                               {:source-table $$products
-                                                :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                :strategy     :left-join
-                                                :fields       :none
-                                                :fk-field-id  %product_id
-                                                :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
-                                :order-by     [[:asc $id]]
-                                :limit        2})
-                             (mt/nest-query level))
-                         (-> (add-implicit-joins query)
-                             (m/dissoc-in [:query :source-metadata]))))))))))))
+                (is (= (-> (mt/mbql-query orders
+                             {:source-table $$orders
+                              :fields       [$id
+                                             &Products.products.title
+                                             &PRODUCTS__via__PRODUCT_ID.products.title]
+                              :joins        [{:source-table $$products
+                                              :alias        "Products"
+                                              :fields       :all
+                                              :condition    [:= $product_id &Products.products.id]}
+                                             {:source-table $$products
+                                              :alias        "PRODUCTS__via__PRODUCT_ID"
+                                              :strategy     :left-join
+                                              :fields       :none
+                                              :fk-field-id  %product_id
+                                              :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
+                              :order-by     [[:asc $id]]
+                              :limit        2})
+                           (mt/nest-query level))
+                       (-> (add-implicit-joins query)
+                           (m/dissoc-in [:query :source-metadata]))))))))))))
 
-(deftest dont-reuse-joins-if-it-would-break-query-test
-  (testing "Don't reuse existing joins if we'd lose access to columns we're referencing at the top level"
+(deftest reuse-existing-joins-test-2
+  (testing "We DEFINITELY need to reuse joins if adding them again would break the query."
+    (mt/dataset sample-dataset
+      (is (= (mt/mbql-query orders
+               {:filter       [:> *count/Integer 5]
+                :fields       [$created_at &PRODUCTS__via__PRODUCT_ID.products.created_at *count/Integer]
+                :source-query {:source-table $$orders
+                               :aggregation  [[:count]]
+                               :breakout     [!month.created_at !month.&PRODUCTS__via__PRODUCT_ID.products.created_at]
+                               :joins        [{:fields       :none
+                                               :alias        "PRODUCTS__via__PRODUCT_ID"
+                                               :strategy     :left-join
+                                               :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                               :source-table $$products
+                                               :fk-field-id  %product_id}]}
+                :limit        5})
+             (add-implicit-joins
+              (mt/mbql-query orders
+                {:filter       [:> *count/Integer 5]
+                 :fields       [$created_at $product_id->products.created_at *count/Integer]
+                 :source-query {:source-table $$orders
+                                :aggregation  [[:count]]
+                                :breakout     [!month.created_at !month.product_id->products.created_at]}
+                 :limit        5})))))))
+
+(deftest add-fields-for-reused-joins-test
+  (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
+    (mt/dataset sample-dataset
+      (is (= (mt/mbql-query orders
+               {:source-query {:source-table $$orders
+                               :fields       [$id
+                                              $user_id
+                                              $product_id
+                                              $subtotal
+                                              $tax
+                                              $total
+                                              $discount
+                                              !default.created_at
+                                              $quantity
+                                              &PRODUCTS__via__PRODUCT_ID.products.category]
+                               :filter       [:and
+                                              [:= $user_id 1]
+                                              [:= &PRODUCTS__via__PRODUCT_ID.products.category "Doohickey"]]
+                               :joins        [{:source-table $$products
+                                               :alias        "PRODUCTS__via__PRODUCT_ID"
+                                               :fields       :none
+                                               :strategy     :left-join
+                                               :fk-field-id  %product_id
+                                               :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]}
+                :filter       [:= &PRODUCTS__via__PRODUCT_ID.products.category "Doohickey"]
+                :order-by     [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]]
+                :limit        5})
+             (add-implicit-joins
+              (mt/mbql-query orders
+                {:source-query {:source-table $$orders
+                                :filter       [:and
+                                               [:= $user_id 1]
+                                               [:= $product_id->products.category "Doohickey"]]}
+                 :filter       [:= $product_id->products.category "Doohickey"]
+                 :order-by     [[:asc $product_id->products.category]]
+                 :limit        5})))))))
+
+(deftest reuse-joins-sanity-check-test
+  (testing "Reusing existing joins shouldn't break access to columns we're referencing at the top level"
     (mt/dataset sample-dataset
       (let [query (mt/mbql-query orders
                     {:source-query {:source-table $$orders
@@ -189,27 +267,6 @@
                      :filter       [:= $product_id->products.category "Doohickey"]
                      :order-by     [[:asc $product_id->products.category]]
                      :limit        5})]
-        (is (= (mt/mbql-query orders
-                 {:source-query {:source-table $$orders
-                                 :filter       [:and
-                                                [:= $user_id 1]
-                                                [:= &PRODUCTS__via__PRODUCT_ID.products.category "Doohickey"]]
-                                 :joins        [{:source-table $$products
-                                                 :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                 :fields       :none
-                                                 :strategy     :left-join
-                                                 :fk-field-id  %product_id
-                                                 :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]}
-                  :joins        [{:source-table $$products
-                                  :alias        "PRODUCTS__via__PRODUCT_ID"
-                                  :fields       :none
-                                  :strategy     :left-join
-                                  :fk-field-id  %product_id
-                                  :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
-                  :filter       [:= &PRODUCTS__via__PRODUCT_ID.products.category "Doohickey"]
-                  :order-by     [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]]
-                  :limit        5})
-               (add-implicit-joins query)))
         (testing "Sanity check: should be able to run the query"
           (is (schema= {:status (s/eq :completed), s/Keyword s/Any}
                        (qp/process-query query))))))))
@@ -241,6 +298,10 @@
     ;; TODO - I'm not sure I understand why we add the JOIN to the outer level in this case. Does it make sense?
     (is (= (mt/mbql-query checkins
              {:source-query {:source-table $$checkins
+                             :fields       [$id
+                                            !default.date
+                                            $user_id
+                                            $venue_id]
                              :filter       [:> $date "2014-01-01"]}
               :aggregation  [[:count]]
               :breakout     [&VENUES__via__VENUE_ID.venues.price]

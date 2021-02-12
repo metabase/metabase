@@ -899,3 +899,19 @@
                      actual-result))
         (is (= (mt/rows expected-result)
                (mt/rows actual-result)))))))
+
+(deftest duplicate-column-names-in-nested-queries-test
+  (testing "duplicate column names in nested queries (#10511)"
+    (mt/dataset sample-dataset
+      (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
+              ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
+              ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
+              ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
+              ["2016-08-01T00:00:00Z" "2016-07-01T00:00:00Z" 11]]
+             (mt/rows
+               (mt/run-mbql-query orders
+                 {:filter       [:> *count/Integer 5]
+                  :source-query {:source-table $$orders
+                                 :aggregation  [[:count]]
+                                 :breakout     [!month.created_at !month.product_id->created_at]}
+                  :limit        5})))))))
