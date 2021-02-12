@@ -7,16 +7,13 @@ on:
       - master
       - 'release**'
       - 'feature**'
-      - 'fix**'
-      - 'ci**'
     tags:
       - '**'
     paths:
-    - 'src/metabase/**'
-    - 'modules/drivers/**'
-    - 'enterprise/backend/**'
-    - '**/project.clj'
-    - '**/deps.edn'
+    - '**.clj'
+    - '**.edn'
+    - '**.java'
+    - '**/metabase-plugin.yaml'
     - '.github/workflows/**'
 
 jobs:
@@ -34,8 +31,8 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
-    - run: lein with-profile +ci,+oss bikeshed
+        key: ${{ runner.os }}-bikeshed-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +ci bikeshed
 
   be-linter-eastwood:
     runs-on: ubuntu-20.04
@@ -50,8 +47,8 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
-    - run: lein with-profile +ci,+oss eastwood
+        key: ${{ runner.os }}-eastwood-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +ci eastwood
 
   be-linter-docstring-checker:
     runs-on: ubuntu-20.04
@@ -66,8 +63,8 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
-    - run: lein with-profile +ci,+oss docstring-checker
+        key: ${{ runner.os }}-docstring-checker-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +ci docstring-checker
 
   be-linter-namespace-decls:
     runs-on: ubuntu-20.04
@@ -82,8 +79,8 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
-    - run: lein with-profile +ci,+oss check-namespace-decls
+        key: ${{ runner.os }}-namespace-decls-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +ci check-namespace-decls
 
   be-linter-reflection-warnings:
     runs-on: ubuntu-20.04
@@ -98,6 +95,6 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+        key: ${{ runner.os }}-reflection-${{ hashFiles('**/project.clj') }}
     - run: ./bin/reflection-linter
       name: Run reflection warnings checker
