@@ -279,17 +279,9 @@ export class ExpressionParser extends CstParser {
       $.CONSUME(Case, { LABEL: "functionName" });
       $.CONSUME(LParen);
       $.SUBRULE($.boolean, { LABEL: "arguments" });
-      $.CONSUME(Comma);
-      $.SUBRULE($.expression, { LABEL: "arguments", ARGS: [returnType] });
       $.MANY(() => {
-        $.CONSUME2(Comma);
-        $.SUBRULE2($.boolean, { LABEL: "arguments" });
-        $.CONSUME3(Comma);
-        $.SUBRULE3($.expression, { LABEL: "arguments", ARGS: [returnType] });
-      });
-      $.OPTION(() => {
-        $.CONSUME4(Comma);
-        $.SUBRULE4($.expression, { LABEL: "arguments", ARGS: [returnType] });
+        $.CONSUME(Comma);
+        $.SUBRULE1($.boolean, { LABEL: "arguments", ARGS: [returnType] });
       });
       $.CONSUME(RParen);
     });
