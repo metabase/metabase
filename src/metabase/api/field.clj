@@ -52,7 +52,7 @@
                   (hydrate [:table :db] :has_field_values :dimensions :name_field))]
     ;; Normal read perms = normal access.
     ;;
-    ;; There's also asemantic case where we allow you to fetch a Field even if you don't have full read permissions for
+    ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
     ;; it: if you have segmented query access to the Table it belongs to. In this case, we'll still let you fetch the
     ;; Field, since this is required to power features like Dashboard filters, but we'll treat this Field a little
     ;; differently in other endpoints such as the FieldValues fetching endpoint.
