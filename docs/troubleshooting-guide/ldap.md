@@ -58,7 +58,7 @@ GROUP SEARCH BASE: `cn=readers`
 
 ### Related software for troubleshooting
 
-If you run into an issue, check that you can login and use your LDAP directory with a software like [Apache Directory Studio](https://directory.apache.org/studio/). You can use Directory Studio to see the whole LDAP tree and view the logs of your LDAP application to see the queries run.
+If you run into an issue, check that you can login and use your LDAP directory with software like [Apache Directory Studio](https://directory.apache.org/studio/). You can use Directory Studio to see the whole LDAP tree and view the logs of your LDAP application to see the queries run.
 
 ### Current limitations
 
