@@ -511,7 +511,12 @@ describe("scenarios > question > notebook", () => {
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.status).not.to.eq(500);
       });
-      //  TODO: Add positive assertion when this issue gets fixed
+      // Main title
+      cy.contains(/^A closer look at/);
+      // Metric title
+      cy.findByText("How this metric is distributed across different numbers");
+      // Make sure at least one card is rendered
+      cy.get(".DashCard");
     });
   });
 
