@@ -822,7 +822,6 @@
               (testing (format "%d level(s) of nesting" level)
                 (let [query (mt/nest-query base-query level)]
                   (testing (format "\nQuery = %s" (u/pprint-to-str query))
-                    #_(dev/process-query-debug query :print-metadata? true)
                     (is (= (mt/$ids products
                              {:name         "EAN"
                               :display_name "Products → Ean"

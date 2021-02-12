@@ -117,6 +117,9 @@
     (not source-query)
     form
 
+    (:native source-query)
+    form
+
     (seq ((some-fn :aggregation :breakout) source-query))
     form
 

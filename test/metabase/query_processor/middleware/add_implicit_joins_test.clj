@@ -220,8 +220,8 @@
                  :limit        5})))))))
 
 (deftest add-fields-for-reused-joins-test
-  (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
-    (mt/dataset sample-dataset
+  (mt/dataset sample-dataset
+    (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
       (is (= (mt/mbql-query orders
                {:source-query {:source-table $$orders
                                :fields       [$id
@@ -254,11 +254,30 @@
                                                [:= $product_id->products.category "Doohickey"]]}
                  :filter       [:= $product_id->products.category "Doohickey"]
                  :order-by     [[:asc $product_id->products.category]]
+                 :limit        5})))))
+
+    (testing "don't add fields for a native source query."
+      (is (= (mt/mbql-query orders
+               {:source-query {:native "SELECT * FROM my_table"}
+                :filter       [:= &PRODUCTS__via__PRODUCT_ID.products.category "Doohickey"]
+                :order-by     [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]]
+                :joins        [{:source-table $$products
+                                :alias        "PRODUCTS__via__PRODUCT_ID"
+                                :fields       :none
+                                :strategy     :left-join
+                                :fk-field-id  %product_id
+                                :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
+                :limit        5})
+             (add-implicit-joins
+              (mt/mbql-query orders
+                {:source-query {:native "SELECT * FROM my_table"}
+                 :filter       [:= $product_id->products.category "Doohickey"]
+                 :order-by     [[:asc $product_id->products.category]]
                  :limit        5})))))))
 
 (deftest reuse-joins-sanity-check-test
-  (testing "Reusing existing joins shouldn't break access to columns we're referencing at the top level"
-    (mt/dataset sample-dataset
+  (mt/dataset sample-dataset
+    (testing "Reusing existing joins shouldn't break access to columns we're referencing at the top level"
       (let [query (mt/mbql-query orders
                     {:source-query {:source-table $$orders
                                     :filter       [:and
