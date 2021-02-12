@@ -217,6 +217,23 @@ describe("scenarios > collection_defaults", () => {
         // 4. Consequently, "Everything else" should now also be visible
         cy.findByText("Everything else");
       });
+
+      it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
+        cy.visit("/collection/root");
+        cy.findByText("Orders")
+          .closest("a")
+          .within(() => {
+            cy.get(".Icon-table").trigger("mouseover");
+            cy.findByRole("checkbox")
+              .should("be.visible")
+              .click();
+          });
+
+        cy.findByText("1 item selected").should("be.visible");
+        cy.get(".Icon-dash").click();
+        cy.get(".Icon-dash").should("not.exist");
+        cy.findByText("4 items selected");
+      });
     });
 
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
