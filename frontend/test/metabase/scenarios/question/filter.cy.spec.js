@@ -4,6 +4,7 @@ import {
   openOrdersTable,
   openProductsTable,
   popover,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -484,5 +485,38 @@ describe("scenarios > question > filter", () => {
       .should("not.be.disabled")
       .click();
     cy.findByText(/^Created At is before/i);
+  });
+
+  it.skip("should display original custom expression filter with dates on subsequent click (metabase#12492)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: [
+            ">",
+            ["field-id", ORDERS.CREATED_AT],
+            [
+              "fk->",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", PRODUCTS.CREATED_AT],
+            ],
+          ],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+
+    cy.wait("@dataset");
+    cy.findByText(/^Created At is after/i)
+      .should("not.contain", "Unknown")
+      .click();
+    cy.get("[contenteditable='true']").contains(
+      /\[Created At\] > \[Products? -> Created At\]/,
+    );
   });
 });
