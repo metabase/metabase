@@ -18,7 +18,7 @@ describe("scenarios > question > filter", () => {
   });
 
   describe("dashboard filter dropdown/search (metabase#12985)", () => {
-    it.skip("Repro 1: should work for saved nested questions", () => {
+    it("Repro 1: should work for saved nested questions", () => {
       // Save a Question
       openProductsTable();
       cy.findByText("Save").click();
