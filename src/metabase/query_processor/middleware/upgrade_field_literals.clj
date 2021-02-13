@@ -5,18 +5,30 @@
 
 (defn- upgrade-field-literals-one-level [{:keys [source-metadata], :as inner-query}]
   (let [field-name->field (u/key-by :name source-metadata)]
+    ;; look for `field-literal` clauses...
     (mbql.u/replace inner-query
       [:field-literal field-name _]
+      ;; don't upgrade anything inside `source-query` or `source-metadata`.
       (or (when-not (or (contains? (set &parents) :source-query)
                         (contains? (set &parents) :source-metadata))
             (when-let [{field-ref :field_ref} (get field-name->field field-name)]
+              ;; only do a replacement if the field ref is a `field-id` form or something wrapping one.
               (when (mbql.u/match-one field-ref :field-id true)
-                field-ref)))
+                ;; replace the `field-literal` with either `field-id`, `joined-field`, or `fk->` -- these are the
+                ;; lowest-level forms that are directly swappable with `field-literal`. Don't include `datetime-field`
+                ;; `binning-strategy`, or anything other "wrapper" clauses, because they may already be wrapping the
+                ;; clause we're replacing
+                (mbql.u/match-one field-ref
+                  #{:field-id :joined-field :fk->}
+                  &match))))
+          ;; if they don't meet the conditions above, return them as is
           &match))))
 
 (defn- upgrade-field-literals-all-levels [query]
   (walk/postwalk
    (fn [form]
+     ;; find maps that have `source-query` and `source-metadata`, but whose source query is an MBQL source query
+     ;; rather than an native one
      (if (and (map? form)
               (:source-query form)
               (seq (:source-metadata form))

@@ -32,6 +32,24 @@
       (is (= query
              (upgrade-field-literals query))))))
 
+(deftest upgrade-to-valid-clauses-test
+  (testing "Make sure upgrades don't result in weird clauses like nested `datetime-field` clauses")
+  (let [source-query    (mt/mbql-query checkins)
+        source-metadata (qp/query->expected-cols source-query)]
+    (is (= (mt/mbql-query checkins
+             {:aggregation     [[:count]]
+              :breakout        [!week.date]
+              :filter          [:between !week.date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]
+              :source-query    source-query
+              :source-metadata source-metadata})
+           (upgrade-field-literals
+            (mt/mbql-query nil
+              {:aggregation     [[:count]]
+               :breakout        [!week.*DATE/Date]
+               :filter          [:between !week.*DATE/Date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]
+               :source-query    source-query
+               :source-metadata source-metadata}))))))
+
 (deftest support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of field-literal inside filter clauses"
     (mt/dataset sample-dataset
