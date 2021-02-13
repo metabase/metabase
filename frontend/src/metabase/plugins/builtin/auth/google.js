@@ -4,6 +4,7 @@ import { updateIn } from "icepick";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
 } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -48,3 +49,5 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     ],
   },
 }));
+
+PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => !user.google_auth);

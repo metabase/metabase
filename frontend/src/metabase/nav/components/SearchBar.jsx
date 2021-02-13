@@ -7,14 +7,20 @@ import { t } from "ttag";
 
 import { color, lighten } from "metabase/lib/colors";
 
+import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
+import EntityItem from "metabase/components/EntityItem";
+import Link from "metabase/components/Link";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import { DefaultSearchColor } from "metabase/nav/constants";
 
 const ActiveSearchColor = lighten(color("nav"), 0.1);
 
+import Search from "metabase/entities/search";
+
 const SearchWrapper = Flex.extend`
+  position: relative;
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
@@ -29,7 +35,8 @@ const SearchWrapper = Flex.extend`
 `;
 
 const SearchInput = styled.input`
-  ${space} background-color: transparent;
+  ${space};
+  background-color: transparent;
   width: 100%;
   border: none;
   color: white;
@@ -62,6 +69,10 @@ export default class SearchBar extends React.Component {
     if (this.props.location.pathname !== nextProps.location.pathname) {
       this._updateSearchTextFromUrl(nextProps);
     }
+    // deactivate search on navigation
+    if (this.props.location !== nextProps.location) {
+      this.setState({ active: false });
+    }
   }
   _updateSearchTextFromUrl(props) {
     const components = props.location.pathname.split("/");
@@ -78,8 +89,33 @@ export default class SearchBar extends React.Component {
       ALLOWED_SEARCH_FOCUS_ELEMENTS.has(document.activeElement.tagName)
     ) {
       ReactDOM.findDOMNode(this.searchInput).focus();
+      this.setState({ active: true });
     }
   };
+
+  renderResults(results) {
+    if (results.length === 0) {
+      return (
+        <li>
+          <Icon name="alert" />
+          {t`No results`}
+        </li>
+      );
+    } else {
+      return results.map(l => (
+        <li key={`${l.model}:${l.id}`}>
+          <Link to={l.getUrl()}>
+            <EntityItem
+              iconName={l.getIcon()}
+              name={l.name}
+              item={l}
+              variant="small"
+            />
+          </Link>
+        </li>
+      ));
+    }
+  }
 
   render() {
     const { active, searchText } = this.state;
@@ -110,6 +146,24 @@ export default class SearchBar extends React.Component {
               }
             }}
           />
+          {active && (
+            <div className="absolute left right text-dark" style={{ top: 60 }}>
+              {searchText.length > 0 ? (
+                <Card className="overflow-y-auto" style={{ maxHeight: 400 }}>
+                  <Search.ListLoader
+                    query={{ q: searchText }}
+                    wrapped
+                    reload
+                    debounced
+                  >
+                    {({ list }) => {
+                      return <ol>{this.renderResults(list)}</ol>;
+                    }}
+                  </Search.ListLoader>
+                </Card>
+              ) : null}
+            </div>
+          )}
         </SearchWrapper>
       </OnClickOutsideWrapper>
     );

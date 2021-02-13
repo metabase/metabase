@@ -9,7 +9,7 @@ assignees: ''
 
 ---
 
-This demonstrates a workflow and implementation plan around feature X that we can use in features that go out in a release. There should be a paragraph description of the problem we're trying to solve and a high level what the solution will be.
+<Insert feature / project description here>: Notes - This demonstrates a workflow and implementation plan around feature X that we can use in features that go out in a release. There should be a paragraph description of the problem we're trying to solve and a high level what the solution will be.
 
 **Links**
 - product doc: _link to product doc_
@@ -19,19 +19,23 @@ This demonstrates a workflow and implementation plan around feature X that we ca
 
 **Implementation Plan**
 
-**ETA**: MM/DD/YYYY (ETA of merged feature when we start work)
+***ETA***: MM/DD/YYYY (ETA of merged feature when we start work)
 
 _(each individual item in list should correspond to a PR and be less than one week of work maximum!)_
 
+***Milestone 1*** )_(note, each milestone should correspond to a point at which product/design can jump in to apply polish, evaluate changes, etc)_
 - [x] step 1: #somePRnumber
 - [ ] step 2
 - [ ] step 3
 
-**Needs to happen before merge**
+***Milestone 2***
+- [ ] etc
 
-_(we can put stuff like translations, docs, testing, etc)_
-
-- [ ] Design polish
+***Mileston N*** _(we can put stuff like translations, docs, testing, etc)_
 - [ ] String translations
-- [ ] Test on case X, Y, Z
 - [ ] Write rough pass documents for handoff to customer success
+
+
+**How to Test This Feature Out**
+
+_(include steps on how to test this project feature out, for someone unfamiliar with this work. please try to use the sample dataset when possible. this will serve as the basis for automated e2e tests, as well as the acceptance test to showcase the essence of this feature for bug bashes, etc)_

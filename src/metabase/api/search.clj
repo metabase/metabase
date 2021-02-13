@@ -18,6 +18,7 @@
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
+            [metabase.search :as search]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
@@ -152,7 +153,6 @@
    [:name :table_name]
    [:description :table_description]])
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -230,15 +230,24 @@
     [:= 1 0]  ; No tables should appear in archive searches
     [:= (hsql/qualify (model->alias model) :active) true]))
 
+(defn- search-string-clause
+  [query searchable-columns]
+  (when query
+    (into [:or]
+          (for [column searchable-columns
+                token (search/tokenize (search/normalize query))]
+            [:like
+             (hsql/call :lower column)
+             (str "%" token "%")]))))
+
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
-  (let [archived-clause      (archived-where-clause model archived?)
-        search-string-clause (when (seq search-string)
-                               [:like
-                                (hsql/call :lower (hsql/qualify (model->alias model) :name))
-                                (str "%" (str/lower-case search-string) "%")])]
-    (if search-string-clause
-      [:and archived-clause search-string-clause]
+  (let [archived-clause (archived-where-clause model archived?)
+        search-clause   (search-string-clause search-string
+                                              (map (partial hsql/qualify (model->alias model))
+                                                   (search/searchable-columns-for-model model)))]
+    (if search-clause
+      [:and archived-clause search-clause]
       archived-clause)))
 
 (s/defn ^:private base-query-for-model :- {:select s/Any, :from s/Any, :where s/Any}
@@ -370,16 +379,18 @@
                                          :when (seq query)]
                                      query)}
           _            (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          ;; sort results by [model name]
-          results      (sort-by (juxt (comp model->sort-position :model)
-                                      :name)
-                                (db/query search-query :max-rows search-max-results))]
-      (for [row results
-            :when (check-permissions-for-model row)]
-        ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-        (-> row
-            (update :favorite bit->boolean)
-            (update :archived bit->boolean))))))
+          results      (db/query search-query :max-rows search-max-results)]
+      ;; sort by [score model name]
+      (sort-by (juxt
+                (comp - (partial search/score (:search-string search-ctx)))
+                (comp model->sort-position :model)
+                :name)
+               (for [row results
+                     :when (check-permissions-for-model row)]
+                 ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
+                 (-> row
+                     (update :favorite bit->boolean)
+                     (update :archived bit->boolean)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
