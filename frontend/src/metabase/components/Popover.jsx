@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+import SandboxedPortal from "metabase/components/SandboxedPortal";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
@@ -363,10 +364,11 @@ export default class Popover extends Component {
   render() {
     return (
       <span className="hide">
-        {ReactDOM.createPortal(
-          this.props.isOpen ? this._buildPopover() : null,
-          this._popoverElement,
-        )}
+        {this.props.isOpen ? (
+          <SandboxedPortal container={this._popoverElement}>
+            {this._buildPopover()}
+          </SandboxedPortal>
+        ) : null}
       </span>
     );
   }
