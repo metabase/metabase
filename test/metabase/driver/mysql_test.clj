@@ -60,12 +60,14 @@
       ["Empty Vending Machine" 0]]]])
 
 (defn- db->fields [db]
-  (let [table-ids (db/select-ids 'Table :db_id (u/get-id db))]
+  (let [table-ids (db/select-ids 'Table :db_id (u/the-id db))]
     (set (map (partial into {}) (db/select [Field :name :base_type :special_type] :table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test
   (mt/test-driver :mysql
     (mt/dataset tiny-int-ones
+      ;; trigger a full sync on this database so fields are categorized correctly
+      (sync/sync-database! (mt/db))
       (testing "By default TINYINT(1) should be a boolean"
         (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :special_type :type/Category}
                  {:name "id", :base_type :type/Integer, :special_type :type/PK}

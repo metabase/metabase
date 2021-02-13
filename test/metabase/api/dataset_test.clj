@@ -48,9 +48,17 @@
        [k v]))))
 
 (defn- most-recent-query-execution-for-query [query]
-  (db/select-one QueryExecution
-    :hash (qp-util/query-hash query)
-    {:order-by [[:started_at :desc]]}))
+  ;; it might take a fraction of a second for the QueryExecution to show up, it's saved asynchronously. So wait a bit
+  ;; and retry if it's not there yet.
+  (letfn [(thunk []
+            (db/select-one QueryExecution
+                           :hash (qp-util/query-hash query)
+                           {:order-by [[:started_at :desc]]}))]
+    (loop [retries 3]
+      (or (thunk)
+          (when (pos? retries)
+            (Thread/sleep 100)
+            (recur (dec retries)))))))
 
 (def ^:private query-defaults
   {:middleware {:add-default-userland-constraints? true
@@ -363,27 +371,39 @@
             (is (= ["WV" "Facebook" nil 4 45 292] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))
 
-        (testing "with an added expression"
-          (let [query (-> (pivots/pivot-query)
-                          (assoc-in [:query :fields] [[:expression "test-expr"]])
-                          (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
-                result (mt/user-http-request :rasta :post 202 "dataset/pivot" query)
-                rows (mt/rows result)]
-            (is (= 1144 (:row_count result)))
-            (is (= 1144 (count rows)))
+        ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
+        ;; the GROUP BY expression
+        (when (#{:bigquery :mongo :presto :redshift :h2 :sqlite} metabase.driver/*driver*)
+          (testing "with an added expression"
+            ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
+            ;; comments on `metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test`.
+            (let [query  (-> (pivots/pivot-query)
+                             (assoc-in [:query :fields] [[:expression "test-expr"]])
+                             (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
+                  result (mt/user-http-request :rasta :post 202 "dataset/pivot" query)
+                  rows   (mt/rows result)]
+              (is (= 1144 (:row_count result)))
+              (is (= 1144 (count rows)))
 
-            (let [cols (get-in result [:data :cols])]
-              (is (= 7 (count cols)))
-              (is (= {:base_type "type/Text"
-                      :special_type nil
-                      :name "test-expr"
-                      :display_name "test-expr"
-                      :expression_name "test-expr"
-                      :field_ref ["expression" "test-expr"]
-                      :source "breakout"}
-                     (nth cols 3))))
+              (let [cols (mt/cols result)]
+                (is (= ["User → State"
+                        "User → Source"
+                        "Product → Category"
+                        "pivot-grouping"
+                        "Count"
+                        "Sum of Quantity"
+                        "test-expr"]
+                       (map :display_name cols)))
+                (is (= {:base_type       "type/Integer"
+                        :special_type    "type/Number"
+                        :name            "pivot-grouping"
+                        :display_name    "pivot-grouping"
+                        :expression_name "pivot-grouping"
+                        :field_ref       ["expression" "pivot-grouping"]
+                        :source          "breakout"}
+                       (nth cols 3))))
 
-            (is (= [nil nil nil "wheeee" 7 18760 69540] (last rows)))))))))
+              (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
 (deftest pivot-filter-dataset-test
   (mt/test-drivers pivots/applicable-drivers

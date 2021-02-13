@@ -1,6 +1,6 @@
 ## Embedding all of Metabase in your web app
 
-The open-source edition of Metabase allows you to [embed standalone charts or dashboards](../administration-guide/13-embedding.md) in your own web applications for simple situations. But what if you want to provide your users with a more interactive, browsable experience? Metabase Enterprise Edition allows you to embed the entire Metabase app within your own web app, allowing you to provide [drill-through](/learn/basics/questions/drill-through.html) for your embedded charts and dashboards, or even embed the graphical query builder, or collections of dashboards and charts.
+The open-source edition of Metabase allows you to [embed standalone charts or dashboards](../administration-guide/13-embedding.md) in your own web applications for simple situations. But what if you want to provide your users with a more interactive, browsable experience? Metabase Enterprise Edition allows you to embed the entire Metabase app within your own web app, allowing you to provide [drill-through](https://www.metabase.com/learn/basics/questions/drill-through.html) for your embedded charts and dashboards, or even embed the graphical query builder, or collections of dashboards and charts.
 
 You'll be putting the whole Metabase app into an iframe, and the SSO integration you've set up with Metabase will be used to make sure the embedded Metabase respects the collection and data permissions you've set up for your user groups. Clicking on charts and graphs in the embed will do just what they do in Metabase itself. You can even display a specific Metabase collection in an embed to allow your users to browse through all the dashboards and questions that you've made available to them. The only difference is that Metabase's top nav bar and global search will not be rendered in your iframe.
 
@@ -71,7 +71,7 @@ One of the main differences between embedding the full Metabase app vs. standalo
 
 When clicking on any part of a chart — like a dot, bar, slice, or state — your users will see the drill-through action menu.
 
-![Action menu](/docs/enterprise-guide/images/full-app-embedding/action-menu.png)
+![Action menu](../enterprise-guide/images/full-app-embedding/action-menu.png)
 
 This will let them do things like:
 
@@ -84,7 +84,7 @@ Drill-through also allows users to click on the title of a chart in a dashboard 
 
 Depending on the collections permissions you set, your users can also save their explorations into collections. If you want to allow them to find these saved explorations, make sure your web application implements a link to view the collections directory.
 
-Check out our article, [Create charts with explorable data](/learn/basics/questions/drill-through.html).
+Check out our article, [Create charts with explorable data](https://www.metabase.com/learn/basics/questions/drill-through.html).
 
 #### Using SSO to apply data or collection permissions to embeds
 

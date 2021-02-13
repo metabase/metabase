@@ -1,0 +1,29 @@
+;; this is a map of how long it takes to sync the dataset (in nanoseconds) for an in-memory H2 database on Cam's local
+;; computer (Ryzen 3950x/32 GB of RAM/Java 14)
+{"airports"                          72271700
+ "attempted-murders"                 41250600
+ "avian-singles"                     44766800
+ "basic-field-comments"              36389700
+ "bird-flocks"                       41835800
+ "checkins_interval_15"              45435500
+ "checkins_interval_86400"           43530100
+ "checkins_interval_900"             41998300
+ "comment-after-sync"                37872400
+ "daily-bird-counts"                 37459400
+ "db-with-some-cruft"                49419200
+ "office-checkins"                   41066800
+ "places-cam-likes"                  40787900
+ "sad-toucan-incidents"              48648000
+ "sample-dataset"                    96251000
+ "string-times"                      39466300
+ "table_with_comment_after_sync_db"  34791000
+ "table_with_comment_db"             35052200
+ "table_with_updated_desc_db"        35456200
+ "test-data"                         1138090600
+ "test-data-self-referencing-user"   37713700
+ "test-data-with-null-date-checkins" 84524900
+ "test-data-with-time"               40431800
+ "test-data-with-timezones"          60335800
+ "toucan-microsecond-incidents"      51240600
+ "tupac-sightings"                   62742200
+ "update-desc"                       32664800}

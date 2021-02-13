@@ -7,11 +7,16 @@
 
 (deftest snapshot-test
   (when (= (mdb.conn/db-type) :h2)
-    (testing "Just make sure the snapshot endpoint doesn't crash."
-      (is (= nil
-             (mt/user-http-request :rasta :post 204 "testing/snapshot/default")))
-      (testing "File should have been created"
-        (is (.exists (java.io.File. (#'testing/snapshot-path-for-name :default))))))))
+    (let [snapshot-name (mt/random-name)]
+      (testing "Just make sure the snapshot endpoint doesn't crash."
+        (let [file (java.io.File. (#'testing/snapshot-path-for-name snapshot-name))]
+          (try
+            (is (= nil
+                   (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))))
+            (testing (format "File %s should have been created" (str file))
+              (is (.exists file)))
+            (finally
+              (.delete file))))))))
 
 (deftest restore-test
   (when (= (mdb.conn/db-type) :h2)
@@ -23,7 +28,10 @@
   (when (= (mdb.conn/db-type) :h2)
     (testing "Should be able to snapshot & restore stuff"
       (let [snapshot-name (munge (u/qualified-name ::test-snapshot))]
-        (is (= nil
-               (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))))
-        (is (= nil
-               (mt/user-http-request :rasta :post 204 (format "testing/restore/%s" snapshot-name))))))))
+        (try
+          (is (= nil
+                 (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))))
+          (is (= nil
+                 (mt/user-http-request :rasta :post 204 (format "testing/restore/%s" snapshot-name))))
+          (finally
+            (.delete (java.io.File. (#'testing/snapshot-path-for-name snapshot-name)))))))))

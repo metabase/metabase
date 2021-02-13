@@ -5,10 +5,12 @@
             [expectations :refer :all]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.test.util :as tu]
-            [metabase.util.encryption :as encryption]))
+            [metabase.util.encryption :as encryption]
+            [metabase.test.initialize :as initialize]))
 
 (defn do-with-secret-key [^String secret-key thunk]
   ;; flush the Setting cache so unencrypted values have to be fetched from the DB again
+  (initialize/initialize-if-needed! :db)
   (setting.cache/restore-cache!)
   (with-redefs [encryption/default-secret-key (when (seq secret-key)
                                                 (encryption/secret-key->hash secret-key))]

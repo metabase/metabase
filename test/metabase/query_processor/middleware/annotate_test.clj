@@ -2,10 +2,10 @@
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.models :refer [Field]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -527,3 +527,57 @@
                                       {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}
                                        :fields      [[:expression "prev_month"]], :limit 10})
                      {})))))))
+
+(deftest mbql-cols-nested-queries-test
+  (testing "Should be able to infer MBQL columns with nested queries"
+    (let [base-query (qp/query->preprocessed
+                      (mt/mbql-query venues
+                        {:joins [{:fields       :all
+                                  :source-table $$categories
+                                  :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                                  :alias        "c"}]}))]
+      (doseq [level [0 1 2 3]]
+        (testing (format "%d level(s) of nesting" level)
+          (let [nested-query (mt/nest-query base-query level)]
+            (testing (format "\nQuery = %s" (u/pprint-to-str nested-query))
+              (is (= (mt/$ids venues
+                       [{:name "ID",          :id %id,              :field_ref $id}
+                        {:name "NAME",        :id %name,            :field_ref $name}
+                        {:name "CATEGORY_ID", :id %category_id,     :field_ref $category_id}
+                        {:name "LATITUDE",    :id %latitude,        :field_ref $latitude}
+                        {:name "LONGITUDE",   :id %longitude,       :field_ref $longitude}
+                        {:name "PRICE",       :id %price,           :field_ref $price}
+                        {:name "ID_2",        :id %categories.id,   :field_ref [:joined-field "c" $categories.id]}
+                        {:name "NAME_2",      :id %categories.name, :field_ref [:joined-field "c" $categories.name]}])
+                     (map #(select-keys % [:name :id :field_ref])
+                          (:cols (add-column-info nested-query {}))))))))))))
+
+(deftest inception-test
+  (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"
+    (mt/dataset sample-dataset
+      ;; these tests look at the metadata for just one column so it's easier to spot the differences.
+      (letfn [(ean-metadata [result]
+                (as-> (:cols result) result
+                  (u/key-by :name result)
+                  (get result "EAN")
+                  (select-keys result [:name :display_name :base_type :special_type :id :field_ref])))]
+        (testing "Make sure metadata is correct for the 'EAN' column with"
+          (let [base-query (qp/query->preprocessed
+                            (mt/mbql-query orders
+                              {:joins [{:fields       :all
+                                        :source-table $$products
+                                        :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                        :alias        "Products"}]
+                               :limit 10}))]
+            (doseq [level (range 4)]
+              (testing (format "%d level(s) of nesting" level)
+                (let [nested-query (mt/nest-query base-query level)]
+                  (testing (format "\nQuery = %s" (u/pprint-to-str nested-query))
+                    (is (= (mt/$ids products
+                             {:name         "EAN"
+                              :display_name "Products → Ean"
+                              :base_type    :type/Text
+                              :special_type nil
+                              :id           %ean
+                              :field_ref    [:joined-field "Products" $ean]})
+                           (ean-metadata (add-column-info nested-query {}))))))))))))))

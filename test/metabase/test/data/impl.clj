@@ -1,6 +1,7 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require [clojure.tools.logging :as log]
+            [clojure.tools.reader.edn :as edn]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
@@ -75,11 +76,14 @@
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
-  (u/minutes->ms 9)) ; 9 minutes - Redshift is slow. Set to 9 minutes because Circle CI will timeout at 10 minutes.
+  (u/minutes->ms 30)) ; Redshift is slow
 
 (def ^:private sync-timeout-ms
   "Max amount of time to wait for sync to complete."
-  (u/minutes->ms 5)) ; five minutes
+  (u/minutes->ms 15))
+
+(defonce ^:private reference-sync-durations
+  (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
 (defn- create-database! [driver {:keys [database-name table-definitions], :as database-definition}]
   {:pre [(seq database-name)]}
@@ -98,16 +102,20 @@
       (try
         ;; sync newly added DB
         (u/with-timeout sync-timeout-ms
-          (u/profile (format "Sync %s Database %s" driver database-name)
-            (sync/sync-database! db)
-            (verify-data-loaded-correctly driver database-definition db)
-            ;; add extra metadata for fields
-            (try
-              (add-extra-metadata! database-definition db)
-              (catch Throwable e
-                (println "Error adding extra metadata:" e)))))
+          (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
+                                       "NONE")
+                quick-sync? (not= database-name "test-data")]
+            (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
+                               (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
+              ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+              (sync/sync-database! db (when quick-sync? {:scan :schema}))
+              ;; add extra metadata for fields
+              (try
+                (add-extra-metadata! database-definition db)
+                (catch Throwable e
+                  (println "Error adding extra metadata:" e))))))
         ;; make sure we're returing an up-to-date copy of the DB
-        (Database (u/get-id db))
+        (Database (u/the-id db))
         (catch Throwable e
           (let [e (ex-info "Failed to create test database"
                            {:driver             driver
@@ -115,7 +123,7 @@
                             :connection-details connection-details}
                            e)]
             (println (u/pprint-to-str 'red (Throwable->map e)))
-            (db/delete! Database :id (u/get-id db))
+            (db/delete! Database :id (u/the-id db))
             (throw e)))))
     (catch Throwable e
       (let [message (format "Failed to create %s '%s' test database" driver database-name)]
@@ -289,7 +297,7 @@
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
-                                 (assert (db/exists? Database :id (u/get-id db)))
+                                 (assert (db/exists? Database :id (u/the-id db)))
                                  db))))]
     (binding [*get-db* #(get-db-for-driver (tx/driver))]
       (f))))

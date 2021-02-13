@@ -26,7 +26,7 @@
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
-                                        "--exclude-profiles" "compare-h2-dbs,dev"]
+                                        "--exclude-profiles" "dev"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
@@ -36,7 +36,6 @@
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
    "repl-ee"                           ["with-profile" "+repl,+ee" "repl"]
-   "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]
    "uberjar"                           ["uberjar"]
    "uberjar-ee"                        ["with-profile" "+ee" "uberjar"]}
 
@@ -134,7 +133,7 @@
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.6.2"]                     ; MySQL/MariaDB driver
-   [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
+   [org.postgresql/postgresql "42.2.18"]                              ; Postgres driver
    [org.slf4j/slf4j-api "1.7.30"]                                     ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.1.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
@@ -245,7 +244,7 @@
      :format-result metabase.junit/format-result}}
 
    :ci
-   {:jvm-opts ["-Xmx2500m"]}
+   {:jvm-opts ["-Xmx2000m"]}
 
    :install
    {}
@@ -422,9 +421,4 @@
    {:main org.h2.tools.Shell}
 
    :generate-automagic-dashboards-pot
-   {:main metabase.automagic-dashboards.rules}
-
-   :compare-h2-dbs
-   {:aliases      ^:replace  {"run" ["run"]}
-    :main         ^:skip-aot metabase.cmd.compare-h2-dbs
-    :source-paths ["test"]}})
+   {:main metabase.automagic-dashboards.rules}})

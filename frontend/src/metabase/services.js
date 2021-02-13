@@ -50,10 +50,7 @@ export function maybeUsePivotEndpoint(
     return ref;
   }
 
-  const question = new Question(
-    card,
-    metadata || new Metadata({ databases: {} }),
-  );
+  const question = new Question(card, metadata);
 
   function wrap(api) {
     return (params: ?Data, ...rest: any) => {

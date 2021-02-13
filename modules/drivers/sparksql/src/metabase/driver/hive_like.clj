@@ -122,7 +122,7 @@
 
 (defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) 0))
 
 (defmethod sql.qp/->honeysql [:hive-like :median]
   [driver [_ arg]]

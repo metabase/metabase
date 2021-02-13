@@ -3,7 +3,8 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (defn- add-source-metadata [query]
   (driver/with-driver :h2
@@ -12,7 +13,7 @@
 
 (defn- results-metadata [query-results]
   (for [col (-> query-results :data :cols)]
-    (select-keys col [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings])))
+    (select-keys col [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings :field_ref])))
 
 (defn- venues-source-metadata
   ([]
@@ -59,7 +60,11 @@
                                 :breakout     [$price]}
               :source-metadata (concat
                                 (venues-source-metadata :price)
-                                (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))})
+                                [{:name         "count"
+                                  :display_name "Count"
+                                  :base_type    :type/BigInteger
+                                  :special_type :type/Number
+                                  :field_ref    [:aggregation 0]}])})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-table $$venues
@@ -77,7 +82,8 @@
                                   :display_name "Average of ID"
                                   :base_type    :type/BigInteger
                                   :special_type :type/PK
-                                  :settings     nil}])})
+                                  :settings     nil
+                                  :field_ref    [:aggregation 0]}])})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-table $$venues
@@ -102,7 +108,8 @@
                                     :display_name "My Cool Ag"
                                     :base_type    :type/BigInteger
                                     :special_type :type/PK
-                                    :settings     nil}])})
+                                    :settings     nil
+                                    :field_ref    [:aggregation 0]}])})
              (add-source-metadata
               (mt/mbql-query venues
                 {:source-query {:source-table $$venues
@@ -116,7 +123,8 @@
                :display_name "Average of ID"
                :base_type    :type/BigInteger
                :special_type :type/PK
-               :settings     nil}]
+               :settings     nil
+               :field_ref    [:aggregation 0]}]
              (source-metadata
               (add-source-metadata
                (mt/mbql-query venues
@@ -128,7 +136,8 @@
                :display_name "My Cool Ag"
                :base_type    :type/BigInteger
                :special_type :type/PK
-               :settings     nil}]
+               :settings     nil
+               :field_ref    [:aggregation 0]}]
              (source-metadata
               (add-source-metadata
                (mt/mbql-query venues
@@ -234,7 +243,16 @@
                                   :aggregation  [[:count]]
                                   :breakout     [[:binning-strategy $latitude :default]]}
                 :source-metadata (concat
-                                  (venues-source-metadata :latitude)
+                                  (let [[lat-col] (venues-source-metadata :latitude)]
+                                    [(assoc lat-col :field_ref (mt/$ids venues
+                                                                 [:binning-strategy
+                                                                  $latitude
+                                                                  :bin-width
+                                                                  5.0
+                                                                  {:min-value 10.0
+                                                                   :max-value 45.0
+                                                                   :num-bins  7
+                                                                   :bin-width 5.0}]))])
                                   (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))})
              (add-source-metadata
               (mt/mbql-query venues
@@ -261,3 +279,33 @@
                     :limit        2}))]
       (is (= ["ID" "DATE" "USER_ID" "VENUE_ID" "ID_2" "NAME" "LAST_LOGIN"]
              (map :name (get-in query [:query :source-metadata])))))))
+
+(deftest inception-test
+  (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
+    (mt/dataset sample-dataset
+      ;; these tests look at the metadata for just one column so it's easier to spot the differences.
+      (letfn [(ean-metadata [query]
+                (as-> query query
+                  (get-in query [:query :source-metadata])
+                  (u/key-by :name query)
+                  (get query "EAN")
+                  (select-keys query [:name :display_name :base_type :special_type :id :field_ref])))]
+        (let [base-query (mt/mbql-query orders
+                           {:source-table $$orders
+                            :joins        [{:fields       :all
+                                            :source-table $$products
+                                            :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                            :alias        "Products"}]
+                            :limit        10})]
+          (testing "Make sure metadata is correct for the 'EAN' column with"
+            (doseq [level (range 1 4)
+                    :let  [query (mt/nest-query base-query level)]]
+              (testing (format "%d level(s) of nesting" level)
+                (is (= (mt/$ids products
+                         {:name         "EAN"
+                          :display_name "Products → Ean"
+                          :base_type    :type/Text
+                          :special_type nil
+                          :id           %ean
+                          :field_ref    [:joined-field "Products" $ean]})
+                       (ean-metadata (add-source-metadata query))))))))))))

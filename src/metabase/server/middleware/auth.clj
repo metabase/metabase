@@ -40,7 +40,11 @@
   reject the request and return a 403 Forbidden response."
   [handler]
   (fn [{:keys [metabase-api-key], :as request} respond raise]
-    (if (= (api-key) metabase-api-key)
-      (handler request respond raise)
-      ;; default response is 403
-      (respond middleware.u/response-forbidden))))
+    (cond (not metabase-api-key)
+          (respond middleware.u/response-forbidden)
+
+          (= (api-key) metabase-api-key)
+          (handler request respond raise)
+
+          :else
+          (respond middleware.u/response-forbidden))))

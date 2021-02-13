@@ -4,11 +4,12 @@ import {
   popover,
   createNativeQuestion,
   openOrdersTable,
+  remapDisplayValueToFK,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > question > nested (metabase#12568)", () => {
   beforeEach(() => {
@@ -55,14 +56,14 @@ describe("scenarios > question > nested (metabase#12568)", () => {
         type: "native",
         native: {
           query: `WITH tmp_user_order_dates as (
-              SELECT 
+              SELECT
                 o.USER_ID,
                 o.CREATED_AT,
                 o.QUANTITY
-              FROM 
+              FROM
                 ORDERS o
             ),
-            
+
             tmp_prior_orders_by_date as (
               select
                   tbod.USER_ID,
@@ -71,7 +72,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
                   (select count(*) from tmp_user_order_dates tbod2 where tbod2.USER_ID = tbod.USER_ID and tbod2.CREATED_AT < tbod.CREATED_AT ) as PRIOR_ORDERS
               from tmp_user_order_dates tbod
             )
-            
+
             select
               date_trunc('day', tpobd.CREATED_AT) as "Date",
               case when tpobd.PRIOR_ORDERS > 0 then 'Return' else 'New' end as "Customer Type",
@@ -325,4 +326,183 @@ describe("scenarios > question > nested", () => {
       });
     });
   });
+
+  it("should handle remapped display values in a base QB question (metabase#10474)", () => {
+    cy.log(
+      "Related issue [#14629](https://github.com/metabase/metabase/issues/14629)",
+    );
+
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    cy.log("**-- 1. Remap Product ID's display value to `title` --**");
+    remapDisplayValueToFK({
+      display_value: ORDERS.PRODUCT_ID,
+      name: "Product ID",
+      fk: PRODUCTS.TITLE,
+    });
+
+    cy.log("**-- 2. Save simple 'Orders' table with remapped values --**");
+    cy.request("POST", "/api/card", {
+      name: "Orders (remapped)",
+      dataset_query: {
+        database: 1,
+        query: { "source-table": ORDERS_ID },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    });
+
+    // Try to use saved question as a base for a new / nested question
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("Orders (remapped)").click();
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+    cy.findAllByText("Awesome Concrete Shoes");
+  });
+
+  ["remapped", "default"].forEach(test => {
+    describe(`${test.toUpperCase()} version: question with joins as a base for new quesiton(s) (metabase#14724)`, () => {
+      const QUESTION_NAME = "14724";
+      const SECOND_QUESTION_NAME = "14724_2";
+
+      beforeEach(() => {
+        if (test === "remapped") {
+          cy.log("**-- Remap Product ID's display value to `title` --**");
+          remapDisplayValueToFK({
+            display_value: ORDERS.PRODUCT_ID,
+            name: "Product ID",
+            fk: PRODUCTS.TITLE,
+          });
+        }
+
+        cy.server();
+        cy.route("POST", "/api/dataset").as("dataset");
+      });
+
+      it("should handle single-level nesting", () => {
+        ordersJoinProducts(QUESTION_NAME);
+
+        // Start new question from a saved one
+        cy.visit("/question/new");
+        cy.findByText("Simple question").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText(QUESTION_NAME).click();
+
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+        cy.contains("37.65");
+      });
+
+      it("should handle multi-level nesting", () => {
+        // Use the original question qith joins, then save it again
+        ordersJoinProducts(QUESTION_NAME).then(
+          ({ body: { id: ORIGINAL_QUESTION_ID } }) => {
+            cy.request("POST", "/api/card", {
+              name: SECOND_QUESTION_NAME,
+              dataset_query: {
+                database: 1,
+                query: { "source-table": `card__${ORIGINAL_QUESTION_ID}` },
+                type: "query",
+              },
+              display: "table",
+              visualization_settings: {},
+            });
+          },
+        );
+
+        // Start new question from already saved nested question
+        cy.visit("/question/new");
+        cy.findByText("Simple question").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText(SECOND_QUESTION_NAME).click();
+
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+        cy.contains("37.65");
+      });
+    });
+  });
+
+  it.skip("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
+    // Set the display really wide and really tall to avoid any scrolling
+    cy.viewport(1600, 1200);
+
+    ordersJoinProducts("14787");
+    // This repro depends on these exact steps - it has to be opened from the saved questions
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("14787").click();
+
+    // The column title
+    cy.findByText("Products → Category").click();
+    cy.findByText("Distribution").click();
+    cy.contains("Summarize").click();
+    cy.findByText("Group by")
+      .parent()
+      .within(() => {
+        cy.log("**Regression that worked on 0.37.9**");
+        isSelected("Products → Category");
+      });
+
+    // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
+    // It can potentially fail at two more places. See [1] and [2]
+    cy.get(".Icon-notebook").click();
+    cy.get("[class*=NotebookCellItem]")
+      .contains(/^Products → Category$/) /* [1] */
+      .click();
+    popover().within(() => {
+      isSelected("Products → Category"); /* [2] */
+    });
+
+    /**
+     * Helper function related to this test only
+     * TODO:
+     *  Extract it if we have the need for it anywhere else
+     */
+    function isSelected(text) {
+      cy.findByText(text)
+        .closest(".List-item")
+        .should($el => {
+          const className = $el[0].className;
+
+          expect(className).to.contain("selected");
+        });
+    }
+  });
 });
+
+function ordersJoinProducts(name) {
+  return cy.request("POST", "/api/card", {
+    name,
+    dataset_query: {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ],
+            alias: "Products",
+          },
+        ],
+      },
+      database: 1,
+    },
+    display: "table",
+    visualization_settings: {},
+  });
+}

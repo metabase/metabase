@@ -2,6 +2,7 @@
   "Functions for working with H2 databases shared between the `load-from-h2` and `dump-to-h2` commands."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.db.spec :as db.spec]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
@@ -31,4 +32,4 @@
                     (str h2-filename ".mv.db")]]
     (when (.exists (io/file filename))
       (io/delete-file filename)
-      (println (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename)))))
+      (log/warn (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename)))))

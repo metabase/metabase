@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace])
   (:require [clojure.core :as core]
             [clojure.set :as set]
-            [metabase.mbql.schema.helpers :refer [defclause is-clause? one-of]]
+            [metabase.mbql.schema.helpers :as schema.helpers :refer [defclause is-clause? one-of]]
             [metabase.mbql.util.match :as match]
             [metabase.util.schema :as su]
             [schema.core :as s])
@@ -157,7 +157,8 @@
    (s/optional-key :base_type)     (s/maybe su/FieldType)
    (s/optional-key :special_type)  (s/maybe su/FieldType)
    (s/optional-key :unit)          (s/maybe DatetimeFieldUnit)
-   (s/optional-key :name)          (s/maybe su/NonBlankString)})
+   (s/optional-key :name)          (s/maybe su/NonBlankString)
+   s/Keyword                       s/Any})
 
 ;; Arguments to filter clauses are automatically replaced with [:value <value> <type-info>] clauses by the
 ;; `wrap-value-literals` middleware. This is done to make it easier to implement query processors, because most driver
@@ -228,15 +229,48 @@
    :min-value  s/Num
    :max-value  s/Num})
 
-;; TODO - binning strategy param is disallowed for `:default` and required for the others. For `num-bins` it must also
-;; be an integer.
-(defclause ^{:requires-features #{:binning}} binning-strategy
+;; binning strategy must match one of the three schemas below -- the param differs for different strategies.
+
+(defclause [binning-strategy:num-bins binning-strategy]
   field            BinnableField
-  strategy-name    BinningStrategyName
-  strategy-param   (optional (s/constrained s/Num (complement neg?) "strategy param must be >= 0."))
+  strategy-name    (s/eq :num-bins)
+  num-bins         su/IntGreaterThanZero
   ;; These are added in automatically by the `binning` middleware. Don't add them yourself, as they're just be
   ;; replaced. Driver implementations can rely on this being populated
   resolved-options (optional ResolvedBinningStrategyOptions))
+
+(defclause [binning-strategy:bin-width binning-strategy]
+  field            BinnableField
+  strategy-name    (s/eq :bin-width)
+  bin-width        (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
+  resolved-options (optional ResolvedBinningStrategyOptions))
+
+(defclause [binning-strategy:default binning-strategy]
+  field            BinnableField
+  strategy-name    (s/eq :default)
+  _                (optional (s/eq nil))
+  resolved-options (optional ResolvedBinningStrategyOptions))
+
+;; this is only used for purposes of error messages for a `binning-strategy` that doesn't match one of the three
+;; specific schemas above
+(defclause [^:private binning-strategy:-generic binning-strategy]
+  field            BinnableField
+  strategy-name    BinningStrategyName
+  param            (optional s/Num)
+  resolved-options (optional ResolvedBinningStrategyOptions))
+
+(def ^{:requires-features #{:binning}} ^{:clause-name :binning-strategy} binning-strategy
+  "Schema for a valid `:binning-strategy` clause."
+  (letfn [(strategy= [a-strategy]
+            (fn [clause]
+              (core/and (is-clause? :binning-strategy clause)
+                        (let [[_ _ strategy] clause]
+                          (core/= strategy a-strategy)))))]
+    (s/conditional
+     (strategy= :num-bins)  binning-strategy:num-bins
+     (strategy= :bin-width) binning-strategy:bin-width
+     (strategy= :default)   binning-strategy:default
+     :else                  binning-strategy:-generic)))
 
 (def ^:private Field*
   (one-of field-id field-literal joined-field fk-> datetime-field expression binning-strategy))
@@ -869,11 +903,11 @@
     (s/optional-key :source-table) SourceTable
     (s/optional-key :aggregation)  (su/non-empty [Aggregation])
     (s/optional-key :breakout)     (su/non-empty [Field])
-    ;; TODO - expressions keys should be strings; fix this when we get a chance
+    ;; TODO - expressions keys should be strings; fix this when we get a chance (#14647)
     (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
     (s/optional-key :fields)       Fields
     (s/optional-key :filter)       Filter
-    (s/optional-key :limit)        su/IntGreaterThanZero
+    (s/optional-key :limit)        su/IntGreaterThanOrEqualToZero
     (s/optional-key :order-by)     (su/distinct (su/non-empty [OrderBy]))
     ;; page = page num, starting with 1. items = number of items per page.
     ;; e.g.

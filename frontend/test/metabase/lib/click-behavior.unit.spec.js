@@ -165,7 +165,7 @@ describe("metabase/lib/click-behavior", () => {
         [
           "category",
           {
-            column: [{ base_type: "type/Text" }],
+            column: [{ base_type: "type/Integer" }, { base_type: "type/Text" }],
             parameter: [{ type: "category" }],
             userAttribute: [{ name: "attr" }],
           },
