@@ -17,70 +17,74 @@ describe("scenarios > question > filter", () => {
     signInAsAdmin();
   });
 
-  it.skip("should load needed data (metabase#12985)", () => {
-    // Save a Question
-    openProductsTable();
-    cy.findByText("Save").click();
-    cy.findByPlaceholderText("What is the name of your card?")
-      .clear()
-      .type("Q1");
-    cy.findAllByText("Save")
-      .last()
-      .click();
-    cy.findByText("Not now").click();
+  describe("dashboard filter dropdown/search (metabase#12985)", () => {
+    it.skip("Repro 1: should work for saved nested questions", () => {
+      // Save a Question
+      openProductsTable();
+      cy.findByText("Save").click();
+      cy.findByPlaceholderText("What is the name of your card?")
+        .clear()
+        .type("Q1");
+      cy.findAllByText("Save")
+        .last()
+        .click();
+      cy.findByText("Not now").click();
 
-    // From Q1, save Q2
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("Q1").click();
-    cy.findByText("Save").click();
-    cy.findByPlaceholderText("What is the name of your card?")
-      .clear()
-      .type("Q2");
-    cy.findAllByText("Save")
-      .last()
-      .click();
+      // From Q1, save Q2
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Q1").click();
+      cy.findByText("Save").click();
+      cy.findByPlaceholderText("What is the name of your card?")
+        .clear()
+        .type("Q2");
+      cy.findAllByText("Save")
+        .last()
+        .click();
 
-    // Add Q2 to a dashboard
-    cy.findByText("Yes please!").click();
-    cy.findByText("Orders in a dashboard").click();
+      // Add Q2 to a dashboard
+      cy.findByText("Yes please!").click();
+      cy.findByText("Orders in a dashboard").click();
 
-    // Add two dashboard filters
-    cy.get(".Icon-filter").click();
-    cy.findByText("Time").click();
-    cy.findByText("All Options").click();
-    cy.findAllByText("Select…")
-      .last()
-      .click();
-    cy.findByText("Created At").click();
+      // Add two dashboard filters
+      cy.get(".Icon-filter").click();
+      cy.findByText("Time").click();
+      cy.findByText("All Options").click();
+      cy.findAllByText("Select…")
+        .last()
+        .click();
+      cy.findByText("Created At").click();
 
-    cy.get(".Icon-filter").click();
-    cy.findByText("Other Categories").click();
-    cy.findAllByText("Select…")
-      .last()
-      .click();
-    popover().within(() => {
-      cy.findByText("Category").click();
-    });
-
-    // Save dashboard and refresh page
-    cy.findAllByText("Done")
-      .first()
-      .click();
-
-    cy.findByText("Save").click();
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-
-    // Check category search
-    cy.get("fieldset")
-      .last()
-      .within(() => {
+      cy.get(".Icon-filter").click();
+      cy.findByText("Other Categories").click();
+      cy.findAllByText("Select…")
+        .last()
+        .click();
+      popover().within(() => {
         cy.findByText("Category").click();
       });
-    cy.log("**Failing to show dropdown in v0.36.0 through v.0.37.0**");
-    cy.findByText("Gadget").click();
-    cy.findByText("Add filter").click();
+
+      // Save dashboard and refresh page
+      cy.findAllByText("Done")
+        .first()
+        .click();
+
+      cy.findByText("Save").click();
+      cy.findByText("You're editing this dashboard.").should("not.exist");
+
+      // Check category search
+      cy.get("fieldset")
+        .last()
+        .within(() => {
+          cy.findByText("Category").click();
+        });
+      cy.log("**Failing to show dropdown in v0.36.0 through v.0.37.0**");
+      cy.findByText("Gadget").click();
+      cy.findByText("Add filter").click();
+    });
+
+    it("Repro 2: should work for aggregated questions", () => {});
   });
 
   it("should filter a joined table by 'Is not' filter (metabase#13534)", () => {
