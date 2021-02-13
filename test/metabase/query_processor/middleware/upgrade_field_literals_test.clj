@@ -18,8 +18,7 @@
                             {:source-query    (:query source-query)
                              :source-metadata source-metadata
                              :joins           [(let [source-query    (mt/mbql-query venues
-                                                                       {:breakout     [$category_id]
-                                                                        :source-table 8830})
+                                                                       {:breakout [$category_id]})
                                                      source-metadata (qp/query->expected-cols source-query)]
                                                  {:fields          :all
                                                   :alias           "venues"
