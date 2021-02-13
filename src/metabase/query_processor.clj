@@ -11,6 +11,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim]
@@ -96,6 +97,7 @@
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
+   #'upgrade-field-literals/upgrade-field-literals
    #'add-source-metadata/add-source-metadata-for-source-queries
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
