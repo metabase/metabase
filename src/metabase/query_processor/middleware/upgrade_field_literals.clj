@@ -10,7 +10,8 @@
       (or (when-not (or (contains? (set &parents) :source-query)
                         (contains? (set &parents) :source-metadata))
             (when-let [{field-ref :field_ref} (get field-name->field field-name)]
-              field-ref))
+              (when (mbql.u/match-one field-ref :field-id true)
+                field-ref)))
           &match))))
 
 (defn- upgrade-field-literals-all-levels [query]

@@ -8,6 +8,30 @@
   (-> (mt/test-qp-middleware upgrade-field-literals/upgrade-field-literals query)
       :pre))
 
+(deftest dont-replace-aggregations-test
+  (testing "Don't replace field-literals forms with aggregation references"
+    (let [source-query    (mt/mbql-query checkins
+                            {:aggregation [[:count]]
+                             :breakout    [$checkins.venue_id]})
+          source-metadata (qp/query->expected-cols source-query)
+          query           (mt/mbql-query venues
+                            {:source-query    (:query source-query)
+                             :source-metadata source-metadata
+                             :joins           [(let [source-query    (mt/mbql-query venues
+                                                                       {:breakout     [$category_id]
+                                                                        :source-table 8830})
+                                                     source-metadata (qp/query->expected-cols source-query)]
+                                                 {:fields          :all
+                                                  :alias           "venues"
+                                                  :strategy        :inner-join
+                                                  :condition       [:= *count/Number &venues.*count/Number]
+                                                  :source-query    (:query source-query)
+                                                  :source-metadata source-metadata})]
+                             :order-by        [[:asc $checkins.venue_id]]
+                             :limit           3})]
+      (is (= query
+             (upgrade-field-literals query))))))
+
 (deftest support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of field-literal inside filter clauses"
     (mt/dataset sample-dataset
