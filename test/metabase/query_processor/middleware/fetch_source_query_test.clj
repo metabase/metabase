@@ -119,10 +119,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest joins-test
-  (let [query    (mt/mbql-query categories {:limit 100})
-        metadata (for [col (qp/query->expected-cols query)]
-                   (select-keys col [:name :display_name :id :base_type :field_ref]))]
-    (mt/with-temp Card [{card-id :id} {:dataset_query query, :result_metadata metadata}]
+  (let [metadata [{:name         "ID"
+                   :display_name "Card ID"
+                   :base_type    :type/Integer
+                   :field_ref    [:field-id (mt/id :categories :id)]}
+                  {:name         "name"
+                   :display_name "Card Name"
+                   :base_type    :type/Text
+                   :field_ref    [:field-id (mt/id :categories :name)]}]]
+    (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query categories {:limit 100})
+                                       :result_metadata metadata}]
       (testing "Are `card__id` source tables resolved in `:joins`?"
         (is (= (mt/mbql-query venues
                  {:joins [{:source-query    {:source-table $$categories, :limit 100}
@@ -166,15 +172,22 @@
       (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
         (mt/with-temp Card [{card-2-id :id} {:dataset_query
                                              (mt/mbql-query nil
-                                               {:source-table (str "card__" card-id), :limit 200})
-                                             :result_metadata metadata}]
+                                               {:source-table (str "card__" card-id), :limit 200})}]
           (is (= (mt/mbql-query venues
                    {:joins [{:alias           "c"
                              :condition       [:= $category_id &c.$categories.id]
                              :source-query    {:source-query    {:source-table $$categories :limit 100}
                                                :source-metadata metadata
                                                :limit           200}
-                             :source-metadata metadata}]})
+                             ;; TODO -- WHY does a join against a source -> source -> source query change the field
+                             ;; refs to field literals? Good things CANNOT come of this, I'm sure this must be a bug.
+                             :source-metadata (let [[id-col name-col] metadata]
+                                                [(assoc id-col
+                                                        :field_ref [:field-literal "ID" :type/Integer]
+                                                        :source :fields)
+                                                 (assoc name-col
+                                                        :field_ref [:field-literal "name" :type/Text]
+                                                        :source :fields)])}]})
                  (resolve-card-id-source-tables
                   (mt/mbql-query venues
                     {:joins [{:source-table (str "card__" card-2-id)
