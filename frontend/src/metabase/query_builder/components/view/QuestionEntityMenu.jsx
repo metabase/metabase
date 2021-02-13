@@ -43,7 +43,7 @@ export default function QuestionEntityMenu({
         },
         canWrite && {
           icon: "clone",
-          title: t`Copy this question`,
+          title: t`Duplicate this question`,
           action: () => onOpenModal("clone"),
         },
       ]}

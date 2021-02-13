@@ -96,7 +96,7 @@ describe("scenarios > question > saved", () => {
     cy.wait("@query");
 
     cy.get(".Icon-pencil").click();
-    cy.findByText("Copy this question").click();
+    cy.findByText("Duplicate this question").click();
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders");

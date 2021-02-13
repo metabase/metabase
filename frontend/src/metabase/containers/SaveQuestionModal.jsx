@@ -93,7 +93,7 @@ export default class SaveQuestionModal extends Component {
     const title = this.props.multiStep
       ? t`First, save your question`
       : this.props.clone
-      ? t`Copy question`
+      ? t`Duplicate this question`
       : t`Save question`;
 
     const showSaveType = !card.id && !!originalCard;
