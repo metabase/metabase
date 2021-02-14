@@ -126,7 +126,94 @@ describe("scenarios > question > filter", () => {
       cy.findByText("Ergonomic Silk Coat");
     });
 
-    it("Repro 2: should work for aggregated questions", () => {});
+    it.skip("Repro 2: should work for aggregated questions", () => {
+      cy.log("**-- 1. Create question with aggregation --**");
+
+      cy.request("POST", "/api/card", {
+        name: "12985-v2",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-query": {
+              "source-table": PRODUCTS_ID,
+              aggregation: [["count"]],
+              breakout: [["field-id", PRODUCTS.CATEGORY]],
+            },
+            filter: [">", ["field-literal", "count", "type/Integer"], 1],
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.log("**-- 2. Create a dashboard --**");
+
+        cy.request("POST", "/api/dashboard", {
+          name: "12985-v2D",
+        }).then(({ body: { id: DASHBOARD_ID } }) => {
+          cy.log("**-- 3. Add a category filter to the dashboard --**");
+
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+            parameters: [
+              {
+                name: "Category",
+                slug: "category",
+                id: "7c4htcv8",
+                type: "category",
+              },
+            ],
+          });
+
+          cy.log(
+            "**-- 4. Add previously created question to the dashboard --**",
+          );
+
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            cy.log(
+              "**-- 5. Connect dashboard filter to the aggregated card --**",
+            );
+
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  series: [],
+                  visualization_settings: {},
+                  // Connect filter to the card
+                  parameter_mappings: [
+                    {
+                      parameter_id: "7c4htcv8",
+                      card_id: QUESTION_ID,
+                      target: [
+                        "dimension",
+                        ["field-literal", "CATEGORY", "type/Text"],
+                      ],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        });
+      });
+
+      cy.findByPlaceholderText("Category").click();
+      // It will fail at this point until the issue is fixed because popover never appears
+      popover()
+        .contains("Gadget")
+        .click();
+      cy.findByText("Add filter").click();
+      cy.url().should("contain", "?category=Gadget");
+      cy.findByText("Ergonomic Silk Coat");
+    });
   });
 
   it("should filter a joined table by 'Is not' filter (metabase#13534)", () => {
