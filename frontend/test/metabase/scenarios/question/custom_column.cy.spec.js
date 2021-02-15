@@ -385,4 +385,66 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText("Gizmo2");
     });
   });
+
+  it.skip("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
+    const CE_NAME = "Rounded price";
+
+    cy.request("POST", "/api/card", {
+      name: "14775",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+              ],
+              alias: "Products",
+            },
+          ],
+          expressions: {
+            [CE_NAME]: [
+              "ceil",
+              ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
+            ],
+          },
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.server();
+      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.wait("@cardQuery");
+      cy.findByText(CE_NAME);
+    });
+
+    cy.get(".Icon-notebook").click();
+    cy.findByText("Join data")
+      .parent()
+      .find(".Icon-close")
+      .click({ force: true }); // x is hidden and hover doesn't work so we have to force it
+    cy.findByText("Join data").should("not.exist");
+
+    cy.log("**Reported failing on 0.38.1-SNAPSHOT (6d77f099)**");
+    cy.get("[class*=NotebookCellItem]")
+      .contains(CE_NAME)
+      .should("not.exist");
+    cy.findByText("Visualize").click();
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).to.not.exist;
+    });
+    cy.contains("37.65");
+  });
 });
