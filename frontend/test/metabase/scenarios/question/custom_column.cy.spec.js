@@ -420,16 +420,12 @@ describe("scenarios > question > custom columns", () => {
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
-      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
       cy.route("POST", "/api/dataset").as("dataset");
 
-      cy.visit(`/question/${QUESTION_ID}`);
-
-      cy.wait("@cardQuery");
-      cy.findByText(CE_NAME);
+      cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
 
-    cy.get(".Icon-notebook").click();
+    // Remove join
     cy.findByText("Join data")
       .parent()
       .find(".Icon-close")
