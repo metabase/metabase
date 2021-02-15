@@ -29,7 +29,7 @@
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p.types/defrecord+ FieldDefinition [field-name base-type special-type visibility-type fk field-comment])
+(p.types/defrecord+ FieldDefinition [field-name base-type semantic-type visibility-type fk field-comment])
 
 (p.types/defrecord+ TableDefinition [table-name field-definitions rows table-comment])
 
@@ -38,7 +38,7 @@
 (def ^:private FieldDefinitionSchema
   {:field-name                       su/NonBlankString
    :base-type                        (s/cond-pre {:native su/NonBlankString} su/FieldType)
-   (s/optional-key :special-type)    (s/maybe su/FieldType)
+   (s/optional-key :semantic-type)   (s/maybe su/FieldType)
    (s/optional-key :visibility-type) (s/maybe (apply s/enum field/visibility-types))
    (s/optional-key :fk)              (s/maybe su/KeywordOrString)
    (s/optional-key :field-comment)   (s/maybe su/NonBlankString)})
@@ -332,12 +332,12 @@
   ([_ aggregation-type]
    ;; TODO - Can `:cum-count` be used without args as well ??
    (assert (= aggregation-type :count))
-   {:base_type    :type/BigInteger
-    :special_type :type/Number
-    :name         "count"
-    :display_name "Count"
-    :source       :aggregation
-    :field_ref    [:aggregation 0]})
+   {:base_type     :type/BigInteger
+    :semantic_type :type/Number
+    :name          "count"
+    :display_name  "Count"
+    :source        :aggregation
+    :field_ref     [:aggregation 0]})
 
   ([driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}

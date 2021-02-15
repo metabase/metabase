@@ -238,7 +238,7 @@
                                                                      :table_id         table-id
                                                                      :display_name     display-name
                                                                      :base_type        "type/Text"
-                                                                     :special_type     nil
+                                                                     :semantic_type    nil
                                                                      :has_field_values "search"
                                                                      :name_field       nil
                                                                      :dimensions       []}}

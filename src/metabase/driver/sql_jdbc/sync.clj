@@ -10,7 +10,7 @@
 (p/import-vars
  [i
   active-tables
-  column->special-type
+  column->semantic-type
   database-type->base-type
   db-default-timezone
   excluded-schemas

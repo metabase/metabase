@@ -13,7 +13,7 @@
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
 
 (defmulti ^:private type-info
-  "Get information about database, base, and special types for an object. This is passed to along to various
+  "Get information about database, base, and semantic types for an object. This is passed to along to various
   `->honeysql` method implementations so drivers have the information they need to handle raw values like Strings,
   which may need to be parsed as a certain type."
   {:arglists '([field-clause])}
@@ -22,7 +22,7 @@
 (defmethod type-info :default [_] nil)
 
 (defmethod type-info (class Field) [this]
-  (let [field-info (select-keys this [:base_type :special_type :database_type :name])]
+  (let [field-info (select-keys this [:base_type :semantic_type :database_type :name])]
     (merge
      field-info
      ;; add in a default unit for this Field so we know to wrap datetime strings in `absolute-datetime` below based on

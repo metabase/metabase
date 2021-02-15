@@ -143,7 +143,7 @@
            ;; that and make it return `true` so this test proceeds as expected
            (with-redefs [driver/supports? (constantly true)]
              (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:fk_target_field_id (mt/id :categories :id)
-                                                                            :special_type       "type/FK"}
+                                                                          :semantic_type      "type/FK"}
                (let [results (mt/run-mbql-query venues
                                {:aggregation [:count]
                                 :breakout    [$category_id->categories.name]})]

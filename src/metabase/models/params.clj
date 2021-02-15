@@ -77,7 +77,7 @@
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
   [fields]
-  (filter #(isa? (:special_type %) :type/PK) fields))
+  (filter #(isa? (:semantic_type %) :type/PK) fields))
 
 (def ^:private Field:params-columns-only
   "Form for use in Toucan `db/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
@@ -86,7 +86,7 @@
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
     (db/select Field:params-columns-only)"
-  ['Field :id :table_id :display_name :base_type :special_type :has_field_values])
+  ['Field :id :table_id :display_name :base_type :semantic_type :has_field_values])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
@@ -94,8 +94,8 @@
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
     (u/key-by :table_id (-> (db/select Field:params-columns-only
-                              :table_id     [:in table-ids]
-                              :special_type (mdb.u/isa :type/Name))
+                              :table_id      [:in table-ids]
+                              :semantic_type (mdb.u/isa :type/Name))
                             ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
                             ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                             ;; `list` instead of `auto-list`.)
@@ -111,7 +111,7 @@
   (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
     (for [field fields]
       ;; add matching `:name_field` if it's a PK
-      (assoc field :name_field (when (isa? (:special_type field) :type/PK)
+      (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
                                  (table-id->name-field (:table_id field)))))))
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we

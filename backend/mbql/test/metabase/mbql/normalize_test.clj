@@ -942,50 +942,50 @@
   (testing "make sure `:source-metadata` gets normalized the way we'd expect:"
     (testing "1. Type names should get converted to keywords"
       (is (= {:query {:source-metadata
-                      [{:name         "name"
-                        :display_name "Name"
-                        :base_type    :type/Text
-                        :special_type :type/Name
-                        :fingerprint  {:global {:distinct-count 100}
-                                       :type   {:type/Text {:percent-json   0.0
-                                                            :percent-url    0.0
-                                                            :percent-email  0.0
-                                                            :average-length 15.63}}}}]}}
+                      [{:name          "name"
+                        :display_name  "Name"
+                        :base_type     :type/Text
+                        :semantic_type :type/Name
+                        :fingerprint   {:global {:distinct-count 100}
+                                        :type   {:type/Text {:percent-json   0.0
+                                                             :percent-url    0.0
+                                                             :percent-email  0.0
+                                                             :average-length 15.63}}}}]}}
              (normalize/normalize
-              {:query {:source-metadata [{:name         "name"
-                                          :display_name "Name"
-                                          :description  nil
-                                          :base_type    "type/Text"
-                                          :special_type "type/Name"
-                                          :fingerprint  {"global" {"distinct-count" 100}
-                                                         "type"   {"type/Text" {"percent-json"   0.0
-                                                                                "percent-url"    0.0
-                                                                                "percent-email"  0.0
-                                                                                "average-length" 15.63}}}}]}}))))
+              {:query {:source-metadata [{:name          "name"
+                                          :display_name  "Name"
+                                          :description   nil
+                                          :base_type     "type/Text"
+                                          :semantic_type "type/Name"
+                                          :fingerprint   {"global" {"distinct-count" 100}
+                                                          "type"   {"type/Text" {"percent-json"   0.0
+                                                                                 "percent-url"    0.0
+                                                                                 "percent-email"  0.0
+                                                                                 "average-length" 15.63}}}}]}}))))
 
     (testing (str "2. if `:source-metadata` is at the top-level, it should get moved to the correct location inside "
                   "the 'inner' MBQL query")
       (is (= {:query {:source-metadata
-                      [{:name         "name"
-                        :display_name "Name"
-                        :base_type    :type/Text
-                        :special_type :type/Name
-                        :fingerprint  {:global {:distinct-count 100}
-                                       :type   {:type/Text {:percent-json   0.0
-                                                            :percent-url    0.0
-                                                            :percent-email  0.0
-                                                            :average-length 15.63}}}}]}}
+                      [{:name          "name"
+                        :display_name  "Name"
+                        :base_type     :type/Text
+                        :semantic_type :type/Name
+                        :fingerprint   {:global {:distinct-count 100}
+                                        :type   {:type/Text {:percent-json   0.0
+                                                             :percent-url    0.0
+                                                             :percent-email  0.0
+                                                             :average-length 15.63}}}}]}}
              (normalize/normalize
-              {:source-metadata [{:name         "name"
-                                  :display_name "Name"
-                                  :description  nil
-                                  :base_type    "type/Text"
-                                  :special_type "type/Name"
-                                  :fingerprint  {"global" {"distinct-count" 100}
-                                                 "type"   {"type/Text" {"percent-json"   0.0
-                                                                        "percent-url"    0.0
-                                                                        "percent-email"  0.0
-                                                                        "average-length" 15.63}}}}]}))))))
+              {:source-metadata [{:name          "name"
+                                  :display_name  "Name"
+                                  :description   nil
+                                  :base_type     "type/Text"
+                                  :semantic_type "type/Name"
+                                  :fingerprint   {"global" {"distinct-count" 100}
+                                                  "type"   {"type/Text" {"percent-json"   0.0
+                                                                         "percent-url"    0.0
+                                                                         "percent-email"  0.0
+                                                                         "average-length" 15.63}}}}]}))))))
 
 (deftest normalize-nil-values-in-native-maps-test
   (testing "nil values in native query maps (e.g. MongoDB queries) should not get removed during normalization.\n"

@@ -26,16 +26,16 @@
 
 (deftest hydrate-name-field-test
   (testing "make sure that we can hydrate the `name_field` property for PK Fields"
-    (is (= {:name         "ID"
-            :table_id     (mt/id :venues)
-            :special_type :type/PK
-            :name_field   {:id               (mt/id :venues :name)
-                           :table_id         (mt/id :venues)
-                           :display_name     "Name"
-                           :base_type        :type/Text
-                           :special_type     :type/Name
-                           :has_field_values :list}}
-           (-> (db/select-one [Field :name :table_id :special_type], :id (mt/id :venues :id))
+    (is (= {:name          "ID"
+            :table_id      (mt/id :venues)
+            :semantic_type :type/PK
+            :name_field    {:id               (mt/id :venues :name)
+                            :table_id         (mt/id :venues)
+                            :display_name     "Name"
+                            :base_type        :type/Text
+                            :semantic_type    :type/Name
+                            :has_field_values :list}}
+           (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (hydrate :name_field)
                mt/derecordize))))
 
@@ -47,20 +47,20 @@
                (call-count))))))
 
   (testing "It shouldn't hydrate for Fields that aren't PKs"
-    (is (= {:name         "PRICE"
-            :table_id     (mt/id :venues)
-            :special_type :type/Category
-            :name_field   nil}
-           (-> (db/select-one [Field :name :table_id :special_type], :id (mt/id :venues :price))
+    (is (= {:name          "PRICE"
+            :table_id      (mt/id :venues)
+            :semantic_type :type/Category
+            :name_field    nil}
+           (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :price))
                (hydrate :name_field)
                mt/derecordize))))
 
   (testing "Or if it *is* a PK, but no name Field is available for that Table, it shouldn't hydrate"
-    (is (= {:name         "ID"
-            :table_id     (mt/id :checkins)
-            :special_type :type/PK
-            :name_field   nil}
-           (-> (db/select-one [Field :name :table_id :special_type], :id (mt/id :checkins :id))
+    (is (= {:name          "ID"
+            :table_id      (mt/id :checkins)
+            :semantic_type :type/PK
+            :name_field    nil}
+           (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
                (hydrate :name_field)
                mt/derecordize)))))
 
@@ -81,13 +81,13 @@
                                    :table_id         (mt/id :venues)
                                    :display_name     "ID"
                                    :base_type        :type/BigInteger
-                                   :special_type     :type/PK
+                                   :semantic_type    :type/PK
                                    :has_field_values :none
                                    :name_field       {:id               (mt/id :venues :name)
                                                       :table_id         (mt/id :venues)
                                                       :display_name     "Name"
                                                       :base_type        :type/Text
-                                                      :special_type     :type/Name
+                                                      :semantic_type    :type/Name
                                                       :has_field_values :list}
                                    :dimensions       []}}
              (-> (hydrate card :param_fields)
@@ -101,13 +101,13 @@
                                    :table_id         (mt/id :venues)
                                    :display_name     "ID"
                                    :base_type        :type/BigInteger
-                                   :special_type     :type/PK
+                                   :semantic_type    :type/PK
                                    :has_field_values :none
                                    :name_field       {:id               (mt/id :venues :name)
                                                       :table_id         (mt/id :venues)
                                                       :display_name     "Name"
                                                       :base_type        :type/Text
-                                                      :special_type     :type/Name
+                                                      :semantic_type    :type/Name
                                                       :has_field_values :list}
                                    :dimensions       []}}
              (-> (hydrate dashboard :param_fields)

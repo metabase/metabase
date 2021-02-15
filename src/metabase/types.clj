@@ -178,7 +178,7 @@
 (derive :type/XML :type/Structured)
 
 
-;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and
+;;; Legacy Semantic Types. These will hopefully be going away in the future when we add columns like `:is_pk` and
 ;;; `:cardinality`
 
 (derive :type/Special :type/*)
@@ -221,8 +221,8 @@
               {t (parents t)}))))
 
 (defn temporal-field?
-  "True if a Metabase `Field` instance has a temporal base or special type, i.e. if this Field represents a value
+  "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
   relating to a moment in time."
   {:arglists '([field])}
-  [{base-type :base_type, special-type :special_type}]
-  (some #(isa? % :type/Temporal) [base-type special-type]))
+  [{base-type :base_type, semantic-type :semantic_type}]
+  (some #(isa? % :type/Temporal) [base-type semantic-type]))

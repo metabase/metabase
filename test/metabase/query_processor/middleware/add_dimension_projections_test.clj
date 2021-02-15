@@ -115,46 +115,46 @@
 (def ^:private example-result-cols-id
   (merge
    col-defaults
-   {:table_id     4
-    :schema_name  "PUBLIC"
-    :special_type :type/PK
-    :name         "ID"
-    :id           12
-    :display_name "ID"
-    :base_type    :type/BigInteger}))
+   {:table_id      4
+    :schema_name   "PUBLIC"
+    :semantic_type :type/PK
+    :name          "ID"
+    :id            12
+    :display_name  "ID"
+    :base_type     :type/BigInteger}))
 
 (def ^:private example-result-cols-name
   (merge
    col-defaults
-   {:table_id     4
-    :schema_name  "PUBLIC"
-    :special_type :type/Name
-    :name         "NAME"
-    :id           15
-    :display_name "Name"
-    :base_type    :type/Text}))
+   {:table_id      4
+    :schema_name   "PUBLIC"
+    :semantic_type :type/Name
+    :name          "NAME"
+    :id            15
+    :display_name  "Name"
+    :base_type     :type/Text}))
 
 (def ^:private example-result-cols-category-id
   (merge
    col-defaults
-   {:table_id     4
-    :schema_name  "PUBLIC"
-    :special_type :type/FK
-    :name         "CATEGORY_ID"
-    :id           11
-    :display_name "Category ID"
-    :base_type    :type/Integer}))
+   {:table_id      4
+    :schema_name   "PUBLIC"
+    :semantic_type :type/FK
+    :name          "CATEGORY_ID"
+    :id            11
+    :display_name  "Category ID"
+    :base_type     :type/Integer}))
 
 (def ^:private example-result-cols-price
   (merge
    col-defaults
-   {:table_id     4
-    :schema_name  "PUBLIC"
-    :special_type :type/Category
-    :name         "PRICE"
-    :id           16
-    :display_name "Price"
-    :base_type    :type/Integer}))
+   {:table_id      4
+    :schema_name   "PUBLIC"
+    :semantic_type :type/Category
+    :name          "PRICE"
+    :id            16
+    :display_name  "Price"
+    :base_type     :type/Integer}))
 
 ;; test that internal get the appropriate values and columns injected in, and the `:remapped_from`/`:remapped_to` info
 (def ^:private example-result-cols-foo
@@ -167,7 +167,7 @@
    :target          nil
    :display_name    "Foo"
    :base_type       :type/Text
-   :special_type    nil})
+   :semantic_type   nil})
 
 (defn- add-remapping [query metadata rows]
   (:result (mt/test-qp-middleware add-dim-projections/add-remapping query metadata rows)))
@@ -178,7 +178,7 @@
    {:description     "The name of the product as it should be displayed to customers."
     :table_id        3
     :schema_name     nil
-    :special_type    :type/Category
+    :semantic_type   :type/Category
     :name            "CATEGORY"
     :fk_field_id     32
     :id              27

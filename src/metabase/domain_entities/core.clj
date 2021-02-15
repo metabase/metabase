@@ -10,7 +10,7 @@
 
 (def ^:private ^{:arglists '([field])} field-type
   "Return the most specific type of a given field."
-  (some-fn :special_type :base_type))
+  (some-fn :semantic_type :base_type))
 
 (def SourceName
   "A reference to a `SourceEntity`."

@@ -124,17 +124,17 @@
   (field->name field "___"))
 
 (defmethod ->initial-rvalue (class Field)
-  [{special-type :special_type, :as field}]
+  [{semantic-type :semantic_type, :as field}]
   (let [field-name (str \$ (field->name field "."))]
     (cond
       ;; TIMEZONE FIXME — use `java.time` classes
-      (isa? (:special_type field) :type/UNIXTimestampMicroseconds)
+      (isa? (:semantic_type field) :type/UNIXTimestampMicroseconds)
       {$add [(java.util.Date. 0) {$divide [field-name 1000]}]}
 
-      (isa? (:special_type field) :type/UNIXTimestampMilliseconds)
+      (isa? (:semantic_type field) :type/UNIXTimestampMilliseconds)
       {$add [(java.util.Date. 0) field-name]}
 
-      (isa? (:special_type field) :type/UNIXTimestampSeconds)
+      (isa? (:semantic_type field) :type/UNIXTimestampSeconds)
       {$add [(java.util.Date. 0) {$multiply [field-name 1000]}]}
 
       :else field-name)))

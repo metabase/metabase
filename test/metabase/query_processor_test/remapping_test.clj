@@ -38,11 +38,11 @@
                      (-> (mt/col :venues :category_id)
                          (assoc :remapped_to (mt/format-name "name")
                                 :source      :breakout))
-                     {:field_ref    [:aggregation 0]
-                      :source       :aggregation
-                      :display_name "Count"
-                      :name         "count"
-                      :special_type :type/Number}]}
+                     {:field_ref     [:aggregation 0]
+                      :source        :aggregation
+                      :display_name  "Count"
+                      :name          "count"
+                      :semantic_type :type/Number}]}
              (-> (mt/format-rows-by [str int int]
                    (mt/run-mbql-query venues
                      {:aggregation [[:count]]

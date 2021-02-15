@@ -7,7 +7,7 @@
 (def ^:private long-text-field
   (field/map->FieldInstance
    {:database_type       "VARCHAR"
-    :special_type        nil
+    :semantic_type       nil
     :name                "longfield"
     :fingerprint_version 1
     :has_field_values    nil
@@ -37,8 +37,8 @@
   false
   (:preview_display (infer-no-preview-display long-text-field (:fingerprint long-text-field))))
 
-;; If the field has a special type, show it regardless of it's length
+;; If the field has a semantic type, show it regardless of it's length
 (expect
   nil
-  (:preview_display (infer-no-preview-display (assoc long-text-field :special_type :type/Name)
+  (:preview_display (infer-no-preview-display (assoc long-text-field :semantic_type :type/Name)
                                               (:fingerprint long-text-field))))

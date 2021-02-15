@@ -68,7 +68,7 @@ export default class Column extends Component {
                   />
                 </div>
                 <div className="flex-auto px1">
-                  <SpecialTypeAndTargetPicker
+                  <SemanticTypeAndTargetPicker
                     className="block"
                     field={field}
                     updateField={this.updateField}
@@ -100,7 +100,7 @@ export default class Column extends Component {
   }
 }
 
-// FieldVisibilityPicker and SpecialTypeSelect are also used in FieldApp
+// FieldVisibilityPicker and SemanticTypeSelect are also used in FieldApp
 
 export class FieldVisibilityPicker extends Component {
   props: {
@@ -129,7 +129,7 @@ export class FieldVisibilityPicker extends Component {
   }
 }
 
-export class SpecialTypeAndTargetPicker extends Component {
+export class SemanticTypeAndTargetPicker extends Component {
   props: {
     field: Field,
     updateField: Field => void,
@@ -137,23 +137,23 @@ export class SpecialTypeAndTargetPicker extends Component {
     selectSeparator?: React$Element<any>,
   };
 
-  handleChangeSpecialType = async ({ target: { value: special_type } }) => {
+  handleChangeSemanticType = async ({ target: { value: semantic_type } }) => {
     const { field, updateField } = this.props;
 
     // If we are changing the field from a FK to something else, we should delete any FKs present
-    if (field.target && field.target.id != null && isFK(field.special_type)) {
+    if (field.target && field.target.id != null && isFK(field.semantic_type)) {
       await updateField({
-        special_type,
+        semantic_type,
         fk_target_field_id: null,
       });
     } else {
-      await updateField({ special_type });
+      await updateField({ semantic_type });
     }
 
     MetabaseAnalytics.trackEvent(
       "Data Model",
       "Update Field Special-Type",
-      special_type,
+      semantic_type,
     );
   };
 
@@ -180,20 +180,20 @@ export class SpecialTypeAndTargetPicker extends Component {
   render() {
     const { field, className, selectSeparator } = this.props;
 
-    let specialTypes = [
-      ...MetabaseCore.field_special_types,
+    let semanticTypes = [
+      ...MetabaseCore.field_semantic_types,
       {
         id: null,
-        name: t`No special type`,
+        name: t`No semantic type`,
         section: t`Other`,
       },
     ];
     // if we don't have a numeric base-type then prevent the options for unix timestamp conversion (#823)
     if (!isNumericBaseType(field)) {
-      specialTypes = specialTypes.filter(f => !isa(f.id, TYPE.UNIXTimestamp));
+      semanticTypes = semanticTypes.filter(f => !isa(f.id, TYPE.UNIXTimestamp));
     }
 
-    const showFKTargetSelect = isFK(field.special_type);
+    const showFKTargetSelect = isFK(field.semantic_type);
 
     const showCurrencyTypeSelect = isCurrency(field);
 
@@ -211,13 +211,13 @@ export class SpecialTypeAndTargetPicker extends Component {
     return (
       <div className={cx(selectSeparator ? "flex align-center" : null)}>
         <Select
-          className={cx("TableEditor-field-special-type mt0", className)}
-          value={field.special_type}
-          onChange={this.handleChangeSpecialType}
-          options={specialTypes}
+          className={cx("TableEditor-field-semantic-type mt0", className)}
+          value={field.semantic_type}
+          onChange={this.handleChangeSemanticType}
+          options={semanticTypes}
           optionValueFn={o => o.id}
           optionSectionFn={o => o.section}
-          placeholder={t`Select a special type`}
+          placeholder={t`Select a semantic type`}
           searchProp="name"
         />
         {showCurrencyTypeSelect && selectSeparator}

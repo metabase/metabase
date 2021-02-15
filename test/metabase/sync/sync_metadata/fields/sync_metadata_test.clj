@@ -74,18 +74,18 @@
              :id                1
              :database-position 0})))))
 
-(deftest dont-overwrite-special-type-test
-  (testing "We should not override non-nil `special_type`s"
+(deftest dont-overwrite-semantic-type-test
+  (testing "We should not override non-nil `semantic_type`s"
     (is (= []
            (updates-that-will-be-performed
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
-             :special-type      nil
+             :semantic-type     nil
              :database-position 0}
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
-             :special-type      :type/Price
+             :semantic-type     :type/Price
              :id                1
              :database-position 0})))))

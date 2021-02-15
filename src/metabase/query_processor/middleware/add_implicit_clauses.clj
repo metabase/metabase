@@ -22,7 +22,7 @@
 
 (defn- table->sorted-fields
   [table-id]
-  (db/select [Field :id :base_type :special_type]
+  (db/select [Field :id :base_type :semantic_type]
     :table_id        table-id
     :active          true
     :visibility_type [:not-in ["sensitive" "retired"]]

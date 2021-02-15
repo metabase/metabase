@@ -14,7 +14,7 @@
       (is (= [{:name         "NAME"
                :display_name "Name"
                :base_type    :type/Text
-               :special_type :type/Name
+               :semantic_type :type/Name
                :fingerprint  {:global {:distinct-count 100, :nil% 0.0},
                               :type   #:type {:Text
                                               {:percent-json   0.0,

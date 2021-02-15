@@ -99,50 +99,50 @@ describe("metabase/visualization/lib/table", () => {
   });
 
   describe("isColumnRightAligned", () => {
-    it("should return true for numeric columns without a special type", () => {
+    it("should return true for numeric columns without a semantic type", () => {
       expect(isColumnRightAligned({ base_type: TYPE.Integer })).toBe(true);
     });
-    it("should return true for numeric columns with special type Number", () => {
+    it("should return true for numeric columns with semantic type Number", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.Number,
+          semantic_type: TYPE.Number,
         }),
       ).toBe(true);
     });
-    it("should return true for numeric columns with special type latitude or longitude ", () => {
+    it("should return true for numeric columns with semantic type latitude or longitude ", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.Latitude,
+          semantic_type: TYPE.Latitude,
         }),
       ).toBe(true);
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.Longitude,
+          semantic_type: TYPE.Longitude,
         }),
       ).toBe(true);
     });
-    it("should return false for numeric columns with special type zip code", () => {
+    it("should return false for numeric columns with semantic type zip code", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.ZipCode,
+          semantic_type: TYPE.ZipCode,
         }),
       ).toBe(false);
     });
-    it("should return false for numeric columns with special type FK or PK", () => {
+    it("should return false for numeric columns with semantic type FK or PK", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.FK,
+          semantic_type: TYPE.FK,
         }),
       ).toBe(false);
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,
-          special_type: TYPE.FK,
+          semantic_type: TYPE.FK,
         }),
       ).toBe(false);
     });

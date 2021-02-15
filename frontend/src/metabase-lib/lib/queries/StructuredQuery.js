@@ -1254,7 +1254,7 @@ export default class StructuredQuery extends AtomicQuery {
         })
         .sortBy(d => d.field().name.toLowerCase())
         .sortBy(d => {
-          const type = d.field().special_type;
+          const type = d.field().semantic_type;
           return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
         })
         .sortBy(d => d.field().position)

@@ -7922,6 +7922,17 @@ databaseChangeLog:
             constraintName: fk_pulse_ref_dashboard_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: 281
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - rename special_type
+      changes:
+        - renameColumn:
+            tableName: metabase_field
+            oldColumnName: special_type
+            newColumnName: semantic_type
+            columnDataType: varchar(255)
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

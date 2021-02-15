@@ -244,7 +244,7 @@
                                      :fields       [(merge
                                                      (field-details (Field (mt/id :categories :id)))
                                                      {:table_id          (mt/id :categories)
-                                                      :special_type      "type/PK"
+                                                      :semantic_type     "type/PK"
                                                       :name              "ID"
                                                       :display_name      "ID"
                                                       :database_type     "BIGINT"
@@ -255,7 +255,7 @@
                                                     (merge
                                                      (field-details (Field (mt/id :categories :name)))
                                                      {:table_id          (mt/id :categories)
-                                                      :special_type      "type/Name"
+                                                      :semantic_type     "type/Name"
                                                       :name              "NAME"
                                                       :display_name      "Name"
                                                       :database_type     "VARCHAR"
@@ -544,7 +544,7 @@
                 :fields [{:name                     "age_in_bird_years"
                           :table_id                 (str "card__" (u/get-id card))
                           :id                       ["field-literal" "age_in_bird_years" "type/*"]
-                          :special_type             nil
+                          :semantic_type            nil
                           :base_type                nil
                           :default_dimension_option nil
                           :dimension_options        []}]))))

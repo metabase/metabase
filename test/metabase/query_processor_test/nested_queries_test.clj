@@ -69,7 +69,7 @@
                 (dissoc :description :parent_id :visibility_type))
 
             (not has-source-metadata?)
-            (dissoc :id :special_type :settings :fingerprint :table_id))
+            (dissoc :id :semantic_type :settings :fingerprint :table_id))
           (qp.test/aggregate-col :count)]})
 
 (deftest mbql-source-query-breakout-aggregation-test
@@ -397,7 +397,7 @@
                        :unit      :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
-                (dissoc :special_type :table_id :id :settings :fingerprint))
+                (dissoc :semantic_type :table_id :id :settings :fingerprint))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card {:dataset_query {:database (mt/id)
@@ -808,7 +808,7 @@
                   (get-in result [:data :results_metadata :columns])
                   (u/key-by :name result)
                   (get result "EAN")
-                  (select-keys result [:name :display_name :base_type :special_type :id :field_ref])))]
+                  (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"
           (let [base-query (mt/mbql-query orders
                              {:source-table $$orders
@@ -826,7 +826,7 @@
                              {:name         "EAN"
                               :display_name "Products → Ean"
                               :base_type    :type/Text
-                              :special_type nil
+                              :semantic_type nil
                               :id           %ean
                               :field_ref    [:joined-field "Products" $ean]})
                            (ean-metadata (qp/process-query query))))))))))))))

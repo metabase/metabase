@@ -19,11 +19,11 @@ describe("schema_metadata", () => {
       expect(getFieldType({ base_type: TYPE.Date })).toEqual(TEMPORAL);
       expect(getFieldType({ base_type: TYPE.DateTime })).toEqual(TEMPORAL);
       expect(getFieldType({ base_type: TYPE.Time })).toEqual(TEMPORAL);
-      expect(getFieldType({ special_type: TYPE.UNIXTimestampSeconds })).toEqual(
-        TEMPORAL,
-      );
       expect(
-        getFieldType({ special_type: TYPE.UNIXTimestampMilliseconds }),
+        getFieldType({ semantic_type: TYPE.UNIXTimestampSeconds }),
+      ).toEqual(TEMPORAL);
+      expect(
+        getFieldType({ semantic_type: TYPE.UNIXTimestampMilliseconds }),
       ).toEqual(TEMPORAL);
     });
     it("should know a number", () => {
@@ -37,33 +37,35 @@ describe("schema_metadata", () => {
     });
     it("should know things that are types of strings", () => {
       expect(
-        getFieldType({ base_type: TYPE.Text, special_type: TYPE.Name }),
+        getFieldType({ base_type: TYPE.Text, semantic_type: TYPE.Name }),
       ).toEqual(STRING);
       expect(
-        getFieldType({ base_type: TYPE.Text, special_type: TYPE.Description }),
+        getFieldType({ base_type: TYPE.Text, semantic_type: TYPE.Description }),
       ).toEqual(STRING);
       expect(
-        getFieldType({ base_type: TYPE.Text, special_type: TYPE.UUID }),
+        getFieldType({ base_type: TYPE.Text, semantic_type: TYPE.UUID }),
       ).toEqual(STRING);
       expect(
-        getFieldType({ base_type: TYPE.Text, special_type: TYPE.URL }),
+        getFieldType({ base_type: TYPE.Text, semantic_type: TYPE.URL }),
       ).toEqual(STRING);
     });
     it("should know a pk", () => {
       expect(
-        getFieldType({ base_type: TYPE.Integer, special_type: TYPE.PK }),
+        getFieldType({ base_type: TYPE.Integer, semantic_type: TYPE.PK }),
       ).toEqual(PRIMARY_KEY);
     });
     it("should know a bool", () => {
       expect(getFieldType({ base_type: TYPE.Boolean })).toEqual(BOOLEAN);
     });
     it("should know a location", () => {
-      expect(getFieldType({ special_type: TYPE.City })).toEqual(LOCATION);
-      expect(getFieldType({ special_type: TYPE.Country })).toEqual(LOCATION);
+      expect(getFieldType({ semantic_type: TYPE.City })).toEqual(LOCATION);
+      expect(getFieldType({ semantic_type: TYPE.Country })).toEqual(LOCATION);
     });
     it("should know a coordinate", () => {
-      expect(getFieldType({ special_type: TYPE.Latitude })).toEqual(COORDINATE);
-      expect(getFieldType({ special_type: TYPE.Longitude })).toEqual(
+      expect(getFieldType({ semantic_type: TYPE.Latitude })).toEqual(
+        COORDINATE,
+      );
+      expect(getFieldType({ semantic_type: TYPE.Longitude })).toEqual(
         COORDINATE,
       );
     });

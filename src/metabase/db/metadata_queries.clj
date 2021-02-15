@@ -90,7 +90,7 @@
 
 (def max-sample-rows
   "The maximum number of values we should return when using `table-rows-sample`. This many is probably fine for
-  inferring special types and what-not; we don't want to scan millions of values at any rate."
+  inferring semantic types and what-not; we don't want to scan millions of values at any rate."
   10000)
 
 (def TableRowsSampleOptions
@@ -103,9 +103,9 @@
 
   JSON and XML fields are now marked as `:type/Structured` but in the past were marked as `:type/Text` so its not
   enough to just check the base type."
-  [{:keys [base_type special_type]}]
+  [{:keys [base_type semantic_type]}]
   (and (= base_type :type/Text)
-       (not (isa? special_type :type/Structured))))
+       (not (isa? semantic_type :type/Structured))))
 
 (defn- table-rows-sample-query
   "Returns the mbql query to query a table for sample rows"

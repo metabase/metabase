@@ -200,17 +200,17 @@
                [:segment "gaid::-4"]
                [:=
                 [:field-id (u/get-id event-action-field)]
-                [:value "Run Query" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR"}]]
+                [:value "Run Query" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]
                [:between
                 [:datetime-field [:field-id (u/get-id date-field)] :day]
                 [:relative-datetime -30 :day]
                 [:relative-datetime -1 :day]]
                [:!=
                 [:field-id (u/get-id event-label-field)]
-                [:value "(not set)" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR"}]]
+                [:value "(not set)" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]
                [:!=
                 [:field-id (u/get-id event-label-field)]
-                [:value "url" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR"}]]]
+                [:value "url" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]]
 
               :order-by
               [[:asc [:field-id (u/get-id event-label-field)]]]}})
@@ -292,7 +292,7 @@
                          :data      {:rows             [["Toucan Sighting" 1000]]
                                      :native_form      expected-ga-query
                                      :cols             [{:description     "This is ga:eventLabel"
-                                                         :special_type    nil
+                                                         :semantic_type   nil
                                                          :name            "ga:eventLabel"
                                                          :settings        nil
                                                          :source          :breakout

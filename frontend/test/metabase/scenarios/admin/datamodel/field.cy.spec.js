@@ -77,21 +77,21 @@ describe.skip("scenarios > admin > datamodel > field", () => {
   describe("Field Type", () => {
     before(restore);
 
-    it("lets you change the type to 'No special type'", () => {
+    it("lets you change the type to 'No semantic type'", () => {
       visitAlias("@ORDERS_PRODUCT_ID_URL");
 
       cy.contains("Foreign Key").click();
-      cy.contains("No special type").click({ force: true });
+      cy.contains("No semantic type").click({ force: true });
       cy.wait("@fieldUpdate");
 
       cy.reload();
-      cy.contains("No special type");
+      cy.contains("No semantic type");
     });
 
     it("lets you change the type to 'Number'", () => {
       visitAlias("@ORDERS_PRODUCT_ID_URL");
 
-      cy.contains("No special type").click();
+      cy.contains("No semantic type").click();
       cy.contains("Number").click({ force: true });
       cy.wait("@fieldUpdate");
 

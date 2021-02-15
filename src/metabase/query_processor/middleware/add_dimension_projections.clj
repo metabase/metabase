@@ -192,7 +192,7 @@
    :remapped_from remapped-from
    :remapped_to   nil
    :base_type     base-type
-   :special_type  nil})
+   :semantic_type nil})
 
 (defn- transform-values-for-col
   "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable

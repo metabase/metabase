@@ -12,17 +12,17 @@
   (testing "check we fetch Fields in the right order"
     (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:position -1}
       (let [ids       (map second (#'add-implicit-clauses/sorted-implicit-fields-for-table (mt/id :venues)))
-            id->field (u/key-by :id (db/select [Field :id :position :name :special_type] :id [:in ids]))]
+            id->field (u/key-by :id (db/select [Field :id :position :name :semantic_type] :id [:in ids]))]
         (is (= [ ;; sorted first because it has lowest positon
-                {:position -1, :name "PRICE", :special_type :type/Category}
+                {:position -1, :name "PRICE", :semantic_type :type/Category}
                 ;; PK
-                {:position 0, :name "ID", :special_type :type/PK}
+                {:position 0, :name "ID", :semantic_type :type/PK}
                 ;; Name
-                {:position 1, :name "NAME", :special_type :type/Name}
+                {:position 1, :name "NAME", :semantic_type :type/Name}
                 ;; The rest are sorted by name
-                {:position 2, :name "CATEGORY_ID", :special_type :type/FK}
-                {:position 3, :name "LATITUDE", :special_type :type/Latitude}
-                {:position 4, :name "LONGITUDE", :special_type :type/Longitude}]
+                {:position 2, :name "CATEGORY_ID", :semantic_type :type/FK}
+                {:position 3, :name "LATITUDE", :semantic_type :type/Latitude}
+                {:position 4, :name "LONGITUDE", :semantic_type :type/Longitude}]
                (for [id ids]
                  (into {} (dissoc (id->field id) :id)))))))))
 
@@ -134,14 +134,14 @@
                                                          :condition    [:= $category_id &c.categories.id]
                                                          :alias        "c"}]}
                        :source-metadata [{:table_id     $$venues
-                                          :special_type :type/PK
+                                          :semantic_type :type/PK
                                           :name         "ID"
                                           :field_ref    $id
                                           :id           %id
                                           :display_name "ID"
                                           :base_type    :type/BigInteger}
                                          {:table_id     $$categories
-                                          :special_type :type/Name
+                                          :semantic_type :type/Name
                                           :name         "NAME"
                                           :field_ref    field-ref
                                           :id           %categories.name

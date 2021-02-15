@@ -45,7 +45,7 @@
          :display_name      (humanization/name->human-readable-name field-name)
          :database_type     (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
          :base_type         base-type
-         :special_type      (common/special-type field)
+         :semantic_type     (common/semantic-type field)
          :parent_id         parent-id
          :description       field-comment
          :position          database-position

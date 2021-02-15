@@ -68,7 +68,7 @@
   [table-kw field-kw]
   (merge
    (col-defaults)
-   (db/select-one [Field :id :table_id :special_type :base_type :name :display_name :fingerprint]
+   (db/select-one [Field :id :table_id :semantic_type :base_type :name :display_name :fingerprint]
      :id (data/id table-kw field-kw))
    {:field_ref [:field-id (data/id table-kw field-kw)]}
    (when (#{:last_login :date} field-kw)

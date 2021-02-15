@@ -52,7 +52,7 @@
                   (hydrate [:table :db] :has_field_values :dimensions :name_field))]
     ;; Normal read perms = normal access.
     ;;
-    ;; There's also aspecial case where we allow you to fetch a Field even if you don't have full read permissions for
+    ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
     ;; it: if you have segmented query access to the Table it belongs to. In this case, we'll still let you fetch the
     ;; Field, since this is required to power features like Dashboard filters, but we'll treat this Field a little
     ;; differently in other endpoints such as the FieldValues fetching endpoint.
@@ -67,46 +67,46 @@
     (db/delete! Dimension :id dimension-id))
   true)
 
-(defn- removed-fk-special-type? [old-special-type new-special-type]
-  (and (not= old-special-type new-special-type)
-       (isa? old-special-type :type/FK)
-       (or (nil? new-special-type)
-           (not (isa? new-special-type :type/FK)))))
+(defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
+  (and (not= old-semantic-type new-semantic-type)
+       (isa? old-semantic-type :type/FK)
+       (or (nil? new-semantic-type)
+           (not (isa? new-semantic-type :type/FK)))))
 
-(defn- internal-remapping-allowed? [base-type special-type]
+(defn- internal-remapping-allowed? [base-type semantic-type]
   (and (isa? base-type :type/Integer)
        (or
-        (nil? special-type)
-        (isa? special-type :type/Category)
-        (isa? special-type :type/Enum))))
+        (nil? semantic-type)
+        (isa? semantic-type :type/Category)
+        (isa? semantic-type :type/Enum))))
 
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that
   does not support remapping"
-  [{{old-dim-id :id, old-dim-type :type} :dimensions, :as old-field} base-type new-special-type]
+  [{{old-dim-id :id, old-dim-type :type} :dimensions, :as old-field} base-type new-semantic-type]
   (when (and old-dim-id
              (= :internal old-dim-type)
-             (not (internal-remapping-allowed? base-type new-special-type)))
+             (not (internal-remapping-allowed? base-type new-semantic-type)))
     (db/delete! Dimension :id old-dim-id))
   true)
 
 (api/defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest special_type
+  [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
                    visibility_type has_field_values settings]
-            :as body} :body}]
+            :as   body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
    display_name       (s/maybe su/NonBlankString)
    fk_target_field_id (s/maybe su/IntGreaterThanZero)
    points_of_interest (s/maybe su/NonBlankString)
-   special_type       (s/maybe FieldType)
+   semantic_type      (s/maybe FieldType)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
-        new-special-type   (keyword (get body :special_type (:special_type field)))
-        removed-fk?        (removed-fk-special-type? (:special_type field) new-special-type)
+        new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
+        removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
     ;; validate that fk_target_field_id is a valid Field
@@ -121,10 +121,10 @@
         (if removed-fk?
           (clear-dimension-on-fk-change! field)
           true)
-        (clear-dimension-on-type-change! field (:base_type field) new-special-type)
+        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
         (db/update! Field id
           (u/select-keys-when (assoc body :fk_target_field_id (when-not removed-fk? fk-target-field-id))
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type
+            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
                        :has_field_values}
             :non-nil #{:display_name :settings})))))
     ;; return updated field
@@ -264,7 +264,7 @@
                                (map second value-pairs)))))
 
 (api/defendpoint POST "/:id/values"
-  "Update the fields values and human-readable values for a `Field` whose special type is
+  "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
   {value-pairs [[(s/one s/Any "value") (s/optional su/NonBlankString "human readable value")]]}
@@ -312,8 +312,8 @@
 
   This is used below to seamlessly handle either PK or FK Fields without having to think about which is which in the
   `search-values` and `remapped-value` functions."
-  [{special-type :special_type, fk-target-field-id :fk_target_field_id, :as field}]
-  (if (and (isa? special-type :type/FK)
+  [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
+  (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
     (db/select-one Field :id fk-target-field-id)
     field))

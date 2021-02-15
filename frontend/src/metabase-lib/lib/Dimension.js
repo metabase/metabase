@@ -351,7 +351,7 @@ export default class Dimension {
     return {
       id: field.id,
       base_type: field.base_type,
-      special_type: field.special_type,
+      semantic_type: field.semantic_type,
       name: this.columnName(),
       display_name: this.displayName(),
       field_ref: this.mbql(),
@@ -805,7 +805,7 @@ export class ExpressionDimension extends Dimension {
       id: this.mbql(),
       name: this.name(),
       display_name: this.displayName(),
-      special_type: null,
+      semantic_type: null,
       base_type: "type/Float",
       // HACK: need to thread the query through to this fake Field
       query: this._query,
@@ -822,7 +822,7 @@ export class ExpressionDimension extends Dimension {
 // These types aren't aggregated. e.g. if you take the distinct count of a FK
 // column, you now have a normal integer and should see relevant filters for
 // that type.
-const UNAGGREGATED_SPECIAL_TYPES = new Set([TYPE.FK, TYPE.PK]);
+const UNAGGREGATED_SEMANTIC_TYPES = new Set([TYPE.FK, TYPE.PK]);
 
 /**
  * Aggregation reference, `["aggregation", aggregation-index]`
@@ -857,13 +857,13 @@ export class AggregationDimension extends Dimension {
     }
     const dimension = aggregation.dimension();
     const field = dimension && dimension.field();
-    const { special_type } = field || {};
+    const { semantic_type } = field || {};
     return new Field({
       name: aggregation.columnName(),
       display_name: aggregation.displayName(),
       base_type: aggregation.baseType(),
-      // don't pass through `special_type` when aggregating these types
-      ...(!UNAGGREGATED_SPECIAL_TYPES.has(special_type) && { special_type }),
+      // don't pass through `semantic_type` when aggregating these types
+      ...(!UNAGGREGATED_SEMANTIC_TYPES.has(semantic_type) && { semantic_type }),
       query: this._query,
       metadata: this._metadata,
     });

@@ -33,15 +33,15 @@ export const UNKNOWN = "UNKNOWN";
 const TYPES = {
   [TEMPORAL]: {
     base: [TYPE.Temporal],
-    special: [TYPE.Temporal],
+    semantic: [TYPE.Temporal],
   },
   [NUMBER]: {
     base: [TYPE.Number],
-    special: [TYPE.Number],
+    semantic: [TYPE.Number],
   },
   [STRING]: {
     base: [TYPE.Text],
-    special: [TYPE.Text],
+    semantic: [TYPE.Text],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
@@ -50,19 +50,19 @@ const TYPES = {
     base: [TYPE.Boolean],
   },
   [COORDINATE]: {
-    special: [TYPE.Coordinate],
+    semantic: [TYPE.Coordinate],
   },
   [LOCATION]: {
-    special: [TYPE.Address],
+    semantic: [TYPE.Address],
   },
   [ENTITY]: {
-    special: [TYPE.FK, TYPE.PK, TYPE.Name],
+    semantic: [TYPE.FK, TYPE.PK, TYPE.Name],
   },
   [FOREIGN_KEY]: {
-    special: [TYPE.FK],
+    semantic: [TYPE.FK],
   },
   [PRIMARY_KEY]: {
-    special: [TYPE.PK],
+    semantic: [TYPE.PK],
   },
   [SUMMABLE]: {
     include: [NUMBER],
@@ -70,7 +70,7 @@ const TYPES = {
   },
   [CATEGORY]: {
     base: [TYPE.Boolean],
-    special: [TYPE.Category],
+    semantic: [TYPE.Category],
     include: [LOCATION],
   },
   // NOTE: this is defunct right now.  see definition of isDimension below.
@@ -86,7 +86,7 @@ export function isFieldType(type, field) {
 
   const typeDefinition = TYPES[type];
   // check to see if it belongs to any of the field types:
-  for (const prop of ["base", "special"]) {
+  for (const prop of ["base", "semantic"]) {
     const allowedTypes = typeDefinition[prop];
     if (!allowedTypes) {
       continue;
@@ -148,10 +148,10 @@ export const isDimension = col =>
 export const isMetric = col =>
   col && col.source !== "breakout" && isSummable(col);
 
-export const isFK = field => field && isTypeFK(field.special_type);
-export const isPK = field => field && isTypePK(field.special_type);
+export const isFK = field => field && isTypeFK(field.semantic_type);
+export const isPK = field => field && isTypePK(field.semantic_type);
 export const isEntityName = field =>
-  field && isa(field.special_type, TYPE.Name);
+  field && isa(field.semantic_type, TYPE.Name);
 
 export const isAny = col => true;
 
@@ -162,41 +162,41 @@ export const isNumericBaseType = field =>
 export const isNumber = field =>
   field &&
   isNumericBaseType(field) &&
-  (field.special_type == null || isa(field.special_type, TYPE.Number));
+  (field.semantic_type == null || isa(field.semantic_type, TYPE.Number));
 
 export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
 
 export const isTime = field => field && isa(field.base_type, TYPE.Time);
 
 export const isAddress = field =>
-  field && isa(field.special_type, TYPE.Address);
-export const isCity = field => field && isa(field.special_type, TYPE.City);
-export const isState = field => field && isa(field.special_type, TYPE.State);
+  field && isa(field.semantic_type, TYPE.Address);
+export const isCity = field => field && isa(field.semantic_type, TYPE.City);
+export const isState = field => field && isa(field.semantic_type, TYPE.State);
 export const isZipCode = field =>
-  field && isa(field.special_type, TYPE.ZipCode);
+  field && isa(field.semantic_type, TYPE.ZipCode);
 export const isCountry = field =>
-  field && isa(field.special_type, TYPE.Country);
+  field && isa(field.semantic_type, TYPE.Country);
 export const isCoordinate = field =>
-  field && isa(field.special_type, TYPE.Coordinate);
+  field && isa(field.semantic_type, TYPE.Coordinate);
 export const isLatitude = field =>
-  field && isa(field.special_type, TYPE.Latitude);
+  field && isa(field.semantic_type, TYPE.Latitude);
 export const isLongitude = field =>
-  field && isa(field.special_type, TYPE.Longitude);
+  field && isa(field.semantic_type, TYPE.Longitude);
 
 export const isCurrency = field =>
-  field && isa(field.special_type, TYPE.Currency);
+  field && isa(field.semantic_type, TYPE.Currency);
 
 export const isDescription = field =>
-  field && isa(field.special_type, TYPE.Description);
+  field && isa(field.semantic_type, TYPE.Description);
 
 export const isID = field => isFK(field) || isPK(field);
 
-export const isURL = field => field && isa(field.special_type, TYPE.URL);
-export const isEmail = field => field && isa(field.special_type, TYPE.Email);
+export const isURL = field => field && isa(field.semantic_type, TYPE.URL);
+export const isEmail = field => field && isa(field.semantic_type, TYPE.Email);
 export const isAvatarURL = field =>
-  field && isa(field.special_type, TYPE.AvatarURL);
+  field && isa(field.semantic_type, TYPE.AvatarURL);
 export const isImageURL = field =>
-  field && isa(field.special_type, TYPE.ImageURL);
+  field && isa(field.semantic_type, TYPE.ImageURL);
 
 // filter operator argument constructors:
 
@@ -258,7 +258,7 @@ function equivalentArgument(field, table) {
 
 function longitudeFieldSelectArgument(field, table) {
   const values = table.fields
-    .filter(field => isa(field.special_type, TYPE.Longitude))
+    .filter(field => isa(field.semantic_type, TYPE.Longitude))
     .map(field => ({
       key: field.id,
       name: field.display_name,
@@ -333,10 +333,10 @@ const FIELD_FILTER_OPERATORS = {
     ],
     formatOptions: [
       { hide: true },
-      { column: { special_type: TYPE.Latitude }, compact: true },
-      { column: { special_type: TYPE.Longitude }, compact: true },
-      { column: { special_type: TYPE.Latitude }, compact: true },
-      { column: { special_type: TYPE.Longitude }, compact: true },
+      { column: { semantic_type: TYPE.Latitude }, compact: true },
+      { column: { semantic_type: TYPE.Longitude }, compact: true },
+      { column: { semantic_type: TYPE.Latitude }, compact: true },
+      { column: { semantic_type: TYPE.Longitude }, compact: true },
     ],
   },
   between: {

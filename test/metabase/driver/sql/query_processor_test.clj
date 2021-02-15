@@ -75,7 +75,7 @@
                  :order-by     [[:asc $id]]
                  :filter       [:=
                                 [:joined-field "c" $categories.name]
-                                [:value "BBQ" {:base_type :type/Text, :special_type :type/Name, :database_type "VARCHAR"}]]
+                                [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
                  :fields       [$id $name $category_id $latitude $longitude $price]
                  :limit        100
                  :joins        [{:source-table $$categories
@@ -129,7 +129,7 @@
                                   :filter       [:and
                                                  [:starts-with
                                                   [:joined-field "v" $venues.name]
-                                                  [:value "F" {:base_type :type/Text, :special_type :type/Name, :database_type "VARCHAR"}]]
+                                                  [:value "F" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
                                                  [:> [:field-literal "user_id" :type/Integer] 0]]
                                   :joins        [{:source-table $$venues
                                                   :alias        "v"
@@ -364,17 +364,17 @@
                                [:or
                                 [:=
                                  &PEOPLE__via__USER_ID.people.source
-                                 [:value "Facebook" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR", :name "SOURCE"}]]
+                                 [:value "Facebook" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]
                                 [:=
                                  &PEOPLE__via__USER_ID.people.source
-                                 [:value "Google" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR", :name "SOURCE"}]]]
+                                 [:value "Google" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]]
                                [:or
                                 [:=
                                  &PRODUCTS__via__PRODUCT_ID.products.category
-                                 [:value "Doohickey" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]
+                                 [:value "Doohickey" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]
                                 [:=
                                  &PRODUCTS__via__PRODUCT_ID.products.category
-                                 [:value "Gizmo" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]]
+                                 [:value "Gizmo" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]]
                                [:between !year.created_at [:relative-datetime -2 :year] [:relative-datetime -1 :year]]]
                  :expressions {:pivot-grouping [:abs 0]}
                  :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]

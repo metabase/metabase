@@ -163,7 +163,7 @@
   (hsql/call :from_unixtime expr))
 
 (defmethod sql.qp/cast-temporal-string [:mysql :type/ISO8601DateTimeString]
-  [_driver _special_type expr]
+  [_driver _semantic_type expr]
   (hx/->datetime expr))
 
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))

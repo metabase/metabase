@@ -195,7 +195,7 @@
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :type/ISO8601DateTimeString]
-  [_driver _special_type expr]
+  [_driver _semantic_type expr]
   (hx/->datetime expr))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]

@@ -9,7 +9,7 @@
             [toucan.models :as models]))
 
 (def ^Integer category-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`.
+  "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
   This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
   frontend behavior such as widget choices."
   (int 30))
@@ -243,7 +243,7 @@
   [field-ids]
   (let [fields (when (seq field-ids)
                  (filter field-should-have-field-values?
-                         (db/select ['Field :name :id :base_type :special_type :visibility_type :table_id
+                         (db/select ['Field :name :id :base_type :semantic_type :visibility_type :table_id
                                      :has_field_values]
                            :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]

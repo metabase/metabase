@@ -201,7 +201,7 @@ describe("Dimension", () => {
           name: "TOTAL",
           display_name: "Total",
           base_type: "type/Float",
-          special_type: "type/Currency",
+          semantic_type: "type/Currency",
           field_ref: ["field-id", ORDERS.TOTAL.id],
         });
       });
@@ -263,7 +263,7 @@ describe("Dimension", () => {
           name: "TITLE",
           display_name: "Title",
           base_type: "type/Text",
-          special_type: "type/Category",
+          semantic_type: "type/Category",
           fk_field_id: ORDERS.PRODUCT_ID.id,
           field_ref: [
             "fk->",
@@ -335,7 +335,7 @@ describe("Dimension", () => {
           name: "CREATED_AT",
           display_name: "Created At",
           base_type: "type/DateTime",
-          special_type: null,
+          semantic_type: null,
           field_ref: [
             "datetime-field",
             ["field-id", ORDERS.CREATED_AT.id],
@@ -398,7 +398,7 @@ describe("Dimension", () => {
           name: "TOTAL",
           display_name: "Total",
           base_type: "type/Float",
-          special_type: "type/Currency",
+          semantic_type: "type/Currency",
           field_ref: [
             "binning-strategy",
             ["field-id", ORDERS.TOTAL.id],
@@ -448,7 +448,7 @@ describe("Dimension", () => {
           name: "Hello World",
           display_name: "Hello World",
           base_type: "type/Float",
-          special_type: null,
+          semantic_type: null,
           field_ref: ["expression", "Hello World"],
         });
       });
@@ -492,7 +492,7 @@ describe("Dimension", () => {
           name: "TOTAL",
           display_name: "Total",
           base_type: "type/Float",
-          special_type: "type/Currency",
+          semantic_type: "type/Currency",
           field_ref: ["joined-field", "join1", ["field-id", ORDERS.TOTAL.id]],
         });
       });
@@ -526,16 +526,16 @@ describe("Dimension", () => {
           return aggregation(["sum", ["field-id", column.id]]);
         }
 
-        it("should clear unaggregated special types", () => {
-          const { special_type } = sumOf(ORDERS.PRODUCT_ID).column();
+        it("should clear unaggregated semantic types", () => {
+          const { semantic_type } = sumOf(ORDERS.PRODUCT_ID).column();
 
-          expect(special_type).toBe(undefined);
+          expect(semantic_type).toBe(undefined);
         });
 
-        it("should retain aggregated special types", () => {
-          const { special_type } = sumOf(ORDERS.TOTAL).column();
+        it("should retain aggregated semantic types", () => {
+          const { semantic_type } = sumOf(ORDERS.TOTAL).column();
 
-          expect(special_type).toBe("type/Currency");
+          expect(semantic_type).toBe("type/Currency");
         });
       });
 
