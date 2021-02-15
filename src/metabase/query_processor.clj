@@ -36,7 +36,7 @@
             [metabase.query-processor.middleware.limit :as limit]
             [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
             [metabase.query-processor.middleware.normalize-query :as normalize]
-            [metabase.query-processor.middleware.optimize-datetime-filters :as optimize-datetime-filters]
+            [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.query-processor.middleware.permissions :as perms]
             [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-ags]
@@ -76,7 +76,7 @@
    #'check-features/check-features
    #'limit/limit
    #'cache/maybe-return-cached-results
-   #'optimize-datetime-filters/optimize-datetime-filters
+   #'optimize-temporal-filters/optimize-temporal-filters
    #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info

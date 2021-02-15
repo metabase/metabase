@@ -1,6 +1,6 @@
-(ns metabase.query-processor.middleware.optimize-datetime-filters
+(ns metabase.query-processor.middleware.optimize-temporal-filters
   "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
-  bucketed datetime fields. See docstring for `optimize-datetime-filters` for more details."
+  bucketed datetime fields. See docstring for `optimize-temporal-filters` for more details."
   (:require [clojure.tools.logging :as log]
             [metabase.mbql.util :as mbql.u]
             [metabase.util.date-2 :as u.date]))
@@ -92,7 +92,7 @@
      [:>= field' [:absolute-datetime (lower-bound unit lower) :default]]
      [:<  field' [:absolute-datetime (upper-bound unit upper) :default]]]))
 
-(defn- optimize-datetime-filters* [{query-type :type, :as query}]
+(defn- optimize-temporal-filters* [{query-type :type, :as query}]
   (if (not= query-type :query)
     query
     (mbql.u/replace query
@@ -104,7 +104,7 @@
           optimized)
         &match))))
 
-(defn optimize-datetime-filters
+(defn optimize-temporal-filters
   "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
   bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
   bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
@@ -130,4 +130,4 @@
   `\"2019-09-24\"` should already have been converted to `:absolute-datetime` clauses."
   [qp]
   (fn [query rff context]
-    (qp (optimize-datetime-filters* query) rff context)))
+    (qp (optimize-temporal-filters* query) rff context)))

@@ -1,10 +1,10 @@
-(ns metabase.query-processor.middleware.optimize-datetime-filters-test
+(ns metabase.query-processor.middleware.optimize-temporal-filters-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.optimize-datetime-filters :as optimize-datetime-filters]
+            [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
@@ -12,18 +12,18 @@
 
 (defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
 
-(defn- optimize-datetime-filters [filter-clause]
+(defn- optimize-temporal-filters [filter-clause]
   (let [query {:database 1
                :type     :query
                :query    {:filter filter-clause}}]
-    (-> (mt/test-qp-middleware optimize-datetime-filters/optimize-datetime-filters query)
+    (-> (mt/test-qp-middleware optimize-temporal-filters/optimize-temporal-filters query)
         :pre
         (get-in [:query :filter]))))
 
 (deftest optimize-day-bucketed-filter-test
   (testing "Make sure we aren't doing anything wacky when optimzing filters against fields bucketed by day"
     (letfn [(optimize [filter-type]
-              (#'optimize-datetime-filters/optimize-filter
+              (#'optimize-temporal-filters/optimize-filter
                [filter-type
                 [:datetime-field [:field-id 1] :day]
                 [:absolute-datetime (t/zoned-date-time "2014-03-04T12:30Z[UTC]") :day]]))]
@@ -86,7 +86,7 @@
     :lower        (u.date/parse "2019-01-01" "UTC")
     :upper        (u.date/parse "2020-01-01" "UTC")}])
 
-(deftest optimize-datetime-filters-test
+(deftest optimize-temporal-filters-test
   (driver/with-driver ::timezone-driver
     (doseq [{:keys [unit filter-value lower upper]} test-units-and-values]
       (let [lower [:absolute-datetime lower :default]
@@ -96,7 +96,7 @@
             (is (= [:and
                     [:>= [:datetime-field [:field-id 1] :default] lower]
                     [:< [:datetime-field [:field-id 1] :default] upper]]
-                   (optimize-datetime-filters
+                   (optimize-temporal-filters
                     [:=
                      [:datetime-field [:field-id 1] unit]
                      [:absolute-datetime filter-value unit]]))))
@@ -104,31 +104,31 @@
             (is (= [:or
                     [:< [:datetime-field [:field-id 1] :default] lower]
                     [:>= [:datetime-field [:field-id 1] :default] upper]]
-                   (optimize-datetime-filters
+                   (optimize-temporal-filters
                     [:!=
                      [:datetime-field [:field-id 1] unit]
                      [:absolute-datetime filter-value unit]]))))
           (testing :<
             (is (= [:< [:datetime-field [:field-id 1] :default] lower]
-                   (optimize-datetime-filters
+                   (optimize-temporal-filters
                     [:<
                      [:datetime-field [:field-id 1] unit]
                      [:absolute-datetime filter-value unit]]))))
           (testing :<=
             (is (= [:< [:datetime-field [:field-id 1] :default] upper]
-                   (optimize-datetime-filters
+                   (optimize-temporal-filters
                     [:<=
                      [:datetime-field [:field-id 1] unit]
                      [:absolute-datetime filter-value unit]]))))
           (testing :>
             (is (= [:>= [:datetime-field [:field-id 1] :default] upper]
-                   (optimize-datetime-filters
+                   (optimize-temporal-filters
                     [:>
                      [:datetime-field [:field-id 1] unit]
                      [:absolute-datetime filter-value unit]]))))
           (testing :>=
             (is (= [:>= [:datetime-field [:field-id 1] :default] lower]
-                   (optimize-datetime-filters
+                   (optimize-temporal-filters
                     [:>=
                      [:datetime-field [:field-id 1] unit]
                      [:absolute-datetime filter-value unit]]))))
@@ -136,7 +136,7 @@
             (is (= [:and
                     [:>= [:datetime-field [:field-id 1] :default] lower]
                     [:< [:datetime-field [:field-id 1] :default] upper]]
-                   (optimize-datetime-filters
+                   (optimize-temporal-filters
                     [:between
                      [:datetime-field [:field-id 1] unit]
                      [:absolute-datetime filter-value unit]
@@ -148,7 +148,7 @@
                :query    {:filter [:=
                                    [:datetime-field [:field-id 1] :day]
                                    [:absolute-datetime t :day]]}}]
-    (-> (mt/test-qp-middleware optimize-datetime-filters/optimize-datetime-filters query)
+    (-> (mt/test-qp-middleware optimize-temporal-filters/optimize-temporal-filters query)
         (get-in [:pre :query :filter]))))
 
 (deftest timezones-test
@@ -161,10 +161,10 @@
           (mt/with-report-timezone-id timezone-id
             (testing "lower-bound and upper-bound util fns"
               (is (= lower
-                     (#'optimize-datetime-filters/lower-bound :day t))
+                     (#'optimize-temporal-filters/lower-bound :day t))
                   (format "lower bound of day(%s) in the %s timezone should be %s" t timezone-id lower))
               (is (= upper
-                     (#'optimize-datetime-filters/upper-bound :day t))
+                     (#'optimize-temporal-filters/upper-bound :day t))
                   (format "upper bound of day(%s) in the %s timezone should be %s" t timezone-id upper)))
             (testing "optimize-with-datetime"
               (let [expected [:and
@@ -178,7 +178,7 @@
 (deftest skip-optimization-test
   (let [clause [:= [:datetime-field [:field-id 1] :day] [:absolute-datetime #t "2019-01-01" :month]]]
     (is (= clause
-           (optimize-datetime-filters clause))
+           (optimize-temporal-filters clause))
         "Filters with different units in the datetime field and absolute-datetime shouldn't get optimized")))
 
 ;; Make sure the optimization logic is actually applied in the resulting native query!
