@@ -208,6 +208,18 @@
 (derive :type/Boolean :type/Category)
 (derive :type/Enum :type/Category)
 
+(derive :Coercion/TemporalString->Date :Coercion/*)
+(derive :Coercion/ISO8601->Date :Coercion/TemporalString->Date)
+(derive :Coercion/ISO8601DateTime->Date :Coercion/ISO8601->Date)
+(derive :Coercion/ISO8601Time->Date :Coercion/ISO8601->Date)
+(derive :Coercion/ISO8601Date->Date :Coercion/ISO8601->Date)
+
+(derive :Coercion/Number->Date :Coercion/*)
+(derive :Coercion/UNIXTime->Date :Coercion/Number->Date)
+(derive :Coercion/UNIXSeconds->DateTime :Coercion/UNIXTime->Date)
+(derive :Coercion/UNIXMilliSeconds->DateTime :Coercion/UNIXTime->Date)
+(derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Date)
+
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 (defn types->parents

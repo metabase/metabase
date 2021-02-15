@@ -243,11 +243,15 @@
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
-  (match [(:base_type field) (:semantic_type field)]
-    [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql driver
-                                                                                    (semantic-type->unix-timestamp-unit (:semantic_type field))
-                                                                                    field-identifier)
-    [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:semantic_type field) field-identifier)
+  (match [(:base_type field) (:coercion_strategy field)]
+    [(:isa? :type/Number)   (:isa? :Coercion/UNIXTime->Date)]
+    (unix-timestamp->honeysql driver
+                              (semantic-type->unix-timestamp-unit (:coercion_strategy field))
+                              field-identifier)
+
+    [:type/Text             (:isa? :Coercion/String->Date)  ]
+    (cast-temporal-string driver (:semantic_type field) field-identifier)
+
     :else field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
