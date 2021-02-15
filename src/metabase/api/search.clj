@@ -18,18 +18,13 @@
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
-            [metabase.search :as search]
+            [metabase.search.config :as search-config]
+            [metabase.search.scoring :as scoring]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
-
-(def ^:private ^:const search-max-results
-  "Absolute maximum number of search results to return. This number is in place to prevent massive application DB load
-  by returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
-  that results are truncated."
-  1000)
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
@@ -37,18 +32,8 @@
    :archived?          s/Bool
    :current-user-perms #{perms/UserPath}})
 
-(def ^:private searchable-models
-  "Models that can be searched. Results also come back in this order (i.e., all matching Cards, followed by all matching
-  Dashboards, etc.)"
-  [Card Dashboard Pulse Collection Segment Metric Table])
-
-(def ^:private model->sort-position
-  (into {} (map-indexed (fn [i model]
-                          [(str/lower-case (name model)) i])
-                        searchable-models)))
-
 (def ^:private SearchableModel
-  (apply s/enum searchable-models))
+  (apply s/enum search-config/searchable-models))
 
 (def ^:private HoneySQLColumn
   (s/cond-pre
@@ -87,71 +72,14 @@
    ;; returned for Card and Dashboard
    :collection_position :integer
    :favorite            :boolean
+   ;; returned for Card only
+   :dataset_query       :text
    ;; returned for Metric and Segment
    :table_id            :integer
    :database_id         :integer
    :table_schema        :text
    :table_name          :text
    :table_description   :text))
-
-;; below are the actual columns returned for any given entity
-
-(def ^:private default-columns
-  "Columns returned for all models."
-  [:id :name :description :archived])
-
-(def ^:private favorite-col
-  "Case statement to return boolean values of `:favorite` for Card and Dashboard."
-  [(hsql/call :case [:not= :fave.id nil] true :else false) :favorite])
-
-(def ^:private table-columns
-  "Columns containing information about the Table this model references. Returned for Metrics and Segments."
-  [:table_id
-   [:table.db_id       :database_id]
-   [:table.schema      :table_schema]
-   [:table.name        :table_name]
-   [:table.description :table_description]])
-
-(defmulti ^:private columns-for-model
-  "The columns that will be returned by the query for `model`, excluding `:model`, which is added automatically."
-  {:arglists '([model])}
-  class)
-
-(defmethod columns-for-model (class Card)
-  [_]
-  (conj default-columns :collection_id :collection_position [:collection.name :collection_name] favorite-col))
-
-(defmethod columns-for-model (class Dashboard)
-  [_]
-  (conj default-columns :collection_id :collection_position [:collection.name :collection_name] favorite-col))
-
-(defmethod columns-for-model (class Pulse)
-  [_]
-  [:id :name :collection_id [:collection.name :collection_name]])
-
-(defmethod columns-for-model (class Collection)
-  [_]
-  (conj default-columns [:id :collection_id] [:name :collection_name]))
-
-(defmethod columns-for-model (class Segment)
-  [_]
-  (into default-columns table-columns))
-
-(defmethod columns-for-model (class Metric)
-  [_]
-  (into default-columns table-columns))
-
-(defmethod columns-for-model (class Table)
-  [_]
-  [:id
-   :name
-   :display_name
-   :description
-   [:id :table_id]
-   [:db_id :database_id]
-   [:schema :table_schema]
-   [:name :table_name]
-   [:description :table_description]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -205,7 +133,7 @@
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `all-search-columns`."
   [model :- SearchableModel]
-  (let [entity-columns                (columns-for-model model)
+  (let [entity-columns                (search-config/columns-for-model model)
         column-alias->honeysql-clause (u/key-by ->column-alias entity-columns)
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
@@ -235,7 +163,7 @@
   (when query
     (into [:or]
           (for [column searchable-columns
-                token (search/tokenize (search/normalize query))]
+                token (scoring/tokenize (scoring/normalize query))]
             [:like
              (hsql/call :lower column)
              (str "%" token "%")]))))
@@ -245,7 +173,7 @@
   (let [archived-clause (archived-where-clause model archived?)
         search-clause   (search-string-clause search-string
                                               (map (partial hsql/qualify (model->alias model))
-                                                   (search/searchable-columns-for-model model)))]
+                                                   (search-config/searchable-columns-for-model model)))]
     (if search-clause
       [:and archived-clause search-clause]
       archived-clause)))
@@ -374,23 +302,23 @@
             (if (number? v)
               (not (zero? v))
               v))]
-    (let [search-query {:union-all (for [model searchable-models
+    (let [search-query {:union-all (for [model search-config/searchable-models
                                          :let  [query (search-query-for-model model search-ctx)]
                                          :when (seq query)]
                                      query)}
           _            (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          results      (db/query search-query :max-rows search-max-results)]
-      ;; sort by [score model name]
-      (sort-by (juxt
-                (comp - (partial search/score (:search-string search-ctx)))
-                (comp model->sort-position :model)
-                :name)
-               (for [row results
-                     :when (check-permissions-for-model row)]
-                 ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-                 (-> row
-                     (update :favorite bit->boolean)
-                     (update :archived bit->boolean)))))))
+          results      (db/reducible-query search-query :max-rows search-config/db-max-results)
+          xf           (comp
+                        (filter check-permissions-for-model)
+                        ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
+                        (map #(update % :favorite bit->boolean))
+                        (map #(update % :archived bit->boolean))
+                        (map (partial scoring/score-and-result (:search-string search-ctx)))
+                        (filter some?))]
+      (->> results
+           (transduce xf scoring/accumulate-top-results)
+           ;; Pluck out the result; discard the score
+           (map second)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

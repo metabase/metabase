@@ -1,6 +1,7 @@
-(ns metabase.search-test
+(ns metabase.search.scoring-test
   (:require [clojure.test :refer :all]
-            [metabase.search :as search]))
+            [metabase.search.config :as search-config]
+            [metabase.search.scoring :as search]))
 
 (defn- result-row
   ([name]
@@ -22,8 +23,13 @@
     (is (thrown-with-msg? Exception #"does not match schema"
                           (search/tokenize nil)))))
 
+(defn scorer->score
+  [scorer]
+  (comp :score
+        (partial #'search/score-with [scorer])))
+
 (deftest consecutivity-scorer-test
-  (let [score (partial #'search/score-with [#'search/consecutivity-scorer])]
+  (let [score (scorer->score #'search/consecutivity-scorer)]
     (testing "partial matches"
       (is (= 1/3
              (score ["rasta" "el" "tucan"]
@@ -45,15 +51,15 @@
              (score ["rasta"]
                     (result-row "Rasta")))))
     (testing "misses"
-      (is (= 0
-             (score ["rasta"]
-                    (result-row "just a straight-up imposter")))
-          (= 0
-             (score ["rasta" "the" "toucan"]
-                    (result-row "")))))))
+      (is (nil?
+           (score ["rasta"]
+                  (result-row "just a straight-up imposter")))
+          (nil?
+           (score ["rasta" "the" "toucan"]
+                  (result-row "")))))))
 
 (deftest total-occurrences-scorer-test
-  (let [score (partial #'search/score-with [#'search/total-occurrences-scorer])]
+  (let [score (scorer->score #'search/total-occurrences-scorer)]
     (testing "partial matches"
       (is (= 1/3
              (score ["rasta" "el" "tucan"]
@@ -75,18 +81,18 @@
              (score ["rasta" "the" "toucan"]
                     (result-row "Rasta may be my favorite of the toucans")))))
     (testing "misses"
-      (is (= 0
-             (score ["rasta"]
-                    (result-row "just a straight-up imposter"))))
-      (is (= 0
-             (score ["rasta" "the" "toucan"]
-                    (result-row "")))))))
+      (is (nil?
+           (score ["rasta"]
+                  (result-row "just a straight-up imposter"))))
+      (is (nil?
+           (score ["rasta" "the" "toucan"]
+                  (result-row "")))))))
 
 (deftest exact-match-scorer-test
-  (let [score (partial #'search/score-with [#'search/exact-match-scorer])]
-    (is (= 0
-           (score ["rasta" "the" "toucan"]
-                  (result-row "Crowberto el tucan"))))
+  (let [score (scorer->score #'search/exact-match-scorer)]
+    (is (nil?
+         (score ["rasta" "the" "toucan"]
+                (result-row "Crowberto el tucan"))))
     (is (= 1/3
            (score ["rasta" "the" "toucan"]
                   (result-row "Rasta el tucan"))))
@@ -96,3 +102,14 @@
     (is (= 1
            (score ["rasta" "the" "toucan"]
                   (result-row "Rasta the toucan"))))))
+
+(deftest accumulate-top-results-test
+  (let [xf (map identity)]
+    (testing "a non-full queue behaves normally"
+      (let [items (map (fn [i] [[2 2 i] (str "item " i)]) (range 10))]
+        (is (= items
+               (transduce xf search/accumulate-top-results items)))))
+    (testing "a full queue only saves the top items"
+      (let [sorted-items (map (fn [i] [[1 2 3 i] (str "item " i)]) (range (+ 10 search-config/max-filtered-results)))]
+        (is (= (drop 10 sorted-items)
+               (transduce xf search/accumulate-top-results (shuffle sorted-items))))))))
