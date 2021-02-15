@@ -25,7 +25,7 @@
   "Can `temporal-value` clause can be optimized?"
   [temporal-value]
   (mbql.u/match-one temporal-value
-    [:relative-datetime 0]
+    [:relative-datetime (_ :guard #{0 :current})]
     true
 
     [(_ :guard #{:absolute-datetime :relative-datetime}) _ (unit :guard optimizable-units)]
@@ -93,11 +93,11 @@
 
 (defmethod temporal-value-lower-bound :relative-datetime
   [[_ n unit] datetime-field-unit]
-  [:relative-datetime n (or unit datetime-field-unit)])
+  [:relative-datetime (if (= n :current) 0 n) (or unit datetime-field-unit)])
 
 (defmethod temporal-value-upper-bound :relative-datetime
   [[_ n unit] datetime-field-unit]
-  [:relative-datetime (inc n) (or unit datetime-field-unit)])
+  [:relative-datetime (inc (if (= n :current) 0 n)) (or unit datetime-field-unit)])
 
 (defmulti ^:private optimize-filter
   "Optimize a filter clause agat a bucketed `:datetime-field` clause and `:absolute-datetime` or `:relative-datetime`
