@@ -519,4 +519,50 @@ describe("scenarios > question > filter", () => {
       /\[Created At\] > \[Products? -> Created At\]/,
     );
   });
+
+  it("should handle post-aggregation filter on questions with joined table (metabase#14811)", () => {
+    cy.request("POST", "/api/card", {
+      name: "14811",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "sum",
+                [
+                  "fk->",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["field-id", PRODUCTS.PRICE],
+                ],
+              ],
+            ],
+            breakout: [
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
+              ],
+            ],
+          },
+          filter: ["=", ["field-literal", "CATEGORY", "type/Text"], "Widget"],
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.server();
+      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.wait("@cardQuery").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+      cy.get(".cellData").contains("Widget");
+      cy.findByText("Showing 1 row");
+    });
+  });
 });
