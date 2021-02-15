@@ -55,7 +55,8 @@
 (u/strict-extend (class Setting)
   models/IModel
   (merge models/IModelDefaults
-         {:types (constantly {:value :encrypted-text})}))
+         {:types (constantly {:value :encrypted-text})
+          :primary-key (constantly :key)}))
 
 
 (def ^:private Type

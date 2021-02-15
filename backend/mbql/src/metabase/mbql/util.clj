@@ -425,6 +425,11 @@
     :else
     source-table-id))
 
+(s/defn join->source-table-id :- (s/maybe su/IntGreaterThanZero)
+  "Like `query->source-table-id`, but for a join."
+  [join]
+  (query->source-table-id {:type :query, :query join}))
+
 (s/defn unwrap-field-clause :- (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal)
   "Un-wrap a `Field` clause and return the lowest-level clause it wraps, either a `:field-id` or `:field-literal`."
   [clause :- mbql.s/Field]

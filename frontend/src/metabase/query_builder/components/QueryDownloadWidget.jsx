@@ -94,7 +94,7 @@ const QueryDownloadWidget = ({
   </PopoverWithTrigger>
 );
 
-const UnsavedQueryButton = ({ type, result: { json_query }, card }) => (
+const UnsavedQueryButton = ({ type, result: { json_query = {} }, card }) => (
   <DownloadButton
     url={`api/dataset/${type}`}
     params={{ query: JSON.stringify(_.omit(json_query, "constraints")) }}
@@ -104,7 +104,7 @@ const UnsavedQueryButton = ({ type, result: { json_query }, card }) => (
   </DownloadButton>
 );
 
-const SavedQueryButton = ({ type, result: { json_query }, card }) => (
+const SavedQueryButton = ({ type, result: { json_query = {} }, card }) => (
   <DownloadButton
     url={`api/card/${card.id}/query/${type}`}
     params={{ parameters: JSON.stringify(json_query.parameters) }}
@@ -114,7 +114,7 @@ const SavedQueryButton = ({ type, result: { json_query }, card }) => (
   </DownloadButton>
 );
 
-const PublicQueryButton = ({ type, uuid, result: { json_query } }) => (
+const PublicQueryButton = ({ type, uuid, result: { json_query = {} } }) => (
   <DownloadButton
     method="GET"
     url={Urls.publicQuestion(uuid, type)}

@@ -8,8 +8,8 @@
             [colorize.core :as colorize]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
-                                     NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
+            [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
+                                     Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
                                      Revision Segment Table TaskHistory User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
@@ -714,3 +714,88 @@
   "Allows a test to override the locale temporarily"
   [locale-tag & body]
   `(call-with-locale ~locale-tag (fn [] ~@body)))
+
+(defn do-with-column-remappings [orig->remapped thunk]
+  (transduce
+   identity
+   (fn
+     ([] thunk)
+     ([thunk] (thunk))
+     ([thunk [original-column-id remap]]
+      (let [original       (db/select-one Field :id (u/the-id original-column-id))
+            describe-field (fn [{table-id :table_id, field-name :name}]
+                             (format "%s.%s" (db/select-one-field :name Table :id table-id) field-name))]
+        (if (integer? remap)
+          ;; remap is integer => fk remap
+          (let [remapped (db/select-one Field :id (u/the-id remap))]
+            (fn []
+              (tt/with-temp Dimension [_ {:field_id                (:id original)
+                                          :name                    (:display_name original)
+                                          :type                    :external
+                                          :human_readable_field_id (:id remapped)}]
+                (testing (format "With FK remapping %s -> %s" (describe-field original) (describe-field remapped))
+                  (thunk)))))
+          ;; remap is sequential or map => HRV remap
+          (let [values-map (if (sequential? remap)
+                             (zipmap (range 1 (inc (count remap)))
+                                     remap)
+                             remap)]
+            (fn []
+              (tt/with-temp* [Dimension   [_ {:field_id (:id original)
+                                              :name     (:display_name original)
+                                              :type     :internal}]
+                              FieldValues [_ {:field_id              (:id original)
+                                              :values                (keys values-map)
+                                              :human_readable_values (vals values-map)}]]
+                (testing (format "With human readable values remapping %s -> %s"
+                                 (describe-field original) (pr-str values-map))
+                  (thunk)))))))))
+   orig->remapped))
+
+(defn- col-remappings-arg [x]
+  (cond
+    (and (symbol? x)
+         (not (str/starts-with? x "%")))
+    `(data/$ids ~(symbol (str \% x)))
+
+    (and (seqable? x)
+         (= (first x) 'values-of))
+    (let [[_ table+field] x
+          [table field]   (str/split (str table+field) #"\.")]
+      `(into {} (get-in (data/run-mbql-query ~(symbol table)
+                          {:fields [~'$id ~(symbol (str \$ field))]})
+                        [:data :rows])))
+
+    :else
+    x))
+
+(defmacro with-column-remappings
+  "Execute `body` with column remappings in place. Can create either FK \"external\" or human-readable-values
+  \"internal\" remappings:
+
+    ;; FK 'external' remapping -- pass a column to remap to (either as a symbol, or an integer ID):
+    (with-column-remappings [reviews.product_id products.title]
+      ...)
+
+    ;; humane-readable-values 'internal' remappings: pass a vector or map of values. Vector just sets the first `n`
+    ;; values starting with 1 (for common cases where the column is an FK ID column)
+    (with-column-remappings [venues.category_id [\"My Cat 1\" \"My Cat 2\"]]
+      ...)
+
+    ;; equivalent to:
+    (with-column-remappings [venues.category_id {1 \"My Cat 1\", 2 \"My Cat 2\"}]
+      ...)
+
+  You can also do a human-readable-values 'internal' remapping using the values from another Field by using the
+  special `values-of` form:
+
+    (with-column-remappings [venues.category_id (values-of categories.name)]
+      ...)"
+  {:arglists '([[original-col source-col & more-remappings] & body])}
+  [cols & body]
+  `(do-with-column-remappings
+    ~(into {} (comp (map col-remappings-arg)
+                    (partition-all 2))
+           cols)
+    (fn []
+      ~@body)))

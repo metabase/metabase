@@ -6,6 +6,7 @@ import {
   openProductsTable,
   popover,
   modal,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -68,6 +69,27 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Visualize").click();
     cy.contains("2372"); // user's id in the table
     cy.contains("Showing 1 row"); // ensure only one user was returned
+  });
+
+  it.skip("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["between", ["field-id", ORDERS.ID], 96, 97],
+        },
+        type: "query",
+      },
+      display: "table",
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("ID 96 97").click();
+    cy.get("[contenteditable='true']").contains("between([ID], 96, 97)");
   });
 
   describe("joins", () => {
@@ -402,6 +424,99 @@ describe("scenarios > question > notebook", () => {
           cy.findAllByText("Gizmo");
         });
       });
+    });
+
+    it.skip("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
+      cy.request("POST", "/api/card", {
+        name: "14649_min",
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              aggregation: [
+                [
+                  "aggregation-options",
+                  ["sum", ["field-id", ORDERS.SUBTOTAL]],
+                  { "display-name": "Revenue" },
+                ],
+              ],
+              breakout: [
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ],
+            },
+            aggregation: [["min", ["field-literal", "Revenue", "type/Float"]]],
+          },
+          database: 1,
+        },
+        display: "scalar",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.server();
+        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+        cy.visit(`/question/${QUESTION_ID}`);
+        cy.wait("@cardQuery").then(xhr => {
+          expect(xhr.response.body.error).to.not.exist;
+        });
+
+        cy.findByText("49.54");
+      });
+    });
+
+    it.skip("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+      cy.route("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": REVIEWS_ID,
+            joins: [
+              {
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field-id", REVIEWS.PRODUCT_ID],
+                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ],
+                alias: "Products",
+              },
+            ],
+            aggregation: [
+              [
+                "sum",
+                ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
+              ],
+            ],
+            breakout: [
+              ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "year"],
+            ],
+          },
+          database: 1,
+        },
+        display: "line",
+      });
+
+      cy.wait("@dataset");
+      cy.get(".dot")
+        .eq(2)
+        .click({ force: true });
+      cy.findByText("X-ray").click();
+
+      cy.wait("@xray").then(xhr => {
+        expect(xhr.response.body.cause).not.to.exist;
+        expect(xhr.status).not.to.eq(500);
+      });
+      // Main title
+      cy.contains(/^A closer look at/);
+      // Metric title
+      cy.findByText("How this metric is distributed across different numbers");
+      // Make sure at least one card is rendered
+      cy.get(".DashCard");
     });
   });
 

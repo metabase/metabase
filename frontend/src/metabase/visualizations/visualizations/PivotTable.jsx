@@ -5,7 +5,8 @@ import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
-import { color, alpha } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
+import "metabase/visualizations/components/TableInteractive.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 
 import Ellipsified from "metabase/components/Ellipsified";
@@ -15,6 +16,7 @@ import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SPLIT_SETTING,
   COLUMN_SORT_ORDER,
+  COLUMN_SHOW_TOTALS,
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/lib/data_grid";
@@ -24,8 +26,8 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import { findDOMNode } from "react-dom";
 
-const PIVOT_BG_LIGHT = alpha(color("brand"), 0.03);
-const PIVOT_BG_DARK = alpha(color("brand"), 0.1);
+const PIVOT_BG_LIGHT = lighten(color("brand"), 0.65);
+const PIVOT_BG_DARK = lighten(color("brand"), 0.6);
 
 const partitions = [
   {
@@ -179,6 +181,24 @@ export default class PivotTable extends Component {
       widget: "input",
       getDefault: column => formatColumn(column),
     },
+    [COLUMN_SHOW_TOTALS]: {
+      hidden: true,
+      getValue: (column, columnSettings, { settings }) => {
+        const currentValue = columnSettings[COLUMN_SHOW_TOTALS];
+        const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+        // to show totals a column needs to be:
+        //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
+        //  - not the last column
+        const canHaveSubtotal = rows
+          .slice(0, rows.length - 1)
+          .some(row => _.isEqual(row, column.field_ref));
+        if (!canHaveSubtotal) {
+          // when this is null, the setting widget hides the toggle
+          return null;
+        }
+        return currentValue == null ? true : currentValue;
+      },
+    },
     [COLUMN_SORT_ORDER]: { hidden: true },
   };
 
@@ -193,6 +213,21 @@ export default class PivotTable extends Component {
       columns[columnIndex],
     );
     return columnTitle || formatColumn(column);
+  }
+
+  isColumnCollapsible(columnIndex) {
+    const { data, settings } = this.props;
+    const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+    const { [COLUMN_SHOW_TOTALS]: showTotals } = settings.column(
+      columns[columnIndex],
+    );
+    return showTotals;
+  }
+
+  componentDidUpdate() {
+    // This is needed in case the cell counts didn't change, but the data did
+    this.leftHeaderRef && this.leftHeaderRef.recomputeCellSizesAndPositions();
+    this.topHeaderRef && this.topHeaderRef.recomputeCellSizesAndPositions();
   }
 
   render() {
@@ -377,7 +412,8 @@ export default class PivotTable extends Component {
                       style={{ width: LEFT_HEADER_CELL_WIDTH }}
                       icon={
                         // you can only collapse before the last column
-                        index < rowIndexes.length - 1 && (
+                        index < rowIndexes.length - 1 &&
+                        this.isColumnCollapsible(rowIndex) && (
                           <RowToggleIcon
                             value={index + 1}
                             settings={settings}
@@ -390,6 +426,7 @@ export default class PivotTable extends Component {
                 </div>
                 {/* top header */}
                 <Collection
+                  ref={e => (this.topHeaderRef = e)}
                   className="scroll-hide-all text-medium"
                   width={width - leftHeaderWidth}
                   height={topHeaderHeight}
@@ -403,9 +440,10 @@ export default class PivotTable extends Component {
               <div className="flex flex-full">
                 {/* left header */}
                 <div style={{ width: leftHeaderWidth }}>
-                  <AutoSizer>
+                  <AutoSizer disableWidth>
                     {({ height }) => (
                       <Collection
+                        ref={e => (this.leftHeaderRef = e)}
                         className="scroll-hide-all"
                         cellCount={leftHeaderItems.length}
                         cellRenderer={leftHeaderCellRenderer}
@@ -422,7 +460,7 @@ export default class PivotTable extends Component {
                 </div>
                 {/* pivot table body */}
                 <div>
-                  <AutoSizer>
+                  <AutoSizer disableWidth>
                     {({ height }) => (
                       <Grid
                         width={width - leftHeaderWidth}
@@ -522,7 +560,7 @@ function RowToggleIcon({
   return (
     <div
       className={cx(
-        "flex align-center cursor-pointer bg-brand-hover text-light text-white-hover",
+        "flex align-center cursor-pointer text-brand-hover text-light",
       )}
       style={{
         padding: "4px",
@@ -560,7 +598,7 @@ function Cell({
         ...(isSubtotal ? { backgroundColor: PIVOT_BG_DARK } : {}),
       }}
       className={cx(
-        "shrink-below-content-size flex-full flex-basis-none",
+        "shrink-below-content-size flex-full flex-basis-none TableInteractive-cellWrapper",
         className,
         {
           "text-bold": isSubtotal,

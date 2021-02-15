@@ -44,24 +44,30 @@
 
 (s/defn mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
   "Preprocess a `source-query` so we can determine the result columns."
-  [source-query :- mbql.s/MBQLQuery]
-  (try
-    (let [cols (binding [api/*current-user-id* nil]
-                 ((resolve 'metabase.query-processor/query->expected-cols) {:database (:id (qp.store/database))
-                                                                            :type     :query
-                                                                            :query    source-query}))]
-      (for [col cols]
-        (select-keys col [:name :id :table_id :display_name :base_type :semantic_type :unit :fingerprint :settings :source_alias])))
-    (catch Throwable e
-      (log/error e (str (trs "Error determining expected columns for query")))
-      nil)))
+  [{:keys [source-metadata], :as source-query} :- mbql.s/MBQLQuery]
+  (if (seq source-metadata)
+    source-metadata
+    (try
+      (let [cols (binding [api/*current-user-id* nil]
+                   ((requiring-resolve 'metabase.query-processor/query->expected-cols)
+                    {:database (:id (qp.store/database))
+                     :type     :query
+                     ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
+                     ;; to end up adding it again when the middleware runs at the top level
+                     :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
+        (for [col cols]
+          (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings :source_alias :field_ref])))
+      (catch Throwable e
+        (log/error e (str (trs "Error determining expected columns for query")))
+        nil))))
 
-(s/defn ^:private add-source-metadata :- {:source-metadata [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
+(s/defn ^:private add-source-metadata :- {(s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]
   (let [metadata ((if native-source-query?
                      native-source-query->metadata
                      mbql-source-query->metadata) source-query)]
-    (assoc inner-query :source-metadata metadata)))
+    (cond-> inner-query
+      (seq metadata) (assoc :source-metadata metadata))))
 
 (defn- can-add-source-metadata?
   "Can we add `:source-metadata` about the `:source-query` in this map? True if all of the following are true:

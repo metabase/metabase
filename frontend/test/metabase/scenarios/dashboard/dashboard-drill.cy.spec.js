@@ -506,6 +506,41 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
     });
   });
+
+  it("should not hide custom formatting when click behavior is enabled (metabase#14597)", () => {
+    const columnKey = JSON.stringify(["name", "MY_NUMBER"]);
+    const questionSettings = {
+      column_settings: {
+        [columnKey]: {
+          number_style: "currency",
+          currency_style: "code",
+          currency_in_header: false,
+        },
+      },
+    };
+    const dashCardSettings = {
+      column_settings: {
+        [columnKey]: {
+          click_behavior: {
+            type: "link",
+            linkType: "url",
+            linkTemplate: "/it/worked",
+          },
+        },
+      },
+    };
+
+    createQuestion({ visualization_settings: questionSettings }, questionId => {
+      createDashboard(
+        { questionId, visualization_settings: dashCardSettings },
+        dashboardIdA => cy.visit(`/dashboard/${dashboardIdA}`),
+      );
+    });
+
+    // formatting works, so we see "USD" in the table
+    cy.findByText("USD 111.00").click();
+    cy.location("pathname").should("eq", "/it/worked");
+  });
 });
 
 function createDashboardWithQuestion(
@@ -525,7 +560,7 @@ function createQuestion(options, callback) {
       native: { query: "select 111 as my_number, 'foo' as my_string" },
     },
     display: "table",
-    visualization_settings: {},
+    visualization_settings: options.visualization_settings || {},
     name: "Question",
     collection_id: null,
   }).then(({ body: { id: questionId } }) => {
@@ -533,7 +568,10 @@ function createQuestion(options, callback) {
   });
 }
 
-function createDashboard({ dashboardName, questionId }, callback) {
+function createDashboard(
+  { dashboardName = "dashboard", questionId, visualization_settings },
+  callback,
+) {
   cy.request("POST", "/api/dashboard", {
     name: dashboardName,
   }).then(({ body: { id: dashboardId } }) => {
@@ -570,6 +608,7 @@ function createDashboard({ dashboardName, questionId }, callback) {
                 ],
               },
             ],
+            visualization_settings,
           },
         ],
       });

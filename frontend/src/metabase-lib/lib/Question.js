@@ -101,12 +101,20 @@ export default class Question {
    */
   constructor(
     card: CardObject,
-    metadata: Metadata,
+    metadata?: Metadata,
     parameterValues?: ParameterValues,
     update?: ?QuestionUpdateFn,
   ) {
     this._card = card;
-    this._metadata = metadata;
+    this._metadata =
+      metadata ||
+      new Metadata({
+        databases: {},
+        tables: {},
+        fields: {},
+        metrics: {},
+        segments: {},
+      });
     this._parameterValues = parameterValues || {};
     this._update = update;
   }

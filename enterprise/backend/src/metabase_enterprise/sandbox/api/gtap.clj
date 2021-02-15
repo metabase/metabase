@@ -63,7 +63,6 @@
   (db/delete! GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
 
-
 (defn- +check-sandboxes-enabled
   "Wrap the Ring handler to make sure sandboxes are enabled before allowing access to the API endpoints."
   [handler]

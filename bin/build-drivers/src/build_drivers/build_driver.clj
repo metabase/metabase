@@ -7,6 +7,7 @@
             [build-drivers.plugin-manifest :as manifest]
             [build-drivers.strip-and-compress :as strip-and-compress]
             [build-drivers.verify :as verify]
+            [clojure.string :as str]
             [colorize.core :as colorize]
             [environ.core :as env]
             [metabuild-common.core :as u]))
@@ -54,16 +55,17 @@
   "Build and install to the local Maven repo any parent drivers of `driver` (e.g. `:google` is a parent of `:bigquery`).
   The driver must be built as an uberjar so we can remove duplicate classes during the `strip-and-compress` stage; it
   must be installed as a library so we can use it as a `:provided` dependency when building the child driver."
-  [driver]
+  [driver edition]
   (u/step (format "Build %s parent drivers" driver)
-    (doseq [parent (manifest/parent-drivers driver)]
-      (build-parents! parent)
-      (install-locally/install-locally! parent)
-      (build-driver! parent))
-    (u/announce "%s parents built successfully." driver)))
+    (when-let [parents (not-empty (manifest/parent-drivers driver))]
+      (doseq [parent parents]
+        (build-parents! parent edition)
+        (install-locally/install-locally! parent edition)
+        (build-driver! parent edition))
+      (u/announce "%s parents built successfully." driver))))
 
-(defn- build-uberjar! [driver]
-  (u/step (format "Build %s uberjar" driver)
+(defn- build-uberjar! [driver edition]
+  (u/step (format "Build %s uberjar (%s edition)" driver edition)
     (u/delete-file-if-exists! (c/driver-target-directory driver))
     (u/sh {:dir (c/driver-project-dir driver)} "lein" "clean")
     (u/sh {:dir (c/driver-project-dir driver)
@@ -71,73 +73,96 @@
                  "HOME"                      (env/env :user-home)
                  "PATH"                      (env/env :path)
                  "JAVA_HOME"                 (env/env :java-home)}}
-          "lein" "uberjar")
+          "lein" "with-profile" (format "+%s" (name edition)) "uberjar")
     (strip-and-compress/strip-and-compress-uberjar! driver)
-    (u/announce "%s uberjar build successfully." driver)))
+    (u/announce "%s uberjar (%s edition) built successfully." driver edition)))
 
 (defn- build-and-verify!
   "Build `driver` and verify the built JAR. This function ignores any existing artifacts and will always rebuild."
-  [driver]
-  (u/step (str (colorize/green "Build ") (colorize/yellow driver) (colorize/green " driver"))
+  [driver edition]
+  {:pre [(#{:oss :ee} edition)]}
+  (u/step (str/join " " [(colorize/green "Build")
+                         (colorize/yellow driver)
+                         (colorize/green "driver")
+                         (colorize/yellow (format "(%s edition)" edition))])
     (clean-driver-artifacts! driver)
-    (metabase/build-metabase!)
-    (build-parents! driver)
-    (build-uberjar! driver)
+    (u/step (format "Build %s driver (%s edition) prerequisites if needed" driver edition)
+      (metabase/build-metabase!)
+      (build-parents! driver edition))
+    (build-uberjar! driver edition)
     (copy-driver! driver)
     (verify/verify-driver driver)
-    (u/step (format "Save checksum for %s driver to %s" driver (c/driver-checksum-filename driver))
-      (spit (c/driver-checksum-filename driver) (checksum/driver-checksum driver)))))
+    (u/step (format "Save checksum for %s driver (%s edition) to %s"
+                    driver edition (c/driver-checksum-filename driver))
+      (let [filename (c/driver-checksum-filename driver)
+            checksum (checksum/driver-checksum driver edition)]
+        (spit filename checksum)
+        (u/announce "Wrote checksum %s to file %s" (pr-str checksum) filename)))))
 
 (defn- driver-checksum-matches?
   "Check whether the saved checksum for the driver from the last build is the same as the current one. If so, we don't
   need to build again. This checksum is based on driver sources as well as the checksums for Metabase sources and
   parent drivers."
-  [driver]
-  (u/step (format "Determine whether %s driver source files have changed since last build" driver)
-    (let [existing-checksum (checksum/existing-driver-checksum driver)
-          current-checksum  (checksum/driver-checksum driver)
-          same?             (= existing-checksum current-checksum)]
-      (u/announce (if same?
-                    "Checksum is the same. Do not need to rebuild driver."
-                    "Checksum is different. Need to rebuild driver."))
-      same?)))
+  [driver edition]
+  (u/step (format "Determine whether %s driver (%s edition) source files have changed since last build" driver edition)
+    (let [existing-checksum (checksum/existing-driver-checksum driver)]
+      (cond
+        (not existing-checksum)
+        (do
+          (u/announce "No previous checksum. Need to rebuild driver")
+          false)
+
+        (= existing-checksum (checksum/driver-checksum driver edition))
+        (do
+          (u/announce "Checksum is the same. Do not need to rebuild driver.")
+          true)
+
+        :else
+        (do
+          (u/announce "Checksum is different. Need to rebuild driver.")
+          false)))))
 
 (defn build-driver!
   "Build `driver`, if needed."
-  [driver]
-  {:pre [(keyword? driver)]}
-  (u/step (str (colorize/green "Build ") (colorize/yellow driver) (colorize/green " driver if needed"))
-    ;; When we build a driver, we save a checksum of driver source code + metabase source code + parent drivers
-    ;; alongside the built driver JAR. The next time this script is called, we recalculate that checksum -- if the
-    ;; current checksum matches the saved one associated with the built driver JAR, we do not need to rebuild the
-    ;; driver. If anything relevant has changed, we have to rebuild the driver.
-    (if (driver-checksum-matches? driver)
-      ;; even if we're not rebuilding the driver, copy the artifact from `modules/drivers/<driver>/target/uberjar/`
-      ;; to `resources/modules` so we can be sure we have the most up-to-date version there.
-      (try
-        (copy-driver! driver)
-        (verify/verify-driver driver)
-        ;; if verification fails, delete all the existing artifacts and just rebuild the driver from scratch.
-        (catch Throwable e
-          (u/error "Error verifying existing driver:\n%s" (pr-str e))
-          (u/announce "Deleting existing driver artifacts and rebuilding.")
-          (clean-driver-artifacts! driver)
-          (build-driver! driver)))
-      ;; if checksum does not match, build and verify the driver
-      (try
-        (build-and-verify! driver)
-        ;; if building fails, clean everything, including metabase-core, the metabase uberjar, and parent
-        ;; dependencies, *then* retry.
-        (catch Throwable e
-          (u/announce "Cleaning ALL and retrying...")
-          (clean-all! driver)
-          (try
-            (build-and-verify! driver)
-            ;; if building the driver failed again, even after cleaning, delete anything that was built and then
-            ;; give up.
-            (catch Throwable e
-              (u/safe-println (colorize/red (format "Failed to build %s driver." driver)))
-              (clean-driver-artifacts! driver)
-              (throw e))))))
-    ;; if we make it this far, we've built the driver successfully.
-    (u/announce "Success.")))
+  [driver edition]
+  {:pre [(#{:oss :ee nil} edition)]}
+  (let [edition (or edition :oss)]
+    (u/step (str/join " " [(colorize/green "Build")
+                           (colorize/yellow driver)
+                           (colorize/green "driver")
+                           (colorize/yellow (format "(%s edition)" edition))
+                           (colorize/green "if needed")])
+      ;; When we build a driver, we save a checksum of driver source code + metabase source code + parent drivers
+      ;; alongside the built driver JAR. The next time this script is called, we recalculate that checksum -- if the
+      ;; current checksum matches the saved one associated with the built driver JAR, we do not need to rebuild the
+      ;; driver. If anything relevant has changed, we have to rebuild the driver.
+      (if (driver-checksum-matches? driver edition)
+        ;; even if we're not rebuilding the driver, copy the artifact from `modules/drivers/<driver>/target/uberjar/`
+        ;; to `resources/modules` so we can be sure we have the most up-to-date version there.
+        (try
+          (copy-driver! driver)
+          (verify/verify-driver driver)
+          ;; if verification fails, delete all the existing artifacts and just rebuild the driver from scratch.
+          (catch Throwable e
+            (u/error "Error verifying existing driver:\n%s" (pr-str e))
+            (u/announce "Deleting existing driver artifacts and rebuilding.")
+            (clean-driver-artifacts! driver)
+            (build-driver! driver edition)))
+        ;; if checksum does not match, build and verify the driver
+        (try
+          (build-and-verify! driver edition)
+          ;; if building fails, clean everything, including metabase-core, the metabase uberjar, and parent
+          ;; dependencies, *then* retry.
+          (catch Throwable e
+            (u/announce "Cleaning ALL and retrying...")
+            (clean-all! driver)
+            (try
+              (build-and-verify! driver edition)
+              ;; if building the driver failed again, even after cleaning, delete anything that was built and then
+              ;; give up.
+              (catch Throwable e
+                (u/safe-println (colorize/red (format "Failed to build %s driver." driver)))
+                (clean-driver-artifacts! driver)
+                (throw e))))))
+      ;; if we make it this far, we've built the driver successfully.
+      (u/announce "Success."))))

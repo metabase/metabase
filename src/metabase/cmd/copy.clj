@@ -2,10 +2,9 @@
   "Shared lower-level implementation of the `dump-to-h2` and `load-from-h2` commands. The `copy!` function implemented
   here supports loading data from an application database to any empty application database for all combinations of
   supported application database types."
-  (:require [cheshire.core :as json]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [colorize.core :as color]
+            [clojure.tools.logging :as log]
             [honeysql.format :as hformat]
             [metabase.db.connection :as mdb.conn]
             [metabase.db.data-migrations :refer [DataMigrations]]
@@ -19,23 +18,22 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
+            [schema.core :as s])
   (:import java.sql.SQLException))
 
-(defn- println-ok []
-  (println (u/colorize 'green "[OK]")))
+(defn- log-ok []
+  (log/info (u/colorize 'green "[OK]")))
 
 (defn- do-step [msg f]
-  (print (str (u/colorize 'blue msg) " "))
+  (log/info (str (u/colorize 'blue msg) " "))
   (try
     (f)
     (catch Throwable e
-      (println (u/colorize 'red "[FAIL]\n"))
+      (log/error (u/colorize 'red "[FAIL]\n"))
       (throw (ex-info (trs "ERROR {0}" msg)
                       {}
                       e))))
-  (println-ok))
+  (log-ok))
 
 (defmacro ^:private step
   "Convenience for executing `body` with some extra logging."
@@ -106,15 +104,14 @@
 (def ^:private chunk-size 100)
 
 (defn- insert-chunk!
-  "Insert of `chunk` of rows into the target database table with `table-name`."
+  "Insert of `chunkk` of rows into the target database table with `table-name`."
   [target-db-type target-db-conn table-name chunkk]
-  (print (color/blue \.))
-  (flush)
+  (log/debugf "Inserting chunk of %d rows" (count chunkk))
   (try
     (let [{:keys [cols vals]} (objects->colums+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn table-name cols vals {:transaction? false}))
     (catch SQLException e
-      (jdbc/print-sql-exception-chain e)
+      (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
       (throw e))))
 
 (def ^:private table-select-fragments
@@ -130,14 +127,16 @@
                                              results (jdbc/reducible-query source-conn sql)]]
       (transduce
        (partition-all chunk-size)
+       ;; cnt    = the total number we've inserted so far
+       ;; chunkk = current chunk to insert
        (fn
          ([cnt]
           (when (pos? cnt)
-            (println (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
+            (log/info (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
          ([cnt chunkk]
           (when (seq chunkk)
             (when (zero? cnt)
-              (print (u/colorize 'blue (trs "Copying instances of {0}..." (name entity)))))
+              (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name entity)))))
             (try
               (insert-chunk! target-db-type target-db-conn table-name chunkk)
               (catch Throwable e
@@ -281,17 +280,3 @@
         (copy-data! source-jdbc-spec target-db-type target-conn))))
   ;; finally, update sequence values (if needed)
   (update-sequence-values! target-db-type target-jdbc-spec))
-
-(s/defn overwrite-encrypted-fields-to-plaintext!
-  [source-db-type   :- (s/enum :h2 :postgres :mysql)
-   source-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)
-   target-db-type   :- (s/enum :h2 :postgres :mysql)
-   target-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)]
-  (jdbc/with-db-connection [source-conn source-jdbc-spec]
-    (binding [db/*db-connection* source-jdbc-spec
-              db/*quoting-style* (mdb.conn/quoting-style source-db-type)]
-      (jdbc/with-db-connection [target-conn target-jdbc-spec]
-        (doseq [[key value] (db/select-field->field :key :value Setting)]
-          (jdbc/update! target-conn :setting {:value value} ["key = ?" key]))
-        (doseq [[id details] (db/select-id->field :details Database)]
-          (jdbc/update! target-conn :metabase_database {:details (json/encode details)} ["id = ?" id]))))))

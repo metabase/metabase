@@ -58,8 +58,7 @@
             :OpenSourceSubProtocolOverride true
             :user                          "camsaul"
             :ssl                           true
-            :sslmode                       "require"
-            :sslfactory                    "org.postgresql.ssl.NonValidatingFactory"}
+            :sslmode                       "require"}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    true
               :host   "localhost"
@@ -76,7 +75,30 @@
              {:host               "localhost"
               :port               "5432"
               :dbname             "cool"
-              :additional-options "prepareThreshold=0"})))))
+              :additional-options "prepareThreshold=0"}))))
+  (testing "user-specified SSL options should always take precendence over defaults"
+    (is (= {:classname                     "org.postgresql.Driver"
+            :subprotocol                   "postgresql"
+            :subname                       "//localhost:5432/bird_sightings"
+            :OpenSourceSubProtocolOverride true
+            :user                          "camsaul"
+            :ssl                           true
+            :sslmode                       "verify-ca"
+            :sslcert                       "my-cert"
+            :sslkey                        "my-key"
+            :sslfactory                    "myfactoryoverride"
+            :sslrootcert                   "myrootcert"}
+           (sql-jdbc.conn/connection-details->spec :postgres
+             {:ssl         true
+              :host        "localhost"
+              :port        5432
+              :dbname      "bird_sightings"
+              :user        "camsaul"
+              :sslmode     "verify-ca"
+              :sslcert     "my-cert"
+              :sslkey      "my-key"
+              :sslfactory  "myfactoryoverride"
+              :sslrootcert "myrootcert"})))))
 
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------

@@ -148,7 +148,7 @@ executors:
       - image: circleci/clojure:lein-2.8.1
       - image: metabase/presto-mb-ci
         environment:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
+          JAVA_TOOL_OPTIONS: "-Xmx1g"
 
   sparksql:
     working_directory: /home/circleci/metabase/metabase/
@@ -233,7 +233,7 @@ cache-key-metabase-core: &CacheKeyMetabaseCore
 
 # Key for the drivers built by build-uberjar-drivers
 cache-key-drivers: &CacheKeyDrivers
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}-<< parameters.edition >>
 
 # This is also used by the uberjar-build-drivers step; this is a unique situation because the build-drivers script has
 # logic to determine whether to rebuild drivers or not that is quite a bit more sophisticated that the run-on-change
@@ -241,9 +241,9 @@ cache-key-drivers: &CacheKeyDrivers
 # redshift driver.
 cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
   keys:
-    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}
-    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-
+    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}
+    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-
 
 # Key for frontend client built by uberjar-build-frontend step
 cache-key-frontend: &CacheKeyFrontend
@@ -405,7 +405,7 @@ commands:
           name: lein << parameters.lein-command >>
           command: |
             lein with-profile +ci,+<< parameters.edition >> << parameters.lein-command >>
-          no_output_timeout: 10m
+          no_output_timeout: 15m
       - steps: << parameters.after-steps >>
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
@@ -438,7 +438,7 @@ commands:
                   - run:
                       name: << parameters.command-name >>
                       command: yarn << parameters.command >>
-                      no_output_timeout: 10m
+                      no_output_timeout: 15m
                   - steps: << parameters.after-steps >>
       - unless:
           condition: << parameters.skip-when-no-change >>
@@ -448,7 +448,7 @@ commands:
             - run:
                 name: << parameters.command-name >>
                 command: yarn << parameters.command >>
-                no_output_timeout: 10m
+                no_output_timeout: 15m
             - steps: << parameters.after-steps >>
 
   wait-for-port:
@@ -460,7 +460,7 @@ commands:
           name: Wait for port << parameters.port >> to be ready
           command: |
             while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
-          no_output_timeout: 10m
+          no_output_timeout: 15m
 
   fetch-jdbc-driver:
     parameters:
@@ -476,7 +476,7 @@ commands:
           name: Download JDBC driver JAR << parameters.dest >>
           command: |
             wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
-          no_output_timeout: 10m
+          no_output_timeout: 15m
 
 jobs:
 
@@ -584,7 +584,7 @@ jobs:
             - run:
                 name: Verify Liquibase Migrations
                 command: ./bin/lint-migrations-file.sh
-                no_output_timeout: 10m
+                no_output_timeout: 15m
 
 
 ########################################################################################################################
@@ -661,7 +661,7 @@ jobs:
             - run:
                 name: Run reflection warnings checker
                 command: ./bin/reflection-linter
-                no_output_timeout: 10m
+                no_output_timeout: 15m
 
   test-driver:
     parameters:
@@ -672,7 +672,7 @@ jobs:
         type: string
       timeout:
         type: string
-        default: 10m
+        default: 15m
       before-steps:
         type: steps
         default: []
@@ -691,7 +691,7 @@ jobs:
             - run:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
-                  DRIVERS: h2,<< parameters.driver >>
+                  DRIVERS: << parameters.driver >>
                 command: lein with-profile +ci,+junit,+ee test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
@@ -709,27 +709,27 @@ jobs:
                 name: Run metabuild-common build script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
-                no_output_timeout: 10m
+                no_output_timeout: 15m
             - run:
                 name: Run build-drivers build script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
-                no_output_timeout: 10m
+                no_output_timeout: 15m
             - run:
                 name: Run build-mb build script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
-                no_output_timeout: 10m
+                no_output_timeout: 15m
             - run:
                 name: Run release script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
-                no_output_timeout: 10m
+                no_output_timeout: 15m
             - run:
                 name: Run Liquibase migrations linter tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
-                no_output_timeout: 10m
+                no_output_timeout: 15m
 
 
 ########################################################################################################################
@@ -748,7 +748,7 @@ jobs:
             - run:
                 name: Run yarn to install deps
                 command: yarn;
-                no_output_timeout: 10m
+                no_output_timeout: 15m
             - save_cache:
                 name: Cache frontend dependencies
                 <<: *CacheKeyFrontendDeps
@@ -778,6 +778,8 @@ jobs:
   # OSS and EE uberjars.
   build-uberjar-drivers:
     executor: metabase-ci
+    parameters:
+      <<: *Params
     steps:
       - attach-workspace
       - run-on-change:
@@ -797,9 +799,9 @@ jobs:
                 name: Restore cached drivers uberjars from previous runs
                 <<: *CacheKeyDrivers_WithFallbackKeys
             - run:
-                name: Build drivers if needed for cache key drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-                command: ./bin/build-drivers.sh
-                no_output_timeout: 10m
+                name: Build << parameters.edition >> drivers if needed
+                command: ./bin/build-drivers.sh << parameters.edition >>
+                no_output_timeout: 15m
             - save_cache:
                 name: Cache local Maven installation of metabase-core
                 <<: *CacheKeyMetabaseCore
@@ -839,7 +841,7 @@ jobs:
                 environment:
                   MB_EDITION: << parameters.edition >>
                 command: ./bin/build version frontend
-                no_output_timeout: 10m
+                no_output_timeout: 15m
             - save_cache:
                 name: Cache the built frontend
                 <<: *CacheKeyFrontend
@@ -879,7 +881,7 @@ jobs:
                   INTERACTIVE: "false"
                   MB_EDITION: << parameters.edition >>
                 command: ./bin/build version drivers uberjar
-                no_output_timeout: 10m
+                no_output_timeout: 15m
             - store_artifacts:
                 path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
             - store_artifacts:
@@ -1167,14 +1169,14 @@ workflows:
           requires:
             - be-tests-ee
           driver: redshift
-          timeout: 10m
+          timeout: 15m
 
       - test-driver:
           name: be-tests-snowflake-ee
           requires:
             - be-tests-ee
           driver: snowflake
-          timeout: 110m
+          timeout: 115m
 
       - test-driver:
           name: be-tests-sparksql-ee
@@ -1215,8 +1217,10 @@ workflows:
             - be-deps
 
       - build-uberjar-drivers:
+          name: build-uberjar-drivers-<< matrix.edition >>
           requires:
             - be-deps
+          <<: *Matrix
 
       - build-uberjar-frontend:
           name: build-uberjar-frontend-<< matrix.edition >>
@@ -1227,7 +1231,7 @@ workflows:
       - build-uberjar:
           name: build-uberjar-<< matrix.edition >>
           requires:
-            - build-uberjar-drivers
+            - build-uberjar-drivers-<< matrix.edition >>
             - build-uberjar-frontend-<< matrix.edition >>
           <<: *Matrix
 
@@ -1244,12 +1248,12 @@ workflows:
       - fe-tests-cypress:
           matrix:
             parameters:
-              node: ["1", "2", "3", "4"]
+              node: ["1"]
               edition: ["ee", "oss"]
           name: fe-tests-cypress-<< matrix.node >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          cypress-group: "default"
+          cypress-group: "default-<< matrix.edition >>"
 
       - fe-tests-cypress:
           name: fe-tests-cypress-mongo-4-<< matrix.edition >>

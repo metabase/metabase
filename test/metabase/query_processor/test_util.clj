@@ -111,8 +111,8 @@
     (fk-table-alias-name (data/id :categories) (data/id :venues :category_id)) ;; -> \"CATEGORIES__via__CATEGORY_ID\""
   [table-or-id field-or-id]
   (#'add-implicit-joins/join-alias
-   (db/select-one-field :name Table :id (u/get-id table-or-id))
-   (db/select-one-field :name Field :id (u/get-id field-or-id))))
+   (db/select-one-field :name Table :id (u/the-id table-or-id))
+   (db/select-one-field :name Field :id (u/the-id field-or-id))))
 
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------

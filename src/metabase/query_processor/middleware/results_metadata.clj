@@ -112,8 +112,9 @@
   [final-col-metadata insights-col-metadata]
   ;; the two metadatas will both be in order that matches the column order of the results
   (mapv
-   (fn [{final-base-type :base_type} {our-base-type :base_type, :as insights-col}]
+   (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
+      (select-keys final-col [:name :display_name :base_type :special_type :id :field_ref])
       insights-col
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))

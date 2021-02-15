@@ -4,6 +4,7 @@
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
@@ -369,3 +370,37 @@
   [driver]
   ;; TIMEZONE FIXME — remove this and fix the drivers
   (contains? #{:snowflake :oracle :redshift} driver))
+
+(defn nest-query
+  "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave."
+  [outer-query n-levels]
+  (if-not (pos? n-levels)
+    outer-query
+    (let [nested (case (:type outer-query)
+                   :native
+                   (-> outer-query
+                       (dissoc :native :type)
+                       (assoc :type :query
+                              :query {:source-query (set/rename-keys (:native outer-query) {:query :native})}))
+
+                   :query
+                   (assoc outer-query :query {:source-query (:query outer-query)}))]
+      (recur nested (dec n-levels)))))
+
+(deftest nest-query-test
+  (testing "MBQL"
+    (is (= {:database 1, :type :query, :query {:source-table 2}}
+           {:database 1, :type :query, :query {:source-table 2}}))
+    (is (= {:database 1, :type :query, :query {:source-query {:source-table 2}}}
+           (nest-query {:database 1, :type :query, :query {:source-table 2}} 1)))
+    (is (= {:database 1, :type :query, :query {:source-query {:source-query {:source-table 2}}}}
+           (nest-query {:database 1, :type :query, :query {:source-table 2}} 2)))
+    (is (= {:database 1, :type :query, :query {:source-query {:source-query {:source-table 2}}}}
+           (nest-query {:database 1, :type :query, :query {:source-query {:source-table 2}}} 1))))
+  (testing "native"
+    (is (= {:database 1, :type :native, :native {:query "wow"}}
+           (nest-query {:database 1, :type :native, :native {:query "wow"}} 0)))
+    (is (= {:database 1, :type :query, :query {:source-query {:native "wow"}}}
+           (nest-query {:database 1, :type :native, :native {:query "wow"}} 1)))
+    (is (= {:database 1, :type :query, :query {:source-query {:source-query {:native "wow"}}}}
+           (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))

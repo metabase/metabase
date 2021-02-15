@@ -6,7 +6,7 @@
 
 
   :dependencies
-  [[com.amazon.redshift/redshift-jdbc42-no-awssdk "1.2.45.1069"]]
+  [[com.amazon.redshift/redshift-jdbc42-no-awssdk "1.2.51.1078"]]
 
   :profiles
   {:provided

@@ -22,7 +22,19 @@ import { getParameters } from "metabase/dashboard/selectors";
 @connect((state, props) => {
   const { object, isDash, dashcard, clickBehavior } = props;
   const metadata = getMetadata(state, props);
-  const parameters = getParameters(state, props);
+  let parameters = getParameters(state, props);
+
+  if (props.excludeParametersSources) {
+    // Remove parameters as possible sources.
+    // We still include any that were already in use prior to this code change.
+    const parametersUsedAsSources = Object.values(
+      clickBehavior.parameterMapping || {},
+    )
+      .filter(mapping => getIn(mapping, ["source", "type"]) === "parameter")
+      .map(mapping => mapping.source.id);
+    parameters = parameters.filter(p => parametersUsedAsSources.includes(p.id));
+  }
+
   const [setTargets, unsetTargets] = _.partition(
     getTargetsWithSourceFilters({ isDash, object, metadata }),
     ({ id }) =>

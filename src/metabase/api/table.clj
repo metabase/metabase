@@ -196,7 +196,7 @@
   (and (types/temporal-field? field)
        (not (isa? base_type :type/Time))))
 
-(defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
+(defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
 
@@ -204,13 +204,13 @@
                                        [date-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value
-                                            (isa? semantic_type :type/Coordinate)
+                                            (isa? special_type :type/Coordinate)
                                             (supports-numeric-binning? driver))
                                        [coordinate-default-index coordinate-dimension-indexes]
 
                                        (and min_value max_value
                                             (isa? base_type :type/Number)
-                                            (or (nil? semantic_type) (isa? semantic_type :type/Number))
+                                            (or (nil? special_type) (isa? special_type :type/Number))
                                             (supports-numeric-binning? driver))
                                        [numeric-default-index numeric-dimension-indexes]
 
@@ -276,11 +276,12 @@
           (update :base_type keyword)
           (assoc
            :table_id     (str "card__" card-id)
-           :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-           ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
+           :id           (or (:id col)
+                             [:field-literal (:name col) (or (:base_type col) :type/*)])
+           ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
            ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
            ;; the dimension options
-           :semantic_type (keyword (:semantic_type col)))
+           :special_type (keyword (:special_type col)))
           add-field-dimension-options))))
 
 (defn root-collection-schema-name
@@ -304,14 +305,14 @@
                                                                            database_id
                                                                            (:result_metadata card))))))
 
-(defn- remove-nested-pk-fk-semantic-types
-  "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
+(defn- remove-nested-pk-fk-special-types
+  "This method clears the special_type attribute for PK/FK fields of nested queries. Those fields having a special
   type confuses the frontend and it can really used in the same way"
   [{:keys [fields] :as metadata-response}]
-  (assoc metadata-response :fields (for [{:keys [semantic_type] :as field} fields]
-                                     (if (or (isa? semantic_type :type/PK)
-                                             (isa? semantic_type :type/FK))
-                                       (assoc field :semantic_type nil)
+  (assoc metadata-response :fields (for [{:keys [special_type] :as field} fields]
+                                     (if (or (isa? special_type :type/PK)
+                                             (isa? special_type :type/FK))
+                                       (assoc field :special_type nil)
                                        field))))
 
 (api/defendpoint GET "/card__:id/query_metadata"
@@ -324,7 +325,7 @@
         api/read-check
         (card->virtual-table :include-fields? true)
         (assoc-dimension-options (driver.u/database->driver database_id))
-        remove-nested-pk-fk-semantic-types)))
+        remove-nested-pk-fk-special-types)))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint

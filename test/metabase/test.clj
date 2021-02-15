@@ -6,7 +6,7 @@
   (:require clojure.data
             [clojure.test :refer :all]
             [clojure.tools.macro :as tools.macro]
-            [clojure.walk :as walk]
+            [environ.core :as env]
             [java-time :as t]
             [medley.core :as m]
             [metabase.driver :as driver]
@@ -19,6 +19,7 @@
             [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.data.env :as tx.env]
@@ -46,6 +47,7 @@
   i18n.tu/keep-me
   initialize/keep-me
   mt.tu/keep-me
+  mw.session/keep-me
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
@@ -107,6 +109,9 @@
  [initialize
   initialize-if-needed!]
 
+ [mw.session
+  with-current-user]
+
  [qp
   process-query
   query->native
@@ -118,6 +123,7 @@
   first-row
   format-rows-by
   formatted-rows
+  nest-query
   normal-drivers
   normal-drivers-except
   normal-drivers-with-feature
@@ -160,6 +166,7 @@
   round-all-decimals
   scheduler-current-tasks
   throw-if-called
+  with-column-remappings
   with-discarded-collections-perms-changes
   with-locale
   with-log-level
@@ -240,7 +247,7 @@
 
     * `:result`   ­ final result
     * `:pre`      ­ `query` after preprocessing
-    * `:metadata` ­ `metadata` after post-processing
+    * `:metadata` ­ `metadata` after post-processing. Should be a map e.g. with `:cols`
     * `:post`     ­ `rows` after post-processing transduction"
   ([middleware-fn]
    (test-qp-middleware middleware-fn {}))
@@ -255,13 +262,17 @@
    (test-qp-middleware middleware-fn query metadata rows nil))
 
   ([middleware-fn query metadata rows {:keys [run async?], :as context}]
+   {:pre [((some-fn nil? map?) metadata)]}
    (let [async-qp (qp.reducible/async-qp
                    (qp.reducible/combine-middleware
                     (if (sequential? middleware-fn)
                       middleware-fn
                       [middleware-fn])))
          context  (merge
-                   {:timeout 500
+                   ;; CI is S U P E R  S L O W so give this a longer timeout.
+                   {:timeout (if (env/env :ci)
+                               5000
+                               500)
                     :runf    (fn [query rff context]
                                (try
                                  (when run (run))

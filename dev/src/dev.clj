@@ -1,6 +1,7 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
   (:require [clojure.core.async :as a]
+            [dev.debug-qp :as debug-qp]
             [honeysql.core :as hsql]
             [metabase.api.common :as api-common]
             [metabase.core :as mbc]
@@ -16,7 +17,13 @@
             [metabase.server.handler :as handler]
             [metabase.test :as mt]
             [metabase.test.data.impl :as data.impl]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [potemkin :as p]))
+
+(comment debug-qp/keep-me)
+
+(p/import-vars
+ [debug-qp process-query-debug])
 
 (def initialized?
   (atom nil))

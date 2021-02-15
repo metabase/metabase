@@ -6,6 +6,7 @@ import {
   COLUMN_SPLIT_SETTING,
   COLLAPSED_ROWS_SETTING,
   COLUMN_SORT_ORDER,
+  COLUMN_SHOW_TOTALS,
 } from "metabase/lib/data_grid";
 
 import { TYPE } from "metabase/lib/types";
@@ -151,19 +152,16 @@ describe("data_grid", () => {
       columns,
       rows,
       values,
-      { collapsedRows = [], columnSorts = [] } = {},
+      { collapsedRows = [], columnSorts = [], columnShowTotals = [] } = {},
     ) => {
       const settings = {
         column: column => {
-          const columnSettings = { column };
           const columnIndex = column.field_ref[1];
-          if (columnSorts[columnIndex]) {
-            return {
-              ...columnSettings,
-              [COLUMN_SORT_ORDER]: columnSorts[columnIndex],
-            };
-          }
-          return columnSettings;
+          return {
+            column,
+            [COLUMN_SHOW_TOTALS]: columnShowTotals[columnIndex],
+            [COLUMN_SORT_ORDER]: columnSorts[columnIndex],
+          };
         },
         [COLUMN_SPLIT_SETTING]: _.mapObject(
           { columns, rows, values },
@@ -588,6 +586,29 @@ describe("data_grid", () => {
         expect(getRowSection(0, 0)).toEqual([{ isSubtotal: true, value: "3" }]);
         expect(getRowSection(0, 1)).toEqual([{ isSubtotal: true, value: "7" }]);
       });
+    });
+
+    it("should hide totals based on a column setting", () => {
+      const { leftHeaderItems } = multiLevelPivotForIndexes(
+        data,
+        [],
+        [0, 1],
+        [2],
+        { columnShowTotals: [false, null] },
+      );
+
+      // check that none of the "totals for" values are there
+      expect(getValues(leftHeaderItems)).toEqual([
+        "a",
+        "x",
+        "y",
+        "z",
+        "b",
+        "x",
+        "y",
+        "z",
+        "Grand totals",
+      ]);
     });
 
     it("should return multiple levels of subtotals in body cells", () => {

@@ -164,7 +164,10 @@
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :substring (hsql/raw (str (hformat/to-sql (sql.qp/->honeysql driver arg)) " FROM '" pattern "'"))))
+  (reify
+    hformat/ToSql
+    (to-sql [_]
+      (str "substring(" (hformat/to-sql (sql.qp/->honeysql driver arg)) " FROM " (hformat/to-sql pattern) ")"))))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
@@ -287,8 +290,7 @@
 (def ^:private ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
   {:ssl        true
-   :sslmode    "require"
-   :sslfactory "org.postgresql.ssl.NonValidatingFactory"})
+   :sslmode    "require"})
 
 (def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
@@ -296,19 +298,24 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
   [_ {ssl? :ssl, :as details-map}]
-  (-> details-map
-      (update :port (fn [port]
-                      (if (string? port)
-                        (Integer/parseInt port)
-                        port)))
-      ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-      (dissoc :ssl)
-      (merge (if ssl?
-               ssl-params
-               disable-ssl-params))
-      (set/rename-keys {:dbname :db})
-      db.spec/postgres
-      (sql-jdbc.common/handle-additional-options details-map)))
+  (let [props (-> details-map
+                  (update :port (fn [port]
+                                  (if (string? port)
+                                    (Integer/parseInt port)
+                                    port)))
+                  ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
+                  (dissoc :ssl))
+        ;; this happens via ->> so that the users props will override the ssl-params stuff.
+        ;; if the user has specified a sslmode, it must always take precedence over our default.
+        props (->> props
+                   (merge (if ssl?
+                            ssl-params
+                            disable-ssl-params)))
+        props (-> props
+                  (set/rename-keys {:dbname :db})
+                  db.spec/postgres
+                  (sql-jdbc.common/handle-additional-options details-map))]
+    props))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]

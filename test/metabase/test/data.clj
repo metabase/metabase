@@ -35,17 +35,11 @@
      (There are several variations of this macro; see documentation below for more details.)"
   (:require [clojure.test :as t]
             [colorize.core :as colorize]
-            [medley.core :as m]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field-values :refer [FieldValues]]
             [metabase.query-processor :as qp]
-            [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.impl :as impl]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-            [metabase.util :as u]
-            [toucan.util.test :as tt]))
+            [metabase.util :as u]))
 
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
 
@@ -200,8 +194,8 @@
    (apply impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))
 
 (defmacro dataset
-  "Load and sync a temporary Database defined by `dataset`, make it the current DB (for `metabase.test.data` functions
-  like `id` and `db`), and execute `body`.
+  "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
+  current DB (for `metabase.test.data` functions like `id` and `db`), and execute `body`.
 
   `dataset` can be one of the following:
 
@@ -239,65 +233,3 @@
   {:style/indent 0}
   [& body]
   `(impl/do-with-temp-copy-of-db (fn [] ~@body)))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          Rarely-Used Helper Functions                                          |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn fks-supported?
-  "Does the current driver support foreign keys?"
-  []
-  (contains? (driver.u/features (tx/driver)) :foreign-keys))
-
-(defn binning-supported?
-  "Does the current driver support binning?"
-  []
-  (contains? (driver.u/features (tx/driver)) :binning))
-
-(defn id-field-type  [] (tx/id-field-type (tx/driver)))
-
-;; The functions below are used so infrequently they hardly belong in this namespace.
-
-(defn dataset-field-values
-  "Get all the values for a field in a `dataset-definition`.
-
-    (dataset-field-values \"categories\" \"name\") ; -> [\"African\" \"American\" \"Artisan\" ...]"
-  ([table-name field-name]
-   (dataset-field-values defs/test-data table-name field-name))
-
-  ([dataset-definition table-name field-name]
-   (some
-    (fn [{:keys [field-definitions rows], :as tabledef}]
-      (when (= table-name (:table-name tabledef))
-        (some
-         (fn [[i fielddef]]
-           (when (= field-name (:field-name fielddef))
-             (map #(nth % i) rows)))
-         (m/indexed field-definitions))))
-    (:table-definitions (tx/get-dataset-definition dataset-definition)))))
-
-(def ^:private category-names
-  (delay (vec (dataset-field-values "categories" "name"))))
-
-(defn do-with-venue-category-remapping [remapping-name thunk]
-  (tt/with-temp* [Dimension   [_ {:field_id (id :venues :category_id)
-                                  :name     remapping-name
-                                  :type     :internal}]
-                  FieldValues [_ {:field_id              (id :venues :category_id)
-                                  :values                (range 1 (inc (count @category-names)))
-                                  :human_readable_values @category-names}]]
-    (thunk)))
-
-(defmacro with-venue-category-remapping [remapping-name & body]
-  `(do-with-venue-category-remapping ~remapping-name (fn [] ~@body)))
-
-(defn do-with-venue-category-fk-remapping [remapping-name thunk]
-  (tt/with-temp Dimension [_ {:field_id                (id :venues :category_id)
-                              :name                    remapping-name
-                              :type                    :external
-                              :human_readable_field_id (id :categories :name)}]
-    (thunk)))
-
-(defmacro with-venue-category-fk-remapping [remapping-name & body]
-  `(do-with-venue-category-fk-remapping ~remapping-name (fn [] ~@body)))
