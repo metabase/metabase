@@ -521,6 +521,7 @@
 (defclause <=, field OrderComparible, value-or-field OrderComparible)
 (defclause >=, field OrderComparible, value-or-field OrderComparible)
 
+;; :between is INCLUSIVE just like SQL !!!
 (defclause between field OrderComparible, min OrderComparible, max OrderComparible)
 
 ;; SUGAR CLAUSE: This is automatically written as a pair of `:between` clauses by the `:desugar` middleware.

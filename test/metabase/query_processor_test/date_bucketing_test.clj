@@ -1073,7 +1073,11 @@
                 "legacy reasons. See #9014")
     (is (= (str "SELECT count(*) AS \"count\" "
                 "FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = CAST(now() AS date)")
+                "WHERE ("
+                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(now() AS date) "
+                "AND "
+                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), now()) AS date)"
+                ")")
            (:query
             (qp/query->native
              (mt/mbql-query checkins

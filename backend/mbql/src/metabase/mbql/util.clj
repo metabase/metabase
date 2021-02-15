@@ -505,10 +505,12 @@
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
-  [x]
-  (if (mbql-clause? x)
-    (first x)
-    (class x)))
+  ([x]
+   (if (mbql-clause? x)
+     (first x)
+     (class x)))
+  ([x _]
+   (dispatch-by-clause-name-or-class x)))
 
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."

@@ -161,10 +161,10 @@
           (mt/with-report-timezone-id timezone-id
             (testing "lower-bound and upper-bound util fns"
               (is (= lower
-                     (#'optimize-temporal-filters/lower-bound :day t))
+                     (#'optimize-temporal-filters/temporal-literal-lower-bound :day t))
                   (format "lower bound of day(%s) in the %s timezone should be %s" t timezone-id lower))
               (is (= upper
-                     (#'optimize-temporal-filters/upper-bound :day t))
+                     (#'optimize-temporal-filters/temporal-literal-upper-bound :day t))
                   (format "upper bound of day(%s) in the %s timezone should be %s" t timezone-id upper)))
             (testing "optimize-with-datetime"
               (let [expected [:and
@@ -214,3 +214,100 @@
                                (t/zoned-date-time "2019-10-02T00:00Z[UTC]")]}
            (mt/$ids checkins
              (filter->sql [:between !day.date "2019-09-01" "2019-10-01"]))))))
+
+(deftest optimize-relative-datetimes-test
+  (testing "Should optimize relative-datetime clauses (#11837)"
+    (mt/dataset attempted-murders
+      (testing "last month"
+        (is (= (mt/mbql-query attempts
+                 {:aggregation [[:count]]
+                  :filter      [:and
+                                [:>=
+                                 [:datetime-field $datetime :default]
+                                 [:relative-datetime -1 :month]]
+                                [:<
+                                 [:datetime-field $datetime :default]
+                                 [:relative-datetime 0 :month]]]})
+
+               (optimize-temporal-filters
+                (mt/mbql-query attempts
+                  {:aggregation [[:count]]
+                   :filter      [:=
+                                 [:datetime-field $datetime :month]
+                                 [:relative-datetime -1 :month]]})))))
+      (testing "this month"
+        ;; test the various different ways we might refer to 'now'
+        (doseq [clause [[:relative-datetime 0]
+                        [:relative-datetime :current]
+                        [:relative-datetime 0 :month]]]
+          (testing (format "clause = %s" (pr-str clause))
+            (is (= (mt/mbql-query attempts
+                     {:aggregation [[:count]]
+                      :filter      [:and
+                                    [:>=
+                                     [:datetime-field $datetime :default]
+                                     [:relative-datetime 0 :month]]
+                                    [:<
+                                     [:datetime-field $datetime :default]
+                                     [:relative-datetime 1 :month]]]})
+                   (optimize-temporal-filters
+                    (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :filter      [:=
+                                     [:datetime-field $datetime :month]
+                                     clause]})))))))
+      (testing "next month"
+        (is (= (mt/mbql-query attempts
+                 {:aggregation [[:count]]
+                  :filter      [:and
+                                [:>=
+                                 [:datetime-field $datetime :default]
+                                 [:relative-datetime 1 :month]]
+                                [:<
+                                 [:datetime-field $datetime :default]
+                                 [:relative-datetime 2 :month]]]})
+               (optimize-temporal-filters
+                (mt/mbql-query attempts
+                  {:aggregation [[:count]]
+                   :filter      [:=
+                                 [:datetime-field $datetime :month]
+                                 [:relative-datetime 1 :month]]}))))))))
+
+(deftest optimize-mixed-temporal-values-test
+  (testing "We should be able to optimize mixed usages of `:absolute-datetime` and `:relative-datetime`"
+    (mt/dataset attempted-murders
+      (testing "between month(2021-01-15) and month(now) [inclusive]"
+        ;; i.e. between 2021-01-01T00:00:00 and [first-day-of-next-month]T00:00:00
+        (is (= (mt/mbql-query attempts
+                 {:aggregation [[:count]]
+                  :filter      [:and
+                                [:>=
+                                 [:datetime-field $datetime :default]
+                                 [:absolute-datetime #t "2021-01-01T00:00:00Z" :default]]
+                                [:<
+                                 [:datetime-field $datetime :default]
+                                 [:relative-datetime 1 :month]]]})
+               (optimize-temporal-filters
+                (mt/mbql-query attempts
+                  {:aggregation [[:count]]
+                   :filter      [:between
+                                 [:datetime-field $datetime :month]
+                                 [:absolute-datetime #t "2021-01-15T00:00:00Z" :month]
+                                 [:relative-datetime 0]]}))))))))
+
+(deftest optimize-relative-datetimes-e2e-test
+  (testing "Should optimize relative-datetime clauses (#11837)"
+    (mt/dataset attempted-murders
+      (is (= (str "SELECT count(*) AS \"count\" "
+                  "FROM \"PUBLIC\".\"ATTEMPTS\" "
+                  "WHERE"
+                  " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
+                  " >= parsedatetime(formatdatetime(dateadd('month', CAST(-1 AS long), now()), 'yyyyMM'), 'yyyyMM')"
+                  " AND"
+                  " \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
+                  " < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM'))")
+             (:query
+              (qp/query->native
+               (mt/mbql-query attempts
+                 {:aggregation [[:count]]
+                  :filter      [:time-interval $datetime :last :month]}))))))))
