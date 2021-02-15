@@ -698,4 +698,37 @@ describe("scenarios > question > filter", () => {
       cy.findByText("Showing 1 row");
     });
   });
+
+  it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
+    cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
+    cy.request("POST", "/api/card", {
+      name: "14776",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}/notebook`);
+    });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .as("inputField")
+      .click()
+      .type("su");
+    popover().contains(/Sum of Total/i);
+    cy.get("@inputField")
+      .click()
+      .type("m");
+    popover().contains(/Sum of Total/i);
+  });
 });
