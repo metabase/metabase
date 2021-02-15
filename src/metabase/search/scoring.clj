@@ -140,7 +140,6 @@
   "Returns a pair of [score, result] or nil. The score is a vector of comparable things in priority order. The result
   has `:matched_column` and `matched_text` injected in"
   [query-string result]
-  (println query-string)
   (let [{:keys [score column match] :as hit} (score-with-match query-string result)]
     (and hit
          [[(- score)
