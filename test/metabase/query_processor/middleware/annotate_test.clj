@@ -560,7 +560,7 @@
                 (as-> (:cols result) result
                   (u/key-by :name result)
                   (get result "EAN")
-                  (select-keys result [:name :display_name :base_type :special_type :id :field_ref])))]
+                  (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"
           (let [base-query (qp/query->preprocessed
                             (mt/mbql-query orders
@@ -577,7 +577,7 @@
                              {:name         "EAN"
                               :display_name "Products → Ean"
                               :base_type    :type/Text
-                              :special_type nil
+                              :semantic_type nil
                               :id           %ean
                               :field_ref    [:joined-field "Products" $ean]})
                            (ean-metadata (add-column-info nested-query {}))))))))))))))

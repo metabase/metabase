@@ -134,14 +134,14 @@
                                                          :condition    [:= $category_id &c.categories.id]
                                                          :alias        "c"}]}
                        :source-metadata [{:table_id     $$venues
-                                          :special_type :type/PK
+                                          :semantic_type :type/PK
                                           :name         "ID"
                                           :field_ref    $id
                                           :id           %id
                                           :display_name "ID"
                                           :base_type    :type/BigInteger}
                                          {:table_id     $$categories
-                                          :special_type :type/Name
+                                          :semantic_type :type/Name
                                           :name         "NAME"
                                           :field_ref    field-ref
                                           :id           %categories.name

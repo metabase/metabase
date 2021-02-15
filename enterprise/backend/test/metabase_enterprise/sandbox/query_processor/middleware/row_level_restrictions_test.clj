@@ -166,7 +166,7 @@
                                                              [:=
                                                               $user_id
                                                               [:value 5 {:base_type     :type/Integer
-                                                                         :special_type  :type/FK
+                                                                         :semantic_type :type/FK
                                                                          :database_type "INTEGER"
                                                                          :name          "USER_ID"}]]]
                                               ::row-level-restrictions/gtap?        true}
@@ -177,7 +177,7 @@
                                                 :filter       [:=
                                                                $venues.price
                                                                [:value 1 {:base_type     :type/Integer
-                                                                          :special_type  :type/Category
+                                                                          :semantic_type :type/Category
                                                                           :database_type "INTEGER"
                                                                           :name          "PRICE"}]]
                                                 ::row-level-restrictions/gtap?        true}
@@ -346,9 +346,9 @@
   (if-not (= driver/*driver* :bigquery)
     (f)
     (tu/with-temp-vals-in-db Field (mt/id :checkins :user_id) {:fk_target_field_id (mt/id :users :id)
-                                                               :special_type       "type/FK"}
+                                                               :semantic_type      "type/FK"}
       (tu/with-temp-vals-in-db Field (mt/id :checkins :venue_id) {:fk_target_field_id (mt/id :venues :id)
-                                                                  :special_type       "type/FK"}
+                                                                  :semantic_type      "type/FK"}
         (f)))))
 
 (defmacro ^:private with-bigquery-fks [& body]
@@ -792,7 +792,7 @@
                                 (is (= [:=
                                         [:joined-field "products" [:field-id (mt/id :products :category)]]
                                         [:value "Widget" {:base_type     :type/Text
-                                                          :special_type  (db/select-one-field :special_type Field
+                                                          :semantic_type  (db/select-one-field :semantic_type Field
                                                                            :id (mt/id :products :category))
                                                           :database_type "VARCHAR"
                                                           :name          "CATEGORY"}]]
