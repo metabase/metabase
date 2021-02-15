@@ -4,15 +4,14 @@
   enviornment variables e.g. `MB_DB_TYPE`, `MB_DB_HOST`, etc. `MB_DB_CONNECTION_URI` is used preferentially if both
   are specified.
 
-  The `MB_DB_CONNECTION_URI` is unparsed and passed to the jdbc driver with once exception: if it includes credentials
-  like `username:password@host:port`. In this case we parse this and log. This functionality will be removed at some
-  point so.
+  The `MB_DB_CONNECTION_URI` is unparsed with some small fixes added to it and put in a map `{:connection-uri
+  the-connection}` to be sent through jdbc without parsing. However, if there are inline credentials like
+  `username:password@host:port` we parse this and log. This functionality will be removed at some point.
 
   There are two ways we specify JDBC connection information in Metabase code:
 
-  1. As a 'connection details' map that is meant to be UI-friendly; this is the actual map we save when creating a
-     `Database` object and the one you can go edit from the admin page. For application DB code, this representation is
-     only used in this namespace.
+  1. As a map `{:connection-uri the-connection}`. If we were to just use a string, clojure.java.jdbc still attempts to
+  parse it but doesn't url-decode connection parameters (https://clojure.atlassian.net/browse/JDBC-170). In order to let raw connection strings go through we wrap them in this map.
 
   2. As a `clojure.java.jdbc` connection spec map. This is used internally by lower-level JDBC stuff. We have to
      convert the connections details maps to JDBC specs at some point; Metabase driver code normally handles this.
@@ -112,14 +111,15 @@
   - we allow `postgres:` and must change that to `postgresql:`
   - warn if postgres ssl settings might cause issues
 
-  Return is a map of {:connection string|spec :diags #{info or warnings}}"
+  Return is a map of {:connection {:connection-uri fixed-uri} :diags #{info or warnings}}. This connection is a spec
+  consumable by jdbc without any parsing and passed directly to the driver manager."
   [connection-uri]
   (when connection-uri
-    (reduce (fn [{:keys [connection] :as m} {:keys [pred diag fix]}]
-              (if (pred connection)
-                (-> m (update :connection fix) (update :diags conj diag))
+    (reduce (fn [m {:keys [pred diag fix]}]
+              (if (pred (get-in m [:connection :connection-uri]))
+                (-> m (update-in [:connection :connection-uri] fix) (update :diags conj diag))
                 m))
-            {:connection connection-uri
+            {:connection {:connection-uri connection-uri}
              :diags #{}}
             [{:pred #(not (.startsWith ^String % "jdbc:"))
               :diag :env.info/prepend-jdbc
@@ -182,9 +182,9 @@
     :env.warning/postgres-ssl       (log-postgres-ssl)
     (log/warn (trs "Unknown diagnostic in db connection: {0}" diagnostic))))
 
-(def ^:private connection-string-or-spec
+(def ^:private connection-spec-from-mb-db-connection-uri
   "Uses `:mb-db-connection-uri` and is either:
-  - the jdbc connection string if it does not use inline credentials, or
+  - the jdbc connection string in a map {:connection-uri conn-uri} if it does not use inline credentials, or
   - a db-spec parsed by this code if it does use inline credentials, or
   - nil when this value is not set."
   (delay (when-let [conn-uri (config/config-str :mb-db-connection-uri)]
@@ -192,12 +192,9 @@
              (run! emit-diags! diags)
              connection))))
 
-(defn- connection-string-or-spec->db-type [x]
-  (cond
-    (map? x) (:type x)
-
-    (string? x)
-    (let [[_ subprotocol] (re-find #"^(?:jdbc:)?([^:]+):" x)]
+(defn- connection-spec->db-type [{:keys [connection-uri type] :as _db-spec}]
+  (if connection-uri
+    (let [[_ subprotocol] (re-find #"^(?:jdbc:)?([^:]+):" connection-uri)]
       (try
         (case (keyword subprotocol)
           :postgres   :postgres
@@ -209,16 +206,17 @@
                                     (pr-str subprotocol))
                                " "
                                (trs "Check the value of MB_DB_CONNECTION_URI."))
-                          {:subprotocol subprotocol})))))))
+                          {:subprotocol subprotocol})))))
+    type))
 
-(def ^:private connection-string-db-type
-  (delay (connection-string-or-spec->db-type @connection-string-or-spec)))
+(def ^:private db-type-for-mb-db-connection-uri
+  (delay (connection-spec->db-type @connection-spec-from-mb-db-connection-uri)))
 
 (def db-type
   "Keyword type name of the application DB details specified by environment variables. Matches corresponding driver
   name e.g. `:h2`, `:mysql`, or `:postgres`."
   (delay
-    (or @connection-string-db-type
+    (or @db-type-for-mb-db-connection-uri
         (config/config-kw :mb-db-type))))
 
 (def db-connection-details
@@ -258,7 +256,8 @@
     :postgres (db.spec/postgres (assoc details :db (:dbname details)))))
 
 (def jdbc-spec
-  "`clojure.java.jdbc` spec map for the application DB, using the details map derived from environment variables."
+  "`clojure.java.jdbc` spec map for the application DB, using the details map derived from environment variables. Map is
+  either a traditional db-spec map or a map with a single key {:connection-uri <raw-jdbc-uri>}."
   (delay
-    (or @connection-string-or-spec
+    (or @connection-spec-from-mb-db-connection-uri
         (connection-details->jdbc-spec @db-type @db-connection-details))))

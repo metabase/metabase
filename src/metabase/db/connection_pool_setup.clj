@@ -25,9 +25,9 @@
      {"maxPoolSize" max-pool-size})))
 
 (s/defn ^:private connection-pool-spec :- {:datasource javax.sql.DataSource, s/Keyword s/Any}
-  [jdbc-spec :- (s/cond-pre s/Str su/Map)]
-  (if (string? jdbc-spec)
-    {:datasource (connection-pool/pooled-data-source-from-url jdbc-spec application-db-connection-pool-props)}
+  [jdbc-spec :- su/Map]
+  (if-let [conn-uri (:connection-uri jdbc-spec)]
+    {:datasource (connection-pool/pooled-data-source-from-url conn-uri application-db-connection-pool-props)}
     (connection-pool/connection-pool-spec jdbc-spec application-db-connection-pool-props)))
 
 (defn create-connection-pool!

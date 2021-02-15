@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.db.env :as mdb.env]))
 
-(deftest connection-string-or-spec->db-type-test
+(deftest connection-spec->db-type-test
   (doseq [[subprotocol expected] {"postgres"   :postgres
                                   "postgresql" :postgres
                                   "mysql"      :mysql
@@ -12,14 +12,14 @@
                                   (str protocol ":abc")
                                   (str protocol ":cam@localhost/my_db?password=123456")
                                   (str protocol "://localhost/my_db")]]
-    (testing (pr-str (list 'connection-string-or-spec->db-type url))
+    (testing (pr-str (list 'connection-spec->db-type url))
       (is (= expected
-             (#'mdb.env/connection-string-or-spec->db-type url)))))
+             (#'mdb.env/connection-spec->db-type {:connection-uri url})))))
   (testing "Should throw an Exception for an unsupported subprotocol"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Unsupported application database type: \"sqlserver\""
-         (#'mdb.env/connection-string-or-spec->db-type "jdbc:sqlserver://bad"))))
+         (#'mdb.env/connection-spec->db-type {:connection-uri "jdbc:sqlserver://bad"}))))
   (testing "Finds type from jdbc-spec"
     (let [spec {:password "password",
                 :characterSetResults "UTF8",
@@ -33,18 +33,18 @@
                 :subname "//172.17.0.2:3306/metabase",
                 :useCompression true,
                 :useUnicode true}]
-      (is (= :mysql (#'mdb.env/connection-string-or-spec->db-type spec))))))
+      (is (= :mysql (#'mdb.env/connection-spec->db-type spec))))))
 
 (deftest fixup-connection-string-test
   (let [correct-uri "jdbc:postgresql://localhost:metabase?username=johndoe"]
     (doseq [[input expected-diags expected]
             [["postgres://localhost:metabase?username=johndoe"
               #{:env.info/prepend-jdbc :env.info/change-to-postgresql}
-              correct-uri]
+              {:connection-uri correct-uri}]
              ["jdbc:postgres://localhost:metabase?username=johndoe"
               #{:env.info/change-to-postgresql}
-              correct-uri]
-             [correct-uri #{} correct-uri]
+              {:connection-uri correct-uri}]
+             [correct-uri #{} {:connection-uri correct-uri}]
              [nil nil nil]]]
       (let [{:keys [connection diags]} (#'mdb.env/fixup-connection-string input)]
         (is (= expected connection) input)
@@ -78,8 +78,9 @@
                 :diags #{:env.warning/inline-credentials}}
                (#'mdb.env/connection-from-jdbc-string conn-uri))))))
   (testing "handles credentials in query params"
-    (let [conn-uri "mysql://172.17.0.2:3306/metabase?user=user&password=password"]
-      (is (= {:connection (str "jdbc:" conn-uri)
+    (let [conn-uri "mysql://172.17.0.2:3306/metabase?user=user&password=password"
+          expected {:connection-uri (str "jdbc:" conn-uri)}]
+      (is (= {:connection expected
               :diags #{:env.info/prepend-jdbc}}
              (#'mdb.env/connection-from-jdbc-string conn-uri)))))
   (testing "warns about postgres ssl issue #8908"
@@ -102,7 +103,8 @@
                         "postgresql://172.17.0.2:5432/metabase?user=mb&password=pw&ssl=true"
                         "postgres://172.17.0.2:5432/metabase?user=mb&password=pw&ssl=true"]]
         (let [{:keys [connection diags]} (#'mdb.env/connection-from-jdbc-string conn-uri)]
-          (is (= "jdbc:postgresql://172.17.0.2:5432/metabase?user=mb&password=pw&ssl=true" connection))
+          (is (= {:connection-uri "jdbc:postgresql://172.17.0.2:5432/metabase?user=mb&password=pw&ssl=true"}
+                 connection))
           (is (contains? diags :env.warning/postgres-ssl))))))
   (testing "handles nil"
     (is (nil? (#'mdb.env/connection-from-jdbc-string nil)))))
