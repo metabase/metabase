@@ -974,3 +974,44 @@
                 (testing "with < 0.38.0 source metadata that DOES NOT include  `:field_ref` or `:id`"
                   (test-query (for [col metadata]
                                 (dissoc col :field_ref :id))))))))))))
+
+(deftest support-legacy-filter-clauses-test
+  (testing "We should handle legacy usage of field-literal inside filter clauses"
+    (mt/dataset sample-dataset
+      (testing "against joins (#14809)"
+        (is (schema= {:status   (s/eq :completed)
+                      s/Keyword s/Any}
+                     (mt/run-mbql-query orders
+                       {:source-query {:source-table $$orders
+                                       :joins        [{:fields       :all
+                                                       :source-table $$products
+                                                       :condition    [:= $product_id &Products.products.id]
+                                                       :alias        "Products"}]}
+                        :filter       [:= *CATEGORY/Text "Widget"]}))))
+      (testing "(#14811)"
+        (is (schema= {:status   (s/eq :completed)
+                      s/Keyword s/Any}
+                     (mt/run-mbql-query orders
+                       {:source-query {:source-table $$orders
+                                       :aggregation  [[:sum $product_id->products.price]]
+                                       :breakout     [$product_id->products.category]}
+                        ;; not sure why FE is using `field-literal` here... but it should work anyway.
+                        :filter       [:= *CATEGORY/Text "Widget"]})))))))
+
+(deftest support-legacy-dashboard-parameters-test
+  (testing "We should handle legacy usage of field-literal inside (Dashboard) parameters (#14810)"
+    (mt/dataset sample-dataset
+      (is (schema= {:status   (s/eq :completed)
+                    s/Keyword s/Any}
+                   (qp/process-query
+                    (mt/query orders
+                      {:type       :query
+                       :query      {:source-query {:source-table $$orders
+                                                   :joins        [{:fields       :all
+                                                                   :source-table $$products
+                                                                   :condition    [:= $product_id &Products.products.id]
+                                                                   :alias        "Products"}]}
+                                    :limit        2}
+                       :parameters [{:type   :category
+                                     :target [:dimension [:field-literal "CATEGORY" :type/Text]]
+                                     :value  "Widget"}]})))))))

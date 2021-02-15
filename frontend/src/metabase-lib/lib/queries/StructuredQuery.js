@@ -306,6 +306,7 @@ export default class StructuredQuery extends AtomicQuery {
           column =>
             new Field({
               ...column,
+              // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
               id: ["field-literal", column.name, column.base_type],
               source: "fields",
               // HACK: need to thread the query through to this fake Field
