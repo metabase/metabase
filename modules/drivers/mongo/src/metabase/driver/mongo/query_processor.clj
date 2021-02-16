@@ -20,8 +20,7 @@
             [metabase.util.schema :as su]
             [monger.operators :refer :all]
             [schema.core :as s])
-  (:import metabase.models.field.FieldInstance
-           org.bson.types.ObjectId))
+  (:import org.bson.types.ObjectId))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -73,24 +72,6 @@
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
 
-(defn- log-aggregation-pipeline [form]
-  (when-not i/*disable-qp-logging*
-    (log/tracef "\nMongo aggregation pipeline:\n%s\n"
-                (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
-
-
-;;; # STRUCTURED QUERY PROCESSOR
-
-;;; ## FORMATTING
-
-;; We're not allowed to use field names that contain a period in the Mongo aggregation $group stage.
-;; Not OK:
-;;   {"$group" {"source.username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
-;;
-;; For *nested* Fields, we'll replace the '.' with '___', and restore the original names afterward.
-;; Escaped:
-;;   {"$group" {"source___username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
-
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
   name"
@@ -102,13 +83,16 @@
   {:arglists '([field])}
   mbql.u/dispatch-by-clause-name-or-class)
 
+(defn- field-name-components [field]
+  (concat
+   (when-let [parent-id (:parent_id field)]
+     (field-name-components (qp.store/field parent-id)))
+   [(:name field)]))
+
 (defn field->name
   "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
-  ^String [^FieldInstance field, ^String separator]
-  (if-let [parent-id (:parent_id field)]
-    (str/join separator [(field->name (qp.store/field parent-id) separator)
-                         (:name field)])
-    (:name field)))
+  [field separator]
+  (str/join separator (field-name-components field)))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -117,10 +101,9 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
-
 (defmethod ->lvalue (class Field)
   [field]
-  (field->name field "___"))
+  (field->name field \.))
 
 (defmethod ->rvalue :default
   [x]
@@ -540,28 +523,40 @@
     (catch IllegalArgumentException _
       false)))
 
+(defn- ordered-map-assoc-in [m ks v]
+  (cond
+    (= (count ks) 1)
+    (assoc (ordered-map/ordered-map m) (first ks) v)
+
+    (pos? (count ks))
+    (update (ordered-map/ordered-map m) (first ks) ordered-map-assoc-in (rest ks) v)))
+
+(defn- projection-group-map [fields]
+  (reduce
+   (fn [m field-clause]
+     (assoc-in
+      m
+      (mbql.u/match-one field-clause
+        [:field-id field-id]
+        (str/split (->lvalue field-clause) #"\.")
+
+        [:field-literal field-name _]
+        [field-name])
+      (->rvalue field-clause)))
+   (ordered-map/ordered-map)
+   fields))
+
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
   [projected-fields breakout-fields aggregations]
   (mapcat
    (partial remove nil?)
-   [;; create a totally sweet made-up column called `___group` to store the fields we'd
-    ;; like to group by
-    (when (seq breakout-fields)
-      [{$project (into
-                  (ordered-map/ordered-map "_id"      "$_id"
-                                           "___group" (into
-                                                        (ordered-map/ordered-map)
-                                                        (for [field breakout-fields]
-                                                          [(->lvalue field) (->rvalue field)])))
-                  (comp (map (comp second unwrap-named-ag))
-                        (mapcat (fn [ag-fields]
-                                  (for [ag-field (mbql.u/match ag-fields lvalue?)]
-                                    [(->lvalue ag-field) (->rvalue ag-field)]))))
-                  aggregations)}])
-    ;; Now project onto the __group and the aggregation rvalue
-    (group-and-post-aggregations (when (seq breakout-fields) "$___group") aggregations)
-    [;; Sort by _id (___group)
+   [;; create the $group clause
+    (group-and-post-aggregations
+     (when (seq breakout-fields)
+       (projection-group-map breakout-fields))
+     aggregations)
+    [ ;; Sort by _id (group)
      {$sort {"_id" 1}}
      ;; now project back to the fields we expect
      {$project (into
@@ -659,6 +654,11 @@
     (when (and (= (last &parents) :source-query)
                (not (contains? (set &parents) :joins)))
       (:collection &match))))
+
+(defn- log-aggregation-pipeline [form]
+  (when-not i/*disable-qp-logging*
+    (log/tracef "\nMongo aggregation pipeline:\n%s\n"
+                (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
 (defn mbql->native
   "Process and run an MBQL query."
