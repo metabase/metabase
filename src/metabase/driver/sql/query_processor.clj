@@ -663,7 +663,7 @@
                     #{:joined-field :field-id :field-literal} &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
-    [:or (into [op] (mapv (partial ->honeysql driver)) args)
+    [:or (into [op] (map (partial ->honeysql driver)) args)
      [:= (->honeysql driver field-arg) nil]]))
 
 (defmethod ->honeysql [:sql :!=]
