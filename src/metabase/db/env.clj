@@ -19,10 +19,12 @@
   using this namespace directly."
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [metabase.config :as config]
             [metabase.db.spec :as db.spec]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [trs]]
+            [ring.util.codec :as codec]))
 
 (defn- get-db-file
   "Takes a filename and converts it to H2-compatible filename."
@@ -50,41 +52,51 @@
      (let [db-file-name (config/config-str :mb-db-file)]
        (get-db-file db-file-name)))))
 
-(defn- format-connection-uri
-  "Prepends \"jdbc:\" to the connection-uri string if needed."
-  [connection-uri]
-  (if-let [uri connection-uri]
-    (if (re-find #"^jdbc:" uri)
-      uri
-      (str "jdbc:" uri))))
+(def ^:private jdbc-connection-regex
+  #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
 
-(def ^:private connection-string
-  (delay (format-connection-uri (config/config-str :mb-db-connection-uri))))
+(defn- parse-connection-string
+  "Parse a DB connection URI like
+  `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and
+  return a broken-out map."
+  [uri]
+  (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
+    (u/prog1 (merge {:type     (case (keyword protocol)
+                                 :postgres   :postgres
+                                 :postgresql :postgres
+                                 :mysql      :mysql
+                                 :h2         :h2)}
 
-(defn- connection-string->db-type [s]
-  (when s
-    (let [[_ subprotocol] (re-find #"^(?:jdbc:)?([^:]+):" s)]
-      (try
-        (case (keyword subprotocol)
-          :postgres   :postgres
-          :postgresql :postgres
-          :mysql      :mysql
-          :h2         :h2)
-        (catch java.lang.IllegalArgumentException e
-          (throw (ex-info (str (trs "Unsupported application database type: {0} is not currently supported."
-                                    (pr-str subprotocol))
-                               " "
-                               (trs "Check the value of MB_DB_CONNECTION_URI."))
-                          {:subprotocol subprotocol})))))))
+                    (case (keyword protocol)
+                      :h2 {:db db}
+                      {:user     user
+                       :password pass
+                       :host     host
+                       :port     port
+                       :dbname   db})
+                    (some-> query
+                            codec/form-decode
+                            walk/keywordize-keys))
+      ;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let
+      ;; them know about that to make their lives a little easier. See https://github.com/metabase/metabase/issues/8908
+      ;; for more details.
+      (when (and (= (:type <>) :postgres)
+                 (= (:ssl <>) "true")
+                 (not (:sslmode <>)))
+        (log/warn (trs "Warning: Postgres connection string with `ssl=true` detected.")
+                  (trs "You may need to add `?sslmode=require` to your application DB connection string.")
+                  (trs "If Metabase fails to launch, please add it and try again.")
+                  (trs "See https://github.com/metabase/metabase/issues/8908 for more details."))))))
 
-(def ^:private connection-string-db-type
-  (delay (connection-string->db-type @connection-string)))
+(def ^:private connection-string-details
+  (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
+           (parse-connection-string uri))))
 
 (def db-type
   "Keyword type name of the application DB details specified by environment variables. Matches corresponding driver
   name e.g. `:h2`, `:mysql`, or `:postgres`."
   (delay
-    (or @connection-string-db-type
+    (or (:type @connection-string-details)
         (config/config-kw :mb-db-type))))
 
 (def db-connection-details
@@ -126,5 +138,6 @@
 (def jdbc-spec
   "`clojure.java.jdbc` spec map for the application DB, using the details map derived from environment variables."
   (delay
-    (or @connection-string
+    (or (when-let [details @connection-string-details]
+          (connection-details->jdbc-spec @db-type details))
         (connection-details->jdbc-spec @db-type @db-connection-details))))
