@@ -20,5 +20,5 @@
         (test* {:subprotocol "h2"
                 :subname     (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))
                 :classname   "org.h2.Driver"}))
-      (testing "from a connection URL"
-        (test* (format "jdbc:h2:mem:%s;DB_CLOSE_DELAY=10" (mt/random-name)))))))
+      (testing "from a connection URL spec"
+        (test* {:connection-uri (format "jdbc:h2:mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))})))))
