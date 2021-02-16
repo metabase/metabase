@@ -359,7 +359,8 @@
                   :limit        3})))))))
 
 (deftest fk-field-and-duplicate-names-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
+  ;; Redshift hangs on sample-dataset -- See #14784
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions :foreign-keys) :redshift)
     (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
       (mt/dataset sample-dataset
         (let [results (mt/run-mbql-query orders
