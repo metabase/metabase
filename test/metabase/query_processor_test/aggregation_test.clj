@@ -263,7 +263,16 @@
       (is (= [[5050 203]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
-                 {:aggregation [[:sum $id] [:sum $price]]})))))))
+                                  {:aggregation [[:sum $id] [:sum $price]]})))))))
+
+(deftest multiple-distinct-aggregations-test
+  (testing "Multiple `:distinct` aggregations should work correctly (#13097)"
+    (mt/test-drivers (mt/normal-drivers)
+      (is (= [[100 4]]
+             (mt/formatted-rows [int int]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:distinct $name]
+                                [:distinct $price]]})))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !

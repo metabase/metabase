@@ -136,3 +136,20 @@
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]})))))))))
+
+(deftest multiple-distinct-count-test
+  (mt/test-driver :mongo
+    (testing "Should generate correct queries for multiple `:distinct` count aggregations (#13097)"
+      (is (= {:projections ["count" "count_2"]
+              :query
+              [{"$group" {"_id" nil, "count" {"$addToSet" "$name"}, "count_2" {"$addToSet" "$price"}}}
+               {"$sort" {"_id" 1}}
+               {"$project" {"_id" false, "count" {"$size" "$count"}, "count_2" {"$size" "$count_2"}}}
+               {"$limit" 5}],
+              :collection  "venues"
+              :mbql?       true}
+             (qp/query->native
+              (mt/mbql-query venues
+                {:aggregation [[:distinct $name]
+                               [:distinct $price]]
+                 :limit       5})))))))

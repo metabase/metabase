@@ -480,10 +480,11 @@
   (concat
    (for [field breakout-fields]
      [(->lvalue field) (format "$_id.%s" (->lvalue field))])
-   (for [ag aggregations]
-     [(annotate/aggregation-name ag) (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
-                                       {$size "$count"} ; HACK
-                                       true)])))
+   (for [ag aggregations
+         :let [ag-name (annotate/aggregation-name ag)]]
+     [ag-name (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
+                {$size (str \$ ag-name)}
+                true)])))
 
 (defmulti ^:private expand-aggregation (comp first unwrap-named-ag))
 
