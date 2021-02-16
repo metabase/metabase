@@ -275,7 +275,8 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("11"); // Sum of orders for user with ID #1
     });
 
-    it.skip("SB question with `case` CC should substitute the `else` argument's table (metabase-enterprise#548)", () => {
+    // Note: This issue was ported from EE repo - it was previously known as (metabase-enterprise#548)
+    it("SB question with `case` CC should substitute the `else` argument's table (metabase#14859)", () => {
       const QUESTION_NAME = "EE_548";
       const CC_NAME = "CC_548"; // Custom column
 
@@ -337,7 +338,7 @@ describeWithToken("formatting > sandboxes", () => {
           expect(xhr.response.body.error).not.to.exist;
         });
 
-        cy.findByText(CC_NAME);
+        cy.contains(CC_NAME);
       });
     });
 
