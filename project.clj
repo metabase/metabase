@@ -222,7 +222,8 @@
     ["-Dlogfile.path=target/log"]
 
     :repl-options
-    {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
+    {:init-ns user ; starting in the user namespace is a lot faster than metabase.core since it has less deps
+     :timeout 180000}}
 
    ;; output test results in JUnit XML format
    :junit
@@ -270,7 +271,7 @@
      :repl-options
      {:init    (do (require 'metabase.core)
                    (metabase.core/-main))
-      :timeout 60000}}]
+      :timeout 180000}}]
 
    ;; DISABLED FOR NOW SINCE IT'S BROKEN -- SEE #12181
    ;; start the dev HTTP server with 'lein ring server'
