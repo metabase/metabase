@@ -245,7 +245,7 @@
    file (stored in source control, called 'tiny-db', with a single table called 'my_tbl' and a GUEST user with
    password 'guest'); it will then use an SSH tunnel over localhost to connect to this H2 server's TCP port to execute
    native queries against that table."
-  (mt/test-driver :h2
+  (mt/with-driver :h2
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [h2-port   (+ 49152 (rand-int (- 65535 49152))) ; https://stackoverflow.com/a/2675399
             server    (init-h2-tcp-server h2-port)
