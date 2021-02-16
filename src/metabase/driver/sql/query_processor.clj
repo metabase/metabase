@@ -229,28 +229,28 @@
   (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
 
 (defn semantic-type->unix-timestamp-unit
-  "Translates types like `:type/UNIXTimestampSeconds` to the corresponding unit of time to use in
-  `unix-timestamp->honeysql`.  Throws an AssertionError if the argument does not descend from `:type/UNIXTimestamp`
+  "Translates coercion types like `:Coercion/UNIXSeconds->DateTime` to the corresponding unit of time to use in
+  `unix-timestamp->honeysql`.  Throws an AssertionError if the argument does not descend from `:UNIXTime->Temporal`
   and an exception if the type does not have an associated unit."
-  [semantic-type]
-  (assert (isa? semantic-type :type/UNIXTimestamp) "Semantic type must be a UNIXTimestamp")
-  (or (get {:type/UNIXTimestampMicroseconds :microseconds
-            :type/UNIXTimestampMilliseconds :milliseconds
-            :type/UNIXTimestampSeconds      :seconds}
-           semantic-type)
-      (throw (Exception. (tru "No magnitude known for {0}" semantic-type)))))
+  [coercion-type]
+  (assert (isa? coercion-type :Coercion/UNIXTime->Temporal) "Semantic type must be a UNIXTimestamp")
+  (or (get {:Coercion/UNIXMicroSeconds->DateTime :microseconds
+            :Coercion/UNIXMilliSeconds->DateTime :milliseconds
+            :Coercion/UNIXSeconds->DateTime      :seconds}
+           coercion-type)
+      (throw (Exception. (tru "No magnitude known for {0}" coercion-type)))))
 
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
   (match [(:base_type field) (:coercion_strategy field)]
-    [(:isa? :type/Number)   (:isa? :Coercion/UNIXTime->Date)]
+    [(:isa? :type/Number)   (:isa? :Coercion/UNIXTime->Temporal)]
     (unix-timestamp->honeysql driver
                               (semantic-type->unix-timestamp-unit (:coercion_strategy field))
                               field-identifier)
 
-    [:type/Text             (:isa? :Coercion/String->Date)  ]
-    (cast-temporal-string driver (:semantic_type field) field-identifier)
+    [:type/Text             (:isa? :Coercion/String->Temporal)  ]
+    (cast-temporal-string driver (:coercion_strategy field) field-identifier)
 
     :else field-identifier))
 

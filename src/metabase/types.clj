@@ -208,17 +208,17 @@
 (derive :type/Boolean :type/Category)
 (derive :type/Enum :type/Category)
 
-(derive :Coercion/TemporalString->Date :Coercion/*)
-(derive :Coercion/ISO8601->Date :Coercion/TemporalString->Date)
-(derive :Coercion/ISO8601DateTime->Date :Coercion/ISO8601->Date)
-(derive :Coercion/ISO8601Time->Date :Coercion/ISO8601->Date)
-(derive :Coercion/ISO8601Date->Date :Coercion/ISO8601->Date)
+(derive :Coercion/String->Temporal :Coercion/*)
+(derive :Coercion/ISO8601->Temporal :Coercion/String->Temporal)
+(derive :Coercion/ISO8601->DateTime :Coercion/ISO8601->Temporal)
+(derive :Coercion/ISO8601->Time :Coercion/ISO8601->Temporal)
+(derive :Coercion/ISO8601->Date :Coercion/ISO8601->Temporal)
 
-(derive :Coercion/Number->Date :Coercion/*)
-(derive :Coercion/UNIXTime->Date :Coercion/Number->Date)
-(derive :Coercion/UNIXSeconds->DateTime :Coercion/UNIXTime->Date)
-(derive :Coercion/UNIXMilliSeconds->DateTime :Coercion/UNIXTime->Date)
-(derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Date)
+(derive :Coercion/Number->Temporal :Coercion/*)
+(derive :Coercion/UNIXTime->Temporal :Coercion/Number->Temporal)
+(derive :Coercion/UNIXSeconds->DateTime :Coercion/UNIXTime->Temporal)
+(derive :Coercion/UNIXMilliSeconds->DateTime :Coercion/UNIXTime->Temporal)
+(derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Temporal)
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 

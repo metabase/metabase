@@ -7978,9 +7978,9 @@ databaseChangeLog:
                                          WHEN 'type/ISO8601DateString'     THEN 'type/Date'
                                        END),
                   coercion_strategy = (CASE semantic_type
-                                        WHEN 'type/ISO8601DateTimeString' THEN 'Coercion/ISO8601DateTime->Date'
-                                        WHEN 'type/ISO8601TimeString'     THEN 'Coercion/ISO8601Time->Date'
-                                        WHEN 'type/ISO8601DateString'     THEN 'Coercion/ISO8601Date->Date'
+                                        WHEN 'type/ISO8601DateTimeString' THEN 'Coercion/ISO8601->DateTime'
+                                        WHEN 'type/ISO8601TimeString'     THEN 'Coercion/ISO8601->Time'
+                                        WHEN 'type/ISO8601DateString'     THEN 'Coercion/ISO8601->Date'
                                        END)
               WHERE semantic_type IN ('type/ISO8601DateTimeString',
                                       'type/ISO8601TimeString',

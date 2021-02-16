@@ -194,7 +194,7 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
 
-(defmethod sql.qp/cast-temporal-string [:sqlserver :type/ISO8601DateTimeString]
+(defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
   (hx/->datetime expr))
 

@@ -216,15 +216,15 @@
   [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
 
-(defmethod sql.qp/cast-temporal-string [:sqlite :type/ISO8601DateTimeString]
+(defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
   (->datetime expr))
 
-(defmethod sql.qp/cast-temporal-string [:sqlite :type/ISO8601DateString]
+(defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->Date]
   [_driver _semantic_type expr]
   (->date expr))
 
-(defmethod sql.qp/cast-temporal-string [:sqlite :type/ISO8601TimeString]
+(defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
   (->time expr))
 
