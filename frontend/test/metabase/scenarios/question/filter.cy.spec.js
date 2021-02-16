@@ -9,7 +9,14 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+} = SAMPLE_DATASET;
 
 describe("scenarios > question > filter", () => {
   beforeEach(() => {
@@ -730,5 +737,31 @@ describe("scenarios > question > filter", () => {
       .click()
       .type("m");
     popover().contains(/Sum of Total/i);
+  });
+
+  it("should correctly filter custom column by 'Not equal to' (metabase#14843)", () => {
+    const CC_NAME = "City Length";
+
+    cy.server();
+    cy.route("POST", "/api/card/*/query").as("cardQuery");
+
+    cy.request("POST", "/api/card", {
+      name: "14843",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": PEOPLE_ID,
+          expressions: { [CC_NAME]: ["length", ["field-id", PEOPLE.CITY]] },
+          filter: ["!=", ["expression", CC_NAME], 3],
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+    cy.wait("@cardQuery");
+    cy.findByText("Rye").should("not.exist");
   });
 });
