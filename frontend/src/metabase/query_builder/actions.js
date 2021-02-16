@@ -479,6 +479,7 @@ export const initializeQB = (location, params) => {
     let question = card && new Question(card, getMetadata(getState()));
     if (question && question.isSaved()) {
       // loading a saved question prevents auto-viz selection
+      // TODO - curious about this? why do we do this again?
       question = question.lockDisplay();
     }
 

@@ -5,7 +5,8 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 export default function QuestionDataSelector({ query, triggerElement }) {
   return (
     <DatabaseSchemaAndTableDataSelector
-      databaseQuery={{ saved: true }}
+      // Set this to false for now so we use our own trigger and component instead
+      databaseQuery={{ saved: false }}
       selectedDatabaseId={query.databaseId()}
       selectedTableId={query.tableId()}
       setSourceTableFn={tableId =>
@@ -16,6 +17,7 @@ export default function QuestionDataSelector({ query, triggerElement }) {
       }
       triggerElement={triggerElement}
       isOpen
+      onSwitchToSavedQuestions={() => alert("clicked saved q")}
     />
   );
 }

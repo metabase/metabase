@@ -113,10 +113,11 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
       }) ||
       [],
     hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { include: "tables", saved: true },
+      entityQuery: { include: "tables", saved: false },
     }),
     hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { saved: true },
+      // what happens if we toggle this off
+      entityQuery: { saved: false },
     }),
     hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
       entityQuery: { include: "tables" },
@@ -622,7 +623,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps } = this.props;
+    const { combineDatabaseSchemaSteps, onSwitchToSavedQuestions } = this.props;
     const props = {
       ...this.state,
 
@@ -635,6 +636,7 @@ export class UnconnectedDataSelector extends Component {
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
+      onSwitchToSavedQuestions,
     };
 
     switch (this.state.activeStep) {
@@ -756,6 +758,7 @@ const DatabaseSchemaPicker = ({
   onChangeDatabase,
   hasNextStep,
   isLoading,
+  onSwitchToSavedQuestions,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
@@ -770,6 +773,7 @@ const DatabaseSchemaPicker = ({
             name: schema.displayName(),
           }))
         : [],
+    // TODO - for reference this is where the current option gets its specific styling
     className: database.is_saved_questions ? "bg-light" : null,
     icon: database.is_saved_questions ? "all" : "database",
     loading:
@@ -794,33 +798,47 @@ const DatabaseSchemaPicker = ({
   }
 
   return (
-    <AccordionList
-      id="DatabaseSchemaPicker"
-      key="databaseSchemaPicker"
-      className="text-brand"
-      sections={sections}
-      onChange={item => onChangeSchema(item.schema)}
-      onChangeSection={(section, sectionIndex) => {
-        if (
-          selectedDatabase &&
-          selectedDatabase.id === databases[sectionIndex].id
-        ) {
-          // You can't change to the current database. If you click on that,
-          // still return "true" to let the AccordionList collapse that section.
+    <span>
+      <AccordionList
+        id="DatabaseSchemaPicker"
+        key="databaseSchemaPicker"
+        className="text-brand"
+        sections={sections}
+        onChange={item => {
+          console.log(item);
+          onChangeSchema(item.schema);
+        }}
+        onChangeSection={(section, sectionIndex) => {
+          if (
+            selectedDatabase &&
+            selectedDatabase.id === databases[sectionIndex].id
+          ) {
+            // You can't change to the current database. If you click on that,
+            // still return "true" to let the AccordionList collapse that section.
+            console.log(section);
+            return true;
+          }
+          console.log(section);
+          onChangeDatabase(databases[sectionIndex]);
           return true;
-        }
-        onChangeDatabase(databases[sectionIndex]);
-        return true;
-      }}
-      itemIsSelected={schema => schema === selectedSchema}
-      renderSectionIcon={item => (
-        <Icon className="Icon text-default" name={item.icon} size={18} />
-      )}
-      renderItemIcon={() => <Icon name="folder" size={16} />}
-      initiallyOpenSection={openSection}
-      alwaysTogglable={true}
-      showItemArrows={hasNextStep}
-    />
+        }}
+        itemIsSelected={schema => schema === selectedSchema}
+        renderSectionIcon={item => (
+          <Icon className="Icon text-default" name={item.icon} size={18} />
+        )}
+        renderItemIcon={() => <Icon name="folder" size={16} />}
+        initiallyOpenSection={openSection}
+        alwaysTogglable={true}
+        showItemArrows={hasNextStep}
+      />
+      <div
+        className="List-section bg-light"
+        onClick={() => onSwitchToSavedQuestions()}
+      >
+        <Icon name="all" />
+        {t`Saved Questions`}
+      </div>
+    </span>
   );
 };
 
@@ -844,6 +862,7 @@ const TablePicker = ({
   }
 
   const isSavedQuestionList = selectedDatabase.is_saved_questions;
+
   const header = (
     <div className="flex flex-wrap align-center">
       <span
@@ -898,6 +917,7 @@ const TablePicker = ({
           showItemArrows={hasNextStep}
         />
         {isSavedQuestionList && (
+          // TODO - we should remove this once we convert over to the new widget
           <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
             <ExternalLink
