@@ -90,7 +90,7 @@
                 (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
             (let [new-value (some-> new-value normalize-site-url)
-                  https?    (some-> new-value (str/starts-with?  "https:" ))]
+                  https?    (some-> new-value (str/starts-with?  "https:"))]
               ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
               (when-not https?
                 (redirect-all-requests-to-https false))
@@ -395,3 +395,9 @@
   :visibility :public
   :type       :integer
   :default    180)
+
+(defsetting redshift-fetch-size
+  (deferred-tru "Controls the fetch size used for Redshift queries (in PreparedStatement), via defaultRowFetchSize.")
+  :visibility :public
+  :type       :integer
+  :default    5000)

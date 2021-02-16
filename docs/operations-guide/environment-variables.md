@@ -814,6 +814,14 @@ Since: 0.36.0
 
 Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS. Related [MB_SITE_URL](#mb_site_url)
 
+#### `MB_REDSHIFT_FETCH_SIZE`
+
+Type: integer<br>
+Default: `5000`
+
+Controls the fetch size used for Redshift queries (in `PreparedStatement`), via the `defaultRowFetchSize` JDBC URL
+parameter.
+
 #### `MB_REPORT_TIMEZONE`
 
 Type: string<br>
