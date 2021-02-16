@@ -83,11 +83,13 @@ export default class Popover extends Component {
   componentDidMount() {
     this._updateTetherOptions();
     this._updateMaxHeight();
+    this._updateContainerClass();
   }
 
   componentDidUpdate() {
     this._updateTetherOptions();
     this._updateMaxHeight();
+    this._updateContainerClass();
   }
 
   _updateMaxHeight() {
@@ -96,6 +98,14 @@ export default class Popover extends Component {
       this.setState({
         maxHeight,
       });
+    }
+  }
+
+  _updateContainerClass() {
+    if (this.props.isOpen) {
+      this._popoverElement.classList.add("PopoverContainer--open");
+    } else {
+      this._popoverElement.classList.remove("PopoverContainer--open");
     }
   }
 
@@ -116,7 +126,6 @@ export default class Popover extends Component {
       hasBackground,
       autoWidth,
       hasArrow,
-      isOpen,
       className,
       style,
       children,
@@ -136,7 +145,6 @@ export default class Popover extends Component {
             "PopoverBody--withBackground": hasBackground,
             "PopoverBody--withArrow": hasArrow && hasBackground,
             "PopoverBody--autoWidth": autoWidth,
-            "PopoverContainer--open": isOpen,
           },
           // TODO kdoh 10/16/2017 we should eventually remove this
           className,
