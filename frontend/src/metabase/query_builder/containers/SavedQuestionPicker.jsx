@@ -1,7 +1,17 @@
 import React from "react";
 import Icon from "metabase/components/Icon";
 
-export default function SavedQuestionPicker({ onBack, query }) {
+import Collection from "metabase/entities/collections";
+import CollectionsList from "metabase/collections/components/CollectionsList";
+
+import {
+  nonPersonalCollection,
+  currentUserPersonalCollections,
+  getParentPath,
+} from "metabase/collections/utils";
+
+function SavedQuestionPicker({ onBack, query, collections }) {
+  console.log(collections);
   return (
     <div style={{ width: 400 }}>
       <div>
@@ -13,7 +23,15 @@ export default function SavedQuestionPicker({ onBack, query }) {
           Back
         </span>
       </div>
-      Saved questions go here
+      <CollectionsList
+        openCollections={[]}
+        collections={collections}
+        filter={nonPersonalCollection}
+      />
     </div>
   );
 }
+
+export default Collection.loadList({
+  query: () => ({ tree: true }),
+})(SavedQuestionPicker);
