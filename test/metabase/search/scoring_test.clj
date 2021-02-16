@@ -113,3 +113,23 @@
       (let [sorted-items (map (fn [i] [[1 2 3 i] (str "item " i)]) (range (+ 10 search-config/max-filtered-results)))]
         (is (= (drop 10 sorted-items)
                (transduce xf search/accumulate-top-results (shuffle sorted-items))))))))
+
+(deftest match-context-test
+  (let [context  #'search/match-context
+        match    (fn [text] {:text text :is_match true})
+        no-match (fn [text] {:text text :is_match false})]
+    (testing "it groups matches together"
+      (is (=
+           [(no-match "this is")
+            (match "rasta toucan's")
+            (no-match "collection of")
+            (match "toucan")
+            (no-match "things")]
+           (context
+               ["rasta" "toucan"]
+               ["this" "is" "rasta" "toucan's" "collection" "of" "toucan" "things"]))))
+    (testing "it handles no matches"
+      (is (= [(no-match "aviary stats")]
+             (context
+                 ["rasta" "toucan"]
+                 ["aviary" "stats"]))))))
