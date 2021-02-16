@@ -13,7 +13,9 @@
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
+            [metabase.util.debugging-test :as dbg]
             [metabase.util.i18n :refer [trs tru]]
+            [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
   (:import [java.net InetAddress InetSocketAddress Socket]
@@ -890,3 +892,9 @@
       (if (pred# x#)
         x#
         (or-with pred# ~@more)))))
+
+(comment
+  dbg/keep-me)
+
+(p/import-vars
+ [dbg dbg-prn])

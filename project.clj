@@ -366,7 +366,7 @@
                            #_:unused-locals]
       :exclude-linters    [    ; Turn this off temporarily until we finish removing self-deprecated functions & macros
                            :deprecations
-                           ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
+                           ;; this has a fit in libs that use Potemkin `import-vars` such as `java-time`
                            :implicit-dependencies
                            ;; too many false positives for now
                            :unused-ret-vals]}}]
