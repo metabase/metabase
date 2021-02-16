@@ -808,7 +808,16 @@
 (deftest group-by-quarter-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[2 200]]
-           (sad-toucan-incidents-with-bucketing :quarter-of-year :pacific)))))
+           (sad-toucan-incidents-with-bucketing :quarter-of-year :pacific)))
+
+    (is (= [[1 200]
+            [2 284]
+            [3 278]
+            [4 238]]
+           (mt/formatted-rows [int int]
+             (mt/run-mbql-query checkins
+               {:aggregation [[:count]]
+                :breakout    [[:datetime-field $date :quarter-of-year]]}))))))
 
 (deftest group-by-year-test
   (mt/test-drivers (mt/normal-drivers)
@@ -821,7 +830,15 @@
                :else
                "2015-01-01T00:00:00Z")
              200]]
-           (sad-toucan-incidents-with-bucketing :year :pacific)))))
+           (sad-toucan-incidents-with-bucketing :year :pacific)))
+
+    (is (= [["2013-01-01T00:00:00Z" 235]
+            ["2014-01-01T00:00:00Z" 498]
+            ["2015-01-01T00:00:00Z" 267]]
+           (mt/formatted-rows [str int]
+             (mt/run-mbql-query checkins
+               {:aggregation [[:count]]
+                :breakout    [[:datetime-field $date :year]]}))))))
 
 ;; RELATIVE DATES
 (p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds]
@@ -880,12 +897,13 @@
             (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
             (db/delete! Database :id (mt/id))
             (apply count-of-grouping dataset field-grouping relative-datetime-args))
-          (-> (mt/run-mbql-query checkins
-                {:aggregation [[:count]]
-                 :filter      [:=
-                               [:datetime-field $timestamp field-grouping]
-                               (cons :relative-datetime relative-datetime-args)]})
-              mt/first-row first int)))))
+          (let [results (mt/run-mbql-query checkins
+                          {:aggregation [[:count]]
+                           :filter      [:=
+                                         [:datetime-field $timestamp field-grouping]
+                                         (cons :relative-datetime relative-datetime-args)]})]
+            (or (some-> results mt/first-row first int)
+                results))))))
 
 ;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
 ;;        are ran and loading data into these DBs is mind-bogglingly slow.
@@ -893,6 +911,10 @@
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
+(defn- x []
+  (mt/with-driver :mongo
+    (count-of-grouping checkins:4-per-minute :minute [-1 :minute])))
+
 (deftest count-of-grouping-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "4 checkins per minute dataset"
@@ -1020,16 +1042,16 @@
 
 (def ^:private addition-unit-filtering-vals
   [[3        :day             "2014-03-03"]
-   [135      :day-of-week     1]
-   [36       :day-of-month    1]
-   [9        :day-of-year     214]
-   [11       :week            "2014-03-03"]
-   [7        :week-of-year    2]
-   [48       :month           "2014-03"]
-   [38       :month-of-year   1]
-   [107      :quarter         "2014-01"]
-   [200      :quarter-of-year 1]
-   [498      :year            "2014"]])
+   #_[135      :day-of-week     1]
+   #_[36       :day-of-month    1]
+   #_[9        :day-of-year     214]
+   #_[11       :week            "2014-03-03"]
+   #_[7        :week-of-year    2]
+   #_[48       :month           "2014-03"]
+   #_[38       :month-of-year   1]
+   #_[107      :quarter         "2014-01"]
+   #_[200      :quarter-of-year 1]
+   #_[498      :year            "2014"]])
 
 (defn- count-of-checkins [unit filter-value]
   (ffirst
