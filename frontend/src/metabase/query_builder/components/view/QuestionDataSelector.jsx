@@ -3,7 +3,8 @@ import React from "react";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+
+import SavedQuestionPicker from "metabase/query_builder/containers/SavedQuestionPicker";
 
 export default class QuestionDataSelector extends React.Component {
   state = {
@@ -13,18 +14,10 @@ export default class QuestionDataSelector extends React.Component {
     const { query, triggerElement } = this.props;
     return this.state.isShowingSavedQuestions ? (
       <PopoverWithTrigger triggerElement={triggerElement} isOpen>
-        <div style={{ width: 400 }}>
-          <div>
-            <span
-              onClick={() => this.setState({ isShowingSavedQuestions: false })}
-              className="text-brand-hover flex align-center"
-            >
-              <Icon name="chevronleft" />
-              Back
-            </span>
-          </div>
-          Saved questions go here
-        </div>
+        <SavedQuestionPicker
+          onBack={() => this.setState({ isShowingSavedQuestions: false })}
+          query={query}
+        />
       </PopoverWithTrigger>
     ) : (
       <DatabaseSchemaAndTableDataSelector
