@@ -448,7 +448,7 @@
 
 (defmethod ->honeysql [:sql :coalesce]
   [driver [_ & args]]
-  (apply hsql/call :coalesce (map (partial ->honeysql driver) args)))
+  (apply hsql/call :coalesce (mapv (partial ->honeysql driver) args)))
 
 (defmethod ->honeysql [:sql :replace]
   [driver [_ arg pattern replacement]]
@@ -456,7 +456,7 @@
 
 (defmethod ->honeysql [:sql :concat]
   [driver [_ & args]]
-  (apply hsql/call :concat (map (partial ->honeysql driver) args)))
+  (apply hsql/call :concat (mapv (partial ->honeysql driver) args)))
 
 (defmethod ->honeysql [:sql :substring]
   [driver [_ arg start length]]
@@ -474,7 +474,7 @@
                (when (:default options)
                  [[:else (:default options)]]))
        (apply concat)
-       (map (partial ->honeysql driver))
+       (mapv (partial ->honeysql driver))
        (apply hsql/call :case)))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
@@ -592,7 +592,7 @@
                                           (remove (set fields-fields))
                                           (mapv (fn [field-clause]
                                                   (as driver field-clause unique-name-fn)))))
-      (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields)))))
+      (apply h/group new-hsql (mapv (partial ->honeysql driver) breakout-fields)))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
@@ -663,7 +663,7 @@
                     #{:joined-field :field-id :field-literal} &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
-    [:or (into [op] (map (partial ->honeysql driver)) args)
+    [:or (into [op] (mapv (partial ->honeysql driver)) args)
      [:= (->honeysql driver field-arg) nil]]))
 
 (defmethod ->honeysql [:sql :!=]
@@ -674,11 +674,11 @@
 
 (defmethod ->honeysql [:sql :and]
   [driver [_ & subclauses]]
-  (apply vector :and (map (partial ->honeysql driver) subclauses)))
+  (apply vector :and (mapv (partial ->honeysql driver) subclauses)))
 
 (defmethod ->honeysql [:sql :or]
   [driver [_ & subclauses]]
-  (apply vector :or (map (partial ->honeysql driver) subclauses)))
+  (apply vector :or (mapv (partial ->honeysql driver) subclauses)))
 
 (def ^:private clause-needs-null-behaviour-correction?
   (comp #{:contains :starts-with :ends-with} first))
@@ -764,7 +764,7 @@
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
-  (reduce h/merge-order-by honeysql-form (map (partial ->honeysql driver) subclauses)))
+  (reduce h/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 

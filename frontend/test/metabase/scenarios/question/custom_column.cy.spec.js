@@ -445,7 +445,7 @@ describe("scenarios > question > custom columns", () => {
     cy.contains("37.65");
   });
 
-  it.skip("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
+  it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
     const CC_NAME = "CE with case";
 
     cy.server();
