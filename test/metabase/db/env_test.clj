@@ -108,3 +108,4 @@
           (is (contains? diags :env.warning/postgres-ssl))))))
   (testing "handles nil"
     (is (nil? (#'mdb.env/connection-from-jdbc-string nil)))))
+;; there's a postgres test ensuring that connection strings with uri-encoded params can succeed

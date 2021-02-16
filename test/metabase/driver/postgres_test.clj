@@ -2,6 +2,7 @@
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
+            [metabase.db.env :as mdb.env]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.postgres :as postgres]
@@ -16,6 +17,7 @@
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
             [metabase.util :as u]
+            [ring.util.codec :as codec]
             [toucan.db :as db]))
 
 (defn- drop-if-exists-and-create-db!
@@ -570,3 +572,28 @@
           (sync/sync-database! database)
           (is (= #{"table_with_perms"}
                  (db/select-field :name Table :db_id (:id database)))))))))
+
+(deftest connection-from-jdbc-string-test
+  ;; this test is here to reuse a real pg instance and ensure that the way we pass through connection strings for
+  ;; `:mb-db-connection-uri` works with a real pg instance. https://github.com/metabase/metabase/issues/14836
+  (testing "Ensure connection for `:mb-db-connection-uri` properly handles url escaped params"
+    (mt/test-driver :postgres
+      (drop-if-exists-and-create-db! "database-to-check-env")
+      (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "database-to-check-env"})
+            spec     (sql-jdbc.conn/connection-details->spec :postgres details)
+            password "password&%?"]
+        (doseq [statement ["CREATE TABLE PUBLIC.table_with_perms (x INTEGER NOT NULL);"
+                           "DROP USER IF EXISTS mb_user_test;"
+                           (str "CREATE USER mb_user_test WITH PASSWORD '" password "';")
+                           "GRANT SELECT ON TABLE \"database-to-check-env\".PUBLIC.table_with_perms TO mb_user_test;"]]
+          (jdbc/execute! spec [statement]))
+        (let [query    ["select 1"]
+              expected (list {:?column? 1})
+              conn-with-url-escaped (-> (format "jdbc:postgresql:%s?user=mb_user_test&password=%s"
+                                                (:subname spec)
+                                                (codec/url-encode password))
+                                        (#'mdb.env/connection-from-jdbc-string)
+                                        :connection)]
+          (is (= expected (jdbc/query spec query)))
+          (is (= expected (jdbc/query conn-with-url-escaped query))
+              "Did not connect with url escaped parameters"))))))
