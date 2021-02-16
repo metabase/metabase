@@ -10,6 +10,7 @@ import {
   signOut,
   USER_GROUPS,
   remapDisplayValueToFK,
+  sidebar,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -967,6 +968,66 @@ describeWithToken("formatting > sandboxes", () => {
 
       // Number of products with ID = 1 (and ID = 19)
       cy.findAllByText("93");
+    });
+
+    it("should be able to remove columns via QB sidebar / settings (metabase#14841)", () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.log("**-- 1. Sandbox `Orders` table --**");
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings: {
+          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+        },
+        card_id: null,
+        table_id: ORDERS_ID,
+        group_id: COLLECTION_GROUP,
+      });
+
+      cy.log("**-- 2. Sandbox `Products` table --**");
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings: {
+          [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+        },
+        card_id: null,
+        table_id: PRODUCTS_ID,
+        group_id: COLLECTION_GROUP,
+      });
+
+      updatePermissionsGraph({
+        schema: {
+          [PRODUCTS_ID]: { query: "segmented", read: "all" },
+          [ORDERS_ID]: { query: "segmented", read: "all" },
+        },
+      });
+
+      signOut();
+      signInAsSandboxedUser();
+      createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
+        cy.visit(`/question/${QUESTION_ID}`);
+      });
+
+      cy.findByText("Settings").click();
+      sidebar()
+        .should("be.visible")
+        .within(() => {
+          // Remove the "Subtotal" column from within sidebar
+          cy.findByText("Subtotal")
+            .parent()
+            .find(".Icon-close")
+            .click();
+        });
+      cy.findAllByRole("button", { name: "Done" }).click();
+      // Rerun the query
+      cy.get(".Icon-play")
+        .last()
+        .click();
+
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+      cy.contains("Subtotal").should("not.exist");
+      cy.contains("37.65").should("not.exist");
     });
   });
 });
