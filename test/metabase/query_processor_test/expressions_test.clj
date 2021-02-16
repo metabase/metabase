@@ -371,7 +371,7 @@
                          :limit       2})]
           (is (= ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "CE"]
                  (map :display_name (mt/cols results))))
-          (is (= [[1 1  14 37.65  2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "2017-12-31T14:41:56.87Z"]
-                  [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 "2017-11-16T13:53:14.232Z"]]
-                 (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
+          (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27.892Z" 2 "2017-12-31T14:41:56.87Z"]
+                  [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04.58Z"  3 "2017-11-16T13:53:14.232Z"]]
+                 (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int str]
                    results))))))))
