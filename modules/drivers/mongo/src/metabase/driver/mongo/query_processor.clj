@@ -516,13 +516,6 @@
      (when (not-empty post-ags)
        {:$addFields (into (ordered-map/ordered-map) post-ags)})]))
 
-(defn- lvalue?
-  [x]
-  (try
-    (some? (->lvalue x))
-    (catch IllegalArgumentException _
-      false)))
-
 (defn- ordered-map-assoc-in [m ks v]
   (cond
     (= (count ks) 1)
