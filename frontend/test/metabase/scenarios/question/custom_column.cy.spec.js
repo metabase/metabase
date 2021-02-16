@@ -6,6 +6,7 @@ import {
   _typeUsingPlaceholder,
   signInAsAdmin,
   openOrdersTable,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -441,6 +442,49 @@ describe("scenarios > question > custom columns", () => {
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });
+    cy.contains("37.65");
+  });
+
+  it.skip("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
+    const CC_NAME = "CE with case";
+
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [CC_NAME]: [
+              "case",
+              [
+                [
+                  [">", ["field-id", ORDERS.DISCOUNT], 0],
+                  ["field-id", ORDERS.CREATED_AT],
+                ],
+              ],
+              {
+                default: [
+                  "fk->",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["field-id", PRODUCTS.CREATED_AT],
+                ],
+              },
+            ],
+          },
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+
+    cy.wait("@dataset").should(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+
+    cy.findByText(CC_NAME);
     cy.contains("37.65");
   });
 });
