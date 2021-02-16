@@ -125,7 +125,7 @@ Then click on the gear icon next to the column that you want to format. Dates, n
 
 #### Conditional table formatting
 
-Sometimes is helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the **Conditional Formatting** tab.
+Sometimes it's helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the **Conditional Formatting** tab.
 
 ![Conditional formatting](images/visualizations/conditional-formatting.png)
 
@@ -148,7 +148,9 @@ This auto-pivoting is distinct from the pivot table visualization, which we cove
 
 Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions. 
 
-For a given query result, you can assign fields to one of three "buckets":
+Pivot tables are only available to simple and custom questions with summarized data. They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data. See [Picking your starting data](custom-questions.md#picking-your-starting-data).
+
+In the settings for the Pivot Table visualization, you can assign fields to one of three "buckets":
 
 - Fields to use for the table **rows**
 - Fields to use for the table **columns**
