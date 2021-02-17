@@ -87,7 +87,7 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Quantity is equal to 100").should("not.exist");
   });
 
-  it("should clone a saved question", () => {
+  it("should duplicate a saved question", () => {
     cy.server();
     cy.route("POST", "/api/card").as("cardCreate");
     cy.route("POST", "/api/card/1/query").as("query");
@@ -99,8 +99,8 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Duplicate this question").click();
 
     modal().within(() => {
-      cy.findByLabelText("Name").should("have.value", "Orders");
-      cy.findByText("Save").click();
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
   });
