@@ -27,8 +27,6 @@
   (:import metabase.models.field.FieldInstance
            metabase.util.honeysql_extensions.Identifier))
 
-
-
 (defn- with-clause-metadata [x clause]
   (vary-meta x assoc ::clause clause))
 
@@ -953,6 +951,5 @@
   "Transpile MBQL query into a native SQL statement."
   [driver {inner-query :query, database :database, :as outer-query}]
   (let [honeysql-form (mbql->honeysql driver outer-query)
-        _ (println (format "HONEYSQL =>\n%s" (u/pprint-to-str 'yellow honeysql-form)))
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
