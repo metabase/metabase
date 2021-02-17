@@ -109,10 +109,11 @@ class SavedQuestionPicker extends React.Component {
 
     // if we're not loading
     if (this.state.collectionSchemas.length > 0) {
+      // create a filter for the collection list that checks to see if any of the collections map to a schema with the same name
+      // THIS SHOULD BE UNNECESSARY AFTER WE CLEAN UP THE ENDPOINT
       const filter = collection => {
         return this.state.collectionSchemas.indexOf(collection.name) >= 0;
       };
-      console.log(this.state.collectionSchemas);
       return (
         <div style={{ width: 400 }} className="flex">
           <div className="border-right">
