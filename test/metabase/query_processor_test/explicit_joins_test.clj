@@ -326,8 +326,7 @@
                  (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                                     (mt/mbql-query venues
                                                       {:aggregation [[:count]]
-                                                       :breakout    [$category_id]
-                                                       }))]
+                                                       :breakout    [$category_id]}))]
                    (mt/run-mbql-query checkins
                      {:source-query {:source-table $$checkins
                                      :aggregation  [[:count]]
