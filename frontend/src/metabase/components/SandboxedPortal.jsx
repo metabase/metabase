@@ -5,6 +5,8 @@ function stop(event) {
   event.stopPropagation();
 }
 
+// Prevent DOM events from bubbling through the React component tree
+// See https://reactjs.org/docs/portals.html#event-bubbling-through-portals
 function SandboxedPortal({ children, container }) {
   return ReactDOM.createPortal(
     <div
