@@ -22,6 +22,7 @@ export default class Popover extends Component {
     super(props, context);
 
     this.state = {
+      // some child components of indeterminate height (see AccordionList) require a maxHeight prop in order to avoid overflowing off of the page
       maxHeight: 0,
     };
 
