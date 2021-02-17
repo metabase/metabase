@@ -831,12 +831,15 @@ const DatabaseSchemaPicker = ({
         alwaysTogglable={true}
         showItemArrows={hasNextStep}
       />
+      {/* TODO - we probably still need a check to make sure that we should show this option */}
       <div
         className="List-section bg-light"
         onClick={() => onSwitchToSavedQuestions()}
       >
-        <Icon name="all" />
-        {t`Saved Questions`}
+        <div className="List-section-header mx2 py2 flex align-center text-brand-hover cursor-pointer">
+          <Icon className="List-section-icon mr1" name="all" size={20} />
+          <h3>{t`Saved Questions`}</h3>
+        </div>
       </div>
     </span>
   );

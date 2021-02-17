@@ -33,7 +33,7 @@ class SavedQuestionTableList extends React.Component {
               }}
             >
               <Icon name="table2" />
-              {t.display_name})
+              {t.display_name}
             </li>
           ))}
         </ol>
