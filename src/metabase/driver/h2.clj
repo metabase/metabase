@@ -325,11 +325,11 @@
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
 
-(defmethod ssh/incorporate-ssh-tunnel-details :h2
+(defmethod driver/incorporate-ssh-tunnel-details :h2
   [_ db-details]
-  (if (not (str/starts-with? (:db db-details) "tcp://"))
-      (throw (ex-info (str (deferred-tru "SSH tunnel can only be established for a TCP H2 URL"))
-                      {:h2-url (:db db-details)})))
+  (if (and (:db db-details) (str/starts-with? (:db db-details) "tcp://"))
+      (throw (ex-info "SSH tunnel can only be established for a TCP H2 URL" {:h2-url (:db db-details)})))
   (let [details (ssh/include-ssh-tunnel! db-details)
         db      (:db details)]
     (assoc details :db (str/replace-first db (str (:orig-port details)) (str (:tunnel-entrance-port details))))))
+

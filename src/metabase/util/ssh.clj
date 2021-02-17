@@ -148,15 +148,11 @@
       details-with-tunnel)
     details))
 
-(defmulti incorporate-ssh-tunnel-details
-  "A multimethod for driver-specific behavior required to incorporate details for an opened SSH tunnel into the DB
-  details. In most cases, this will simply involve updating the :host and :port (to point to the tunnel entry point,
-  instead of the backing database server), but some drivers may have more specific behavior."
-  {:arglists '([driver db-details])}
-  #'driver/dispatch-on-uninitialized-driver
-  :hierarchy #'driver/hierarchy)
+(defmethod driver/incorporate-ssh-tunnel-details nil
+  [_ db-details]
+  db-details)
 
-(defmethod incorporate-ssh-tunnel-details :sql-jdbc
+(defmethod driver/incorporate-ssh-tunnel-details :sql-jdbc
   [_ db-details]
   (include-ssh-tunnel! db-details))
 
