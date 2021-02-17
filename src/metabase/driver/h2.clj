@@ -336,4 +336,3 @@
       (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
           db-details))
     db-details))
-
