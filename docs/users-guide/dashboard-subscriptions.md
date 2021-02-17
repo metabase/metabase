@@ -55,4 +55,4 @@ You can specify how often Metabase sends a Slack message (hourly, daily, weekly,
 
 ## Next: Getting reports with Pulses
 
-Pulses let you send out a group of saved questions on a schedule via email or Slack. [Get started with Pulses](10-pulses.html).
+Pulses let you send out a group of saved questions on a schedule via email or Slack. [Get started with Pulses](10-pulses.md).
