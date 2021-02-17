@@ -3,47 +3,22 @@ import Icon from "metabase/components/Icon";
 import { Flex } from "grid-styled";
 
 import Collection from "metabase/entities/collections";
+import Schemas from "metabase/entities/schemas";
 import CollectionsList from "metabase/collections/components/CollectionsList";
 
+import { generateSchemaId } from "metabase/schema";
 import { MetabaseApi } from "metabase/services";
 
 // TODO - chastise Cam for this :P
 const SAVED_QUESTION_DB_ID = -1337;
 
+@Schemas.load({
+  id: (state, props) =>
+    generateSchemaId(SAVED_QUESTION_DB_ID, props.schemaName),
+})
 class SavedQuestionTableList extends React.Component {
-  state = {
-    tables: [],
-    loading: true,
-  };
-  async componentDidMount() {
-    await this.fetchTables();
-  }
-
-  async componentDidUpdate(prevProps) {
-    if (prevProps.schemaName !== this.props.schemaName) {
-      await this.fetchTables();
-    }
-  }
-
-  async fetchTables() {
-    this.setState({
-      loading: true,
-    });
-    const schemaTables = await MetabaseApi.db_schema_tables({
-      dbId: SAVED_QUESTION_DB_ID,
-      schemaName: this.props.schemaName,
-    });
-    console.log(schemaTables);
-    this.setState({
-      loading: false,
-      tables: schemaTables,
-    });
-  }
   render() {
-    const { loading, tables } = this.state;
-    if (loading) {
-      return <div>Loading...</div>;
-    }
+    const { tables = [] } = this.props.schema;
     if (tables.length > 0) {
       return (
         <ol className="px3">
