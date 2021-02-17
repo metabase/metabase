@@ -81,15 +81,21 @@ export default class Popover extends Component {
   }
 
   componentDidMount() {
-    this._updateTetherOptions();
-    this._updateMaxHeight();
     this._updateContainerClass();
+
+    if (this.props.isOpen) {
+      this._updateTetherOptions();
+      this._updateMaxHeight();
+    }
   }
 
   componentDidUpdate() {
-    this._updateTetherOptions();
-    this._updateMaxHeight();
     this._updateContainerClass();
+
+    if (this.props.isOpen) {
+      this._updateTetherOptions();
+      this._updateMaxHeight();
+    }
   }
 
   _updateMaxHeight() {
