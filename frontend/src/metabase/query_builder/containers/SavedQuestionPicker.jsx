@@ -1,5 +1,6 @@
 import React from "react";
 import Icon from "metabase/components/Icon";
+import { Flex } from "grid-styled";
 
 import Collection from "metabase/entities/collections";
 import CollectionsList from "metabase/collections/components/CollectionsList";
@@ -25,6 +26,12 @@ class SavedQuestionTableList extends React.Component {
     await this.fetchTables();
   }
 
+  async componentDidUpdate(prevProps) {
+    if (prevProps.schemaName !== this.props.schemaName) {
+      await this.fetchTables();
+    }
+  }
+
   async fetchTables() {
     this.setState({
       loading: true,
@@ -48,7 +55,15 @@ class SavedQuestionTableList extends React.Component {
       return (
         <ol className="px3">
           {tables.map(t => (
-            <li key={t.id}>
+            <li
+              key={t.id}
+              onClick={() => {
+                this.props.query
+                  .setTableId(t.id)
+                  .setDefaultQuery()
+                  .update(null, { run: true });
+              }}
+            >
               <Icon name="table2" />
               {t.display_name})
             </li>
@@ -78,6 +93,9 @@ class SavedQuestionPicker extends React.Component {
     });
   };
   async componentDidMount() {
+    // IMPORTANT
+    // set the database to be the saved question database when we mount
+    this.props.query.setDatabase({ id: SAVED_QUESTION_DB_ID });
     // TODO api response is unfortunate so we'll absolutely need to make this
     // respond better
     const collectionSchemas = await MetabaseApi.db_schemas({
@@ -115,8 +133,8 @@ class SavedQuestionPicker extends React.Component {
         return this.state.collectionSchemas.indexOf(collection.name) >= 0;
       };
       return (
-        <div style={{ width: 400 }} className="flex">
-          <div className="border-right">
+        <div style={{ width: 480 }} className="flex">
+          <div className="border-right" style={{ width: 240 }}>
             <div>
               <span
                 onClick={() => onBack()}
@@ -126,15 +144,85 @@ class SavedQuestionPicker extends React.Component {
                 Back
               </span>
             </div>
+            <span
+              onClick={() =>
+                this.setState({ currentSchema: "Everything else" })
+              }
+            >
+              Our analytics
+            </span>
             <CollectionsList
               openCollections={this.state.openCollections}
               collections={collections}
               filter={filter}
               onClose={this.onClose}
               onOpen={this.onOpen}
+              useTriggerComponent={(collection, props) => {
+                console.log(collection, props);
+                // TODO - this is duplicated w/ the code in CollectionList
+                const isOpen =
+                  props.openCollections.indexOf(collection.id) >= 0;
+                const action = isOpen ? props.onClose : props.onOpen;
+                return (
+                  <div>
+                    <Flex
+                      className="relative"
+                      align={
+                        // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
+                        // visual
+                        collection.name.length > 25 ? "flex-start" : "center"
+                      }
+                      onClick={() => {
+                        action(collection.id);
+                        this.setState({ currentSchema: collection.name });
+                      }}
+                    >
+                      {/* TODO - this seeems like it's not properly indicating children */}
+                      {collection.children && (
+                        <Flex
+                          className="absolute text-brand cursor-pointer"
+                          align="center"
+                          justifyContent="center"
+                          style={{ left: -20 }}
+                        >
+                          <Icon
+                            name={isOpen ? "chevrondown" : "chevronright"}
+                            onClick={ev => {
+                              ev.preventDefault();
+                              action(collection.id);
+                            }}
+                            size={12}
+                          />
+                        </Flex>
+                      )}
+                      <Icon
+                        name={props.initialIcon}
+                        mr={"6px"}
+                        style={{ opacity: 0.4 }}
+                      />
+                      {collection.name}
+                    </Flex>
+                    {isOpen && collection.children && (
+                      <CollectionsList
+                        openCollections={props.openCollections}
+                        onOpen={props.onOpen}
+                        onClose={props.onClose}
+                        collections={collection.children}
+                        filter={props.filter}
+                        currentCollection={props.currentCollection}
+                        depth={props.depth + 1}
+                        useTriggerComponent={props.useTriggerComponent}
+                      />
+                    )}
+                  </div>
+                );
+              }}
             />
           </div>
-          <SavedQuestionTableList schemaName={this.state.currentSchema} />
+          <SavedQuestionTableList
+            schemaName={this.state.currentSchema}
+            query={this.props.query}
+          />
         </div>
       );
     }
