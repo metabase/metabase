@@ -9,7 +9,14 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+} = SAMPLE_DATASET;
 
 describe("scenarios > question > filter", () => {
   beforeEach(() => {
@@ -17,70 +24,203 @@ describe("scenarios > question > filter", () => {
     signInAsAdmin();
   });
 
-  it.skip("should load needed data (metabase#12985)", () => {
-    // Save a Question
-    openProductsTable();
-    cy.findByText("Save").click();
-    cy.findByPlaceholderText("What is the name of your card?")
-      .clear()
-      .type("Q1");
-    cy.findAllByText("Save")
-      .last()
-      .click();
-    cy.findByText("Not now").click();
+  describe("dashboard filter dropdown/search (metabase#12985)", () => {
+    it("Repro 1: should work for saved nested questions", () => {
+      cy.log("**-- 1. Create base card --**");
 
-    // From Q1, save Q2
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("Q1").click();
-    cy.findByText("Save").click();
-    cy.findByPlaceholderText("What is the name of your card?")
-      .clear()
-      .type("Q2");
-    cy.findAllByText("Save")
-      .last()
-      .click();
+      cy.request("POST", "/api/card", {
+        name: "Q1",
+        dataset_query: {
+          database: 1,
+          query: { "source-table": PRODUCTS_ID },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: Q1_ID } }) => {
+        cy.log("**-- 2. Create nested card based on the first one --**");
 
-    // Add Q2 to a dashboard
-    cy.findByText("Yes please!").click();
-    cy.findByText("Orders in a dashboard").click();
+        cy.request("POST", "/api/card", {
+          name: "Q2",
+          dataset_query: {
+            database: 1,
+            query: { "source-table": `card__${Q1_ID}` },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: Q2_ID } }) => {
+          cy.log("**-- 3. Create a dashboard --**");
 
-    // Add two dashboard filters
-    cy.get(".Icon-filter").click();
-    cy.findByText("Time").click();
-    cy.findByText("All Options").click();
-    cy.findAllByText("Select…")
-      .last()
-      .click();
-    cy.findByText("Created At").click();
+          cy.request("POST", "/api/dashboard", {
+            name: "12985D",
+          }).then(({ body: { id: DASHBOARD_ID } }) => {
+            cy.log("**-- 4. Add 2 filters to the dashboard --**");
 
-    cy.get(".Icon-filter").click();
-    cy.findByText("Other Categories").click();
-    cy.findAllByText("Select…")
-      .last()
-      .click();
-    popover().within(() => {
-      cy.findByText("Category").click();
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+              parameters: [
+                {
+                  name: "Date Filter",
+                  slug: "date_filter",
+                  id: "78d4ba0b",
+                  type: "date/all-options",
+                },
+                {
+                  name: "Category",
+                  slug: "category",
+                  id: "20976cce",
+                  type: "category",
+                },
+              ],
+            });
+
+            cy.log("**-- 5. Add nested card to the dashboard --**");
+
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: Q2_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              cy.log(
+                "**-- 6. Connect dashboard filters to the nested card --**",
+              );
+
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: Q2_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 10,
+                    sizeY: 8,
+                    series: [],
+                    visualization_settings: {},
+                    // Connect both filters and to the card
+                    parameter_mappings: [
+                      {
+                        parameter_id: "78d4ba0b",
+                        card_id: Q2_ID,
+                        target: [
+                          "dimension",
+                          ["field-id", PRODUCTS.CREATED_AT],
+                        ],
+                      },
+                      {
+                        parameter_id: "20976cce",
+                        card_id: Q2_ID,
+                        target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                      },
+                    ],
+                  },
+                ],
+              });
+            });
+            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+          });
+        });
+      });
+
+      cy.get("fieldset")
+        .last()
+        .within(() => {
+          cy.findByText("Category").click();
+        });
+      cy.log("**Failing to show dropdown in v0.36.0 through v.0.37.0**");
+      popover()
+        .contains("Gadget")
+        .click();
+      cy.findByText("Add filter").click();
+      cy.url().should("contain", "?category=Gadget");
+      cy.findByText("Ergonomic Silk Coat");
     });
 
-    // Save dashboard and refresh page
-    cy.findAllByText("Done")
-      .first()
-      .click();
+    it.skip("Repro 2: should work for aggregated questions", () => {
+      cy.log("**-- 1. Create question with aggregation --**");
 
-    cy.findByText("Save").click();
-    cy.findByText("You're editing this dashboard.").should("not.exist");
+      cy.request("POST", "/api/card", {
+        name: "12985-v2",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-query": {
+              "source-table": PRODUCTS_ID,
+              aggregation: [["count"]],
+              breakout: [["field-id", PRODUCTS.CATEGORY]],
+            },
+            filter: [">", ["field-literal", "count", "type/Integer"], 1],
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.log("**-- 2. Create a dashboard --**");
 
-    // Check category search
-    cy.get("fieldset")
-      .last()
-      .within(() => {
-        cy.findByText("Category").click();
+        cy.request("POST", "/api/dashboard", {
+          name: "12985-v2D",
+        }).then(({ body: { id: DASHBOARD_ID } }) => {
+          cy.log("**-- 3. Add a category filter to the dashboard --**");
+
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+            parameters: [
+              {
+                name: "Category",
+                slug: "category",
+                id: "7c4htcv8",
+                type: "category",
+              },
+            ],
+          });
+
+          cy.log(
+            "**-- 4. Add previously created question to the dashboard --**",
+          );
+
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            cy.log(
+              "**-- 5. Connect dashboard filter to the aggregated card --**",
+            );
+
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  series: [],
+                  visualization_settings: {},
+                  // Connect filter to the card
+                  parameter_mappings: [
+                    {
+                      parameter_id: "7c4htcv8",
+                      card_id: QUESTION_ID,
+                      target: [
+                        "dimension",
+                        ["field-literal", "CATEGORY", "type/Text"],
+                      ],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        });
       });
-    cy.log("**Failing to show dropdown in v0.36.0 through v.0.37.0**");
-    cy.findByText("Gadget").click();
-    cy.findByText("Add filter").click();
+
+      cy.findByPlaceholderText("Category").click();
+      // It will fail at this point until the issue is fixed because popover never appears
+      popover()
+        .contains("Gadget")
+        .click();
+      cy.findByText("Add filter").click();
+      cy.url().should("contain", "?category=Gadget");
+      cy.findByText("Ergonomic Silk Coat");
+    });
   });
 
   it("should filter a joined table by 'Is not' filter (metabase#13534)", () => {
@@ -518,5 +658,110 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable='true']").contains(
       /\[Created At\] > \[Products? -> Created At\]/,
     );
+  });
+
+  it("should handle post-aggregation filter on questions with joined table (metabase#14811)", () => {
+    cy.request("POST", "/api/card", {
+      name: "14811",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "sum",
+                [
+                  "fk->",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["field-id", PRODUCTS.PRICE],
+                ],
+              ],
+            ],
+            breakout: [
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
+              ],
+            ],
+          },
+          filter: ["=", ["field-literal", "CATEGORY", "type/Text"], "Widget"],
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.server();
+      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.wait("@cardQuery").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+      cy.get(".cellData").contains("Widget");
+      cy.findByText("Showing 1 row");
+    });
+  });
+
+  it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
+    cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
+    cy.request("POST", "/api/card", {
+      name: "14776",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}/notebook`);
+    });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .as("inputField")
+      .click()
+      .type("su");
+    popover().contains(/Sum of Total/i);
+    cy.get("@inputField")
+      .click()
+      .type("m");
+    popover().contains(/Sum of Total/i);
+  });
+
+  it("should correctly filter custom column by 'Not equal to' (metabase#14843)", () => {
+    const CC_NAME = "City Length";
+
+    cy.server();
+    cy.route("POST", "/api/card/*/query").as("cardQuery");
+
+    cy.request("POST", "/api/card", {
+      name: "14843",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": PEOPLE_ID,
+          expressions: { [CC_NAME]: ["length", ["field-id", PEOPLE.CITY]] },
+          filter: ["!=", ["expression", CC_NAME], 3],
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+    cy.wait("@cardQuery");
+    cy.findByText("Rye").should("not.exist");
   });
 });

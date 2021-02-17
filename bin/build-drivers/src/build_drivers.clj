@@ -5,7 +5,9 @@
             [metabuild-common.core :as u]))
 
 (defn- all-drivers []
-  (map keyword (.list (io/file (u/filename u/project-root-directory "modules" "drivers")))))
+  (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
+       (filter #(.isDirectory %)) ;; watch for errant DS_Store files on os_x
+       (map (comp keyword #(.getName %)))))
 
 (defn build-drivers! [edition]
   (let [edition (or edition :oss)]

@@ -32,7 +32,9 @@
        form))
    x))
 
-(defn- add-names
+(defn add-names
+  "Walk a MBQL snippet `x` and add comment forms with the names of the Fields referenced to any `:field-id` clauses
+  encountered. Helpful for debugging!"
   [x]
   (walk/postwalk
    (fn [form]
