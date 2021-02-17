@@ -21,7 +21,6 @@ export default class Popover extends Component {
   constructor(props, context) {
     super(props, context);
 
-    this.handleDismissal = this.handleDismissal.bind(this);
     this.state = {
       maxHeight: 0,
     };
@@ -120,11 +119,11 @@ export default class Popover extends Component {
     this._tether && this._tether.destroy();
   }
 
-  handleDismissal(...args) {
+  handleDismissal = (...args) => {
     if (this.props.onClose) {
       this.props.onClose(...args);
     }
-  }
+  };
 
   _buildPopover() {
     const {
