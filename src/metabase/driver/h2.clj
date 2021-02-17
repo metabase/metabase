@@ -15,7 +15,8 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru tru]])
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.ssh :as ssh])
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime))
 
@@ -299,6 +300,7 @@
   [driver database ^String timezone-id]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
   ;; steps that are in the default impl
+  (sql-jdbc.conn/invalidate-pool-if-ssh-tunnel-closed! database)
   (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
     (try
       (doto conn
@@ -322,3 +324,12 @@
   [driver prepared-statement i t]
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
+
+(defmethod ssh/incorporate-ssh-tunnel-details :h2
+  [_ db-details]
+  (if (not (str/starts-with? (:db db-details) "tcp://"))
+      (throw (ex-info (str (deferred-tru "SSH tunnel can only be established for a TCP H2 URL"))
+                      {:h2-url (:db db-details)})))
+  (let [details (ssh/include-ssh-tunnel! db-details)
+        db      (:db details)]
+    (assoc details :db (str/replace-first db (str (:orig-port details)) (str (:tunnel-entrance-port details))))))

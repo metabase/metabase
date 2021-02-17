@@ -149,7 +149,7 @@
         (seq more)
         (recur more)))))
 
-(defmethod connection-with-timezone :sql-jdbc
+(defn- default-connection-with-timezone
   [driver database ^String timezone-id]
   (sql-jdbc.conn/invalidate-pool-if-ssh-tunnel-closed! database)
   (let [conn (.getConnection (datasource database))]
@@ -168,6 +168,10 @@
       (catch Throwable e
         (.close conn)
         (throw e)))))
+
+(defmethod connection-with-timezone :sql-jdbc
+  [driver database ^String timezone-id]
+  (default-connection-with-timezone driver database timezone-id))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
 ;; useful? Then we can actually do things like log what transformations are taking place

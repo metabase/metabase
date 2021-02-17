@@ -1,5 +1,6 @@
 (ns metabase.util.ssh
   (:require [clojure.tools.logging :as log]
+            [metabase.driver :as driver]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u])
   (:import java.io.ByteArrayInputStream
@@ -125,7 +126,7 @@
   [details]
   (.isOpen ^ClientSession (:tunnel-session details)))
 
-(defn include-ssh-tunnel
+(defn include-ssh-tunnel!
   "Updates connection details for a data warehouse to use the ssh tunnel host and port
   For drivers that enter hosts including the protocol (https://host), copy the protocol over as well"
   [details]
@@ -134,9 +135,11 @@
           [session ^PortForwardingTracker tracker] (start-ssh-tunnel! (assoc details :host host))
           tunnel-entrance-port                     (.. tracker getBoundAddress getPort)
           tunnel-entrance-host                     (.. tracker getBoundAddress getHostName)
+          orig-port                                (:port details)
           details-with-tunnel                      (assoc details
                                                           :port tunnel-entrance-port ;; This parameter is set dynamically when the connection is established
                                                           :host (str proto "localhost") ;; SSH tunnel will always be through localhost
+                                                          :orig-port orig-port
                                                           :tunnel-entrance-host tunnel-entrance-host
                                                           :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
                                                           :tunnel-enabled true
@@ -144,6 +147,18 @@
                                                           :tunnel-tracker tracker)]
       details-with-tunnel)
     details))
+
+(defmulti incorporate-ssh-tunnel-details
+  "A multimethod for driver-specific behavior required to incorporate details for an opened SSH tunnel into the DB
+  details. In most cases, this will simply involve updating the :host and :port (to point to the tunnel entry point,
+  instead of the backing database server), but some drivers may have more specific behavior."
+  {:arglists '([driver db-details])}
+  #'driver/dispatch-on-uninitialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod incorporate-ssh-tunnel-details :sql-jdbc
+  [_ db-details]
+  (include-ssh-tunnel! db-details))
 
 (defn close-tunnel!
   "Close a running tunnel session"
@@ -155,7 +170,7 @@
   "Starts an SSH tunnel, runs the supplied function with the tunnel open, then closes it"
   [details f]
   (if (use-ssh-tunnel? details)
-    (let [details-with-tunnel (include-ssh-tunnel details)]
+    (let [details-with-tunnel (include-ssh-tunnel! details)]
       (try
         (log/trace (u/format-color 'cyan "<< OPENED SSH TUNNEL >>"))
         (f details-with-tunnel)

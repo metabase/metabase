@@ -83,13 +83,13 @@
   [{:keys [id details], driver :engine, :as database}]
   {:pre [(map? database)]}
   (log/debug (u/format-color 'cyan (trs "Creating new connection pool for {0} database {1} ..." driver id)))
-  (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
+  (let [details-with-tunnel (ssh/incorporate-ssh-tunnel-details driver details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver)]
     (merge
       (connection-pool/connection-pool-spec spec properties)
       ;; also capture entries related to ssh tunneling for later use
-      (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker]))))
+      (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
@@ -188,7 +188,7 @@
   "Return an appropriate JDBC connection spec to test whether a set of connection details is valid (i.e., implementing
   `can-connect?`)."
   [driver details]
-  (let [details-with-tunnel (ssh/include-ssh-tunnel details)]
+  (let [details-with-tunnel (ssh/incorporate-ssh-tunnel-details driver details)]
     (connection-details->spec driver details-with-tunnel)))
 
 (defn can-connect-with-spec?
