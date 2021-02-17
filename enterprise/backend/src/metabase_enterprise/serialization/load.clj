@@ -257,7 +257,13 @@
                     :dataset_query
                     :type
                     qp.util/normalize-token
-                    (= :query)) (update-in [:dataset_query :query :source-table] source-table)))))
+                    (= :query)) (update-in [:dataset_query :query :source-table] source-table)
+                (-> card
+                    :dataset_query
+                    :query
+                    :source-query
+                    :source-table)
+                (update-in [:dataset_query :query :source-query :source-table] source-table)))))
     ;; Nested cards
     (doseq [path paths]
       (load (str path "/cards") context))))
