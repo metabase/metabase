@@ -30,24 +30,24 @@
                                                          {:native [{:collection "wow"}]}}}))))))
 
 ;; disabled for now -- re-enable in #14835
-#_(deftest relative-datetime-test
-    (mt/test-driver :mongo
-      (testing "Make sure relative datetimes are compiled sensibly"
-        (mt/dataset attempted-murders
-          (is (= {:projections ["count"]
-                  :query       [{"$match"
-                                 {"$and"
-                                  [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
-                                   {:$expr {"$lt"  ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
-                                {"$group" {"_id" nil, "count" {"$sum" 1}}}
-                                {"$sort" {"_id" 1}}
-                                {"$project" {"_id" false, "count" true}}]
-                  :collection  "attempts"
-                  :mbql?       true}
-                 (qp/query->native
-                  (mt/mbql-query attempts
-                    {:aggregation [[:count]]
-                     :filter      [:time-interval $datetime :last :month]}))))))))
+(deftest relative-datetime-test
+  (mt/test-driver :mongo
+    (testing "Make sure relative datetimes are compiled sensibly"
+      (mt/dataset attempted-murders
+        (is (= {:projections ["count"]
+                :query       [{"$match"
+                               {"$and"
+                                [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                 {:$expr {"$lt"  ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                              {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                              {"$sort" {"_id" 1}}
+                              {"$project" {"_id" false, "count" true}}]
+                :collection  "attempts"
+                :mbql?       true}
+               (qp/query->native
+                (mt/mbql-query attempts
+                  {:aggregation [[:count]]
+                   :filter      [:time-interval $datetime :last :month]}))))))))
 
 (deftest no-initial-projection-test
   (mt/test-driver :mongo
@@ -55,21 +55,20 @@
       (testing "Don't create an initial projection for datetime-fields that use `:default` bucketing (#14838)"
         (mt/with-clock #t "2021-02-15T17:33:00-08:00[US/Pacific]"
           (mt/dataset attempted-murders
-            ;; disabled for now -- re-enable in #14835
-            #_(is (= {:projections ["count"]
-                      :query       [{"$match"
-                                     {"$and"
-                                      [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
-                                       {:$expr {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
-                                    {"$group" {"_id" nil, "count" {"$sum" 1}}}
-                                    {"$sort" {"_id" 1}}
-                                    {"$project" {"_id" false, "count" true}}]
-                      :collection  "attempts"
-                      :mbql?       true}
-                     (qp/query->native
-                      (mt/mbql-query attempts
-                        {:aggregation [[:count]]
-                         :filter      [:time-interval $datetime :last :month]}))))
+            (is (= {:projections ["count"]
+                    :query       [{"$match"
+                                   {"$and"
+                                    [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                     {:$expr {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                                  {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                  {"$sort" {"_id" 1}}
+                                  {"$project" {"_id" false, "count" true}}]
+                    :collection  "attempts"
+                    :mbql?       true}
+                   (qp/query->native
+                    (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :filter      [:time-interval $datetime :last :month]}))))
 
             (testing "should still work even with bucketing bucketing"
               (let [query (mt/with-everything-store
