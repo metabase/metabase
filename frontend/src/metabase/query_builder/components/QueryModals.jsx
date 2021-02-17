@@ -16,6 +16,7 @@ import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbed
 
 import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
+import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
 export default class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {
@@ -182,16 +183,21 @@ export default class QueryModals extends React.Component {
         <QuestionEmbedWidget card={this.props.card} onClose={onCloseModal} />
       </Modal>
     ) : modal === "clone" ? (
-      <Modal form onClose={onCloseModal}>
-        <SaveQuestionModal
-          card={this.props.card}
-          tableMetadata={this.props.tableMetadata}
-          onCreate={async card => {
-            await this.props.onCreate(card);
-            onOpenModal("saved");
+      <Modal onClose={onCloseModal}>
+        <EntityCopyModal
+          entityType="questions"
+          entityObject={this.props.card}
+          copy={async formValues => {
+            const object = await this.props.onCreate({
+              ...this.props.card,
+              ...formValues,
+              description: formValues.description || null,
+              id: undefined,
+            });
+            return { payload: { object } };
           }}
           onClose={onCloseModal}
-          clone
+          onSaved={() => onOpenModal("saved")}
         />
       </Modal>
     ) : null;
