@@ -11,9 +11,9 @@ import { color, lighten } from "metabase/lib/colors";
 import visualizations from "metabase/visualizations";
 
 const FIXED_LAYOUT = [
-  ["line", "bar", "combo", "area", "waterfall", "row"],
+  ["line", "bar", "combo", "area", "row", "waterfall"],
   ["scatter", "pie", "funnel", "smartscalar", "progress", "gauge"],
-  ["scalar", "table", "map"],
+  ["scalar", "table", "pivot", "map"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 

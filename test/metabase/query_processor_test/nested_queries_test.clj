@@ -914,3 +914,104 @@
                                  :aggregation  [[:count]]
                                  :breakout     [!month.created_at !month.product_id->created_at]}
                   :limit        5})))))))
+
+(deftest nested-queries-with-joins-with-old-metadata-test
+  (testing "Nested queries with joins using old pre-38 result metadata still work (#14788)"
+    (mt/dataset sample-dataset
+      ;; create the query we'll use as a source query
+      (let [query    (mt/mbql-query orders
+                       {:joins    [{:source-table $$products
+                                    :alias        "ℙ"
+                                    :fields       :all
+                                    :condition    [:= $product_id &ℙ.products.id]}]
+                        :order-by [[:asc $id]]
+                        :limit    2})
+            metadata (qp/query->expected-cols query)]
+        (testing "x.38.0+: metadata should include `:field_ref`"
+          (is (= (mt/$ids orders
+                   [$id
+                    $user_id
+                    $product_id
+                    $subtotal
+                    $tax
+                    $total
+                    $discount
+                    !default.created_at
+                    $quantity
+                    &ℙ.products.id
+                    &ℙ.products.ean
+                    &ℙ.products.title
+                    &ℙ.products.category
+                    &ℙ.products.vendor
+                    &ℙ.products.price
+                    &ℙ.products.rating
+                    !default.&ℙ.products.created_at])
+                 (map :field_ref metadata))))
+        (testing "\nShould be able to use the query as a source query"
+          (letfn [(test-query [query]
+                    (is (schema= {:status    (s/eq :completed)
+                                  :row_count (s/eq 2)
+                                  s/Keyword  s/Any}
+                                 (qp/process-query query))))
+                  (test-source-query [metadata]
+                    (test-query
+                     (cond-> (mt/mbql-query nil
+                               {:source-query (:query query)})
+                       metadata (assoc-in [:query :source-metadata] metadata))))
+                  (test-card-source-query [metadata]
+                    (mt/with-temp Card [{card-id :id} {:dataset_query   query
+                                                       :result_metadata metadata}]
+                      (test-query
+                       (mt/mbql-query nil
+                         {:source-table (format "card__%d" card-id)}))))]
+            (doseq [[msg test-query] {"directly"   test-source-query
+                                      "via a Card" test-card-source-query}]
+              (testing msg
+                (testing "with NO source metadata"
+                  (test-query nil))
+                (testing "with 0.38.0+ source metadata that includes `:field_ref`"
+                  (test-query metadata))
+                (testing "with < 0.38.0 source metadata that DOES NOT include  `:field_ref` or `:id`"
+                  (test-query (for [col metadata]
+                                (dissoc col :field_ref :id))))))))))))
+
+(deftest support-legacy-filter-clauses-test
+  (testing "We should handle legacy usage of field-literal inside filter clauses"
+    (mt/dataset sample-dataset
+      (testing "against joins (#14809)"
+        (is (schema= {:status   (s/eq :completed)
+                      s/Keyword s/Any}
+                     (mt/run-mbql-query orders
+                       {:source-query {:source-table $$orders
+                                       :joins        [{:fields       :all
+                                                       :source-table $$products
+                                                       :condition    [:= $product_id &Products.products.id]
+                                                       :alias        "Products"}]}
+                        :filter       [:= *CATEGORY/Text "Widget"]}))))
+      (testing "(#14811)"
+        (is (schema= {:status   (s/eq :completed)
+                      s/Keyword s/Any}
+                     (mt/run-mbql-query orders
+                       {:source-query {:source-table $$orders
+                                       :aggregation  [[:sum $product_id->products.price]]
+                                       :breakout     [$product_id->products.category]}
+                        ;; not sure why FE is using `field-literal` here... but it should work anyway.
+                        :filter       [:= *CATEGORY/Text "Widget"]})))))))
+
+(deftest support-legacy-dashboard-parameters-test
+  (testing "We should handle legacy usage of field-literal inside (Dashboard) parameters (#14810)"
+    (mt/dataset sample-dataset
+      (is (schema= {:status   (s/eq :completed)
+                    s/Keyword s/Any}
+                   (qp/process-query
+                    (mt/query orders
+                      {:type       :query
+                       :query      {:source-query {:source-table $$orders
+                                                   :joins        [{:fields       :all
+                                                                   :source-table $$products
+                                                                   :condition    [:= $product_id &Products.products.id]
+                                                                   :alias        "Products"}]}
+                                    :limit        2}
+                       :parameters [{:type   :category
+                                     :target [:dimension [:field-literal "CATEGORY" :type/Text]]
+                                     :value  "Widget"}]})))))))

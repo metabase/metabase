@@ -521,6 +521,14 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText(/foo:bar/i).click();
       cy.findByText("Orders");
     });
+
+    it.skip("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
+      cy.visit("/collection/root");
+      cy.findByText("Your personal collection")
+        .parent()
+        .find(".Icon-chevronright")
+        .should("not.exist");
+    });
   });
 });
 
