@@ -4,15 +4,8 @@ import { Flex } from "grid-styled";
 
 import Collection from "metabase/entities/collections";
 import CollectionsList from "metabase/collections/components/CollectionsList";
-import CollectionLink from "metabase/collections/components/CollectionLink";
 
 import { MetabaseApi } from "metabase/services";
-
-import {
-  nonPersonalCollection,
-  currentUserPersonalCollections,
-  getParentPath,
-} from "metabase/collections/utils";
 
 // TODO - chastise Cam for this :P
 const SAVED_QUESTION_DB_ID = -1337;
@@ -93,9 +86,12 @@ class SavedQuestionPicker extends React.Component {
     });
   };
   async componentDidMount() {
+    // TODO - remove once we're done testing
+
+    window.query = this.props.query;
     // IMPORTANT
     // set the database to be the saved question database when we mount
-    this.props.query.setDatabase({ id: SAVED_QUESTION_DB_ID });
+    this.props.query.setDatabaseId(SAVED_QUESTION_DB_ID);
     // TODO api response is unfortunate so we'll absolutely need to make this
     // respond better
     const collectionSchemas = await MetabaseApi.db_schemas({
@@ -104,9 +100,9 @@ class SavedQuestionPicker extends React.Component {
 
     this.setState({
       isLoading: false,
-      // set the current schema to the first one, eventually this should be more
+      // set the current schema to the our analytics one, eventually this should be more
       // intelligent based on where you've been working a lot
-      currentSchema: collectionSchemas[0],
+      currentSchema: "Everything else",
       collectionSchemas: collectionSchemas.map(c => {
         // account for the fact that the backend still calls that "Everything else"
         // TODO - this should be removed when the endpoint is updated
