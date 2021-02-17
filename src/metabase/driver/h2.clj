@@ -1,5 +1,6 @@
 (ns metabase.driver.h2
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.db.jdbc-protocols :as jdbc-protocols]
@@ -327,9 +328,12 @@
 
 (defmethod driver/incorporate-ssh-tunnel-details :h2
   [_ db-details]
-  (if (and (:db db-details) (str/starts-with? (:db db-details) "tcp://"))
-      (throw (ex-info "SSH tunnel can only be established for a TCP H2 URL" {:h2-url (:db db-details)})))
-  (let [details (ssh/include-ssh-tunnel! db-details)
-        db      (:db details)]
-    (assoc details :db (str/replace-first db (str (:orig-port details)) (str (:tunnel-entrance-port details))))))
+  (if (:tunnel-enabled db-details)
+    (if (and (:db db-details) (str/starts-with? (:db db-details) "tcp://"))
+      (let [details (ssh/include-ssh-tunnel! db-details)
+            db      (:db details)]
+        (assoc details :db (str/replace-first db (str (:orig-port details)) (str (:tunnel-entrance-port details)))))
+      (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
+          db-details))
+    db-details))
 
