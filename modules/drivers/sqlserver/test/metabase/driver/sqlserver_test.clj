@@ -16,7 +16,6 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
             [metabase.test.data.interface :as tx]
             [metabase.test.util :as tu :refer [obj->json->obj]]))
 
@@ -148,7 +147,7 @@
                    :limit        3}))))))))
 
 (deftest locale-bucketing-test
-  (datasets/test-driver :sqlserver
+  (mt/test-driver :sqlserver
     (testing (str "Make sure datetime bucketing functions work properly with languages that format dates like "
                   "yyyy-dd-MM instead of yyyy-MM-dd (i.e. not American English) (#9057)")
       ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal
@@ -176,7 +175,7 @@
             (.rollback conn)))))))
 
 (deftest unprepare-test
-  (datasets/test-driver :sqlserver
+  (mt/test-driver :sqlserver
     (let [date (t/local-date 2019 11 5)
           time (t/local-time 19 27)]
       ;; various types should come out the same as they went in (1 value per tuple) or something functionally
@@ -202,3 +201,42 @@
                   (is (= [expected]
                          (row-thunk))
                       (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))
+
+
+(defn- pretty-sql [s]
+  (str/replace s #"\"" ""))
+
+(deftest optimal-filter-clauses-test
+  (mt/test-driver :sqlserver
+    (testing "Should use efficient functions like year() for date bucketing (#9934)"
+      (is (=
+           ;; TODO -- test year
+           ;; TODO -- test day
+           (str "SELECT DateFromParts(date__year, date__month, 1) AS date, count "
+                "FROM ("
+                "SELECT TOP 1048576"
+                " year(dbo.checkins.date) AS date__year,"
+                " month(dbo.checkins.date) AS date__month,"
+                " count(*) AS count "
+                "FROM dbo.checkins "
+                "GROUP BY year(dbo.checkins.date), month(dbo.checkins.date) "
+                "ORDER BY year(dbo.checkins.date) ASC,"
+                " month(dbo.checkins.date) ASC"
+                " ) source")
+           (pretty-sql
+            (:query
+             (qp/query->native
+              (mt/mbql-query checkins
+                {:aggregation [[:count]]
+                 :breakout    [[:datetime-field $date :month]]}))))))
+
+      (testing "Should still return correct results"
+        (is (= [["2013-01-01T00:00:00Z" 8]
+                ["2013-02-01T00:00:00Z" 11]
+                ["2013-03-01T00:00:00Z" 21]
+                ["2013-04-01T00:00:00Z" 26]
+                ["2013-05-01T00:00:00Z" 23]]
+               (take 5 (mt/rows
+                         (mt/run-mbql-query checkins
+                           {:aggregation [[:count]]
+                            :breakout    [[:datetime-field $date :month]]})))))))))

@@ -12,7 +12,9 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as qp.i]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection ResultSet Time Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -142,7 +144,7 @@
 
 (defmethod sql.qp/date [:sqlserver :day-of-month]
   [_ _ expr]
-  (date-part :day expr))
+  (hx/day expr))
 
 (defmethod sql.qp/date [:sqlserver :day-of-year]
   [_ _ expr]
@@ -164,7 +166,7 @@
 
 (defmethod sql.qp/date [:sqlserver :month-of-year]
   [_ _ expr]
-  (date-part :month expr))
+  (hx/month expr))
 
 ;; Format date as yyyy-01-01 then add the appropriate number of quarter
 ;; Equivalent SQL:
@@ -181,7 +183,8 @@
 
 (defmethod sql.qp/date [:sqlserver :year]
   [_ _ expr]
-  (hsql/call :datefromparts (hx/year expr) 1 1))
+  #_(hsql/call :datefromparts (hx/year expr) 1 1)
+  (hx/year expr))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlserver
   [_ hsql-form amount unit]
@@ -215,14 +218,19 @@
 ;;
 ;; To fix this we'll add a max-results LIMIT to the query when we add the order-by if there's no `limit` specified,
 ;; but not for `top-level` queries (since it's not needed there)
+(defn- add-default-limit [driver honeysql-form]
+  (if (:limit honeysql-form)
+    honeysql-form
+    (sql.qp/apply-top-level-clause driver :limit honeysql-form {:limit qp.i/absolute-max-results})))
+
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by]
   [driver _ honeysql-form {:keys [limit], :as query}]
-  (let [add-limit?    (and (not limit) (pos? sql.qp/*nested-query-level*))
+  (let [add-limit?    (pos? sql.qp/*nested-query-level*)
         honeysql-form ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])
                        driver :order-by honeysql-form query)]
     (if-not add-limit?
       honeysql-form
-      (sql.qp/apply-top-level-clause driver :limit honeysql-form (assoc query :limit qp.i/absolute-max-results)))))
+      (add-default-limit driver honeysql-form))))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -358,3 +366,64 @@
 (defmethod sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
   (sql/->prepared-substitution driver (if bool 1 0)))
+
+(defmethod sql.qp/field->alias :sqlserver
+  [driver field]
+  (let [optimized-bucketing-unit (-> field meta ::sql.qp/clause meta ::optimized)]
+    ((get-method sql.qp/field->alias :sql)
+     driver
+     (cond-> field
+       optimized-bucketing-unit
+       (update :name #(str % "__" (name optimized-bucketing-unit)))))))
+
+(defn- optimize-field [field-clause]
+  field-clause
+  (or (mbql.u/match-one field-clause
+        [:datetime-field wrapped-field (unit :guard #{:year :month :day})]
+        (when (empty? &parents)
+          (case unit
+            :year  [^{::original wrapped-field, ::optimized :year}  [:datetime-field wrapped-field :year]]
+            :month [^{::original wrapped-field, ::optimized :year}  [:datetime-field wrapped-field :year]
+                    ^{::original wrapped-field, ::optimized :month} [:datetime-field wrapped-field :month-of-year]]
+            :day   [^{::original wrapped-field, ::optimized :year}  [:datetime-field wrapped-field :year]
+                    ^{::original wrapped-field, ::optimized :month} [:datetime-field wrapped-field :month-of-year]
+                    ^{::original wrapped-field, ::optimized :day}   [:datetime-field wrapped-field :day-of-month]])))
+      [field-clause]))
+
+(defn- optimize-query [query]
+  (-> query
+      (update-in [:query :breakout] (fn [breakouts]
+                                      (mapcat optimize-field breakouts)))
+      (update-in [:query :order-by] (fn [order-by]
+                                      (mapcat (fn [[direction field]]
+                                                (for [field (optimize-field field)]
+                                                  [direction field]))
+                                              order-by)))))
+
+(defn- combine-group [driver group]
+  (let [original (-> group first meta ::sql.qp/clause meta ::original)
+        unit->part (u/key-by #(-> % meta ::sql.qp/clause meta ::optimized)
+                             (map second group))]
+    [(hsql/call :DateFromParts
+       (some-> unit->part :year)
+       (or (some-> unit->part :month) 1)
+       (or (some-> unit->part :day) 1))
+     (sql.qp/field-clause->alias driver original identity)]))
+
+(defn- optimize-honeysql [driver honeysql-form]
+  {:select (mapcat (fn [group]
+                     (if (> (count group) 1)
+                       [(combine-group driver group)]
+                       (for [[_ alias] group]
+                         alias)))
+                   (partition-by #(-> % meta ::sql.qp/clause meta ::original)
+                                 (:select honeysql-form)))
+   :from   [[(add-default-limit driver honeysql-form)
+             :source]]})
+
+(defmethod driver/mbql->native :sqlserver
+  [driver query]
+  (let [query         (optimize-query query)
+        honeysql-form (optimize-honeysql driver (sql.qp/mbql->honeysql driver query))
+        [sql & args]  (sql.qp/format-honeysql driver honeysql-form)]
+    {:query sql, :params args}))

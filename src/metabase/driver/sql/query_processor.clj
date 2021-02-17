@@ -27,6 +27,11 @@
   (:import metabase.models.field.FieldInstance
            metabase.util.honeysql_extensions.Identifier))
 
+
+
+(defn- with-clause-metadata [x clause]
+  (vary-meta x assoc ::clause clause))
+
 ;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic ^:private *query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
@@ -41,7 +46,7 @@
 (p.types/deftype+ SQLSourceQuery [sql params]
   hformat/ToSql
   (to-sql [_]
-    (dorun (map hformat/add-anon-param params))
+    (mapv hformat/add-anon-param params)
     ;; strip off any trailing semicolons
     (str "(" (str/replace sql #";+\s*$" "") ")"))
 
@@ -263,7 +268,8 @@
   [driver field-clause :- (s/pred #(mbql.u/match-one % :field-id)
                                   "field-id clause or something wrapping one")]
   (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
-        alias    (field->alias driver (qp.store/field field-id))
+        alias    (field->alias driver (-> (qp.store/field field-id)
+                                          (with-clause-metadata field-clause)))
         col-info (when *query* (annotate/col-info-for-field-clause *query* field-clause))
         prefix   (:source_alias col-info)]
     (if (and prefix alias
@@ -378,10 +384,10 @@
                 (add-interval-honeysql-form driver hsql-form amount unit))
               (->honeysql driver field)
               intervals))
-    (apply hsql/call :+ (map (partial ->honeysql driver) args))))
+    (apply hsql/call :+ (mapv (partial ->honeysql driver) args))))
 
-(defmethod ->honeysql [:sql :-] [driver [_ & args]] (apply hsql/call :- (map (partial ->honeysql driver) args)))
-(defmethod ->honeysql [:sql :*] [driver [_ & args]] (apply hsql/call :* (map (partial ->honeysql driver) args)))
+(defmethod ->honeysql [:sql :-] [driver [_ & args]] (apply hsql/call :- (mapv (partial ->honeysql driver) args)))
+(defmethod ->honeysql [:sql :*] [driver [_ & args]] (apply hsql/call :* (mapv (partial ->honeysql driver) args)))
 
 ;; for division we want to go ahead and convert any integer args to floats, because something like field / 2 will do
 ;; integer division and give us something like 1.0 where we would rather see something like 1.5
@@ -448,7 +454,7 @@
 
 (defmethod ->honeysql [:sql :coalesce]
   [driver [_ & args]]
-  (apply hsql/call :coalesce (map (partial ->honeysql driver) args)))
+  (apply hsql/call :coalesce (mapv (partial ->honeysql driver) args)))
 
 (defmethod ->honeysql [:sql :replace]
   [driver [_ arg pattern replacement]]
@@ -456,7 +462,7 @@
 
 (defmethod ->honeysql [:sql :concat]
   [driver [_ & args]]
-  (apply hsql/call :concat (map (partial ->honeysql driver) args)))
+  (apply hsql/call :concat (mapv (partial ->honeysql driver) args)))
 
 (defmethod ->honeysql [:sql :substring]
   [driver [_ arg start length]]
@@ -474,7 +480,7 @@
                (when (:default options)
                  [[:else (:default options)]]))
        (apply concat)
-       (map (partial ->honeysql driver))
+       (mapv (partial ->honeysql driver))
        (apply hsql/call :case)))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
@@ -538,7 +544,9 @@
                           [:expression expression-name] expression-name
                           [:field-literal field-name _] field-name)
                         (unambiguous-field-alias driver field-clause))]
-     (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
+     (-> (->honeysql driver (-> (hx/identifier :field-alias (unique-name-fn alias))
+                                (with-clause-metadata field-clause)))
+         (with-clause-metadata field-clause)))))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
@@ -560,10 +568,11 @@
    (as driver field-clause identity))
 
   ([driver field-clause unique-name-fn]
-   (let [honeysql-form (->honeysql driver field-clause)]
-     (if-let [alias (field-clause->alias driver field-clause unique-name-fn)]
-       [honeysql-form alias]
-       honeysql-form))))
+   (-> (let [honeysql-form (->honeysql driver field-clause)]
+         (if-let [alias (field-clause->alias driver field-clause unique-name-fn)]
+           [honeysql-form alias]
+           honeysql-form))
+       (with-clause-metadata field-clause))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -576,9 +585,10 @@
   [driver _ honeysql-form {aggregations :aggregation}]
   (let [honeysql-ags (vec (for [ag aggregations]
                             [(->honeysql driver ag)
-                             (->honeysql driver (hx/identifier
-                                                 :field-alias
-                                                 (driver/format-custom-field-name driver (annotate/aggregation-name ag))))]))]
+                             (->honeysql driver (-> (hx/identifier
+                                                     :field-alias
+                                                     (driver/format-custom-field-name driver (annotate/aggregation-name ag)))
+                                                    (with-clause-metadata ag)))]))]
     (reduce h/merge-select honeysql-form honeysql-ags)))
 
 
@@ -592,7 +602,7 @@
                                           (remove (set fields-fields))
                                           (mapv (fn [field-clause]
                                                   (as driver field-clause unique-name-fn)))))
-      (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields)))))
+      (apply h/group new-hsql (mapv (partial ->honeysql driver) breakout-fields)))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
@@ -674,11 +684,11 @@
 
 (defmethod ->honeysql [:sql :and]
   [driver [_ & subclauses]]
-  (apply vector :and (map (partial ->honeysql driver) subclauses)))
+  (apply vector :and (mapv (partial ->honeysql driver) subclauses)))
 
 (defmethod ->honeysql [:sql :or]
   [driver [_ & subclauses]]
-  (apply vector :or (map (partial ->honeysql driver) subclauses)))
+  (apply vector :or (mapv (partial ->honeysql driver) subclauses)))
 
 (def ^:private clause-needs-null-behaviour-correction?
   (comp #{:contains :starts-with :ends-with} first))
@@ -764,7 +774,7 @@
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
-  (reduce h/merge-order-by honeysql-form (map (partial ->honeysql driver) subclauses)))
+  (reduce h/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
@@ -943,5 +953,6 @@
   "Transpile MBQL query into a native SQL statement."
   [driver {inner-query :query, database :database, :as outer-query}]
   (let [honeysql-form (mbql->honeysql driver outer-query)
+        _ (println (format "HONEYSQL =>\n%s" (u/pprint-to-str 'yellow honeysql-form)))
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))

@@ -38,9 +38,9 @@
 (when-not *compile-files*
   (log/info (trs "Maximum memory available to JVM: {0}" (format-bytes (.maxMemory (Runtime/getRuntime))))))
 
-;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
+;; Set the default width for pprinting to 120 instead of 72. The default width is too narrow and wastes a lot of space
 ;; for pprinting huge things like expanded queries
-(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 200))
+(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 120))
 
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
@@ -460,7 +460,6 @@
   discarded).
 
      (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
-  {:style/indent 1}
   [f coll]
   (into {} (map (juxt f identity)) coll))
 
