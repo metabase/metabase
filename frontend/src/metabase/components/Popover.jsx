@@ -75,7 +75,7 @@ export default class Popover extends Component {
   };
 
   _createPopoverElement() {
-    const el = document.createElement("span");
+    const el = document.createElement("div");
     el.className = "PopoverContainer";
     return el;
   }
