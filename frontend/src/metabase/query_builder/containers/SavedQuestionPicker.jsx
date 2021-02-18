@@ -1,6 +1,7 @@
 import React from "react";
 import Icon from "metabase/components/Icon";
 import { Flex } from "grid-styled";
+import { t } from "ttag";
 
 import Collection from "metabase/entities/collections";
 import Schemas from "metabase/entities/schemas";
@@ -21,9 +22,10 @@ class SavedQuestionTableList extends React.Component {
     const { tables = [] } = this.props.schema;
     if (tables.length > 0) {
       return (
-        <ol className="px3">
+        <ol className="px3 pt2">
           {tables.map(t => (
             <li
+              className="text-brand-hover flex align-top mb1"
               key={t.id}
               onClick={() => {
                 this.props.query
@@ -32,8 +34,8 @@ class SavedQuestionTableList extends React.Component {
                   .update(null, { run: true });
               }}
             >
-              <Icon name="table2" />
-              {t.display_name}
+              <Icon name="table2" className="mr1" />
+              <h3>{t.display_name}</h3>
             </li>
           ))}
         </ol>
@@ -105,15 +107,15 @@ class SavedQuestionPicker extends React.Component {
       };
       return (
         <div style={{ width: 480 }} className="flex">
-          <div className="border-right" style={{ width: 240 }}>
+          <div className="bg-light border-right" style={{ width: 240 }}>
             <div>
-              <span
+              <div
                 onClick={() => onBack()}
-                className="text-brand-hover flex align-center"
+                className="text-brand-hover flex align-center p1 border-bottom"
               >
-                <Icon name="chevronleft" />
-                Back
-              </span>
+                <Icon name="chevronleft" className="mr1" />
+                <h3>{t`Saved questions`}</h3>
+              </div>
             </div>
             <span
               onClick={() =>
@@ -137,6 +139,7 @@ class SavedQuestionPicker extends React.Component {
                 return (
                   <div>
                     <Flex
+                      mx={3}
                       className="relative"
                       align={
                         // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
