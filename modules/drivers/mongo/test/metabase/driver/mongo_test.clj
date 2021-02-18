@@ -130,13 +130,24 @@
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
-    (testing "Can we filter against nested columns?"
-      (mt/dataset geographical-tips
+    (mt/dataset geographical-tips
+      (testing "Can we filter against nested columns?"
         (is (= [[16]]
                (mt/rows
                  (mt/run-mbql-query tips
                    {:aggregation [[:count]]
-                    :filter      [:= $tips.source.username "tupac"]}))))))))
+                    :filter      [:= $tips.source.username "tupac"]})))))
+
+      (testing "Can we breakout against nested columns?"
+        (is (= [[nil 297]
+                ["amy" 20]
+                ["biggie" 11]
+                ["bob" 20]]
+               (mt/rows
+                 (mt/run-mbql-query tips
+                   {:aggregation [[:count]]
+                    :breakout    [$tips.source.username]
+                    :limit       4}))))))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
 (tx/defdataset ^:private all-null-columns

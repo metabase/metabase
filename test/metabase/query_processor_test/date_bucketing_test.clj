@@ -808,7 +808,16 @@
 (deftest group-by-quarter-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[2 200]]
-           (sad-toucan-incidents-with-bucketing :quarter-of-year :pacific)))))
+           (sad-toucan-incidents-with-bucketing :quarter-of-year :pacific)))
+
+    (is (= [[1 200]
+            [2 284]
+            [3 278]
+            [4 238]]
+           (mt/formatted-rows [int int]
+             (mt/run-mbql-query checkins
+               {:aggregation [[:count]]
+                :breakout    [[:datetime-field $date :quarter-of-year]]}))))))
 
 (deftest group-by-year-test
   (mt/test-drivers (mt/normal-drivers)
@@ -821,7 +830,19 @@
                :else
                "2015-01-01T00:00:00Z")
              200]]
-           (sad-toucan-incidents-with-bucketing :year :pacific)))))
+           (sad-toucan-incidents-with-bucketing :year :pacific)))
+
+    (is (= (if (= :sqlite driver/*driver*)
+             [["2013-01-01" 235]
+              ["2014-01-01" 498]
+              ["2015-01-01" 267]]
+             [["2013-01-01T00:00:00Z" 235]
+              ["2014-01-01T00:00:00Z" 498]
+              ["2015-01-01T00:00:00Z" 267]])
+           (mt/formatted-rows [str int]
+             (mt/run-mbql-query checkins
+               {:aggregation [[:count]]
+                :breakout    [[:datetime-field $date :year]]}))))))
 
 ;; RELATIVE DATES
 (p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds]
@@ -880,12 +901,13 @@
             (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
             (db/delete! Database :id (mt/id))
             (apply count-of-grouping dataset field-grouping relative-datetime-args))
-          (-> (mt/run-mbql-query checkins
-                {:aggregation [[:count]]
-                 :filter      [:=
-                               [:datetime-field $timestamp field-grouping]
-                               (cons :relative-datetime relative-datetime-args)]})
-              mt/first-row first int)))))
+          (let [results (mt/run-mbql-query checkins
+                          {:aggregation [[:count]]
+                           :filter      [:=
+                                         [:datetime-field $timestamp field-grouping]
+                                         (cons :relative-datetime relative-datetime-args)]})]
+            (or (some-> results mt/first-row first int)
+                results))))))
 
 ;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
 ;;        are ran and loading data into these DBs is mind-bogglingly slow.
