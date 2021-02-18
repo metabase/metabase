@@ -120,23 +120,29 @@
   (testing "`compile-filter:filters` shouldn't return extra semicolons if it encounters empty `:and` clauses (#12791)"
     ;; whatever is in the `:and` clause might get removed by the other functions that handle filter compilation; if
     ;; `compile-filter:filters` encounters an empty `:and`, don't generate an extra semicolon
-    (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (ga.test/with-some-fields [{:keys [event-action-field event-label-field]}]
-        (mt/with-system-timezone-id system-timezone-id
-          (mt/with-clock #t "2019-11-18T00:00:00Z"
-            (let [query {:filter [:and
-                                  [:=
-                                   [:field-id (u/the-id event-label-field)]
-                                   [:value "A" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]
-                                  [:and]
-                                  [:!=
-                                   [:field-id (u/the-id event-action-field)]
-                                   [:value "B" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]]}]
-              (mt/with-everything-store
-                (is (= {:filters "ga:eventLabel==A;ga:eventAction!=B"}
-                       (#'ga.qp/compile-filter:filters query)))))))))))
+    (ga.test/with-some-fields [{:keys [event-action-field event-label-field]}]
+      (let [query {:filter [:and
+                            [:=
+                             [:field-id (u/the-id event-label-field)]
+                             [:value "A" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]
+                            [:and]
+                            [:!=
+                             [:field-id (u/the-id event-action-field)]
+                             [:value "B" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]]}]
+        (mt/with-everything-store
+          (is (= {:filters "ga:eventLabel==A;ga:eventAction!=B"}
+                 (#'ga.qp/compile-filter:filters query))))))))
 
-(deftest esacpe-filters-test
-  (testing "Filter escaping shouldn't escape dashes (#8626)"
-    (is (= "acon/manager---community-partnerships-and-population-programs"
-           (#'ga.qp/ga-filter "acon/manager---community-partnerships-and-population-programs")))))
+(deftest regex-escape-test
+  (testing "Regex escaping shouldn't escape dashes (#8626)"
+    (ga.test/with-some-fields [{:keys [table event-label-field]}]
+      (mt/with-everything-store
+        (is (= "ga:eventLabel=~(?i)acon/manager---community-partnerships-and-population-programs"
+               (-> (ga.qp/mbql->native
+                    {:query {:source-table (u/the-id table)
+                             :filter       [:contains
+                                            [:field-id (u/the-id event-label-field)]
+                                            "acon/manager---community-partnerships-and-population-programs"
+                                            {:case-sensitive false}]}})
+                   :query
+                   :filters)))))))

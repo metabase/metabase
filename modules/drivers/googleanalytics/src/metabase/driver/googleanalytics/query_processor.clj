@@ -61,7 +61,9 @@
              {c (str "\\" c)})))
 
 (defn- escape-for-regex [s]
-  (str/escape s (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
+  ;; See https://support.google.com/analytics/answer/1034324?hl=en for list of regex special characters
+  ;; TODO -- I'm not sure we need to escape everything we're escaping here
+  (str/escape s (char-escape-map ".\\+*?[^]$(){}=!<>|:")))
 
 (defn- escape-for-filter-clause [s]
   (str/escape s (char-escape-map ",;\\")))
