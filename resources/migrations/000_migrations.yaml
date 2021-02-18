@@ -7933,6 +7933,29 @@ databaseChangeLog:
             newColumnName: semantic_type
             columnDataType: varchar(255)
 
+  # Change the TaskHistory timestamp columns to higher-resolution columns: on MySQL, they previously only had *second*
+  # resolution, which caused annoying test failures and made it hard to correctly sort tasks that happened in quick succession.
+
+  - changeSet:
+      id: 282
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - modifyDataType:
+            tableName: task_history
+            columnName: started_at
+            newDataType: ${timestamp_type}
+
+  - changeSet:
+      id: 283
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - modifyDataType:
+            tableName: task_history
+            columnName: ended_at
+            newDataType: ${timestamp_type}
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
