@@ -30,7 +30,7 @@
         (let [filter-clause [filter-type [:datetime-field 'field :day] [:absolute-datetime (t/local-date "2019-11-18") :day]]]
           (testing filter-clause
             (is (= expected
-                   (#'ga.qp/compile-interval filter-clause)))))))
+                   (#'ga.qp/parse-filter:interval filter-clause)))))))
     (testing "\nrelative datetimes"
       (mt/with-database-timezone-id "UTC"
         (mt/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z") (t/zone-id "UTC"))
@@ -49,7 +49,7 @@
               (let [filter-clause [filter-type [:datetime-field 'field :month] [:relative-datetime -4 :month]]]
                 (testing filter-clause
                   (is (= expected
-                         (#'ga.qp/compile-interval filter-clause)))))))
+                         (#'ga.qp/parse-filter:interval filter-clause)))))))
           (testing "\ndatetime-field bucketing unit != relative-datetime bucketing unit"
             (testing "Day = 4 months ago => Date = July 2019 => Date = 2019-07-01"
               ;; this is another weird query that is unlikely to actually get generated in the wild -- FE client
@@ -58,10 +58,10 @@
               (let [filter-clause [:= [:datetime-field 'field :day] [:relative-datetime -4 :month]]]
                 (testing filter-clause
                   (is (= {:start-date "2019-07-01", :end-date "2019-07-01"}
-                         (#'ga.qp/compile-interval filter-clause)))))))
+                         (#'ga.qp/parse-filter:interval filter-clause)))))))
           (testing "\n:between filter"
             (is (= {:start-date "2019-07-01", :end-date "2019-10-31"}
-                   (#'ga.qp/compile-interval [:between
+                   (#'ga.qp/parse-filter:interval [:between
                                                    [:datetime-field 'field :month]
                                                    [:relative-datetime -4 :month]
                                                    [:relative-datetime -1 :month]]))
@@ -69,9 +69,9 @@
         (testing "\nthis week should be based on the report timezone — see #9467"
           (testing "\nSanity check - with UTC timezone, current week *should* be different when going from 11 PM Sat -> 1 AM Sun"
             (is (not= (mt/with-clock (t/mock-clock (t/instant "2019-11-30T23:00:00Z") (t/zone-id "UTC"))
-                        (#'ga.qp/compile-interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]]))
+                        (#'ga.qp/parse-filter:interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]]))
                       (mt/with-clock (t/mock-clock (t/instant "2019-12-01T01:00:00Z") (t/zone-id "UTC"))
-                        (#'ga.qp/compile-interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]])))))
+                        (#'ga.qp/parse-filter:interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]])))))
           (testing (str "\nthis week at Saturday 6PM local time (Saturday 11PM UTC) should be the same as this week "
                         "Saturday 8PM local time (Sunday 1 AM UTC)")
             (mt/with-report-timezone-id "US/Eastern"
@@ -80,9 +80,9 @@
                   (testing (format "\nSystem timezone = %s" system-timezone)
                     (is (= {:start-date "2019-11-24", :end-date "2019-11-30"}
                            (mt/with-clock (t/mock-clock (t/instant "2019-11-30T23:00:00Z") (t/zone-id system-timezone))
-                             (#'ga.qp/compile-interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]]))
+                             (#'ga.qp/parse-filter:interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]]))
                            (mt/with-clock (t/mock-clock (t/instant "2019-12-01T01:00:00Z") (t/zone-id system-timezone))
-                             (#'ga.qp/compile-interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]]))))))))))))))
+                             (#'ga.qp/parse-filter:interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]]))))))))))))))
 
 (deftest day-date-range-test
   (is (= {:start-date "29daysAgo"}
@@ -131,7 +131,7 @@
                              [:value "B" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]]}]
         (mt/with-everything-store
           (is (= {:filters "ga:eventLabel==A;ga:eventAction!=B"}
-                 (#'ga.qp/compile-filter:filters query))))))))
+                 (#'ga.qp/handle-filter:filters query))))))))
 
 (deftest regex-escape-test
   (testing "Regex escaping shouldn't escape dashes (#8626)"
