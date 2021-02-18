@@ -50,7 +50,7 @@ describe.skip("scenarios > alert > auth for alerts", () => {
 
       // Change alert
       cy.visit(`/question/1`);
-      cy.get(".Icon-bell").click();
+      cy.icon("bell").click();
       cy.findByText("Edit").click();
       cy.findByText("Daily").click();
       cy.findByText("Weekly").click();
@@ -63,7 +63,7 @@ describe.skip("scenarios > alert > auth for alerts", () => {
       });
 
       // Change alert back
-      cy.get(".Icon-bell").click();
+      cy.icon("bell").click();
       cy.findByText("Edit").click();
       cy.findByText("Weekly").click();
       cy.findByText("Daily").click();
@@ -74,35 +74,35 @@ describe.skip("scenarios > alert > auth for alerts", () => {
 
     it("should not let you see other people's alerts", () => {
       cy.visit("/question/1");
-      cy.get(".Icon-bell").click();
+      cy.icon("bell").click();
       cy.findByText("Unsubscribe").should("not.exist");
       cy.findByText("Set up an alert");
     });
 
     it("should let you see other alerts where you are a recipient", () => {
       cy.visit("/question/2");
-      cy.get(".Icon-bell").click();
+      cy.icon("bell").click();
       cy.findByText("You're receiving Bobby's alerts");
       cy.findByText("Set up your own alert");
     });
 
     it("should let you see your own alerts", () => {
       cy.visit("/question/3");
-      cy.get(".Icon-bell").click();
+      cy.icon("bell").click();
       cy.findByText("You set up an alert");
     });
 
     it("should let you unsubscribe from both your own and others' alerts", () => {
       // Unsubscribe from your own alert
       cy.visit("/question/3");
-      cy.get(".Icon-bell").click();
+      cy.icon("bell").click();
       cy.findByText("Unsubscribe").click();
 
       cy.findByText("Okay, you're unsubscribed");
 
       // Unsubscribe from others' alerts
       cy.visit("/question/2");
-      cy.get(".Icon-bell").click();
+      cy.icon("bell").click();
       cy.findByText("Unsubscribe").click();
 
       cy.findByText("Okay, you're unsubscribed");

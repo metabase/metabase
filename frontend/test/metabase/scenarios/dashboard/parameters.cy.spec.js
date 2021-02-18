@@ -12,8 +12,8 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Baker").should("not.exist");
 
     // Add a filter
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-filter").click();
+    cy.icon("pencil").click();
+    cy.icon("filter").click();
     cy.findByText("Location").click();
     cy.findByText("City").click();
 
@@ -54,12 +54,12 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("my dash").click();
 
     // add the same question twice
-    cy.get(".Icon-pencil").click();
+    cy.icon("pencil").click();
     addQuestion("Orders, Count");
     addQuestion("Orders, Count");
 
     // add a category filter
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     cy.contains("Other Categories").click();
 
     // connect it to people.name and product.category
@@ -111,8 +111,8 @@ describe("scenarios > dashboard > parameters", () => {
     cy.visit("/dashboard/1");
 
     // Add filter and save dashboard
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-filter").click();
+    cy.icon("pencil").click();
+    cy.icon("filter").click();
     cy.contains("Other Categories").click();
     cy.findByText("Save").click();
 
@@ -127,7 +127,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.url().should("include", "category=Gizmo");
 
     // Remove filter name
-    cy.get(".Icon-pencil").click();
+    cy.icon("pencil").click();
     cy.get(".Dashboard")
       .find(".Icon-gear")
       .click();
@@ -179,7 +179,7 @@ describe("scenarios > dashboard > parameters", () => {
     // it automatically switches to that dashboard and enters the editing mode
     cy.findByText("You're editing this dashboard.");
 
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     cy.findByText("Time").click();
     cy.findByText("All Options").click();
     // update the filter with the default option "Previous 30 days"

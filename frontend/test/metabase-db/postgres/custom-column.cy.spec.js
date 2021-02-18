@@ -24,7 +24,7 @@ describe("postgres > question > custom columns", () => {
 
     cy.log("**-- 1. Create custom column using `regexextract()` --**");
 
-    cy.get(".Icon-add_data").click();
+    cy.icon("add_data").click();
     popover().within(() => {
       cy.get("[contenteditable='true']").type(
         'regexextract([State], "^C[A-Z]")',
@@ -69,7 +69,7 @@ describe("postgres > question > custom columns", () => {
 
     cy.log("**-- 1. Create custom column using `regexextract()` --**");
 
-    cy.get(".Icon-add_data").click();
+    cy.icon("add_data").click();
     popover().within(() => {
       cy.get("[contenteditable='true']")
         .type(`regexextract([State], "${ESCAPED_REGEX}")`)

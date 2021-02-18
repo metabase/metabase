@@ -17,7 +17,7 @@ describeWithToken("scenarios > question > snippets", () => {
   it("can create a snippet", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
-    cy.get(".Icon-snippet").click();
+    cy.icon("snippet").click();
     cy.contains("Create a snippet").click();
     modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
@@ -26,7 +26,7 @@ describeWithToken("scenarios > question > snippets", () => {
       cy.findByLabelText("Give your snippet a name").type("night snippet");
       cy.contains("Save").click();
     });
-    cy.get(".Icon-play")
+    cy.icon("play")
       .first()
       .click();
     cy.get(".ScalarValue").contains("a snippet darkly");
@@ -70,7 +70,7 @@ describeWithToken("scenarios > question > snippets", () => {
     // Grant access
     cy.visit("/question/new");
     cy.contains("Native query").click();
-    cy.get(".Icon-snippet").click();
+    cy.icon("snippet").click();
 
     sidebar()
       .find(".Icon-ellipsis")
@@ -107,7 +107,7 @@ describeWithToken("scenarios > question > snippets", () => {
     });
 
     cy.reload();
-    cy.get(".Icon-snippet").click();
+    cy.icon("snippet").click();
     cy.contains("543 - admin snippet");
     cy.contains("543 - user snippet");
   });
@@ -124,7 +124,7 @@ describeWithToken("scenarios > question > snippets", () => {
     });
 
     // create folder
-    cy.get(".Icon-snippet").click();
+    cy.icon("snippet").click();
     sidebar()
       .find(".Icon-add")
       .click();
@@ -144,7 +144,7 @@ describeWithToken("scenarios > question > snippets", () => {
       .parent()
       .parent()
       .within(() => {
-        cy.get(".Icon-chevrondown").click({ force: true });
+        cy.icon("chevrondown").click({ force: true });
         cy.findByText("Edit").click();
       });
     modal().within(() => cy.findByText("Top folder").click());

@@ -77,7 +77,7 @@ describe("scenarios > x-rays", () => {
       cy.findByText(
         "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
       );
-      cy.get(".Icon-warning").should("not.exist");
+      cy.icon("warning").should("not.exist");
     });
   });
 });

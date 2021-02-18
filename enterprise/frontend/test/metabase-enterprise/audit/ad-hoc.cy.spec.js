@@ -15,7 +15,7 @@ describeWithToken("audit > ad-hoc", () => {
       cy.visit("/question/new");
       cy.findByText("Native query").click();
       cy.get(".ace_content").type("SELECT 123");
-      cy.get(".Icon-play")
+      cy.icon("play")
         .first()
         .click();
 

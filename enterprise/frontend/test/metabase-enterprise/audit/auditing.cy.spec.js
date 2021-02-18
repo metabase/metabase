@@ -61,7 +61,7 @@ describeWithToken("audit > auditing", () => {
 
     cy.log("**Download a question**");
     cy.visit("/question/3");
-    cy.get(".Icon-download").click();
+    cy.icon("download").click();
     cy.request("POST", "/api/card/1/query/json");
 
     signIn("nodata");

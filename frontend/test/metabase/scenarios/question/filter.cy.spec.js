@@ -524,7 +524,7 @@ describe("scenarios > question > filter", () => {
       // Remove default filter (category)
       cy.get("fieldset .Icon-close").click();
 
-      cy.get(".Icon-play")
+      cy.icon("play")
         .first()
         .should("be.visible")
         .as("rerunQuestion");
@@ -571,7 +571,7 @@ describe("scenarios > question > filter", () => {
     });
 
     // Test shows two filter collapsed - click on number 2 to expand and show filter names
-    cy.get(".Icon-filter")
+    cy.icon("filter")
       .parent()
       .contains("2")
       .click();
@@ -619,7 +619,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Previous").click();
     cy.findByText("Before").click();
     // Collapse the calendar view
-    cy.get(".Icon-calendar").click();
+    cy.icon("calendar").click();
     cy.findByText("Add filter")
       .closest(".Button")
       .should("not.be.disabled")

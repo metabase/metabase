@@ -16,7 +16,7 @@ describe("scenarios > permissions", () => {
     it(`should display the permissions screen on ${path}`, () => {
       signIn("none");
       cy.visit(path);
-      cy.get(".Icon-key");
+      cy.icon("key");
       cy.contains("Sorry, you don’t have permission to see that.");
     });
   }
@@ -28,7 +28,7 @@ describe("scenarios > permissions", () => {
     cy.server();
     cy.route({ url: /\/api\/pulse\/1/, status: 403, response: {} });
     cy.visit("/pulse/1");
-    cy.get(".Icon-key");
+    cy.icon("key");
     cy.contains("Sorry, you don’t have permission to see that.");
   });
 
