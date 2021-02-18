@@ -5,6 +5,7 @@ import {
   version,
   popover,
   itOpenSourceOnly,
+  setupDummySMTP,
 } from "__support__/cypress";
 
 describe("scenarios > admin > settings", () => {
@@ -327,6 +328,7 @@ describe("scenarios > admin > settings", () => {
       cy.findByText("Send test email").click();
       cy.findByText("Sorry, something went wrong. Please try again.");
     });
+
     it("should be able to clear email settings", () => {
       cy.visit("/admin/settings/email");
       cy.findByText("Clear").click();
@@ -336,6 +338,16 @@ describe("scenarios > admin > settings", () => {
         "have.value",
         "",
       );
+    });
+
+    it.skip("should not offer to save email changes when there aren't any (metabase#14749)", () => {
+      // Make sure some settings are already there
+      setupDummySMTP();
+
+      cy.visit("/admin/settings/email");
+      cy.findByText("Send test email").scrollIntoView();
+      // Needed to scroll the page down first to be able to use findByRole() - it fails otherwise
+      cy.findByRole("button", { name: "Save changes" }).should("be.disabled");
     });
   });
 

@@ -51,6 +51,7 @@
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
             [metabase.query-processor.middleware.store :as store]
+            [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
             [metabase.query-processor.middleware.validate :as validate]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.reducible :as qp.reducible]
@@ -96,6 +97,7 @@
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
+   #'upgrade-field-literals/upgrade-field-literals
    #'add-source-metadata/add-source-metadata-for-source-queries
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
