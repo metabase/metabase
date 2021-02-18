@@ -1,7 +1,7 @@
 import querystring from "querystring";
 
 // using jsrsasign because jsonwebtoken doesn't work on the web :-/
-import KJUR from "jsrsasign";
+import { jws } from "jsrsasign/lib/jsrsasign-jwths-min";
 
 export function getSignedToken(
   resourceType,
@@ -19,7 +19,7 @@ export function getSignedToken(
   if (previewEmbeddingParams) {
     unsignedToken._embedding_params = previewEmbeddingParams;
   }
-  return KJUR.jws.JWS.sign(null, { alg: "HS256", typ: "JWT" }, unsignedToken, {
+  return jws.JWS.sign(null, { alg: "HS256", typ: "JWT" }, unsignedToken, {
     utf8: secretKey,
   });
 }
