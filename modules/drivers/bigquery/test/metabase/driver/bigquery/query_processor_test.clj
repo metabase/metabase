@@ -604,6 +604,9 @@
                                                                         [:datetime-field [:field-id (:id f)] unit]
                                                                         [:relative-datetime -1 unit]])}))))))))))
 
+;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
+;; filtering purposes against RELATIVE-DATETIMES. `relative-datetime` only supports the unit below -- a subset of all
+;; the MBQL date bucketing units.
 (def ^:private filter-test-table
   [[nil          :minute :hour :day  :week :month :quarter :year]
    [:time        true    true  false false false  false    false]
@@ -631,6 +634,8 @@
       (mt/dataset attempted-murders
         (test-table-with-fn filter-test-table can-we-filter-against-relative-datetime?)))))
 
+;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
+;; breakout purposes.
 (def ^:private breakout-test-table
   [[nil          :default :minute :hour :day  :week :month :quarter :year :minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year]
    [:time        true     true    true  false false false  false    false true            true         false        false         false        false         false          false]

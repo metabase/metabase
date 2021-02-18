@@ -152,3 +152,27 @@
                 {:aggregation [[:distinct $name]
                                [:distinct $price]]
                  :limit       5})))))))
+
+(deftest compile-time-interval-test
+  (mt/test-driver :mongo
+    (testing "Make sure time-intervals work the way they're supposed to."
+      (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
+        (is (= [{"$match"
+                 {"$and"
+                  [{:$expr {"$gte" ["$date" {:$dateFromString {:dateString "2020-10-01T00:00Z"}}]}}
+                   {:$expr {"$lt"  ["$date" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                {"$group"
+                 {"_id"
+                  {"date~~~day"
+                   {:$let
+                    {:vars {:parts {:$dateToParts {:date "$date"}}},
+                     :in {:$dateFromParts {:year "$$parts.year", :month "$$parts.month", :day "$$parts.day"}}}}}}}
+                {"$sort" {"_id" 1}}
+                {"$project" {"_id" false, "date~~~day" "$_id.date~~~day"}}
+                {"$sort" {"date~~~day" 1}}
+                {"$limit" 1048576}]
+               (:query
+                (qp/query->native
+                 (mt/mbql-query checkins
+                   {:filter   [:time-interval $date -4 :month]
+                    :breakout [[:datetime-field $date :day]]})))))))))

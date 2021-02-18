@@ -1,26 +1,10 @@
 (ns metabase.mbql.util-test
   (:require [clojure.test :refer :all]
-            [java-time :as t]
             [metabase.mbql.util :as mbql.u]
             metabase.types))
 
 ;; fool cljr-refactor/the linter so it doesn't try to remove the unused dep on `metabase.types`
 (comment metabase.types/keep-me)
-
-(deftest relative-date-test
-  (let [t (t/zoned-date-time "2019-06-14T00:00:00.000Z[UTC]")]
-    (doseq [[unit n expected] [[:second  5 "2019-06-14T00:00:05Z[UTC]"]
-                               [:minute  5 "2019-06-14T00:05:00Z[UTC]"]
-                               [:hour    5 "2019-06-14T05:00:00Z[UTC]"]
-                               [:day     5 "2019-06-19T00:00:00Z[UTC]"]
-                               [:week    5 "2019-07-19T00:00:00Z[UTC]"]
-                               [:month   5 "2019-11-14T00:00:00Z[UTC]"]
-                               [:quarter 5 "2020-09-14T00:00:00Z[UTC]"]
-                               [:year    5 "2024-06-14T00:00:00Z[UTC]"]]]
-      (is (= (t/zoned-date-time expected)
-             (mbql.u/relative-date unit n t))
-          (format "%s plus %d %ss should be %s" t n unit expected)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     match                                                      |
@@ -543,69 +527,69 @@
 (deftest desugar-time-interval-test
   (is (= [:between
           [:datetime-field [:field-id 1] :month]
-          [:relative-datetime 1 :month]
-          [:relative-datetime 2 :month]]
+          [:relative-temporal-valuetime 1 :month]
+          [:relative-temporal-valuetime 2 :month]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 2 :month]))
       "`time-interval` with value > 1 or < -1 should generate a `between` clause")
   (is (= [:between
           [:datetime-field [:field-id 1] :month]
-          [:relative-datetime 0 :month]
-          [:relative-datetime 2 :month]]
+          [:relative-temporal-valuetime 0 :month]
+          [:relative-temporal-valuetime 2 :month]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 2 :month {:include-current true}]))
       "test the `include-current` option -- interval should start or end at `0` instead of `1`")
   (is (= [:=
           [:datetime-field [:field-id 1] :month]
-          [:relative-datetime 1 :month]]
+          [:relative-temporal-valuetime 1 :month]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 1 :month]))
       "`time-interval` with value = 1 should generate an `=` clause")
   (is (= [:=
           [:datetime-field [:field-id 1] :week]
-          [:relative-datetime -1 :week]]
+          [:relative-temporal-valuetime -1 :week]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] -1 :week]))
       "`time-interval` with value = -1 should generate an `=` clause")
   (testing "`include-current` option"
     (is (= [:between
             [:datetime-field [:field-id 1] :month]
-            [:relative-datetime 0 :month]
-            [:relative-datetime 1 :month]]
+            [:relative-temporal-valuetime 0 :month]
+            [:relative-temporal-valuetime 1 :month]]
            (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 1 :month {:include-current true}]))
         "interval with value = 1 should generate a `between` clause")
     (is (= [:between
             [:datetime-field [:field-id 1] :day]
-            [:relative-datetime -1 :day]
-            [:relative-datetime 0 :day]]
+            [:relative-temporal-valuetime -1 :day]
+            [:relative-temporal-valuetime 0 :day]]
            (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] -1 :day {:include-current true}]))
         "`include-current` option -- interval with value = 1 should generate a `between` clause"))
   (is (= [:=
           [:datetime-field [:field-id 1] :week]
-          [:relative-datetime 0 :week]]
+          [:relative-temporal-valuetime 0 :week]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] :current :week]))
       "keywords like `:current` should work correctly"))
 
-(deftest desugar-relative-datetime-with-current-test
+(deftest desugar-relative-temporal-valuetime-with-current-test
   (is (= [:=
           [:datetime-field [:field-id 1] :minute]
-          [:relative-datetime 0 :minute]]
+          [:relative-temporal-valuetime 0 :minute]]
          (mbql.u/desugar-filter-clause
           [:=
            [:datetime-field [:field-id 1] :minute]
-           [:relative-datetime :current]]))
-      "when comparing `:relative-datetime`to `:datetime-field`, it should take the unit of the `:datetime-field`")
+           [:relative-temporal-valuetime :current]]))
+      "when comparing `:relative-temporal-valuetime`to `:datetime-field`, it should take the unit of the `:datetime-field`")
   (is (= [:=
           [:field-id 1]
-          [:relative-datetime 0 :default]]
+          [:relative-temporal-valuetime 0 :default]]
          (mbql.u/desugar-filter-clause
           [:=
            [:field-id 1]
-           [:relative-datetime :current]]))
+           [:relative-temporal-valuetime :current]]))
       "otherwise it should just get a unit of `:default`")
   (is (= [:=
           [:binning-strategy [:datetime-field [:field-id 1] :week] :default]
-          [:relative-datetime 0 :week]]
+          [:relative-temporal-valuetime 0 :week]]
          (mbql.u/desugar-filter-clause
           [:=
            [:binning-strategy [:datetime-field [:field-id 1] :week] :default]
-           [:relative-datetime :current]]))
+           [:relative-temporal-valuetime :current]]))
       "we should be able to handle datetime fields even if they are nested inside another clause"))
 
 (deftest desugar-other-filter-clauses-test
@@ -724,7 +708,7 @@
   (testing :time-interval
     (is (= [:!=
             [:datetime-field [:field-id 1] :week]
-            [:relative-datetime 0 :week]]
+            [:relative-temporal-valuetime 0 :week]]
            (mbql.u/negate-filter-clause [:time-interval [:field-id 1] :current :week]))))
   (testing :is-null
     (is (= [:!= [:field-id 1] nil]

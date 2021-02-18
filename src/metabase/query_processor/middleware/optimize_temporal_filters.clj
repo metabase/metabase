@@ -2,9 +2,11 @@
   "Middlware that optimizes equality filter clauses agat bucketed temporal fields. See docstring for
   `optimize-temporal-filters` for more details."
   (:require [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [metabase.mbql.util :as mbql.u]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
 (def ^:private optimizable-units
@@ -147,23 +149,37 @@
      [:>= field' (temporal-value-lower-bound lower-bound (datetime-field-unit field))]
      [:<  field' (temporal-value-upper-bound upper-bound (datetime-field-unit field))]]))
 
-(defn- optimize-temporal-filters* [{query-type :type, :as query}]
+(defn- optimize-temporal-filters* [query]
+  (mbql.u/replace query
+    (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
+    (or (when (can-optimize-filter? &match)
+          (u/prog1 (optimize-filter &match)
+            (if <>
+              (when-not (= &match <>)
+                (log/tracef "Optimized filter %s to %s" (pr-str &match) (pr-str <>)))
+              ;; if for some reason `optimize-filter` doesn't return an optimized filter clause, log and error and use
+              ;; the original. `can-optimize-filter?` shouldn't have said we could optimize this filter in the first
+              ;; place
+              (log/error (trs "Error optimizing temporal filter clause") (pr-str &match)))))
+        &match)))
+
+(defn- optimize-temporal-filters-all-levels [{query-type :type, :as query}]
   (if (not= query-type :query)
     query
-    (mbql.u/replace query
-      (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
-      (if (can-optimize-filter? &match)
-        (let [optimized (optimize-filter &match)]
-          (when-not optimized
-            (throw (ex-info (tru "Error optimizing temporal filter clause")
-                            {:clause &match})))
-          (when-not (= &match optimized)
-            (log/tracef "Optimized filter %s to %s" (pr-str &match) (pr-str optimized)))
-          optimized)
-        &match))))
+    ;; walk query, looking for inner-query forms that have a `:filter` key
+    (walk/postwalk
+     (fn [form]
+       (if-not (and (map? form) (seq (:filter form)))
+         form
+         ;; optimize the filters in this inner-query form.
+         (let [optimized (optimize-temporal-filters* form)]
+           ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
+           (cond-> optimized
+             (not= optimized form) (update :filter mbql.u/combine-filter-clauses)))))
+     query)))
 
 (defn optimize-temporal-filters
-  "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses agat
+  "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
   bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
   bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
 
@@ -188,4 +204,4 @@
   `\"2019-09-24\"` should already have been converted to `:absolute-datetime` clauses."
   [qp]
   (fn [query rff context]
-    (qp (optimize-temporal-filters* query) rff context)))
+    (qp (optimize-temporal-filters-all-levels query) rff context)))

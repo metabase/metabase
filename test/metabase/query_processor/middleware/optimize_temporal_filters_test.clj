@@ -311,3 +311,43 @@
                (mt/mbql-query attempts
                  {:aggregation [[:count]]
                   :filter      [:time-interval $datetime :last :month]}))))))))
+
+(deftest flatten-filters-test
+  (testing "Should flatten the `:filter` clause after optimizing"
+    (mt/$ids checkins
+      (is (= [:and
+              [:= $venue_id 1]
+              [:>= [:datetime-field $date :default] [:relative-datetime -1 :month]]
+              [:< [:datetime-field $date :default] [:relative-datetime 0 :month]]]
+             (optimize-temporal-filters
+              [:and
+               [:= $venue_id 1]
+               [:= [:datetime-field  $date :month] [:relative-datetime -1 :month]]]))))))
+
+(deftest deduplicate-filters-tets
+  (testing "Should deduplicate the optimized filters with any existing ones"
+    (mt/$ids checkins
+      (is (= [:and
+              [:< [:datetime-field $date :default] [:relative-datetime 0 :month]]
+              [:>= [:datetime-field $date :default] [:relative-datetime -1 :month]]]
+             (optimize-temporal-filters
+              [:and
+               [:< [:datetime-field $date :default] [:relative-datetime 0 :month]]
+               [:= [:datetime-field  $date :month] [:relative-datetime -1 :month]]]))))))
+
+(deftest optimize-filters-all-levels-test
+  (testing "Should optimize filters at all levels of the query"
+    (mt/$ids checkins
+      (is (= (mt/mbql-query checkins
+               {:source-query
+                {:source-table $$checkins
+                 :filter       [:and
+                                [:>= [:datetime-field $date :default] [:relative-datetime -1 :month]]
+                                [:< [:datetime-field $date :default] [:relative-datetime 0 :month]]]}})
+             (:pre
+              (mt/test-qp-middleware
+               optimize-temporal-filters/optimize-temporal-filters
+               (mt/mbql-query checkins
+                 {:source-query
+                  {:source-table $$checkins
+                   :filter       [:= [:datetime-field  $date :month] [:relative-datetime -1 :month]]}}))))))))

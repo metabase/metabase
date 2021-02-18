@@ -20,6 +20,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.query-processor-test :as sql.qp.test]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -1083,3 +1084,22 @@
              (mt/mbql-query checkins
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
+
+(deftest compile-time-interval-test
+  (testing "Make sure time-intervals work the way they're supposed to."
+    (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
+      (is (= (str "SELECT CAST(CHECKINS.DATE AS date) AS DATE "
+                  "FROM CHECKINS "
+                  "WHERE ("
+                  "CHECKINS.DATE >= parsedatetime(formatdatetime(dateadd('month', CAST(-4 AS long), now()), 'yyyyMM'), 'yyyyMM')"
+                  " AND "
+                  "CHECKINS.DATE < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM')) "
+                  "GROUP BY CAST(CHECKINS.DATE AS date) "
+                  "ORDER BY CAST(CHECKINS.DATE AS date) ASC "
+                  "LIMIT 1048576")
+             (sql.qp.test/pretty-sql
+              (:query
+               (qp/query->native
+                (mt/mbql-query checkins
+                  {:filter   [:time-interval $date -4 :month]
+                   :breakout [[:datetime-field $date :day]]})))))))))

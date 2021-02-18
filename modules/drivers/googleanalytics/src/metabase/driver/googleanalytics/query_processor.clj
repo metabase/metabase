@@ -115,78 +115,78 @@
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
-(defmulti ^:private parse-filter mbql.u/dispatch-by-clause-name-or-class)
+(defmulti ^:private compile-filter mbql.u/dispatch-by-clause-name-or-class)
 
-(defmethod parse-filter nil [& _]
+(defmethod compile-filter nil [& _]
   nil)
 
-(defmethod parse-filter :contains
+(defmethod compile-filter :contains
   [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
   (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") (escape-for-regex (->rvalue value))))
 
-(defmethod parse-filter :starts-with
+(defmethod compile-filter :starts-with
   [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
   (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") \^ (escape-for-regex (->rvalue value))))
 
-(defmethod parse-filter :ends-with
+(defmethod compile-filter :ends-with
   [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
   (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") (escape-for-regex (->rvalue value)) \$))
 
-(defmethod parse-filter :=
+(defmethod compile-filter :=
   [[_ field value]]
   (ga-filter (->rvalue field) "==" (->rvalue value)))
 
-(defmethod parse-filter :!=
+(defmethod compile-filter :!=
   [[_ field value]]
   (ga-filter (->rvalue field) "!=" (->rvalue value)))
 
-(defmethod parse-filter :>
+(defmethod compile-filter :>
   [[_ field value]]
   (ga-filter (->rvalue field) ">" (->rvalue value)))
 
-(defmethod parse-filter :<
+(defmethod compile-filter :<
   [[_ field value]]
   (ga-filter (->rvalue field) "<" (->rvalue value)))
 
-(defmethod parse-filter :>=
+(defmethod compile-filter :>=
   [[_ field value]]
   (ga-filter (->rvalue field) ">=" (->rvalue value)))
 
-(defmethod parse-filter :<=
+(defmethod compile-filter :<=
   [[_ field value]]
   (ga-filter (->rvalue field) "<=" (->rvalue value)))
 
-(defmethod parse-filter :between
+(defmethod compile-filter :between
   [[_ field min-val max-val]]
   (str (ga-filter (->rvalue field) ">=" (->rvalue min-val))
        ";"
        (ga-filter (->rvalue field) "<=" (->rvalue max-val))))
 
-(defmethod parse-filter :and
+(defmethod compile-filter :and
   [[_ & clauses]]
-  (str/join ";" (filter some? (map parse-filter clauses))))
+  (str/join ";" (filter seq (map compile-filter clauses))))
 
-(defmethod parse-filter :or
+(defmethod compile-filter :or
   [[_ & clauses]]
-  (str/join "," (filter some? (map parse-filter clauses))))
+  (str/join "," (filter seq (map compile-filter clauses))))
 
-(defmethod parse-filter :not
+(defmethod compile-filter :not
   [[_ clause]]
-  (str "!" (parse-filter clause)))
+  (str "!" (compile-filter clause)))
 
-(defn- handle-filter:filters [{filter-clause :filter}]
+(defn- compile-filter:filters [{filter-clause :filter}]
   (when filter-clause
     ;; remove all clauses that operate on datetime fields or built-in segments because we don't want to handle them
-    ;; here, we'll do that seperately with the filter:interval and handle-filter:built-in-segment stuff below
+    ;; here, we'll do that seperately with the filter:interval and compile-filter:built-in-segment stuff below
     ;;
     ;; (Recall that `auto-bucket-datetimes` guarantees all datetime Fields will be wrapped by `:datetime-field`
     ;; clauses in a fully-preprocessed query.)
-    (let [filter (parse-filter (mbql.u/replace filter-clause
-                                 [:segment (_ :guard mbql.u/ga-id?)] nil
-                                 [_ [:datetime-field & _] & _] nil))]
+    (let [filter-str (compile-filter (mbql.u/replace filter-clause
+                                       [:segment (_ :guard mbql.u/ga-id?)] nil
+                                       [_ [:datetime-field & _] & _] nil))]
 
-      (when-not (str/blank? filter)
-        {:filters filter}))))
+      (when-not (str/blank? filter-str)
+        {:filters filter-str}))))
 
 ;;; ----------------------------------------------- filter (intervals) -----------------------------------------------
 
@@ -206,27 +206,50 @@
   [_ _ x]
   {:start-date (->rvalue x), :end-date (->rvalue x)})
 
+(s/defn ^:private day-date-range :- (s/maybe {(s/optional-key :start-date) s/Str, (s/optional-key :end-date) s/Str})
+  [comparison-type :- s/Keyword n :- s/Int]
+  ;; since GA is normally inclusive add 1 to `:<` or `:>` filters so it starts and ends on the correct date
+  ;; e.g
+  ;;
+  ;;    [:> ... [:relative-datetime -30 :day]]
+  ;;    => (day-date-range :> -30)
+  ;;    => include events whose day is > 30 days ago
+  ;;    => include events whose day is >= 29 days ago
+  ;;    => {:start-date "29daysAgo)}
+  ;;
+  ;;     (day-date-range :< 0)
+  ;;     => include events whose day is < 0 days ago
+  ;;     => include events whose day is < TODAY
+  ;;     => include events whose day is <= YESTERDAY
+  ;;     => {:end-date "yesterday"}
+  ;;
+  ;;     (day-date-range :> 0)
+  ;;     => include events whose day is > 0 days ago
+  ;;     => include events whose day is > TODAY
+  ;;     => include events whose day is >= TOMORROW
+  ;;     => nil (future dates aren't handled by this fn)
+  (let [n (case comparison-type
+            :< (dec n)
+            :> (inc n)
+            n)]
+    (when-not (pos? n)
+      (let [special-amount (cond
+                             (zero? n) "today"
+                             (= n -1)  "yesterday"
+                             (neg? n)  (format "%ddaysAgo" (- n)))]
+        (case comparison-type
+          (:< :<=) {:end-date special-amount}
+          (:> :>=) {:start-date special-amount}
+          :=       {:start-date special-amount, :end-date special-amount}
+          nil)))))
+
 (defmethod ->date-range :relative-datetime
-  [unit comparison-type [_ n relative-datetime-unit]]
+  [unit comparison-type [_ n relative-datetime-unit :as clause]]
   (or (when (= relative-datetime-unit :day)
-        ;; since GA is normally inclusive add 1 to `:<` or `:>` filters so it starts and ends on the correct date
-        ;; e.g [:> ... [:relative-datetime -30 :day]] -> {:start-date "29daysago)}
-        ;; (include events whose day is > 30 days ago, i.e., >= 29 days ago)
-        (let [n (case comparison-type
-                  (:< :>) (inc n)
-                  n)]
-          (when-not (pos? n)
-            (let [special-amount (cond
-                                   (zero? n) "today"
-                                   (= n -1)  "yesterday"
-                                   (neg? n)  (format "%ddaysAgo" (- n)))]
-              (case comparison-type
-                (:< :<=) {:end-date special-amount}
-                (:> :>=) {:start-date special-amount}
-                :=       {:start-date special-amount, :end-date special-amount}
-                nil)))))
+        (day-date-range comparison-type n))
       (let [now (qp.timezone/now :googleanalytics nil :use-report-timezone-id-if-unsupported? true)
-            t   (u.date/add now relative-datetime-unit n)]
+            t   (u.date/truncate now relative-datetime-unit)
+            t   (u.date/add t relative-datetime-unit n)]
         (format-range (u.date/comparison-range t unit comparison-type {:end :inclusive, :resolution :day})))))
 
 (defmethod ->date-range :absolute-datetime
@@ -238,39 +261,39 @@
         [:datetime-field _ unit] unit)
       :day))
 
-(defmulti ^:private parse-filter:interval
+(defmulti ^:private compile-filter:interval
   {:arglists '([filter-clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(defmethod parse-filter:interval :default [_] nil)
+(defmethod compile-filter:interval :default [_] nil)
 
-(defmethod parse-filter:interval :>
+(defmethod compile-filter:interval :>
   [[_ field x]]
   (select-keys (->date-range (field->unit field) :> x) [:start-date]))
 
-(defmethod parse-filter:interval :<
+(defmethod compile-filter:interval :<
   [[_ field x]]
   (select-keys (->date-range (field->unit field) :< x) [:end-date]))
 
-(defmethod parse-filter:interval :>=
+(defmethod compile-filter:interval :>=
   [[_ field x]]
   (select-keys (->date-range (field->unit field) :>= x) [:start-date]))
 
-(defmethod parse-filter:interval :<=
+(defmethod compile-filter:interval :<=
   [[_ field x]]
   (select-keys (->date-range (field->unit field) :<= x) [:end-date]))
 
-(defmethod parse-filter:interval :=
+(defmethod compile-filter:interval :=
   [[_ field x]]
   (->date-range (field->unit field) := x))
 
 
 ;; MBQL :between is INCLUSIVE just like SQL !!!
-(defmethod parse-filter:interval :between
+(defmethod compile-filter:interval :between
   [[_ field min-val max-val]]
   (merge
-   (parse-filter:interval [:>= field min-val])
-   (parse-filter:interval [:<= field max-val])))
+   (compile-filter:interval [:>= field min-val])
+   (compile-filter:interval [:<= field max-val])))
 
 
 ;;; Compound filters
@@ -286,18 +309,18 @@
     (fn [_ _] (throw (Exception. (str (deferred-tru "Multiple date filters are not supported in filters: ") filter1 filter2))))
     filter1 filter2))
 
-(defmethod parse-filter:interval :and
+(defmethod compile-filter:interval :and
   [[_ & subclauses]]
-  (let [filters (map parse-filter:interval subclauses)]
+  (let [filters (mapv compile-filter:interval subclauses)]
     (if (= (count filters) 2)
       (try-reduce-filters filters)
       (maybe-get-only-filter-or-throw filters))))
 
-(defmethod parse-filter:interval :or
+(defmethod compile-filter:interval :or
   [[_ & subclauses]]
-  (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
+  (maybe-get-only-filter-or-throw (mapv compile-filter:interval subclauses)))
 
-(defmethod parse-filter:interval :not
+(defmethod compile-filter:interval :not
   [[& _]]
   (throw (Exception. (tru ":not is not yet implemented"))))
 
@@ -326,13 +349,13 @@
 (defn- add-start-end-dates [filter-clause]
   (merge {:start-date earliest-date, :end-date latest-date} filter-clause))
 
-(defn- handle-filter:interval
+(defn- compile-filter:interval
   "Handle datetime filter clauses. (Anything that *isn't* a datetime filter will be removed by the
   `handle-builtin-segment` logic)."
   [{filter-clause :filter}]
   (or (when filter-clause
         (add-start-end-dates
-          (parse-filter:interval
+          (compile-filter:interval
             (normalize-datetime-units
               (remove-non-datetime-filter-clauses filter-clause)))))
       {:start-date earliest-date, :end-date latest-date}))
@@ -347,7 +370,7 @@
       (throw (Exception. (tru "Only one Google Analytics segment allowed at a time."))))
     (first segments)))
 
-(defn- handle-filter:built-in-segment
+(defn- compile-filter:built-in-segment
   "Handle a built-in GA segment (a `[:segment <ga id>]` filter clause), if present. This is added to the native query
   under a separate `:segment` key."
   [inner-query]
@@ -361,14 +384,16 @@
   (when order-by
     {:sort (str/join
             ","
-            (for [[direction field] order-by]
-              (str (case direction
-                     :asc  ""
-                     :desc "-")
-                   (mbql.u/match-one field
-                     [:datetime-field _ unit] (unit->ga-dimension unit)
-                     [:aggregation index]     (mbql.u/aggregation-at-index query index)
-                     [& _]                    (->rvalue &match)))))}))
+            (filter
+             some?
+             (for [[direction field] order-by]
+               (str (case direction
+                      :asc  ""
+                      :desc "-")
+                    (mbql.u/match-one field
+                      [:datetime-field _ unit] (unit->ga-dimension unit)
+                      [:aggregation index]     (mbql.u/aggregation-at-index query index)
+                      [& _]                    (->rvalue &match))))))}))
 
 
 ;;; ----------------------------------------------------- limit ------------------------------------------------------
@@ -387,9 +412,9 @@
            (for [f [handle-source-table
                     handle-aggregation
                     handle-breakout
-                    handle-filter:interval
-                    handle-filter:filters
-                    handle-filter:built-in-segment
+                    compile-filter:interval
+                    compile-filter:filters
+                    compile-filter:built-in-segment
                     handle-order-by
                     handle-limit]]
              (f inner-query)))
