@@ -56,11 +56,11 @@ export class WindowModal extends Component {
     }
   }
 
-  handleDismissal() {
+  handleDismissal = () => {
     if (this.props.onClose) {
       this.props.onClose();
     }
-  }
+  };
 
   _modalComponent() {
     const className = cx(
@@ -70,7 +70,7 @@ export class WindowModal extends Component {
         .map(type => `Modal--${type}`),
     );
     return (
-      <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
+      <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
         <div className={cx(className, "relative bg-white rounded")}>
           {getModalContent({
             ...this.props,
