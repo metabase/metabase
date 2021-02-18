@@ -20,9 +20,9 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin :as p])
-  (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Types]
+  (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            javax.sql.DataSource))
 
@@ -71,10 +71,27 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti ^Statement statement
+  "Create a Statement object using the given connection. This is to be used to execute native queries, which implies
+  there are no parameters.  As with prepared-statement, you shouldn't need to override the default implementation for
+  this method; if you do, take care to set options to maximize result set read performance
+  (e.g. `ResultSet/TYPE_FORWARD_ONLY`); refer to the default implementation."
+  {:added "0.39.0", :arglists '(^java.sql.Statement [driver ^java.sql.Connection connection])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 (defmulti execute-query!
   "Execute a `PreparedStatement`, returning a `ResultSet`. Default implementation simply calls `.executeQuery()`. It is
   unlikely you will need to override this."
   {:added "0.35.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.PreparedStatement stmt])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti execute-select!
+  "Runs a SQL select query with a given `Statement`, returning a `ResultSet`. Default implementation simply calls
+  `.execute()` and then `.getResultSet()` if that returns true (throwing an exception if not). It is unlikely you will
+  need to override this."
+  {:added "0.39.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.Statement stmt ^String sql])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -248,6 +265,22 @@
         (.close stmt)
         (throw e)))))
 
+(defmethod statement :sql-jdbc
+  [_ ^Connection conn]
+  (let [stmt (.createStatement conn
+                               ResultSet/TYPE_FORWARD_ONLY
+                               ResultSet/CONCUR_READ_ONLY
+                               ResultSet/CLOSE_CURSORS_AT_COMMIT)]
+    (try
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
+
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
   ;; if canceled-chan gets a message, cancel the PreparedStatement
@@ -262,6 +295,13 @@
 (defmethod execute-query! :sql-jdbc
   [_ ^PreparedStatement stmt]
   (.executeQuery stmt))
+
+(defmethod execute-select! :sql-jdbc
+  [driver ^Statement stmt ^String sql]
+  (if (.execute stmt sql)
+    (.getResultSet stmt)
+    (throw (ex-info (str (tru "Select statement did not produce a ResultSet for native query"))
+                    {:sql sql :driver driver}))))
 
 (defmethod read-column-thunk :default
   [driver ^ResultSet rs rsmeta ^long i]
@@ -373,20 +413,23 @@
 
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
-  {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
-  ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
+  {:added "0.35.0", :arglists '([driver query context respond] [driver sql native? params max-rows context respond])}
+  ([driver {{sql :query, params :params} :native, query-type :type, :as outer-query} context respond]
    {:pre [(string? sql) (seq sql)]}
    (let [remark   (qputil/query->remark driver outer-query)
          sql      (str "-- " remark "\n" sql)
+         native?  (= :native query-type)
          max-rows (or (mbql.u/query->max-rows-limit outer-query)
                       qp.i/absolute-max-results)]
-     (execute-reducible-query driver sql params max-rows context respond)))
+     (execute-reducible-query driver sql native? params max-rows context respond)))
 
-  ([driver sql params max-rows context respond]
+  ([driver sql native? params max-rows context respond]
    (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-               stmt (doto (prepared-statement* driver conn sql params (context/canceled-chan context))
-                      (.setMaxRows max-rows))
-               rs   (execute-query! driver stmt)]
+               stmt (if native?
+                        (statement driver conn)
+                        (prepared-statement* driver conn sql params (context/canceled-chan context)))
+               stmt (doto stmt (.setMaxRows max-rows))
+               rs   (if native? (execute-select! driver stmt sql) (execute-query! driver stmt))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))
