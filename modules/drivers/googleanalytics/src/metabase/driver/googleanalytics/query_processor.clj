@@ -263,39 +263,39 @@
         [:datetime-field _ unit] unit)
       :day))
 
-(defmulti ^:private compile-filter:interval
+(defmulti ^:private compile-interval
   {:arglists '([filter-clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(defmethod compile-filter:interval :default [_] nil)
+(defmethod compile-interval :default [_] nil)
 
-(defmethod compile-filter:interval :>
+(defmethod compile-interval :>
   [[_ field x]]
   (select-keys (->date-range (field->unit field) :> x) [:start-date]))
 
-(defmethod compile-filter:interval :<
+(defmethod compile-interval :<
   [[_ field x]]
   (select-keys (->date-range (field->unit field) :< x) [:end-date]))
 
-(defmethod compile-filter:interval :>=
+(defmethod compile-interval :>=
   [[_ field x]]
   (select-keys (->date-range (field->unit field) :>= x) [:start-date]))
 
-(defmethod compile-filter:interval :<=
+(defmethod compile-interval :<=
   [[_ field x]]
   (select-keys (->date-range (field->unit field) :<= x) [:end-date]))
 
-(defmethod compile-filter:interval :=
+(defmethod compile-interval :=
   [[_ field x]]
   (->date-range (field->unit field) := x))
 
 
 ;; MBQL :between is INCLUSIVE just like SQL !!!
-(defmethod compile-filter:interval :between
+(defmethod compile-interval :between
   [[_ field min-val max-val]]
   (merge
-   (compile-filter:interval [:>= field min-val])
-   (compile-filter:interval [:<= field max-val])))
+   (compile-interval [:>= field min-val])
+   (compile-interval [:<= field max-val])))
 
 
 ;;; Compound filters
@@ -311,18 +311,18 @@
     (fn [_ _] (throw (Exception. (str (deferred-tru "Multiple date filters are not supported in filters: ") filter1 filter2))))
     filter1 filter2))
 
-(defmethod compile-filter:interval :and
+(defmethod compile-interval :and
   [[_ & subclauses]]
-  (let [filters (mapv compile-filter:interval subclauses)]
+  (let [filters (mapv compile-interval subclauses)]
     (if (= (count filters) 2)
       (try-reduce-filters filters)
       (maybe-get-only-filter-or-throw filters))))
 
-(defmethod compile-filter:interval :or
+(defmethod compile-interval :or
   [[_ & subclauses]]
-  (maybe-get-only-filter-or-throw (mapv compile-filter:interval subclauses)))
+  (maybe-get-only-filter-or-throw (mapv compile-interval subclauses)))
 
-(defmethod compile-filter:interval :not
+(defmethod compile-interval :not
   [[& _]]
   (throw (Exception. (tru ":not is not yet implemented"))))
 
@@ -357,7 +357,7 @@
   [{filter-clause :filter}]
   (or (when filter-clause
         (add-start-end-dates
-          (compile-filter:interval
+          (compile-interval
             (normalize-datetime-units
               (remove-non-datetime-filter-clauses filter-clause)))))
       {:start-date earliest-date, :end-date latest-date}))
@@ -386,8 +386,8 @@
   (when order-by
     {:sort (str/join
             ","
-            (filter
-             some?
+            (remove
+             str/blank?
              (for [[direction field] order-by]
                (str (case direction
                       :asc  ""
