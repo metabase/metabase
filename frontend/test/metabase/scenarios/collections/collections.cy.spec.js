@@ -529,6 +529,32 @@ describe("scenarios > collection_defaults", () => {
         .find(".Icon-chevronright")
         .should("not.exist");
     });
+
+    it.skip("should offer to save in a newly created collection (that's saved inside 'My personal collection') (metabase#14757)", () => {
+      cy.visit("/collection/root");
+      // Create new collection inside "My personal collection"
+      cy.icon("new_folder").click();
+      cy.findByLabelText("Name").type("Foo");
+      cy.get(".AdminSelect")
+        .findByText("Our analytics")
+        .as("rootSelect")
+        .click();
+      popover()
+        .findByText("My personal collection")
+        .click();
+      cy.findByRole("button", { name: "Create" }).click();
+
+      // Create one more collection and try to put it inside the previously created one
+      cy.icon("new_folder").click();
+      cy.findByLabelText("Name").type("Bar");
+      cy.get("@rootSelect").click();
+      popover()
+        .findByText("My personal collection")
+        .parent()
+        .find(".Icon-chevronright")
+        .click();
+      popover().findByText("Foo");
+    });
   });
 });
 
