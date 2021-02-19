@@ -16,7 +16,7 @@
   (mbql.u/match-one field [:datetime-field _ unit] unit))
 
 (defn- optimizable-field? [field]
-  (optimizable-units (datetime-field-unit unit)))
+  (optimizable-units (datetime-field-unit field)))
 
 (defmulti ^:private can-optimize-filter?
   mbql.u/dispatch-by-clause-name-or-class)
