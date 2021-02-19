@@ -430,7 +430,7 @@
   [join]
   (query->source-table-id {:type :query, :query join}))
 
-(s/defn unwrap-field-clause :- (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal)
+(s/defn ^{:deprecated "0.39.0"} unwrap-field-clause :- (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal)
   "Un-wrap a `Field` clause and return the lowest-level clause it wraps, either a `:field-id` or `:field-literal`."
   [clause :- mbql.s/Field]
   (match-one clause
@@ -441,7 +441,7 @@
     [:datetime-field field _]     (recur field)
     [:binning-strategy field & _] (recur field)))
 
-(defn maybe-unwrap-field-clause
+(defn ^{:deprecated "0.39.0"} maybe-unwrap-field-clause
   "Unwrap a Field `clause`, if it's something that can be unwrapped (i.e. something that is, or wraps, a `:field-id` or
   `:field-literal`). Otherwise return `clause` as-is."
   [clause]
@@ -449,7 +449,7 @@
     (unwrap-field-clause clause)
     clause))
 
-(s/defn field-clause->id-or-literal :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
+(s/defn ^{:deprecated "0.39.0"} field-clause->id-or-literal :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
   "Get the actual Field ID or literal name this clause is referring to. Useful for seeing if two Field clauses are
   referring to the same thing, e.g.
 

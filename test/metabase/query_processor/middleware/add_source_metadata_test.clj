@@ -26,12 +26,12 @@
    (let [field-ids (map #(mt/id :venues (keyword (str/lower-case (name %))))
                         field-names)]
      (results-metadata
-      (mt/run-mbql-query venues {:fields (for [id field-ids] [:field-id id])
+      (mt/run-mbql-query venues {:fields (for [id field-ids] [:field id nil])
                                  :limit  1})))))
 
 (defn- venues-source-metadata-for-field-literals
-  "Metadata we'd expect to see from a `:field-literal` clause. The same as normal metadata, but field literals don't
-  include semantic-type info."
+  "Metadata we'd expect to see from a `:field` clause with a string name. The same as normal metadata, but field
+  literals don't include semantic-type info."
   [& field-names]
   (for [field (apply venues-source-metadata field-names)]
     (dissoc field :semantic_type)))
@@ -331,13 +331,12 @@
             ;; `qp/query->expected-cols`
             expected-metadata (for [col metadata]
                                 (cond-> (dissoc col :description :source :visibility_type)
-                                  ;; for some reason this middleware returns temporal fields with field refs wrapped
-                                  ;; in `:datetime-field` clauses with `:default` unit, whereas `query->expected-cols`
-                                  ;; does not wrap the field refs. It ulimately makes zero difference, so I haven't
-                                  ;; looked into why this is the case yet.
+                                  ;; for some reason this middleware returns temporal fields with a `:default` unit,
+                                  ;; whereas `query->expected-cols` does not return the unit. It ulimately makes zero
+                                  ;; difference, so I haven't looked into why this is the case yet.
                                   (isa? (:base_type col) :type/Temporal)
-                                  (update :field_ref (fn [field-ref]
-                                                       [:datetime-field field-ref :default]))))]
+                                  (update :field_ref (fn [[_ id-or-name opts]]
+                                                       [:field id-or-name (assoc opts :temporal-unit :default)]))))]
         (letfn [(added-metadata [query]
                   (get-in (add-source-metadata query) [:query :source-metadata]))]
           (testing "\nShould add source metadata if there's none already"

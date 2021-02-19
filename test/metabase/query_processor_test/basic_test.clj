@@ -11,4 +11,7 @@
 ;; NOCOMMIT
 (defn x []
   (dev/process-query-debug
-   (mt/mbql-query venues {:fields [$name]})))
+   (mt/mbql-query checkins
+     {:fields [$id]
+      :filter [:= $date [:relative-datetime -1 :month]]
+      :limit  5})))

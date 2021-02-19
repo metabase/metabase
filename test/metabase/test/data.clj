@@ -113,14 +113,12 @@
 (defmacro mbql-query
   "Macro for easily building MBQL queries for test purposes.
 
-  Cheatsheet:
-
-  *  `$`  = wrapped Field ID
+  *  `$`  = `:field` clause wrapping Field ID
   *  `$$` = table ID
   *  `%`  = raw Field ID
-  *  `*`  = field-literal for Field in app DB; `*field/type` for others
-  *  `&`  = wrap in `joined-field`
-  *  `!`  = wrap in `:datetime-field`
+  *  `*`  = `:field` clause wrapping Field name for a Field in app DB; use `*field/type` for others
+  *  `&`  = include `:join-alias`
+  *  `!`  = bucket by `:temporal-unit`
 
   (The 'cheatsheet' above is listed first so I can easily look at it with `autocomplete-mode` in Emacs.) This macro
   does the following:
