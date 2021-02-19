@@ -160,11 +160,10 @@
 
 (deftest other-clauses-test
   (testing "Make sure we apply the transformation to predicates in all parts of the query, not only `:filter`"
-    (is (= (mt/dataset sad-toucan-incidents
-             (mt/mbql-query incidents
+    (mt/dataset sad-toucan-incidents
+      (is (= (mt/mbql-query incidents
                {:aggregation [[:share
-                               [:> !day.timestamp [:absolute-datetime (t/zoned-date-time "2015-06-01T00:00Z[UTC]") :day]]]]}))
-           (mt/dataset sad-toucan-incidents
+                               [:> !day.timestamp [:absolute-datetime (t/zoned-date-time "2015-06-01T00:00Z[UTC]") :day]]]]})
              (wrap-value-literals
                (mt/mbql-query incidents
                  {:aggregation [[:share [:> !day.timestamp "2015-06-01"]]]})))))))
