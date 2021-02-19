@@ -272,7 +272,7 @@
   [driver {field-name :name, table-id :table_id, :as field}]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
   (->> (if *table-alias*
-         [*table-alias* (unambiguous-field-alias driver [:field-id (:id field)])]
+         [*table-alias* (unambiguous-field-alias driver [:field (:id field) nil])]
          (let [{schema :schema, table-name :name} (qp.store/table table-id)]
            [schema table-name field-name]))
        (apply hx/identifier :field)
@@ -528,8 +528,8 @@
 
   ([driver field-clause unique-name-fn]
    (when-let [alias (or (mbql.u/match-one field-clause
-                          [:expression expression-name] expression-name
-                          [:field-literal field-name _] field-name)
+                          [:expression expression-name]          expression-name
+                          [:field (field-name :guard string?) _] field-name)
                         (unambiguous-field-alias driver field-clause))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
@@ -652,8 +652,8 @@
 (defn- correct-null-behaviour
   [driver [op & args]]
   (let [field-arg (mbql.u/match-one args
-                    FieldInstance                             &match
-                    #{:joined-field :field-id :field-literal} &match)]
+                    FieldInstance &match
+                    :field        &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or (into [op] (map (partial ->honeysql driver)) args)
@@ -879,7 +879,7 @@
                  (->honeysql driver (hx/identifier :table-alias source-query-alias))]]))
 
 (defn- apply-clauses-with-aliased-source-query-table
-  "Bind `*table-alias*` which will cause `field-id` and the like to be compiled to SQL that is qualified by that alias
+  "Bind `*table-alias*` which will cause `field` and the like to be compiled to SQL that is qualified by that alias
   rather than their normal table."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
   (binding [*table-alias* source-query-alias]

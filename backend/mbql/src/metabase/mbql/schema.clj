@@ -368,15 +368,15 @@
 
 (defclause ^{:clause-name :field} field:literal
   field-name su/NonBlankString
-  options    FieldLiteralOptions)
+  options    (s/recursive #'FieldLiteralOptions))
 
 (defclause ^{:clause-name :field} field:id
   id      su/IntGreaterThanZero
-  options (s/maybe FieldIDOptions))
+  options (s/maybe (s/recursive #'FieldIDOptions)))
 
 (defclause ^:private ^{:clause-name :field} field:-generic
   id-or-name (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
-  options    (s/maybe FieldOptions))
+  options    (s/maybe (s/recursive #'FieldOptions)))
 
 (def ^{:clause-name :field} field
   (s/conditional
