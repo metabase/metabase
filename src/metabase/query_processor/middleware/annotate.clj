@@ -83,7 +83,7 @@
               ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
               ;; `:field-literal`, omit the `:field_ref`.
               (when (seq col-name)
-                {:field_ref [:field-literal (unique-name-fn col-name) base-type]})
+                {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
               driver-col-metadata))))))
 
 
