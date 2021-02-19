@@ -65,7 +65,7 @@ export default class GTAPModal extends React.Component {
     simple: true,
     error: null,
   };
-  // $FlowFixMe: UNSAFE_componentWillMount expected to return void
+
   async UNSAFE_componentWillMount() {
     const { params } = this.props;
 

@@ -42,7 +42,6 @@ class CandidateListLoader extends React.Component {
   _sampleTimeout: ?number;
   _pollTimer: ?number;
 
-  // $FlowFixMe: doesn't expect UNSAFE_componentWillMount to return Promise<void>
   async UNSAFE_componentWillMount() {
     // If we get passed in a database id, just use that.
     // Don't fall back to the sample dataset

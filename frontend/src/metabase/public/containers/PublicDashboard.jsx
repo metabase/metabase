@@ -95,7 +95,6 @@ type Props = {
 export default class PublicDashboard extends Component {
   props: Props;
 
-  // $FlowFixMe
   async UNSAFE_componentWillMount() {
     const {
       initialize,
