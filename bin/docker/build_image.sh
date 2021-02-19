@@ -39,15 +39,14 @@ fi
 
 # TODO: verify we have access to docker cmd and minimum version?
 
-
-if [ "$BUILD_TYPE" == "release" ]; then
-    if [ "$MB_EDITION" = ee ]; then
+if [ "$MB_EDITION" = ee ]; then
         DOCKERHUB_REPO=metabase-enterprise
     else
         DOCKERHUB_REPO=metabase
-    fi
+fi
 
-    DOCKER_IMAGE="${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:${MB_TAG}"
+if [ "$BUILD_TYPE" == "release" ]; then
+    DOCKER_IMAGE="${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPO}:${MB_TAG}"
 
     echo "Building Docker image ${DOCKER_IMAGE} from official Metabase release ${MB_TAG}"
 
@@ -59,8 +58,8 @@ if [ "$BUILD_TYPE" == "release" ]; then
         exit 1
     fi
 else
-    DOCKERHUB_REPOSITORY=metabase-head
-    DOCKER_IMAGE="${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:${MB_TAG}"
+    DOCKERHUB_REPO=${DOCKERHUB_REPO}-head
+    DOCKER_IMAGE="${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPO}:${MB_TAG}"
 
     echo "Building Docker image ${DOCKER_IMAGE} from local source"
 
@@ -97,10 +96,10 @@ if [ "$PUBLISH" == "YES" ]; then
 
     if [ "$LATEST" == "YES" ]; then
         # tag our recent versioned image as "latest"
-        docker tag -f ${DOCKER_IMAGE} ${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:latest
+        docker tag -f ${DOCKER_IMAGE} ${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPO}:latest
 
         # then push it as well
-        docker push ${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:latest
+        docker push ${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPO}:latest
 
         # TODO: validate push succeeded
     fi
