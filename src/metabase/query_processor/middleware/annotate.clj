@@ -128,7 +128,7 @@
     {:base_type     :type/Number
      :semantic_type nil}
 
-    (mbql.u/is-clause? #{:field-id :field-literal :joined-field :fk-> :datetime-field :binning-strategy} expression)
+    (mbql.u/is-clause? :field expression)
     (col-info-for-field-clause {} expression)
 
     (mbql.u/is-clause? :coalesce expression)
@@ -169,9 +169,13 @@
     :field_ref       clause}))
 
 (defn- col-info-for-field-clause*
-  [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts :as clause]]
+  [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts]]
   (merge
-   {:field_ref clause}
+   ;; If Field options have both a `:source-field` (denoting an IMPLICIT join) and a `:join-alias` (denoting an
+   ;; EXPLICIT join, which is added by the QP during pre-processing for IMPLICIT joins), remove the `:join-alias` so
+   ;; the FE client can refer to the column with just `:source-field`.
+   {:field_ref [:field id-or-name (cond-> opts
+                                    (:source-field opts) (dissoc :join-alias))]}
    (when-let [base-type (:base-type opts)]
      {:base_type base-type})
    (when (string? id-or-name)
@@ -189,8 +193,11 @@
                            :binning_strategy (:strategy binning-opts))})
    (when-let [temporal-unit (:temporal-unit opts)]
      {:unit temporal-unit})
+   ;; only include `:join-alias` info for Fields that are Joined EXPLICITLY. If `:source-field` is present, this
+   ;; indicates an IMPLICIT join.
    (when-let [join-alias (:join-alias opts)]
-     {:source_alias join-alias})
+     (when-not (:source-field opts)
+       {:source_alias join-alias}))
    (when-let [source-field (:source-field opts)]
      (when (integer? source-field)
        {:fk_field_id source-field}))))

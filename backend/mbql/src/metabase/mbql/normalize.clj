@@ -90,10 +90,11 @@
   [:field
    id-or-name
    (cond-> opts
-     (:base-type opts) (update :base-type keyword)
-     (:binning opts)   (update :binning (fn [binning]
-                                          (cond-> binning
-                                            (:strategy binning) (update :strategy keyword)))))])
+     (:base-type opts)     (update :base-type keyword)
+     (:temporal-unit opts) (update :temporal-unit keyword)
+     (:binning opts)       (update :binning (fn [binning]
+                                              (cond-> binning
+                                                (:strategy binning) (update :strategy keyword)))))])
 
 (defmethod normalize-mbql-clause-tokens :field-literal
   ;; Similarly, for Field literals, keep the arg as-is, but make sure it is a string."
@@ -233,12 +234,14 @@
       alias
       (update :alias mbql.u/qualified-name))))
 
+(declare modernize-fields)
+
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata]
   {:pre [(map? metadata)]}
   (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :semantic_type :visibility_type :source :unit])
-      (m/update-existing :field_ref normalize-tokens)
+      (m/update-existing :field_ref (comp modernize-fields normalize-tokens))
       (m/update-existing :fingerprint walk/keywordize-keys)))
 
 (defn- normalize-native-query
@@ -672,7 +675,10 @@
                        {:form x, :path path}
                        e))))))
 
-(defn modernize-fields [x]
+(defn modernize-fields
+  "Convert legacy pre-0.39.0 Field clauses like `:field-id`, `:field-literal`, `:fk->`, `:datetime-field`, etc. to
+  0.39.0+ `:field` clauses."
+  [x]
   (mbql.u/replace x
     [:field-id id]
     [:field id nil]

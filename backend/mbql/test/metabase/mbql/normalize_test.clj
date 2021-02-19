@@ -1040,3 +1040,14 @@
     (testing (u/pprint-to-str form)
       (is (= expected
              (#'normalize/modernize-fields form))))))
+
+(deftest normalize-source-metadata-test
+  (testing "normalize-source-metadata"
+    (testing "should convert legacy field_refs to modern `:field` clauses"
+      (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
+             (normalize/normalize-source-metadata
+              {:field_ref ["datetime-field" ["field-id" 1] "month"]}))))
+    (testing "should correctly keywordize Field options"
+      (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
+             (normalize/normalize-source-metadata
+              {:field_ref ["field" 1 {:temporal-unit "month"}]}))))))

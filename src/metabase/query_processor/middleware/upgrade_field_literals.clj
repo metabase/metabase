@@ -7,13 +7,15 @@
   (let [field-name->field (u/key-by :name source-metadata)]
     ;; look for `field` clauses that use a string name...
     (mbql.u/replace inner-query
-      [:field (field-name :guard string?) _]
+      [:field (field-name :guard string?) options]
       ;; don't upgrade anything inside `source-query` or `source-metadata`.
       (or (when-not (or (contains? (set &parents) :source-query)
                         (contains? (set &parents) :source-metadata))
             (when-let [{field-ref :field_ref} (get field-name->field field-name)]
               ;; only do a replacement if the field ref is a `field` clause that uses an ID
-              (mbql.u/match-one field-ref [:field (_ :guard integer?) _] &match)))
+              (mbql.u/match-one field-ref
+                [:field (id :guard integer?) new-options]
+                [:field id (merge new-options (dissoc options :base-type))])))
           ;; if they don't meet the conditions above, return them as is
           &match))))
 

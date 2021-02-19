@@ -1,14 +1,15 @@
 (ns metabase.mbql.schema-test
   (:require [clojure.test :refer :all]
             [metabase.mbql.schema :as mbql.s]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [metabase.test :as mt]))
 
 (defn- valid? [clause]
   (not (s/check mbql.s/field clause)))
 
 (deftest field-clause-test
-  (are [clause expected] (= expected
-                            (not (s/check mbql.s/field clause)))
+  (mt/are+ [clause expected] (= expected
+                                (not (s/check mbql.s/field clause)))
     [:field 1 nil]                                                          true
     [:field 1 {}]                                                           true
     [:field 1 {:x true}]                                                    true

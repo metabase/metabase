@@ -186,7 +186,7 @@
         :type     :query
         :query    {:source-table (mt/id :checkins)
                    :aggregation  [[:count]]
-                   :breakout     [[:datetime-field [:field-id (mt/id :checkins :date)] :year]]}
+                   :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]}
         :info     {:card-id    (u/the-id card)
                    :query-hash (qputil/query-hash {})}})
       (is (= [{:base_type    :type/DateTime
@@ -198,7 +198,7 @@
                               :type   {:type/DateTime {:earliest "2013-01-03"
                                                        :latest   "2015-12-29"}}}
                :id           (mt/id :checkins :date)
-               :field_ref    [:datetime-field [:field-id (mt/id :checkins :date)] :year]}
+               :field_ref    [:field (mt/id :checkins :date) {:temporal-unit :year}]}
               {:base_type    :type/BigInteger
                :display_name "Count"
                :name         "count"

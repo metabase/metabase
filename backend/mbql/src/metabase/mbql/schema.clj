@@ -303,87 +303,104 @@
      (strategy= :default)   binning-strategy:default
      :else                  binning-strategy:-generic)))
 
-(def BinningStrategyFieldOptions
-  (s/conditional
-   (complement map?)                  {:strategy BinningStrategyName}
-   #(core/= (:strategy %) :num-bins)  {:strategy (s/eq :num-bins)
-                                       :num-bins su/IntGreaterThanZero
-                                       s/Keyword s/Any}
-   #(core/= (:strategy %) :bin-width) {:strategy  (s/eq :bin-width)
-                                       :bin-width (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
-                                       s/Keyword  s/Any}
-   #(core/= (:strategy %) :default)   {:strategy (s/eq :default)
-                                       s/Keyword s/Any}))
+(defn- validate-bin-width [schema]
+  (s/constrained
+   schema
+   (fn [{:keys [strategy bin-width]}]
+     (if (core/= strategy :bin-width)
+       bin-width
+       true))
+   "You must specify :bin-width when using the :bin-width strategy."))
 
-(def ^:private FieldOptions*
-  {(s/optional-key :base-type)     (s/maybe su/FieldType)
-   ;; replaces `fk->`
-   (s/optional-key :source-field)  (s/maybe (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
-   ;; `:temporal-unit` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort.
-   ;;
-   ;; There is no requirement that all `:type/Temporal` derived Fields specify a `:temporal-unit`, but for legacy
-   ;; reasons `:field` clauses that refer to `:type/DateTime` Fields will be automatically "bucketed" in the
-   ;; `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when
-   ;; values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more
-   ;; details. `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they
-   ;; do any special datetime handling for plain `:field` clauses when their Field derives from `:type/DateTime`.
-   (s/optional-key :temporal-unit) (s/maybe DateTimeUnit)
-   ;; replaces `joined-field`
-   (s/optional-key :join-alias)    (s/maybe su/NonBlankString)
-   ;; replaces `binning-strategy`
-   (s/optional-key :binning)       (s/maybe BinningStrategyFieldOptions)
-   s/Keyword                       s/Any})
+(defn- validate-num-bins [schema]
+  (s/constrained
+   schema
+   (fn [{:keys [strategy num-bins]}]
+     (if (core/= strategy :num-bins)
+       num-bins
+       true))
+   "You must specify :num-bins when using the :num-bins strategy."))
 
-(def FieldOptions
-  (s/conditional
-   (complement map?)                     FieldOptions*
-   #(isa? (:base-type %) :type/Date)     (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe DateUnit))
-   #(isa? (:base-type %) :type/Time)     (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe TimeUnit))
-   #(isa? (:base-type %) :type/DateTime) (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe DateTimeUnit))
-   :else                                 FieldOptions*))
+(def FieldBinningOptions
+  (-> {:strategy                   BinningStrategyName
+       (s/optional-key :num-bins)  su/IntGreaterThanZero
+       (s/optional-key :bin-width) (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
+       s/Keyword                   s/Any}
+      validate-bin-width
+      validate-num-bins))
 
-;; TODO -- this could also be done with a conditional schema.
-(defn- validate-field-temporal-unit
-  [[_ _ {:keys [base-type temporal-unit]}]]
-  (condp #(isa? %2 %1) base-type
-    :type/Date     (date-bucketing-units temporal-unit)
-    :type/Time     (time-bucketing-units temporal-unit)
-    :type/DateTime (datetime-bucketing-units temporal-unit)
-    true))
+(defn- validate-temporal-unit [schema]
+  ;; TODO - consider breaking this out into separate constraints for the three different types so we can generate more
+  ;; specific error messages
+  (s/constrained
+   schema
+   (fn [{:keys [base-type temporal-unit]}]
+     (if-not temporal-unit
+       true
+       (if-let [units (condp #(isa? %2 %1) base-type
+                        :type/Date     date-bucketing-units
+                        :type/Time     time-bucketing-units
+                        :type/DateTime datetime-bucketing-units
+                        nil)]
+         (contains? units temporal-unit)
+         true)))
+   "Invalid :temporal-unit for the specified :base-type."))
 
-(defn- with-field-options-constraints [schema]
-  (-> schema
-      (s/constrained validate-field-temporal-unit "valid temporal unit for base-type"))
-  schema)
+(def ^:private FieldOptions
+  (-> {(s/optional-key :base-type)     (s/maybe su/FieldType)
+       ;; replaces `fk->`
+       ;;
+       ;; If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
+       ;; `:source-field` should be for information purposes only.
+       (s/optional-key :source-field)  (s/maybe (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
+       ;; `:temporal-unit` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort.
+       ;;
+       ;; There is no requirement that all `:type/Temporal` derived Fields specify a `:temporal-unit`, but for legacy
+       ;; reasons `:field` clauses that refer to `:type/DateTime` Fields will be automatically "bucketed" in the
+       ;; `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when
+       ;; values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more
+       ;; details. `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they
+       ;; do any special datetime handling for plain `:field` clauses when their Field derives from `:type/DateTime`.
+       (s/optional-key :temporal-unit) (s/maybe DateTimeUnit)
+       ;; replaces `joined-field`
+       (s/optional-key :join-alias)    (s/maybe su/NonBlankString)
+       ;; replaces `binning-strategy`
+       (s/optional-key :binning)       (s/maybe FieldBinningOptions)
+       s/Keyword                       s/Any}
+      validate-temporal-unit))
 
-(def FieldIDOptions
-  (with-field-options-constraints FieldOptions))
+(defn- require-base-type-for-field-name [schema]
+  (s/constrained
+   schema
+   (fn [[_ id-or-name {:keys [base-type]}]]
+     (if (string? id-or-name)
+       base-type
+       true))
+   ":field clauses using a string field name must specify :base-type."))
 
-(def FieldLiteralOptions
-  (with-field-options-constraints
-    ;; base-type is required for field literals
-    (-> FieldOptions
-        (dissoc (s/optional-key :base-type))
-        (assoc :base-type su/FieldType))))
+(def ^{:clause-name :field, :added "0.39.0"} field
+  "Schema for a `:field` clause."
+  (-> (schema.helpers/clause
+       :field
+       "id-or-name" (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
+       "options"    (s/maybe FieldOptions))
+      require-base-type-for-field-name))
 
-(defclause ^{:clause-name :field} field:literal
-  field-name su/NonBlankString
-  options    (s/recursive #'FieldLiteralOptions))
+(def ^{:clause-name :field, :added "0.39.0"} field:id
+  "Schema for a `:field` clause, with the added constraint that it must use an integer Field ID."
+  (s/constrained
+   field
+   (fn [[_ id-or-name]]
+     (integer? id-or-name))
+   "Must be a :field with an integer Field ID."))
 
-(defclause ^{:clause-name :field} field:id
-  id      su/IntGreaterThanZero
-  options (s/maybe (s/recursive #'FieldIDOptions)))
-
-(defclause ^:private ^{:clause-name :field} field:-generic
-  id-or-name (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
-  options    (s/maybe (s/recursive #'FieldOptions)))
-
-(def ^{:clause-name :field} field
-  (s/conditional
-   #(core/not (is-clause? :field %)) field:-generic
-   #(int? (second %))                field:id
-   #(string? (second %))             field:literal
-   :else                             field:-generic))
+(def ^{:clause-name :field, :added "0.39.0"} field:name
+  "Schema for a `:field` clause, with the added constraint that it must use an string Field name."
+  (s/constrained
+   field
+   (fn [[_ id-or-name]]
+     (string? id-or-name))
+   "Must be a :field with a string Field name."))
 
 (def ^:private Field*
   (one-of expression field))
@@ -1242,3 +1259,10 @@
   "Compiled schema validator for an [outer] Metabase query. (Pre-compling a validator is more efficient; use this
   instead of calling `(s/validate Query query)` or similar."
   (s/validator Query))
+
+[:binning-strategy
+ [:datetime-field
+  [:joined-field "my_join"
+   [:field-literal "my_field" :type/DateTimeWithLocalTZ]]
+  :month]
+ :num-bins 10]
