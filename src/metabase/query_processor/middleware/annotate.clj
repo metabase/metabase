@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
-  (:require [clojure.string :as str]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
@@ -169,39 +170,62 @@
     :field_ref       clause}))
 
 (s/defn ^:private col-info-for-field-clause*
-  [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts] :- mbql.s/field]
-  (merge
-   ;; If Field options have both a `:source-field` (denoting an IMPLICIT join) and a `:join-alias` (denoting an
-   ;; EXPLICIT join, which is added by the QP during pre-processing for IMPLICIT joins), remove the `:join-alias` so
-   ;; the FE client can refer to the column with just `:source-field`.
-   {:field_ref [:field id-or-name (cond-> opts
-                                    (:source-field opts) (dissoc :join-alias))]}
-   (when-let [base-type (:base-type opts)]
-     {:base_type base-type})
-   (when (string? id-or-name)
-     (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
-                 (dissoc :field_ref))
-         {:name         id-or-name
-          :display_name (humanization/name->human-readable-name id-or-name)}))
-   (when (integer? id-or-name)
-     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id-or-name) :database_type)]
-       (if-not parent-id
-         field
-         (let [parent (col-info-for-field-clause inner-query [:field-id parent-id])]
-           (update field :name #(str (:name parent) \. %))))))
-   (when-let [binning-opts (:binning opts)]
-     {:binning_info (assoc (u/snake-keys binning-opts)
-                           :binning_strategy (:strategy binning-opts))})
-   (when-let [temporal-unit (:temporal-unit opts)]
-     {:unit temporal-unit})
-   ;; only include `:join-alias` info for Fields that are Joined EXPLICITLY. If `:source-field` is present, this
-   ;; indicates an IMPLICIT join.
-   (when-let [join-alias (:join-alias opts)]
-     (when-not (:source-field opts)
-       {:source_alias join-alias}))
-   (when-let [source-field (:source-field opts)]
-     (when (integer? source-field)
-       {:fk_field_id source-field}))))
+  [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
+  (let [join (when (:join-alias opts)
+               (join-with-alias inner-query (:join-alias opts)))]
+    (cond-> {:field_ref clause}
+      (:base-type opts)
+      (assoc :base_type (:base-type opts))
+
+      (string? id-or-name)
+      (merge (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
+                         (dissoc :field_ref))
+                 {:name         id-or-name
+                  :display_name (humanization/name->human-readable-name id-or-name)}))
+
+      (integer? id-or-name)
+      (merge (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id-or-name) :database_type)]
+               (if-not parent-id
+                 field
+                 (let [parent (col-info-for-field-clause inner-query [:field parent-id nil])]
+                   (update field :name #(str (:name parent) \. %))))))
+
+      (:binning opts)
+      (assoc :binning_info (-> (:binning opts)
+                               (set/rename-keys {:strategy :binning-strategy})
+                               u/snake-keys))
+
+      (:temporal-unit opts)
+      (assoc :unit (:temporal-unit opts))
+
+      ;; only include `:source_alias` info for Fields that are Joined EXPLICITLY. If `:source-field` is present, this
+      ;; indicates an IMPLICIT join.
+      (and (:join-alias opts) (not (:source-field opts)))
+      (assoc :source_alias (:join-alias opts))
+
+      join
+      (update :display_name display-name-for-joined-field join)
+
+      ;; Join with fk-field-id => IMPLICIT JOIN
+      ;; Join w/o fk-field-id  => EXPLICIT JOIN
+      (:fk-field-id join)
+      (assoc :fk_field_id (:fk-field-id join))
+
+      ;; For IMPLICIT joins, remove `:join-alias` in the resulting Field ref -- it got added there during
+      ;; preprocessing by us, and wasn't there originally. Make sure the ref has `:source-field`.
+      (:fk-field-id join)
+      (update :field_ref mbql.u/update-field-options (fn [opts]
+                                                       (-> opts
+                                                           (dissoc :join-alias)
+                                                           (assoc :source-field (:fk-field-id join)))))
+
+      ;; If source Field (for an IMPLICIT join) is specified in either the field ref or matching join, make sure we
+      ;; return it as `fk_field_id`. (Not sure what situations it would actually be present in one but not the other
+      ;; -- but it's in the tests :confused:)
+      (or (:source-field opts)
+          (:fk-field-id join))
+      (assoc :fk_field_id (or (:source-field opts)
+                              (:fk-field-id join))))))
 
 (s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"

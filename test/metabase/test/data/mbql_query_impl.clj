@@ -126,7 +126,7 @@
     (let [[_ id-or-name opts] (parse-token-by-sigil source-table-symb (if (token->sigil token)
                                                                    (symbol token)
                                                                    (symbol (str \$ token))))]
-      [:field id-or-name {:temporal-unit (keyword unit)}])
+      [:field id-or-name (assoc opts :temporal-unit (keyword unit))])
     (throw (ex-info "Error parsing token starting with '!'" {:token token}))))
 
 ;; $$ = table ID.

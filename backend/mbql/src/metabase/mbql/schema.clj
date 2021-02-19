@@ -978,10 +978,10 @@
     (s/optional-key :alias)
     su/NonBlankString
     ;;
-    ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via an
-    ;; `:fk->` clause, the ID of the foreign key field in the source Table will be recorded here. This information is
-    ;; used to add `fk_field_id` information to the `:cols` in the query results; I believe this is used to facilitate
-    ;; drill-thru? :shrug:
+    ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via a
+    ;; `:field` clause with `:source-field`, the ID of the foreign key field in the source Table will
+    ;; be recorded here. This information is used to add `fk_field_id` information to the `:cols` in the query
+    ;; results; I believe this is used to facilitate drill-thru? :shrug:
     ;;
     ;; Don't set this information yourself. It will have no effect.
     (s/optional-key :fk-field-id)
