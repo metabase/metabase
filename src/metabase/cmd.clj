@@ -141,8 +141,9 @@
 (defn ^:command load
   "Load serialized metabase instance as created by `dump` command from directory `path`.
 
-   `mode` can be one of `:update` (default) or `:skip`."
-  ([path] (load path :update))
+   `mode` can be one of `:update` or `:skip` (default)."
+  ([path] (load path {"--mode" :skip
+                      "--on-error" :continue}))
 
   ([path & args]
    (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
