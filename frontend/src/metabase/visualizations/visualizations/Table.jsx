@@ -296,11 +296,11 @@ export default class Table extends Component {
     };
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateData(this.props);
   }
 
-  componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps: Props) {
     if (
       newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)

@@ -13,7 +13,7 @@ export default ComposedComponent =>
     state = {
       expand: false,
     };
-    componentWillReceiveProps(nextProps) {
+    UNSAFE_componentWillReceiveProps(nextProps) {
       if (
         nextProps.width != null &&
         this.props.width != null &&

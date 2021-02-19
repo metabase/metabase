@@ -75,7 +75,7 @@ const chartSettingNestedSettings = ({
       };
     }
 
-    componentWillReceiveProps(nextProps: Props) {
+    UNSAFE_componentWillReceiveProps(nextProps: Props) {
       // reset editingObjectKey if there's only one object
       if (
         nextProps.objects.length === 1 &&

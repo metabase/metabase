@@ -82,8 +82,7 @@ export default class PublicQuestion extends Component {
     };
   }
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       setErrorPage,
       params: { uuid, token },

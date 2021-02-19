@@ -49,7 +49,7 @@ export default class App extends Component {
     hasError: false,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     initializeIframeResizer();
   }
 

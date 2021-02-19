@@ -22,7 +22,7 @@ const mapDispatchToProps = { fetchRevisions };
   mapDispatchToProps,
 )
 export default class RevisionHistoryApp extends Component {
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { id, objectType } = this.props;
     this.props.fetchRevisions({ entity: objectType, id });
   }

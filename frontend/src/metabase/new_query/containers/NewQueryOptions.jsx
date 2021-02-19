@@ -43,7 +43,7 @@ const PAGE_PADDING = [1, 4];
 export default class NewQueryOptions extends Component {
   props: Props;
 
-  componentWillMount(props) {
+  UNSAFE_componentWillMount(props) {
     this.props.prefetchTables();
     this.props.prefetchDatabases();
     const { location, push } = this.props;

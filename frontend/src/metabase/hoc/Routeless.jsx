@@ -47,7 +47,7 @@ export default (
       _state: any;
       _timeout: any;
 
-      componentWillMount() {
+      UNSAFE_componentWillMount() {
         const push = this.props._routeless_push;
         const location = this.props._routeless_location;
         const { pathname, query, search, hash, state } = location;
@@ -55,7 +55,7 @@ export default (
         push({ pathname, query, search, hash, state: this._state });
       }
 
-      componentWillReceiveProps(nextProps) {
+      UNSAFE_componentWillReceiveProps(nextProps) {
         const location = this.props._routeless_location;
         const nextLocation = nextProps._routeless_location;
         if (
