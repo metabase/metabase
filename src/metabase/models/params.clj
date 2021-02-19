@@ -7,7 +7,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [deferred-trs tru]]
+            [metabase.util.i18n :as ui18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -35,10 +35,11 @@
     field-id-or-form
 
     (integer? field-id-or-form)
-    [:field-id field-id-or-form]
+    [:field field-id-or-form nil]
 
     :else
-    (throw (IllegalArgumentException. (str (deferred-trs "Don't know how to wrap:") " " field-id-or-form)))))
+    (throw (ex-info (trs "Don't know how to wrap Field ID.")
+                    {:form field-id-or-form}))))
 
 (s/defn field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is

@@ -168,8 +168,8 @@
     :expression_name expression-name
     :field_ref       clause}))
 
-(defn- col-info-for-field-clause*
-  [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts]]
+(s/defn ^:private col-info-for-field-clause*
+  [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts] :- mbql.s/field]
   (merge
    ;; If Field options have both a `:source-field` (denoting an IMPLICIT join) and a `:join-alias` (denoting an
    ;; EXPLICIT join, which is added by the QP during pre-processing for IMPLICIT joins), remove the `:join-alias` so
@@ -179,7 +179,8 @@
    (when-let [base-type (:base-type opts)]
      {:base_type base-type})
    (when (string? id-or-name)
-     (or (some #(when (= (:name %) id-or-name) %) source-metadata)
+     (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
+                 (dissoc :field_ref))
          {:name         id-or-name
           :display_name (humanization/name->human-readable-name id-or-name)}))
    (when (integer? id-or-name)
@@ -205,9 +206,18 @@
 (s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
   [inner-query :- su/Map, clause :- mbql.s/Field]
-  (if (mbql.u/is-clause? :expression clause)
-    (col-info-for-expression inner-query clause)
-    (col-info-for-field-clause* inner-query clause)))
+  (mbql.u/match-one clause
+    :expression
+    (col-info-for-expression inner-query &match)
+
+    :field
+    (col-info-for-field-clause* inner-query &match)
+
+    ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
+    ;; something the user should expect to see
+    _
+    (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
+                    {:field &match}))))
 
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------

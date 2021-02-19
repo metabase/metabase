@@ -5,7 +5,6 @@
             [java-time.amount :as t.amount]
             [java-time.core :as t.core]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [metabase.mbql.util.match :as mbql.match]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -447,36 +446,6 @@
   [join]
   (query->source-table-id {:type :query, :query join}))
 
-(s/defn ^{:deprecated "0.39.0"} unwrap-field-clause :- (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal)
-  "Un-wrap a `Field` clause and return the lowest-level clause it wraps, either a `:field-id` or `:field-literal`."
-  [clause :- mbql.s/Field]
-  (match-one clause
-    :field-id                     &match
-    :field-literal                &match
-    [:fk-> _ dest-field]          (recur dest-field)
-    [:joined-field _ field]       (recur field)
-    [:datetime-field field _]     (recur field)
-    [:binning-strategy field & _] (recur field)))
-
-(defn ^{:deprecated "0.39.0"} ^:private maybe-unwrap-field-clause
-  "Unwrap a Field `clause`, if it's something that can be unwrapped (i.e. something that is, or wraps, a `:field-id` or
-  `:field-literal`). Otherwise return `clause` as-is."
-  [clause]
-  (if (is-clause? #{:field-id :fk-> :field-literal :datetime-field :binning-strategy :joined-field} clause)
-    (unwrap-field-clause clause)
-    clause))
-
-(s/defn ^{:deprecated "0.39.0"} field-clause->id-or-literal :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
-  "Get the actual Field ID or literal name this clause is referring to. Useful for seeing if two Field clauses are
-  referring to the same thing, e.g.
-
-    (field-clause->id-or-literal [:datetime-field [:field-id 100] ...]) ; -> 100
-    (field-clause->id-or-literal [:field-id 100])                       ; -> 100
-
-  For expressions returns the expression name."
-  [clause :- mbql.s/Field]
-  (second (maybe-unwrap-field-clause clause)))
-
 (s/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
@@ -768,6 +737,6 @@
   (apply update-field-options field-clause assoc kvs))
 
 (defn with-temporal-unit
-  "Set the `:temporal-unit` "
+  "Set the `:temporal-unit` of a `:field` clause to `unit`."
   [field-clause unit]
   (assoc-field-options field-clause :temporal-unit unit))

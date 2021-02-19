@@ -930,11 +930,12 @@
 
 (defn- field-clause->name
   [field-clause]
-  (when field-clause
-    (let [id (mbql.u/field-clause->id-or-literal field-clause)]
-      (if (integer? id)
-        (:name (qp.store/field id))
-        id))))
+  (mbql.u/match-one field-clause
+    [:field (id :guard integer?) _]
+    (:name (qp.store/field id))
+
+    [:field (field-name :guard string?) _]
+    field-name))
 
 (defmethod handle-breakout ::topN
   [_ {[breakout-field] :breakout} druid-query]

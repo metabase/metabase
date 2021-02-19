@@ -171,10 +171,7 @@
   [[_ field-clause unit]]
   (if (= unit :default)
     (->rvalue field-clause)
-    (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
-          field    (when (integer? field-id)
-                     (qp.store/field field-id))
-          column   (->rvalue field-clause)]
+    (let [column (->rvalue field-clause)]
       (letfn [(truncate [unit]
                 (truncate-to-resolution column unit))]
         (case unit
@@ -531,10 +528,10 @@
      (assoc-in
       m
       (mbql.u/match-one field-clause
-        [:field-id field-id]
+        [:field (field-id :guard integer?) _]
         (str/split (->lvalue field-clause) #"\.")
 
-        [:field-literal field-name _]
+        [:field (field-name :guard string?) _]
         [field-name])
       (->rvalue field-clause)))
    (ordered-map/ordered-map)

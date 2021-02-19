@@ -56,7 +56,7 @@
     (mbql.u/is-clause? :template-tag field)
     nil
 
-    ;; single-value, non-date param. Generate MBQL [= [field-id <field>] <value>] clause
+    ;; single-value, non-date param. Generate MBQL [= [field <field> nil] <value>] clause
     :else
     [:=
      (params/wrap-field-id-if-needed field)

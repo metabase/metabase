@@ -87,14 +87,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private target-field->base-type :- (s/maybe su/FieldType)
-  "If the `:target` of a parameter contains a `:field-id` clause, return the base type corresponding to the Field it
+  "If the `:target` of a parameter contains a `:field` clause, return the base type corresponding to the Field it
   references. Otherwise returns `nil`."
   [[_ target-field-clause]]
-  (when-let [field-id (u/ignore-exceptions (mbql.u/field-clause->id-or-literal target-field-clause))]
-    (when (integer? field-id)
-      ;; TODO -- we should be using the QP store for this. But when trying to change this I ran into "QP Store is not
-      ;; initialized" errors. We should figure out why that's the case and then fix this
-      (db/select-one-field :base_type Field :id field-id))))
+  (when-let [field-id (mbql.u/match-one target-field-clause [:field (field-id :guard integer?) _] field-id)]
+    ;; TODO -- we should be using the QP store for this. But when trying to change this I ran into "QP Store is not
+    ;; initialized" errors. We should figure out why that's the case and then fix this
+    (db/select-one-field :base_type Field :id field-id)))
 
 (defn- attr-value->param-value
   "Take an `attr-value` with a desired `target-type` and coerce to that type if need be. If not type is given or it's

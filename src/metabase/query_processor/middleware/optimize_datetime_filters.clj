@@ -6,15 +6,15 @@
             [metabase.util.date-2 :as u.date]))
 
 (def ^:private optimizable-units
-  #{:second :minute :hour :day :week :month :quarter :year})
+  #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 
-(defn- datetime-field-unit [field]
-  (last (mbql.u/match-one field :datetime-field)))
+(defn- temporal-unit [field]
+  (mbql.u/match-one field [:field _ opts] (:temporal-unit opts)))
 
 (defn- optimizable-field? [field]
   (mbql.u/match-one field
-    [:datetime-field _ unit]
-    (optimizable-units unit)))
+    [:field _ opts]
+    (optimizable-units (:temporal-unit opts))))
 
 (defmulti ^:private can-optimize-filter?
   mbql.u/dispatch-by-clause-name-or-class)
@@ -23,7 +23,7 @@
   [filter-clause]
   (mbql.u/match-one filter-clause
     [_ (field :guard optimizable-field?) [:absolute-datetime _ (unit :guard optimizable-units)]]
-    (= (datetime-field-unit field) unit)))
+    (= (temporal-unit field) unit)))
 
 (defmethod can-optimize-filter? :between
   [filter-clause]
@@ -32,7 +32,7 @@
      (field :guard optimizable-field?)
      [:absolute-datetime _ (unit-1 :guard optimizable-units)]
      [:absolute-datetime _ (unit-2 :guard optimizable-units)]]
-    (= (datetime-field-unit field) unit-1 unit-2)))
+    (= (temporal-unit field) unit-1 unit-2)))
 
 (defn- lower-bound [unit t]
   (:start (u.date/range t unit)))
@@ -40,10 +40,8 @@
 (defn- upper-bound [unit t]
   (:end (u.date/range t unit)))
 
-(defn- change-datetime-field-unit-to-default [field]
-  (mbql.u/replace field
-    [:datetime-field wrapped _]
-    [:datetime-field wrapped :default]))
+(defn- change-field-temporal-unit-to-default [field]
+  (mbql.u/with-temporal-unit field :default))
 
 (defmulti ^:private optimize-filter
   {:arglists '([clause])}
@@ -52,9 +50,9 @@
 
 (defmethod optimize-filter :=
   [[_ field [_ inst unit]]]
-  (let [[_ _ datetime-field-unit] (mbql.u/match-one field :datetime-field)]
-    (when (= unit datetime-field-unit)
-      (let [field' (change-datetime-field-unit-to-default field)]
+  (let [temporal-unit (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
+    (when (= unit temporal-unit)
+      (let [field' (change-field-temporal-unit-to-default field)]
         [:and
          [:>= field' [:absolute-datetime (lower-bound unit inst) :default]]
          [:< field'  [:absolute-datetime (upper-bound unit inst) :default]]]))))
@@ -66,7 +64,7 @@
 (defn- optimize-comparison-filter
   [trunc-fn [filter-type field [_ inst unit]] new-filter-type]
   [new-filter-type
-   (change-datetime-field-unit-to-default field)
+   (change-field-temporal-unit-to-default field)
    [:absolute-datetime (trunc-fn unit inst) :default]])
 
 (defmethod optimize-filter :<
@@ -87,7 +85,7 @@
 
 (defmethod optimize-filter :between
   [[_ field [_ lower unit] [_ upper]]]
-  (let [field' (change-datetime-field-unit-to-default field)]
+  (let [field' (change-field-temporal-unit-to-default field)]
     [:and
      [:>= field' [:absolute-datetime (lower-bound unit lower) :default]]
      [:<  field' [:absolute-datetime (upper-bound unit upper) :default]]]))
@@ -109,11 +107,11 @@
   bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
   bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
 
-    [:= [:datetime-field [:field-id 1] :month] [:absolute-datetime #t \"2019-09-01\" :month]]
+    [:= [:field 1 {:temporal-unit :month}] [:absolute-datetime #t \"2019-09-01\" :month]]
     ->
     [:and
-     [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-09-01\" :month]]
-     [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-10-01\" :month]]]
+     [:>= [:field 1 {:temporal-unit :default}] [:absolute-datetime #t \"2019-09-01\" :month]]
+     [:<  [:field 1 {:temporal-unit :default}] [:absolute-datetime #t \"2019-10-01\" :month]]]
 
   The equivalent SQL, before and after, looks like:
 
