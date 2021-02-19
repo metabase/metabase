@@ -33,8 +33,10 @@
            tally)
          (largest-common-subseq-length eq xs (rest ys) 0)
          (largest-common-subseq-length eq (rest xs) ys 0)))))
-   ;; Uses O(n*m) space with k < 2, so this gives us caching for at least a 22*22 search (or 50*10, etc) which sounds
-   ;; like more than enough. Memory is cheap and the items are small, so we may as well skew high
+   ;; Uses O(n*m) space (the lengths of the two lists) with k≤2, so napkin math suggests this gives us caching for at
+   ;; least a 31*31 search (or 50*20, etc) which sounds like more than enough. Memory is cheap and the items are
+   ;; small, so we may as well skew high.
+   ;; As a precaution, the scorer that uses this limits the number of tokens (see the `take` call below)
    :fifo/threshold 1000))
 
 ;;; Scoring
@@ -91,8 +93,13 @@
     (when (seq scores)
       (apply max-key :score scores))))
 
-(def ^:private consecutivity-scorer
-  (partial largest-common-subseq-length matches?))
+(defn- consecutivity-scorer
+  [query-tokens match-tokens]
+  (largest-common-subseq-length
+   matches?
+   ;; See comment on largest-common-subseq-length re. its cache. This is a little conservative, but better to under- than over-estimate
+   (take 30 query-tokens)
+   (take 30 match-tokens)))
 
 (defn- total-occurrences-scorer
   [tokens haystack]
