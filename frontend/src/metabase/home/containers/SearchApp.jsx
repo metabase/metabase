@@ -45,22 +45,13 @@ export default class SearchApp extends React.Component {
                 );
               }
 
-              //TODO: this is breaking the ordering; redo this in a follow-up PR
               const resultsByType = _.chain(list)
                 .groupBy("model")
                 .value();
 
               // either use the specified filter type or order the full set according to our preferred order
               // (this should probably just be the default return from the endpoint no?
-              const resultDisplay = resultsByType[location.query.type] || [
-                ...(resultsByType.dashboard || []),
-                ...(resultsByType.metric || []),
-                ...(resultsByType.table || []),
-                ...(resultsByType.segment || []),
-                ...(resultsByType.card || []),
-                ...(resultsByType.collection || []),
-                ...(resultsByType.pulse || []),
-              ];
+              const resultDisplay = resultsByType[location.query.type] || list;
 
               const searchFilters = FILTERS.concat(
                 {
