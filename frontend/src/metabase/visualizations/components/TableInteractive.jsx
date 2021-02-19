@@ -150,7 +150,7 @@ export default class TableInteractive extends Component {
     ),
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // for measuring cells:
     this._div = document.createElement("div");
     this._div.className = "TableInteractive";
@@ -169,7 +169,7 @@ export default class TableInteractive extends Component {
     }
   }
 
-  componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps: Props) {
     if (
       this.props.data &&
       newProps.data &&

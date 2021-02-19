@@ -95,7 +95,7 @@ export default class EntityObjectLoader extends React.Component {
     );
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // $FlowFixMe: provided by @connect
     const { entityId, fetch } = this.props;
     if (entityId != null) {
@@ -105,7 +105,7 @@ export default class EntityObjectLoader extends React.Component {
       );
     }
   }
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (
       nextProps.entityId !== this.props.entityId &&
       this.props.entityId != null

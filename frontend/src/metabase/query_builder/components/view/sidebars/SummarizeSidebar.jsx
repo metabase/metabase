@@ -29,7 +29,7 @@ export default class SummarizeSidebar extends React.Component {
     modified: false,
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (!this.props.question.isEqual(nextProps.question)) {
       this.setState({ modified: true });
     }

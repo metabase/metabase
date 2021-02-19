@@ -54,7 +54,7 @@ const mapDispatchToProps = (dispatch, props) =>
   mapDispatchToProps,
 )
 export default class CollectionPermissionsModal extends Component {
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { namespace, loadCollections, initialize } = this.props;
     initialize(
       () => CollectionsApi.graph({ namespace }),

@@ -126,8 +126,8 @@ export default class ChoroplethMap extends Component {
     };
   }
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
   _getDetails(props) {
@@ -136,7 +136,7 @@ export default class ChoroplethMap extends Component {
     ];
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     const details = this._getDetails(nextProps);
     if (details) {
       let geoJsonPath;

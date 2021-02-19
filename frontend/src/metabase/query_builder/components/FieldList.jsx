@@ -53,10 +53,10 @@ export default class FieldList extends Component {
     sections: [],
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateSections(this.props);
   }
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this._updateSections(nextProps);
   }
   _updateSections({

@@ -42,7 +42,7 @@ export default class Activity extends Component {
     }
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // do a quick pass over the activity and make sure we've assigned colors to all users which have activity
     const { activity, user } = nextProps;
     const { userColors } = this.state;

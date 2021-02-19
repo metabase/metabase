@@ -38,7 +38,7 @@ type Props = {
 export default class TagEditorParam extends Component {
   props: Props;
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {

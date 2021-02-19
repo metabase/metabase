@@ -175,7 +175,7 @@ export default class Dashboard extends Component {
     this.loadDashboard(this.props.dashboardId);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (this.props.dashboardId !== nextProps.dashboardId) {
       this.loadDashboard(nextProps.dashboardId);
     } else if (

@@ -16,7 +16,7 @@ export default class ExpandableString extends Component {
     length: 140,
   };
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (newProps.expanded !== undefined) {
       this.setState({
         expanded: newProps.expanded,

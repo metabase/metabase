@@ -60,11 +60,11 @@ export class QuestionResultLoader extends React.Component {
 
   _cancelDeferred: ?() => void;
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._loadResult(this.props.question, this.props.onLoad);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     // if the question is different, we need to do a fresh load
     if (
       nextProps.question &&

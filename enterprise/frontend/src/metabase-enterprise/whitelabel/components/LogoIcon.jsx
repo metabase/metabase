@@ -36,7 +36,7 @@ export default class LogoIcon extends Component {
     }
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (newProps.url && newProps.url !== this.props.url) {
       this.loadImage(newProps.url);
     }

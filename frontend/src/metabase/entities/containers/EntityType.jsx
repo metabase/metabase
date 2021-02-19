@@ -28,7 +28,7 @@ export default (entityType?: string) => (
         this._bindActionCreators(props);
       }
 
-      componentWillReceiveProps(nextProps) {
+      UNSAFE_componentWillReceiveProps(nextProps) {
         if (
           nextProps.entityDef !== this.props.entityDef ||
           nextProps.dispatch !== this.props.dispatch

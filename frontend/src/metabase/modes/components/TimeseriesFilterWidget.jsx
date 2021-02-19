@@ -53,11 +53,11 @@ export default class TimeseriesFilterWidget extends Component {
 
   _popover: ?any;
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     const query = Card.getQuery(nextProps.card);
     if (query) {
       const breakouts = Query.getBreakouts(query);

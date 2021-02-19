@@ -96,7 +96,7 @@ export default (ComposedComponent: ReactClass<any>) =>
         }
       }
 
-      componentWillMount() {
+      UNSAFE_componentWillMount() {
         this.load(this.props);
       }
 
@@ -104,7 +104,7 @@ export default (ComposedComponent: ReactClass<any>) =>
         this.props.cancelFetchDashboardCardData();
       }
 
-      componentWillReceiveProps(nextProps: Props) {
+      UNSAFE_componentWillReceiveProps(nextProps: Props) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
         } else if (

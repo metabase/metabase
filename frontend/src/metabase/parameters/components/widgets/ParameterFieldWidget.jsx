@@ -76,7 +76,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     }
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (this.props.value !== nextProps.value) {
       this.setState({ value: nextProps.value });
     }

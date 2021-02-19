@@ -35,7 +35,7 @@ export class WindowModal extends Component {
     backdropClassName: "Modal-backdrop",
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._modalElement = document.createElement("span");
     this._modalElement.className = "ModalContainer";
     document.querySelector("body").appendChild(this._modalElement);

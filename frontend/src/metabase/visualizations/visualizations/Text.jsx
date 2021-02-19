@@ -103,7 +103,7 @@ export default class Text extends Component {
     },
   };
 
-  componentWillReceiveProps(newProps: VisualizationProps) {
+  UNSAFE_componentWillReceiveProps(newProps: VisualizationProps) {
     // dashboard is going into edit mode
     if (!this.props.isEditing && newProps.isEditing) {
       this.onEdit();
