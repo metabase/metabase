@@ -85,6 +85,16 @@
     (conj (normalize-mbql-clause-tokens [:binning-strategy field strategy-name]) strategy-param)
     [:binning-strategy (normalize-tokens field :ignore-path) (mbql.u/normalize-token strategy-name)]))
 
+(defmethod normalize-mbql-clause-tokens :field
+  [[_ id-or-name opts]]
+  [:field
+   id-or-name
+   (cond-> opts
+     (:base-type opts) (update :base-type keyword)
+     (:binning opts)   (update :binning (fn [binning]
+                                          (cond-> binning
+                                            (:strategy binning) (update :strategy keyword)))))])
+
 (defmethod normalize-mbql-clause-tokens :field-literal
   ;; Similarly, for Field literals, keep the arg as-is, but make sure it is a string."
   [[_ field-name field-type]]

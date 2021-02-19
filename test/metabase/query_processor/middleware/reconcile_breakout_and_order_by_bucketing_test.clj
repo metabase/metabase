@@ -14,10 +14,10 @@
 ;; will unbucketed datetime order-bys get bucketed if Field it references is bucketed in a `breakout` clause?
 (expect
   (mbql-query
-    :breakout [[:datetime-field [:field-id 1] :day]]
-    :order-by [[:asc [:datetime-field [:field-id 1] :day]]])
+    :breakout [[:field 1 {:temporal-unit :day}]]
+    :order-by [[:asc [:field 1 {:temporal-unit :day}]]])
   (reconcile-breakout-and-order-by-bucketing
-    :breakout [[:datetime-field [:field-id 1] :day]]
+    :breakout [[:field 1 {:temporal-unit :day}]]
     :order-by [[:asc [:field-id 1]]]))
 
 ;; should also work with FKs
@@ -32,11 +32,11 @@
 ;; ...and with field literals
 (expect
   (mbql-query
-    :breakout [[:datetime-field [:field-literal "Corn Field" :type/Text] :day]]
-    :order-by [[:asc [:datetime-field [:field-literal "Corn Field" :type/Text] :day]]])
+    :breakout [[:datetime-field [:field "Corn Field" {:base-type :type/Text}] :day]]
+    :order-by [[:asc [:datetime-field [:field "Corn Field" {:base-type :type/Text}] :day]]])
   (reconcile-breakout-and-order-by-bucketing
-    :breakout [[:datetime-field [:field-literal "Corn Field" :type/Text] :day]]
-    :order-by [[:asc [:field-literal "Corn Field" :type/Text]]]))
+   :breakout [[:datetime-field [:field "Corn Field" {:base-type :type/Text}] :day]]
+   :order-by [[:asc [:field "Corn Field" {:base-type :type/Text}]]]))
 
 ;; unbucketed datetimes in order-bys should be left undisturbed if they are not referenced in the breakout clause;
 ;; this is likely an invalid query, but that isn't this middleware's problem
@@ -53,21 +53,21 @@
 ;; doing if you explicitly specify a bucketing)
 (expect
   (mbql-query
-    :breakout [[:datetime-field [:field-id 1] :day]]
+    :breakout [[:field 1 {:temporal-unit :day}]]
     :order-by [[:asc [:datetime-field [:field-id 1] :month]]])
   (reconcile-breakout-and-order-by-bucketing
-    :breakout [[:datetime-field [:field-id 1] :day]]
+    :breakout [[:field 1 {:temporal-unit :day}]]
     :order-by [[:asc [:datetime-field [:field-id 1] :month]]]))
 
 ;; we should be able to fix multiple order-bys
 (expect
   (mbql-query
-    :breakout [[:datetime-field [:field-id 1] :day]
+    :breakout [[:field 1 {:temporal-unit :day}]
                [:datetime-field [:field-id 2] :month]]
-    :order-by [[:asc [:datetime-field [:field-id 1] :day]]
+    :order-by [[:asc [:field 1 {:temporal-unit :day}]]
                [:desc [:datetime-field [:field-id 2] :month]]])
   (reconcile-breakout-and-order-by-bucketing
-    :breakout [[:datetime-field [:field-id 1] :day]
+    :breakout [[:field 1 {:temporal-unit :day}]
                [:datetime-field [:field-id 2] :month]]
     :order-by [[:asc  [:field-id 1]]
                [:desc [:field-id 2]]]))
@@ -75,11 +75,11 @@
 ;; if for some reason a Field is referenced twice in the order bys, we should only bucket unbucketed references
 (expect
   (mbql-query
-    :breakout [[:datetime-field [:field-id 1] :day]]
-    :order-by [[:asc  [:datetime-field [:field-id 1] :day]]
+    :breakout [[:field 1 {:temporal-unit :day}]]
+    :order-by [[:asc  [:field 1 {:temporal-unit :day}]]
                [:desc [:datetime-field [:field-id 1] :month]]])
   (reconcile-breakout-and-order-by-bucketing
-    :breakout [[:datetime-field [:field-id 1] :day]]
+    :breakout [[:field 1 {:temporal-unit :day}]]
     :order-by [[:asc  [:field-id 1]]
                [:desc [:datetime-field [:field-id 1] :month]]]))
 
@@ -87,27 +87,27 @@
 ;; should remove them, as it is illegal in MBQL 2000
 (expect
   (mbql-query
-    :breakout [[:datetime-field [:field-id 1] :day]]
-    :order-by [[:asc [:datetime-field [:field-id 1] :day]]])
+    :breakout [[:field 1 {:temporal-unit :day}]]
+    :order-by [[:asc [:field 1 {:temporal-unit :day}]]])
   (reconcile-breakout-and-order-by-bucketing
-    :breakout [[:datetime-field [:field-id 1] :day]]
+    :breakout [[:field 1 {:temporal-unit :day}]]
     :order-by [[:asc [:field-id 1]]
-               [:asc [:datetime-field [:field-id 1] :day]]]))
+               [:asc [:field 1 {:temporal-unit :day}]]]))
 
 ;; if there are two breakouts of the same Field with different bucketing, let's just use the bucketing for the first
 ;; breakout (?)
 (expect
   (reconcile-breakout-and-order-by-bucketing
-    :breakout [[:datetime-field [:field-id 1] :day]
+    :breakout [[:field 1 {:temporal-unit :day}]
                [:datetime-field [:field-id 1] :month]]
     :order-by [[:asc [:field-id 1]]]))
 
 ;; don't add order bys if there are none
 (expect
   (mbql-query
-    :breakout [[:datetime-field [:field-id 1] :day]])
+    :breakout [[:field 1 {:temporal-unit :day}]])
   (reconcile-breakout-and-order-by-bucketing
-    :breakout [[:datetime-field [:field-id 1] :day]]))
+    :breakout [[:field 1 {:temporal-unit :day}]]))
 
 ;; we also need to be able to handle bucketing via binning-strategy
 (expect
