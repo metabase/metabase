@@ -22,7 +22,7 @@ const OPTIONS = [
 export default class RefreshWidget extends Component {
   state = { elapsed: null };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { setRefreshElapsedHook } = this.props;
     if (setRefreshElapsedHook) {
       setRefreshElapsedHook(elapsed => this.setState({ elapsed }));

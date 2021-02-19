@@ -85,7 +85,7 @@ export default class DashboardApp extends Component {
     addCardOnLoad: null,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const options = parseHashOptions(window.location.hash);
     if (options.add) {
       this.setState({ addCardOnLoad: parseInt(options.add) });

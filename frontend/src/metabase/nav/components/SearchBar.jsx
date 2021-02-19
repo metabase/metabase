@@ -58,14 +58,14 @@ export default class SearchBar extends React.Component {
     searchText: "",
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateSearchTextFromUrl(this.props);
     window.addEventListener("keyup", this.handleKeyUp);
   }
   componentWillUnmount() {
     window.removeEventListener("keyup", this.handleKeyUp);
   }
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.location.pathname !== nextProps.location.pathname) {
       this._updateSearchTextFromUrl(nextProps);
     }

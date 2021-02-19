@@ -76,7 +76,7 @@ export default class PinMap extends Component {
     };
   }
 
-  componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps: Props) {
     const SETTINGS_KEYS = [
       "map.latitude_column",
       "map.longitude_column",

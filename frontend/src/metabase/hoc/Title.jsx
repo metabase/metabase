@@ -21,7 +21,7 @@ const title = documentTitleOrGetter => ComposedComponent =>
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
-    componentWillMount() {
+    UNSAFE_componentWillMount() {
       componentStack.push(this);
       this._updateDocumentTitle();
     }

@@ -291,11 +291,11 @@ export class UnconnectedDataSelector extends Component {
     });
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.hydrateActiveStep();
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     const newState = {};
     for (const propName of [
       "selectedDatabaseId",

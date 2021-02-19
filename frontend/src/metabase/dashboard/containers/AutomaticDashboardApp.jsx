@@ -86,7 +86,7 @@ class AutomaticDashboardApp extends React.Component {
     MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // clear savedDashboardId if changing to a different dashboard
     if (this.props.location.pathname !== nextProps.location.pathname) {
       this.setState({ savedDashboardId: null });
