@@ -756,3 +756,18 @@
        (assoc join :alias alias))
      joins
      unique-aliases)))
+
+(defn update-field-options
+  "Like `clojure.core/update`, but for the options in a `:field` clause."
+  [[_ id-or-name opts] f & args]
+  [:field id-or-name (apply f opts args)])
+
+(defn assoc-field-options
+  "Like `clojure.core/assoc`, but for the options in a `:field` clause."
+  [field-clause & kvs]
+  (apply update-field-options field-clause assoc kvs))
+
+(defn with-temporal-unit
+  "Set the `:temporal-unit` "
+  [field-clause unit]
+  (assoc-field-options field-clause :temporal-unit unit))

@@ -5,7 +5,6 @@
             [metabase.db.util :as mdb.u]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [metabase.mbql.util :as mbql.u]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-trs tru]]
@@ -18,18 +17,15 @@
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private FieldIDOrLiteral
-  (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal))
-
-(s/defn unwrap-field-clause :- FieldIDOrLiteral
+(s/defn ^{:deprecated "0.39.0"} unwrap-field-clause :- mbql.s/field
   "Unwrap a Field clause if needed, returning underlying `:field-id` or `:field-literal`. Also handles unwrapped
   integers for legacy compatiblity.
 
     (unwrap-field-clause [:field-id 100]) ; -> [:field-id 100]"
   [field-form]
   (if (integer? field-form)
-    [:field-id field-form]
-    (mbql.u/unwrap-field-clause field-form)))
+    [:field field-form nil]
+    field-form))
 
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field-id` clause if needed."
@@ -59,7 +55,7 @@
   [[_ tag] dashcard]
   (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(s/defn param-target->field-clause :- (s/maybe FieldIDOrLiteral)
+(s/defn param-target->field-clause :- (s/maybe mbql.s/field)
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target dashcard]
@@ -169,7 +165,7 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private dashboard->parameter-mapping-field-clauses :- (s/maybe #{FieldIDOrLiteral})
+(s/defn ^:private dashboard->parameter-mapping-field-clauses :- (s/maybe #{mbql.s/field})
   "Return set of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
   looking at the appropriate `:parameter_mappings` entries for its Dashcards."
   [dashboard]
@@ -219,7 +215,7 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn card->template-tag-field-clauses :- #{FieldIDOrLiteral}
+(s/defn card->template-tag-field-clauses :- #{mbql.s/field}
   "Return a set of `:field-id`/`:field-literal` clauses referenced in template tag parameters in `card`."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
