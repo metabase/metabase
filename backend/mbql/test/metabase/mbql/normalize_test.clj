@@ -1,7 +1,8 @@
 (ns metabase.mbql.normalize-test
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
-            [metabase.mbql.normalize :as normalize]))
+            [metabase.mbql.normalize :as normalize]
+            [metabase.util :as u]))
 
 (defn- tests {:style/indent 2} [f-symb f group->input->expected]
   (doseq [[group input->expected] group->input->expected]
@@ -1029,3 +1030,13 @@
                                                        [:and
                                                         [:= [:field-id 5] "abc"]
                                                         [:between [:field-id 9] 0 25]]]}})))))
+
+;; TODO - more tests
+(deftest modernize-fields-test
+  (doseq [[form expected] {[:=
+                            [:datetime-field [:joined-field "source" [:field-id 100]] :month]
+                            "2021-02-18"]
+                           [:= [:field 100 {:join-alias "source", :temporal-unit :month}] "2021-02-18"]}]
+    (testing (u/pprint-to-str form)
+      (is (= expected
+             (#'normalize/modernize-fields form))))))

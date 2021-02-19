@@ -32,8 +32,35 @@
 
 ;;; ------------------------------------------------- Datetime Stuff -------------------------------------------------
 
-(def DatetimeFieldUnit
-  "Schema for all valid datetime bucketing units."
+(def date-bucketing-units
+  #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
+    :month :month-of-year :quarter :quarter-of-year :year})
+
+(def time-bucketing-units
+  #{:default :millisecond :second :minute :minute-of-hour :hour :hour-of-day})
+
+(def datetime-bucketing-units
+  (set/union date-bucketing-units time-bucketing-units))
+
+(def DateBucketingUnit
+  (s/named
+   (apply s/enum date-bucketing-units)
+   "date-bucketing-unit"))
+
+(def TimeBucketingUnit
+  (s/named
+   (apply s/enum time-bucketing-units)
+   "time-bucketing-unit"))
+
+(def DateTimeBucketingUnit
+  (s/named
+   (apply s/enum datetime-bucketing-units)
+   "datetime-bucketing-unit"))
+
+;; TODO -- rename to `TemporalUnit`
+(def ^{:deprecated "0.39.0"} DatetimeFieldUnit
+  "Schema for all valid datetime bucketing units. DEPRECATED -- use `DateBucketingUnit`, `TimeBucketingUnit`, or
+  `DateTimeBucketingUnit` instead."
   (s/named
    (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
                    :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
@@ -175,11 +202,11 @@
 
 ;; Normal lowest-level Field clauses refer to a Field either by ID or by name
 
-(defclause field-id, id su/IntGreaterThanZero)
+(defclause ^{:deprecated "0.39.0"} field-id, id su/IntGreaterThanZero)
 
-(defclause field-literal, field-name su/NonBlankString, field-type su/FieldType)
+(defclause ^{:deprecated "0.39.0"} field-literal, field-name su/NonBlankString, field-type su/FieldType)
 
-(defclause joined-field, alias su/NonBlankString, field (one-of field-id field-literal))
+(defclause ^{:deprecated "0.39.0"} joined-field, alias su/NonBlankString, field (one-of field-id field-literal))
 
 ;; Both args in `[:fk-> <source-field> <dest-field>]` are implict `:field-ids`. E.g.
 ;;
@@ -187,7 +214,7 @@
 ;;
 ;; `fk->` clauses are automatically replaced by the Query Processor with appropriate `:joined-field` clauses during
 ;; preprocessing. Drivers do not need to handle `:fk->` clauses themselves.
-(defclause ^{:requires-features #{:foreign-keys}} ^:sugar fk->
+(defclause ^{:requires-features #{:foreign-keys}, :deprecated "0.39.0"} ^:sugar fk->
   source-field (one-of field-id field-literal)
   dest-field   (one-of field-id field-literal))
 
@@ -209,7 +236,7 @@
 ;; doesn't make a whole lot of sense (what does `"2018-10-23"::timestamp / 2` mean?).
 ;;
 ;; Field is an implicit Field ID
-(defclause datetime-field
+(defclause ^{:deprecated "0.39.0"} datetime-field
   field (one-of field-id field-literal fk-> joined-field)
   unit  DatetimeFieldUnit)
 
@@ -231,7 +258,7 @@
 
 ;; binning strategy must match one of the three schemas below -- the param differs for different strategies.
 
-(defclause [binning-strategy:num-bins binning-strategy]
+(defclause ^{:deprecated "0.39.0", :clause-name :binning-strategy} binning-strategy:num-bins
   field            BinnableField
   strategy-name    (s/eq :num-bins)
   num-bins         su/IntGreaterThanZero
@@ -239,13 +266,13 @@
   ;; replaced. Driver implementations can rely on this being populated
   resolved-options (optional ResolvedBinningStrategyOptions))
 
-(defclause [binning-strategy:bin-width binning-strategy]
+(defclause ^{:deprecated "0.39.0", :clause-name :binning-strategy} binning-strategy:bin-width
   field            BinnableField
   strategy-name    (s/eq :bin-width)
   bin-width        (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
   resolved-options (optional ResolvedBinningStrategyOptions))
 
-(defclause [binning-strategy:default binning-strategy]
+(defclause ^{:deprecated "0.39.0", :clause-name :binning-strategy} binning-strategy:default
   field            BinnableField
   strategy-name    (s/eq :default)
   _                (optional (s/eq nil))
@@ -253,13 +280,13 @@
 
 ;; this is only used for purposes of error messages for a `binning-strategy` that doesn't match one of the three
 ;; specific schemas above
-(defclause [^:private binning-strategy:-generic binning-strategy]
+(defclause ^:private ^{:deprecated "0.39.0", :clause-name :binning-strategy} binning-strategy:-generic
   field            BinnableField
   strategy-name    BinningStrategyName
   param            (optional s/Num)
   resolved-options (optional ResolvedBinningStrategyOptions))
 
-(def ^{:requires-features #{:binning}} ^{:clause-name :binning-strategy} binning-strategy
+(def ^{:requires-features #{:binning}, :clause-name :binning-strategy, :deprecated "0.39.0"} binning-strategy
   "Schema for a valid `:binning-strategy` clause."
   (letfn [(strategy= [a-strategy]
             (fn [clause]
@@ -272,8 +299,83 @@
      (strategy= :default)   binning-strategy:default
      :else                  binning-strategy:-generic)))
 
+(def BinningStrategyFieldOptions
+  (s/conditional
+   (complement map?)                  {:strategy BinningStrategyName}
+   #(core/= (:strategy %) :num-bins)  {:strategy (s/eq :num-bins)
+                                       :num-bins su/IntGreaterThanZero
+                                       s/Keyword s/Any}
+   #(core/= (:strategy %) :bin-width) {:strategy  (s/eq :bin-width)
+                                       :bin-width (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
+                                       s/Keyword  s/Any}
+   #(core/= (:strategy %) :default)   {:strategy (s/eq :default)
+                                       s/Keyword s/Any}))
+
+(def ^:private FieldOptions*
+  {(s/optional-key :base-type)     (s/maybe su/FieldType)
+   ;; replaces `fk->`
+   (s/optional-key :source-field)  (s/maybe (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
+   ;; replaces `datetime-field`
+   (s/optional-key :temporal-unit) (s/maybe DateTimeBucketingUnit)
+   ;; replaces `joined-field`
+   (s/optional-key :join-alias)    (s/maybe su/NonBlankString)
+   ;; replaces `binning-strategy`
+   (s/optional-key :binning)       (s/maybe BinningStrategyFieldOptions)
+   s/Keyword                       s/Any})
+
+(def FieldOptions
+  (s/conditional
+   (complement map?)                     FieldOptions*
+   #(isa? (:base-type %) :type/Date)     (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe DateBucketingUnit))
+   #(isa? (:base-type %) :type/Time)     (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe TimeBucketingUnit))
+   #(isa? (:base-type %) :type/DateTime) (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe DateTimeBucketingUnit))
+   :else                                 FieldOptions*))
+
+;; TODO -- this could also be done with a conditional schema.
+(defn- validate-field-temporal-unit
+  [[_ _ {:keys [base-type temporal-unit]}]]
+  (condp #(isa? %2 %1) base-type
+    :type/Date     (date-bucketing-units temporal-unit)
+    :type/Time     (time-bucketing-units temporal-unit)
+    :type/DateTime (datetime-bucketing-units temporal-unit)
+    true))
+
+(defn- with-field-options-constraints [schema]
+  (-> schema
+      (s/constrained validate-field-temporal-unit "valid temporal unit for base-type"))
+  schema)
+
+(def FieldIDOptions
+  (with-field-options-constraints FieldOptions))
+
+(def FieldLiteralOptions
+  (with-field-options-constraints
+    ;; base-type is required for field literals
+    (-> FieldOptions
+        (dissoc (s/optional-key :base-type))
+        (assoc :base-type su/FieldType))))
+
+(defclause ^{:clause-name :field} field:literal
+  field-name su/NonBlankString
+  options    FieldLiteralOptions)
+
+(defclause ^{:clause-name :field} field:id
+  id      su/IntGreaterThanZero
+  options (s/maybe FieldIDOptions))
+
+(defclause ^:private ^{:clause-name :field} field:-generic
+  id-or-name (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
+  options    (s/maybe FieldOptions))
+
+(def ^{:clause-name :field} field
+  (s/conditional
+   #(core/not (is-clause? :field %)) field:-generic
+   #(int? (second %))                field:id
+   #(string? (second %))             field:literal
+   :else                             field:-generic))
+
 (def ^:private Field*
-  (one-of field-id field-literal joined-field fk-> datetime-field expression binning-strategy))
+  (one-of field-id field-literal joined-field fk-> datetime-field expression binning-strategy field))
 
 (def Field
   "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or

@@ -117,7 +117,7 @@
 
 (declare col-info-for-field-clause)
 
-(defn- infer-expression-type
+(defn infer-expression-type
   [expression]
   (cond
     (string? expression)
@@ -158,80 +158,49 @@
     {:base_type     :type/Float
      :semantic_type :type/Number}))
 
-(s/defn col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
-  "Return column metadata for a field clause such as `:field-id` or `:field-literal`."
-  [{:keys [source-metadata expressions], :as inner-query} :- su/Map, clause :- mbql.s/Field]
-  ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
-  ;; about the clause doing the wrapping
-  (mbql.u/match-one clause
-    [:binning-strategy field strategy _ resolved-options]
-    (let [recursive-info (col-info-for-field-clause inner-query field)]
-      (assoc recursive-info
-             :binning_info (assoc (u/snake-keys resolved-options)
-                                  :binning_strategy strategy)
-             :field_ref    (assoc (vec &match) 1 (:field_ref recursive-info))))
+(defn- col-info-for-expression
+  [inner-query [_ expression-name :as clause]]
+  (merge
+   (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
+   {:name            expression-name
+    :display_name    expression-name
+    ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
+    :expression_name expression-name
+    :field_ref       clause}))
 
-    [:datetime-field field unit]
-    (let [recursive-info (col-info-for-field-clause inner-query field)]
-      (assoc recursive-info
-             :unit      unit
-             :field_ref (assoc (vec &match) 1 (:field_ref recursive-info))))
+(defn- col-info-for-field-clause*
+  [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts :as clause]]
+  (merge
+   {:field_ref clause}
+   (when-let [base-type (:base-type opts)]
+     {:base_type base-type})
+   (when (string? id-or-name)
+     (or (some #(when (= (:name %) id-or-name) %) source-metadata)
+         {:name         id-or-name
+          :display_name (humanization/name->human-readable-name id-or-name)}))
+   (when (integer? id-or-name)
+     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id-or-name) :database_type)]
+       (if-not parent-id
+         field
+         (let [parent (col-info-for-field-clause inner-query [:field-id parent-id])]
+           (update field :name #(str (:name parent) \. %))))))
+   (when-let [binning-opts (:binning opts)]
+     {:binning_info (assoc (u/snake-keys binning-opts)
+                           :binning_strategy (:strategy binning-opts))})
+   (when-let [temporal-unit (:temporal-unit opts)]
+     {:unit temporal-unit})
+   (when-let [join-alias (:join-alias opts)]
+     {:source_alias join-alias})
+   (when-let [source-field (:source-field opts)]
+     (when (integer? source-field)
+       {:fk_field_id source-field}))))
 
-    [:joined-field join-alias field]
-    (let [{:keys [fk-field-id], :as join} (join-with-alias inner-query join-alias)]
-      (let [recursive-info (col-info-for-field-clause inner-query field)]
-        (-> recursive-info
-            (merge (when fk-field-id
-                     {:fk_field_id fk-field-id}))
-            (assoc :field_ref    (if fk-field-id
-                                   [:fk-> [:field-id fk-field-id] field]
-                                   (assoc (vec &match) 2 (:field_ref recursive-info)))
-                   :source_alias join-alias)
-            (update :display_name display-name-for-joined-field join))))
-
-    ;; TODO - should be able to remove this now
-    [:fk-> [:field-id source-field-id] field]
-    (assoc (col-info-for-field-clause inner-query field)
-           :field_ref  &match
-           :fk_field_id source-field-id)
-
-    ;; TODO - should be able to remove this now
-    ;; for FKs where source is a :field-literal don't include `:fk_field_id`
-    [:fk-> _ field]
-    (assoc (col-info-for-field-clause inner-query field)
-           :field_ref &match)
-
-    ;; for field literals, look for matching `source-metadata`, and use that if we can find it; otherwise generate
-    ;; basic info based on the content of the field literal
-    [:field-literal field-name field-type]
-    (assoc (or (some #(when (= (:name %) field-name) %) source-metadata)
-               {:name         field-name
-                :base_type    field-type
-                :display_name (humanization/name->human-readable-name field-name)})
-           :field_ref &match)
-
-    [:expression expression-name]
-    (merge
-     (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
-     {:name            expression-name
-      :display_name    expression-name
-      ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
-      :expression_name expression-name
-      :field_ref       &match})
-
-    [:field-id id]
-    (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
-      (assoc (if-not parent-id
-               field
-               (let [parent (col-info-for-field-clause inner-query [:field-id parent-id])]
-                 (update field :name #(str (:name parent) \. %))))
-             :field_ref &match))
-
-    ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
-    ;; something the user should expect to see
-    _
-    (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
-                    {:field &match}))))
+(s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
+  "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
+  [inner-query :- su/Map, clause :- mbql.s/Field]
+  (if (mbql.u/is-clause? :expression clause)
+    (col-info-for-expression inner-query clause)
+    (col-info-for-field-clause* inner-query clause)))
 
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------

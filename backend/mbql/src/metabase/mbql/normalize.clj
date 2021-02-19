@@ -662,6 +662,42 @@
                        {:form x, :path path}
                        e))))))
 
+(defn modernize-fields [x]
+  (mbql.u/replace x
+    [:field-id id]
+    [:field id nil]
+
+    [:field-literal field-name base-type]
+    [:field field-name {:base-type base-type}]
+
+    [:fk-> source-field dest-field]
+    (let [[_ source _]       (modernize-fields source-field)
+          [_ dest dest-opts] (modernize-fields dest-field)]
+      [:field dest (assoc dest-opts :source-field source)])
+
+    [:datetime-field field unit]
+    (let [[_ f opts] (modernize-fields field)]
+      [:field f (assoc opts :temporal-unit unit)])
+
+    [:joined-field join-alias field]
+    (let [[_ f opts] (modernize-fields field)]
+      [:field f (assoc opts :join-alias join-alias)])
+
+    [:binning-strategy field strategy param]
+    (modernize-fields [:binning-strategy field strategy param nil])
+
+    [:binning-strategy field :num-bins num-bins binning-opts]
+    (let [[_ f opts] (modernize-fields field)]
+      [:field f (update opts :binning merge binning-opts {:strategy :num-bins, num-bins num-bins})])
+
+    [:binning-strategy field :bin-width bin-width binning-opts]
+    (let [[_ f opts] (modernize-fields field)]
+      [:field f (update opts :binning merge binning-opts {:strategy :bin-width, bin-width bin-width})])
+
+    [:binning-strategy field strategy _ binning-opts]
+    (let [[_ f opts] (modernize-fields field)]
+      [:field f (update opts :binning merge binning-opts {:strategy :default})])))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
@@ -673,7 +709,8 @@
   (let [normalize* (comp remove-empty-clauses
                          perform-whole-query-transformations
                          canonicalize
-                         normalize-tokens)]
+                         normalize-tokens
+                         modernize-fields)]
     (fn [query]
       (try
         (normalize* query)

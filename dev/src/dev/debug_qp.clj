@@ -39,11 +39,22 @@
   (walk/postwalk
    (fn [form]
      (mbql.u/replace form
+       [:field (id :guard integer?) opts]
+       [:field
+        id
+        (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id id)]
+          (symbol (format "#_\"%s.%s\""
+                          (db/select-one-field :name Table :id table-id)
+                          field-name)))
+        opts]
+
        [:field-id id]
-       [:field-id id (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id id)]
-                       (symbol (format "#_\"%s.%s\""
-                                       (db/select-one-field :name Table :id table-id)
-                                       field-name)))]))
+       [:field-id
+        id
+        (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id id)]
+          (symbol (format "#_\"%s.%s\""
+                          (db/select-one-field :name Table :id table-id)
+                          field-name)))]))
    x))
 
 (defn- format-output [x]

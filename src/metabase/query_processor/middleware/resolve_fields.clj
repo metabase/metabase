@@ -14,7 +14,7 @@
   "Resolve all field referenced in the `query`, and store them in the QP Store."
   [query]
   (u/prog1 query
-    (resolve-fields-with-ids! (mbql.u/match (:query query) [:field-id id] id))))
+    (resolve-fields-with-ids! (mbql.u/match (:query query) [:field (id :guard integer?) _] id))))
 
 (defn resolve-fields
   "Fetch the Fields referenced by `:field-id` clauses in a query and store them in the Query Processor Store for the
