@@ -74,7 +74,7 @@ export default class QueryVisualization extends Component {
     };
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // whenever we are told that we are running a query lets update our understanding of the "current" query
     if (nextProps.isRunning) {
       this.setState(this._getStateFromProps(nextProps));

@@ -45,7 +45,7 @@ export default class PublicLinksListing extends Component {
     };
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.load();
   }
 

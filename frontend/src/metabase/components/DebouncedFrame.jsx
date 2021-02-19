@@ -38,7 +38,7 @@ export default class DebouncedFrame extends React.Component {
 
   setSizeDebounced = _.debounce(this.setSize, DEBOUNCE_PERIOD);
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (!nextProps.enabled) {
       this._updateTransitionStyle();
       return;

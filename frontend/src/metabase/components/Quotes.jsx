@@ -23,7 +23,7 @@ export default class Quotes extends Component {
     period: 1000,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._timer = setInterval(
       () => this.setState({ count: this.state.count + 1 }),
       this.props.period,
