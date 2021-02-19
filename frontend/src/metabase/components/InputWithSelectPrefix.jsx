@@ -24,6 +24,10 @@ function splitValue({
   defaultPrefix,
   caseInsensitivePrefix = false,
 }) {
+  if (value == null) {
+    return ["", ""];
+  }
+
   const prefix = prefixes.find(
     caseInsensitivePrefix
       ? p => value.toLowerCase().startsWith(p.toLowerCase())
