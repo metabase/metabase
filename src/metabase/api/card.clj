@@ -207,7 +207,7 @@
   {:pre [(map? query)]}
   (api/check-403 (query-perms/can-run-query? query)))
 
-(defn- ^:deprected save-new-card!
+(defn- save-new-card!
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
   will cancel the save."
   [card-data]
