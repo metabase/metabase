@@ -27,7 +27,6 @@
             [metabase.models.setting :as setting]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :refer [User]]
-            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
@@ -240,30 +239,33 @@
       (str "card__" card)
       table)))
 
+(defn- fully-qualified-name->id-rec [query]
+  (cond
+    (:source-table query) (update-in query [:source-table] source-table)
+    (:source-query query) (update-in query [:source-query] fully-qualified-name->id-rec)
+    true query))
+
+(defn- resolve-card [card context]
+  (-> card
+      (update :table_id (comp :table fully-qualified-name->context))
+      (update :database_id (comp :database fully-qualified-name->context))
+      (update :dataset_query mbql-fully-qualified-names->ids)
+      (assoc :creator_id    @default-user
+             :collection_id (:collection context))
+      (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
+      (cond->
+          (-> card
+              :dataset_query
+              :type
+              mbql.util/normalize-token
+              (= :query)) (update-in [:dataset_query :query] fully-qualified-name->id-rec))))
+
 (defmethod load "cards"
   [path context]
   (let [paths (list-dirs path)]
     (maybe-upsert-many! context Card
       (for [card (slurp-many paths)]
-        (-> card
-            (update :table_id (comp :table fully-qualified-name->context))
-            (update :database_id (comp :database fully-qualified-name->context))
-            (update :dataset_query mbql-fully-qualified-names->ids)
-            (assoc :creator_id    @default-user
-                   :collection_id (:collection context))
-            (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
-            (cond->
-                (-> card
-                    :dataset_query
-                    :type
-                    qp.util/normalize-token
-                    (= :query)) (update-in [:dataset_query :query :source-table] source-table)
-                (-> card
-                    :dataset_query
-                    :query
-                    :source-query
-                    :source-table)
-                (update-in [:dataset_query :query :source-query :source-table] source-table)))))
+        (resolve-card card context)))
     ;; Nested cards
     (doseq [path paths]
       (load (str path "/cards") context))))
