@@ -292,16 +292,41 @@
           (.cancel stmt))))
     stmt))
 
-(defmethod execute-query! :sql-jdbc
+(defn- statement*
+  ^Statement [driver conn canceled-chan]
+  ;; if canceled-chan gets a message, cancel the Statement
+  (let [^Statement stmt (statement driver conn)]
+    (a/go
+      (when (a/<! canceled-chan)
+        (log/debug (trs "Query canceled, calling Statement.cancel()"))
+        (u/ignore-exceptions
+         (.cancel stmt))))
+    stmt))
+
+(defn- ^Statement statement-or-prepared-statement [driver conn sql params canceled-chan]
+  (if (empty? params)
+    (statement* driver conn canceled-chan)
+    (prepared-statement* driver conn sql params canceled-chan)))
+
+(defn- max-rows* [^Statement stmt max-rows]
+  (doto stmt (.setMaxRows max-rows)))
+
+(defmethod ^ResultSet execute-query! :sql-jdbc
   [_ ^PreparedStatement stmt]
   (.executeQuery stmt))
 
-(defmethod execute-select! :sql-jdbc
+(defmethod ^ResultSet execute-select! :sql-jdbc
   [driver ^Statement stmt ^String sql]
   (if (.execute stmt sql)
     (.getResultSet stmt)
     (throw (ex-info (str (tru "Select statement did not produce a ResultSet for native query"))
                     {:sql sql :driver driver}))))
+
+(defn ^ResultSet execute-statement-or-prepared-statement [driver ^Statement stmt max-rows params sql]
+  (let [st (doto stmt (.setMaxRows max-rows))]
+    (if (empty? params)
+      (execute-select! driver st sql)
+      (execute-query! driver st))))
 
 (defmethod read-column-thunk :default
   [driver ^ResultSet rs rsmeta ^long i]
@@ -414,22 +439,18 @@
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond] [driver sql native? params max-rows context respond])}
-  ([driver {{sql :query, params :params} :native, query-type :type, :as outer-query} context respond]
+  ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
    {:pre [(string? sql) (seq sql)]}
    (let [remark   (qputil/query->remark driver outer-query)
          sql      (str "-- " remark "\n" sql)
-         native?  (= :native query-type)
          max-rows (or (mbql.u/query->max-rows-limit outer-query)
                       qp.i/absolute-max-results)]
-     (execute-reducible-query driver sql native? params max-rows context respond)))
+     (execute-reducible-query driver sql params max-rows context respond)))
 
-  ([driver sql native? params max-rows context respond]
+  ([driver sql params max-rows context respond]
    (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-               stmt (if native?
-                        (statement driver conn)
-                        (prepared-statement* driver conn sql params (context/canceled-chan context)))
-               stmt (doto stmt (.setMaxRows max-rows))
-               rs   (if native? (execute-select! driver stmt sql) (execute-query! driver stmt))]
+               stmt (statement-or-prepared-statement driver conn sql params (context/canceled-chan context))
+               rs   (execute-statement-or-prepared-statement driver stmt max-rows params sql)]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))
