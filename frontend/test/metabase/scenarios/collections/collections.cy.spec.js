@@ -529,6 +529,28 @@ describe("scenarios > collection_defaults", () => {
         .find(".Icon-chevronright")
         .should("not.exist");
     });
+
+    it.skip("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
+      cy.request("GET", "/api/collection").then(({ body }) => {
+        // Get "Second collection's" id dynamically instead of hard-coding it
+        const SECOND_COLLECTION = body.filter(collection => {
+          return collection.slug === "second_collection";
+        });
+        const [{ id }] = SECOND_COLLECTION;
+
+        // Move first question in a DB snapshot ("Orders") inside "Second collection"
+        cy.request("PUT", "/api/card/1", {
+          collection_id: id,
+        });
+      });
+
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Everything Else");
+      cy.findByText("Second Collection").should("not.exist");
+      cy.findByText("First Collection");
+    });
   });
 });
 
