@@ -197,14 +197,14 @@
                                               out-server    (PrintWriter. (.getOutputStream client-socket) true)]
                                     (.println out-server "hello from the ssh tunnel")))]
         ;; this will try to open a TCP connection via the tunnel.
-        (ssh/with-ssh-tunnel [details-with-tunnel {:tunnel-enabled                true}
-                                               :tunnel-user                   ssh-username
-                                               :tunnel-host                   "127.0.0.1"
-                                               :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
-                                               :tunnel-private-key            (slurp ssh-key-with-passphrase)
-                                               :tunnel-private-key-passphrase ssh-key-passphrase
-                                               :host                          "127.0.0.1"
-                                               :port                          port]
+        (ssh/with-ssh-tunnel [details-with-tunnel {:tunnel-enabled                true
+                                                   :tunnel-user                   ssh-username
+                                                   :tunnel-host                   "127.0.0.1"
+                                                   :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
+                                                   :tunnel-private-key            (slurp ssh-key-with-passphrase)
+                                                   :tunnel-private-key-passphrase ssh-key-passphrase
+                                                   :host                          "127.0.0.1"
+                                                   :port                          port}]
           (.connect socket (InetSocketAddress. "127.0.0.1" ^Integer (:tunnel-entrance-port details-with-tunnel)) 3000)
           ;; cause our future to run to completion
           (u/deref-with-timeout server-thread 12000)

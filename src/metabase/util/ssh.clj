@@ -124,7 +124,8 @@
 (defn ssh-tunnel-open?
   "Is the SSH tunnel currently open for these connection details?"
   [details]
-  (.isOpen ^ClientSession (:tunnel-session details)))
+  (when-let [session (:tunnel-session details)]
+    (.isOpen ^ClientSession session)))
 
 (defn include-ssh-tunnel!
   "Updates connection details for a data warehouse to use the ssh tunnel host and port
@@ -148,18 +149,26 @@
       details-with-tunnel)
     details))
 
-(defmethod driver/incorporate-ssh-tunnel-details nil
-  [_ db-details]
-  db-details)
+;(defmethod driver/incorporate-ssh-tunnel-details nil
+;  [_ db-details]
+;  db-details)
 
 (defmethod driver/incorporate-ssh-tunnel-details :sql-jdbc
   [_ db-details]
-  (include-ssh-tunnel! db-details))
+  (cond (not (use-ssh-tunnel? db-details))
+        ;; no ssh tunnel in use
+        db-details
+        (ssh-tunnel-open? db-details)
+        ;; tunnel in use, and is open
+        db-details
+        :default
+        ;; tunnel in use, and is not open
+        (include-ssh-tunnel! db-details)))
 
 (defn close-tunnel!
   "Close a running tunnel session"
   [details]
-  (when (use-ssh-tunnel? details)
+  (when (and (use-ssh-tunnel? details) (ssh-tunnel-open? details))
     (.close ^ClientSession (:tunnel-session details))))
 
 (defn do-with-ssh-tunnel

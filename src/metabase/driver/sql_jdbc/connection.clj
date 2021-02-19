@@ -127,6 +127,10 @@
   [database]
   (invalidate-pool-for-db! database))
 
+(defn- log-ssh-tunnel-reconnect-msg! [db-id]
+    (log/warn (u/format-color 'red (trs "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
+                                        db-id))))
+
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
@@ -134,10 +138,23 @@
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
-    (let [database-id (u/the-id db-or-id-or-spec)]
+    (let [database-id (u/the-id db-or-id-or-spec)
+          get-fn      (fn [db-id log-tunnel-check]
+                        (when-let [details (get @database-id->connection-pool db-id)]
+                          (cond (nil? (:tunnel-session details))
+                                ;; no tunnel in use; valid
+                                details
+                                (ssh/ssh-tunnel-open? details)
+                                ;; tunnel in use, and open; valid
+                                details
+                                :default
+                                ;; tunnel in use, and not open; invalid
+                                (do (when log-tunnel-check
+                                      (log-ssh-tunnel-reconnect-msg! db-id))
+                                    nil))))]
       (or
        ;; we have an existing pool for this database, so use it
-       (get @database-id->connection-pool database-id)
+       (get-fn database-id true)
        ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
        ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the
        ;; very next instant. This will cause their queries to fail. Thus we should do the usual locking here and make
@@ -145,7 +162,7 @@
        (locking database-id->connection-pool
          (or
           ;; check if another thread created the pool while we were waiting to acquire the lock
-          (get @database-id->connection-pool database-id)
+          (get-fn database-id false)
           ;; create a new pool and add it to our cache, then return it
           (let [db (or (db/select-one [Database :id :engine :details] :id database-id)
                        (throw (ex-info (tru "Database {0} does not exist." database-id)
@@ -164,21 +181,6 @@
     (throw (ex-info (tru "Not a valid Database/Database ID/JDBC spec")
                     ;; don't log the actual spec lest we accidentally expose credentials
                     {:input (class db-or-id-or-spec)}))))
-
-(defn invalidate-pool-if-ssh-tunnel-closed!
-  "If the pool for the given database uses an ssh tunnel, and that tunnel is closed, then close the pool and
-   remove it from the cache. This will force the next call to db->pooled-connection-spec to reopen the tunnel."
-  [database]
-  (let [conn-spec (db->pooled-connection-spec database)]
-    (when (and (ssh/use-ssh-tunnel? conn-spec)
-               (not (ssh/ssh-tunnel-open? conn-spec)))
-      (log/warn
-        (u/format-color
-          'red
-          (trs "ssh tunnel for database {0} appears to have closed; closing the pool so it can be reestablished"
-               (u/the-id database))))
-      (invalidate-pool-for-db! database))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |

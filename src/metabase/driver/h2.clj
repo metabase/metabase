@@ -301,7 +301,6 @@
   [driver database ^String timezone-id]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
   ;; steps that are in the default impl
-  (sql-jdbc.conn/invalidate-pool-if-ssh-tunnel-closed! database)
   (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
     (try
       (doto conn
@@ -328,7 +327,7 @@
 
 (defmethod driver/incorporate-ssh-tunnel-details :h2
   [_ db-details]
-  (if (:tunnel-enabled db-details)
+  (if (and (:tunnel-enabled db-details) (ssh/ssh-tunnel-open? db-details))
     (if (and (:db db-details) (str/starts-with? (:db db-details) "tcp://"))
       (let [details (ssh/include-ssh-tunnel! db-details)
             db      (:db details)]
