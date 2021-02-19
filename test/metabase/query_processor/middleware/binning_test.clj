@@ -102,14 +102,13 @@
 (deftest update-binning-strategy-test
   (mt/with-temp Field [field (test-field)]
     (is (= {:query    {:source-table (mt/id :checkins)
-                       :breakout     [[:binning-strategy
-                                       [:field (u/the-id field)
-                                        {:binning
-                                         {:strategy  :num-bins
-                                          :num-bins  8
-                                          :min-value 0.0
-                                          :max-value 240.0
-                                          :bin-width 30}}]]]}
+                       :breakout     [[:field (u/the-id field)
+                                       {:binning
+                                        {:strategy  :num-bins
+                                         :num-bins  8
+                                         :min-value 0.0
+                                         :max-value 240.0
+                                         :bin-width 30}}]]}
             :type     :query
             :database (mt/id)}
            (mt/with-everything-store

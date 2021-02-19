@@ -44,7 +44,7 @@
 
 (s/defn ^:private resolve-fields! :- (s/eq nil)
   [joins :- Joins]
-  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field-id id] id)))
+  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field (id :guard integer?) _] id)))
 
 (s/defn ^:private resolve-tables! :- (s/eq nil)
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
@@ -65,10 +65,10 @@
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
-  (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
-    [:joined-field alias (if field-id
-                           [:field-id field-id]
-                           [:field-literal field-name base-type])]))
+  (for [{field-name :name, base-type :base_type, field-ref :field_ref, field-id :id} source-metadata]
+    (or (when-let [[_ id-or-name opts] field-ref]
+          [:field id-or-name (assoc opts :join-alias alias)])
+        [:field (or field-id field-name) {:base-type base-type, :join-alias alias}])))
 
 (s/defn ^:private handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
@@ -78,9 +78,8 @@
    (when (= fields :all)
      {:fields (if source-query
                (source-metadata->fields join source-metadata)
-               (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                 (mbql.u/->joined-field alias field)))})))
-
+               (for [[_ id-or-name opts] (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                 [:field id-or-name (assoc opts :join-alias alias)]))})))
 
 (s/defn ^:private resolve-references-and-deduplicate :- mbql.s/Joins
   [joins :- Joins]

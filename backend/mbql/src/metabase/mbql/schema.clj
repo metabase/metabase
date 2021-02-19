@@ -4,7 +4,6 @@
   (:require [clojure.core :as core]
             [clojure.set :as set]
             [metabase.mbql.schema.helpers :as schema.helpers :refer [defclause is-clause? one-of]]
-            [metabase.mbql.util.match :as match]
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import java.time.format.DateTimeFormatter))
@@ -42,25 +41,31 @@
 (def datetime-bucketing-units
   (set/union date-bucketing-units time-bucketing-units))
 
-(def DateBucketingUnit
+(def DateUnit
+  "Valid unit for date bucketing."
   (s/named
    (apply s/enum date-bucketing-units)
    "date-bucketing-unit"))
 
-(def TimeBucketingUnit
+;; it could make sense to say hour-of-day(field) =  hour-of-day("2018-10-10T12:00")
+;; but it does not make sense to say month-of-year(field) = month-of-year("08:00:00"),
+;; does it? So we'll restrict the set of units a TimeValue can have to ones that have no notion of day/date.
+(def TimeUnit
+  "Valid unit for time bucketing."
   (s/named
    (apply s/enum time-bucketing-units)
    "time-bucketing-unit"))
 
-(def DateTimeBucketingUnit
+(def DateTimeUnit
+  "Valid unit for datetime bucketing."
   (s/named
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
 ;; TODO -- rename to `TemporalUnit`
 (def ^{:deprecated "0.39.0"} DatetimeFieldUnit
-  "Schema for all valid datetime bucketing units. DEPRECATED -- use `DateBucketingUnit`, `TimeBucketingUnit`, or
-  `DateTimeBucketingUnit` instead."
+  "Schema for all valid datetime bucketing units. DEPRECATED -- use `DateUnit`, `TimeUnit`, or
+  `DateTimeUnit` instead."
   (s/named
    (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
                    :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
@@ -119,23 +124,35 @@
 ;; literal strings are preferred instead.
 ;;
 ;; example:
-;; [:= [:datetime-field [:field-id 10] :day] "2018-10-02"]
+;; [:= [:field 10 {:temporal-unit :day}] "2018-10-02"]
 ;;
 ;; becomes:
-;; [:= [:datetime-field [:field-id 10] :day] [:absolute-datetime #inst "2018-10-02" :day]]
-(defclause ^:internal absolute-datetime
-  timestamp (s/cond-pre java.time.LocalDate
-                        java.time.LocalDateTime
-                        java.time.OffsetDateTime
-                        java.time.ZonedDateTime)
-  unit      DatetimeFieldUnit)
+;; [:= [:field 10 {:temporal-unit :day}] [:absolute-datetime #inst "2018-10-02" :day]]
+(def ^:internal ^{:clause-name :absolute-datetime} absolute-datetime
+  "Schema for an `:absolute-datetime` clause."
+  (s/conditional
+   #(core/not (is-clause? :absolute-datetime %))
+   (schema.helpers/clause
+    :absolute-datetime
+    "t"
+    (s/cond-pre java.time.LocalDate java.time.LocalDateTime java.time.OffsetDateTime java.time.ZonedDateTime)
+    "unit"
+    DateTimeUnit)
 
-;; it could make sense to say hour-of-day(field) =  hour-of-day("2018-10-10T12:00")
-;; but it does not make sense to say month-of-year(field) = month-of-year("08:00:00"),
-;; does it? So we'll restrict the set of units a TimeValue can have to ones that have no notion of day/date.
-(def TimeUnit
-  "Valid unit for time bucketing."
-  (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day}))
+   #(instance? java.time.LocalDate (second %))
+   (schema.helpers/clause
+    :absolute-datetime
+    "date" java.time.LocalDate
+    "unit" DateUnit)
+
+   :else
+   (schema.helpers/clause
+    :absolute-datetime
+    "datetime"
+    (s/cond-pre java.time.LocalDateTime java.time.OffsetDateTime java.time.ZonedDateTime)
+    "unit"
+    DateTimeUnit)))
+
 
 ;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
@@ -183,7 +200,7 @@
   {(s/optional-key :database_type) (s/maybe su/NonBlankString)
    (s/optional-key :base_type)     (s/maybe su/FieldType)
    (s/optional-key :semantic_type) (s/maybe su/FieldType)
-   (s/optional-key :unit)          (s/maybe DatetimeFieldUnit)
+   (s/optional-key :unit)          (s/maybe DateTimeUnit)
    (s/optional-key :name)          (s/maybe su/NonBlankString)
    s/Keyword                       s/Any})
 
@@ -223,19 +240,6 @@
 (defclause ^{:requires-features #{:expressions}} expression
   expression-name su/NonBlankString)
 
-;; `datetime-field` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort. There
-;; is no requirement that all `:type/DateTime` derived Fields be wrapped in `datetime-field`, but for legacy reasons
-;; `:field-id` clauses that refer to datetime Fields will be automatically "bucketed" in the `:breakout` and `:filter`
-;; clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when values for comparison are
-;; `yyyy-MM-dd` date strings. See `auto-bucket-datetimes` for more details. `:field-id` clauses elsewhere will not be
-;; automatically bucketed, so drivers still need to make sure they do any special datetime handling for plain
-;; `:field-id` clauses when their Field derives from `:type/DateTime`.
-;;
-;; Datetime Field can wrap any of the lowest-level Field clauses, but not other datetime-field clauses, because that
-;; wouldn't make sense. They similarly can not wrap expression references, because doing arithmetic on timestamps
-;; doesn't make a whole lot of sense (what does `"2018-10-23"::timestamp / 2` mean?).
-;;
-;; Field is an implicit Field ID
 (defclause ^{:deprecated "0.39.0"} datetime-field
   field (one-of field-id field-literal fk-> joined-field)
   unit  DatetimeFieldUnit)
@@ -315,8 +319,15 @@
   {(s/optional-key :base-type)     (s/maybe su/FieldType)
    ;; replaces `fk->`
    (s/optional-key :source-field)  (s/maybe (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
-   ;; replaces `datetime-field`
-   (s/optional-key :temporal-unit) (s/maybe DateTimeBucketingUnit)
+   ;; `:temporal-unit` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort.
+   ;;
+   ;; There is no requirement that all `:type/Temporal` derived Fields specify a `:temporal-unit`, but for legacy
+   ;; reasons `:field` clauses that refer to `:type/DateTime` Fields will be automatically "bucketed" in the
+   ;; `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when
+   ;; values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more
+   ;; details. `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they
+   ;; do any special datetime handling for plain `:field` clauses when their Field derives from `:type/DateTime`.
+   (s/optional-key :temporal-unit) (s/maybe DateTimeUnit)
    ;; replaces `joined-field`
    (s/optional-key :join-alias)    (s/maybe su/NonBlankString)
    ;; replaces `binning-strategy`
@@ -326,9 +337,9 @@
 (def FieldOptions
   (s/conditional
    (complement map?)                     FieldOptions*
-   #(isa? (:base-type %) :type/Date)     (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe DateBucketingUnit))
-   #(isa? (:base-type %) :type/Time)     (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe TimeBucketingUnit))
-   #(isa? (:base-type %) :type/DateTime) (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe DateTimeBucketingUnit))
+   #(isa? (:base-type %) :type/Date)     (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe DateUnit))
+   #(isa? (:base-type %) :type/Time)     (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe TimeUnit))
+   #(isa? (:base-type %) :type/DateTime) (assoc FieldOptions* (s/optional-key :temporal-unit) (s/maybe DateTimeUnit))
    :else                                 FieldOptions*))
 
 ;; TODO -- this could also be done with a conditional schema.
@@ -375,7 +386,7 @@
    :else                             field:-generic))
 
 (def ^:private Field*
-  (one-of field-id field-literal joined-field fk-> datetime-field expression binning-strategy field))
+  (one-of expression field))
 
 (def Field
   "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or
@@ -672,7 +683,7 @@
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
-  field   (one-of field-id fk-> field-literal joined-field)
+  field   field
   n       (s/cond-pre
            s/Int
            (s/enum :current :last :next))
@@ -713,7 +724,7 @@
 
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a Field clause such as `:field-id`."
+  `:+` clause or a `:field` clause."
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
@@ -881,20 +892,6 @@
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
 
-(def JoinField
-  "Schema for any valid `Field` that is, or wraps, a `:joined-field` clause."
-  (s/constrained
-   Field
-   (fn [field-clause]
-     (seq (match/match field-clause [:joined-field true])))
-   "`:joined-field` clause or Field clause wrapping a `:joined-field` clause"))
-
-(def JoinFields
-  "Schema for valid values of a join `:fields` clause."
-  (s/named
-   (su/distinct (su/non-empty [JoinField]))
-   "Distinct, non-empty sequence of `:joined-field` clauses or Field clauses wrapping `:joined-field` clauses"))
-
 (def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
@@ -951,7 +948,7 @@
     (s/named
      (s/cond-pre
       (s/enum :all :none)
-      JoinFields)
+      [field])
      (str
       "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:joined-field` clauses,"
       " or clauses wrapping `:joined-field`."))

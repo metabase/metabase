@@ -107,11 +107,8 @@
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id field-id value]
   (let [field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
-                       (if (= this-field-table-id source-table-id)
-                         ;; field in the same table as the "primary" field
-                         [:field-id field-id]
-                         ;; field belonging to a different table
-                         [:joined-field (joined-table-alias this-field-table-id) [:field-id field-id]]))]
+                       [:field field-id (when-not (= this-field-table-id source-table-id)
+                                          {:join-alias (joined-table-alias this-field-table-id)})])]
     (cond
       ;; e.g. {$$venues.price [:between 2 3]} -> [:between $venues.price 2 3]
       ;; this is not really supported by the API directly
@@ -125,7 +122,7 @@
       (or (when (and (temporal-field? field-id)
                      (string? value))
             (u/ignore-exceptions
-              (params.dates/date-string->filter value field-id)))
+             (params.dates/date-string->filter value field-id)))
           ;; e.g. {$$venues.price 2} -> [:= $$venues.price 2]
           [:= field-clause value]))))
 

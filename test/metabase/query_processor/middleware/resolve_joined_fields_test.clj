@@ -12,25 +12,25 @@
 
 (deftest wrap-fields-in-joined-field-test
   (is (= (mt/mbql-query checkins
-           {:filter [:!= [:joined-field "u" [:field-id (mt/id :users :name)]] nil]
+           {:filter [:!= [:field %users.name {:join-alias "u"}] nil]
             :joins  [{:source-table $$users
                       :alias        "u"
                       :condition    [:= $user_id &u.users.id]}]})
          (wrap-joined-fields
           (mt/mbql-query checkins
-            {:filter [:!= [:field-id (mt/id :users :name)] nil]
+            {:filter [:!= [:field %users.name nil] nil]
              :joins  [{:source-table $$users
                        :alias        "u"
                        :condition    [:= $user_id &u.users.id]}]}))))
   (testing "Do we correctly recurse into `:source-query`"
     (is (= (mt/mbql-query checkins
-             {:source-query {:filter [:!= [:joined-field "u" [:field-id (mt/id :users :name)]] nil]
+             {:source-query {:filter [:!= [:field %users.name {:join-alias "u"}] nil]
                              :joins  [{:source-table $$users
                                        :alias        "u"
                                        :condition    [:= $user_id &u.users.id]}]}})
            (wrap-joined-fields
             (mt/mbql-query checkins
-              {:source-query {:filter [:!= [:field-id (mt/id :users :name)] nil]
+              {:source-query {:filter [:!= [:field %users.name nil] nil]
                               :joins  [{:source-table $$users
                                         :alias        "u"
                                         :condition    [:= $user_id &u.users.id]}]}}))))))
@@ -38,16 +38,16 @@
 (deftest deduplicate-fields-test
   (testing "resolve-joined-fields should deduplicate :fields after resolving stuff"
     (is (= (mt/mbql-query checkins
-             {:fields [[:joined-field "u" [:field-id (mt/id :users :name)]]]
-              :filter [:!= [:joined-field "u" [:field-id (mt/id :users :name)]] nil]
+             {:fields [[:field %users.name {:join-alias "u"}]]
+              :filter [:!= [:field %users.name {:join-alias "u"}] nil]
               :joins  [{:source-table $$users
                         :alias        "u"
                         :condition    [:= $user_id &u.users.id]}]})
            (wrap-joined-fields
             (mt/mbql-query checkins
-              {:fields [[:field-id (mt/id :users :name)]
-                        [:joined-field "u" [:field-id (mt/id :users :name)]]]
-               :filter [:!= [:field-id (mt/id :users :name)] nil]
+              {:fields [[:field %users.name nil]
+                        [:field %users.name {:join-alias "u"}]]
+               :filter [:!= [:field %users.name nil] nil]
                :joins  [{:source-table $$users
                          :alias        "u"
                          :condition    [:= $user_id &u.users.id]}]}))))))

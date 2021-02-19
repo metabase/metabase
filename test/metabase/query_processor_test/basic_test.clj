@@ -1,7 +1,10 @@
 (ns metabase.query-processor-test.basic-test
   (:require [clojure.test :refer :all]
             [metabase.test :as mt]
+            dev
             [schema.core :as s]))
+
+(comment dev/keep-me) ; NOCOMMIT
 
 (deftest basic-test
   (is (schema= {:status (s/eq :completed)

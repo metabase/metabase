@@ -112,11 +112,12 @@
 (defmethod parse-token-by-sigil "&"
   [source-table-symb token]
   (if-let [[_ alias-name token] (re-matches #"^&([^.]+)\.(.+$)" (str token))]
-    [:joined-field alias-name (parse-token-by-sigil source-table-symb (if (token->sigil token)
+    (let [[_ id-or-name opts] (parse-token-by-sigil source-table-symb (if (token->sigil token)
                                                                         (symbol token)
                                                                         (symbol (str \$ token))))]
+      [:field id-or-name (assoc opts :join-alias alias-name)])
     (throw (ex-info "Error parsing token starting with '&'"
-             {:token token}))))
+                    {:token token}))))
 
 ;; `!unit.<field> = datetime field
 (defmethod parse-token-by-sigil "!"

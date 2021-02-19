@@ -127,16 +127,16 @@
 
   ### `&match` and `&parents` anaphors
 
-  For more advanced matches, like finding `:field-id` clauses nested anywhere inside `:datetime-field` clauses,
-  `match` binds a pair of anaphors inside the result body for your convenience. `&match` is bound to the entire
-  match, regardless of how you may have destructured it; `&parents` is bound to a sequence of keywords naming the
-  parent top-level keys and clauses of the match.
+  For more advanced matches, like finding a `:field` clauses nested anywhere inside another clause, `match` binds a
+  pair of anaphors inside the result body for your convenience. `&match` is bound to the entire match, regardless of
+  how you may have destructured it; `&parents` is bound to a sequence of keywords naming the parent top-level keys and
+  clauses of the match.
 
-    (mbql.u/match {:fields [[:datetime-field [:fk-> [:field-id 1] [:field-id 2]] :day]]} :field-id
-      ;; &parents will be [:fields :datetime-field :fk->]
-      (when (contains? (set &parents) :datetime-field)
+    (mbql.u/match {:filter [:time-interval [:field 1 nil] :current :month]} :field
+      ;; &parents will be [:filter :time-interval]
+      (when (contains? (set &parents) :time-interval)
         &match))
-    ;; -> [[:field-id 1] [:field-id 2]]"
+    ;; -> [[:field 1 nil]]"
   {:style/indent 1}
   [x & patterns-and-results]
   ;; Actual implementation of these macros is in `mbql.util.match`. They're in a seperate namespace because they have
@@ -298,26 +298,44 @@
     [:time-interval field :last    unit options] (recur [:time-interval field -1 unit options])
     [:time-interval field :next    unit options] (recur [:time-interval field  1 unit options])
 
-    [:time-interval field (n :guard #{-1}) unit (_ :guard :include-current)]
-    [:between [:datetime-field field unit] [:relative-datetime n unit] [:relative-datetime 0 unit]]
+    [:time-interval [_ id-or-name opts] (n :guard #{-1}) unit (_ :guard :include-current)]
+    [:between
+     [:field id-or-name (assoc opts :temporal-unit unit)]
+     [:relative-datetime n unit]
+     [:relative-datetime 0 unit]]
 
-    [:time-interval field (n :guard #{1}) unit (_ :guard :include-current)]
-    [:between [:datetime-field field unit] [:relative-datetime 0 unit] [:relative-datetime n unit]]
+    [:time-interval [_ id-or-name opts] (n :guard #{1}) unit (_ :guard :include-current)]
+    [:between
+     [:field id-or-name (assoc opts :temporal-unit unit)]
+     [:relative-datetime 0 unit]
+     [:relative-datetime n unit]]
 
-    [:time-interval field (n :guard #{-1 0 1}) unit _]
-    [:= [:datetime-field field unit] [:relative-datetime n unit]]
+    [:time-interval [_ id-or-name opts] (n :guard #{-1 0 1}) unit _]
+    [:= [:field id-or-name (assoc opts :temporal-unit unit)] [:relative-datetime n unit]]
 
-    [:time-interval field (n :guard neg?) unit (_ :guard :include-current)]
-    [:between [:datetime-field field unit] [:relative-datetime n unit] [:relative-datetime 0 unit]]
+    [:time-interval [_ id-or-name opts] (n :guard neg?) unit (_ :guard :include-current)]
+    [:between
+     [:field id-or-name (assoc opts :temporal-unit unit)]
+     [:relative-datetime n unit]
+     [:relative-datetime 0 unit]]
 
-    [:time-interval field (n :guard neg?) unit _]
-    [:between [:datetime-field field unit] [:relative-datetime n unit] [:relative-datetime -1 unit]]
+    [:time-interval [_ id-or-name opts] (n :guard neg?) unit _]
+    [:between
+     [:field id-or-name (assoc opts :temporal-unit unit)]
+     [:relative-datetime n unit]
+     [:relative-datetime -1 unit]]
 
-    [:time-interval field n unit (_ :guard :include-current)]
-    [:between [:datetime-field field unit] [:relative-datetime 0 unit] [:relative-datetime n unit]]
+    [:time-interval [_ id-or-name opts] n unit (_ :guard :include-current)]
+    [:between
+     [:field id-or-name (assoc opts :temporal-unit unit)]
+     [:relative-datetime 0 unit]
+     [:relative-datetime n unit]]
 
-    [:time-interval field n unit _]
-    [:between [:datetime-field field unit] [:relative-datetime 1 unit] [:relative-datetime n unit]]))
+    [:time-interval [_ id-or-name opts] n unit _]
+    [:between
+     [:field id-or-name (assoc opts :temporal-unit unit)]
+     [:relative-datetime 1 unit]
+     [:relative-datetime n unit]]))
 
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `:not` clauses."
@@ -343,12 +361,11 @@
 
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
-  `<unit>` is inferred from the `:datetime-field` the clause is being compared to (if any), otherwise falls back to
-  `default.`"
+  `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
   [m]
   (replace m
     [clause field [:relative-datetime :current & _]]
-    [clause field [:relative-datetime 0 (or (match-one field [:datetime-field _ unit] unit)
+    [clause field [:relative-datetime 0 (or (match-one field [:field _ (m :guard :temporal-unit)] (:temporal-unit m))
                                             :default)]]))
 
 (s/defn desugar-filter-clause :- mbql.s/Filter
@@ -441,7 +458,7 @@
     [:datetime-field field _]     (recur field)
     [:binning-strategy field & _] (recur field)))
 
-(defn ^{:deprecated "0.39.0"} maybe-unwrap-field-clause
+(defn ^{:deprecated "0.39.0"} ^:private maybe-unwrap-field-clause
   "Unwrap a Field `clause`, if it's something that can be unwrapped (i.e. something that is, or wraps, a `:field-id` or
   `:field-literal`). Otherwise return `clause` as-is."
   [clause]
@@ -463,14 +480,14 @@
 (s/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query :- mbql.s/MBQLQuery, [_ field, :as order-by-clause] :- mbql.s/OrderBy]
-  (let [existing-fields (set (for [[_ existing-field] (:order-by inner-query)]
-                               (maybe-unwrap-field-clause existing-field)))]
-    (if (existing-fields (maybe-unwrap-field-clause field))
+  [inner-query :- mbql.s/MBQLQuery, [_ [_ id-or-name :as field], :as order-by-clause] :- mbql.s/OrderBy]
+  (let [existing-fields (set (for [[_ [_ id-or-name]] (:order-by inner-query)]
+                               id-or-name))]
+    (if (existing-fields id-or-name)
       ;; Field already referenced, nothing to do
       inner-query
       ;; otherwise add new clause at the end
-      (update inner-query :order-by (comp vec conj) order-by-clause))))
+      (update inner-query :order-by (comp vec distinct conj) order-by-clause))))
 
 (defn relative-date
   "Return a new Temporal value relative to `t` using a relative date `unit`.
@@ -583,9 +600,12 @@
 (defn datetime-arithmetics?
   "Is a given artihmetics clause operating on datetimes?"
   [clause]
-  (boolean
-   (match-one clause
-     #{:datetime-field :interval :relative-datetime})))
+  (match-one clause
+    #{:interval :relative-datetime}
+    true
+
+    [:field _ (_ :guard :temporal-unit)]
+    true))
 
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
@@ -664,10 +684,10 @@
   `:aggregation-options`.
 
     (pre-alias-aggregations annotate/aggregation-name
-     [[:count] [:count] [:aggregation-options [:sum [:field-id 1] {:name \"Sum-41\"}]])
+     [[:count] [:count] [:aggregation-options [:sum [:field 1 nil] {:name \"Sum-41\"}]])
     ;; -> [[:aggregation-options [:count] {:name \"count\"}]
            [:aggregation-options [:count] {:name \"count\"}]
-           [:aggregation-options [:sum [:field-id 1]] {:name \"Sum-41\"}]]
+           [:aggregation-options [:sum [:field 1 nil]] {:name \"Sum-41\"}]]
 
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
@@ -721,16 +741,6 @@
                              max-results-bare-rows)
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
-
-(s/defn ->joined-field :- mbql.s/JoinField
-  "Convert a Field clause to one that uses an appropriate `alias`, e.g. for a joined table."
-  [table-alias :- s/Str, field-clause :- mbql.s/Field]
-  (replace field-clause
-    :joined-field
-    (throw (Exception. (format "%s already has an alias." &match)))
-
-    #{:field-id :field-literal}
-    [:joined-field table-alias &match]))
 
 (def ^:private default-join-alias "source")
 
