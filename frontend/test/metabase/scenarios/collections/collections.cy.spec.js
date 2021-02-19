@@ -223,15 +223,15 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Orders")
           .closest("a")
           .within(() => {
-            cy.get(".Icon-table").trigger("mouseover");
+            cy.icon("table").trigger("mouseover");
             cy.findByRole("checkbox")
               .should("be.visible")
               .click();
           });
 
         cy.findByText("1 item selected").should("be.visible");
-        cy.get(".Icon-dash").click();
-        cy.get(".Icon-dash").should("not.exist");
+        cy.icon("dash").click();
+        cy.icon("dash").should("not.exist");
         cy.findByText("4 items selected");
       });
     });
@@ -249,7 +249,7 @@ describe("scenarios > collection_defaults", () => {
         // Check for pulse in root collection
         cy.visit("/collection/root");
         cy.findByText("My personal collection").then(() => {
-          cy.get(".Icon-pulse");
+          cy.icon("pulse");
         });
 
         // cy.request("/api/pulse").then((response) => {
@@ -290,7 +290,7 @@ describe("scenarios > collection_defaults", () => {
         // Check for pulse in root collection
         cy.visit("/collection/root");
         cy.findByText("My personal collection");
-        cy.get(".Icon-pulse");
+        cy.icon("pulse");
       });
     });
 
@@ -423,7 +423,7 @@ describe("scenarios > collection_defaults", () => {
       cy.visit("/collection/root");
       cy.findByText(NEW_COLLECTION);
       cy.findByText("First collection").click();
-      cy.get(".Icon-pencil").click();
+      cy.icon("pencil").click();
       cy.findByText("Edit this collection").click();
       modal().within(() => {
         // Open the select dropdown menu
@@ -458,7 +458,7 @@ describe("scenarios > collection_defaults", () => {
       // cy.findByText(NEW_COLLECTION)
       //   .closest("a")
       //   .within(() => {
-      //     cy.get(".Icon-chevrondown");
+      //     cy.icon("chevrondown");
       //     cy.findByText("First collection");
       //   });
     });
@@ -468,7 +468,7 @@ describe("scenarios > collection_defaults", () => {
       cy.log("**Move 'Second collection' to the root");
       openDropdownFor("First collection");
       cy.findByText("Second collection").click();
-      cy.get(".Icon-pencil").click();
+      cy.icon("pencil").click();
       cy.findByText("Edit this collection").click();
       modal().within(() => {
         // Open the select dropdown menu
@@ -489,7 +489,7 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("Update").should("not.exist");
 
       // This click is a weird "hack" that simply gives time for an UI to update - nothing else worked (not even waiting for XHR)
-      cy.get(".Icon-info").click();
+      cy.icon("info").click();
 
       cy.get("[class*=CollectionSidebar]")
         .as("sidebar")

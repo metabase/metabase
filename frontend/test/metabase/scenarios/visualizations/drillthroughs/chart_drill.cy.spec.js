@@ -283,7 +283,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // Visualize: line
     cy.findByText("Visualize").click();
     cy.findByText("Visualization").click();
-    cy.get(".Icon-line").click();
+    cy.icon("line").click();
     cy.findByText("Done").click();
     cy.log("**Mid-point assertion**");
     cy.contains("Count by Created At: Month");

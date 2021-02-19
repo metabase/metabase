@@ -134,7 +134,7 @@ describe("scenarios > admin > people", () => {
         cy.log("**-- It should load inactive users --**");
         cy.findByText("Deactivated").click();
         cy.findByText(FULL_NAME);
-        cy.get(".Icon-refresh").click();
+        cy.icon("refresh").click();
         cy.findByText(`Reactivate ${FULL_NAME}?`);
         clickButton("Reactivate");
         // It redirects to all people listing
@@ -199,7 +199,7 @@ function showUserOptions(full_name) {
   cy.findByText(full_name)
     .closest("tr")
     .within(() => {
-      cy.get(".Icon-ellipsis").click();
+      cy.icon("ellipsis").click();
     });
 }
 

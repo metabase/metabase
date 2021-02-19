@@ -20,7 +20,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
     // It would be great if we can use either aria-attributes or better class naming to suggest when icons are disabled
-    cy.get(".Icon-share")
+    cy.icon("share")
       .closest("a")
       .should("have.class", "cursor-default");
   });
@@ -148,7 +148,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = 1) {
   // Orders in a dashboard
   cy.visit(`/dashboard/${dashboard_id}`);
-  cy.get(".Icon-share").click();
+  cy.icon("share").click();
   cy.findByText("Dashboard subscriptions").click();
 }
 
