@@ -15,13 +15,13 @@ const updateDocumentTitle = _.debounce(() => {
 });
 
 const title = documentTitleOrGetter => ComposedComponent =>
-  class extends React.Component {
+  (class extends React.Component {
     static displayName =
       "Title[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
-    componentWillMount() {
+    UNSAFE_componentWillMount() {
       componentStack.push(this);
       this._updateDocumentTitle();
     }
@@ -62,7 +62,7 @@ const title = documentTitleOrGetter => ComposedComponent =>
     render() {
       return <ComposedComponent {...this.props} />;
     }
-  };
+  });
 
 export default title;
 

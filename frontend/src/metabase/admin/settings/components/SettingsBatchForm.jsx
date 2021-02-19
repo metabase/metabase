@@ -54,12 +54,12 @@ export default class SettingsBatchForm extends Component {
     updateSettings: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // this gives us an opportunity to load up our formData with any existing values for elements
     this.updateFormData(this.props);
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.updateFormData(nextProps);
   }
 

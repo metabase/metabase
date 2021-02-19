@@ -62,7 +62,7 @@ const chartSettingNestedSettings = ({
 }: ChartSettingsNestedSettingHOCProps) => (
   ComposedComponent: NestedSettingComponent,
 ) =>
-  class extends React.Component {
+  (class extends React.Component {
     props: Props;
     state: State;
 
@@ -75,7 +75,7 @@ const chartSettingNestedSettings = ({
       };
     }
 
-    componentWillReceiveProps(nextProps: Props) {
+    UNSAFE_componentWillReceiveProps(nextProps: Props) {
       // reset editingObjectKey if there's only one object
       if (
         nextProps.objects.length === 1 &&
@@ -170,6 +170,6 @@ const chartSettingNestedSettings = ({
         />
       );
     }
-  };
+  });
 
 export default chartSettingNestedSettings;

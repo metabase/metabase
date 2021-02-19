@@ -126,11 +126,11 @@ export default class TokenField extends Component {
     optionsStyle: {},
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateFilteredValues(this.props);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     this._updateFilteredValues((nextProps: Props));
   }
 

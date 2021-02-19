@@ -134,7 +134,7 @@ export class FieldValuesWidget extends Component {
     return this.props.parameter && this.props.parameter.id;
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     if (this.shouldList()) {
       if (this.useChainFilterEndpoints()) {
         this.fetchDashboardParamValues();

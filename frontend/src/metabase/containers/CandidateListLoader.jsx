@@ -43,7 +43,7 @@ class CandidateListLoader extends React.Component {
   _pollTimer: ?number;
 
   // $FlowFixMe: doesn't expect componentWillMount to return Promise<void>
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     // If we get passed in a database id, just use that.
     // Don't fall back to the sample dataset
     if (this.props.databaseId) {

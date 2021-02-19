@@ -70,7 +70,7 @@ export default class Setup extends Component {
     );
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
     if (
       this.props.activeStep !== nextProps.activeStep &&

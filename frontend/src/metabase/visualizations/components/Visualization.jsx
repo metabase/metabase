@@ -163,11 +163,11 @@ export default class Visualization extends React.PureComponent {
     },
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.transform(this.props);
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
       !Utils.equals(newProps.settings, this.props.settings)

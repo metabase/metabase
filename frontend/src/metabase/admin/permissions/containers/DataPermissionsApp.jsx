@@ -14,7 +14,7 @@ import { fetchRealDatabases } from "metabase/redux/metadata";
 )
 @fitViewport
 export default class DataPermissionsApp extends Component {
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.fetchRealDatabases(true);
   }
   render() {

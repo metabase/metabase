@@ -21,7 +21,7 @@ export default ({
   defaultFirstSuggestion = false,
   defaultSingleSuggestion = false,
 }) => ComposedComponent =>
-  class extends Component {
+  (class extends Component {
     static displayName =
       "Typeahead[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
@@ -63,7 +63,7 @@ export default ({
       }
     };
 
-    componentWillReceiveProps({ options, value }) {
+    UNSAFE_componentWillReceiveProps({ options, value }) {
       const filtered = value
         ? options.filter(optionFilter.bind(null, value))
         : [];
@@ -135,4 +135,4 @@ export default ({
         />
       );
     }
-  };
+  });

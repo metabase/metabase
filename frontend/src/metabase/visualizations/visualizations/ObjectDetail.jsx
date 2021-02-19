@@ -114,7 +114,7 @@ export class ObjectDetail extends Component {
     window.removeEventListener("keydown", this.onKeyDown, true);
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // if the card changed or table metadata loaded then reload fk references
     const tableFKsJustLoaded =
       nextProps.tableForeignKeys && !this.props.tableForeignKeys;

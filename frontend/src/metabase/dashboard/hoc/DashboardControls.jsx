@@ -59,7 +59,7 @@ export default (ComposedComponent: ReactClass<any>) =>
       _refreshElapsed: ?number;
       _refreshElapsedHook: ?Function;
 
-      componentWillMount() {
+      UNSAFE_componentWillMount() {
         if (screenfull.enabled) {
           document.addEventListener(
             screenfull.raw.fullscreenchange,
