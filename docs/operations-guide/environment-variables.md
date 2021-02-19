@@ -1005,6 +1005,13 @@ Default: `X-Forwarded-For`
 
 Identify the source of HTTP requests by this header's value, instead of its remote address. Related to [MB_DISABLE_SESSION_THROTTLE](#mb_disable_session_throttle).
 
+#### `MB_SSH_HEARTBEAT_INTERVAL_SEC`
+
+Type: integer<br>
+Default: `180`
+
+Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).
+
 #### `MB_SSL_CERTIFICATE_PUBLIC_KEY`
 
 Type: string<br>
