@@ -326,9 +326,9 @@
           (cond
             (and model dependent-on)
             {:model              (name model)
-             :model_id           (u/get-id model)
+             :model_id           (u/the-id model)
              :dependent_on_model (name dependent-on)
-             :dependent_on_id    (u/get-id dependent-on)
+             :dependent_on_id    (u/the-id dependent-on)
              :created_at         (java.util.Date.)}
 
             (nil? model)

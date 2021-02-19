@@ -81,7 +81,7 @@
                         (with-error-handling
                           (trs "Error inserting {0}" (name-for-logging model entity))
                           (db/insert! model entity)))]
-      (u/get-id entity))))
+      (u/the-id entity))))
 
 (defn- maybe-insert-many!
   [model on-error entities]
@@ -124,11 +124,11 @@
       (log/info (trs "Updating {0}" (name-for-logging (name model) existing))))
 
     (->> (concat (for [[position _ existing] skip]
-                   [(u/get-id existing) position])
+                   [(u/the-id existing) position])
                  (map vector (maybe-insert-many! model on-error (map second insert))
                       (map first insert))
                  (for [[position entity existing] update]
-                   (let [id (u/get-id existing)]
+                   (let [id (u/the-id existing)]
                      (if (= on-error :abort)
                        (db/update! model id entity)
                        (with-error-handling

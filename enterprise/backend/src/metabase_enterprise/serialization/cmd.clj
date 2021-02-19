@@ -57,7 +57,7 @@
   [model collections]
   (db/select model {:where [:or [:= :collection_id nil]
                                 (if (not-empty collections)
-                                  [:in :collection_id (map u/get-id collections)]
+                                  [:in :collection_id (map u/the-id collections)]
                                   false)]}))
 
 (defn dump
@@ -73,7 +73,7 @@
                       [])
         collections (db/select Collection
                       {:where [:or [:= :personal_owner_id nil]
-                                   [:= :personal_owner_id (some-> users first u/get-id)]]})]
+                                   [:= :personal_owner_id (some-> users first u/the-id)]]})]
     (dump/dump path
                (Database)
                (Table)
