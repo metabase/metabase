@@ -565,7 +565,7 @@
                         Collection [dest-card-collection]]
           (perms/grant-collection-read-permissions!      (group/all-users) source-card-collection)
           (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-          (is (some? (save-card-via-API-with-native-source-query! 202 (mt/db) source-card-collection dest-card-collection)))))
+          (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
 
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
@@ -978,25 +978,25 @@
 (deftest support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of field-literal inside filter clauses"
     (mt/dataset sample-dataset
-      (testing "against joins (#14809)"
-        (is (schema= {:status   (s/eq :completed)
-                      s/Keyword s/Any}
-                     (mt/run-mbql-query orders
-                       {:source-query {:source-table $$orders
-                                       :joins        [{:fields       :all
-                                                       :source-table $$products
-                                                       :condition    [:= $product_id &Products.products.id]
-                                                       :alias        "Products"}]}
-                        :filter       [:= *CATEGORY/Text "Widget"]}))))
-      (testing "(#14811)"
-        (is (schema= {:status   (s/eq :completed)
-                      s/Keyword s/Any}
-                     (mt/run-mbql-query orders
-                       {:source-query {:source-table $$orders
-                                       :aggregation  [[:sum $product_id->products.price]]
-                                       :breakout     [$product_id->products.category]}
-                        ;; not sure why FE is using `field-literal` here... but it should work anyway.
-                        :filter       [:= *CATEGORY/Text "Widget"]})))))))
+                (testing "against joins (#14809)"
+                  (is (schema= {:status   (s/eq :completed)
+                                s/Keyword s/Any}
+                               (mt/run-mbql-query orders
+                                                  {:source-query {:source-table $$orders
+                                                                  :joins        [{:fields       :all
+                                                                                  :source-table $$products
+                                                                                  :condition    [:= $product_id &Products.products.id]
+                                                                                  :alias        "Products"}]}
+                                                   :filter       [:= *CATEGORY/Text "Widget"]}))))
+                (testing "(#14811)"
+                  (is (schema= {:status   (s/eq :completed)
+                                s/Keyword s/Any}
+                               (mt/run-mbql-query orders
+                                                  {:source-query {:source-table $$orders
+                                                                  :aggregation  [[:sum $product_id->products.price]]
+                                                                  :breakout     [$product_id->products.category]}
+                                                   ;; not sure why FE is using `field-literal` here... but it should work anyway.
+                                                   :filter       [:= *CATEGORY/Text "Widget"]})))))))
 
 (deftest support-legacy-dashboard-parameters-test
   (testing "We should handle legacy usage of field-literal inside (Dashboard) parameters (#14810)"

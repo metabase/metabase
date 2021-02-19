@@ -1,8 +1,8 @@
 (ns metabase.automagic-dashboards.core-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
+            [metabase.api.card :as card-api]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.core :as magic :refer :all]
             [metabase.automagic-dashboards.rules :as rules]
@@ -12,7 +12,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.query :as query]
-            [metabase.query-processor.async :as qp.async]
+            [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.automagic-dashboards :refer :all]
             [metabase.test.util :as tu]
@@ -63,7 +63,8 @@
 ;;; ------------------- `automagic-anaysis` -------------------
 
 (defn- test-automagic-analysis
-  ([entity] (test-automagic-analysis entity nil))
+  ([entity]
+   (test-automagic-analysis entity nil))
   ([entity cell-query]
    ;; We want to both generate as many cards as we can to catch all aberrations, but also make sure
    ;; that size limiting works.
@@ -149,12 +150,6 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id Card test-automagic-analysis))))))
 
-(defn- result-metadata-for-query [query]
-  (first
-   (a/alts!!
-    [(qp.async/result-metadata-for-query-async query)
-     (a/timeout 1000)])))
-
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
     (let [source-query {:query    {:source-table (mt/id :venues)}
@@ -164,7 +159,7 @@
                       Card [{source-id :id} {:table_id      (mt/id :venues)
                                              :collection_id   collection-id
                                              :dataset_query   source-query
-                                             :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
+                                             :result_metadata (mt/with-test-user :rasta (qp/query->expected-cols source-query))}]
                       Card [{card-id :id} {:table_id      (mt/id :venues)
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
@@ -191,25 +186,27 @@
           (-> card-id Card test-automagic-analysis))))))
 
 (expect
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (let [source-query {:native   {:query "select * from venues"}
-                        :type     :native
-                        :database (mt/id)}]
-      (tt/with-temp* [Collection [{collection-id :id}]
-                      Card [{source-id :id} {:table_id        nil
-                                             :collection_id   collection-id
-                                             :dataset_query   source-query
-                                             :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
-                      Card [{card-id :id} {:table_id      nil
-                                           :collection_id collection-id
-                                           :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
-                                                                      :source-table (str "card__" source-id)}
-                                                           :type     :query
-                                                           :database mbql.s/saved-questions-virtual-database-id}}]]
-        (mt/with-test-user :rasta
-          (with-dashboard-cleanup
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (-> card-id Card test-automagic-analysis)))))))
+ (tu/with-non-admin-groups-no-root-collection-perms
+   (let [source-query {:native   {:query "select * from venues"}
+                       :type     :native
+                       :database (mt/id)}]
+     (tt/with-temp* [Collection [{collection-id :id}]
+                     Card [{source-id :id} {:table_id        nil
+                                            :collection_id   collection-id
+                                            :dataset_query   source-query
+                                            :result_metadata (mt/with-test-user :rasta
+                                                               (#'card-api/validate-or-recalculate-results-metadata
+                                                                source-query nil nil))}]
+                     Card [{card-id :id} {:table_id      nil
+                                          :collection_id collection-id
+                                          :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
+                                                                     :source-table (str "card__" source-id)}
+                                                          :type     :query
+                                                          :database mbql.s/saved-questions-virtual-database-id}}]]
+       (mt/with-test-user :rasta
+         (with-dashboard-cleanup
+           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+           (-> card-id Card test-automagic-analysis)))))))
 
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms

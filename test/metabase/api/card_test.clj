@@ -15,7 +15,6 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.server.middleware.util :as middleware.u]
@@ -302,7 +301,7 @@
                                                  :last_name    "Toucan"
                                                  :first_name   "Rasta"
                                                  :email        "rasta@metabase.com"})})
-                     (-> (mt/user-http-request :rasta :post 202 "card" card)
+                     (-> (mt/user-http-request :rasta :post 200 "card" card)
                          (dissoc :created_at :updated_at :id)
                          (update :table_id integer?)
                          (update :database_id integer?)
@@ -325,7 +324,7 @@
             (testing "without result metadata"
               (is (schema= {:id       su/IntGreaterThanZero
                             s/Keyword s/Any}
-                           (mt/user-http-request :rasta :post 202 "card"
+                           (mt/user-http-request :rasta :post 200 "card"
                                                  (merge (tt/with-temp-defaults Card)
                                                         {:dataset_query query})))))
             (let [metadata (-> (qp/process-query query)
@@ -336,7 +335,7 @@
                 (is (some? metadata))
                 (is (schema= {:id       su/IntGreaterThanZero
                               s/Keyword s/Any}
-                             (mt/user-http-request :rasta :post 202 "card"
+                             (mt/user-http-request :rasta :post 200 "card"
                                                    (merge (tt/with-temp-defaults Card)
                                                           {:dataset_query   query
                                                            :result_metadata metadata}))))))))))))
@@ -353,7 +352,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
             ;; create a card with the metadata
-            (mt/user-http-request :rasta :post 202 "card" (assoc (card-with-name-and-query card-name)
+            (mt/user-http-request :rasta :post 200 "card" (assoc (card-with-name-and-query card-name)
                                                                  :collection_id      (u/the-id collection)
                                                                  :result_metadata    metadata
                                                                  :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
@@ -367,10 +366,11 @@
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [Card]
-      (= :wow
-         (mt/user-http-request :rasta :post 202 "card" (assoc (card-with-name-and-query)
-                                                              :result_metadata    []
-                                                              :metadata_checksum  (#'results-metadata/metadata-checksum [])))))))
+      (is (schema= {:result_metadata (s/eq [])
+                    s/Keyword s/Any}
+                   (mt/user-http-request :rasta :post 200 "card" (assoc (card-with-name-and-query)
+                                                                        :result_metadata    []
+                                                                        :metadata_checksum  (#'results-metadata/metadata-checksum []))))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -394,10 +394,11 @@
           card-name (mt/random-name)]
       (mt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (mt/throw-if-called qp.async/result-metadata-for-query-async
+        ;; shouldn't actually need to run the query
+        (mt/throw-if-called sql-jdbc.execute/execute-query!
           (mt/with-model-cleanup [Card]
             ;; create a card with the metadata
-            (mt/user-http-request :rasta :post 202 "card"
+            (mt/user-http-request :rasta :post 200 "card"
                                   (assoc (card-with-name-and-query card-name)
                                          :collection_id      (u/the-id collection)
                                          :result_metadata    (map fingerprint-integers->doubles metadata)
@@ -407,7 +408,7 @@
                        :display_name "Count Chocula"
                        :name         "count_chocula"
                        :semantic_type :type/Number
-                       :fingerprint  {:global {:distinct-count 285},
+                       :fingerprint  {:global {:distinct-count 285}
                                       :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
@@ -422,27 +423,22 @@
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
-            (mt/user-http-request :rasta :post 202 "card"
-                                  (assoc (card-with-name-and-query card-name)
-                                         :collection_id      (u/the-id collection)
-                                         :result_metadata    metadata
-                                         ;; bad checksum
-                                         :metadata_checksum  "ABCDEF"))
-            (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (= [{:base_type    :type/BigInteger
-                       :display_name "Count"
-                       :name         "count"
-                       :semantic_type :type/Quantity
-                       :fingerprint  {:global {:distinct-count 1
-                                               :nil%           0.0},
-                                      :type   {:type/Number {:min 100.0
-                                                             :max 100.0
-                                                             :avg 100.0
-                                                             :q1  100.0
-                                                             :q3  100.0
-                                                             :sd  nil}}}
-                       :field_ref    [:aggregation 0]}]
-                     (db/select-one-field :result_metadata Card :name card-name))))))))))
+            ;; should NOT need to run the query again
+            (mt/throw-if-called sql-jdbc.execute/execute-query!
+              (mt/user-http-request :rasta :post 200 "card"
+                                    (assoc (card-with-name-and-query card-name)
+                                           :collection_id      (u/the-id collection)
+                                           :result_metadata    metadata
+                                           ;; bad checksum
+                                           :metadata_checksum  "ABCDEF"))
+              (testing "check the correct metadata was fetched and was saved in the DB"
+                (is (= [{:base_type     :type/BigInteger
+                         :display_name  "Count"
+                         :name          "count"
+                         :semantic_type :type/Number
+                         :field_ref     [:aggregation 0]
+                         :source        :aggregation}]
+                       (db/select-one-field :result_metadata Card :name card-name)))))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
@@ -461,29 +457,28 @@
               (with-redefs [sql-jdbc.execute/prepared-statement
                             (fn [driver conn sql params]
                               (reset! sql-result sql)
-                              (orig driver conn sql params))]
+                              (orig driver conn sql params))
+                            ;; make `query->expected-cols` stop working so we're FORCED to run the query to get cols
+                            ;; (as if this was a NATIVE query)
+                            qp/query->expected-cols (fn [_] (throw (ex-info "OOPS" {})))]
                 ;; create a card with the metadata
-                (mt/user-http-request :rasta :post 202 "card"
+                (mt/user-http-request :rasta :post 200 "card"
                                       (assoc (card-with-name-and-query card-name)
                                              :collection_id      (u/the-id collection)
                                              :result_metadata    metadata
                                              :metadata_checksum  "ABCDEF"))) ; bad checksum
               (testing "check the correct metadata was fetched and was saved in the DB"
-                (is (= [{:base_type    (count-base-type)
-                         :display_name "Count"
-                         :name         "count"
+                (is (= [{:base_type    :type/BigInteger
                          :semantic_type :type/Quantity
-                         :fingerprint  {:global {:distinct-count 1
-                                                 :nil%           0.0},
-                                        :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
+                         :name         "count"
+                         :display_name "Count"
                          :field_ref    [:aggregation 0]}]
-                       (db/select-one-field :result_metadata Card :name card-name))))
+                       (->> (db/select-one-field :result_metadata Card :name card-name)
+                            (map #(dissoc % :fingerprint))))))
               (testing "Was the user id found in the generated SQL?"
-                (is (= true
-                       (boolean
-                        (when-let [s @sql-result]
-                          (re-find (re-pattern (str "userID: " (mt/user->id :rasta)))
-                                   s)))))))))))))
+                (is (when-let [s @sql-result]
+                      (re-find (re-pattern (str "userID: " (mt/user->id :rasta)))
+                               s)))))))))))
 
 (deftest create-card-with-collection-position
   (testing "Make sure we can create a Card with a Collection position"
@@ -496,7 +491,7 @@
                           :collection_position (s/eq 1)
                           :name                (s/eq card-name)
                           s/Keyword            s/Any}
-                         (mt/user-http-request :rasta :post 202 "card"
+                         (mt/user-http-request :rasta :post 200 "card"
                                                (assoc (card-with-name-and-query card-name)
                                                       :collection_id (u/the-id collection), :collection_position 1))))
             (is (schema= {:collection_id       (s/eq (u/the-id collection))
@@ -572,7 +567,7 @@
     (with-cards-in-writeable-collection card
       (is (= "Original Name"
              (db/select-one-field :name Card, :id (u/the-id card))))
-      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:name "Updated Name"})
+      (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:name "Updated Name"})
       (is (= "Updated Name"
              (db/select-one-field :name Card, :id (u/the-id card)))))))
 
@@ -581,7 +576,7 @@
     (with-cards-in-writeable-collection card
       (let [archived?     (fn [] (:archived (Card (u/the-id card))))
             set-archived! (fn [archived]
-                            (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:archived archived})
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived archived})
                             (archived?))]
         (is (= false
                (archived?)))
@@ -602,13 +597,13 @@
 (deftest can-we-clear-the-description-of-a-card----4738-
   (is (nil? (mt/with-temp Card [card {:description "What a nice Card"}]
               (with-cards-in-writeable-collection card
-                (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:description nil})
+                (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description nil})
                 (db/select-one-field :description Card :id (u/the-id card)))))))
 
 (deftest description-should-be-blankable-as-well
   (mt/with-temp Card [card {:description "What a nice Card"}]
     (with-cards-in-writeable-collection card
-      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:description ""})
+      (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description ""})
       (is (= ""
              (db/select-one-field :description Card :id (u/the-id card)))))))
 
@@ -628,7 +623,7 @@
                                        {:embedding_params {:abc "enabled"}}))))
 
         (testing "Admin should be able to update Card's embedding params"
-          (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+          (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                 {:embedding_params {:abc "enabled"}})
           (is (= {:abc "enabled"}
                  (db/select-one-field :embedding_params Card :id (u/the-id card)))))))))
@@ -641,7 +636,7 @@
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
-        (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+        (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                               {:dataset_query     (mbql-count-query)
                                :result_metadata   metadata
                                :metadata_checksum (#'results-metadata/metadata-checksum metadata)})
@@ -660,25 +655,26 @@
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
-        (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
-                              {:dataset_query     (mbql-count-query)
-                               :result_metadata   metadata
-                               :metadata_checksum "ABC123"}) ; invalid checksum
-        ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type    :type/BigInteger
-                 :display_name "Count"
-                 :name         "count"
-                 :semantic_type :type/Quantity
-                 :fingerprint  {:global {:distinct-count 1
-                                         :nil%           0.0},
-                                :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
-                 :field_ref    [:aggregation 0]}]
-               (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
+        (mt/throw-if-called sql-jdbc.execute/execute-query!
+          (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
+                                {:dataset_query     (mbql-count-query)
+                                 :result_metadata   metadata
+                                 :metadata_checksum "ABC123"}) ; invalid checksum
+          ;; now check the metadata that was saved in the DB
+          ;;
+          ;; shouldn't have a fingerprint, because it only gets one if it runs the query, and it shouldn't need to.
+          (is (= [{:base_type     :type/BigInteger
+                   :display_name  "Count"
+                   :name          "count"
+                   :semantic_type :type/Number
+                   :source        :aggregation
+                   :field_ref     [:aggregation 0]}]
+                 (db/select-one-field :result_metadata Card :id (u/the-id card)))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-
   (mt/with-temp Card [card]
     (with-cards-in-writeable-collection card
-      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+      (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position 1})
       (is (= 1
              (db/select-one-field :collection_position Card :id (u/the-id card)))))))
@@ -686,7 +682,7 @@
 (deftest ---and-unset--unpin--it-as-well-
   (mt/with-temp Card [card {:collection_position 1}]
     (with-cards-in-writeable-collection card
-      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+      (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position nil})
       (is (= nil
              (db/select-one-field :collection_position Card :id (u/the-id card)))))))
@@ -748,7 +744,7 @@
                                       Card c
                                       Card d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id c))
+        (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id c))
                               {:collection_position 1})
         (is (= {"c" 1
                 "a" 2
@@ -798,7 +794,7 @@
                         "c" 3}
                        (get-name->collection-position :rasta collection))))
               (mt/with-model-cleanup [Card]
-                (mt/user-http-request :rasta :post 202 "card"
+                (mt/user-http-request :rasta :post 200 "card"
                                       (merge (card-with-name-and-query "d")
                                              {:collection_id       (u/the-id collection)
                                               :collection_position position}))
@@ -851,7 +847,7 @@
                         "e" 5
                         "f" 6}
                        (get-name->collection-position :rasta collection))))
-              (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id d))
+              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id d))
                                     {:collection_position position, :collection_id (u/the-id collection)})
               (is (= expected
                      (get-name->collection-position :rasta collection))))))))))
@@ -866,7 +862,7 @@
                       Dashboard  [_ {:name "c", :collection_id coll-id, :collection_position 2}]
                       Card       [_ {:name "d", :collection_id coll-id, :collection_position 3}]]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id b))
+        (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id b))
                               {:collection_position 2})
         (is (= {"a" 1
                 "b" 2
@@ -890,7 +886,7 @@
                                             Dashboard h]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
-            (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id f))
+            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id f))
                                   {:collection_id (u/the-id collection-1)})
             (testing "Dest collection should get updated positions"
               (is (= {"a" 1
@@ -920,7 +916,7 @@
                                             Card      h]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
-            (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id h))
+            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id h))
                                   {:collection_position 1, :collection_id (u/the-id collection-1)})
             (is (= {"h" 1
                     "a" 2
@@ -951,23 +947,23 @@
           [{:message        "Archiving a Card should trigger Alert deletion"
             :expected-email "the question was archived by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:archived true}))}
+                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
            {:message        "Validate changing a display type triggers alert deletion"
             :card           {:display :table}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:display :line}))}
+                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
            {:message        "Changing the display type from line to table should force a delete"
             :card           {:display :line}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:display :table}))}
+                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
            {:message        "Removing the goal value will trigger the alert to be deleted"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
+                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
            {:message        "Adding an additional breakout will cause the alert to be removed"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
@@ -979,7 +975,7 @@
                                                         "hour"]])}
             :expected-email "the question was edited by Crowberto Corv"
             :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                     {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                               [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
                                                                                                   [:datetime-field (mt/id :checkins :date) "minute"]])}))}]]
@@ -1032,11 +1028,11 @@
              (mt/with-fake-inbox
                (array-map
                 :emails-1 (do
-                            (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:display :area})
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :area})
                             (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
                 :pulse-1  (boolean (Pulse (u/the-id pulse)))
                 :emails-2 (do
-                            (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:display :bar})
+                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :bar})
                             (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
                 :pulse-2  (boolean (Pulse (u/the-id pulse))))))))))
 
@@ -1206,7 +1202,7 @@
     (mt/with-temp Collection [collection]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       (mt/with-model-cleanup [Card]
-        (let [card (mt/user-http-request :rasta :post 202 "card"
+        (let [card (mt/user-http-request :rasta :post 200 "card"
                                          (assoc (card-with-name-and-query)
                                                 :collection_id (u/the-id collection)))]
           (= (db/select-one-field :collection_id Card :id (u/the-id card))
@@ -1226,7 +1222,7 @@
   (testing "Should be able to set the Collection ID of a Card in the Root Collection (i.e., `collection_id` is nil)"
     (mt/with-temp* [Card       [card]
                     Collection [collection]]
-      (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card)) {:collection_id (u/the-id collection)})
+      (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:collection_id (u/the-id collection)})
       (= (db/select-one-field :collection_id Card :id (u/the-id card))
          (u/the-id collection)))))
 
@@ -1260,7 +1256,7 @@
 
             (testing "Should be able to change it once you have perms for both collections"
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
-              (change-collection! 202)
+              (change-collection! 200)
               (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
                      (u/the-id new-collection))))))))))
 

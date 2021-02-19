@@ -1,6 +1,5 @@
 (ns metabase.models.dashboard
-  (:require [clojure.core.async :as a]
-            [clojure.data :refer [diff]]
+  (:require [clojure.data :refer [diff]]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -18,7 +17,6 @@
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.public-settings :as public-settings]
-            [metabase.query-processor.async :as qp.async]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -274,11 +272,7 @@
       (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
 
 
-;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
-(defn- result-metadata-for-query
-  "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
-  [query]
-  (a/<!! (qp.async/result-metadata-for-query-async query)))
+;;;; Transient dashboard stuff. TODO: I think we should move this stuff into its own namespace.
 
 (defn- save-card!
   [card]
@@ -289,12 +283,7 @@
 
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
-    (let [card (db/insert! 'Card
-                 (-> card
-                     (update :result_metadata #(or % (-> card
-                                                         :dataset_query
-                                                         result-metadata-for-query)))
-                     (dissoc :id)))]
+    (let [card (db/insert! Card (dissoc card :id))]
       (events/publish-event! :card-create card)
       (hydrate card :creator :dashboard_count :can_write :collection))))
 

@@ -226,8 +226,9 @@
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
-  (when-let [metadata (not-empty (i/json-out-with-keywordization metadata))]
-    (seq (map normalize/normalize-source-metadata metadata))))
+  (lazy-seq
+   (when-let [metadata (i/json-out-with-keywordization metadata)]
+     (map normalize/normalize-source-metadata metadata))))
 
 (models/add-type! ::result-metadata
   :in i/json-in
