@@ -2,9 +2,7 @@
   "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
   the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
-  (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [metabase.mbql.schema :as mbql.s]
+  (:require [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
@@ -65,10 +63,10 @@
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
-  (for [{field-name :name, base-type :base_type, field-ref :field_ref, field-id :id} source-metadata]
-    (or (when-let [[_ id-or-name opts] field-ref]
-          [:field id-or-name (assoc opts :join-alias alias)])
-        [:field (or field-id field-name) {:base-type base-type, :join-alias alias}])))
+  (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
+    (if field-id
+      [:field field-id   {:join-alias alias}]
+      [:field field-name {:base-type base-type, :join-alias alias}])))
 
 (s/defn ^:private handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
@@ -170,8 +168,4 @@
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [qp]
   (fn [query rff context]
-    (let [query' (resolve-joins* query)]
-      (when-not (= query query')
-        (let [[before after] (data/diff query query')]
-          (log/tracef "Resolved joins: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
-      (qp query' rff context))))
+    (qp (resolve-joins* query) rff context)))

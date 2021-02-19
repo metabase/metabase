@@ -213,7 +213,7 @@
                             :source-query    {:source-table $$categories}
                             :source-metadata source-metadata
                             :strategy        :left-join
-                            :condition       [:= $category_id [:field "ID" {:base-type :type/BigInteger, :field-alias "cat"}]]}]
+                            :condition       [:= $category_id [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
                 :order-by [[:asc $name]]
                 :limit    3})
              resolved))
@@ -239,3 +239,32 @@
                               :condition    [:= $id [:field "USER_ID" {:base-type :type/Integer, :join-alias "c"}]]}]
                :aggregation [[:sum [:field "id" {:base-type :type/Float, :join-alias "c"}]]]
                :breakout    [[:field %last_login {:temporal-unit :month}]]}))))))
+
+(deftest aggregation-field-ref-test
+  (testing "Should correctly handle [:aggregation n] field refs"
+    (is (some? (resolve-joins
+                (mt/mbql-query users
+                  {:fields [$id
+                            $name
+                            [:field %last_login {:temporal-unit :default}]]
+                   :joins  [{:fields       :all
+                             :alias        "__alias__"
+                             :condition    [:= $id [:field %checkins.user_id {:join-alias "__alias__"}]]
+                             :source-query {:source-table $$checkins
+                                            :aggregation  [[:sum $checkins.id]]
+                                            :breakout     [$checkins.user_id]}
+                             :source-metadata
+                             [{:name          "USER_ID"
+                               :display_name  "User ID"
+                               :base_type     :type/Integer
+                               :semantic_type :type/FK
+                               :id            %checkins.user_id
+                               :field_ref     $checkins.user_id
+                               :fingerprint   {:global {:distinct-count 15, :nil% 0.0}}}
+                              {:name          "sum"
+                               :display_name  "Sum of ID"
+                               :base_type     :type/Decimal
+                               :semantic_type :type/PK
+                               :field_ref     [:aggregation 0]
+                               :fingerprint   nil}]}]
+                   :limit  10}))))))

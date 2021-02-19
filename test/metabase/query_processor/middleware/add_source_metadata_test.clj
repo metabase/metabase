@@ -244,25 +244,23 @@
       (is (= (mt/mbql-query venues
                {:source-query    {:source-table $$venues
                                   :aggregation  [[:count]]
-                                  :breakout     [[:binning-strategy $latitude :default]]}
+                                  :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
                 :source-metadata (concat
                                   (let [[lat-col] (venues-source-metadata :latitude)]
-                                    [(assoc lat-col :field_ref (mt/$ids venues
-                                                                 [:binning-strategy
-                                                                  $latitude
-                                                                  :bin-width
-                                                                  5.0
-                                                                  {:min-value 10.0
-                                                                   :max-value 45.0
-                                                                   :num-bins  7
-                                                                   :bin-width 5.0}]))])
+                                    [(assoc lat-col :field_ref [:field
+                                                                (mt/id :venues :latitude)
+                                                                {:binning {:strategy :bin-width
+                                                                           :min-value 10.0
+                                                                           :max-value 45.0
+                                                                           :num-bins  7
+                                                                           :bin-width 5.0}}])])
                                   (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))})
              (add-source-metadata
               (mt/mbql-query venues
                 {:source-query
                  {:source-table $$venues
                   :aggregation  [[:count]]
-                  :breakout     [[:binning-strategy $latitude :default]]}})))))))
+                  :breakout     [[:field %latitude {:binning {:strategy :default}}]]}})))))))
 
 (deftest deduplicate-column-names-test
   (testing "Metadata that gets added to source queries should have deduplicated column names"
@@ -297,7 +295,7 @@
                            {:source-table $$orders
                             :joins        [{:fields       :all
                                             :source-table $$products
-                                            :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                            :condition    [:= $product_id &Products.products.id]
                                             :alias        "Products"}]
                             :limit        10})]
           (testing "Make sure metadata is correct for the 'EAN' column with"
@@ -310,7 +308,7 @@
                           :base_type    :type/Text
                           :semantic_type nil
                           :id           %ean
-                          :field_ref    [:joined-field "Products" $ean]})
+                          :field_ref    &Products.ean})
                        (ean-metadata (add-source-metadata query))))))))))))
 
 (deftest ignore-legacy-source-metadata-test

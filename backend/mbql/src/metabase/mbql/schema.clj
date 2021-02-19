@@ -383,7 +383,7 @@
   (-> (schema.helpers/clause
        :field
        "id-or-name" (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
-       "options"    (s/maybe FieldOptions))
+       "options"    (s/maybe (s/recursive #'FieldOptions)))
       require-base-type-for-field-name))
 
 (def ^{:clause-name :field, :added "0.39.0"} field:id
