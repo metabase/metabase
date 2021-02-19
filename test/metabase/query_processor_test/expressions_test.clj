@@ -346,7 +346,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use aggregations from previous steps in expressions (#12762)"
       (is (= [["20th Century Cafe" 2 2 0]
-              [ "25°" 2 2 0 ]
+              [ "25°" 2 2 0]
               ["33 Taps" 2 2 0]]
              (mt/formatted-rows [str int int int]
                (mt/run-mbql-query venues
@@ -375,3 +375,24 @@
                   [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04.58Z"  3 "2017-11-16T13:53:14.232Z"]]
                  (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int str]
                    results))))))))
+
+(deftest string-operations-from-subquery
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+    (testing "regex-match-first and replace work when evaluated against a subquery (#14873)"
+      (mt/dataset sample-dataset
+        (let [a-word  "a_word"
+              no-sp   "no_spaces"
+              ean     (mt/id :products :ean)
+              results (mt/run-mbql-query products
+                        {:expressions  {a-word
+                                         [:regex-match-first [:field-id (mt/id :products :title)] "^A[^ ]+"]
+                                        no-sp
+                                         [:replace [:field-id (mt/id :products :title)] " " ""]}
+                         :source-query {:source-table $$products}
+                         :fields       [$title [:expression a-word] [:expression no-sp]]
+                         :filter       [:= [:field-id ean] "0157967025871" "4893655420066"]})]
+          (is (= ["Title" a-word no-sp]
+                 (map :display_name (mt/cols results))))
+          (is (= [["Aerodynamic Linen Coat" "Aerodynamic" "AerodynamicLinenCoat"]
+                  ["Awesome Rubber Wallet" "Awesome" "AwesomeRubberWallet"]]
+                 (mt/formatted-rows [str str str] results))))))))
