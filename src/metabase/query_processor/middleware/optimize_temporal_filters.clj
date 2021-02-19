@@ -13,12 +13,10 @@
   #{:second :minute :hour :day :week :month :quarter :year})
 
 (defn- datetime-field-unit [field]
-  (last (mbql.u/match-one field :datetime-field)))
+  (mbql.u/match-one field [:datetime-field _ unit] unit))
 
 (defn- optimizable-field? [field]
-  (mbql.u/match-one field
-    [:datetime-field _ unit]
-    (optimizable-units unit)))
+  (optimizable-units (datetime-field-unit unit)))
 
 (defmulti ^:private can-optimize-filter?
   mbql.u/dispatch-by-clause-name-or-class)

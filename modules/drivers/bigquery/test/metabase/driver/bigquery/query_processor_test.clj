@@ -616,6 +616,8 @@
 
 (defn- test-table-with-fn [table f]
   (let [units (rest (first table))]
+    ;; this is done in parallel because there are a lot of combinations and doing them one at a time would take the
+    ;; rest of our lives
     (dorun (pmap (fn [[field & vs]]
                    (testing (format "\nfield = %s" field)
                      (dorun (pmap (fn [[unit expected]]
