@@ -529,10 +529,6 @@ describe("scenarios > collection_defaults", () => {
         .find(".Icon-chevronright")
         .should("not.exist");
     });
-
-    it.only("dasda", () => {
-      cy.visit("/question/new");
-    });
   });
 });
 
