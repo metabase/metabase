@@ -213,7 +213,6 @@
         (catch Throwable e
           (throw (ex-info (.getMessage e) {:clause &match} e)))))))
 
-
 (defn- update-binning-strategy* [{query-type :type, inner-query :query, :as query}]
   (if (= query-type :native)
     query

@@ -878,7 +878,7 @@
     ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
     ;; JOINs this is always
     ;;
-    ;;    [:= <source-table-fk-field> [:joined-field <join-table-alias> <dest-table-pk-field>]]
+    ;;    [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]
     ;;
     :condition
     Filter
@@ -909,12 +909,11 @@
       (s/enum :all :none)
       [field])
      (str
-      "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:joined-field` clauses,"
-      " or clauses wrapping `:joined-field`."))
+      "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`."))
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
-    ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field in a
-    ;; `:joined-field` clause.
+    ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
+    ;; `:join-alias` in the options.
     ;;
     ;; Driver implementations: This is guaranteed to be present after pre-processing.
     (s/optional-key :alias)

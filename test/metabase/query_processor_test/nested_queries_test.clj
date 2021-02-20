@@ -422,7 +422,7 @@
                                                  :data :cols)]
                                      (-> (into {} col)
                                          (assoc :source :fields)))]
-          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil])
+          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :year}])
                   (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
                  (mt/cols
                    (qp/process-query (query-with-source-card card))))))))))
@@ -840,7 +840,7 @@
 (deftest inception-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
     (mt/dataset sample-dataset
-      (doseq [level [1] #_ (range 0 4)] ; NOCOMMIT
+      (doseq [level (range 0 4)]
         (testing (format "with %d level(s) of nesting" level)
           (letfn [(run-query []
                     (let [query (-> (mt/mbql-query orders
@@ -852,19 +852,17 @@
                                        :order-by     [[:asc $id]]
                                        :limit        2})
                                     (mt/nest-query level))]
-                      ;; NOCOMMIT
-                      (dev/process-query-debug #_qp/process-query query)))]
-            ;; NOCOMMIT
-            #_(testing "with no FK remappings"
-                (let [result (run-query)]
-                  (is (schema= {:status    (s/eq :completed)
-                                :row_count (s/eq 2)
-                                s/Keyword  s/Any}
-                               result))
-                  (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
-                          14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
-                          "2017-12-31T14:41:56.87Z"]
-                         (mt/first-row result)))))
+                      (qp/process-query query)))]
+            (testing "with no FK remappings"
+              (let [result (run-query)]
+                (is (schema= {:status    (s/eq :completed)
+                              :row_count (s/eq 2)
+                              s/Keyword  s/Any}
+                             result))
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+                        14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
+                        "2017-12-31T14:41:56.87Z"]
+                       (mt/first-row result)))))
             (mt/with-column-remappings [orders.product_id products.title]
               (let [result (run-query)]
                 (is (schema= {:status    (s/eq :completed)

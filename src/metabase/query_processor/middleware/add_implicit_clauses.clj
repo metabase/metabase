@@ -4,7 +4,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
-            [metabase.models.table :as table :refer [Table]]
+            [metabase.models.table :as table]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.store :as qp.store]
@@ -14,7 +14,6 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Add Implicit Fields                                               |
@@ -27,7 +26,7 @@
     :active          true
     :visibility_type [:not-in ["sensitive" "retired"]]
     :parent_id       nil
-    {:order-by (table/field-order-rule (Table table-id))}))
+    {:order-by table/field-order-rule}))
 
 (s/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
@@ -51,11 +50,16 @@
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
   (distinct
    (for [{field-name :name, base-type :base_type, field-id :id, field-ref :field_ref} source-metadata]
-     (if field-id
-       ;; If we have a Field ID, return a `:field` (id) clause
-       [:field field-id nil]
-       ;; otherwise return a `:field` (name) clause
-       [:field field-name {:base-type base-type}]))))
+     ;; return field-ref directly if it's a `:field` clause already. It might include important info such as
+     ;; `:join-alias` or `:source-field`
+     (or (mbql.u/match-one field-ref :field)
+         ;; otherwise construct a field reference that can be used to refer to this Field.
+         (if field-id
+           ;; If we have a Field ID, return a `:field` (id) clause
+           [:field field-id nil]
+           ;; otherwise return a `:field` (name) clause, e.g. for a Field that's the result of an aggregation or
+           ;; expression
+           [:field field-name {:base-type base-type}])))))
 
 (s/defn ^:private should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:
