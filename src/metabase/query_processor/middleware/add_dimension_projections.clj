@@ -55,8 +55,8 @@
                           :field_id [:in (set field-ids)]
                           :type     "external"))))
 
-(s/defn ^:private create-remap-col-tuples :- [[(s/one mbql.s/field-id            "Field")
-                                               (s/one mbql.s/fk->                "remapped FK Field")
+(s/defn ^:private create-remap-col-tuples :- [[(s/one mbql.s/field            "Field")
+                                               (s/one mbql.s/field            "remapped FK Field")
                                                (s/one ExternalRemappingDimension "remapping Dimension info")]]
   "Return tuples of `:field-id` clauses, the new remapped column `:fk->` clauses that the Field should be remapped to,
   and the Dimension that suggested the remapping, which is used later in this middleware for post-processing. Order is
@@ -69,12 +69,12 @@
       (vec
        (mbql.u/match fields
          ;; don't match Field IDs nested in other clauses
-         [(_ :guard keyword?) [:field-id _] & _] nil
+         [(_ :guard keyword?) [:field (_ :guard integer?) _] & _] nil
 
-         [:field-id (id :guard field-id->remapping-dimension)]
+         [:field (id :guard (every-pred integer? field-id->remapping-dimension)) _]
          (let [dimension (field-id->remapping-dimension id)]
            [&match
-            [:fk-> &match [:field-id (:human_readable_field_id dimension)]]
+            [:field (:human_readable_field_id dimension) {:source-field id}]
             (assoc dimension
               :field_name                (-> dimension :field_id unique-name)
               :human_readable_field_name (-> dimension :human_readable_field_id unique-name))]))))))
@@ -83,7 +83,7 @@
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
   the newly remapped column. This should order by the text of the remapped column vs. the id of the source column
   before the remapping"
-  [field->remapped-col :- {mbql.s/field-id, mbql.s/fk->}, order-by-clauses :- [mbql.s/OrderBy]]
+  [field->remapped-col :- {mbql.s/field mbql.s/field}, order-by-clauses :- [mbql.s/OrderBy]]
   (->> (for [[direction field, :as order-by-clause] order-by-clauses]
          (if-let [remapped-col (get field->remapped-col field)]
            [direction remapped-col]

@@ -217,91 +217,14 @@
 
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
-;; Normal lowest-level Field clauses refer to a Field either by ID or by name
-
-(defclause ^{:deprecated "0.39.0"} field-id, id su/IntGreaterThanZero)
-
-(defclause ^{:deprecated "0.39.0"} field-literal, field-name su/NonBlankString, field-type su/FieldType)
-
-(defclause ^{:deprecated "0.39.0"} joined-field, alias su/NonBlankString, field (one-of field-id field-literal))
-
-;; Both args in `[:fk-> <source-field> <dest-field>]` are implict `:field-ids`. E.g.
-;;
-;;   [:fk-> 10 20] --[NORMALIZE]--> [:fk-> [:field-id 10] [:field-id 20]]
-;;
-;; `fk->` clauses are automatically replaced by the Query Processor with appropriate `:joined-field` clauses during
-;; preprocessing. Drivers do not need to handle `:fk->` clauses themselves.
-(defclause ^{:requires-features #{:foreign-keys}, :deprecated "0.39.0"} ^:sugar fk->
-  source-field (one-of field-id field-literal)
-  dest-field   (one-of field-id field-literal))
-
 ;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like `[:+ [:field-id 1]
 ;; [:field-id 2]]`
 (defclause ^{:requires-features #{:expressions}} expression
   expression-name su/NonBlankString)
 
-(defclause ^{:deprecated "0.39.0"} datetime-field
-  field (one-of field-id field-literal fk-> joined-field)
-  unit  DatetimeFieldUnit)
-
-;; binning strategy can wrap any of the above clauses, but again, not another binning strategy clause
 (def BinningStrategyName
   "Schema for a valid value for the `strategy-name` param of a `binning-strategy` clause."
   (s/enum :num-bins :bin-width :default))
-
-(def BinnableField
-  "Schema for any sort of field clause that can be wrapped by a `binning-strategy` clause."
-  (one-of field-id field-literal joined-field fk-> datetime-field))
-
-(def ResolvedBinningStrategyOptions
-  "Schema for map of options tacked on to the end of `binning-strategy` clauses by the `binning` middleware."
-  {:num-bins   su/IntGreaterThanZero
-   :bin-width  (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
-   :min-value  s/Num
-   :max-value  s/Num})
-
-;; binning strategy must match one of the three schemas below -- the param differs for different strategies.
-
-(defclause ^{:deprecated "0.39.0", :clause-name :binning-strategy} binning-strategy:num-bins
-  field            BinnableField
-  strategy-name    (s/eq :num-bins)
-  num-bins         su/IntGreaterThanZero
-  ;; These are added in automatically by the `binning` middleware. Don't add them yourself, as they're just be
-  ;; replaced. Driver implementations can rely on this being populated
-  resolved-options (optional ResolvedBinningStrategyOptions))
-
-(defclause ^{:deprecated "0.39.0", :clause-name :binning-strategy} binning-strategy:bin-width
-  field            BinnableField
-  strategy-name    (s/eq :bin-width)
-  bin-width        (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
-  resolved-options (optional ResolvedBinningStrategyOptions))
-
-(defclause ^{:deprecated "0.39.0", :clause-name :binning-strategy} binning-strategy:default
-  field            BinnableField
-  strategy-name    (s/eq :default)
-  _                (optional (s/eq nil))
-  resolved-options (optional ResolvedBinningStrategyOptions))
-
-;; this is only used for purposes of error messages for a `binning-strategy` that doesn't match one of the three
-;; specific schemas above
-(defclause ^:private ^{:deprecated "0.39.0", :clause-name :binning-strategy} binning-strategy:-generic
-  field            BinnableField
-  strategy-name    BinningStrategyName
-  param            (optional s/Num)
-  resolved-options (optional ResolvedBinningStrategyOptions))
-
-(def ^{:requires-features #{:binning}, :clause-name :binning-strategy, :deprecated "0.39.0"} binning-strategy
-  "Schema for a valid `:binning-strategy` clause."
-  (letfn [(strategy= [a-strategy]
-            (fn [clause]
-              (core/and (is-clause? :binning-strategy clause)
-                        (let [[_ _ strategy] clause]
-                          (core/= strategy a-strategy)))))]
-    (s/conditional
-     (strategy= :num-bins)  binning-strategy:num-bins
-     (strategy= :bin-width) binning-strategy:bin-width
-     (strategy= :default)   binning-strategy:default
-     :else                  binning-strategy:-generic)))
 
 (defn- validate-bin-width [schema]
   (s/constrained
@@ -322,6 +245,7 @@
    "You must specify :num-bins when using the :num-bins strategy."))
 
 (def FieldBinningOptions
+  "Schema for `:binning` options passed to a `:field` clause."
   (-> {:strategy                   BinningStrategyName
        (s/optional-key :num-bins)  su/IntGreaterThanZero
        (s/optional-key :bin-width) (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
@@ -348,11 +272,16 @@
 
 (def ^:private FieldOptions
   (-> {(s/optional-key :base-type)     (s/maybe su/FieldType)
+       ;;
        ;; replaces `fk->`
+       ;;
+       ;; `:source-field` is used to refer to a Field from a different Table you would like IMPLICITLY JOINED to the
+       ;; source table.
        ;;
        ;; If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
        ;; `:source-field` should be for information purposes only.
        (s/optional-key :source-field)  (s/maybe (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
+       ;;
        ;; `:temporal-unit` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort.
        ;;
        ;; There is no requirement that all `:type/Temporal` derived Fields specify a `:temporal-unit`, but for legacy
@@ -362,10 +291,18 @@
        ;; details. `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they
        ;; do any special datetime handling for plain `:field` clauses when their Field derives from `:type/DateTime`.
        (s/optional-key :temporal-unit) (s/maybe DateTimeUnit)
+       ;;
        ;; replaces `joined-field`
+       ;;
+       ;; `:join-alias` is used to refer to a Field from a different Table/nested query that you are EXPLICITLY
+       ;; JOINING against.
        (s/optional-key :join-alias)    (s/maybe su/NonBlankString)
+       ;;
        ;; replaces `binning-strategy`
+       ;;
+       ;; Using binning requires the driver to support the `:binning` feature.
        (s/optional-key :binning)       (s/maybe FieldBinningOptions)
+       ;;
        s/Keyword                       s/Any}
       validate-temporal-unit))
 
@@ -917,13 +854,17 @@
 
 (def Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
-  specified in the incoming query, or implicitly generated when one uses a `:fk->` clause.
-  In the top-level query, you can reference Fields from the joined table or nested query by the `:fk->` clause for
-  implicit joins; for explicit joins, you *must* specify `:alias` yourself; you can then reference Fields by using a
-  `:joined-field` clause, e.g.
+  specified in the incoming query, or implicitly generated when one uses a `:field` clause with `:source-field`.
 
-    [:joined-field \"my_join_alias\" [:field 1 nil]]                                    ; for joins against other Tables/MBQL source queries
-    [:joined-field \"my_join_alias\" [:field \"my_field\" {:base-type :field/Integer}]] ; for joins against native queries"
+  In the top-level query, you can reference Fields from the joined table or nested query by including `:source-field`
+  in the `:field` options (known as implicit joins); for explicit joins, you *must* specify `:join-alias` yourself; in
+  the `:field` options, e.g.
+
+    ;; for joins against other Tables/MBQL source queries
+    [:field 1 {:join-alias \"my_join_alias\"}]
+
+    ;; for joins against native queries
+    [:field \"my_field\" {:base-type :field/Integer, :join-alias \"my_join_alias\"}]"
   (->
    {;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
     ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!

@@ -120,11 +120,11 @@
          (drop-while (partial apply not=))
          ffirst)))
 
-(s/defn ^:private nicer-breakout* :- mbql.s/ResolvedBinningStrategyOptions
+(s/defn ^:private nicer-breakout* :- su/Map
   "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
   \"nice\" step (bin width)."
   [strategy                                         :- mbql.s/BinningStrategyName
-   {:keys [min-value max-value bin-width num-bins]} :- mbql.s/ResolvedBinningStrategyOptions]
+   {:keys [min-value max-value bin-width num-bins]} :- su/Map]
   (let [bin-width             (if (= strategy :num-bins)
                                 (nicer-bin-width min-value max-value num-bins)
                                 bin-width)
@@ -136,8 +136,8 @@
                   (calculate-num-bins min-value max-value bin-width))
      :bin-width bin-width}))
 
-(s/defn ^:private nicer-breakout :- (s/maybe mbql.s/ResolvedBinningStrategyOptions)
-  [strategy :- mbql.s/BinningStrategyName, opts :- mbql.s/ResolvedBinningStrategyOptions]
+(s/defn ^:private nicer-breakout :- (s/maybe su/Map)
+  [strategy :- mbql.s/BinningStrategyName, opts :- su/Map]
   (let [f (partial nicer-breakout* strategy)]
     ((fixed-point f) opts)))
 

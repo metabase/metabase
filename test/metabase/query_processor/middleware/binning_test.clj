@@ -116,7 +116,7 @@
               (mt/test-qp-middleware
                binning/update-binning-strategy
                {:query    {:source-table (mt/id :checkins)
-                           :breakout     [[:field (u/the-id field) {:strategy :default}]]}
+                           :breakout     [[:field (u/the-id field) {:binning {:strategy :default}}]]}
                 :type     :query
                 :database (mt/id)})))))
 
