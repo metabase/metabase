@@ -224,6 +224,16 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression", "number", "string"],
   },
+  "is-null": {
+    displayName: `isnull`,
+    type: "boolean",
+    args: ["expression"],
+  },
+  "is-empty": {
+    displayName: `isempty`,
+    type: "boolean",
+    args: ["expression"],
+  },
   // other expression functions
   coalesce: {
     displayName: `coalesce`,
@@ -380,6 +390,8 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "starts-with",
   "between",
   "time-interval",
+  "is-null",
+  "is-empty",
   // other
   "coalesce",
 ]);
