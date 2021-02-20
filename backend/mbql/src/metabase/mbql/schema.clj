@@ -922,8 +922,8 @@
   implicit joins; for explicit joins, you *must* specify `:alias` yourself; you can then reference Fields by using a
   `:joined-field` clause, e.g.
 
-    [:joined-field \"my_join_alias\" [:field-id 1]]                                ; for joins against other Tabless
-    [:joined-field \"my_join_alias\" [:field-literal \"my_field\" :field/Integer]] ; for joins against nested queries"
+    [:joined-field \"my_join_alias\" [:field 1 nil]]                                    ; for joins against other Tables/MBQL source queries
+    [:joined-field \"my_join_alias\" [:field \"my_field\" {:base-type :field/Integer}]] ; for joins against native queries"
   (->
    {;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
     ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
@@ -1259,10 +1259,3 @@
   "Compiled schema validator for an [outer] Metabase query. (Pre-compling a validator is more efficient; use this
   instead of calling `(s/validate Query query)` or similar."
   (s/validator Query))
-
-[:binning-strategy
- [:datetime-field
-  [:joined-field "my_join"
-   [:field-literal "my_field" :type/DateTimeWithLocalTZ]]
-  :month]
- :num-bins 10]

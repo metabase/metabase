@@ -145,7 +145,7 @@
    remapping-dimensions   :- (s/maybe [ExternalRemappingDimension])
    internal-remap-columns :- (s/maybe [su/Map])]
   ;; We have to complicate our lives a bit and account for the possibility that dimensions might be
-  ;; used in an upstream `source-query`. If so, `columns` will treat them as `:field-literal`s, erasing
+  ;; used in an upstream `source-query`. If so, `columns` will treat them as `:field` w/ names, erasing
   ;; IDs. In that case reconstruct the mappings using names.
   ;;
   ;; TODO:

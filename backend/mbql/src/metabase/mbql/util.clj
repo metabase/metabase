@@ -364,7 +364,7 @@
   [m]
   (replace m
     [clause field [:relative-datetime :current & _]]
-    [clause field [:relative-datetime 0 (or (match-one field [:field _ (m :guard :temporal-unit)] (:temporal-unit m))
+    [clause field [:relative-datetime 0 (or (match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))
                                             :default)]]))
 
 (s/defn desugar-filter-clause :- mbql.s/Filter

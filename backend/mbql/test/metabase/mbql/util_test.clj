@@ -33,7 +33,7 @@
            (mbql.u/match {:query {:filter [:=
                                            [:field 10 nil]
                                            [:field 20 nil]]}}
-             [:field-id & _])))))
+             [:field & _])))))
 
 (deftest match-keywords-test
   (testing "is `match` nice enought to automatically wrap raw keywords in appropriate patterns for us?"
@@ -70,7 +70,7 @@
 (def ^:private a-query
   {:breakout [[:field 10 nil]
               [:field 20 nil]
-              [:field "Wow" :type/*]]
+              [:field "Wow" {:base-type :type/*}]]
    :fields   [[:field 40 {:source-field 30}]]})
 
 (deftest match-result-paramater-test
@@ -211,7 +211,7 @@
   (testing "can we use `replace` to replace a specific clause?"
     (is (= {:breakout [[:field 10 {:temporal-unit :day}]
                        [:field 20 {:temporal-unit :day}]
-                       [:field "Wow" :type/*]]
+                       [:field "Wow" {:base-type :type/*}]]
             :fields   [[:field 40 {:source-field 30}]]}
            (mbql.u/replace a-query
              [:field id nil]
@@ -221,30 +221,37 @@
   (testing "can we wrap the pattern in a map to restrict what gets replaced?"
     (is (= {:breakout [[:field 10 {:temporal-unit :day}]
                        [:field 20 {:temporal-unit :day}]
-                       [:field "Wow" :type/*]]
-            :fields   [[:fk-> [:field 30 nil] [:field-id 40]]]}
-           (mbql.u/replace-in a-query [:breakout] [:field id nil]
-                              [:field id {:temporal-unit :day}])))))
+                       [:field "Wow" {:base-type :type/*}]]
+            :fields   [[:field 40 {:source-field 30}]]}
+           (mbql.u/replace-in a-query [:breakout]
+             [:field (id :guard integer?) nil]
+             [:field id {:temporal-unit :day}])))))
 
 (deftest replace-multiple-patterns-test
   (testing "can we use multiple patterns at the same time?!"
-    (is (= {:breakout [[:field 10 nil] [:field 20 nil] {:name "Wow"}], :fields [30]}
-           (mbql.u/replace a-query
-             [:fk-> [:field-id field-id] _] field-id
-             [:field-literal field-name]    {:name field-name})))))
+    (is (= {:breakout [[:field 10 {:temporal-unit :day}]
+                       [:field 20 {:temporal-unit :day}]
+                       [:field "Wow" {:base-type :type/*, :temporal-unit :month}]]
+            :fields   [[:field 40 {:source-field 30}]]}
+           (mbql.u/replace-in a-query [:breakout]
+             [:field (id :guard integer?) nil]
+             [:field id {:temporal-unit :day}]
+
+             [:field (id :guard string?) opts]
+             [:field id (assoc opts :temporal-unit :month)])))))
 
 (deftest replace-field-ids-test
-  (testing "can we use `replace` to replace the ID of the dest Field in fk-> clauses?"
+  (testing "can we use `replace` to replace the ID of the Field in :field clauses?"
     (is (= {:breakout [[:field 10 nil]
                        [:field 20 nil]
-                       [:field "Wow" :type/*]]
+                       [:field "Wow" {:base-type :type/*}]]
             :fields   [[:field 100 {:source-field 30}]]}
            (mbql.u/replace a-query
-             [:fk-> source [:field-id 40]]
-             [:fk-> source [:field 100 nil]])))))
+             [:field 40 opts]
+             [:field 100 opts])))))
 
 (deftest replace-fix-bad-mbql-test
-  (testing "can we use `replace` to fix `fk->` clauses where both args are unwrapped IDs?"
+  (testing "can we use `replace` to fix (legacy) `fk->` clauses where both args are unwrapped IDs?"
     (is (= {:query {:fields [[:fk-> [:field 1 nil] [:field 2 nil]]
                              [:fk-> [:field 3 nil] [:field 4 nil]]]}}
            (mbql.u/replace-in
@@ -252,40 +259,36 @@
                               [:fk-> [:field 3 nil] [:field 4 nil]]]}}
             [:query :fields]
             [:fk-> (source :guard integer?) (dest :guard integer?)]
-            [:fk-> [:field-id source] [:field-id dest]])))))
+            [:fk-> [:field source nil] [:field dest nil]])))))
 
 (deftest replace-raw-keyword-patterns-test
   (testing "does `replace` accept a raw keyword as the pattern the way `match` does?"
-    (is (= {:fields ["WOW"
-                     [:datetime-field "WOW" :day]
-                     [:datetime-field [:fk-> "WOW" "WOW"] :month]]}
-           (mbql.u/replace another-query :field-id "WOW")))))
+    (is (= {:fields ["WOW" "WOW" "WOW"]}
+           (mbql.u/replace another-query :field "WOW")))))
 
 (deftest replace-set-of-keywords-test
   (testing "does `replace` accept a set of keywords the way `match` does?"
     (is (= {:fields ["WOW" "WOW" "WOW"]}
-           (mbql.u/replace another-query #{:datetime-field :field-id} "WOW")))))
+           (mbql.u/replace another-query #{:field :field-id} "WOW")))))
 
 (deftest replace-&match-test
   (testing "can we use the anaphor `&match` to look at the entire match?"
     (is (= {:fields [[:field 1 nil]
-                     [:magical-field
-                      [:field 2 {:temporal-unit :day}]]
-                     [:magical-field
-                      [:datetime-field [:fk-> [:field 3 nil] [:field 4 nil]] :month]]]}
-           (mbql.u/replace another-query :datetime-field [:magical-field &match])))))
+                     [:magical-field [:field 2 {:temporal-unit :day}]]
+                     [:magical-field [:field 4 {:source-field 3, :temporal-unit :month}]]]}
+           (mbql.u/replace another-query [:field _ (_ :guard :temporal-unit)] [:magical-field &match])))))
 
 (deftest replace-&parents-test
   (testing "can we use the anaphor `&parents` to look at the parents of the match?"
-    (is (= {:fields
-            [[:field 1 nil]
-             [:datetime-field "WOW" :day]
-             [:datetime-field [:fk-> "WOW" "WOW"] :month]]}
+    (is (= {:fields [[:a "WOW"]
+                     [:b 200]]}
            ;; replace field ID clauses that are inside a datetime-field clause
-           (mbql.u/replace another-query :field-id
-                           (if (contains? (set &parents) :datetime-field)
-                             "WOW"
-                             &match))))))
+           (mbql.u/replace {:fields [[:a [:b 100]]
+                                     [:b 200]]}
+             :b
+             (if (contains? (set &parents) :a)
+               "WOW"
+               &match))))))
 
 (deftest replace-by-class-test
   (testing "can we replace using a CLASS?"
@@ -302,14 +305,16 @@
 
 (deftest replace-by-predicate-test
   (testing "can we replace using a PREDICATE?"
-    (is (= {:filter [:and [:= [:field-id nil] 4000.0] [:= [:field-id nil] 5000.0]]}
+    (is (= {:filter [:and
+                     [:= [:field nil nil] 4000.0]
+                     [:= [:field nil nil] 5000.0]]}
            ;; find the integer args to `:=` clauses that are not inside `:field-id` clauses and make them FLOATS
            (mbql.u/replace {:filter [:and
                                      [:= [:field 1 nil] 4000]
                                      [:= [:field 2 nil] 5000]]}
-                           integer?
-                           (when (= := (last &parents))
-                             (float &match)))))))
+             integer?
+             (when (= := (last &parents))
+               (float &match)))))))
 
 (deftest complex-replace-test
   (testing "can we do fancy stuff like remove all the filters that use datetime fields from a query?"
@@ -322,7 +327,7 @@
                              [:field "ga:date" {:temporal-unit :day}]
                              [:absolute-datetime #inst "2016-11-08T00:00:00.000-00:00" :day]]
                             [:= [:field 100 nil] 20]]
-             [_ [:datetime-field & _] & _] nil)))))
+             [_ [:field _ (_ :guard :temporal-unit)] & _] nil)))))
 
 (deftest replace-short-circut-test
   (testing (str "can we use short-circuting patterns to do something tricky like only replace `:field-id` clauses that "
@@ -570,30 +575,30 @@
       "keywords like `:current` should work correctly"))
 
 (deftest desugar-relative-datetime-with-current-test
-  (is (= [:=
-          [:field 1 {:temporal-unit :minute}]
-          [:relative-datetime 0 :minute]]
-         (mbql.u/desugar-filter-clause
-          [:=
-           [:field 1 {:temporal-unit :minute}]
-           [:relative-datetime :current]]))
-      "when comparing `:relative-datetime`to `:datetime-field`, it should take the unit of the `:datetime-field`")
-  (is (= [:=
-          [:field 1 nil]
-          [:relative-datetime 0 :default]]
-         (mbql.u/desugar-filter-clause
-          [:=
-           [:field 1 nil]
-           [:relative-datetime :current]]))
-      "otherwise it should just get a unit of `:default`")
-  (is (= [:=
-          [:binning-strategy [:field 1 {:temporal-unit :week}] :default]
-          [:relative-datetime 0 :week]]
-         (mbql.u/desugar-filter-clause
-          [:=
-           [:binning-strategy [:field 1 {:temporal-unit :week}] :default]
-           [:relative-datetime :current]]))
-      "we should be able to handle datetime fields even if they are nested inside another clause"))
+  (testing "when comparing `:relative-datetime`to `:field`, it should take the temporal unit of the `:field`"
+    (is (= [:=
+            [:field 1 {:temporal-unit :minute}]
+            [:relative-datetime 0 :minute]]
+           (mbql.u/desugar-filter-clause
+            [:=
+             [:field 1 {:temporal-unit :minute}]
+             [:relative-datetime :current]]))))
+  (testing "otherwise it should just get a unit of `:default`"
+    (is (= [:=
+            [:field 1 nil]
+            [:relative-datetime 0 :default]]
+           (mbql.u/desugar-filter-clause
+            [:=
+             [:field 1 nil]
+             [:relative-datetime :current]]))))
+  (testing "we should be able to handle datetime fields even if they are nested inside another clause"
+    (is (= [:=
+            [:field 1 {:temporal-unit :week, :binning {:strategy :default}}]
+            [:relative-datetime 0 :week]]
+           (mbql.u/desugar-filter-clause
+            [:=
+             [:field 1 {:temporal-unit :week, :binning {:strategy :default}}]
+             [:relative-datetime :current]])))))
 
 (deftest desugar-other-filter-clauses-test
   (testing "desugaring := and :!= with extra args"

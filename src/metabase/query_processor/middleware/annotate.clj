@@ -79,11 +79,11 @@
              (merge
               {:display_name (u/qualified-name col-name)
                :source       :native}
-              ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
-              ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
-              ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
-              ;; `:field-literal`, omit the `:field_ref`.
-              (when (seq col-name)
+              ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does
+              ;; this for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank
+              ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
+              ;; valid `:field`, omit the `:field_ref`.
+              (when-not (str/blank? col-name)
                 {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
               driver-col-metadata))))))
 
@@ -491,7 +491,7 @@
       source-query
       (flow-field-metadata (cols-for-source-query inner-query results) cols)
 
-      (every? (partial mbql.u/is-clause? :field-literal) fields)
+      (every? #(mbql.u/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
 
       :else
