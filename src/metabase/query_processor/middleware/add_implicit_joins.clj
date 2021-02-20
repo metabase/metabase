@@ -105,10 +105,7 @@
     form
     (let [needed (set (filter some? (map (comp ::needs meta) joins)))]
       (update-in form [:source-query :fields] (fn [existing-fields]
-                                                (m/distinct-by
-                                                 (fn [[_ id-or-name {:keys [join-alias]}]]
-                                                   [id-or-name join-alias])
-                                                 (concat existing-fields needed)))))))
+                                                (distinct (concat existing-fields needed)))))))
 
 (defn- add-referenced-fields-to-source [form reused-joins]
   (let [reused-join-alias? (set (map :alias reused-joins))

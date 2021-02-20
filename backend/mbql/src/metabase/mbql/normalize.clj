@@ -531,6 +531,13 @@
   [clause]
   clause)
 
+(defmethod canonicalize-mbql-clause :field
+  [[_ id-or-name opts :as clause]]
+  (if (is-clause? :field id-or-name)
+    (let [[_ nested-id-or-name nested-opts] id-or-name]
+      (canonicalize-mbql-clause [:field nested-id-or-name (merge nested-opts opts)]))
+    clause))
+
 ;;; legacy clauses
 
 (defmethod canonicalize-mbql-clause :field-id

@@ -279,3 +279,24 @@
                       example-result-cols-price
                       example-result-cols-category]}
               []))))))
+
+(deftest dimension-remappings-test
+  (testing "Make sure columns from remapping Dimensions are spliced into the query during pre-processing"
+    (mt/dataset sample-dataset
+      (let [query (mt/mbql-query orders
+                    {:fields   [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity]
+                     :joins    [{:fields       :all
+                                 :source-table $$products
+                                 :condition    [:= $product_id &Products.products.id]
+                                 :alias        "Products"}]
+                     :order-by [[:asc $id]]
+                     :limit    2})]
+        (doseq [nesting-level [0 1]
+                :let          [query (mt/nest-query query nesting-level)]]
+          (testing (format "nesting level = %d" nesting-level)
+            (mt/with-column-remappings [orders.product_id products.title]
+              (is (= (update-in
+                      query
+                      (concat [:query] (repeat nesting-level :source-query) [:fields])
+                      concat [(mt/$ids orders $product_id->products.title)])
+                     (:pre (mt/test-qp-middleware add-dim-projections/add-remapping query)))))))))))

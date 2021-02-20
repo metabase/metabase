@@ -50,9 +50,9 @@
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
   [fields :- [mbql.s/Field]]
-  (when-let [field-ids (seq (map second (filter (partial mbql.u/is-clause? :field-id) fields)))]
+  (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
     (u/key-by :field_id (db/select [Dimension :field_id :name :human_readable_field_id]
-                          :field_id [:in (set field-ids)]
+                          :field_id [:in field-ids]
                           :type     "external"))))
 
 (s/defn ^:private create-remap-col-tuples :- [[(s/one mbql.s/field            "Field")

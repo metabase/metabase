@@ -198,10 +198,8 @@
       (:temporal-unit opts)
       (assoc :unit (:temporal-unit opts))
 
-      ;; only include `:source_alias` info for Fields that are Joined EXPLICITLY. If `:source-field` is present, this
-      ;; indicates an IMPLICIT join.
-      (and (:join-alias opts) (not (:source-field opts)))
-      (assoc :source_alias (:join-alias opts))
+      (or (:join-alias opts) (:alias join))
+      (assoc :source_alias (or (:join-alias opts) (:alias join)))
 
       join
       (update :display_name display-name-for-joined-field join)

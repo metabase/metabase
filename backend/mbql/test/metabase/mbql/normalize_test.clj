@@ -423,14 +423,23 @@
       (is (= [:field-id 10]
              (#'normalize/wrap-implicit-field-id [:field-id 10]))))))
 
+(deftest canonicalize-field-test
+  (canonicalize-tests
+    "If someone accidentally nests `:field` clauses, we should fix it for them."
+    {{:query {:fields [[:field [:field 1 {:a 100, :b 200}] {:b 300}]]}}
+     {:query {:fields [[:field 1 {:a 100, :b 300}]]}}
+
+     {:query {:fields [[:field [:field [:field 1 {:a 100, :b 200}] {:b 300}] {:a 400, :c 500}]]}}
+     {:query {:fields [[:field 1 {:a 400, :b 300, :c 500}]]}}}))
+
 
 ;;; ------------------------------------------------ binning strategy ------------------------------------------------
 
 (deftest canonicalize-binning-strategy-test
   (canonicalize-tests
-   "make sure `binning-strategy` wraps implicit Field IDs"
-   {{:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}
-    {:query {:breakout [[:field 10 {:binning {:strategy :bin-width, :bin-width 2000}}]]}}}))
+    "make sure `binning-strategy` wraps implicit Field IDs"
+    {{:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}
+     {:query {:breakout [[:field 10 {:binning {:strategy :bin-width, :bin-width 2000}}]]}}}))
 
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
