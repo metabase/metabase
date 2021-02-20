@@ -277,7 +277,8 @@
           (assoc
            :table_id     (str "card__" card-id)
            :id           (or (:id col)
-                             [:field-literal (:name col) (or (:base_type col) :type/*)])
+                             ;; TODO -- what????
+                             [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
            ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
            ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
            ;; the dimension options

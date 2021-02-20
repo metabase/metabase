@@ -388,7 +388,7 @@
            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
-  (assoc field :id ["field-literal" field-name base-type]))
+  (assoc field :id ["field" field-name {:base-type base-type}]))
 
 (defn- default-card-field-for-venues [table-id]
   {:table_id                 table-id
@@ -432,27 +432,27 @@
                                             :base_type    "type/Text"
                                             :semantic_type "type/Name"
                                             :fingerprint  (:name mutil/venue-fingerprints)
-                                            :field_ref    ["field-literal" "NAME" "type/Text"]}
+                                            :field_ref    ["field" "NAME" {:base-type "type/Text"}]}
                                            {:name         "ID"
                                             :display_name "ID"
                                             :base_type    "type/BigInteger"
                                             :semantic_type nil
                                             :fingerprint  (:id mutil/venue-fingerprints)
-                                            :field_ref    ["field-literal" "ID" "type/BigInteger"]}
+                                            :field_ref    ["field" "ID" {:base-type "type/BigInteger"}]}
                                            (with-numeric-dimension-options
                                              {:name         "PRICE"
                                               :display_name "PRICE"
                                               :base_type    "type/Integer"
                                               :semantic_type nil
                                               :fingerprint  (:price mutil/venue-fingerprints)
-                                              :field_ref    ["field-literal" "PRICE" "type/Integer"]})
+                                              :field_ref    ["field" "PRICE" {:base-type "type/Integer"}]})
                                            (with-coordinate-dimension-options
                                              {:name         "LATITUDE"
                                               :display_name "LATITUDE"
                                               :base_type    "type/Float"
                                               :semantic_type "type/Latitude"
                                               :fingerprint  (:latitude mutil/venue-fingerprints)
-                                              :field_ref    ["field-literal" "LATITUDE" "type/Float"]})])})
+                                              :field_ref    ["field" "LATITUDE" {:base-type "type/Float"}]})])})
                (->> card
                     u/the-id
                     (format "table/card__%d/query_metadata")
@@ -483,22 +483,22 @@
                                          :display_name             "NAME"
                                          :base_type                "type/Text"
                                          :table_id                 card-virtual-table-id
-                                         :id                       ["field-literal" "NAME" "type/Text"]
+                                         :id                       ["field" "NAME" {:base-type "type/Text"}]
                                          :semantic_type            "type/Name"
                                          :default_dimension_option nil
                                          :dimension_options        []
                                          :fingerprint              (:fingerprint name-metadata)
-                                         :field_ref                ["field-literal" "NAME" "type/Text"]}
+                                         :field_ref                ["field" "NAME" {:base-type "type/Text"}]}
                                         {:name                     "LAST_LOGIN"
                                          :display_name             "LAST_LOGIN"
                                          :base_type                "type/DateTime"
                                          :table_id                 card-virtual-table-id
-                                         :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
+                                         :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
                                          :semantic_type            nil
                                          :default_dimension_option (var-get #'table-api/date-default-index)
                                          :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                                          :fingerprint              (:fingerprint last-login-metadata)
-                                         :field_ref                ["field-literal" "LAST_LOGIN" "type/DateTime"]}]}
+                                         :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
                    (mt/user-http-request :crowberto :get 200
                                          (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
 

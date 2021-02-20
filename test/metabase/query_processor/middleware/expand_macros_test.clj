@@ -16,35 +16,35 @@
 (deftest basic-expansion-test
   (testing "no Segment or Metric should yield exact same query"
     (is (= (mbql-query
-            {:filter   [:> [:field-id 4] 1]
-             :breakout [[:field-id 17]]})
+            {:filter   [:> [:field 4 nil] 1]
+             :breakout [[:field 17 nil]]})
            (#'expand-macros/expand-metrics-and-segments
             (mbql-query
-             {:filter   [:> [:field-id 4] 1]
-              :breakout [[:field-id 17]]}))))))
+             {:filter   [:> [:field 4 nil] 1]
+              :breakout [[:field 17 nil]]}))))))
 
 (deftest segments-test
  (mt/with-temp* [Database [{database-id :id}]
                  Table    [{table-id :id}     {:db_id database-id}]
                  Segment  [{segment-1-id :id} {:table_id   table-id
-                                               :definition {:filter [:and [:= [:field-id 5] "abc"]]}}]
+                                               :definition {:filter [:and [:= [:field 5 nil] "abc"]]}}]
                  Segment  [{segment-2-id :id} {:table_id   table-id
-                                               :definition {:filter [:and [:is-null [:field-id 7]]]}}]]
+                                               :definition {:filter [:and [:is-null [:field 7 nil]]]}}]]
    (is (= (mbql-query
            {:filter   [:and
-                       [:= [:field-id 5] "abc"]
+                       [:= [:field 5 nil] "abc"]
                        [:or
-                        [:is-null [:field-id 7]]
-                        [:> [:field-id 4] 1]]]
-            :breakout [[:field-id 17]]})
+                        [:is-null [:field 7 nil]]
+                        [:> [:field 4 nil] 1]]]
+            :breakout [[:field 17 nil]]})
           (#'expand-macros/expand-metrics-and-segments
            (mbql-query
             {:filter   [:and
                         [:segment segment-1-id]
                         [:or
                          [:segment segment-2-id]
-                         [:> [:field-id 4] 1]]]
-             :breakout [[:field-id 17]]}))))))
+                         [:> [:field 4 nil] 1]]]
+             :breakout [[:field 17 nil]]}))))))
 
 (deftest metric-test
   (testing "just a metric (w/out nested segments)"
@@ -53,20 +53,20 @@
                     Metric   [{metric-1-id :id} {:name       "Toucans in the rainforest"
                                                  :table_id   table-id
                                                  :definition {:aggregation [[:count]]
-                                                              :filter      [:and [:= [:field-id 5] "abc"]]}}]]
+                                                              :filter      [:and [:= [:field 5 nil] "abc"]]}}]]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options [:count] {:display-name "Toucans in the rainforest"}]]
                :filter      [:and
-                             [:> [:field-id 4] 1]
-                             [:= [:field-id 5] "abc"]]
-               :breakout    [[:field-id 17]]
-               :order-by    [[:asc [:field-id 1]]]})
+                             [:> [:field 4 nil] 1]
+                             [:= [:field 5 nil] "abc"]]
+               :breakout    [[:field 17 nil]]
+               :order-by    [[:asc [:field 1 nil]]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query
                {:aggregation [[:metric metric-1-id]]
-                :filter      [:> [:field-id 4] 1]
-                :breakout    [[:field-id 17]]
-                :order-by    [[:asc [:field-id 1]]]})))))))
+                :filter      [:> [:field 4 nil] 1]
+                :breakout    [[:field 17 nil]]
+                :order-by    [[:asc [:field 1 nil]]]})))))))
 
 (deftest use-metric-filter-definition-test
   (testing "check that when the original filter is empty we simply use our metric filter definition instead"
@@ -75,19 +75,19 @@
                     Metric   [{metric-1-id :id} {:name       "ABC Fields"
                                                  :table_id   table-id
                                                  :definition {:aggregation [[:count]]
-                                                              :filter      [:and [:= [:field-id 5] "abc"]]}}]]
+                                                              :filter      [:and [:= [:field 5 nil] "abc"]]}}]]
       (is (= (mbql-query
               {:source-table 1000
                :aggregation  [[:aggregation-options [:count] {:display-name "ABC Fields"}]]
-               :filter       [:= [:field-id 5] "abc"]
-               :breakout     [[:field-id 17]]
-               :order-by     [[:asc [:field-id 1]]]})
+               :filter       [:= [:field 5 nil] "abc"]
+               :breakout     [[:field 17 nil]]
+               :order-by     [[:asc [:field 1 nil]]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query
                {:source-table 1000
                 :aggregation  [[:metric metric-1-id]]
-                :breakout     [[:field-id 17]]
-                :order-by     [[:asc [:field-id 1]]]})))))))
+                :breakout     [[:field 17 nil]]
+                :order-by     [[:asc [:field 1 nil]]]})))))))
 
 (deftest metric-with-no-filter-test
   (testing "metric w/ no filter definition"
@@ -98,57 +98,57 @@
                                                  :definition {:aggregation [[:count]]}}]]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options [:count] {:display-name "My Metric"}]]
-               :filter      [:= [:field-id 5] "abc"]
-               :breakout    [[:field-id 17]]
-               :order-by    [[:asc [:field-id 1]]]})
+               :filter      [:= [:field 5 nil] "abc"]
+               :breakout    [[:field 17 nil]]
+               :order-by    [[:asc [:field 1 nil]]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query
                {:aggregation [[:metric metric-1-id]]
-                :filter      [:= [:field-id 5] "abc"]
-                :breakout    [[:field-id 17]]
-                :order-by    [[:asc [:field-id 1]]]})))))))
+                :filter      [:= [:field 5 nil] "abc"]
+                :breakout    [[:field 17 nil]]
+                :order-by    [[:asc [:field 1 nil]]]})))))))
 
 (deftest metric-with-nested-segments-test
   (testing "metric w/ nested segments"
     (mt/with-temp* [Database [{database-id :id}]
                     Table    [{table-id :id}     {:db_id database-id}]
                     Segment  [{segment-1-id :id} {:table_id   table-id
-                                                  :definition {:filter [:and [:between [:field-id 9] 0 25]]}}]
+                                                  :definition {:filter [:and [:between [:field 9 nil] 0 25]]}}]
                     Segment  [{segment-2-id :id} {:table_id   table-id
-                                                  :definition {:filter [:and [:is-null [:field-id 7]]]}}]
+                                                  :definition {:filter [:and [:is-null [:field 7 nil]]]}}]
                     Metric   [{metric-1-id :id}  {:name       "My Metric"
                                                   :table_id   table-id
-                                                  :definition {:aggregation [[:sum [:field-id 18]]]
+                                                  :definition {:aggregation [[:sum [:field 18 nil]]]
                                                                :filter      [:and
-                                                                             [:= [:field-id 5] "abc"]
+                                                                             [:= [:field 5 nil] "abc"]
                                                                              [:segment segment-1-id]]}}]]
       (is (= (mbql-query
               {:source-table 1000
-               :aggregation  [[:aggregation-options [:sum [:field-id 18]] {:display-name "My Metric"}]]
+               :aggregation  [[:aggregation-options [:sum [:field 18 nil]] {:display-name "My Metric"}]]
                :filter       [:and
-                              [:> [:field-id 4] 1]
-                              [:is-null [:field-id 7]]
-                              [:= [:field-id 5] "abc"]
-                              [:between [:field-id 9] 0 25]]
-               :breakout     [[:field-id 17]]
-               :order-by     [[:asc [:field-id 1]]]})
+                              [:> [:field 4 nil] 1]
+                              [:is-null [:field 7 nil]]
+                              [:= [:field 5 nil] "abc"]
+                              [:between [:field 9 nil] 0 25]]
+               :breakout     [[:field 17 nil]]
+               :order-by     [[:asc [:field 1 nil]]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query
                {:source-table 1000
                 :aggregation  [[:metric metric-1-id]]
                 :filter       [:and
-                               [:> [:field-id 4] 1]
+                               [:> [:field 4 nil] 1]
                                [:segment segment-2-id]]
-                :breakout     [[:field-id 17]]
-                :order-by     [[:asc [:field-id 1]]]})))))))
+                :breakout     [[:field 17 nil]]
+                :order-by     [[:asc [:field 1 nil]]]})))))))
 
 (deftest metric-with-multiple-aggregation-syntax-test
   (testing "Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly"
     ;; so-called "multiple aggregation syntax" is the norm now -- query normalization will do this automatically
     (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
       (mt/with-temp Metric [metric {:table_id   (mt/id :venues)
-                                    :definition {:aggregation [[:sum [:field-id (mt/id :venues :price)]]]
-                                                 :filter      [:> [:field-id (mt/id :venues :price)] 1]}}]
+                                    :definition {:aggregation [[:sum [:field (mt/id :venues :price) nil]]]
+                                                 :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= [[2 118]
                 [3  39]
                 [4  24]]
@@ -179,69 +179,69 @@
 
 (deftest named-metrics-test
   (testing "make sure we can name a :metric"
-    (mt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field-id 20]]]}}]
+    (mt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
       (is (= (mbql-query
-              {:aggregation [[:aggregation-options [:sum [:field-id 20]] {:display-name "Named Metric"}]]
-               :breakout    [[:field-id 10]]})
+              {:aggregation [[:aggregation-options [:sum [:field 20 nil]] {:display-name "Named Metric"}]]
+               :breakout    [[:field 10 nil]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:display-name "Named Metric"}]]
-                           :breakout    [[:field-id 10]]})))))))
+                           :breakout    [[:field 10 nil]]})))))))
 
 (deftest include-display-name-test
   (testing (str "if the `:metric` is wrapped in aggregation options that do *not* give it a display name, "
                 "`:display-name` should be added to the options")
-    (mt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field-id 20]]]}}]
+    (mt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options
-                              [:sum [:field-id 20]]
+                              [:sum [:field 20 nil]]
                               {:name "auto_generated_name", :display-name "Toucans in the rainforest"}]]
-               :breakout    [[:field-id 10]]})
+               :breakout    [[:field 10 nil]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
-                           :breakout    [[:field-id 10]]}))))))
+                           :breakout    [[:field 10 nil]]}))))))
 
   (testing "a Metric whose :aggregation is already named should not get wrapped in an `:aggregation-options` clause"
     (mt/with-temp Metric [metric {:definition {:aggregation [[:aggregation-options
-                                                              [:sum [:field-id 20]]
+                                                              [:sum [:field 20 nil]]
                                                               {:display-name "My Cool Aggregation"}]]}}]
       (is (= (mbql-query
-              {:aggregation [[:aggregation-options [:sum [:field-id 20]] {:display-name "My Cool Aggregation"}]]
-               :breakout    [[:field-id 10]]})
+              {:aggregation [[:aggregation-options [:sum [:field 20 nil]] {:display-name "My Cool Aggregation"}]]
+               :breakout    [[:field 10 nil]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query {:aggregation [[:metric (u/the-id metric)]]
-                           :breakout    [[:field-id 10]]}))))))
+                           :breakout    [[:field 10 nil]]}))))))
 
   (testing "...but if it's wrapped in `:aggregation-options`, but w/o given a display name, we should merge the options"
     (mt/with-temp Metric [metric {:definition {:aggregation [[:aggregation-options
-                                                              [:sum [:field-id 20]]
+                                                              [:sum [:field 20 nil]]
                                                               {:name "auto_generated_name"}]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options
-                              [:sum [:field-id 20]]
+                              [:sum [:field 20 nil]]
                               {:name "auto_generated_name", :display-name "Toucans in the rainforest"}]]
-               :breakout    [[:field-id 10]]})
+               :breakout    [[:field 10 nil]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query {:aggregation [[:metric (u/the-id metric)]]
-                           :breakout    [[:field-id 10]]})))))))
+                           :breakout    [[:field 10 nil]]})))))))
 
 (deftest segments-in-share-clauses-test
   (testing "segments in :share clauses"
     (mt/with-temp* [Database [{database-id :id}]
                     Table    [{table-id :id}     {:db_id database-id}]
                     Segment  [{segment-1-id :id} {:table_id   table-id
-                                                  :definition {:filter [:and [:= [:field-id 5] "abc"]]}}]
+                                                  :definition {:filter [:and [:= [:field 5 nil] "abc"]]}}]
                     Segment  [{segment-2-id :id} {:table_id   table-id
-                                                  :definition {:filter [:and [:is-null [:field-id 7]]]}}]]
+                                                  :definition {:filter [:and [:is-null [:field 7 nil]]]}}]]
       (is (= (mbql-query
               {:aggregation [[:share [:and
-                                      [:= [:field-id 5] "abc"]
+                                      [:= [:field 5 nil] "abc"]
                                       [:or
-                                       [:is-null [:field-id 7]]
-                                       [:> [:field-id 4] 1]]]]]})
+                                       [:is-null [:field 7 nil]]
+                                       [:> [:field 4 nil] 1]]]]]})
              (#'expand-macros/expand-metrics-and-segments
               (mbql-query
                {:aggregation [[:share [:and
                                        [:segment segment-1-id]
                                        [:or
                                         [:segment segment-2-id]
-                                        [:> [:field-id 4] 1]]]]]})))))))
+                                        [:> [:field 4 nil] 1]]]]]})))))))

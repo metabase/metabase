@@ -270,7 +270,7 @@
                "2014-07-01T00:00:00"])
              (mt/with-temporary-setting-values [report-timezone "UTC"]
                (-> (mt/run-mbql-query users
-                     {:expressions {:prev_month [:+ [:datetime-field $last_login :day] [:interval -31 :day]]}
+                     {:expressions {:prev_month [:+ !day.last_login [:interval -31 :day]]}
                       :fields      [[:expression :prev_month]]
                       :limit       3
                       :order-by    [[:asc $name]]})
@@ -287,15 +287,16 @@
       (is (= "Simcha Yan"
              (-> (mt/run-mbql-query checkins
                    {:expressions {:prev_month [:+ $date [:interval -31 :day]]}
-                    :fields      [[:joined-field "users__via__user_id" [:field (mt/id :users :name) nil]]
+                    :fields      [[:field (mt/id :users :name) {:join-alias "users__via__user_id"}]
                                   [:expression :prev_month]]
                     :limit       1
                     :order-by    [[:asc $date]]
                     :joins       [{:strategy :left-join
                                    :source-table (mt/id :users)
                                    :alias        "users__via__user_id"
-                                   :condition    [:= $user_id
-                                                  [:joined-field "users__via__user_id" [:field (mt/id :users :id) nil]]]}]})
+                                   :condition    [:=
+                                                  $user_id
+                                                  [:field (mt/id :users :id) {:join-alias "users__via__user_id"}]]}]})
                  mt/rows
                  ffirst))))))
 

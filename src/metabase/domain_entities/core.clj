@@ -50,8 +50,9 @@
 (s/defn mbql-reference :- MBQL
   "Return MBQL clause for a given field-like object."
   [{:keys [id name base_type]}]
-  [:field id nil]
-  [:field name {:base-type base_type}])
+  (if id
+    [:field id nil]
+    [:field name {:base-type base_type}]))
 
 (defn- has-attribute?
   [entity {:keys [field domain_entity has_many]}]
