@@ -15,7 +15,8 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [taoensso.nippy :as nippy]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.mbql.util :as mbql.u])
   (:import org.bson.types.ObjectId))
 
 ;; ## Constants + Helper Fns/Macros
@@ -279,11 +280,11 @@
 (deftest xrays-test
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
-      (is (= true
-             (->> (magic/automagic-analysis (Field (mt/id :venues :price)) {})
-                  :ordered_cards
-                  (mapcat (comp :breakout :query :dataset_query :card))
-                  (not-any? #{[:binning-strategy [:field-id (mt/id :venues :price)] "default"]})))))))
+      (is (empty?
+           (mbql.u/match-one (->> (magic/automagic-analysis (Field (mt/id :venues :price)) {})
+                                  :ordered_cards
+                                  (mapcat (comp :breakout :query :dataset_query :card)))
+             [:field _ (_ :guard :binning)]))))))
 
 (deftest no-values-test
   (mt/test-driver :mongo

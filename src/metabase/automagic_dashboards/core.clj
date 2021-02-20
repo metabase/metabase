@@ -291,18 +291,18 @@
 (defmethod ->reference [:mbql (type Field)]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (cond
-                    link               [:fk-> link id]
-                    fk_target_field_id [:fk-> id fk_target_field_id]
-                    id                 [:field-id id]
-                    :else              [:field-literal name base_type])]
+                    link               [:field id {:source-field link}]
+                    fk_target_field_id [:field fk_target_field_id {:source-field id}]
+                    id                 [:field id nil]
+                    :else              [:field name {:base-type base_type}])]
     (cond
       (isa? base_type :type/Temporal)
-      [:datetime-field reference (or aggregation
-                                     (optimal-datetime-resolution field))]
+      (mbql.u/with-temporal-unit reference (or aggregation
+                                               (optimal-datetime-resolution field)))
 
       (and aggregation
            (isa? base_type :type/Number))
-      [:binning-strategy reference aggregation]
+      (mbql.u/update-field-options reference assoc-in [:binning :strategy] aggregation)
 
       :else
       reference)))

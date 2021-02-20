@@ -318,9 +318,6 @@
 
 (deftest complex-replace-test
   (testing "can we do fancy stuff like remove all the filters that use datetime fields from a query?"
-    ;; (NOTE: this example doesn't take into account the fact that [:binning-strategy ...] can wrap a `:datetime-field`,
-    ;; so it's only appropriate for drivers that don't support binning (e.g. GA). Also the driver QP will need to be
-    ;; written to handle the nils in a filter clause appropriately.)
     (is (= [:and nil [:= [:field 100 nil] 20]]
            (mbql.u/replace [:and
                             [:=

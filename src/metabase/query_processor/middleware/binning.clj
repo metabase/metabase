@@ -203,7 +203,7 @@
       [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)])))
 
 (defn update-binning-strategy-in-inner-query
-  "Update `:binning-strategy` clauses in an `inner` [MBQL] query."
+  "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."
   [{filters :filter, :as inner-query}]
   (let [field-id->filters (filter->field-map filters)]
     (mbql.u/replace inner-query
