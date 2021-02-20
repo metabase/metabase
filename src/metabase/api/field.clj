@@ -227,9 +227,9 @@
       :else
       (api/throw-403))))
 
-;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
-;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
-(api/defendpoint GET "/field-literal%2C:field-name%2Ctype%2F:field-type/values"
+;; match things like GET /field%2Ccreated_at%2options
+;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)
+(api/defendpoint GET "/field%2C:field-name%2Coptions"
   "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
   convenience to simplify the frontend code. It just returns the standard 'empty' field values response."
   ;; we don't actually care what field-name or field-type are, so they're ignored

@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-joins
-  "Middleware that creates corresponding `:joins` for Tables referred to by `:fk->` clauses and replaces those clauses
-  with `:joined-field` clauses."
+  "Middleware that creates corresponding `:joins` for Tables referred to by `:field` clauses with `:source-field` info
+  in the options and adds `:join-alias` info to those `:field` clauses."
   (:refer-clojure :exclude [alias])
   (:require [clojure.set :as set]
             [medley.core :as m]

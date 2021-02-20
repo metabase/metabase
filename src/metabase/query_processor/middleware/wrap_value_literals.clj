@@ -38,7 +38,7 @@
    (when (:temporal-unit opts)
      {:unit (:temporal-unit opts)})
    (when (:base-type opts)
-     {:base_type opts})))
+     {:base_type (:base-type opts)})))
 
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------

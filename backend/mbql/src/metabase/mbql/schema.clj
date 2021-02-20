@@ -197,6 +197,7 @@
 (def ValueTypeInfo
   "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals` middleware to values in
   filter clauses based on the Field in the clause."
+  ;; TODO -- these should use `lisp-case` like everything else in MBQL.
   {(s/optional-key :database_type) (s/maybe su/NonBlankString)
    (s/optional-key :base_type)     (s/maybe su/FieldType)
    (s/optional-key :semantic_type) (s/maybe su/FieldType)

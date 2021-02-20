@@ -34,11 +34,11 @@
 
 (deftest mbql-reference->col-name-test
   (is (= "PRICE"
-         (#'t/mbql-reference->col-name [:field-id (mt/id :venues :price)])))
+         (#'t/mbql-reference->col-name [:field (mt/id :venues :price) nil])))
   (is (= "PRICE"
-         (#'t/mbql-reference->col-name [:field-literal "PRICE" :type/Integer])))
+         (#'t/mbql-reference->col-name [:field "PRICE" {:base-type :type/Integer}])))
   (is (= "PRICE"
-         (#'t/mbql-reference->col-name [{:foo [:field-id (mt/id :venues :price)]}]))))
+         (#'t/mbql-reference->col-name [{:foo [:field (mt/id :venues :price) nil]}]))))
 
 (deftest ->source-table-reference-test
   (testing "Can we turn a given entity into a format suitable for a query's `:source_table`?"

@@ -167,3 +167,16 @@
              (wrap-value-literals
                (mt/mbql-query incidents
                  {:aggregation [[:share [:> !day.timestamp "2015-06-01"]]]})))))))
+
+(deftest base-type-test
+  (testing "Make sure base-type from `:field` w/ name is picked up correctly"
+    (is (= {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]]
+            :filter       [:not [:starts-with
+                                 [:field "A" {:base-type :type/Text}]
+                                 [:value "f" {:base_type :type/Text}]]]
+            :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
+           (#'wrap-value-literals/wrap-value-literals-in-mbql-query
+            {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]],
+             :filter       [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]],
+             :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
+            nil)))))

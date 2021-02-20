@@ -89,7 +89,7 @@
    (let [datetime-but-not-time? (comp date-or-datetime-field? field-id->type-info)]
      (letfn [(wrap-fields [x]
                (mbql.u/replace x
-                 ;; don't replace anything that's already wrapping a `field-id` (other than `:joined-field`)
+                 ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
                  (_ :guard should-not-be-autobucketed?)
                  &match
 

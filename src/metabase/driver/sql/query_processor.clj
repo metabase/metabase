@@ -216,7 +216,7 @@
 
 (def ^:dynamic *table-alias*
   "The alias, if any, that should be used to qualify Fields when building the HoneySQL form, instead of defaulting to
-  schema + Table name. Used to implement things like `:joined-field`s."
+  schema + Table name. Used to implement things like joined `:field`s."
   nil)
 
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
@@ -255,12 +255,13 @@
   [_ identifier]
   identifier)
 
+;; TODO -- we should remove this and record this information directly in the relevant `:field` clauses.
 (def ^:dynamic ^:private *joined-field?*
   "Are we inside a joined field whose join is at the current level of the query?"
   false)
 
 (s/defn ^:private unambiguous-field-alias :- su/NonBlankString
-  [driver [_ field-id {:keys [join-alias]} :as field-clause] :- mbql.s/field:id]
+  [driver [_ field-id {:keys [join-alias]}] :- mbql.s/field:id]
   (let [alias (field->alias driver (qp.store/field field-id))]
     (if (and join-alias alias
              (not= join-alias *table-alias*)
@@ -281,11 +282,10 @@
 
 (defn compile-field-with-join-aliases [driver [_ id-or-name {:keys [join-alias], :as opts} :as field-clause]]
   (let [join-is-at-current-level? (some #(= (:alias %) join-alias) (:joins *query*))]
-    ;; suppose we have a `joined-field` clause like `[:joined-field "Products" [:field-id 1]]`
+    ;; suppose we have a joined `:field` clause like `[:field 1 {:join-alias "Products"}]`
     ;; where Field `1` is `"EAN"`
     (if join-is-at-current-level?
-      ;; if `:joined-field` wrapping a `field-id` is referring to a join at the current level, we need to generate SQL
-      ;; like
+      ;; if joined `:field` is referring to a join at the current level, we need to generate SQL like
       ;;
       ;; ```
       ;; SELECT Products.EAN as Products__EAN
@@ -293,7 +293,7 @@
       (binding [*table-alias*   join-alias
                 *joined-field?* true]
         (->honeysql driver [:field id-or-name (dissoc opts :join-alias)]))
-      ;; if `:joined-field` is referring to a join in a nested source query (i.e., not the current level), we need to
+      ;; if joined `:field` is referring to a join in a nested source query (i.e., not the current level), we need to
       ;; generate SQL like
       ;;
       ;; ```
@@ -904,9 +904,13 @@
   [query]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata :expressions])
-                      (assoc :fields (-> query
-                                         (dissoc :source-query)
-                                         (mbql.u/match #{:field :expression})
+                      (assoc :fields (-> (mbql.u/match (dissoc query :source-query)
+                                           ;; remove the bucketing/binning operations from the source query -- we'll
+                                           ;; do that at the parent level
+                                           [:field id-or-name opts]
+                                           [:field id-or-name (dissoc opts :temporal-unit :binning)]
+                                           :expression
+                                           &match)
                                          distinct)))]
     (-> (mbql.u/replace query
           [:expression expression-name]

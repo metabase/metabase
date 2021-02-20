@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.resolve-joined-fields
-  "Middleware that wraps field references in `:joined-field` clauses where needed."
+  "Middleware that adds `:join-alias` info to `:field` clauses where needed."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
             [metabase.mbql.schema :as mbql.s]
@@ -43,7 +43,7 @@
         (if (= (count explicit-joins) 1)
           (recur field {:joins explicit-joins} clause)
           (let [{:keys [id name]} (qp.store/table table-id)]
-            (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to wrap field references in explicit :joined-field clauses."
+            (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to specify an explicit `:join-alias` in the field reference."
                                  name field-id)
                             {:field      field
                              :error      error-type/invalid-query
@@ -92,11 +92,11 @@
       add-join-alias-to-fields-if-needed*)))
 
 (defn resolve-joined-fields
-  "Wrap field references in `:joined-field` clauses where needed."
+  "Add `:join-alias` info to `:field` clauses where needed."
   [qp]
   (fn [query rff context]
     (let [query' (add-join-alias-to-fields-if-needed query)]
       (when-not (= query query')
         (let [[before after] (data/diff query query')]
-          (log/tracef "Inferred :joined-field clauses: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
+          (log/tracef "Inferred :field :join-alias info: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
       (qp query' rff context))))
