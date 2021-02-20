@@ -64,6 +64,8 @@ const FILTER_FUNCTIONS = [
   { text: "contains(", type: "functions" },
   { text: "endsWith(", type: "functions" },
   { text: "interval(", type: "functions" },
+  { text: "isempty(", type: "functions" },
+  { text: "isnull(", type: "functions" },
   { text: "startsWith(", type: "functions" },
 ];
 const EXPRESSION_OPERATORS = [

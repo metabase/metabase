@@ -3,6 +3,7 @@ import {
   restore,
   openOrdersTable,
   openProductsTable,
+  openReviewsTable,
   popover,
   visitQuestionAdhoc,
 } from "__support__/cypress";
@@ -778,5 +779,84 @@ describe("scenarios > question > filter", () => {
     });
     cy.wait("@cardQuery");
     cy.findByText("Rye").should("not.exist");
+  });
+
+  it("should filter using IsNull() and IsEmpty()", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsNull([Rating])", { delay: 50 });
+    cy.findAllByRole("button")
+      .contains("Done")
+      .should("not.be.disabled")
+      .click();
+
+    cy.get(".QueryBuilder .Icon-add").click();
+
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+    cy.findAllByRole("button")
+      .contains("Done")
+      .should("not.be.disabled")
+      .click();
+
+    // check that filter is applied and rows displayed
+    cy.findByText("Visualize").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
+    openReviewsTable();
+    cy.contains("Reviewer").click();
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Is").click();
+    cy.findByText("Is empty").click();
+    cy.findByText("Update filter").click();
+
+    // filter out everything
+    cy.contains("Showing 0 rows");
+
+    // change the corresponding custom expression
+    cy.findByText("Reviewer is empty").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains("isempty([Reviewer])");
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+    cy.findByText("Done").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert 'is empty' on a numeric column to a custom expression using IsNull()", () => {
+    openReviewsTable();
+    cy.contains("Rating").click();
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Equal to").click();
+    cy.findByText("Is empty").click();
+    cy.findByText("Update filter").click();
+
+    // filter out everything
+    cy.contains("Showing 0 rows");
+
+    // change the corresponding custom expression
+    cy.findByText("Rating is empty").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains("isnull([Rating])");
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsNull([Rating])", { delay: 50 });
+    cy.findByText("Done").click();
+    cy.contains("Showing 1,112 rows");
   });
 });
