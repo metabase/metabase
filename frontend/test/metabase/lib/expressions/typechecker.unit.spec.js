@@ -113,6 +113,8 @@ describe("type-checker", () => {
       expect(filter("5 <= Q").segments).toEqual([]);
       expect(filter("Between([BIG],3,7)").segments).toEqual([]);
       expect(filter("Contains([GI],'Joe')").segments).toEqual([]);
+      expect(filter("IsEmpty([Discount])").segments).toEqual([]);
+      expect(filter("IsNull([Tax])").segments).toEqual([]);
     });
 
     it("should resolve dimensions correctly", () => {
@@ -124,6 +126,8 @@ describe("type-checker", () => {
       expect(filter("5 <= Q").dimensions).toEqual(["Q"]);
       expect(filter("Between([BIG],3,7)").dimensions).toEqual(["BIG"]);
       expect(filter("Contains([GI],'Joe')").dimensions).toEqual(["GI"]);
+      expect(filter("IsEmpty([Discount])").dimensions).toEqual(["Discount"]);
+      expect(filter("IsNull([Tax])").dimensions).toEqual(["Tax"]);
     });
 
     it("should resolve dimensions and segments correctly", () => {
