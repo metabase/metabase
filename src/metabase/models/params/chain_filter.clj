@@ -122,7 +122,7 @@
       (or (when (and (temporal-field? field-id)
                      (string? value))
             (u/ignore-exceptions
-             (params.dates/date-string->filter value field-id)))
+              (params.dates/date-string->filter value field-id)))
           ;; e.g. {$$venues.price 2} -> [:= $$venues.price 2]
           [:= field-clause value]))))
 

@@ -32,6 +32,13 @@
        form))
    x))
 
+(defn- add-name-to-field-id [id]
+  (when id
+    (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id id)]
+      (symbol (format "#_%s.%s"
+                      (db/select-one-field :name Table :id table-id)
+                      field-name)))))
+
 (defn add-names
   "Walk a MBQL snippet `x` and add comment forms with the names of the Fields referenced to any `:field-id` clauses
   encountered. Helpful for debugging!"
@@ -40,21 +47,18 @@
    (fn [form]
      (mbql.u/replace form
        [:field (id :guard integer?) opts]
-       [:field
-        id
-        (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id id)]
-          (symbol (format "#_\"%s.%s\""
-                          (db/select-one-field :name Table :id table-id)
-                          field-name)))
-        opts]
+       [:field id (add-name-to-field-id id) (cond-> opts
+                                              (integer? (:source-field opts))
+                                              (update :source-field (fn [source-field]
+                                                                      (symbol (format "(do %s %d)"
+                                                                                      (add-name-to-field-id source-field)
+                                                                                      source-field)))))]
 
-       [:field-id id]
-       [:field-id
-        id
-        (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id id)]
-          (symbol (format "#_\"%s.%s\""
-                          (db/select-one-field :name Table :id table-id)
-                          field-name)))]))
+       (m :guard (every-pred map? (comp integer? :source-table)))
+       (update m :source-table (fn [table-id]
+                                 (symbol (format "(do #_%s %d)"
+                                                 (db/select-one-field :name Table :id table-id)
+                                                 table-id))))))
    x))
 
 (defn- format-output [x]

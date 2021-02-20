@@ -68,10 +68,8 @@
     (let [unique-name (comp (mbql.u/unique-name-generator) :name Field)]
       (vec
        (mbql.u/match fields
-         ;; don't match Field IDs nested in other clauses
-         [(_ :guard keyword?) [:field (_ :guard integer?) _] & _] nil
-
-         [:field (id :guard (every-pred integer? field-id->remapping-dimension)) _]
+         ;; don't match Fields that have been joined from another Table
+         [:field (id :guard (every-pred integer? field-id->remapping-dimension)) (_ :guard (complement (some-fn :join-alias :source-field)))]
          (let [dimension (field-id->remapping-dimension id)]
            [&match
             [:field (:human_readable_field_id dimension) {:source-field id}]
@@ -95,9 +93,9 @@
   [field->remapped-col breakout-clause]
   (->> breakout-clause
        (mapcat (fn [field]
-              (if-let [remapped-col (get field->remapped-col field)]
-                [remapped-col field]
-                [field])))
+                 (if-let [remapped-col (get field->remapped-col field)]
+                   [remapped-col field]
+                   [field])))
        distinct
        vec))
 
@@ -107,7 +105,7 @@
   and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
   [{{:keys [fields order-by breakout source-query]} :query, :as query} :- mbql.s/Query]
   (let [[source-query-remappings query]
-        (if (and source-query (not (:native source-query))) ;; Only do lifting if source is MBQL query
+        (if (and source-query (not (:native source-query))) ; Only do lifting if source is MBQL query
           (let [[source-query-remappings source-query] (add-fk-remaps (assoc query :query source-query))]
             [source-query-remappings (assoc-in query [:query :source-query] (:query source-query))])
           [nil query])]
