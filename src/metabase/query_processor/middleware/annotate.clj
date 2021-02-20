@@ -119,6 +119,7 @@
 (declare col-info-for-field-clause)
 
 (defn infer-expression-type
+  "Infer base-type/semantic-type information about an `expression` clause."
   [expression]
   (cond
     (string? expression)

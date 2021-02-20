@@ -79,7 +79,7 @@
    :created_at              true
    :updated_at              true
    :archived                false
-   :definition              {:filter ["=" ["field-id" 10] 20]}}
+   :definition              {:filter ["=" ["field" 10 nil] 20]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]]
     (segment-response ((user->client :crowberto) :post 200 "segment"
@@ -130,7 +130,7 @@
    :created_at              true
    :updated_at              true
    :archived                false
-   :definition              {:filter ["!=" ["field-id" 2] "cans"]}}
+   :definition              {:filter ["!=" ["field" 2 nil] "cans"]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]}   {:table_id table-id}]]
@@ -223,7 +223,7 @@
    :created_at              true
    :updated_at              true
    :archived                false
-   :definition              {:filter ["=" ["field-id" 2] "cans"]}}
+   :definition              {:filter ["=" ["field" 2 nil] "cans"]}}
   (-> (tt/with-temp* [Database [{database-id :id}]
                       Table    [{table-id :id} {:db_id database-id}]
                       Segment  [{:keys [id]}   {:creator_id (user->id :crowberto)
@@ -259,7 +259,7 @@
     :user         (-> (user-details (fetch-user :rasta))
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name       {:after "b"}
-                   :definition {:after {:filter [">" ["field-id" 1] 25]}}}
+                   :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
     :description  nil}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
@@ -333,7 +333,7 @@
                        (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
                     :description {:after "One segment to bring them all, and in the DataModel bind them"}
-                    :definition  {:after {:filter ["=" ["field-id" 2] "cans"]}}}
+                    :definition  {:after {:filter ["=" ["field" 2 nil] "cans"]}}}
      :description  nil}]]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]

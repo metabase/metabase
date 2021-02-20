@@ -32,17 +32,20 @@
 ;;; ------------------------------------------------- Datetime Stuff -------------------------------------------------
 
 (def date-bucketing-units
+  "Set of valid units for bucketing or comparing against a *date* Field."
   #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
     :month :month-of-year :quarter :quarter-of-year :year})
 
 (def time-bucketing-units
+  "Set of valid units for bucketing or comparing against a *time* Field."
   #{:default :millisecond :second :minute :minute-of-hour :hour :hour-of-day})
 
 (def datetime-bucketing-units
+  "Set of valid units for bucketing or comparing against a *datetime* Field."
   (set/union date-bucketing-units time-bucketing-units))
 
 (def DateUnit
-  "Valid unit for date bucketing."
+  "Valid unit for *date* bucketing."
   (s/named
    (apply s/enum date-bucketing-units)
    "date-bucketing-unit"))
@@ -51,13 +54,13 @@
 ;; but it does not make sense to say month-of-year(field) = month-of-year("08:00:00"),
 ;; does it? So we'll restrict the set of units a TimeValue can have to ones that have no notion of day/date.
 (def TimeUnit
-  "Valid unit for time bucketing."
+  "Valid unit for *time* bucketing."
   (s/named
    (apply s/enum time-bucketing-units)
    "time-bucketing-unit"))
 
 (def DateTimeUnit
-  "Valid unit for datetime bucketing."
+  "Valid unit for *datetime* bucketing."
   (s/named
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))

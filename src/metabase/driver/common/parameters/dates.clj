@@ -3,13 +3,13 @@
   (:require [java-time :as t]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.params :as params]
             [metabase.query-processor.error-type :as error-type]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [metabase.mbql.util :as mbql.u])
+            [schema.core :as s])
   (:import java.time.temporal.Temporal))
 
 (s/defn date-type?

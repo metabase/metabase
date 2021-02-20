@@ -136,9 +136,9 @@
     (when-not (env/env :drivers)
       (t/testing "Don't write any new tests using expect!"
         (let [ee?            (u/ignore-exceptions (require 'metabase-enterprise.core) true)
-              oss-forms      524
+              oss-forms      338
               ee-forms       25
-              oss-namespaces 49
+              oss-namespaces 42
               ee-namespaces  3]
 
           (t/is (<= total-expect-forms (cond-> oss-forms ee? (+ ee-forms))))

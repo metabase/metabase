@@ -205,10 +205,16 @@
     (mt/dataset sample-dataset
       (is (= (mt/mbql-query orders
                {:filter       [:> *count/Integer 5]
-                :fields       [$created_at &PRODUCTS__via__PRODUCT_ID.products.created_at *count/Integer]
+                :fields       [$created_at
+                               [:field %products.created_at {:source-field %product_id
+                                                             :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
+                               *count/Integer]
                 :source-query {:source-table $$orders
                                :aggregation  [[:count]]
-                               :breakout     [!month.created_at !month.&PRODUCTS__via__PRODUCT_ID.products.created_at]
+                               :breakout     [!month.created_at
+                                              [:field %products.created_at {:source-field  %product_id
+                                                                            :temporal-unit :month
+                                                                            :join-alias    "PRODUCTS__via__PRODUCT_ID"}]]
                                :joins        [{:fields       :none
                                                :alias        "PRODUCTS__via__PRODUCT_ID"
                                                :strategy     :left-join

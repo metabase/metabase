@@ -280,7 +280,9 @@
        (->honeysql driver)
        (cast-field-if-needed driver field)))
 
-(defn compile-field-with-join-aliases [driver [_ id-or-name {:keys [join-alias], :as opts} :as field-clause]]
+(defn compile-field-with-join-aliases
+  "Compile `field-clause` to HoneySQL using the `:join-alias` from the `:field` clause options."
+  [driver [_ id-or-name {:keys [join-alias], :as opts} :as field-clause]]
   (let [join-is-at-current-level? (some #(= (:alias %) join-alias) (:joins *query*))]
     ;; suppose we have a joined `:field` clause like `[:field 1 {:join-alias "Products"}]`
     ;; where Field `1` is `"EAN"`
@@ -308,10 +310,16 @@
             (unambiguous-field-alias driver field-clause))
           (dissoc opts :join-alias)])))))
 
-(defn apply-temporal-bucketing [driver {:keys [temporal-unit]} honeysql-form]
+(defn apply-temporal-bucketing
+  "Apply temporal bucketing for the `:temporal-unit` in the options of a `:field` clause; return a new HoneySQL form that
+  buckets `honeysql-form` appropriately."
+  [driver {:keys [temporal-unit]} honeysql-form]
   (date driver temporal-unit honeysql-form))
 
-(defn apply-binning [{{:keys [bin-width min-value max-value]} :binning} honeysql-form]
+(defn apply-binning
+  "Apply `:binning` options from a `:field` clause; return a new HoneySQL form that bins `honeysql-form`
+  appropriately."
+  [{{:keys [bin-width min-value max-value]} :binning} honeysql-form]
   ;;
   ;; Equation is | (value - min) |
   ;;             | ------------- | * bin-width + min-value

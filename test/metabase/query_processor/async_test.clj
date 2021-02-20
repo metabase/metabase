@@ -10,7 +10,7 @@
                                                {:database (mt/id)
                                                 :type     :query
                                                 :query    {:source-table (mt/id :venues)
-                                                           :fields       [[:field-id (mt/id :venues :name)]]}})]
+                                                           :fields       [[:field (mt/id :venues :name) nil]]}})]
       (is (= [{:name         "NAME"
                :display_name "Name"
                :base_type    :type/Text
@@ -23,5 +23,5 @@
                                                :percent-state  0.0,
                                                :average-length 15.63}}}
                :id           (mt/id :venues :name)
-               :field_ref    [:field-id (mt/id :venues :name)]}]
+               :field_ref    [:field (mt/id :venues :name) nil]}]
              (mt/wait-for-result result-chan 1000))))))
