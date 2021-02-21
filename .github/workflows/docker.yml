@@ -20,6 +20,7 @@ jobs:
       timeout-minutes: 5
     - run: docker ps
     - name: Wait for Metabase to start
-      run: sleep 25
+      run: while ! curl -s localhost:3000/api/health; do sleep 1; done
+      timeout-minutes: 1
     - name: Check API health
       run: curl -s localhost:3000/api/health
