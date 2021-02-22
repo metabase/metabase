@@ -37,7 +37,7 @@
    ;; least a 31*31 search (or 50*20, etc) which sounds like more than enough. Memory is cheap and the items are
    ;; small, so we may as well skew high.
    ;; As a precaution, the scorer that uses this limits the number of tokens (see the `take` call below)
-   :fifo/threshold 1000))
+   :fifo/threshold 2000))
 
 ;;; Scoring
 
