@@ -59,7 +59,7 @@ describeWithToken("postgres > user > query", () => {
     );
   });
 
-  it.skip("should handle the use of `regexextract` in a sandboxed table (metabase#14873)", () => {
+  it("should handle the use of `regexextract` in a sandboxed table (metabase#14873)", () => {
     const CC_NAME = "Firstname";
     // We need ultra-wide screen to avoid scrolling (custom column is rendered at the last position)
     cy.viewport(2200, 1200);
