@@ -113,3 +113,42 @@
       (let [sorted-items (map (fn [i] [[1 2 3 i] (str "item " i)]) (range (+ 10 search-config/max-filtered-results)))]
         (is (= (drop 10 sorted-items)
                (transduce xf search/accumulate-top-results (shuffle sorted-items))))))))
+
+(deftest match-context-test
+  (let [context  #'search/match-context
+        match    (fn [text] {:text text :is_match true})
+        no-match (fn [text] {:text text :is_match false})]
+    (testing "it groups matches together"
+      (is (=
+           [(no-match "this is")
+            (match "rasta toucan's")
+            (no-match "collection of")
+            (match "toucan")
+            (no-match "things")]
+           (context
+               ["rasta" "toucan"]
+               ["this" "is" "rasta" "toucan's" "collection" "of" "toucan" "things"]))))
+    (testing "it handles no matches"
+      (is (= [(no-match "aviary stats")]
+             (context
+                 ["rasta" "toucan"]
+                 ["aviary" "stats"]))))))
+
+(deftest test-largest-common-subseq-length
+  (let [subseq-length (partial #'search/largest-common-subseq-length =)]
+    (testing "greedy choice can't be taken"
+      (is (= 3
+             (subseq-length ["garden" "path" "this" "is" "not" "a" "garden" "path"]
+                            ["a" "garden" "path"]))))
+    (testing "no match"
+      (is (= 0
+             (subseq-length ["can" "not" "be" "found"]
+                            ["The" "toucan" "is" "a" "South" "American" "bird"]))))
+    (testing "long matches"
+      (is (= 28
+             (subseq-length (map str '(this social bird lives in small flocks in lowland rainforests in countries such as costa rica
+                                       it flies short distances between trees toucans rest in holes in trees))
+                            (map str '(here is some filler
+                                       this social bird lives in small flocks in lowland rainforests in countries such as costa rica
+                                       it flies short distances between trees toucans rest in holes in trees
+                                       here is some more filler))))))))

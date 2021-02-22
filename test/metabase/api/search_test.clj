@@ -116,7 +116,7 @@
   mt/id)
 
 (defn- search-request [user-kwd & params]
-  (let [raw-results      (apply (mt/user->client user-kwd) :get 200 "search" params)
+  (let [raw-results      (apply (partial mt/user-http-request user-kwd) :get 200 "search" params)
         keep-database-id (if (fn? *search-request-results-database-id*)
                            (*search-request-results-database-id*)
                            *search-request-results-database-id*)]
@@ -129,7 +129,8 @@
               :when  (contains? #{keep-database-id nil} (:database_id result))]
           (-> result
               mt/boolean-ids-and-timestamps
-              (update :collection_name #(some-> % string?)))))))))
+              (update :collection_name #(some-> % string?))
+              (dissoc :score :context :collection))))))))
 
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
@@ -332,7 +333,7 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp Table [table {:name "Round Table" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "Round Table") :display_name lancelot :matched_text lancelot)]
+          (is (= [(assoc (default-table-search-row "Round Table") :display_name lancelot :matched_text lancelot :name lancelot)]
                  (search-request user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]

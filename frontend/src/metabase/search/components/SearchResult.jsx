@@ -54,16 +54,18 @@ function ItemIcon({ item }) {
   );
 }
 
-export default function SearchResult({ result }) {
+export default function SearchResult(props) {
+  const { result } = props;
   switch (result.model) {
     case "card":
-      return <QuestionResult question={result} />;
-    case "dashboard":
-      return <DashboardResult dashboard={result} />;
+      return <QuestionResult question={result} options={props} />;
     case "collection":
-      return <CollectionResult collection={result} />;
+      return <CollectionResult collection={result} options={props} />;
+    case "dashboard":
+      return <DashboardResult dashboard={result} options={props} />;
     default:
-      return <div>{result.name}</div>;
+      // metric, segment, and table deliberately included here
+      return <DefaultResult result={result} options={props} />;
   }
 }
 
@@ -113,14 +115,54 @@ function CollectionResult({ collection }) {
   );
 }
 
-function QuestionResult({ question }) {
+function contextText(context) {
+  return context.map(function({ is_match, text }) {
+    if (is_match) {
+      return <strong> {text}</strong>;
+    } else {
+      return <span> {text}</span>;
+    }
+  });
+}
+
+function formatContext(context, compact) {
   return (
-    <ResultLink to={Urls.question(question.id)}>
+    !compact &&
+    context && (
+      <Box ml="42px" mt="12px">
+        {contextText(context)}
+      </Box>
+    )
+  );
+}
+
+function formatCollection(collection) {
+  return collection.id && <CollectionBadge collection={collection} />;
+}
+
+function DashboardResult({ dashboard, options }) {
+  return (
+    <ResultLink to={dashboard.getUrl()}>
+      <Flex align="center">
+        <ItemIcon item={dashboard} />
+        <Box>
+          <Title>{dashboard.name}</Title>
+          {formatCollection(dashboard.getCollection())}
+        </Box>
+      </Flex>
+      {formatContext(dashboard.context, options.compact)}
+    </ResultLink>
+  );
+}
+
+function QuestionResult({ question, options }) {
+  return (
+    <ResultLink to={question.getUrl()}>
       <Flex align="center">
         <ItemIcon item={question} />
         <Box>
           <Title>{question.name}</Title>
-          <CollectionBadge collection={question.collection} />
+          {formatCollection(question.getCollection())}
         </Box>
         {question.description && (
           <Box ml="auto">
@@ -130,31 +172,20 @@ function QuestionResult({ question }) {
           </Box>
         )}
       </Flex>
-      {question.context && (
-        <Box ml="42px" mt="12px">
-          <strong>{question.context.match}:</strong> {question.context.content}
-        </Box>
-      )}
+      {formatContext(question.context, options.compact)}
     </ResultLink>
   );
 }
 
-function DashboardResult({ dashboard }) {
+function DefaultResult({ result, options }) {
   return (
-    <ResultLink>
+    <ResultLink to={result.getUrl()}>
       <Flex align="center">
-        <ItemIcon item={dashboard} />
-        <Box>
-          <Title>{dashboard.name}</Title>
-          <CollectionBadge collection={dashboard.collection} />
-        </Box>
+        <ItemIcon item={result} />
+        <Title>{result.name}</Title>
+        {formatCollection(result.getCollection())}
       </Flex>
-      {dashboard.context && (
-        <Box ml="42px" mt="12px">
-          <strong>{dashboard.context.match}:</strong>{" "}
-          {dashboard.context.content}
-        </Box>
-      )}
+      {formatContext(result.context, options.compact)}
     </ResultLink>
   );
 }

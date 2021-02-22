@@ -9,9 +9,8 @@ import { color, lighten } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
-import EntityItem from "metabase/components/EntityItem";
-import Link from "metabase/components/Link";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+import SearchResult from "metabase/search/components/SearchResult";
 
 import { DefaultSearchColor } from "metabase/nav/constants";
 
@@ -104,14 +103,7 @@ export default class SearchBar extends React.Component {
     } else {
       return results.map(l => (
         <li key={`${l.model}:${l.id}`}>
-          <Link to={l.getUrl()}>
-            <EntityItem
-              iconName={l.getIcon()}
-              name={l.name}
-              item={l}
-              variant="small"
-            />
-          </Link>
+          <SearchResult result={l} compact={true} />
         </li>
       ));
     }
