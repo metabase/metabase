@@ -58,14 +58,13 @@ export default function SearchResult({ result }) {
   switch (result.model) {
     case "card":
       return <QuestionResult question={result} />;
-    case "dashboard":
-      return <DashboardResult dashboard={result} />;
     case "collection":
       return <CollectionResult collection={result} />;
-    case "table":
-      return <TableResult table={result} />;
+    case "dashboard":
+      return <DashboardResult dashboard={result} />;
     default:
-      return <div>{result.name}</div>;
+      // metric, segment, and table deliberately included here
+      return <DefaultResult result={result} />;
   }
 }
 
@@ -115,7 +114,7 @@ function CollectionResult({ collection }) {
   );
 }
 
-function formattedContext(context) {
+function contextText(context) {
   return context.map(function({ is_match, text }) {
     if (is_match) {
       return <strong> {text}</strong>;
@@ -125,30 +124,18 @@ function formattedContext(context) {
   });
 }
 
-function QuestionResult({ question }) {
+function formatContext(context) {
   return (
-    <ResultLink to={question.getUrl()}>
-      <Flex align="center">
-        <ItemIcon item={question} />
-        <Box>
-          <Title>{question.name}</Title>
-          <CollectionBadge collection={question.collection} />
-        </Box>
-        {question.description && (
-          <Box ml="auto">
-            <Tooltip tooltip={question.description}>
-              <Icon name="info" />
-            </Tooltip>
-          </Box>
-        )}
-      </Flex>
-      {question.context && (
-        <Box ml="42px" mt="12px">
-          {formattedContext(question.context)}
-        </Box>
-      )}
-    </ResultLink>
+    context && (
+      <Box ml="42px" mt="12px">
+        {contextText(context)}
+      </Box>
+    )
   );
+}
+
+function formatCollection(collection) {
+  return collection.id && <CollectionBadge collection={collection} />;
 }
 
 function DashboardResult({ dashboard }) {
@@ -158,25 +145,45 @@ function DashboardResult({ dashboard }) {
         <ItemIcon item={dashboard} />
         <Box>
           <Title>{dashboard.name}</Title>
-          <CollectionBadge collection={dashboard.collection} />
+          {formatCollection(dashboard.collection)}
         </Box>
       </Flex>
-      {dashboard.context && (
-        <Box ml="42px" mt="12px">
-          {formattedContext(dashboard.context)}
-        </Box>
-      )}
+      {formatContext(dashboard.context)}
     </ResultLink>
   );
 }
 
-function TableResult({ table }) {
+function QuestionResult({ question }) {
   return (
-    <ResultLink to={table.getUrl()}>
+    <ResultLink to={question.getUrl()}>
       <Flex align="center">
-        <ItemIcon item={table} />
-        <Title>{table.name}</Title>
+        <ItemIcon item={question} />
+        <Box>
+          <Title>{question.name}</Title>
+          {formatCollection(question.collection)}
+        </Box>
+        {question.description && (
+          <Box ml="auto">
+            <Tooltip tooltip={question.description}>
+              <Icon name="info" />
+            </Tooltip>
+          </Box>
+        )}
       </Flex>
+      {formatContext(question.context)}
+    </ResultLink>
+  );
+}
+
+function DefaultResult({ result }) {
+  return (
+    <ResultLink to={result.getUrl()}>
+      <Flex align="center">
+        <ItemIcon item={result} />
+        <Title>{result.name}</Title>
+        {formatCollection(result.collection)}
+      </Flex>
+      {formatContext(result.context)}
     </ResultLink>
   );
 }
