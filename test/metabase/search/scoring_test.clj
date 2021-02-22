@@ -133,3 +133,22 @@
              (context
                  ["rasta" "toucan"]
                  ["aviary" "stats"]))))))
+
+(deftest test-largest-common-subseq-length
+  (let [subseq-length (partial #'search/largest-common-subseq-length =)]
+    (testing "greedy choice can't be taken"
+      (is (= 3
+             (subseq-length ["garden" "path" "this" "is" "not" "a" "garden" "path"]
+                            ["a" "garden" "path"]))))
+    (testing "no match"
+      (is (= 0
+             (subseq-length ["can" "not" "be" "found"]
+                            ["The" "toucan" "is" "a" "South" "American" "bird"]))))
+    (testing "long matches"
+      (is (= 28
+             (subseq-length (map str '(this social bird lives in small flocks in lowland rainforests in countries such as costa rica
+                                       it flies short distances between trees toucans rest in holes in trees))
+                            (map str '(here is some filler
+                                       this social bird lives in small flocks in lowland rainforests in countries such as costa rica
+                                       it flies short distances between trees toucans rest in holes in trees
+                                       here is some more filler))))))))
