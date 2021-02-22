@@ -9,16 +9,15 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [metabase.util.ssh :as sshu]
             [metabase.util.ssh :as ssh]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx])
   (:import [java.io BufferedReader InputStreamReader PrintWriter]
            [java.net InetSocketAddress ServerSocket Socket]
            org.apache.sshd.server.forward.AcceptAllForwardingFilter
            org.apache.sshd.server.SshServer
-           org.h2.tools.Server
-           (java.nio.file Files Path)
-           (java.nio.file.attribute FileAttribute)))
+           org.h2.tools.Server))
 
 (def ^:private ssh-username "jsmith")
 (def ^:private ssh-password "supersecret")
@@ -121,7 +120,7 @@
 
 ;; correct password
 (deftest connects-with-correct-password
-  (sshu/start-ssh-tunnel!
+  (ssh/start-ssh-tunnel!
    {:tunnel-user ssh-username
     :tunnel-host "127.0.0.1"
     :tunnel-port ssh-mock-server-with-password-port
@@ -133,7 +132,7 @@
 (deftest throws-exception-on-incorrect-password
   (is (thrown?
        org.apache.sshd.common.SshException
-       (sshu/start-ssh-tunnel!
+       (ssh/start-ssh-tunnel!
         {:tunnel-user ssh-username
          :tunnel-host "127.0.0.1"
          :tunnel-port ssh-mock-server-with-password-port
@@ -144,7 +143,7 @@
 ;; correct ssh key
 (deftest connects-with-correct-ssh-key
   (is (some?
-       (sshu/start-ssh-tunnel!
+       (ssh/start-ssh-tunnel!
         {:tunnel-user        ssh-username
          :tunnel-host        "127.0.0.1"
          :tunnel-port        ssh-mock-server-with-publickey-port
@@ -156,7 +155,7 @@
 (deftest throws-exception-on-incorrect-ssh-key
   (is (thrown?
        org.apache.sshd.common.SshException
-       (sshu/start-ssh-tunnel!
+       (ssh/start-ssh-tunnel!
         {:tunnel-user        ssh-username
          :tunnel-host        "127.0.0.1"
          :tunnel-port        ssh-mock-server-with-publickey-port
@@ -167,7 +166,7 @@
 ;; correct ssh key
 (deftest connects-with-correct-ssh-key-and-passphrase
   (is (some?
-       (sshu/start-ssh-tunnel!
+       (ssh/start-ssh-tunnel!
         {:tunnel-user                   ssh-username
          :tunnel-host                   "127.0.0.1"
          :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
@@ -179,7 +178,7 @@
 (deftest throws-exception-on-incorrect-ssh-key-and-passphrase
   (is (thrown?
        java.io.StreamCorruptedException
-       (sshu/start-ssh-tunnel!
+       (ssh/start-ssh-tunnel!
         {:tunnel-user                   ssh-username
          :tunnel-host                   "127.0.0.1"
          :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
@@ -198,14 +197,14 @@
                                               out-server    (PrintWriter. (.getOutputStream client-socket) true)]
                                     (.println out-server "hello from the ssh tunnel")))]
         ;; this will try to open a TCP connection via the tunnel.
-        (sshu/with-ssh-tunnel [details-with-tunnel {:tunnel-enabled                true
-                                                    :tunnel-user                   ssh-username
-                                                    :tunnel-host                   "127.0.0.1"
-                                                    :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
-                                                    :tunnel-private-key            (slurp ssh-key-with-passphrase)
-                                                    :tunnel-private-key-passphrase ssh-key-passphrase
-                                                    :host                          "127.0.0.1"
-                                                    :port                          port}]
+        (ssh/with-ssh-tunnel [details-with-tunnel {:tunnel-enabled                true}
+                                               :tunnel-user                   ssh-username
+                                               :tunnel-host                   "127.0.0.1"
+                                               :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
+                                               :tunnel-private-key            (slurp ssh-key-with-passphrase)
+                                               :tunnel-private-key-passphrase ssh-key-passphrase
+                                               :host                          "127.0.0.1"
+                                               :port                          port]
           (.connect socket (InetSocketAddress. "127.0.0.1" ^Integer (:tunnel-entrance-port details-with-tunnel)) 3000)
           ;; cause our future to run to completion
           (u/deref-with-timeout server-thread 12000)
@@ -265,21 +264,17 @@
               (sync/sync-database! (mt/db))
               (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text
                                                      :display_name "COL1"
-                                                     :field_ref    [:field-literal
-                                                                    "COL1"
-                                                                    :type/Text]
-                                                     :name "COL1"
-                                                     :source :native}
+                                                     :field_ref    [:field-literal "COL1" :type/Text]
+                                                     :name         "COL1"
+                                                     :source       :native}
                                                     {:base_type    :type/Decimal
                                                      :display_name "COL2"
-                                                     :field_ref    [:field-literal
-                                                                    "COL2"
-                                                                    :type/Decimal]
+                                                     :field_ref    [:field-literal "COL2" :type/Decimal]
                                                      :name         "COL2"
                                                      :source       :native}]
-                                             :rows [["First Row" 19.10M]
+                                             :rows [["First Row"  19.10M]
                                                     ["Second Row" 100.40M]
-                                                    ["Third Row" 91884.10M]]}
+                                                    ["Third Row"  91884.10M]]}
                                            (-> {:query "SELECT col1, col2 FROM my_tbl;"}
                                                (mt/native-query)
                                                (qp/process-query)
