@@ -54,17 +54,18 @@ function ItemIcon({ item }) {
   );
 }
 
-export default function SearchResult({ result }) {
+export default function SearchResult(props) {
+  const { result } = props;
   switch (result.model) {
     case "card":
-      return <QuestionResult question={result} />;
+      return <QuestionResult question={result} options={props} />;
     case "collection":
-      return <CollectionResult collection={result} />;
+      return <CollectionResult collection={result} options={props} />;
     case "dashboard":
-      return <DashboardResult dashboard={result} />;
+      return <DashboardResult dashboard={result} options={props} />;
     default:
       // metric, segment, and table deliberately included here
-      return <DefaultResult result={result} />;
+      return <DefaultResult result={result} options={props} />;
   }
 }
 
@@ -124,8 +125,9 @@ function contextText(context) {
   });
 }
 
-function formatContext(context) {
+function formatContext(context, compact) {
   return (
+    !compact &&
     context && (
       <Box ml="42px" mt="12px">
         {contextText(context)}
@@ -138,7 +140,7 @@ function formatCollection(collection) {
   return collection.id && <CollectionBadge collection={collection} />;
 }
 
-function DashboardResult({ dashboard }) {
+function DashboardResult({ dashboard, options }) {
   return (
     <ResultLink to={dashboard.getUrl()}>
       <Flex align="center">
@@ -148,12 +150,12 @@ function DashboardResult({ dashboard }) {
           {formatCollection(dashboard.getCollection())}
         </Box>
       </Flex>
-      {formatContext(dashboard.context)}
+      {formatContext(dashboard.context, options.compact)}
     </ResultLink>
   );
 }
 
-function QuestionResult({ question }) {
+function QuestionResult({ question, options }) {
   return (
     <ResultLink to={question.getUrl()}>
       <Flex align="center">
@@ -170,12 +172,12 @@ function QuestionResult({ question }) {
           </Box>
         )}
       </Flex>
-      {formatContext(question.context)}
+      {formatContext(question.context, options.compact)}
     </ResultLink>
   );
 }
 
-function DefaultResult({ result }) {
+function DefaultResult({ result, options }) {
   return (
     <ResultLink to={result.getUrl()}>
       <Flex align="center">
@@ -183,7 +185,7 @@ function DefaultResult({ result }) {
         <Title>{result.name}</Title>
         {formatCollection(result.getCollection())}
       </Flex>
-      {formatContext(result.context)}
+      {formatContext(result.context, options.compact)}
     </ResultLink>
   );
 }

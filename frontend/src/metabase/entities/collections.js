@@ -151,8 +151,9 @@ export const canonicalCollectionId = (
     ? null
     : parseInt(collectionId, 10);
 
+// $FlowFixMe
 export function normalizedCollection(collection) {
-  if (collection.id === null) {
+  if (canonicalCollectionId(collection.id) === null) {
     return ROOT_COLLECTION;
   }
   return collection;
