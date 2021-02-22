@@ -151,6 +151,13 @@ export const canonicalCollectionId = (
     ? null
     : parseInt(collectionId, 10);
 
+export function normalizedCollection(collection) {
+  if (collection.id === null) {
+    return ROOT_COLLECTION;
+  }
+  return collection;
+}
+
 export const getCollectionType = (collectionId: string, state: {}) =>
   collectionId === null || collectionId === "root"
     ? "root"

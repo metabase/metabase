@@ -145,7 +145,7 @@ function DashboardResult({ dashboard }) {
         <ItemIcon item={dashboard} />
         <Box>
           <Title>{dashboard.name}</Title>
-          {formatCollection(dashboard.collection)}
+          {formatCollection(dashboard.getCollection())}
         </Box>
       </Flex>
       {formatContext(dashboard.context)}
@@ -160,7 +160,7 @@ function QuestionResult({ question }) {
         <ItemIcon item={question} />
         <Box>
           <Title>{question.name}</Title>
-          {formatCollection(question.collection)}
+          {formatCollection(question.getCollection())}
         </Box>
         {question.description && (
           <Box ml="auto">
@@ -181,7 +181,7 @@ function DefaultResult({ result }) {
       <Flex align="center">
         <ItemIcon item={result} />
         <Title>{result.name}</Title>
-        {formatCollection(result.collection)}
+        {formatCollection(result.getCollection())}
       </Flex>
       {formatContext(result.context)}
     </ResultLink>
