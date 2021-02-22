@@ -66,7 +66,8 @@
                                             (if (= db-id mbql.s/saved-questions-virtual-database-id)
                                               "database/__virtual"
                                               (fully-qualified-name Database db-id))))
-      (m/update-existing entity :card-id (partial fully-qualified-name Card))
+      (m/update-existing entity :card_id (partial fully-qualified-name Card)) ; attibutes that refer to db fields use _
+      (m/update-existing entity :card-id (partial fully-qualified-name Card)) ; template-tags use dash
       (m/update-existing entity :source-table (fn [source-table]
                                                 (if (and (string? source-table)
                                                          (str/starts-with? source-table "card__"))

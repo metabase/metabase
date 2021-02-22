@@ -54,16 +54,19 @@
                          [Segment       (Segment segment-id)]
                          [Dashboard     (Dashboard dashboard-id)]
                          [Card          (Card card-id)]
+                         [Card          (Card card-arch-id)]
                          [Card          (Card card-id-root)]
                          [Card          (Card card-id-nested)]
                          [Card          (Card card-id-nested-query)]
                          [DashboardCard (DashboardCard dashcard-id)]])]
       (with-world-cleanup
         (load dump-dir {:on-error :abort :mode :skip})
-        (is (every? (fn [[model entity]]
-                   (or (-> entity :name nil?)
-                       (db/select-one model :name (:name entity))))
-                 fingerprint))
+        (doseq [[model entity] fingerprint]
+          (is (or (-> entity :name nil?)
+                  (db/select-one model :name (:name entity))
+                  (and (-> entity :archived) ; archived card hasn't been dump-loaded
+                       (= (:name entity) "My Arch Card")))
+              (str " failed " (pr-str entity))))
         fingerprint))
     (finally
       (delete-directory! dump-dir))))

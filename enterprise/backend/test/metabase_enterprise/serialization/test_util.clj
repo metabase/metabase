@@ -47,6 +47,16 @@
                                                 :query {:source-table ~'table-id
                                                         :aggregation [:sum [:field-id ~'numeric-field-id]]
                                                         :breakout [[:field-id ~'category-field-id]]}}}]
+                   Card       [{~'card-arch-id :id}
+                               {;:archived true
+                                :table_id ~'table-id
+                                :name "My Arch Card"
+                                :collection_id ~'collection-id
+                                :dataset_query {:type :query
+                                                :database ~'db-id
+                                                :query {:source-table ~'table-id
+                                                        :aggregation [:sum [:field-id ~'numeric-field-id]]
+                                                        :breakout [[:field-id ~'category-field-id]]}}}]
                    Card       [{~'card-id-root :id}
                                {:table_id ~'table-id
                                 ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
