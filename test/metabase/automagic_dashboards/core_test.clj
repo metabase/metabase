@@ -26,7 +26,7 @@
          (->> (assoc (field/->FieldInstance) :id 1)
               (#'magic/->reference :mbql))))
 
-  (is (= [:fk-> 1 2]
+  (is (= [:field 2 {:source-field 1}]
          (->> (assoc (field/->FieldInstance) :id 1 :fk_target_field_id 2)
               (#'magic/->reference :mbql))))
 
@@ -87,8 +87,8 @@
           (assoc :display_name "%Venues")
           test-automagic-analysis))))
 
-;; Not sure what most of the tests below are for, so they just have numbers for names right now. Give them better
-;; names if you can figure out what they test.
+;; TODO -- Not sure what most of the tests below are for, so they just have numbers for names right now. Give them
+;; better names if you can figure out what they test.
 
 (deftest test-1
   (mt/with-test-user :rasta

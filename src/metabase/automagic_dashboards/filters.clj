@@ -15,7 +15,7 @@
 (defn field-reference->id
   "Extract field ID from a given field reference form."
   [clause]
-  (mbql.u/match-one clause [:field (id :guard integer?) _] id))
+  (mbql.u/match-one clause [:field id _] id))
 
 (defn collect-field-references
   "Collect all `:field` references from a given

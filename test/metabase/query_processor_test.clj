@@ -310,14 +310,14 @@
   [results]
   (when (#{:failed "failed"} (:status results))
     (throw (ex-info (str (or (:error results) "Error running query"))
-             (if (map? results) results {:results results}))))
+                    (if (map? results) results {:results results}))))
   (:data results))
 
 (defn rows
   "Return the result rows from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (or (u/ignore-exceptions (some-> (data results) :rows vec))
+  (or (some-> (data results) :rows vec)
       (throw (ex-info "Query does not have any :rows in results."
                       (if (map? results) results {:result results})))))
 

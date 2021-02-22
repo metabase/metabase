@@ -64,15 +64,16 @@
   Examples:
 
     ;; keyword pattern
-    (match {:fields [[:field-id 10]]} :field-id) ; -> [[:field-id 10]]
+    (match {:fields [[:field 10 nil]]} :field) ; -> [[:field 10 nil]]
 
     ;; set of keywords
-    (match some-query #{:field-id :fk->}) ; -> [[:field-id 10], [:fk-> [:field-id 10] [:field-id 20]], ...]
+    (match some-query #{:field :expression}) ; -> [[:field 10 nil], [:expression \"wow\"], ...]
 
     ;; `core.match` patterns:
-    ;; match any `:field-id` clause with one arg (which should be all of them)
-    (match some-query [:field-id _])
-    (match some-query [:field-id (_ :guard #(> % 100))]) ; -> [[:field-id 200], ...]
+    ;; match any `:field` clause with two args (which should be all of them)
+    (match some-query [:field _ _])
+    ;; match any `:field` clause with integer ID > 100
+    (match some-query [:field (_ :guard (every-pred integer? #(> % 100)))]) ; -> [[:field 200 nil], ...]
 
     ;; symbol naming a Class
     ;; match anything that is an instance of that class
@@ -110,11 +111,11 @@
   optional result body. Whatever result body returns will be returned by `match`:
 
      ;; just return the IDs of Field ID clauses
-     (match some-query [:field-id id] id) ; -> [1 2 3]
+     (match some-query [:field (id :guard integer?) _] id) ; -> [1 2 3]
 
   You can also use result body to filter results; any `nil` values will be skipped:
 
-    (match some-query [:field-id id]
+    (match some-query [:field (id :guard integer?) _]
       (when (even? id)
         id))
     ;; -> [2 4 6 8]

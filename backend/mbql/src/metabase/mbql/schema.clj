@@ -221,8 +221,9 @@
 
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
-;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like `[:+ [:field-id 1]
-;; [:field-id 2]]`
+;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like
+;;
+;;    [:+ [:field 1 nil] [:field 2 nil]]`
 (defclause ^{:requires-features #{:expressions}} expression
   expression-name su/NonBlankString)
 
@@ -346,9 +347,9 @@
 (def ^:private Field*
   (one-of expression field))
 
+;; TODO -- consider renaming this FieldOrExpression,
 (def Field
-  "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or
-  `:fk->` or an expression reference `[:expression <name>]`."
+  "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   (s/recursive #'Field*))
 
 ;; aggregate field reference refers to an aggregation, e.g.
@@ -579,10 +580,12 @@
 ;; implementations only need to handle the 2-arg forms.
 ;;
 ;; `=` works like SQL `IN` with more than 2 args
-;; [:= [:field-id 1] 2 3] --[DESUGAR]--> [:or [:= [:field-id 1] 2] [:= [:field-id 1] 3]]
+;;
+;;    [:= [:field 1 nil] 2 3] --[DESUGAR]--> [:or [:= [:field 1 nil] 2] [:= [:field 1 nil] 3]]
 ;;
 ;; `!=` works like SQL `NOT IN` with more than 2 args
-;; [:!= [:field-id 1] 2 3] --[DESUGAR]--> [:and [:!= [:field-id 1] 2] [:!= [:field-id 1] 3]]
+;;
+;;    [:!= [:field 1 nil] 2 3] --[DESUGAR]--> [:and [:!= [:field 1 nil] 2] [:!= [:field 1 nil] 3]]
 
 (defclause =,  field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
 (defclause !=, field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
@@ -632,12 +635,12 @@
 ;;
 ;; Return rows where datetime Field 100's value is in the current month
 ;;
-;;    [:time-interval [:field-id 100] :current :month]
+;;    [:time-interval [:field 100 nil] :current :month]
 ;;
 ;; Return rows where datetime Field 100's value is in the current month, including partial results for the
 ;; current day
 ;;
-;;    [:time-interval [:field-id 100] :current :month {:include-current true}]
+;;    [:time-interval [:field 100 nil] :current :month {:include-current true}]
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
@@ -701,7 +704,7 @@
 
 ;; technically aggregations besides count can also accept expressions as args, e.g.
 ;;
-;;    [[:sum [:+ [:field-id 1] [:field-id 2]]]]
+;;    [[:sum [:+ [:field 1 nil] [:field 2 nil]]]]
 ;;
 ;; Which is equivalent to SQL:
 ;;
@@ -743,7 +746,9 @@
 ;; pass straight thru to the GA query processor.
 (defclause ^:sugar metric, metric-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
 
-;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
+;; the following are definitions for expression aggregations, e.g.
+;;
+;;    [:+ [:sum [:field 10 nil]] [:sum [:field 20 nil]]]
 
 (def ^:private UnnamedAggregation*
   (s/if (partial is-clause? arithmetic-expressions)
@@ -776,7 +781,7 @@
 
 ;; order-by is just a series of `[<direction> <field>]` clauses like
 ;;
-;;    {:order-by [[:asc [:field-id 1]], [:desc [:field-id 2]]]}
+;;    {:order-by [[:asc [:field 1 nil]], [:desc [:field 2 nil]]]}
 ;;
 ;; Field ID is implicit in these clauses
 

@@ -41,15 +41,15 @@
 
 (defn- venues-category-mbql-gtap-def []
   {:query      (mt/mbql-query venues)
-   :remappings {:cat ["variable" [:field-id (mt/id :venues :category_id)]]}})
+   :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}})
 
 (defn- venues-price-mbql-gtap-def []
   {:query      (mt/mbql-query venues)
-   :remappings {:price ["variable" [:field-id (mt/id :venues :price)]]}})
+   :remappings {:price ["variable" [:field (mt/id :venues :price) nil]]}})
 
 (defn- checkins-user-mbql-gtap-def []
   {:query      (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})
-   :remappings {:user ["variable" [:field-id (mt/id :checkins :user_id)]]}})
+   :remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]}})
 
 (defn- format-honeysql [honeysql]
   (let [honeysql (cond-> honeysql
@@ -253,7 +253,7 @@
 
     (testing "Another basic test, this one uses a stringified float for the login attribute"
       (mt/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                            :remappings {:cat ["variable" [:field-id (mt/id :venues :latitude)]]}}}
+                                            :remappings {:cat ["variable" [:field (mt/id :venues :latitude) nil]]}}}
                       :attributes {"cat" "34.1018"}}
         (is (= [[3]]
                (run-venues-count-query)))))
@@ -390,7 +390,7 @@
                    "question with venues and users having the default GTAP and segmented permissions")
        (mt/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                     :venues   (dissoc (venues-price-mbql-gtap-def) :query)
-                                    :users    {:remappings {:user ["variable" [:field-id (mt/id :users :id)]]}}}
+                                    :users    {:remappings {:user ["variable" [:field (mt/id :users :id) nil]]}}}
                        :attributes {"user" 5, "price" 1}}
          (with-bigquery-fks
            (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
@@ -476,7 +476,7 @@
                             (assoc col
                                    :id id
                                    :table_id (mt/id :venues)
-                                   :field_ref [:field-id id])))]
+                                   :field_ref [:field id nil])))]
       (testing "A query with a simple attributes-based sandbox should have the same metadata"
         (mt/with-gtaps {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                         :attributes {"cat" 50}}
@@ -790,7 +790,7 @@
                             (fn []
                               (testing "`resolve-joined-fields` middleware should infer `:joined-field` correctly"
                                 (is (= [:=
-                                        [:joined-field "products" [:field-id (mt/id :products :category)]]
+                                        [:joined-field "products" [:field (mt/id :products :category) nil]]
                                         [:value "Widget" {:base_type     :type/Text
                                                           :semantic_type  (db/select-one-field :semantic_type Field
                                                                            :id (mt/id :products :category))

@@ -155,7 +155,7 @@
    :short-name   (:display_name table)
    :source       table
    :database     (:db_id table)
-   :url          (format "%stable/%s" public-endpoint (u/get-id table))
+   :url          (format "%stable/%s" public-endpoint (u/the-id table))
    :rules-prefix ["table"]})
 
 (defmethod ->root (type Segment)
@@ -167,8 +167,8 @@
      :comparison-name (tru "{0} segment" (:name segment))
      :source          table
      :database        (:db_id table)
-     :query-filter    [:segment (u/get-id segment)]
-     :url             (format "%ssegment/%s" public-endpoint (u/get-id segment))
+     :query-filter    [:segment (u/the-id segment)]
+     :url             (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :rules-prefix    ["table"]}))
 
 (defmethod ->root (type Metric)
@@ -240,7 +240,7 @@
      :query-filter (get-in card [:dataset_query :query :filter])
      :full-name    (tru "\"{0}\" question" (:name card))
      :short-name   (source-name {:source source})
-     :url          (format "%squestion/%s" public-endpoint (u/get-id card))
+     :url          (format "%squestion/%s" public-endpoint (u/the-id card))
      :rules-prefix [(if (table-like? card)
                       "table"
                       "question")]}))
@@ -426,7 +426,7 @@
     (filter (comp (->> (filter-tables links_to (:tables context))
                        (keep :link)
                        set)
-                  u/get-id)
+                  u/the-id)
             (field-candidates context (dissoc constraints :links_to)))
     (let [[tablespec fieldspec] field_type]
       (if fieldspec
@@ -507,8 +507,8 @@
     {:type     :query
      :database (-> context :root :database)
      :query    (cond-> {:source-table (if (->> context :source (instance? (type Table)))
-                                        (-> context :source u/get-id)
-                                        (->> context :source u/get-id (str "card__")))}
+                                        (-> context :source u/the-id)
+                                        (->> context :source u/the-id (str "card__")))}
                  (seq filters)
                  (assoc :filter (apply
                                  vector
@@ -677,7 +677,7 @@
   [table]
   (for [{:keys [id target]} (field/with-targets
                               (db/select Field
-                                :table_id           (u/get-id table)
+                                :table_id           (u/the-id table)
                                 :fk_target_field_id [:not= nil]
                                 :active             true))
         :when (some-> target mi/can-read?)]
@@ -696,7 +696,7 @@
   (let [field (assoc field
                 :link   (->> context
                              :tables
-                             (m/find-first (comp #{(:table_id field)} u/get-id))
+                             (m/find-first (comp #{(:table_id field)} u/the-id))
                              :link)
                 :engine (-> context :source source->engine))]
     (update context :dimensions
@@ -732,14 +732,14 @@
         engine        (source->engine source)
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
-                                     :table_id        [:in (map u/get-id tables)]
+                                     :table_id        [:in (map u/the-id tables)]
                                      :visibility_type "normal"
                                      :preview_display true
                                      :active          true)
                                    field/with-targets
                                    (map #(assoc % :engine engine))
                                    (group-by :table_id))
-                              u/get-id)
+                              u/the-id)
                         (->> source
                              :result_metadata
                              (map (fn [field]
@@ -853,19 +853,19 @@
   [root]
   {:compare (concat
              (for [segment (->> root :entity related/related :segments (map ->root))]
-               {:url         (str (:url root) "/compare/segment/" (-> segment :entity u/get-id))
+               {:url         (str (:url root) "/compare/segment/" (-> segment :entity u/the-id))
                 :title       (tru "Compare with {0}" (:comparison-name segment))
                 :description ""})
              (when ((some-fn :query-filter :cell-query) root)
                [{:url         (if (->> root :source (instance? (type Table)))
-                                (str (:url root) "/compare/table/" (-> root :source u/get-id))
+                                (str (:url root) "/compare/table/" (-> root :source u/the-id))
                                 (str (:url root) "/compare/adhoc/"
                                      (encode-base64-json
                                       {:database (:database root)
                                        :type     :query
                                        :query    {:source-table (->> root
                                                                      :source
-                                                                     u/get-id
+                                                                     u/the-id
                                                                      (str "card__" ))}})))
                  :title       (tru "Compare with entire dataset")
                  :description ""}]))})
@@ -1164,7 +1164,7 @@
   [card {:keys [cell-query] :as opts}]
   (let [root     (->root card)
         cell-url (format "%squestion/%s/cell/%s" public-endpoint
-                         (u/get-id card)
+                         (u/the-id card)
                          (encode-base64-json cell-query))]
     (if (table-like? card)
       (automagic-dashboard
@@ -1215,7 +1215,7 @@
   (when (not-empty tables)
     (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                       :from     [Field]
-                                      :where    [:and [:in :table_id (map u/get-id tables)]
+                                      :where    [:and [:in :table_id (map u/the-id tables)]
                                                  [:= :active true]]
                                       :group-by [:table_id]})
                            (into {} (map (juxt :table_id :count))))
@@ -1244,7 +1244,7 @@
                                        (= count (field-count table_id))))
                              (into #{} (map :table_id))))]
       (for [table tables]
-        (let [table-id (u/get-id table)]
+        (let [table-id (u/the-id table)]
           (assoc table :stats {:num-fields  (field-count table-id 0)
                                :list-like?  (boolean (contains? list-like? table-id))
                                :link-table? (boolean (contains? link-table? table-id))}))))))
@@ -1267,7 +1267,7 @@
   ([database schema]
    (let [rules (rules/get-rules ["table"])]
      (->> (apply db/select [Table :id :schema :display_name :entity_type :db_id]
-                 (cond-> [:db_id           (u/get-id database)
+                 (cond-> [:db_id           (u/the-id database)
                           :visibility_type nil
                           :active          true]
                    schema (concat [:schema schema])))
@@ -1280,7 +1280,7 @@
                                       (matching-rules rules)
                                       first)
                        dashboard (make-dashboard root rule)]
-                   {:url         (format "%stable/%s" public-endpoint (u/get-id table))
+                   {:url         (format "%stable/%s" public-endpoint (u/the-id table))
                     :title       (:full-name root)
                     :score       (+ (math/sq (:specificity rule))
                                     (math/log (-> table :stats :num-fields))
