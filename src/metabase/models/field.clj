@@ -66,8 +66,8 @@
   (when semantic-type
     (assert (isa? (keyword semantic-type) :type/*)
       (str "Invalid semantic type: " semantic-type)))
-  (when semantic-type
-    (assert (isa? (keyword semantic-type) :Coercion/*)
+  (when coercion-strategy
+    (assert (isa? (keyword coercion-strategy) :Coercion/*)
       (str "Invalid coercion strategy: " coercion-strategy))))
 
 (defn- pre-insert [field]
