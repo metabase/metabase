@@ -178,7 +178,7 @@
   "Get a sequence of all the `:parameter_mappings` for all the DashCards in this `dashboard-or-id`."
   [dashboard-or-id]
   (for [params (db/select-field :parameter_mappings DashboardCard
-                 :dashboard_id (u/get-id dashboard-or-id))
+                 :dashboard_id (u/the-id dashboard-or-id))
         param  params
         :when  (:parameter_id param)]
     param))
@@ -319,7 +319,7 @@
 (defn- query->referenced-field-ids
   "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (mbql.u/match (:query query) [:field-id id] id))
+  (mbql.u/match (:query query) [:field id _] id))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template

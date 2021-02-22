@@ -174,6 +174,12 @@
   [{:keys [source-metadata expressions], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
   (let [join (when (:join-alias opts)
                (join-with-alias inner-query (:join-alias opts)))]
+    ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
+    ;; level, and one for referring to the Field from the PARENT level.
+    ;;
+    ;; If temporal bucketing is applied to a Field in a source query, you should not re-bucket it when you refer to it
+    ;; outside that source query; hence we remove the `temporal-unit` below. However you should keep the bucketing
+    ;; unit to refer to the Field *WITHIN* the source query, e.g. to add a sort on that column.
     (cond-> {:field_ref clause}
       (:base-type opts)
       (assoc :base_type (:base-type opts))

@@ -122,9 +122,9 @@
 (deftest joined-field-test
   (testing "When adding implicit `:fields` clauses, should include `join-alias` clauses for joined fields (#14745)"
     (doseq [field-ref (mt/$ids
-                        [&c.categories.name
+                        [[:field %categories.name {:join-alias "c"}]
                          [:field %categories.name {:join-alias "c", :temporal-unit :default}]])]
-      (testing (format "field ref = %s" (pr-str field-ref))
+      (testing (format "\nfield ref = %s" (pr-str field-ref))
         (let [query (mt/mbql-query venues
                       {:source-query    {:source-table $$venues
                                          :fields       [$id &c.categories.name $category_id->categories.name]
@@ -155,6 +155,8 @@
                                           :display_name "Category → Name"
                                           :base_type    :type/Text
                                           :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
-          (is (= (mt/$ids [$venues.id &c.categories.name $venues.category_id->categories.name])
+          (is (= (mt/$ids [$venues.id
+                           field-ref
+                           $venues.category_id->categories.name])
                  (get-in (mt/test-qp-middleware add-implicit-clauses/add-implicit-clauses query)
                          [:pre :query :fields]))))))))

@@ -176,18 +176,19 @@
           (is (= (mt/mbql-query venues
                    {:joins [{:alias           "c"
                              :condition       [:= $category_id &c.$categories.id]
-                             :source-query    {:source-query    {:source-table $$categories :limit 100}
+                             :source-query    {:source-query    {:source-table $$categories
+                                                                 :limit        100}
                                                :source-metadata metadata
                                                :limit           200}
-                             ;; TODO -- WHY does a join against a source -> source -> source query change the field
-                             ;; refs to field literals? Good things CANNOT come of this, I'm sure this must be a bug.
-                             :source-metadata (let [[id-col name-col] metadata]
-                                                [(assoc id-col
-                                                        :field_ref [:field "ID" {:base-type :type/Integer}]
-                                                        :source :fields)
-                                                 (assoc name-col
-                                                        :field_ref [:field "name" {:base-type :type/Text}]
-                                                        :source :fields)])}]})
+                             ;; TODO - FIXME
+                             ;;
+                             ;; The source metadata that comes back here looks like the result of running the Card
+                             ;; itself. I'm not sure when this is happening -- we're not adding it when we save the
+                             ;; Card -- so it might be happening at QP time??? I'm not sure why we need to run the
+                             ;; Card here -- can't we infer the same (more limited) metadata that we infer in the
+                             ;; `:source-query` itself? Investigate.
+                             :source-metadata (get-in (mt/run-mbql-query categories {:limit 100})
+                                                      [:data :cols])}]})
                  (resolve-card-id-source-tables
                   (mt/mbql-query venues
                     {:joins [{:source-table (str "card__" card-2-id)

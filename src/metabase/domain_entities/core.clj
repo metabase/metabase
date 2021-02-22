@@ -35,8 +35,9 @@
   [bindings :- Bindings, source :- SourceName, dimension-reference :- DimensionReference]
   (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
     (if maybe-dimension
-      (cond->> (get-in bindings [table-or-dimension :dimensions maybe-dimension])
-        (not= source table-or-dimension) (vector :joined-field table-or-dimension))
+      (let [field-clause (get-in bindings [table-or-dimension :dimensions maybe-dimension])]
+        (cond-> field-clause
+          (not= source table-or-dimension) (mbql.u/assoc-field-options :join-alias table-or-dimension)))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
 (s/defn resolve-dimension-clauses

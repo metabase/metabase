@@ -502,8 +502,8 @@
      {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {:name "Sum *TEN*"}]]}}}
 
     "subclauses of `:aggregation-options` should get canonicalized correctly"
-    {{:query {:aggregation [:aggregation-options [:sum 10] {}]}}
-     {:query {:aggregation [[:aggregation-options] [:sum [:field 10 nil]]]}}}
+    {{:query {:aggregation [[:aggregation-options [:sum 10] {}]]}}
+     {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {}]]}}}
 
     "make sure expression aggregations work correctly"
     {{:query {:aggregation [:+ [:sum 10] 2]}}
@@ -536,7 +536,11 @@
      {:query {:aggregation [[:sum [:* [:field 4 nil] [:field 1 nil]]]]}}
 
      {:query {:aggregation [[:sum [:* [:field 4 nil] [:field 1 nil]]]]}}
-     {:query {:aggregation [[:sum [:* [:field 4 nil] [:field 1 nil]]]]}}}))
+     {:query {:aggregation [[:sum [:* [:field 4 nil] [:field 1 nil]]]]}}}
+
+    "Make sure `:case`  expressions get canonicalized correctly"
+    {{:query {:aggregation [:sum [:case [[[:< [:field-id 37331] 2] 2] [[:< [:field-id 37331] 4] 1]]]]}}
+     {:query {:aggregation [[:sum [:case [[[:< [:field 37331 nil] 2] 2] [[:< [:field 37331 nil] 4] 1]]]]]}}}))
 
 
 ;;; ---------------------------------------------------- breakout ----------------------------------------------------
@@ -666,7 +670,7 @@
 
     "or for time-interval options"
     {[:time-interval 10 -30 :day {:include-current true}]
-     [:time-interval 10 -30 :day {:include-current true}]}
+     [:time-interval [:field 10 nil] -30 :day {:include-current true}]}
 
     "make sure empty filter clauses don't explode in canonicalize"
     {{:database 1, :type :query, :query {:filter []}}
@@ -1078,6 +1082,20 @@
              :query    {:source-table 3
                         :breakout     [[:datetime-field 11 :month]]
                         :aggregation  [[:count]]}})))))
+
+(deftest normalize-fragment-modernize-fields-test
+  (testing "`normalize-fragment` should be able to modernize Fields anywhere we find them"
+    (is (= [[:> [:field 1 nil] 3]
+            [:and
+             [:= [:field 2 nil] 2]
+             [:segment 1]]
+            [:metric 1]]
+         (normalize/normalize-fragment
+          nil
+          [[:> [:field-id 1] 3]
+           ["and" [:= ["FIELD-ID" 2] 2]
+            ["segment" 1]]
+           [:metric 1]])))))
 
 (deftest normalize-source-metadata-test
   (testing "normalize-source-metadata"

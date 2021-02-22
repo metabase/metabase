@@ -317,8 +317,9 @@
   "Return the result rows from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (or (some-> (data results) :rows vec)
-      (throw (ex-info "Query does not have any :rows in results." results))))
+  (or (u/ignore-exceptions (some-> (data results) :rows vec))
+      (throw (ex-info "Query does not have any :rows in results."
+                      (if (map? results) results {:result results})))))
 
 (defn formatted-rows
   "Combines `rows` and `format-rows-by`."

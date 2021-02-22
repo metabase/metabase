@@ -979,3 +979,16 @@
            (mbql.u/expression-with-name {:source-query {:expressions  {:two [:+ 1 1]}
                                                         :source-table 1}}
                                         "two")))))
+
+(deftest update-field-options-test
+  (is (= [:field 1 {:wow true}]
+         (mbql.u/update-field-options [:field 1 nil] assoc :wow true)
+         (mbql.u/update-field-options [:field 1 {}] assoc :wow true)
+         (mbql.u/update-field-options [:field 1 {:wow false}] assoc :wow true)))
+
+  (is (= [:field 1 {:a 1, :b 2}]
+         (mbql.u/update-field-options [:field 1 {:a 1}] assoc :b 2)))
+
+  (testing "Should remove empty options"
+    (is (= [:field 1 nil]
+           (mbql.u/update-field-options [:field 1 {:a 1}] dissoc :a)))))

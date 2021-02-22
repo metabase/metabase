@@ -729,7 +729,7 @@
 (defn update-field-options
   "Like `clojure.core/update`, but for the options in a `:field` clause."
   [[_ id-or-name opts] f & args]
-  [:field id-or-name (apply f opts args)])
+  [:field id-or-name (not-empty (apply f opts args))])
 
 (defn assoc-field-options
   "Like `clojure.core/assoc`, but for the options in a `:field` clause."

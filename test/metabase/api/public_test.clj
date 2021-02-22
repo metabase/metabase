@@ -108,7 +108,7 @@
                                         :template-tags {:category {:name         "category"
                                                                    :display-name "Category"
                                                                    :type         "dimension"
-                                                                   :dimension    ["field-id" (mt/id :categories :name)]
+                                                                   :dimension    ["field" (mt/id :categories :name) nil]
                                                                    :widget-type  "category"
                                                                    :required     true}}}}}]
     (is (= {(mt/id :categories :name) {:values                75
@@ -235,7 +235,7 @@
                                     :template-tags {:date {:name         "date"
                                                            :display-name "Date"
                                                            :type         "dimension"
-                                                           :dimension    [:field-id (mt/id :checkins :date)]
+                                                           :dimension    [:field (mt/id :checkins :date) nil]
                                                            :widget-type  "date/quarter-year"}}}}))
 
 
@@ -268,7 +268,7 @@
          :dataset_query {:database (mt/id)
                          :type     :query
                          :query   {:source-table (mt/id :checkins)
-                                   :breakout     [[:datetime-field [:field-id (mt/id :checkins :date)]  :month]]
+                                   :breakout     [[:datetime-field [:field (mt/id :checkins :date) nil]  :month]]
                                    :aggregation  [[:count]]}}))
 
 (deftest make-sure-we-include-all-the-relevant-fields-like-insights
@@ -470,14 +470,14 @@
                 (add-card-to-dashboard! card dash
                   :parameter_mappings [{:parameter_id "22486e00"
                                         :card_id      (u/the-id card)
-                                        :target       [:dimension [:field-id (mt/id :venues :id)]]}])
+                                        :target       [:dimension [:field (mt/id :venues :id) nil]]}])
                 (is (= [[1]]
                        (-> ((mt/user->client :crowberto)
                             :get (str (dashcard-url dash card)
                                       "?parameters="
                                       (json/generate-string
                                        [{:type   :id
-                                         :target [:dimension [:field-id (mt/id :venues :id)]]
+                                         :target [:dimension [:field (mt/id :venues :id) nil]]
                                          :value  "50"}])))
                            mt/rows))))))
 
@@ -495,15 +495,15 @@
                     :parameter_mappings [{:parameter_id "18a036ec"
                                           :card_id      (u/the-id card)
                                           :target       [:dimension
-                                                         [:field-id
-                                                          (mt/id :checkins :date)]]}])
+                                                         [:field
+                                                          (mt/id :checkins :date) nil]]}])
                   (is (= [[733]]
                          (-> ((mt/user->client :crowberto)
                               :get (str (dashcard-url dash card)
                                         "?parameters="
                                         (json/generate-string
                                          [{:type   "date/all-options"
-                                           :target [:dimension [:field-id (mt/id :checkins :date)]]
+                                           :target [:dimension [:field (mt/id :checkins :date) nil]]
                                            :value  "~2015-01-01"}])))
                              mt/rows))))))))))))
 
@@ -572,7 +572,7 @@
                       :native   {:template-tags {:price {:name         "price"
                                                          :display-name "Price"
                                                          :type         "dimension"
-                                                         :dimension    ["field-id" (mt/id :venues :price)]}}}})
+                                                         :dimension    ["field" (mt/id :venues :price) nil]}}}})
     (add-price-param-to-dashboard! dash)
     (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
     (is (= (price-param-values)
@@ -581,7 +581,7 @@
 (deftest check-that-param-info-comes-back-for-mbql-cards--field-id-
   (with-temp-public-dashboard-and-card [dash card dashcard]
     (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["field-id" (mt/id :venues :price)])
+    (add-dimension-param-mapping-to-dashcard! dashcard card ["field" (mt/id :venues :price) nil])
     (is (= (price-param-values)
            (GET-param-values dash)))))
 
@@ -607,7 +607,7 @@
    {:database (mt/id)
     :type     :query
     :query    {:source-table (mt/id table-kw)
-               :filter       [:= [:field-id (mt/id table-kw field-kw)] "Krua Siri"]}}})
+               :filter       [:= [:field (mt/id table-kw field-kw) nil] "Krua Siri"]}}})
 
 (defn- mbql-card-referencing-venue-name []
   (mbql-card-referencing :venues :name))
@@ -620,7 +620,7 @@
                :template-tags {:x {:name         :x
                                    :display-name "X"
                                    :type         :dimension
-                                   :dimension    [:field-id (mt/id :venues :name)]}}}}})
+                                   :dimension    [:field (mt/id :venues :name) nil]}}}}})
 
 
 ;;; ------------------------------------------- card->referenced-field-ids -------------------------------------------
@@ -692,7 +692,7 @@
   {:dashboard_id       (u/the-id dashboard)
    :card_id            (u/the-id card)
    :parameter_mappings [{:card_id (u/the-id card)
-                         :target  [:dimension [:field-id (mt/id :venues :id)]]}]})
+                         :target  [:dimension [:field (mt/id :venues :id) nil]]}]})
 
 
 (deftest field-is--referenced--by-dashboard-if-it-s-one-of-the-dashboard-s-params---
@@ -753,7 +753,7 @@
          (public-api/card-and-field-id->values (u/the-id card) (mt/id :venues :name))))))
 
 
-;;; ------------------------------- GET /api/public/card/:uuid/field/:field-id/values --------------------------------
+;;; ------------------------------- GET /api/public/card/:uuid/field/:field/values nil --------------------------------
 
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str "public/"
@@ -800,7 +800,7 @@
            (mt/with-temporary-setting-values [enable-public-sharing false]
              (http/client :get 400 (field-values-url card (mt/id :venues :name))))))))
 
-;;; ----------------------------- GET /api/public/dashboard/:uuid/field/:field-id/values -----------------------------
+;;; ----------------------------- GET /api/public/dashboard/:uuid/field/:field/values nil -----------------------------
 
 (defn do-with-sharing-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -810,8 +810,8 @@
                                               :card_id            (u/the-id card)
                                               :parameter_mappings [{:card_id (u/the-id card)
                                                                     :target  [:dimension
-                                                                              [:field-id
-                                                                               (mt/id table-kw field-kw)]]}]}]]
+                                                                              [:field
+                                                                               (mt/id table-kw field-kw) nil]]}]}]]
       (f dashboard card dashcard))))
 
 (defmacro with-sharing-enabled-and-temp-dashcard-referencing
@@ -864,7 +864,7 @@
          (public-api/search-card-fields (u/the-id card) (mt/id :venues :id) (mt/id :venues :id) "33 T" 10)))))
 
 
-;;; ----------------------- GET /api/public/card/:uuid/field/:field-id/search/:search-field-id -----------------------
+;;; ----------------------- GET /api/public/card/:uuid/field/:field/search/:search-field-id nil -----------------------
 
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
   (str "public/"
@@ -895,7 +895,7 @@
                           :value "33 T"))))))
 
 
-;;; -------------------- GET /api/public/dashboard/:uuid/field/:field-id/search/:search-field-id ---------------------
+;;; -------------------- GET /api/public/dashboard/:uuid/field/:field/search/:search-field-id nil ---------------------
 
 (deftest dashboard
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
@@ -930,7 +930,7 @@
        Exception
        (#'public-api/field-remapped-values (mt/id :venues :id) (mt/id :venues :price) "10"))))
 
-;;; ----------------------- GET /api/public/card/:uuid/field/:field-id/remapping/:remapped-id ------------------------
+;;; ----------------------- GET /api/public/card/:uuid/field/:field/remapping/:remapped-id nil ------------------------
 
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "public/"
@@ -968,7 +968,7 @@
              (http/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
                           :value "10"))))))
 
-;;; --------------------- GET /api/public/dashboard/:uuid/field/:field-id/remapping/:remapped-id ---------------------
+;;; --------------------- GET /api/public/dashboard/:uuid/field/:field/remapping/:remapped-id nil ---------------------
 
 
 (deftest api-endpoint-should-return-same-results-as-function
