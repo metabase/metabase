@@ -40,10 +40,6 @@ export class WindowModal extends Component {
 
     this._modalElement = document.createElement("div");
     this._modalElement.className = "ModalContainer";
-  }
-
-  componentDidMount() {
-    // this happens post-render to make the CSSTransitionGroup animation work
     document.body.appendChild(this._modalElement);
   }
 
