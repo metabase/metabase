@@ -159,4 +159,21 @@ describeWithToken("scenarios > question > snippets", () => {
     cy.findByText("my favorite snippets").click();
     cy.findByText("snippet 1");
   });
+
+  it.skip("should not display snippet folder as part of collections (metabase#14907)", () => {
+    cy.server();
+    cy.route("GET", "/api/collection/root").as("collections");
+
+    cy.request("POST", "/api/collection", {
+      name: "Snippet Folder",
+      description: null,
+      color: "#509EE3",
+      parent_id: null,
+      namespace: "snippets",
+    });
+
+    cy.visit("/collection/root");
+    cy.wait("@collections");
+    cy.findByText("Snippet Folder").should("not.exist");
+  });
 });
