@@ -6,6 +6,7 @@
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.events :as events]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -511,8 +512,8 @@
   (set (for [param parameter-mappings
              :let  [field-clause (params/param-target->field-clause (:target param) (:dashcard param))]
              :when field-clause
-             :let  [[_ field-id] field-clause]
-             :when (integer? field-id)]
+             :let  [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+             :when field-id]
          field-id)))
 
 (defn- param-key->field-ids

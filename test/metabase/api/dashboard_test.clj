@@ -225,7 +225,7 @@
                                                          :card_id            card-id
                                                          :parameter_mappings [{:card_id      1
                                                                                :parameter_id "foo"
-                                                                               :target       [:dimension [:field_id field-id]]}]}]]
+                                                                               :target       [:dimension [:field field-id nil]]}]}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (card-api-test/with-cards-in-readable-collection [card-id]
             (is (= (merge dashboard-defaults
@@ -250,7 +250,7 @@
                                             :created_at             true
                                             :parameter_mappings     [{:card_id      1
                                                                       :parameter_id "foo"
-                                                                      :target       ["dimension" ["field-id" field-id]]}]
+                                                                      :target       ["dimension" ["field" field-id nil]]}]
                                             :visualization_settings {}
                                             :card                   (merge card-api-test/card-defaults
                                                                            {:name                   "Dashboard Test Card"
@@ -1098,34 +1098,34 @@
              (#'dashboard-api/mappings->field-ids
               [{:parameter_id "8e8eafa7"
                 :card_id      1
-                :target       [:dimension [:field-id 1]]}
+                :target       [:dimension [:field 1 nil]]}
                {:parameter_id "637169c8"
                 :card_id      1
-                :target       [:dimension [:field-id 2]]}]))))
+                :target       [:dimension [:field 2 nil]]}]))))
     (testing "Should normalize MBQL clauses"
       (is (= #{1 2}
              (#'dashboard-api/mappings->field-ids
               [{:parameter_id "8e8eafa7"
                 :card_id      1
-                :target       [:dimension ["field-id" 1]]}
+                :target       [:dimension ["field" 1 nil]]}
                {:parameter_id "637169c8"
                 :card_id      1
-                :target       ["dimension" ["field-id" 2]]}]))))
+                :target       ["dimension" ["field" 2 nil]]}]))))
     (testing "Should ignore field-literal clauses"
       (is (= #{1}
              (#'dashboard-api/mappings->field-ids
               [{:parameter_id "8e8eafa7"
                 :card_id      1
-                :target       [:dimension ["field-id" 1]]}
+                :target       [:dimension ["field" 1 nil]]}
                {:parameter_id "637169c8"
                 :card_id      1
-                :target       ["dimension" ["field-literal" "wow" "type/Text"]]}]))))
+                :target       ["dimension" ["field" "wow" {:base-type "type/Text"}]]}]))))
     (testing "Should ignore invalid mappings"
       (is (= #{1}
              (#'dashboard-api/mappings->field-ids
               [{:parameter_id "8e8eafa7"
                 :card_id      1
-                :target       [:dimension ["field-id" 1]]}
+                :target       [:dimension ["field" 1 nil]]}
                {:parameter_id "637169c8"
                 :card_id      1}]))))))
 

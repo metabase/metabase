@@ -14,7 +14,7 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
-(def test-bindings
+(def ^:private test-bindings
   (delay
    (with-test-domain-entity-specs
      (let [table (m/find-first (comp #{(mt/id :venues)} u/the-id) (#'t/tableset (mt/id) "PUBLIC"))]
@@ -119,8 +119,7 @@
                    first
                    :dataset_query
                    qp/process-query
-                   :data
-                   :rows)))))))
+                   mt/rows)))))))
 
 (deftest correct-transforms-for-table-test
   (testing "Can we find the right transform(s) for a given table"

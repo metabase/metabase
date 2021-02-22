@@ -731,11 +731,11 @@
             [:inside [:field 1 nil] [:field 2 nil] 10.0 -20.0 -10.0 20.0])))))
 
 (deftest join->source-table-id-test
-  (let [join {:strategy     :left-join
-               :condition    [:=
-                              [:field-id 48]
-                              [:joined-field "products" [:field-id 44]]]
-               :alias        "products"}]
+  (let [join {:strategy  :left-join
+              :condition [:=
+                             [:field 48 nil]
+                          [:field 44 {:join-alias "products"}]]
+              :alias     "products"}]
     (is (= 5
            (mbql.u/join->source-table-id (assoc join :source-table 5))))
     (is (= 5

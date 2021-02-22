@@ -132,6 +132,7 @@
   rows+column-names]
 
  [qp.test-util
+  store-contents
   with-database-timezone-id
   with-everything-store
   with-report-timezone-id
