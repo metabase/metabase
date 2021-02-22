@@ -22,10 +22,10 @@ class SavedQuestionTableList extends React.Component {
     const { tables = [] } = this.props.schema;
     if (tables.length > 0) {
       return (
-        <ol className="px3 pt2">
+        <ol className="List text-brand px1 pt2 full">
           {tables.map(t => (
             <li
-              className="text-brand-hover flex align-top mb1"
+              className="List-section"
               key={t.id}
               onClick={() => {
                 this.props.query
@@ -34,8 +34,12 @@ class SavedQuestionTableList extends React.Component {
                   .update(null, { run: true });
               }}
             >
-              <Icon name="table2" className="mr1" />
-              <h3>{t.display_name}</h3>
+              <div className="List-item flex mx1">
+                <a className="p1 flex-auto flex align-center cursor-pointer">
+                  <Icon name="table2" className="mr1" />
+                  <h4 className="List-item-title">{t.display_name}</h4>
+                </a>
+              </div>
             </li>
           ))}
         </ol>
@@ -107,7 +111,7 @@ class SavedQuestionPicker extends React.Component {
       };
       return (
         <div style={{ width: 480 }} className="flex">
-          <div className="bg-light border-right" style={{ width: 240 }}>
+          <div className="bg-light border-right" style={{ width: 360 }}>
             <div>
               <div
                 onClick={() => onBack()}
