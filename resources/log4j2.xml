@@ -27,7 +27,7 @@
     <Logger name="metabase.plugins" level="DEBUG"/>
     <Logger name="metabase.server.middleware" level="DEBUG"/>
     <Logger name="metabase.query-processor.async" level="DEBUG"/>
-    <Logger name="com.mchange" level="ERROR"/>
+    <Logger name="com.mchange" level="DEBUG"/>
 
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>
