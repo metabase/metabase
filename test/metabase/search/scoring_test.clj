@@ -158,3 +158,16 @@
                                        this social bird lives in small flocks in lowland rainforests in countries such as costa rica
                                        it flies short distances between trees toucans rest in holes in trees
                                        here is some more filler))))))))
+
+(deftest pinned-score-test
+  (let [score #'search/pinned-score
+        item (fn [collection-position] {:collection_position collection-position})]
+    (testing "it provides a sortable score"
+      (is (= [1 2 3 0 nil]
+             (->> [(item 0)
+                   (item nil)
+                   (item 3)
+                   (item 1)
+                   (item 2)]
+                  (sort-by score)
+                  (map :collection_position)))))))
