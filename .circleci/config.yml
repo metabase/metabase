@@ -932,7 +932,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
-                  run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
+                  run test-cypress-no-build <<# parameters.only-single-database >> --folder << parameters.test-files-location >> <</ parameters.only-single-database >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
