@@ -11,7 +11,7 @@ import type {
 import type { Field as FieldReference } from "metabase-types/types/Query";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import type Question from "metabase-lib/lib/Question";
 
 type ColumnSetting = {
@@ -54,6 +54,15 @@ export function fieldRefForColumn(column: Column): ?FieldReference {
       .baseDimension()
       .mbql()
   );
+}
+
+export function fieldRefWithOption(fieldRef, key, value) {
+  const fieldIdOrName = fieldRef[1];
+  const options = fieldRef[2];
+  const newOptions = options ? _.clone() : {};
+  newOptions[key] = value;
+
+  return ["field", fieldIdOrName, newOptions];
 }
 
 export const keyForColumn = (column: Column): string => {
@@ -146,7 +155,7 @@ export function syncTableColumnsToQuery(question: Question): Question {
         if (fieldRef) {
           const dimension = query.parseFieldReference(fieldRef);
           // NOTE: this logic should probably be in StructuredQuery
-          if (dimension instanceof JoinedDimension) {
+          if (dimension instanceof FieldDimension && dimension.joinAlias()) {
             const join = dimension.join();
             if (join) {
               query = join.addField(dimension.mbql()).parent();

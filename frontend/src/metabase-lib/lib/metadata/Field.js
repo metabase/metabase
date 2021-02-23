@@ -177,7 +177,7 @@ export default class Field extends Base {
       return Dimension.parseMBQL(this.id, this.metadata, this.query);
     } else {
       return Dimension.parseMBQL(
-        ["field-id", this.id],
+        ["field", this.id, null],
         this.metadata,
         this.query,
       );

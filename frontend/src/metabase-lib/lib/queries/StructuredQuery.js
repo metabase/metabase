@@ -31,10 +31,9 @@ import type {
 import type { AggregationOperator } from "metabase-types/types/Metadata";
 
 import Dimension, {
-  FKDimension,
+  FieldDimension,
   ExpressionDimension,
   AggregationDimension,
-  FieldLiteralDimension,
 } from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
@@ -279,13 +278,13 @@ export default class StructuredQuery extends AtomicQuery {
       if (dateField) {
         return this.filter([
           "time-interval",
-          ["field-id", dateField.id],
+          ["field", dateField.id, null],
           -365,
           "day",
         ])
           .aggregate(["metric", "ga:users"])
           .aggregate(["metric", "ga:pageviews"])
-          .breakout(["datetime-field", ["field-id", dateField.id], "week"]);
+          .breakout(["field", dateField.id, { "temporal-unit": "week" }]);
       }
     }
     return this;
@@ -1145,7 +1144,7 @@ export default class StructuredQuery extends AtomicQuery {
         }
 
         const fkDimensions = dimension
-          .dimensions([FKDimension])
+          .dimensions([FieldDimension])
           .filter(dimensionFilter);
 
         if (fkDimensions.length > 0) {
@@ -1253,7 +1252,7 @@ export default class StructuredQuery extends AtomicQuery {
             f.parent_id == null
           );
         })
-        .sortBy(d => d.field().name.toLowerCase())
+        .sortBy(d => d.displayName().toLowerCase())
         .sortBy(d => {
           const type = d.field().semantic_type;
           return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
@@ -1418,7 +1417,7 @@ export default class StructuredQuery extends AtomicQuery {
    * returns the corresponding {Dimension} in the sourceQuery, if any
    */
   dimensionForSourceQuery(dimension: Dimension): ?Dimension {
-    if (dimension instanceof FieldLiteralDimension) {
+    if (dimension instanceof FieldDimension && dimension.isStringFieldName()) {
       const sourceQuery = this.sourceQuery();
       if (sourceQuery) {
         const index = sourceQuery.columnNames().indexOf(dimension.name());

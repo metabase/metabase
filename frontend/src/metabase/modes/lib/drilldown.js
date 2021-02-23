@@ -16,10 +16,14 @@ import { getIn } from "icepick";
 const CategoryDrillDown = type => [field => isa(field.semantic_type, type)];
 const DateTimeDrillDown = unit => [["datetime-field", isDate, unit]];
 
-const LatLonDrillDown = (binningStrategy, binWidth) => [
-  ["binning-strategy", isLatitude, binningStrategy, binWidth],
-  ["binning-strategy", isLongitude, binningStrategy, binWidth],
-];
+const LatLonDrillDown = (binningStrategy, arg) => {
+  const options = {"binning": {"strategy": binningStrategy}};
+  options.binning[binningStrategy] = arg;
+  return [
+    ["field", isLatitude, options],
+    ["field", isLongitude, options]
+  ];
+};
 
 /**
  * Defines the built-in drill-down progressions
@@ -65,15 +69,15 @@ const DEFAULT_DRILL_DOWN_PROGRESSIONS = [
   ],
   // generic num-bins drill down
   [
-    [["binning-strategy", isAny, "num-bins", () => true]],
-    [["binning-strategy", isAny, "default"]],
+    [["binning-strategy1", isAny, "num-bins", () => true]],
+    [["binning-strategy2", isAny, "default"]],
   ],
   // generic bin-width drill down
   [
-    [["binning-strategy", isAny, "bin-width", () => true]],
+    [["binning-strategy3", isAny, "bin-width", () => true]],
     [
       [
-        "binning-strategy",
+        "binning-strategy4",
         isAny,
         "bin-width",
         (binWidth: number) => binWidth / 10,
@@ -231,14 +235,14 @@ function columnToBreakout(column) {
     switch (binningStrategy) {
       case "bin-width":
         return [
-          "binning-strategy",
+          "binning-strategy5",
           column.id,
           "bin-width",
           column.binning_info.bin_width,
         ];
       case "num-bins":
         return [
-          "binning-strategy",
+          "binning-strategy6",
           column.id,
           "num-bins",
           column.binning_info.num_bins,

@@ -22,8 +22,7 @@ import Field from "metabase-lib/lib/metadata/Field";
 
 import {
   AggregationDimension,
-  DatetimeFieldDimension,
-  BinnedDimension,
+  FieldDimension,
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 
@@ -360,15 +359,19 @@ export default class Question {
       if (aggregations.length >= 1 && breakouts.length === 1) {
         if (breakoutFields[0].isDate()) {
           if (
-            breakoutDimensions[0] instanceof DatetimeFieldDimension &&
-            breakoutDimensions[0].isExtraction()
+            breakoutDimensions[0] instanceof FieldDimension &&
+            breakoutDimensions[0].temporalUnit() &&
+            breakoutDimensions[0].isTemporalExtraction()
           ) {
             return this.setDisplay("bar");
           } else {
             return this.setDisplay("line");
           }
         }
-        if (breakoutDimensions[0] instanceof BinnedDimension) {
+        if (
+          breakoutDimensions[0] instanceof FieldDimension &&
+          breakoutDimensions[0].binningStrategy()
+        ) {
           return this.setDisplay("bar");
         }
         if (breakoutFields[0].isCategory()) {
@@ -531,7 +534,7 @@ export default class Question {
       return query
         .reset()
         .setTable(field.table)
-        .filter(["=", ["field-id", field.id], value])
+        .filter(["=", ["field", field.id, null], value])
         .question();
     }
   }
