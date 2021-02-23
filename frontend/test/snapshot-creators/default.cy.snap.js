@@ -96,15 +96,12 @@ describe("snapshots", () => {
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
 
-    // permissions
-    cy.request("PUT", "/api/permissions/graph", {
-      revision: 0,
-      groups: {
-        [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
-        [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
-        [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
-      },
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
+      [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
+      [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
     });
+
     cy.request("PUT", "/api/collection/graph", {
       revision: 0,
       groups: {

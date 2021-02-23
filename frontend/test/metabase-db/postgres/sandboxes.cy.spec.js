@@ -41,22 +41,15 @@ describeWithToken("postgres > user > query", () => {
       cy.request("PUT", `/api/user/${USER_ID}/qbnewb`, {});
     });
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
-    cy.request("GET", "/api/permissions/graph", {}).then(
-      ({ body: { groups, revision } }) => {
-        cy.request("PUT", "/api/permissions/graph", {
-          revision,
-          groups: {
-            [ALL_USERS_GROUP]: {
-              [PG_DB_ID]: { schemas: "none", native: "none" },
-            },
-            [DATA_GROUP]: { [PG_DB_ID]: { schemas: "all", native: "write" } },
-            [COLLECTION_GROUP]: {
-              [PG_DB_ID]: { schemas: "none", native: "none" },
-            },
-          },
-        });
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [PG_DB_ID]: { schemas: "none", native: "none" },
       },
-    );
+      [DATA_GROUP]: { [PG_DB_ID]: { schemas: "all", native: "write" } },
+      [COLLECTION_GROUP]: {
+        [PG_DB_ID]: { schemas: "none", native: "none" },
+      },
+    });
   });
 
   it.skip("should handle the use of `regexextract` in a sandboxed table (metabase#14873)", () => {
