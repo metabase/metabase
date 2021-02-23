@@ -524,21 +524,6 @@ jobs:
           paths:
             - metabase/metabase
 
-  yaml-linter:
-    executor: node
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: .YAML-CHECKSUMS
-          find-args: ". -type f -name '*.yaml' -or -name '*.yml'"
-      - run-on-change:
-          # package.json is included in the cache key in case the yamllint dependency changes
-          checksum: '{{ checksum ".YAML-CHECKSUMS" }}-{{ checksum "package.json" }}'
-          steps:
-            - run-yarn-command:
-                command-name: Lint YAML files
-                command: lint-yaml `find resources -name '*.yaml' -or -name '*.yml'`
-
   verify-i18n-files:
     executor: metabase-ci
     steps:
@@ -990,10 +975,6 @@ workflows:
   build:
     jobs:
       - checkout
-
-      - yaml-linter:
-          requires:
-            - fe-deps
 
       - verify-i18n-files:
           requires:
