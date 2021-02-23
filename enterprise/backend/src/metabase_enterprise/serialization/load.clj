@@ -4,6 +4,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name->context]]
             [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
             [metabase.config :as config]
@@ -245,6 +246,16 @@
     (:source-query query) (update-in query [:source-query] fully-qualified-name->id-rec)
     true query))
 
+
+(defn- source-card
+  [fully-qualified-name]
+  (let [{:keys [card]} (fully-qualified-name->context fully-qualified-name)]
+    card))
+
+(defn- resolve-native
+  [template-tags]
+  (m/map-vals #(m/update-existing % :card-id source-card) template-tags))
+
 (defn- resolve-card [card context]
   (-> card
       (update :table_id (comp :table fully-qualified-name->context))
@@ -258,7 +269,12 @@
               :dataset_query
               :type
               mbql.util/normalize-token
-              (= :query)) (update-in [:dataset_query :query] fully-qualified-name->id-rec))))
+              (= :query)) (update-in [:dataset_query :query] fully-qualified-name->id-rec)
+          (-> card
+              :dataset_query
+              :native
+              :template-tags)
+          (m/update-existing-in [:dataset_query :native :template-tags] resolve-native))))
 
 (defmethod load "cards"
   [path context]
