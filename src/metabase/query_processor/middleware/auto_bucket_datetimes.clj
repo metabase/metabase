@@ -14,9 +14,7 @@
             [toucan.db :as db]))
 
 (def ^:private FieldTypeInfo
-  {:base_type                      (s/maybe su/FieldType)
-   :effective_type                 (s/maybe su/FieldType)
-   :coercion_strategy              (s/maybe su/CoercionStrategy)
+  {:effective_type                 su/FieldType
    (s/optional-key :semantic_type) (s/maybe su/FieldType)
    s/Keyword                       s/Any})
 
@@ -35,7 +33,7 @@
    ;; build map of field-literal-name -> {:base_type base-type}
    (into {} (for [[clause field-name base-type] unbucketed-fields
                   :when                         (= clause :field-literal)]
-              [field-name {:base_type base-type}]))
+              [field-name {:effective_type base-type}]))
    ;; build map of field ID -> <info from DB>
    (when-let [field-ids (seq (filter integer? (map second unbucketed-fields)))]
      (u/key-by :id (db/select [Field :id :base_type :effective_type :coercion_strategy :semantic_type]

@@ -242,7 +242,7 @@
     (testing "Verify that we identify JSON columns and mark metadata properly during sync"
       (mt/dataset (mt/dataset-definition "Postgres with a JSON Field"
                     ["venues"
-                     [{:field-name "address", :base-type {:native "json"}}]
+                     [{:field-name "address", :base-type {:native "json"}, :effective-type :type/Structured}]
                      [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
@@ -308,7 +308,7 @@
 
 (mt/defdataset ^:private ip-addresses
   [["addresses"
-    [{:field-name "ip", :base-type {:native "inet"}}]
+    [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
     [[(hsql/raw "'192.168.1.1'::inet")]
      [(hsql/raw "'10.4.4.15'::inet")]]]])
 

@@ -24,23 +24,29 @@
   (is (= (mt/mbql-query venues
            {:filter [:>
                      $id
-                     [:value 50 {:base_type     :type/BigInteger
-                                 :semantic_type :type/PK
-                                 :database_type "BIGINT"
-                                 :name          "ID"}]]})
+                     [:value 50 {:base_type         :type/BigInteger
+                                 :effective_type    :type/BigInteger
+                                 :coercion_strategy nil
+                                 :semantic_type     :type/PK
+                                 :database_type     "BIGINT"
+                                 :name              "ID"}]]})
          (wrap-value-literals
            (mt/mbql-query venues
              {:filter [:> $id 50]}))))
   (is (= (mt/mbql-query venues
            {:filter [:and
-                     [:> $id [:value 50 {:base_type     :type/BigInteger
-                                         :semantic_type :type/PK
-                                         :database_type "BIGINT"
-                                         :name "ID"}]]
-                     [:< $price [:value 5 {:base_type     :type/Integer
-                                           :semantic_type  :type/Category
-                                           :database_type "INTEGER"
-                                           :name "PRICE"}]]]})
+                     [:> $id [:value 50 {:base_type         :type/BigInteger
+                                         :effective_type    :type/BigInteger
+                                         :coercion_strategy nil
+                                         :semantic_type     :type/PK
+                                         :database_type     "BIGINT"
+                                         :name              "ID"}]]
+                     [:< $price [:value 5 {:base_type         :type/Integer
+                                           :effective_type    :type/Integer
+                                           :coercion_strategy nil
+                                           :semantic_type     :type/Category
+                                           :database_type     "INTEGER"
+                                           :name              "PRICE"}]]]})
          (wrap-value-literals
            (mt/mbql-query venues
              {:filter [:and
@@ -136,11 +142,13 @@
     (is (= (mt/mbql-query checkins
              {:filter [:starts-with
                        !month.date
-                       [:value "2018-10-01" {:base_type     :type/Date
-                                             :semantic_type nil
-                                             :database_type "DATE"
-                                             :unit          :month
-                                             :name          "DATE"}]]})
+                       [:value "2018-10-01" {:base_type         :type/Date
+                                             :effective_type    :type/Date
+                                             :coercion_strategy nil
+                                             :semantic_type     nil
+                                             :database_type     "DATE"
+                                             :unit              :month
+                                             :name              "DATE"}]]})
            (wrap-value-literals
              (mt/mbql-query checkins
                {:filter [:starts-with !month.date "2018-10-01"]}))))))

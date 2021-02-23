@@ -13,7 +13,8 @@
 
 (defn- results-metadata [query-results]
   (for [col (-> query-results :data :cols)]
-    (select-keys col [:id :table_id :name :display_name :base_type :semantic_type :unit :fingerprint :settings :field_ref])))
+    (select-keys col [:id :table_id :name :display_name :base_type :effective_type
+                      :coercion_strategy :semantic_type :unit :fingerprint :settings :field_ref])))
 
 (defn- venues-source-metadata
   ([]

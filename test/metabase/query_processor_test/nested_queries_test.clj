@@ -69,7 +69,8 @@
                 (dissoc :description :parent_id :visibility_type))
 
             (not has-source-metadata?)
-            (dissoc :id :semantic_type :settings :fingerprint :table_id))
+            (dissoc :id :semantic_type :settings :fingerprint :table_id
+                    :effective_type :coercion_strategy))
           (qp.test/aggregate-col :count)]})
 
 (deftest mbql-source-query-breakout-aggregation-test
@@ -376,6 +377,7 @@
   (testing "make sure a query using a source query comes back with the correct columns metadata"
     (is (= (map (partial qp.test/col :venues)
                 [:id :name :category_id :latitude :longitude :price])
+           ;; todo: i don't know why the results don't have the information
            (mt/cols
              (mt/with-temp Card [card (venues-mbql-card-def)]
                (qp/process-query (query-with-source-card card)))))))
@@ -808,7 +810,7 @@
                   (get-in result [:data :results_metadata :columns])
                   (u/key-by :name result)
                   (get result "EAN")
-                  (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
+                  (select-keys result [:name :display_name :base_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"
           (let [base-query (mt/mbql-query orders
                              {:source-table $$orders
@@ -826,7 +828,6 @@
                              {:name         "EAN"
                               :display_name "Products → Ean"
                               :base_type    :type/Text
-                              :semantic_type nil
                               :id           %ean
                               :field_ref    [:joined-field "Products" $ean]})
                            (ean-metadata (qp/process-query query))))))))))))))

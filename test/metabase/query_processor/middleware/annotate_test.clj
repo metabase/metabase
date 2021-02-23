@@ -170,11 +170,17 @@
 (deftest col-info-combine-parent-field-names-test
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
-                    Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/get-id parent)}]]
+                    Field [child  {:name "child", :table_id (mt/id :venues),
+                                   :parent_id (u/get-id parent)}]]
       (mt/with-everything-store
         (is (= {:description     nil
                 :table_id        (mt/id :venues)
                 :semantic_type   nil
+                :effective_type  nil
+                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
+                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
+                ;; when the info is inferred. the solution to this might be quite extensive renaming
+                :coercion_strategy nil
                 :name            "parent.child"
                 :settings        nil
                 :field_ref       [:field-id (u/get-id child)]
@@ -194,6 +200,8 @@
         (is (= {:description     nil
                 :table_id        (mt/id :venues)
                 :semantic_type   nil
+                :effective_type  nil
+                :coercion_strategy nil
                 :name            "grandparent.parent.child"
                 :settings        nil
                 :field_ref       [:field-id (u/get-id child)]

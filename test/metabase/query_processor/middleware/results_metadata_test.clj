@@ -189,24 +189,26 @@
                    :breakout     [[:datetime-field [:field-id (mt/id :checkins :date)] :year]]}
         :info     {:card-id    (u/the-id card)
                    :query-hash (qputil/query-hash {})}})
-      (is (= [{:base_type    :type/DateTime
-               :display_name "Date"
-               :name         "DATE"
-               :unit         :year
-               :semantic_type nil
-               :fingerprint  {:global {:distinct-count 618 :nil% 0.0}
-                              :type   {:type/DateTime {:earliest "2013-01-03"
-                                                       :latest   "2015-12-29"}}}
-               :id           (mt/id :checkins :date)
-               :field_ref    [:datetime-field [:field-id (mt/id :checkins :date)] :year]}
-              {:base_type    :type/BigInteger
-               :display_name "Count"
-               :name         "count"
-               :semantic_type :type/Quantity
-               :fingerprint  {:global {:distinct-count 3
-                                       :nil%           0.0},
-                              :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}
-               :field_ref    [:aggregation 0]}]
+      (is (= [{:base_type         :type/DateTime
+               :effective_type    :type/Date
+               :coercion_strategy nil
+               :display_name      "Date"
+               :name              "DATE"
+               :unit              :year
+               :semantic_type     nil
+               :fingerprint       {:global {:distinct-count 618 :nil% 0.0}
+                                   :type   {:type/DateTime {:earliest "2013-01-03"
+                                                            :latest   "2015-12-29"}}}
+               :id                (mt/id :checkins :date)
+               :field_ref         [:datetime-field [:field-id (mt/id :checkins :date)] :year]}
+              {:base_type         :type/BigInteger
+               :display_name      "Count"
+               :name              "count"
+               :semantic_type     :type/Quantity
+               :fingerprint       {:global {:distinct-count 3
+                                            :nil%           0.0},
+                                   :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}
+               :field_ref         [:aggregation 0]}]
              (-> card
                  card-metadata
                  round-to-2-decimals

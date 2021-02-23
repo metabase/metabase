@@ -88,16 +88,17 @@
 ;; Try an end-to-end test of the middleware
 (defn- test-field []
   (field/map->FieldInstance
-   {:database_type "DOUBLE"
-    :table_id      (mt/id :checkins)
+   {:database_type  "DOUBLE"
+    :table_id       (mt/id :checkins)
     :semantic_type  :type/Income
-    :name          "TOTAL"
-    :display_name  "Total"
-    :fingerprint   {:global {:distinct-count 10000}
-                    :type   {:type/Number {:min 12.061602936923117
-                                           :max 238.32732001721533
-                                           :avg 82.96014815230829}}}
-    :base_type     :type/Float}))
+    :name           "TOTAL"
+    :display_name   "Total"
+    :fingerprint    {:global {:distinct-count 10000}
+                     :type   {:type/Number {:min 12.061602936923117
+                                            :max 238.32732001721533
+                                            :avg 82.96014815230829}}}
+    :base_type      :type/Float
+    :effective_type :type/Float}))
 
 (deftest update-binning-strategy-test
   (mt/with-temp Field [field (test-field)]

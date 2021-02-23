@@ -11,17 +11,19 @@
                                                 :type     :query
                                                 :query    {:source-table (mt/id :venues)
                                                            :fields       [[:field-id (mt/id :venues :name)]]}})]
-      (is (= [{:name         "NAME"
-               :display_name "Name"
-               :base_type    :type/Text
-               :semantic_type :type/Name
-               :fingerprint  {:global {:distinct-count 100, :nil% 0.0},
-                              :type   #:type {:Text
-                                              {:percent-json   0.0,
-                                               :percent-url    0.0,
-                                               :percent-email  0.0,
-                                               :percent-state  0.0,
-                                               :average-length 15.63}}}
-               :id           (mt/id :venues :name)
-               :field_ref    [:field-id (mt/id :venues :name)]}]
+      (is (= [{:name              "NAME"
+               :display_name      "Name"
+               :base_type         :type/Text
+               :coercion_strategy nil
+               :effective_type    :type/Text
+               :semantic_type     :type/Name
+               :fingerprint       {:global {:distinct-count 100, :nil% 0.0},
+                                   :type   #:type {:Text
+                                                   {:percent-json   0.0,
+                                                    :percent-url    0.0,
+                                                    :percent-email  0.0,
+                                                    :percent-state  0.0,
+                                                    :average-length 15.63}}}
+               :id                (mt/id :venues :name)
+               :field_ref         [:field-id (mt/id :venues :name)]}]
              (mt/wait-for-result result-chan 1000))))))
