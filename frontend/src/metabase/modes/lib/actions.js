@@ -2,7 +2,11 @@
 
 import moment from "moment";
 
-import { rangeForValue, fieldRefForColumn, fieldRefWithOption } from "metabase/lib/dataset";
+import {
+  rangeForValue,
+  fieldRefForColumn,
+  fieldRefWithOption,
+} from "metabase/lib/dataset";
 import { isDate, isNumber } from "metabase/lib/schema_metadata";
 
 import type { Breakout } from "metabase-types/types/Query";
@@ -75,10 +79,12 @@ export function distribution(question: Question, column): ?Question {
   const query = question.query();
   if (query instanceof StructuredQuery) {
     const breakout = isDate(column)
-                   ? fieldRefWithOption(fieldRefForColumn(column), "temporal-unit", "month")
-                   : isNumber(column)
-                   ? fieldRefWithOption(fieldRefForColumn(column), "binning", {"strategy": "default"})
-                   : fieldRefForColumn(column);
+      ? fieldRefWithOption(fieldRefForColumn(column), "temporal-unit", "month")
+      : isNumber(column)
+      ? fieldRefWithOption(fieldRefForColumn(column), "binning", {
+          strategy: "default",
+        })
+      : fieldRefForColumn(column);
     return query
       .clearAggregations()
       .clearBreakouts()

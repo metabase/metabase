@@ -17,12 +17,9 @@ const CategoryDrillDown = type => [field => isa(field.semantic_type, type)];
 const DateTimeDrillDown = unit => [["datetime-field", isDate, unit]];
 
 const LatLonDrillDown = (binningStrategy, arg) => {
-  const options = {"binning": {"strategy": binningStrategy}};
+  const options = { binning: { strategy: binningStrategy } };
   options.binning[binningStrategy] = arg;
-  return [
-    ["field", isLatitude, options],
-    ["field", isLongitude, options]
-  ];
+  return [["field", isLatitude, options], ["field", isLongitude, options]];
 };
 
 /**

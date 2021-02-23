@@ -16,9 +16,7 @@ import SelectSeparator from "../components/SelectSeparator";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import Dimension, {
-  FieldDimension
-} from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
 
 const MAP_OPTIONS = {
@@ -206,7 +204,10 @@ export default class FieldRemapping extends React.Component {
 
   // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
   isValidFKRemappingTarget = dimension =>
-    !(dimension.defaultDimension() instanceof FieldDimension && dimension.temporalUnit());
+    !(
+      dimension.defaultDimension() instanceof FieldDimension &&
+      dimension.temporalUnit()
+    );
 
   getForeignKeys = () => {
     const { table, field } = this.props;
