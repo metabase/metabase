@@ -317,8 +317,7 @@
                         (filter some?))]
       (->> results
            (transduce xf scoring/accumulate-top-results)
-           ;; Pluck out the result; discard the score
-           (map second)))))
+           (map :result)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
