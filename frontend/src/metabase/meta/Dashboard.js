@@ -13,10 +13,7 @@ import type {
   ParameterMappingUIOption,
 } from "metabase-types/types/Parameter";
 
-import Dimension, {
-  FKDimension,
-  JoinedDimension,
-} from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
 import { t } from "ttag";
@@ -232,8 +229,8 @@ export function getParameterMappingOptions(
             icon: dimension.icon(),
             target: ["dimension", dimension.mbql()],
             isForeign:
-              dimension instanceof FKDimension ||
-              dimension instanceof JoinedDimension,
+              dimension.getOption("source-field") ||
+              dimension.getOption("join-alias"),
           })),
         ),
     );

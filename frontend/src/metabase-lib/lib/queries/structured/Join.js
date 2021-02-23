@@ -4,7 +4,7 @@ import { MBQLObjectClause } from "./MBQLClause";
 import { t } from "ttag";
 
 import StructuredQuery from "../StructuredQuery";
-import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import { pluralize } from "metabase/lib/formatting";
@@ -143,7 +143,8 @@ export default class Join extends MBQLObjectClause {
       // TODO: do this in a generic way for all joined-field clauses in the query
       const joinDimension = join.joinDimension();
       if (
-        joinDimension instanceof JoinedDimension &&
+        joinDimension instanceof FieldDimension &&
+        joinDimension.joinAlias() &&
         joinDimension.joinAlias() === this.alias
       ) {
         // TODO: JoinedDimension should have setJoinAlias()

@@ -162,10 +162,10 @@ function getDateTimeField(
 export function getDateTimeFieldTarget(
   field: ConcreteField,
 ): LocalFieldReference | ForeignFieldReference | ExpressionReference {
-  if (FieldRef.isDatetimeField(field)) {
+  if (FieldRef.isLocalField(field) && field[2] && field[2]["temporal-unit"]) {
     // $FlowFixMe:
-    return (field[1]: // $FlowFixMe:
-    LocalFieldReference | ForeignFieldReference | ExpressionReference);
+    return (field: // $FlowFixMe:
+    LocalFieldReference | ExpressionReference);
   } else {
     // $FlowFixMe
     return field;

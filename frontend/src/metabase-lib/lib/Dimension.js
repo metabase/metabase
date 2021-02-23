@@ -411,18 +411,26 @@ export class FieldDimension extends Dimension {
     );
   }
 
-  static parseMBQL(
-    mbql: ConcreteField,
-    metadata?: ?Metadata,
-    query?: ?StructuredQuery,
-  ) {
+  static parseMBQL(mbql, metadata = null, query = null) {
     if (FieldDimension.isFieldClause(mbql)) {
       return new FieldDimension(mbql[1], mbql[2], metadata, query);
     }
     return null;
   }
 
-  constructor(fieldIdOrName, options, metadata, query) {
+  /**
+   * Parse MBQL field clause or log a warning message if it could not be parsed. Use this when you expect the clause to
+   * be a `:field` clause
+   */
+  static parseMBQLOrWarn(mbql, metadata = null, query = null) {
+    const dimension = FieldDimension.parseMBQL(mbql, metadata, query);
+    if (!dimension) {
+      console.warn("Unknown field format", mbql);
+    }
+    return dimension;
+  }
+
+  constructor(fieldIdOrName, options = null, metadata = null, query = null) {
     super(null, [fieldIdOrName, options], metadata, query);
     this._fieldIdOrName = fieldIdOrName;
     this._options = options;
@@ -437,6 +445,13 @@ export class FieldDimension extends Dimension {
    */
   getOption(k) {
     return this._options && this._options[k];
+  }
+
+  /**
+   * Return integer ID *or* string name of the Field this `field` clause refers to.
+   */
+  fieldIdOrName() {
+    return this._fieldIdOrName;
   }
 
   /**
@@ -484,20 +499,45 @@ export class FieldDimension extends Dimension {
   }
 
   /**
-   * Return a new FieldDimensions that excludes temporal bucketing and binning.
+   * Return a copy of this FieldDimension that excludes `options`.
    */
-  baseDimension() {
-    const unbucketedOptions = _.omit(this._options, "temporal-unit", "binning");
+  withoutOptions(...options) {
+    const newOptions = _.omit(this._options, ...options);
+    // don't need to make a new object if nothing has changed.
+    if (this._options === newOptions) {
+      return this;
+    }
     return new FieldDimension(
       this._fieldIdOrName,
-      unbucketedOptions,
+      newOptions,
       this._metadata,
       this._query,
     );
   }
 
   /**
-   * Return a new FieldDimension that includes the specified `options`.
+   * Return a copy of this FieldDimension with any temporal bucketing options removed.
+   */
+  withoutTemporalBucketing() {
+    return this.withoutOptions("temporal-unit");
+  }
+
+  /**
+   * Return a copy of this FieldDimension with any binning options removed.
+   */
+  withoutBinning() {
+    return this.withOptions("binning");
+  }
+
+  /**
+   * Return a copy of this FieldDimensions with any temporal bucketing or binning options removed.
+   */
+  baseDimension() {
+    return this.withoutTemporalBucketing().withoutBinning();
+  }
+
+  /**
+   * Return a copy of this FieldDimension that includes the specified `options`.
    */
   withOptions(options) {
     return new FieldDimension(
@@ -506,6 +546,13 @@ export class FieldDimension extends Dimension {
       this._metadata,
       this._query,
     );
+  }
+
+  /**
+   * Return a copy of this FieldDimension, bucketed by the specified temporal unit.
+   */
+  withTemporalUnit(unit) {
+    return this.withOptions({ "temporal-unit": unit });
   }
 
   _dimensionForOption(option) {
@@ -529,8 +576,11 @@ export class FieldDimension extends Dimension {
     }
   }
 
+  /**
+   * @deprecated -- use withTemporalUnit() instead
+   */
   datetime(unit: DatetimeUnit): FieldDimension {
-    return this.withOptions({ "temporal-unit": unit });
+    return this.withTemporalUnit(unit);
   }
 
   columnName() {
@@ -717,9 +767,6 @@ import StructuredQuery from "./queries/StructuredQuery";
 
 const isFieldDimension = dimension => dimension instanceof FieldDimension;
 
-/**
- * DatetimeField dimension, `["datetime-field", field-reference, datetime-unit]`
- */
 /* export class DatetimeFieldDimension extends FieldDimension {
  *   static dimensions(parent: Dimension): Dimension[] {
  *     if (isFieldDimension(parent) && parent.field().isDate()) {
