@@ -9,13 +9,13 @@ const server = BackendResource.get({ dbKey: "" });
 
 // We currently accept three (optional) command line arguments
 // --open - Opens the Cypress test browser
-// --testFiles <path> - Specifies a different path for the integration folder
+// --folder <path> - Specifies a different path for the integration folder
 // --spec <single-spec-path> - Specifies a path to a single test file
 const userArgs = process.argv.slice(2);
 const isOpenMode = userArgs.includes("--open");
-const testFiles = userArgs.includes("--testFiles");
+const sourceFolder = userArgs.includes("--folder");
 const singleFile = userArgs.includes("--spec");
-const testFilesLocation = userArgs[userArgs.indexOf("--testFiles") + 1];
+const sourceFolderLocation = userArgs[userArgs.indexOf("--folder") + 1];
 const singleFileName = userArgs[userArgs.indexOf("--spec") + 1];
 
 function readFile(fileName) {
@@ -38,8 +38,8 @@ const init = async () => {
     );
   }
 
-  if (testFiles) {
-    console.log(chalk.bold(`Running tests in '${testFilesLocation}'`));
+  if (sourceFolder) {
+    console.log(chalk.bold(`Running tests in '${sourceFolderLocation}'`));
   }
 
   if (singleFile) {
@@ -74,8 +74,8 @@ const init = async () => {
 
   console.log(chalk.bold("Starting Cypress"));
   let commandLineConfig = `baseUrl=${server.host}`;
-  if (testFiles) {
-    commandLineConfig = `${commandLineConfig},integrationFolder=${testFilesLocation}`;
+  if (sourceFolder) {
+    commandLineConfig = `${commandLineConfig},integrationFolder=${sourceFolderLocation}`;
   } else if (singleFile) {
     commandLineConfig = `${commandLineConfig},testFiles=${singleFileName}`;
   } else {
