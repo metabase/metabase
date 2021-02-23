@@ -68,9 +68,6 @@ class SavedQuestionPicker extends React.Component {
     });
   };
   async componentDidMount() {
-    // TODO - remove once we're done testing
-
-    window.query = this.props.query;
     // IMPORTANT
     // set the database to be the saved question database when we mount
     this.props.query.setDatabaseId(SAVED_QUESTION_DB_ID);
@@ -97,7 +94,7 @@ class SavedQuestionPicker extends React.Component {
   }
 
   render() {
-    const { onBack, query, collections } = this.props;
+    const { onBack, collections } = this.props;
     // we assume we're loading so show something
     if (this.state.isLoading) {
       return <div>"Loading..."</div>;

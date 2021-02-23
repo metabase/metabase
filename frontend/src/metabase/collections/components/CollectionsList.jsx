@@ -12,10 +12,7 @@ import { SIDEBAR_SPACER } from "metabase/collections/constants";
 class CollectionsList extends React.Component {
   render() {
     const {
-      initialIcon,
-      currentCollection,
       filter = () => true,
-      openCollections,
       // hack to support using nested collections in the data selector, we should
       // move to a more elegant so
       // this is a function that accepts a collection item and returns what we want to have happen based on that
@@ -36,7 +33,8 @@ class CollectionsList extends React.Component {
 CollectionsList.defaultProps = {
   initialIcon: "folder",
   depth: 1,
-  useTriggerComponent: (c, props) => {
+  // named function here avoids eslint error
+  useTriggerComponent: function collectionTrigger(c, props) {
     const isOpen = props.openCollections.indexOf(c.id) >= 0;
     const action = isOpen ? props.onClose : props.onOpen;
     return (
