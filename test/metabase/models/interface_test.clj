@@ -29,6 +29,13 @@
            :type     :native
            :native   {:template-tags {"x" {}}}})))))
 
+(deftest normalize-metric-segment-definition-test
+  (testing "Legacy Metric/Segment definitions should get normalized"
+    (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
+           ((type-fn :metric-segment-definition :out)
+            (json/generate-string
+             {:filter [:= [:field-id 1] [:datetime-field [:field-id 2] :month]]}))))))
+
 (deftest dont-explode-on-way-out-from-db-test
   (testing "`metric-segment-definition`s should avoid explosions coming out of the DB..."
     (is (= nil

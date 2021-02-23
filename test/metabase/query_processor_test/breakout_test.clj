@@ -224,7 +224,7 @@
               :aggregation  [[:count]]
               :breakout     [[:field
                               (mt/format-name :latitude)
-                              {:base-type :type/Float, :strategy :num-bins, :num-bins 20}]]}})
+                              {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 20}}]]}})
 
 (deftest bin-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
@@ -253,12 +253,12 @@
       (with-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
         (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
           (mt/with-temp-vals-in-db Card (:id card) {:result_metadata nil}
-            (is (thrown?
+            (is (thrown-with-msg?
                  Exception
-                 (mt/suppress-output
-                  (qp.test/rows
+                 #"Cannot update binned field: query is missing source-metadata"
+                 (qp.test/rows
                    (qp/process-query
-                    (nested-venues-query card))))))))))))
+                    (nested-venues-query card)))))))))))
 
 (deftest field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)

@@ -275,6 +275,12 @@
          true)))
    "Invalid :temporal-unit for the specified :base-type."))
 
+(defn- no-binning-options-at-top-level [schema]
+  (s/constrained
+   schema
+   (complement :strategy)
+   "Found :binning keys at the top level of :field options. binning-related options belong under the :binning key."))
+
 (def ^:private FieldOptions
   (-> {(s/optional-key :base-type)     (s/maybe su/FieldType)
        ;;
@@ -309,7 +315,8 @@
        (s/optional-key :binning)       (s/maybe FieldBinningOptions)
        ;;
        s/Keyword                       s/Any}
-      validate-temporal-unit))
+      validate-temporal-unit
+      no-binning-options-at-top-level))
 
 (defn- require-base-type-for-field-name [schema]
   (s/constrained

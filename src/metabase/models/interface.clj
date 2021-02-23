@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.cron :as cron-util]
@@ -83,10 +84,21 @@
   :in  (comp json-in maybe-normalize)
   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
+(def ^:private MetricSegmentDefinition
+  {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
+   (s/optional-key :aggregation) (s/maybe [mbql.s/Aggregation])
+   s/Keyword                     s/Any})
+
+(def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
+  (s/validator MetricSegmentDefinition))
+
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
-  (when definition
-    (normalize/normalize-fragment [:query] definition)))
+  (when (seq definition)
+    (println "(pr-str definition):" (pr-str definition)) ; NOCOMMIT
+    (u/prog1 (normalize/normalize-fragment [:query] definition)
+      (println "(pr-str <>):" (pr-str <>)) ; NOCOMMIT
+      (validate-metric-segment-definition <>))))
 
 ;; For inner queries like those in Metric definitions
 (models/add-type! :metric-segment-definition
