@@ -308,9 +308,6 @@
     (statement* driver conn canceled-chan)
     (prepared-statement* driver conn sql params canceled-chan)))
 
-(defn- max-rows* [^Statement stmt max-rows]
-  (doto stmt (.setMaxRows max-rows)))
-
 (defmethod ^ResultSet execute-query! :sql-jdbc
   [_ ^PreparedStatement stmt]
   (.executeQuery stmt))
@@ -322,7 +319,7 @@
     (throw (ex-info (str (tru "Select statement did not produce a ResultSet for native query"))
                     {:sql sql :driver driver}))))
 
-(defn ^ResultSet execute-statement-or-prepared-statement [driver ^Statement stmt max-rows params sql]
+(defn- ^ResultSet execute-statement-or-prepared-statement [driver ^Statement stmt max-rows params sql]
   (let [st (doto stmt (.setMaxRows max-rows))]
     (if (empty? params)
       (execute-select! driver st sql)
@@ -438,7 +435,7 @@
 
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
-  {:added "0.35.0", :arglists '([driver query context respond] [driver sql native? params max-rows context respond])}
+  {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
   ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
    {:pre [(string? sql) (seq sql)]}
    (let [remark   (qputil/query->remark driver outer-query)
