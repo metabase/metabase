@@ -570,3 +570,26 @@
           (sync/sync-database! database)
           (is (= #{"table_with_perms"}
                  (db/select-field :name Table :db_id (:id database)))))))))
+
+(deftest json-operator-?-works
+  (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
+    (mt/test-driver :postgres
+      (drop-if-exists-and-create-db! "json-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
+                           "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
+                           "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}');"]]
+          (jdbc/execute! spec [statement])))
+      (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+            query           (str "SELECT json_val::jsonb ? 'a',"
+                                 "json_val::jsonb ?| array['c', 'd'],"
+                                 "json_val::jsonb ?& array['a', 'b']"
+                                 "FROM \"json_table\";")]
+        (mt/with-temp Database [database {:engine :postgres, :details json-db-details}]
+          (mt/with-db database (sync/sync-database! database)
+                               (is (= [[true false true]]
+                                      (-> {:query query}
+                                          (mt/native-query)
+                                          (qp/process-query)
+                                          (mt/rows))))))))))
