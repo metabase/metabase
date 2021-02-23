@@ -860,7 +860,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Showing 1,112 rows");
   });
 
-  it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
+  it("should convert negative filter to custom expression (metabase#14880)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -880,7 +880,8 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
-    cy.get("[contenteditable='true']");
+    cy.get("[contenteditable='true']").contains(
+      'NOT contains([Title], "Wallet")',
+    );
   });
 });
