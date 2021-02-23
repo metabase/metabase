@@ -73,6 +73,7 @@
    :collection_position :integer
    :favorite            :boolean
    ;; returned for Card only
+   :dashboardcard_count :integer
    :dataset_query       :text
    ;; returned for Metric and Segment
    :table_id            :integer

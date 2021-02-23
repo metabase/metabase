@@ -142,6 +142,10 @@
     0
     (/ -1 pos)))
 
+(defn- dashboard-count-score
+  [{:keys [dashboardcard_count]}]
+  ((fnil - 0) dashboardcard_count))
+
 (defn- compare-score-and-result
   "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
   compared in order."
@@ -171,6 +175,7 @@
 (defn- combined-score
   [{:keys [text-score result]}]
   [(pinned-score result)
+   (dashboard-count-score result)
    (- text-score)
    (model->sort-position (:model result))
    (:name result)])

@@ -19,6 +19,7 @@
    :collection          {:id false :name nil}
    :collection_position nil
    :context             nil
+   :dashboardcard_count nil
    :favorite            nil
    :table_id            false
    :database_id         false
@@ -39,23 +40,25 @@
 (defn- sorted-results [results]
   (sort-by (juxt (comp (var-get #'metabase.search.scoring/model->sort-position) :model) :name) results))
 
+(defn- make-result
+  [name & kvs]
+  (merge
+   default-search-row
+   {:name name}
+   (apply array-map kvs)))
+
 (defn- default-search-results []
-  (letfn [(make-result [name & kvs]
-            (merge
-             default-search-row
-             {:name name}
-             (apply array-map kvs)))]
-    (sorted-results
-     [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
-      (make-result "collection test collection", :model "collection", :collection {:id true, :name true})
-      (make-result "card test card", :model "card", :favorite false, :dataset_query "{}")
-      (make-result "pulse test pulse", :model "pulse", :archived nil)
-      (merge
-       (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
-       (table-search-results))
-      (merge
-       (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry")
-       (table-search-results))])))
+  (sorted-results
+   [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
+    (make-result "collection test collection", :model "collection", :collection {:id true, :name true})
+    (make-result "card test card", :model "card", :favorite false, :dataset_query "{}", :dashboardcard_count 0)
+    (make-result "pulse test pulse", :model "pulse", :archived nil)
+    (merge
+     (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
+     (table-search-results))
+    (merge
+     (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry")
+     (table-search-results))]))
 
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
@@ -78,7 +81,7 @@
 
 (defn- do-with-search-items [search-string in-root-collection? f]
   (let [data-map      (fn [instance-name]
-                        {:name (format instance-name search-string),})
+                        {:name (format instance-name search-string)})
         coll-data-map (fn [instance-name collection]
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
@@ -108,7 +111,7 @@
   Databases causing the tests to fail."
   mt/id)
 
-(defn- search-request [user-kwd & params]
+(defn- search-request* [xf user-kwd & params]
   (let [raw-results      (apply (partial mt/user-http-request user-kwd) :get 200 "search" params)
         keep-database-id (if (fn? *search-request-results-database-id*)
                            (*search-request-results-database-id*)
@@ -116,13 +119,21 @@
     (if (:error raw-results)
       raw-results
       (vec
-       (sorted-results
+       (xf
         (for [result raw-results
               ;; filter out any results not from the usual test data DB (e.g. results from other drivers)
               :when  (contains? #{keep-database-id nil} (:database_id result))]
           (-> result
               mt/boolean-ids-and-timestamps
               (update-in [:collection :name] #(some-> % string?)))))))))
+
+(defn- search-request
+  [& args]
+  (apply search-request* sorted-results args))
+
+(defn- unsorted-search-request
+  [& args]
+  (apply search-request* identity args))
 
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
@@ -139,6 +150,31 @@
       (with-search-items-in-root-collection "something different"
         (is (= (default-search-results)
                (search-request :crowberto :q "test")))))))
+
+(def ^:private dashboard-count-results
+  (letfn [(make-card [dashboard-count]
+            (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
+                         :model "card", :favorite false, :dataset_query "{}"))]
+    [(make-card 5)
+     (make-card 3)
+     (make-card 0)]))
+
+(deftest dashboard-count-test
+  (testing "It sorts by dashboard count"
+    (mt/with-temp* [Card          [{card-id-3 :id} {:name "dashboard-count 3"}]
+                    Card          [{card-id-5 :id} {:name "dashboard-count 5"}]
+                    Card          [{card-id-0 :id} {:name "dashboard-count 0"}]
+                    Dashboard     [{dashboard-id :id}]
+                    DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]]
+      (is (= dashboard-count-results
+             (unsorted-search-request :rasta :q "dashboard-count" ))))))
 
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
