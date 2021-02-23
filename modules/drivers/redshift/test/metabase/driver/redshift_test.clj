@@ -112,7 +112,7 @@
               :name            "buyerid"
               :settings        nil
               :source          :fields
-              :field_ref       [:field-id (mt/id :extsales :buyerid)]
+              :field_ref       [:field (mt/id :extsales :buyerid) nil]
               :parent_id       nil
               :id              (mt/id :extsales :buyerid)
               :visibility_type :normal
@@ -124,7 +124,7 @@
               :name            "salesid"
               :settings        nil
               :source          :fields
-              :field_ref       [:field-id (mt/id :extsales :salesid)]
+              :field_ref       [:field (mt/id :extsales :salesid) nil]
               :parent_id       nil
               :id              (mt/id :extsales :salesid)
               :visibility_type :normal
@@ -139,7 +139,7 @@
                                              :fields   [$buyerid $salesid]
                                              :order-by [[:asc $buyerid]
                                                         [:asc $salesid]]
-                                             :filter   [:= [:field-id (mt/id :extsales :buyerid)] 11498]}))
+                                             :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
                          [:data :cols])))))))
 
 (deftest parameters-test
@@ -158,7 +158,7 @@
                               :template-tags {"date" {:name         "date"
                                                       :display-name "date"
                                                       :type         :dimension
-                                                      :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                      :dimension    [:field (mt/id :checkins :date) nil]}}}
                  :parameters [{:type   :date/all-options
                                :target [:dimension [:template-tag "date"]]
                                :value  "past30years"}]})))))))

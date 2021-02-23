@@ -547,7 +547,11 @@
 
     "Make sure `:case`  expressions get canonicalized correctly"
     {{:query {:aggregation [:sum [:case [[[:< [:field-id 37331] 2] 2] [[:< [:field-id 37331] 4] 1]]]]}}
-     {:query {:aggregation [[:sum [:case [[[:< [:field 37331 nil] 2] 2] [[:< [:field 37331 nil] 4] 1]]]]]}}}))
+     {:query {:aggregation [[:sum [:case [[[:< [:field 37331 nil] 2] 2] [[:< [:field 37331 nil] 4] 1]]]]]}}}
+
+    ":percentile"
+    {{:query {:aggregation [[:percentile [:field-id 37809] 0.9]]}}
+     {:query {:aggregation [[:percentile [:field 37809 nil] 0.9]]}}}))
 
 
 ;;; ---------------------------------------------------- breakout ----------------------------------------------------

@@ -162,12 +162,20 @@
     :type     :native
     :native   ~inner-native-query})
 
+(defn run-mbql-query* [query]
+  ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.
+  (try
+    (qp/process-query query)
+    (catch Throwable e
+      (throw (ex-info (.getMessage e)
+                      {:query query}
+                      e)))))
+
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."
   {:style/indent 1}
   [table-name & [query]]
-  `(qp/process-query
-     (mbql-query ~table-name ~(or query {}))))
+  `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
 (defn format-name
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the driver's

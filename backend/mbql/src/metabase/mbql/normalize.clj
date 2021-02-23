@@ -149,7 +149,9 @@
 (defn- aggregation-subclause?
   [x]
   (or (when ((some-fn keyword? string?) x)
-        (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :* :sum-where :count-where :share :var :median :percentile} (mbql.u/normalize-token x)))
+        (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :*
+           :sum-where :count-where :share :var :median :percentile}
+         (mbql.u/normalize-token x)))
       (when (mbql-clause? x)
         (aggregation-subclause? (first x)))))
 
@@ -489,10 +491,14 @@
   [[clause-name field]]
   [clause-name (canonicalize-implicit-field-id field)])
 
-(doseq [clause-name [:avg :cum-sum :distinct :stddev :sum :min :max :median :percentile :var]]
+(doseq [clause-name [:avg :cum-sum :distinct :stddev :sum :min :max :median :var]]
   (defmethod canonicalize-mbql-clause clause-name
     [clause]
     (canonicalize-simple-aggregation-with-field clause)))
+
+(defmethod canonicalize-mbql-clause :percentile
+  [[_ field percentile]]
+  [:percentile (canonicalize-implicit-field-id field) percentile])
 
 (defn- canonicalize-filtered-aggregation-clause
   [[clause-name filter-subclause]]

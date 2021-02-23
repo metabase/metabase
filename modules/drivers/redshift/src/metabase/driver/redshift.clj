@@ -232,8 +232,9 @@
                   [(:name param) (:value param)]
 
                   (when-let [field-id (mbql.u/match-one param
-                                        [:field-id field-id] (when (contains? (set &parents) :dimension)
-                                                               field-id))]
+                                        [:field (field-id :guard integer?) _]
+                                        (when (contains? (set &parents) :dimension)
+                                          field-id))]
                     [(:name (qp.store/field field-id)) (:value param)]))))
         user-parameters))
 
