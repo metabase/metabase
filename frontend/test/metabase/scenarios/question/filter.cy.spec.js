@@ -868,7 +868,7 @@ describe("scenarios > question > filter", () => {
           "source-table": PRODUCTS_ID,
           filter: [
             "does-not-contain",
-            ["field-id", PRODUCTS.TITLE],
+            ["field", PRODUCTS.TITLE, null],
             "Wallet",
             { "case-sensitive": false },
           ],
