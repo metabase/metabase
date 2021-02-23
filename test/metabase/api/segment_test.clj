@@ -231,8 +231,8 @@
       (mt/with-temp* [Database [db]
                       Table    [table   {:db_id (u/the-id db)}]
                       Segment  [segment {:table_id (u/the-id table)}]]
+        (perms/revoke-permissions! (group/all-users) db)
         (is (= "You don't have permissions to do that."
-               (perms/revoke-permissions! (group/all-users) db)
                (mt/user-http-request :rasta :get 403 (str "segment/" (u/the-id segment)))))))))
 
 (deftest fetch-segment-test
@@ -318,7 +318,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "segment/%d/revert" id) {:revision_id 56})))))))
 
-(deftest revert-permissions-input-validation-test
+(deftest revert-input-validation-test
   (testing "POST /api/segment/:id/revert"
     (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
            (mt/user-http-request :crowberto :post 400 "segment/1/revert" {})))
@@ -326,8 +326,7 @@
     (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
            (mt/user-http-request :crowberto :post 400 "segment/1/revert" {:revision_id "foobar"})))))
 
-
-(deftest revert-permissions-test
+(deftest revert-test
   (testing "POST /api/segment/:id/revert"
     (mt/with-temp* [Database [{database-id :id}]
                     Table    [{table-id :id}    {:db_id database-id}]
@@ -371,7 +370,8 @@
                 :diff         {:name {:before "Changed Segment Name"
                                       :after  "One Segment to rule them all, one segment to define them"}}
                 :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
-               (mt/user-http-request :crowberto :post 200 (format "segment/%d/revert" id) {:revision_id revision-id}) :id :timestamp)))
+               (-> (mt/user-http-request :crowberto :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
+                   (dissoc :id :timestamp)))))
 
       (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
         (is (= [{:is_reversion true
