@@ -102,13 +102,10 @@ describe("snapshots", () => {
       [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
     });
 
-    cy.request("PUT", "/api/collection/graph", {
-      revision: 0,
-      groups: {
-        [ALL_USERS_GROUP]: { root: "none" },
-        [DATA_GROUP]: { root: "none" },
-        [COLLECTION_GROUP]: { root: "write" },
-      },
+    cy.updateCollectionGraph({
+      [ALL_USERS_GROUP]: { root: "none" },
+      [DATA_GROUP]: { root: "none" },
+      [COLLECTION_GROUP]: { root: "write" },
     });
   }
 

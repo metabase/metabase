@@ -65,3 +65,22 @@ Cypress.Commands.add(
     );
   },
 );
+
+Cypress.Commands.add("updateCollectionGraph", (groupsCollectionObject = {}) => {
+  if (typeof groupsCollectionObject !== "object") {
+    throw new Error("`groupsCollectionObject` must be an object!");
+  }
+
+  cy.log("**-- Fetch permissions graph --**");
+  cy.request("GET", "/api/collection/graph").then(
+    ({ body: { groups, revision } }) => {
+      const UPDATED_GROUPS = Object.assign(groups, groupsCollectionObject);
+
+      cy.log("**-- Update/save permissions --**");
+      cy.request("PUT", "/api/collection/graph", {
+        groups: UPDATED_GROUPS,
+        revision,
+      });
+    },
+  );
+});
