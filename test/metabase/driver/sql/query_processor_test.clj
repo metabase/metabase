@@ -255,7 +255,7 @@
           pretty-sql))))
 
 (deftest joined-field-clauses-test
-  (testing "Should correctly compile `:joined-field` clauses"
+  (testing "Should correctly compile `:field` clauses with `:join-alias`"
     (testing "when the join is at the same level"
       (is (= "SELECT c.NAME AS c__NAME FROM VENUES LEFT JOIN CATEGORIES c ON VENUES.CATEGORY_ID = c.ID"
              (mbql->native

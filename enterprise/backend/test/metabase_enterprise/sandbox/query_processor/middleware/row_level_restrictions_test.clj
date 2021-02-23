@@ -542,7 +542,7 @@
                (mt/run-mbql-query checkins
                  {:joins    [{:fields       :all
                               :source-table $$venues
-                              :condition    [:= $venue_id [:joined-field "Venue" $venues.id]]
+                              :condition    [:= $venue_id [&Venue.venues.id]]
                               :alias        "Venue"}]
                   :order-by [[:asc $id]]
                   :limit    3})))))))
@@ -576,7 +576,7 @@
                        {:fields   [$id $name] ; joined fields get appended automatically because we specify :all :below
                         :joins    [{:fields       :all
                                     :source-table $$venues
-                                    :condition    [:= $id [:joined-field "Venue" $id]]
+                                    :condition    [:= $id [&Venue.id]]
                                     :alias        "Venue"}]
                         :order-by [[:asc $id]]
                         :limit    3})))))
@@ -618,7 +618,7 @@
                                      {:fields   [$id $name]
                                       :joins    [{:fields       :all
                                                   :source-table $$venues
-                                                  :condition    [:= $id [:joined-field "Venue" $id]]
+                                                  :condition    [:= $id [&Venue.id]]
                                                   :alias        "Venue"}]
                                       :order-by [[:asc $id]]
                                       :limit    3}))}))))]
@@ -752,10 +752,10 @@
         ;; create query with joins
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
-                       :breakout    [[:joined-field "products" $products.category]]
+                       :breakout    [[&products.products.category]]
                        :joins       [{:fields       :all
                                       :source-table $$products
-                                      :condition    [:= $product_id [:joined-field "products" $products.id]]
+                                      :condition    [:= $product_id [&products.products.id]]
                                       :alias        "products"}]
                        :limit       10})]
           (testing "Should be able to run the query"
@@ -782,15 +782,15 @@
                               {:filter [:= $products.category "Widget"]
                                :joins  [{:fields       :all
                                          :source-table $$products
-                                         :condition    [:= $product_id [:joined-field "products" $products.id]]
+                                         :condition    [:= $product_id [&products.products.id]]
                                          :alias        "products"}]
                                :limit  10})
 
                             test-preprocessing
                             (fn []
-                              (testing "`resolve-joined-fields` middleware should infer `:joined-field` correctly"
+                              (testing "`resolve-joined-fields` middleware should infer `:field` `:join-alias` correctly"
                                 (is (= [:=
-                                        [:joined-field "products" [:field (mt/id :products :category) nil]]
+                                        [:field (mt/id :products :category) {:join-alias "products"}]
                                         [:value "Widget" {:base_type     :type/Text
                                                           :semantic_type  (db/select-one-field :semantic_type Field
                                                                            :id (mt/id :products :category))

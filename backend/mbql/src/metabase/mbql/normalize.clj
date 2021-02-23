@@ -86,14 +86,15 @@
 
 (defmethod normalize-mbql-clause-tokens :field
   [[_ id-or-name opts]]
-  [:field
-   id-or-name
-   (cond-> opts
-     (:base-type opts)     (update :base-type keyword)
-     (:temporal-unit opts) (update :temporal-unit keyword)
-     (:binning opts)       (update :binning (fn [binning]
-                                              (cond-> binning
-                                                (:strategy binning) (update :strategy keyword)))))])
+  (let [opts (normalize-tokens opts :ignore-path)]
+    [:field
+     id-or-name
+     (cond-> opts
+       (:base-type opts)     (update :base-type keyword)
+       (:temporal-unit opts) (update :temporal-unit keyword)
+       (:binning opts)       (update :binning (fn [binning]
+                                                (cond-> binning
+                                                  (:strategy binning) (update :strategy keyword)))))]))
 
 (defmethod normalize-mbql-clause-tokens :field-literal
   ;; Similarly, for Field literals, keep the arg as-is, but make sure it is a string."
@@ -428,8 +429,8 @@
   [[_ field & args]]
   ;; if you specify a `:temporal-unit` for the Field inside a `:time-interval`, remove it. The unit in
   ;; `:time-interval` takes precedence.
-  (let [field (-> (canonicalize-implicit-field-id field)
-                  (mbql.u/update-field-options dissoc :temporal-unit))]
+  (let [field (cond-> (canonicalize-implicit-field-id field)
+                (mbql.u/is-clause? :field field) (mbql.u/update-field-options dissoc :temporal-unit))]
     (into [:time-interval field] args)))
 
 ;; all the other filter types have an implict field ID for the first arg
@@ -528,7 +529,8 @@
          (catch Throwable e
            (log/error (tru "Invalid clause:") clause)
            (throw (ex-info (tru "Invalid MBQL clause")
-                           {:clause clause}))))))
+                           {:clause clause}
+                           e))))))
    mbql-query))
 
 (defn- wrap-single-aggregations

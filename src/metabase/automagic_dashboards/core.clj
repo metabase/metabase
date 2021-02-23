@@ -290,19 +290,20 @@
 
 (defmethod ->reference [:mbql (type Field)]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
-  (let [reference (cond
-                    link               [:field id {:source-field link}]
-                    fk_target_field_id [:field fk_target_field_id {:source-field id}]
-                    id                 [:field id nil]
-                    :else              [:field name {:base-type base_type}])]
+  (let [reference (normalize/normalize
+                   (cond
+                     link               [:field id {:source-field link}]
+                     fk_target_field_id [:field fk_target_field_id {:source-field id}]
+                     id                 [:field id nil]
+                     :else              [:field name {:base-type base_type}]))]
     (cond
       (isa? base_type :type/Temporal)
-      (mbql.u/with-temporal-unit reference (or aggregation
-                                               (optimal-datetime-resolution field)))
+      (mbql.u/with-temporal-unit reference (keyword (or aggregation
+                                                        (optimal-datetime-resolution field))))
 
       (and aggregation
            (isa? base_type :type/Number))
-      (mbql.u/update-field-options reference assoc-in [:binning :strategy] aggregation)
+      (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
 
       :else
       reference)))
@@ -496,8 +497,8 @@
          [:dimension identifier]
          [:aggregation (u/index-of #{identifier} metrics)])])))
 
-(defn- build-query
-  ([context bindings filters metrics dimensions limit order_by]
+(s/defn ^:private build-query
+  ([context bindings filters metrics dimensions limit order-by]
    (walk/postwalk
     (fn [subform]
       (if (rules/dimension-form? subform)
@@ -526,8 +527,8 @@
                  limit
                  (assoc :limit limit)
 
-                 (seq order_by)
-                 (assoc :order-by order_by))}))
+                 (seq order-by)
+                 (assoc :order-by order-by))}))
   ([context bindings query]
    {:type     :native
     :native   {:query (fill-templates :native context bindings query)}
@@ -1097,12 +1098,15 @@
 
 (defn- field-reference->field
   [root field-reference]
-  (cond-> (->> field-reference
-               filters/collect-field-references
-               first
-               (->field root))
-    (-> field-reference first qp.util/normalize-token (= :datetime-field))
-    (assoc :unit (-> field-reference last qp.util/normalize-token))))
+  (let [temporal-unit (mbql.u/match-one (normalize/normalize field-reference)
+                        [:field _ (opts :guard :temporal-unit)]
+                        (:temporal-unit opts))]
+    (cond-> (->> field-reference
+                 filters/collect-field-references
+                 first
+                 (->field root))
+      temporal-unit
+      (assoc :unit temporal-unit))))
 
 (defmulti
   ^{:private true

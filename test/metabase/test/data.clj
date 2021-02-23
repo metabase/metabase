@@ -77,27 +77,27 @@
 
     %venue_id -> (id :sightings :venue_id)
 
-  Use `*<field>` to generate appropriate an `:field-literal` based on a Field in the application DB:
+  Use `*<field>` to generate a `:field` with a string name based on a Field in the application DB:
 
-    *venue_id -> [:field-literal \"VENUE_ID\" :type/Integer]
+    *venue_id -> [:field \"VENUE_ID\" {:base-type :type/Integer}]
 
-  Use `*<field>/type` to generate a `:field-literal` for an aggregation or native query result:
+  Use `*<field>/type` to generate a `:field` with a string name for an aggregation or native query result:
 
-    *count/Integer -> [:field-literal \"count\" :type/Integer]
+    *count/Integer -> [:field \"count\" {:base-type :type/Integer}]
 
-  Use `&<alias>.<field>` to wrap `<field>` in a `:joined-field` clause:
+  Use `&<alias>.<field>` to add `:join-alias` information to a `<field>` clause:
 
-    &my_venues.venues.id -> [:joined-field \"my_venues\" [:field-id (data/id :venues :id)]]
+    &my_venues.venues.id -> [:field (data/id :venues :id) {:join-alias \"my_venues\"}]
 
-  Use `!<unit>.<field>` to wrap a field in a `:datetime-field` clause:
+  Use `!<unit>.<field>` to add `:temporal-unit` information to a `:field` clause:
 
-    `!month.checkins.date` -> [:datetime-field [:field-id (data/id :checkins :date)] :month]
+    `!month.checkins.date` -> [:field (data/id :checkins :date) {:temporal-unit :month}]
 
 
   For both `&` and `!`, if the wrapped Field does not have a sigil, it is handled recursively as if it had `$` (i.e.,
-  it generates a `:field-id` clause); you can explicitly specify a sigil to wrap a different type of clause instead:
+  it generates a `:field` ID clause); you can explicitly specify a sigil to wrap a different type of clause instead:
 
-    `!month.*checkins.date` -> [:datetime-field [:field-literal \"DATE\" :type/DateTime] :month]
+    `!month.*checkins.date` -> [:field \"DATE\" {:base-type :type/DateTime, :temporal-unit :month}]
 
   NOTES:
 

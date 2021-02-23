@@ -545,13 +545,13 @@
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
   HoneySQL representation of on `AS` clause is a tuple like `[<form> <alias>]`.
 
-  In some cases where the alias would be redundant, such as unwrapped field literals, this returns the form as-is.
+  In some cases where the alias would be redundant, such as plain field literals, this returns the form as-is.
 
-    (as [:field-literal \"x\" :type/Text])
+    (as [:field \"x\" {:base-type :type/Text}])
     ;; -> <compiled-form>
     ;; -> SELECT \"x\"
 
-    (as [:datetime-field [:field-literal \"x\" :type/Text] :month])
+    (as [:field \"x\" {:base-type :type/Text, :temporal-unit :month}])
     ;; -> [<compiled-form> :x]
     ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
 

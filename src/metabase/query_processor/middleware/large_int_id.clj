@@ -20,16 +20,20 @@
     ;; currently, this excludes `:field` w/ name clauses, aggregations, etc.
     ;;
     ;; for a query like below, *no* conversion will occur
-    ;; (mt/mbql-query venues
-    ;;              {:source-query {:source-table $$venues
-    ;;                              :aggregation  [[:aggregation-options
-    ;;                                              [:avg $id]
-    ;;                                              {:name "some_generated_name", :display-name "My Cool Ag"}]]
-    ;;                              :breakout     [$price]}})
-    ;; when you run in this fashion, you lose the ability to determine if it's an ID - you get a `:fields` value
-    ;; like: `:fields [[:field-literal "PRICE" :type/Integer] [:field-literal "some_generated_name" :type/BigInteger]]`
-    ;; so, short of turning all `:type/Integer` derived values into strings, this is the best approximation
-    ;; of a fix that can be accomplished.
+    ;;
+    ;;    (mt/mbql-query venues
+    ;;                 {:source-query {:source-table $$venues
+    ;;                                 :aggregation  [[:aggregation-options
+    ;;                                                 [:avg $id]
+    ;;                                                 {:name "some_generated_name", :display-name "My Cool Ag"}]]
+    ;;                                 :breakout     [$price]}})
+    ;;
+    ;; when you run in this fashion, you lose the ability to determine if it's an ID - you get a `:fields` value like:
+    ;;
+    ;;    [[:field "PRICE" {:base-type :type/Integer}] [:field "some_generated_name" {:base-type :type/BigInteger}]]
+    ;;
+    ;; so, short of turning all `:type/Integer` derived values into strings, this is the best approximation of a fix
+    ;; that can be accomplished.
     (let [rff' (when js-int-to-string?
                  (when-let [field-indexes (not-empty
                                            (keep-indexed

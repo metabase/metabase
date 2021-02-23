@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards.core :as magic :refer :all]
+            [metabase.automagic-dashboards.core :as magic]
             [metabase.automagic-dashboards.rules :as rules]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Database Field Metric Table]]
@@ -13,10 +13,11 @@
             [metabase.models.query :as query]
             [metabase.query-processor.async :as qp.async]
             [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :refer :all]
+            [metabase.test.automagic-dashboards :as automagic-dashboards.test]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 ;;; ------------------- `->reference` -------------------
@@ -63,26 +64,26 @@
    ;; We want to both generate as many cards as we can to catch all aberrations, but also make sure
    ;; that size limiting works.
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show :all}))
-     (is (valid-dashboard? (automagic-analysis entity {:cell-query cell-query, :show :all}))))
+     (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all})))
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
-     (is (valid-dashboard? (automagic-analysis entity {:cell-query cell-query, :show 1}))))))
+     (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show 1})))))
 
 (deftest automagic-analysis-test
   (mt/with-test-user :rasta
-    (with-dashboard-cleanup
+    (automagic-dashboards.test/with-dashboard-cleanup
       (doseq [table (db/select Table :db_id (mt/id))]
         (test-automagic-analysis table)))
 
-    (with-dashboard-cleanup
+    (automagic-dashboards.test/with-dashboard-cleanup
       (is (= 1
-             (->> (automagic-analysis (Table (mt/id :venues)) {:show 1})
+             (->> (magic/automagic-analysis (Table (mt/id :venues)) {:show 1})
                   :ordered_cards
                   (filter :card)
                   count))))))
 
 (deftest wierd-characters-in-names-test
   (mt/with-test-user :rasta
-    (with-dashboard-cleanup
+    (automagic-dashboards.test/with-dashboard-cleanup
       (-> (Table (mt/id :venues))
           (assoc :display_name "%Venues")
           test-automagic-analysis))))
@@ -92,7 +93,7 @@
 
 (deftest test-1
   (mt/with-test-user :rasta
-    (with-dashboard-cleanup
+    (automagic-dashboards.test/with-dashboard-cleanup
       (doseq [field (db/select Field
                       :table_id [:in (db/select-field :id Table :db_id (mt/id))]
                       :visibility_type "normal")]
@@ -102,7 +103,7 @@
   (mt/with-temp Metric [metric {:table_id (mt/id :venues)
                                 :definition {:aggregation [[:count]]}}]
     (mt/with-test-user :rasta
-      (with-dashboard-cleanup
+      (automagic-dashboards.test/with-dashboard-cleanup
         (test-automagic-analysis metric)))))
 
 (deftest test-2
@@ -115,7 +116,7 @@
                                                          :type :query
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
-        (with-dashboard-cleanup
+        (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (Card card-id)))))))
 
@@ -130,7 +131,7 @@
                                                          :type :query
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
-        (with-dashboard-cleanup
+        (automagic-dashboards.test/with-dashboard-cleanup
           (test-automagic-analysis (Card card-id)))))))
 
 (deftest test-4
@@ -142,7 +143,7 @@
                                                          :type :native
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
-        (with-dashboard-cleanup
+        (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (Card card-id)))))))
 
@@ -169,7 +170,7 @@
                                                            :type     :query
                                                            :database mbql.s/saved-questions-virtual-database-id}}]]
         (mt/with-test-user :rasta
-          (with-dashboard-cleanup
+          (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (Card card-id))))))))
 
@@ -183,7 +184,7 @@
                                                          :type     :query
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
-        (with-dashboard-cleanup
+        (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (Card card-id)))))))
 
@@ -204,7 +205,7 @@
                                                            :type     :query
                                                            :database mbql.s/saved-questions-virtual-database-id}}]]
         (mt/with-test-user :rasta
-          (with-dashboard-cleanup
+          (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (Card card-id))))))))
 
@@ -219,7 +220,7 @@
                                                          :type     :query
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
-        (with-dashboard-cleanup
+        (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (Card card-id)))))))
 
@@ -232,7 +233,7 @@
                                                          :type     :native
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
-        (with-dashboard-cleanup
+        (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (Card card-id)))))))
 
@@ -245,7 +246,7 @@
                                                          :type     :native
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
-        (with-dashboard-cleanup
+        (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (Card card-id)))))))
 
@@ -259,7 +260,7 @@
                                                          :type     :query
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
-        (with-dashboard-cleanup
+        (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id
               Card
@@ -276,7 +277,7 @@
                                                          :type     :query
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
-        (with-dashboard-cleanup
+        (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id
               Card
@@ -285,7 +286,7 @@
 
 (deftest test-14
   (mt/with-test-user :rasta
-    (with-dashboard-cleanup
+    (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
                                           :source-table (mt/id :venues)}
                                   :type :query
@@ -294,7 +295,7 @@
 
 (deftest test-15
   (mt/with-test-user :rasta
-    (with-dashboard-cleanup
+    (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
                                           :breakout [[:field (mt/id :venues :category_id) nil]]
                                           :source-table (mt/id :venues)}
@@ -304,7 +305,7 @@
 
 (deftest test-16
   (mt/with-test-user :rasta
-    (with-dashboard-cleanup
+    (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
                                           :breakout [[:fk-> (mt/id :checkins) (mt/id :venues :category_id)]]
                                           :source-table (mt/id :checkins)}
@@ -314,7 +315,7 @@
 
 (deftest test-17
   (mt/with-test-user :rasta
-    (with-dashboard-cleanup
+    (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
                                           :source-table (mt/id :venues)}
                                   :type :query
@@ -325,18 +326,29 @@
 ;;; ------------------- /candidates -------------------
 
 (deftest candidates-test
-  (mt/with-test-user :rasta
-    (is (= 4
-           (->> (mt/db) candidate-tables first :tables count)))
+  (testing "/candidates"
+    (testing "should work with the normal test-data DB"
+      (mt/with-test-user :rasta
+        (is (schema= [(s/one {:tables   (s/constrained [s/Any] #(= (count %) 4))
+                              s/Keyword s/Any}
+                             "first result")
+                      s/Any]
+                     (magic/candidate-tables (mt/db))))))
 
-    (testing "/candidates should work with unanalyzed tables"
-      (mt/with-temp* [Database [{db-id :id}]
-                      Table    [{table-id :id} {:db_id db-id}]
-                      Field    [_ {:table_id table-id}]
-                      Field    [_ {:table_id table-id}]]
-        (with-dashboard-cleanup
-          (is (= 1
-                 (count (candidate-tables (Database db-id))))))))))
+    (testing "should work with unanalyzed tables"
+      (mt/with-test-user :rasta
+        (mt/with-temp* [Database [{db-id :id}]
+                        Table    [{table-id :id} {:db_id db-id}]
+                        Field    [_ {:table_id table-id}]
+                        Field    [_ {:table_id table-id}]]
+          (automagic-dashboards.test/with-dashboard-cleanup
+            (is (schema= [(s/one {:tables   [(s/one {:table    {:id       (s/eq table-id)
+                                                                s/Keyword s/Any}
+                                                     s/Keyword s/Any}
+                                                    "first Table")]
+                                  s/Keyword s/Any}
+                                 "first result")]
+                         (magic/candidate-tables (Database db-id))))))))))
 
 (deftest call-count-test
   (mt/with-temp* [Database [{db-id :id}]
@@ -346,10 +358,10 @@
     (mt/with-test-user :rasta
       ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
       @api/*current-user-permissions-set*
-      (with-dashboard-cleanup
+      (automagic-dashboards.test/with-dashboard-cleanup
         (let [database (Database db-id)]
           (db/with-call-counting [call-count]
-            (candidate-tables database)
+            (magic/candidate-tables database)
             (is (= 4
                    (call-count)))))))))
 
@@ -359,7 +371,7 @@
                     Table    [_ {:db_id (:id db)}]]
       (mt/with-test-user :rasta
         (is (= []
-               (candidate-tables db)))))))
+               (magic/candidate-tables db)))))))
 
 (deftest test-19
   (mt/with-temp* [Database [{db-id :id}]
@@ -367,7 +379,7 @@
                   Field    [_ {:table_id table-id :semantic_type :type/PK}]
                   Field    [_ {:table_id table-id}]]
     (mt/with-test-user :rasta
-      (with-dashboard-cleanup
+      (automagic-dashboards.test/with-dashboard-cleanup
         (is (= {:list-like?  true
                 :link-table? false
                 :num-fields 2}
@@ -382,7 +394,7 @@
                   Field    [_ {:table_id table-id :semantic_type :type/FK}]
                   Field    [_ {:table_id table-id :semantic_type :type/FK}]]
     (mt/with-test-user :rasta
-      (with-dashboard-cleanup
+      (automagic-dashboards.test/with-dashboard-cleanup
         (is (= {:list-like?  false
                 :link-table? true
                 :num-fields 3}

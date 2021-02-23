@@ -63,7 +63,14 @@
 
     "... but they should be converted to strings if passed in as a KW for some reason"
     {{:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}
-     {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}))
+     {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}
+
+    "modern :field clauses should get normalized"
+    {[:field 2 {"temporal-unit" "day"}]
+     [:field 2 {:temporal-unit :day}]
+
+     [:field 2 {"binning" {"strategy" "default"}}]
+     [:field 2 {:binning {:strategy :default}}]}))
 
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
@@ -1083,19 +1090,29 @@
                         :breakout     [[:datetime-field 11 :month]]
                         :aggregation  [[:count]]}})))))
 
-(deftest normalize-fragment-modernize-fields-test
-  (testing "`normalize-fragment` should be able to modernize Fields anywhere we find them"
-    (is (= [[:> [:field 1 nil] 3]
-            [:and
-             [:= [:field 2 nil] 2]
-             [:segment 1]]
-            [:metric 1]]
-         (normalize/normalize-fragment
-          nil
-          [[:> [:field-id 1] 3]
-           ["and" [:= ["FIELD-ID" 2] 2]
-            ["segment" 1]]
-           [:metric 1]])))))
+(deftest normalize-fragment-test
+  (testing "normalize-fragment"
+    (testing "shouldn't try to do anything crazy non-standard MBQL clauses like `:dimension` (from automagic dashboards)"
+      (is (= [:time-interval [:dimension "JoinDate"] -30 :day]
+             (normalize/normalize-fragment [:query :filter]
+               ["time-interval" ["dimension" "JoinDate"] -30 "day"]))))
+
+    (testing "should be able to modernize Fields anywhere we find them"
+      (is (= [[:> [:field 1 nil] 3]
+              [:and
+               [:= [:field 2 nil] 2]
+               [:segment 1]]
+              [:metric 1]]
+             (normalize/normalize-fragment nil
+               [[:> [:field-id 1] 3]
+                ["and" [:= ["FIELD-ID" 2] 2]
+                 ["segment" 1]]
+                [:metric 1]]))))
+
+    (testing "Should be able to modern Field options anywhere"
+      (is (= [:field 2 {:temporal-unit :day}]
+             (normalize/normalize-fragment nil
+               [:field 2 {"temporal-unit" "day"}]))))))
 
 (deftest normalize-source-metadata-test
   (testing "normalize-source-metadata"

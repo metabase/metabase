@@ -727,9 +727,9 @@
      joins
      unique-aliases)))
 
-(defn update-field-options
+(s/defn update-field-options :- mbql.s/field
   "Like `clojure.core/update`, but for the options in a `:field` clause."
-  [[_ id-or-name opts] f & args]
+  [[_ id-or-name opts] :- mbql.s/field f & args]
   [:field id-or-name (not-empty (apply f opts args))])
 
 (defn assoc-field-options

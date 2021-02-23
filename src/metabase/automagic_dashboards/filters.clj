@@ -94,7 +94,7 @@
                  (when (empty? fks)
                    [(:table_id fk) [:field (u/the-id field) {:source-field (u/the-id fk)}]])))
          (into {(:table_id field) [:field (u/the-id field) nil]}))
-    (constantly [:field-literal (:name field) (:base_type field)])))
+    (constantly [:field (:name field) {:base-type (:base_type field)}])))
 
 (defn- filter-for-card
   [card field]

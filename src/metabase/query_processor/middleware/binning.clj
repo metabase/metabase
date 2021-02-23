@@ -179,7 +179,7 @@
         source-metadata)
        (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
                             field-id-or-name)
-                {:field-literal field-id-or-name, :resolved-metadata source-metadata}))))))
+                {:field field-id-or-name, :resolved-metadata source-metadata}))))))
 
 (s/defn ^:private update-binned-field :- mbql.s/field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
