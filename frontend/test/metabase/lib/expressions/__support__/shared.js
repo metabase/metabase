@@ -161,6 +161,13 @@ const filter = [
     ["or", ["not", ["between", subtotal, 3, 14]], segment],
     "filter function with OR",
   ],
+  [
+    'NOT contains([User → Name], "John")',
+    ["does-not-contain", userName, "John"],
+    "not contains",
+  ],
+  ["NOT isnull([Tax])", ["not-null", tax], "not null"],
+  ["NOT isempty([Total])", ["not-empty", total], "not empty"],
 ];
 
 export default [

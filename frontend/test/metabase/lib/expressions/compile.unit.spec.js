@@ -191,6 +191,15 @@ describe("metabase/lib/expressions/compile", () => {
       expect(filter("[Expensive]")).toEqual(["segment", "Expensive"]);
       expect(filter("NOT [Good]")).toEqual(["not", ["segment", "Good"]]);
     });
+    it("should compile negative filters", () => {
+      expect(filter("NOT CONTAINS('X','Y')")).toEqual([
+        "does-not-contain",
+        "X",
+        "Y",
+      ]);
+      expect(filter("NOT ISNULL('P')")).toEqual(["not-null", "P"]);
+      expect(filter("NOT ISEMPTY('Q')")).toEqual(["not-empty", "Q"]);
+    });
   });
 
   describe("(for an aggregation)", () => {
