@@ -13,7 +13,9 @@ const server = BackendResource.get({ dbKey: "" });
 const userArgs = process.argv.slice(2);
 const isOpenMode = userArgs.includes("--open");
 const testFiles = userArgs.includes("--testFiles");
+const singleFile = userArgs.includes("--spec");
 const testFilesLocation = userArgs[userArgs.indexOf("--testFiles") + 1];
+const singleFileName = userArgs[userArgs.indexOf("--spec") + 1];
 
 function readFile(fileName) {
   return new Promise(function(resolve, reject) {
@@ -37,6 +39,10 @@ const init = async () => {
 
   if (testFiles) {
     console.log(chalk.bold(`Running tests in '${testFilesLocation}'`));
+  }
+
+  if (singleFile) {
+    console.log(chalk.bold(`Running single spec '${singleFileName}'`));
   }
 
   try {
@@ -69,6 +75,8 @@ const init = async () => {
   let commandLineConfig = `baseUrl=${server.host}`;
   if (testFiles) {
     commandLineConfig = `${commandLineConfig},integrationFolder=${testFilesLocation}`;
+  } else if (singleFile) {
+    commandLineConfig = `${commandLineConfig},testFiles=${singleFileName}`;
   } else {
     // if we're not running specific tests, avoid including db and smoketests
     commandLineConfig = `${commandLineConfig},ignoreTestFiles=**/metabase-{smoketest,db}/**`;
