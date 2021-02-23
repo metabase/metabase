@@ -29,7 +29,7 @@
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p.types/defrecord+ FieldDefinition [field-name base-type semantic-type visibility-type fk field-comment])
+(p.types/defrecord+ FieldDefinition [field-name base-type effective-type coercion-strategy semantic-type visibility-type fk field-comment])
 
 (p.types/defrecord+ TableDefinition [table-name field-definitions rows table-comment])
 
@@ -383,10 +383,12 @@
 ;; TODO - not sure everything below belongs in this namespace
 
 (s/defn ^:private dataset-field-definition :- ValidFieldDefinition
-  [field-definition-map :- DatasetFieldDefinition]
+  [{:keys [coercion-strategy base-type] :as field-definition-map} :- DatasetFieldDefinition]
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
-  (map->FieldDefinition field-definition-map))
+  ;; if definition uses a coercion strategy they need to provide the effective-type
+  (map->FieldDefinition (merge (when-not coercion-strategy {:effective-type base-type})
+                               field-definition-map)))
 
 (s/defn ^:private dataset-table-definition :- ValidTableDefinition
   "Parse a Table definition (from a `defdatset` form or EDN file) and return a TableDefinition instance for

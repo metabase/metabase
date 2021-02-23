@@ -24,6 +24,8 @@
           :id                (:id field)
           :name              (:name field)
           :database-type     (:database_type field)
+          :effective-type    (:effective_type field)
+          :coercion-strategy (:coercion_strategy field)
           :base-type         (:base_type field)
           :semantic-type     (:semantic_type field)
           :pk?               (isa? (:semantic_type field) :type/PK)
@@ -61,7 +63,8 @@
 (s/defn ^:private table->fields :- [i/FieldInstance]
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
-  (db/select [Field :name :database_type :base_type :semantic_type :parent_id :id :description :database_position]
+  (db/select [Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
+              :parent_id :id :description :database_position]
     :table_id  (u/get-id table)
     :active    true
     {:order-by (table/field-order-rule table)}))

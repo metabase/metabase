@@ -26,7 +26,8 @@
    :display_name                   s/Str
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
    :base_type                      su/FieldType
-   (s/optional-key :semantic_type) (s/maybe su/FieldType)
+   ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
+   ;; from the metadata but that's for another day
    ;; where this column came from in the original query.
    :source                         (s/enum :aggregation :fields :breakout :native)
    ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
