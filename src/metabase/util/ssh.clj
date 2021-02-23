@@ -149,10 +149,6 @@
       details-with-tunnel)
     details))
 
-;(defmethod driver/incorporate-ssh-tunnel-details nil
-;  [_ db-details]
-;  db-details)
-
 (defmethod driver/incorporate-ssh-tunnel-details :sql-jdbc
   [_ db-details]
   (cond (not (use-ssh-tunnel? db-details))
