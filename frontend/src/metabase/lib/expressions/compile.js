@@ -10,6 +10,11 @@ import {
 
 import { ExpressionCstVisitor, parse } from "./parser";
 
+const NEGATIVE_FILTER_SHORTHANDS = {
+  contains: "does-not-contain",
+  "is-null": "not-null",
+  "is-empty": "not-empty",
+};
 class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   constructor(options) {
     super();
@@ -50,7 +55,10 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     return this.visit(ctx.expression);
   }
   logicalNotExpression(ctx) {
-    return ["not", this.visit(ctx.operands[0])];
+    const expr = this.visit(ctx.operands[0]);
+    const [fn, ...args] = expr;
+    const shorthand = NEGATIVE_FILTER_SHORTHANDS[fn];
+    return shorthand ? [shorthand, ...args] : ["not", expr];
   }
   relationalExpression(ctx) {
     return this._collapseOperators(ctx.operands, ctx.operators);
