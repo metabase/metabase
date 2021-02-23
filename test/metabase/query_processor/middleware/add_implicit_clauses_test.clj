@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses-test
   (:require [clojure.test :refer :all]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.test-util :as qp.test-util]
@@ -124,7 +125,7 @@
     (doseq [field-ref (mt/$ids
                         [[:field %categories.name {:join-alias "c"}]
                          [:field %categories.name {:join-alias "c", :temporal-unit :default}]])]
-      (testing (format "\nfield ref = %s" (pr-str field-ref))
+      (testing (format "field ref = %s" (pr-str field-ref))
         (let [query (mt/mbql-query venues
                       {:source-query    {:source-table $$venues
                                          :fields       [$id &c.categories.name $category_id->categories.name]
@@ -156,7 +157,7 @@
                                           :base_type    :type/Text
                                           :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
           (is (= (mt/$ids [$venues.id
-                           field-ref
+                           (mbql.u/update-field-options field-ref dissoc :temporal-unit)
                            $venues.category_id->categories.name])
                  (get-in (mt/test-qp-middleware add-implicit-clauses/add-implicit-clauses query)
                          [:pre :query :fields]))))))))

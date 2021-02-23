@@ -95,9 +95,7 @@
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
   (when (seq definition)
-    (println "(pr-str definition):" (pr-str definition)) ; NOCOMMIT
     (u/prog1 (normalize/normalize-fragment [:query] definition)
-      (println "(pr-str <>):" (pr-str <>)) ; NOCOMMIT
       (validate-metric-segment-definition <>))))
 
 ;; For inner queries like those in Metric definitions

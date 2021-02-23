@@ -422,7 +422,7 @@
                                                  :data :cols)]
                                      (-> (into {} col)
                                          (assoc :source :fields)))]
-          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :year}])
+          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil])
                   (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
                  (mt/cols
                    (qp/process-query (query-with-source-card card))))))))))

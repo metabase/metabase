@@ -395,9 +395,9 @@
                     Metric [metric-2 {:name "Metric B"}]
                     ;; inactive metrics shouldn't show up
                     Metric [_        {:archived true}]]
-      (is (= (tu/mappify (hydrate [(assoc metric-1 :database_id (data/id))
-                                   (assoc metric-2 :database_id (data/id))]
-                                  :creator))
+      (is (= (mt/derecordize (hydrate [(assoc metric-1 :database_id (data/id))
+                                       (assoc metric-2 :database_id (data/id))]
+                                      :creator))
              (map #(dissoc % :query_description) (mt/user-http-request
                                                   :rasta :get 200 "metric/"))))))
 
