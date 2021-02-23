@@ -7,6 +7,7 @@
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
             [metabase.http-client :as http]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Card Database Field FieldValues Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -124,10 +125,11 @@
                (mt/user-http-request :rasta :get 403 (str "table/" table-id))))))))
 
 (defn- default-dimension-options []
-  (->> #'table-api/dimension-options-for-response
-       var-get
-       (m/map-vals #(update % :name str))
-       walk/keywordize-keys))
+  (as-> @#'table-api/dimension-options-for-response options
+       (m/map-vals #(update % :name str) options)
+       (walk/keywordize-keys options)
+       ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
+       (mbql.u/replace options :field (mt/obj->json->obj &match))))
 
 (defn- query-metadata-defaults []
   (-> (table-defaults)
@@ -592,21 +594,30 @@
   [response field-name]
   (set
    (for [dim-index (dimension-options-for-field response field-name)
-         :let [{[_ _ strategy _] :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
-     strategy)))
+         :let [{clause :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
+     clause)))
 
 (deftest numeric-binning-options-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "binning options for numeric fields"
       (testing "Lat/Long fields should use bin-width rather than num-bins"
         (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
-          (is (= #{nil "bin-width" "default"}
+          (is (= #{nil
+                   ["field" nil {:binning {:strategy "bin-width", :bin-width 10.0}}]
+                   ["field" nil {:binning {:strategy "bin-width", :bin-width 0.1}}]
+                   ["field" nil {:binning {:strategy "bin-width", :bin-width 1.0}}]
+                   ["field" nil {:binning {:strategy "bin-width", :bin-width 20.0}}]
+                   ["field" nil {:binning {:strategy "default"}}]}
                  (extract-dimension-options response "latitude")))))
 
       (testing "Number columns without a semantic type should use \"num-bins\""
         (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:semantic_type nil}
           (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
-            (is (= #{nil "num-bins" "default"}
+            (is (= #{nil
+                     ["field" nil {:binning {:strategy "num-bins", :num-bins 50}}]
+                     ["field" nil {:binning {:strategy "default"}}]
+                     ["field" nil {:binning {:strategy "num-bins", :num-bins 100}}]
+                     ["field" nil {:binning {:strategy "num-bins", :num-bins 10}}]}
                    (extract-dimension-options response "price"))))))
 
       (testing "Numeric fields without min/max values should not have binning options"
