@@ -2,6 +2,7 @@ import React from "react";
 import Icon from "metabase/components/Icon";
 import { Flex } from "grid-styled";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Collection from "metabase/entities/collections";
 import Schemas from "metabase/entities/schemas";
@@ -121,81 +122,61 @@ class SavedQuestionPicker extends React.Component {
                 <h3>{t`Saved questions`}</h3>
               </div>
             </div>
-            <span
-              onClick={() =>
-                this.setState({ currentSchema: "Everything else" })
-              }
-            >
-              Our analytics
-            </span>
-            <CollectionsList
-              openCollections={this.state.openCollections}
-              collections={collections}
-              filter={filter}
-              onClose={this.onClose}
-              onOpen={this.onOpen}
-              useTriggerComponent={(collection, props) => {
-                console.log(collection, props);
-                // TODO - this is duplicated w/ the code in CollectionList
-                const isOpen =
-                  props.openCollections.indexOf(collection.id) >= 0;
-                const action = isOpen ? props.onClose : props.onOpen;
-                return (
-                  <div>
-                    <Flex
-                      mx={3}
-                      className="relative"
-                      align={
-                        // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
-                        // visual
-                        collection.name.length > 25 ? "flex-start" : "center"
-                      }
-                      onClick={() => {
-                        action(collection.id);
-                        this.setState({ currentSchema: collection.name });
-                      }}
-                    >
-                      {/* TODO - this seeems like it's not properly indicating children */}
-                      {collection.children && (
-                        <Flex
-                          className="absolute text-brand cursor-pointer"
-                          align="center"
-                          justifyContent="center"
-                          style={{ left: -20 }}
-                        >
-                          <Icon
-                            name={isOpen ? "chevrondown" : "chevronright"}
-                            onClick={ev => {
-                              ev.preventDefault();
-                              action(collection.id);
-                            }}
-                            size={12}
-                          />
-                        </Flex>
+            <div className="my1">
+              <CollectionFolder
+                collection={{ name: "Our analytics", id: null }}
+                onToggleExpanded={() => null}
+                onSelect={() =>
+                  this.setState({ currentSchema: "Everything else" })
+                }
+                selected={this.state.currentSchema === "Everything else"}
+                depth={1}
+              />
+              <CollectionsList
+                openCollections={this.state.openCollections}
+                collections={collections}
+                filter={filter}
+                onClose={this.onClose}
+                onOpen={this.onOpen}
+                depth={1}
+                useTriggerComponent={(collection, props) => {
+                  // TODO - this is duplicated w/ the code in CollectionList
+                  const isOpen =
+                    props.openCollections.indexOf(collection.id) >= 0;
+                  const action = isOpen ? props.onClose : props.onOpen;
+                  return (
+                    <div className="relative">
+                      <CollectionFolder
+                        collection={collection}
+                        isOpen={isOpen}
+                        onSelect={(collection, ev) => {
+                          this.setState({ currentSchema: collection.name });
+                          props.onOpen(collection.id);
+                        }}
+                        onToggleExpanded={(collection, ev) => {
+                          ev.preventDefault();
+                          action(collection.id);
+                        }}
+                        depth={props.depth}
+                        selected={this.state.currentSchema === collection.name}
+                      />
+                      {isOpen && collection.children && (
+                        <CollectionsList
+                          openCollections={props.openCollections}
+                          onOpen={props.onOpen}
+                          onClose={props.onClose}
+                          collections={collection.children}
+                          filter={props.filter}
+                          currentCollection={props.currentCollection}
+                          depth={props.depth + 1}
+                          useTriggerComponent={props.useTriggerComponent}
+                        />
                       )}
-                      <Icon
-                        name={props.initialIcon}
-                        mr={"6px"}
-                        style={{ opacity: 0.4 }}
-                      />
-                      {collection.name}
-                    </Flex>
-                    {isOpen && collection.children && (
-                      <CollectionsList
-                        openCollections={props.openCollections}
-                        onOpen={props.onOpen}
-                        onClose={props.onClose}
-                        collections={collection.children}
-                        filter={props.filter}
-                        currentCollection={props.currentCollection}
-                        depth={props.depth + 1}
-                        useTriggerComponent={props.useTriggerComponent}
-                      />
-                    )}
-                  </div>
-                );
-              }}
-            />
+                    </div>
+                  );
+                }}
+              />
+            </div>
           </div>
           <SavedQuestionTableList
             schemaName={this.state.currentSchema}
@@ -208,6 +189,53 @@ class SavedQuestionPicker extends React.Component {
     // We shouldn't get here?
     return <div>Welllp</div>;
   }
+}
+
+//this.setState({ currentSchema: collection.name });
+function CollectionFolder({
+  collection,
+  isOpen,
+  onToggleExpanded,
+  onSelect,
+  selected,
+  depth,
+}) {
+  const SPACER = 8;
+  return (
+    <Flex
+      pl={depth * (SPACER * 2) + SPACER}
+      py={"6px"}
+      className={cx("relative cursor-pointer text-brand bg-brand-light-hover", {
+        "bg-brand text-white": selected,
+      })}
+      align={
+        // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
+        // visual
+        collection.name.length > 25 ? "flex-start" : "center"
+      }
+      onClick={ev => {
+        onSelect(collection);
+      }}
+    >
+      {/* TODO - this seeems like it's not properly indicating children */}
+      {collection.children && (
+        <Flex
+          className="absolute text-brand cursor-pointer"
+          align="center"
+          justifyContent="center"
+          style={{ left: SPACER * depth + SPACER }}
+        >
+          <Icon
+            name={isOpen ? "chevrondown" : "chevronright"}
+            onClick={ev => onToggleExpanded(collection, ev)}
+            size={12}
+          />
+        </Flex>
+      )}
+      <Icon name="folder" mr={"6px"} style={{ opacity: 0.4 }} />
+      {collection.name}
+    </Flex>
+  );
 }
 
 export default Collection.loadList({
