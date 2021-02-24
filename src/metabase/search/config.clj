@@ -29,6 +29,10 @@
     class-or-instance
     (class class-or-instance)))
 
+(def ^:const displayed-columns
+  "All of the result components that by default are displayed by the frontend."
+  #{:name :display_name :collection_name})
+
 (defmulti searchable-columns-for-model
   "The columns that will be searched for the query."
   {:arglists '([model])}

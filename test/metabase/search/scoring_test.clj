@@ -25,8 +25,8 @@
 
 (defn scorer->score
   [scorer]
-  (comp :score
-        (partial #'search/score-with [scorer])))
+  (comp :text-score
+        (partial #'search/text-score-with [scorer])))
 
 (deftest consecutivity-scorer-test
   (let [score (scorer->score #'search/consecutivity-scorer)]
@@ -106,11 +106,17 @@
 (deftest accumulate-top-results-test
   (let [xf (map identity)]
     (testing "a non-full queue behaves normally"
-      (let [items (map (fn [i] [[2 2 i] (str "item " i)]) (range 10))]
+      (let [items (map (fn [i]
+                         {:score  [2 2 i]
+                          :result (str "item " i)})
+                       (range 10))]
         (is (= items
                (transduce xf search/accumulate-top-results items)))))
     (testing "a full queue only saves the top items"
-      (let [sorted-items (map (fn [i] [[1 2 3 i] (str "item " i)]) (range (+ 10 search-config/max-filtered-results)))]
+      (let [sorted-items (map (fn [i]
+                                {:score  [1 2 3 i]
+                                 :result (str "item " i)})
+                              (range (+ 10 search-config/max-filtered-results)))]
         (is (= (drop 10 sorted-items)
                (transduce xf search/accumulate-top-results (shuffle sorted-items))))))))
 
@@ -152,3 +158,16 @@
                                        this social bird lives in small flocks in lowland rainforests in countries such as costa rica
                                        it flies short distances between trees toucans rest in holes in trees
                                        here is some more filler))))))))
+
+(deftest pinned-score-test
+  (let [score #'search/pinned-score
+        item (fn [collection-position] {:collection_position collection-position})]
+    (testing "it provides a sortable score"
+      (is (= [1 2 3 0 nil]
+             (->> [(item 0)
+                   (item nil)
+                   (item 3)
+                   (item 1)
+                   (item 2)]
+                  (sort-by score)
+                  (map :collection_position)))))))

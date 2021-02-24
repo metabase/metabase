@@ -75,7 +75,7 @@
                :text     (str/join " "
                                    (map :text matches-or-misses-map))}))))
 
-(defn- score-with
+(defn- text-score-with
   [scoring-fns query-tokens search-result]
   (let [scores (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model search-result)))
                      :let   [matched-text (-> search-result
@@ -86,12 +86,13 @@
                                                                   match-tokens
                                                                   scoring-fns))]
                      :when  (> score 0)]
-                 {:score  score
-                  :match  matched-text
-                  :match-context (match-context query-tokens match-tokens)
-                  :column column})]
+                 {:text-score          score
+                  :match               matched-text
+                  :match-context-thunk #(match-context query-tokens match-tokens)
+                  :column              column
+                  :result              search-result})]
     (when (seq scores)
-      (apply max-key :score scores))))
+      (apply max-key :text-score scores))))
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
@@ -127,30 +128,52 @@
                           [(str/lower-case (name model)) i])
                         search-config/searchable-models)))
 
-(defn- score-with-match
+(defn- text-score-with-match
   [query-string result]
   (when (seq query-string)
-    (score-with match-based-scorers
-                (tokenize (normalize query-string))
-                result)))
+    (text-score-with match-based-scorers
+                     (tokenize (normalize query-string))
+                     result)))
+
+(defn- pinned-score
+  [{pos :collection_position}]
+  (if (or (nil? pos)
+          (zero? pos))
+    0
+    (/ -1 pos)))
 
 (defn- compare-score-and-result
-  "Compare [score result] pairs. Must return -1, 0, or 1. The score is assumed to be a vector, and will be compared in
-  order."
-  [[score-1 _result-1] [score-2 _result-2]]
+  "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
+  compared in order."
+  [{score-1 :score} {score-2 :score}]
   (compare score-1 score-2))
 
 (defn- serialize
-  "Massage the raw result from the DB into something more useful for the client"
-  [{:keys [collection_id collection_name name display_name] :as row} {:keys [score match column match-context] :as hit}]
-  (-> row
-      (assoc
-       :name           (if (or (= column :name) (nil? display_name)) name display_name)
-       :matched_column column
-       :matched_text   match
-       :context        (when-not (#{:name :display_name :collection_name} column) match-context) ;; TODO pull this out somewhere more responsible
-       :score          score
-       :collection     {:id collection_id :name collection_name})))
+  "Massage the raw result from the DB and match data into something more useful for the client"
+  [{:keys [result column match-context-thunk]}]
+  (let [{:keys [name display_name
+                collection_id collection_name]} result]
+    (-> result
+        (assoc
+         :name           (if (or (= column :name)
+                                 (nil? display_name))
+                           name
+                           display_name)
+         :context        (when-not (search-config/displayed-columns column)
+                           (match-context-thunk))
+         :collection     {:id   collection_id
+                          :name collection_name})
+        (dissoc
+         :collection_id
+         :collection_name
+         :display_name))))
+
+(defn- combined-score
+  [{:keys [text-score result]}]
+  [(pinned-score result)
+   (- text-score)
+   (model->sort-position (:model result))
+   (:name result)])
 
 (defn accumulate-top-results
   "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) sent to it"
@@ -172,12 +195,8 @@
        (.offer item)))))
 
 (defn score-and-result
-  "Returns a pair of [score, result] or nil. The score is a vector of comparable things in priority order. The result
-  has `:matched_column` and `matched_text` injected in"
+  "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
   [query-string result]
-  (let [hit (score-with-match query-string result)]
-    (and hit
-         [[(- (:score hit))
-           (model->sort-position (:model result))
-           (:name result)],
-          (serialize result hit)])))
+  (when-let [hit (text-score-with-match query-string result)]
+    {:score (combined-score hit)
+     :result (serialize hit)}))
