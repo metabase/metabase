@@ -34,6 +34,9 @@
   (let [native-query (atom nil)]
     (with-redefs [execute/prepared-statement (fn [_ _ sql _]
                                                (reset! native-query sql)
+                                               (throw (Exception. "done")))
+                  execute/execute-select!    (fn [_ _ sql]
+                                               (reset! native-query sql)
                                                (throw (Exception. "done")))]
       (u/ignore-exceptions
         (qp/process-query query))
