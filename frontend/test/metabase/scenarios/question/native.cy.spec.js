@@ -367,7 +367,7 @@ describe("scenarios > question > native", () => {
     cy.get("fieldset").contains("Filter");
   });
 
-  it("can reorder template tags by drag and drop", () => {
+  it("should reorder template tags by drag and drop (metabase#9357)", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
 
@@ -380,28 +380,25 @@ describe("scenarios > question > native", () => {
       },
     );
 
-    // drag the firstparameter to last position
-    cy.get(".align-end")
-      .children()
+    // Drag the firstparameter to last position
+    cy.get("fieldset .Icon-empty")
       .first()
-      .find(".cursor-grab")
       .trigger("mousedown", 0, 0, { force: true })
-      .trigger("mousemove", 1, 1, { force: true })
-      .trigger("mousemove", 600, 1, { force: true })
-      .trigger("mouseup", 600, 1, { force: true });
+      .trigger("mousemove", 5, 5, { force: true })
+      .trigger("mousemove", 430, 0, { force: true })
+      .trigger("mouseup", 430, 0, { force: true });
 
-    // ensure they're in the right order
-    cy.contains("Variables")
+    // Ensure they're in the right order
+    cy.findAllByText("Variable name")
       .parent()
-      .parent()
-      .find(".text-brand")
-      .as("variableLabels");
+      .as("variableField");
 
-    cy.get("@variableLabels")
+    cy.get("@variableField")
       .first()
-      .should("have.text", "nextparameter");
-    cy.get("@variableLabels")
+      .findByText("nextparameter");
+
+    cy.get("@variableField")
       .last()
-      .should("have.text", "firstparameter");
+      .findByText("firstparameter");
   });
 });
