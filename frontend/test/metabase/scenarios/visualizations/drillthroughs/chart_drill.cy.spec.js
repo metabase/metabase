@@ -30,19 +30,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           aggregation: [["count"]],
           breakout: [
             [
-              "datetime-field",
-              [
-                "fk->",
-                ["field", ORDERS.PRODUCT_ID, null],
-                ["field", PRODUCTS.CREATED_AT, null],
-              ],
-              "month",
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
             ],
-            [
-              "fk->",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.CATEGORY, null],
-            ],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
         },
         type: "query",
@@ -86,9 +78,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
         type: "query",
       },
@@ -108,7 +98,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               ["avg", ["field-id", ORDERS.QUANTITY]],
             ],
             breakout: [
-              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           type: "query",
@@ -234,7 +224,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
-          breakout: [["datetime-field", ORDERS.CREATED_AT, "week"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
         },
         type: "query",
       },
@@ -390,7 +380,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             ],
             aggregation: [["count"]],
             breakout: [
-              ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
+              ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
             ],
           },
           database: 1,

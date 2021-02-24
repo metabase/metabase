@@ -26,7 +26,7 @@ describe("TimeseriesFilterWidget", () => {
   })
     .query()
     .aggregate(["count"])
-    .breakout(["datetime-field", ["field", 1, null], "day"])
+    .breakout(["field", 1, { "temporal-unit": "day" }])
     .question();
 
   it("should display 'All Time' text if no filter is selected", () => {

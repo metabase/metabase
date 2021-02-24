@@ -24,9 +24,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field", ORDERS.CREATED_AT, null], "week"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
         },
         type: "query",
       },
@@ -161,15 +159,10 @@ describe("scenarios > question > nested", () => {
             "source-table": ORDERS_ID,
             aggregation: [["count"]],
             breakout: [
-              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "month"],
               [
-                "datetime-field",
-                [
-                  "fk->",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.CREATED_AT, null],
-                ],
-                "month",
+                "field",
+                PRODUCTS.CREATED_AT,
+                { "temporal-unit": "month", "source-field": ORDERS.PRODUCT_ID },
               ],
             ],
           },

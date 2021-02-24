@@ -133,12 +133,12 @@ describe("Legacy Q_DEPRECATED library", () => {
       const query = {
         "source-table": 0,
         aggregation: [["count"]],
-        breakout: [["datetime-field", ["field", 1, null], "week"]],
-        "order-by": [["asc", ["datetime-field", ["field", 1, null], "week"]]],
+        breakout: [["field", 1, { "temporal-unit": "week" }]],
+        "order-by": [["asc", ["field", 1, { "temporal-unit": "week" }]]],
       };
       Q_DEPRECATED.cleanQuery(query);
       expect(query["order-by"]).toEqual([
-        ["asc", ["datetime-field", ["field", 1, null], "week"]],
+        ["asc", ["field", 1, { "temporal-unit": "week" }]],
       ]);
     });
 
@@ -146,12 +146,12 @@ describe("Legacy Q_DEPRECATED library", () => {
       const query = {
         "source-table": 0,
         aggregation: [["count"]],
-        breakout: [["datetime-field", ["field", 1, null], "week"]],
+        breakout: [["field", 1, { "temporal-unit": "week" }]],
         "order-by": [["asc", ["field", 1, null]]],
       };
       Q_DEPRECATED.cleanQuery(query);
       expect(query["order-by"]).toEqual([
-        ["asc", ["datetime-field", ["field", 1, null], "week"]],
+        ["asc", ["field", 1, { "temporal-unit": "week" }]],
       ]);
     });
 
@@ -237,41 +237,20 @@ describe("Legacy Q_DEPRECATED library", () => {
       expect(target.path).toEqual([]);
       expect(target.unit).toEqual(undefined);
     });
-    it("should return unit object for old-style datetime-field", () => {
+    it("should return unit object for field with temporal bucketing", () => {
       const target = Q_DEPRECATED.getFieldTarget(
-        ["datetime-field", ["field", 1, null], "day"],
+        ["field", 1, { "temporal-unit": "day" }],
         table1,
       );
       expect(target.table).toEqual(table1);
       expect(target.field).toEqual(field1);
       expect(target.path).toEqual([]);
       expect(target.unit).toEqual("day");
-    });
-    it("should return unit object for new-style datetime-field", () => {
-      const target = Q_DEPRECATED.getFieldTarget(
-        ["datetime-field", ["field", 1, null], "day"],
-        table1,
-      );
-      expect(target.table).toEqual(table1);
-      expect(target.field).toEqual(field1);
-      expect(target.path).toEqual([]);
-      expect(target.unit).toEqual("day");
-    });
-
-    it("should return field object and table for old-style fk field", () => {
-      const target = Q_DEPRECATED.getFieldTarget(
-        ["fk->", ["field", 1, null], ["field", 2, null]],
-        table1,
-      );
-      expect(target.table).toEqual(table2);
-      expect(target.field).toEqual(field2);
-      expect(target.path).toEqual([field1]);
-      expect(target.unit).toEqual(undefined);
     });
 
     it("should return field object and table for new-style fk field", () => {
       const target = Q_DEPRECATED.getFieldTarget(
-        ["fk->", ["field", 1, null], ["field", 2, null]],
+        ["field", 2, { "source-field": 1 }],
         table1,
       );
       expect(target.table).toEqual(table2);
@@ -282,11 +261,7 @@ describe("Legacy Q_DEPRECATED library", () => {
 
     it("should return field object and table and unit for fk + datetime field", () => {
       const target = Q_DEPRECATED.getFieldTarget(
-        [
-          "datetime-field",
-          ["fk->", ["field", 1, null], ["field", 2, null]],
-          "day",
-        ],
+        ["field", 2, { "source-field": 1, "temporal-unit": "day" }],
         table1,
       );
       expect(target.table).toEqual(table2);
@@ -307,22 +282,9 @@ describe("Legacy Q_DEPRECATED library", () => {
 });
 
 describe("isValidField", () => {
-  it("should return true for old-style fk", () => {
-    expect(
-      Q_DEPRECATED.isValidField([
-        "fk->",
-        ["field", 1, null],
-        ["field", 2, null],
-      ]),
-    ).toBe(true);
-  });
   it("should return true for new-style fk", () => {
-    expect(
-      Q_DEPRECATED.isValidField([
-        "fk->",
-        ["field", 1, null],
-        ["field", 2, null],
-      ]),
-    ).toBe(true);
+    expect(Q_DEPRECATED.isValidField(["field", 2, { "source-field": 1 }])).toBe(
+      true,
+    );
   });
 });

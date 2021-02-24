@@ -218,7 +218,7 @@ describe("scenarios > question > custom columns", () => {
               ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
             ],
             breakout: [
-              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "month"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
             "source-table": ORDERS_ID,
           },
@@ -264,9 +264,7 @@ describe("scenarios > question > custom columns", () => {
             ],
             ["sum", ["expression", CC_NAME]],
           ],
-          breakout: [
-            ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
         type: "query",
       },
@@ -298,7 +296,7 @@ describe("scenarios > question > custom columns", () => {
           "source-query": {
             aggregation: [["cum-count"]],
             breakout: [
-              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "month"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
             "source-table": ORDERS_ID,
           },
@@ -330,7 +328,7 @@ describe("scenarios > question > custom columns", () => {
             filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
             aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
             breakout: [
-              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           expressions: {

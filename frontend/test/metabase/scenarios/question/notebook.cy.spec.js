@@ -442,10 +442,12 @@ describe("scenarios > question > notebook", () => {
                 ],
               ],
               breakout: [
-                ["datetime-field", ["field", ORDERS.CREATED_AT, null], "month"],
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
               ],
             },
-            aggregation: [["min", ["field-literal", "Revenue", "type/Float"]]],
+            aggregation: [
+              ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
+            ],
           },
           database: 1,
         },
@@ -490,7 +492,7 @@ describe("scenarios > question > notebook", () => {
               ["sum", ["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
             ],
             breakout: [
-              ["datetime-field", ["field", REVIEWS.CREATED_AT, null], "year"],
+              ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           database: 1,

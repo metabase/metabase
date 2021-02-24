@@ -202,11 +202,7 @@ describe("metabase/meta/Card", () => {
             ["dataset_query", "query", "filter"],
             [
               "and",
-              [
-                "=",
-                ["datetime-field", ["field", 3, null], "month"],
-                "2017-05-01",
-              ],
+              ["=", ["field", 3, { "temporal-unit": "month" }], "2017-05-01"],
             ],
           ),
         });
@@ -229,11 +225,7 @@ describe("metabase/meta/Card", () => {
               "and",
               [
                 "=",
-                [
-                  "datetime-field",
-                  ["fk->", ["field-id", 4], ["field-id", 5]],
-                  "month",
-                ],
+                ["field", 5, { "source-field": 4, "temporal-unit": "month" }],
                 "2017-05-01",
               ],
             ],

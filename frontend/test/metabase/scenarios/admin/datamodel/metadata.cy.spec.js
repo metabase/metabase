@@ -94,11 +94,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            [
-              "datetime-field",
-              ["field", ORDERS.CREATED_AT, null],
-              "hour-of-day",
-            ],
+            ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "hour-of-day" }],
           ],
         },
         type: "query",

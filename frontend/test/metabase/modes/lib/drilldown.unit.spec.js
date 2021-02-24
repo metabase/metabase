@@ -23,7 +23,7 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "quarter"],
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "quarter" }],
         ],
       });
     });
@@ -38,7 +38,7 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "minute"],
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "minute" }],
         ],
       });
     });

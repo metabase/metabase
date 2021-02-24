@@ -560,7 +560,7 @@ describe("scenarios > question > filter", () => {
             filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
             aggregation: [["count"]],
             breakout: [
-              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "day"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
             ],
           },
           filter: ["<=", ["field-literal", "count", "type/Integer"], 20],
@@ -723,7 +723,7 @@ describe("scenarios > question > filter", () => {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
           breakout: [
-            ["datetime-field", ["field", ORDERS.CREATED_AT, null], "month"],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],
         },
         type: "query",

@@ -22,9 +22,7 @@ describe("scenarios > admin > permissions", () => {
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field", ORDERS.CREATED_AT, null], "week"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
           filter: ["<", ["field", ORDERS.CREATED_AT, null], "2016-06-01"],
         },
         type: "query",
@@ -52,11 +50,7 @@ describe("scenarios > admin > permissions", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            [
-              "datetime-field",
-              ["field", ORDERS.CREATED_AT, null],
-              "day-of-week",
-            ],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
           ],
           filter: [
             "between",

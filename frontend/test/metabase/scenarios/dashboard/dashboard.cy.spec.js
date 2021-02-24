@@ -129,19 +129,11 @@ describe("scenarios > dashboard", () => {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
           breakout: [
-            ["datetime-field", ["field", ORDERS.CREATED_AT, null], "day"],
-            [
-              "fk->",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, null],
-            ],
-            [
-              "fk->",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.CATEGORY, null],
-            ],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+            ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
-          filter: ["=", ["field-id", ORDERS.USER_ID], 1],
+          filter: ["=", ["field", ORDERS.USER_ID, null], 1],
         },
         type: "query",
       },

@@ -161,7 +161,7 @@ describe("getParameterMappingOptions", () => {
           created: {
             type: "dimension",
             name: "created",
-            dimension: ["field-id", ORDERS.CREATED_AT.id],
+            dimension: ["field", ORDERS.CREATED_AT.id, null],
           },
         },
       }),

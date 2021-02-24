@@ -413,7 +413,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           "source-table": REVIEWS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["datetime-field", ["field", REVIEWS.CREATED_AT, null], "month"],
+            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "month" }],
           ],
         },
         type: "query",

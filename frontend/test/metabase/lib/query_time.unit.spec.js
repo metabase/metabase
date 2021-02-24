@@ -12,31 +12,13 @@ describe("query_time", () => {
   describe("parseFieldBucketing()", () => {
     it("supports the standard DatetimeField format", () => {
       expect(
-        parseFieldBucketing(["datetime-field", ["field", 3, null], "week"]),
+        parseFieldBucketing(["field", 3, { "temporal-unit": "week" }]),
       ).toBe("week");
       expect(
-        parseFieldBucketing(["datetime-field", ["field", 3, null], "day"]),
+        parseFieldBucketing(["field", 3, { "temporal-unit": "day" }]),
       ).toBe("day");
     });
 
-    it("supports the legacy DatetimeField format", () => {
-      expect(
-        parseFieldBucketing([
-          "datetime-field",
-          ["field", 3, null],
-          "as",
-          "week",
-        ]), // deprecated
-      ).toBe("week");
-      expect(
-        parseFieldBucketing([
-          "datetime-field",
-          ["field", 3, null],
-          "as",
-          "day",
-        ]), // deprecated
-      ).toBe("day");
-    });
     it("returns the default unit for FK reference", () => {
       pending();
     });
@@ -53,13 +35,13 @@ describe("query_time", () => {
       expect(
         expandTimeIntervalFilter([
           "time-interval",
-          ["field-id", 100],
+          ["field", 100, null],
           "current",
           "month",
         ]),
       ).toEqual([
         "=",
-        ["datetime-field", ["field-id", 100], "month"],
+        ["field", 100, { "temporal-unit": "month" }],
         ["relative-datetime", "current"],
       ]);
     });
@@ -67,13 +49,13 @@ describe("query_time", () => {
       expect(
         expandTimeIntervalFilter([
           "time-interval",
-          ["field-id", 100],
+          ["field", 100, null],
           -30,
           "day",
         ]),
       ).toEqual([
         "between",
-        ["datetime-field", ["field-id", 100], "day"],
+        ["field", 100, { "temporal-unit": "day" }],
         ["relative-datetime", -31, "day"],
         ["relative-datetime", -1, "day"],
       ]);

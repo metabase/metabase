@@ -154,17 +154,13 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should allow collapsing rows", () => {
     // open a pivot table of order count grouped by source, category x year
-    const b1 = ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"];
+    const b1 = ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }];
     const b2 = [
-      "fk->",
-      ["field", ORDERS.PRODUCT_ID, null],
-      ["field", PRODUCTS.CATEGORY, null],
+      "field",
+      PRODUCTS.CATEGORY,
+      { "source-field": ORDERS.PRODUCT_ID },
     ];
-    const b3 = [
-      "fk->",
-      ["field-id", ORDERS.USER_ID],
-      ["field", PEOPLE.SOURCE, null],
-    ];
+    const b3 = ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }];
 
     visitQuestionAdhoc({
       dataset_query: {
@@ -465,7 +461,7 @@ describe("scenarios > visualizations > pivot tables", () => {
               ["sum", ["expression", "Twice Total"]],
             ],
             breakout: [
-              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           type: "query",

@@ -139,11 +139,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               aggregation: [["count"]],
               breakout: [
                 [
-                  "fk->",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.CATEGORY, null],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
-                ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
               ],
             },
             type: "query",

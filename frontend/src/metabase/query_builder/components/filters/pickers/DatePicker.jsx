@@ -14,6 +14,7 @@ import DateUnitSelector from "../DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
 
 import * as FieldRef from "metabase/lib/query/field_ref";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 import type {
   FieldFilter,
@@ -146,17 +147,23 @@ const getDate = value => {
 const hasTime = value =>
   typeof value === "string" && /T\d{2}:\d{2}:\d{2}$/.test(value);
 
+/**
+ * Returns MBQL :field clause with temporal bucketing applied.
+ * @deprecated -- just use FieldDimension to do this stuff.
+ */
 function getDateTimeField(
   field: ConcreteField,
   bucketing: ?DatetimeUnit,
 ): ConcreteField {
-  const target = getDateTimeFieldTarget(field);
-  if (bucketing) {
-    // $FlowFixMe
-    return ["datetime-field", target, bucketing];
-  } else {
-    return target;
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    if (bucketing) {
+      return dimension.withTemporalUnit(bucketing).mbql();
+    } else {
+      return dimension.withoutTemporalBucketing().mbql();
+    }
   }
+  return field;
 }
 
 export function getDateTimeFieldTarget(
@@ -172,7 +179,7 @@ export function getDateTimeFieldTarget(
   }
 }
 
-// wraps values in "datetime-field" is any of them have a time component
+// add temporal-unit to fields if any of them have a time component
 function getDateTimeFieldAndValues(
   filter: FieldFilter,
   count: number,
