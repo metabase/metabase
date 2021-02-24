@@ -38,7 +38,9 @@
      :id (mt/id :checkins))))
 
 (defn- sorted-results [results]
-  (sort-by (juxt (comp (var-get #'metabase.search.scoring/model->sort-position) :model) :name) results))
+  (->> results
+       (sort-by (juxt (comp (var-get #'metabase.search.scoring/model->sort-position) :model)))
+       reverse))
 
 (defn- make-result
   [name & kvs]
@@ -201,11 +203,12 @@
                           PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-collection-read-permissions! group (u/the-id collection))
             (is (= (sorted-results
-                    (into
-                     (default-results-with-collection)
-                     (map #(merge default-search-row % (table-search-results))
-                          [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-                           {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}])))
+                    (reverse ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
+                     (into
+                      (default-results-with-collection)
+                      (map #(merge default-search-row % (table-search-results))
+                           [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
+                            {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
                    (search-request :rasta :q "test"))))))))
 
   (testing (str "Users with root collection permissions should be able to search root collection data long with "
@@ -218,11 +221,12 @@
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (perms/grant-collection-read-permissions! group collection)
             (is (= (sorted-results
-                    (into
-                     (default-results-with-collection)
-                     (for [row  (default-search-results)
-                           :when (not= "collection" (:model row))]
-                       (update row :name #(str/replace % "test" "test2")))))
+                    (reverse
+                     (into
+                      (default-results-with-collection)
+                      (for [row  (default-search-results)
+                            :when (not= "collection" (:model row))]
+                        (update row :name #(str/replace % "test" "test2"))))))
                    (search-request :rasta :q "test"))))))))
 
   (testing "Users with access to multiple collections should see results from all collections they have access to"
@@ -233,10 +237,11 @@
           (perms/grant-collection-read-permissions! group (u/the-id coll-1))
           (perms/grant-collection-read-permissions! group (u/the-id coll-2))
           (is (= (sorted-results
-                  (into
-                   (default-results-with-collection)
-                   (map (fn [row] (update row :name #(str/replace % "test" "test2")))
-                        (default-results-with-collection))))
+                  (reverse
+                   (into
+                    (default-results-with-collection)
+                    (map (fn [row] (update row :name #(str/replace % "test" "test2")))
+                         (default-results-with-collection)))))
                  (search-request :rasta :q "test")))))))
 
   (testing "User should only see results in the collection they have access to"
@@ -247,11 +252,12 @@
                           PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-collection-read-permissions! group (u/the-id coll-1))
             (is (= (sorted-results
-                    (into
-                     (default-results-with-collection)
-                     (map #(merge default-search-row % (table-search-results))
-                          [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-                           {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}])))
+                    (reverse
+                     (into
+                      (default-results-with-collection)
+                      (map #(merge default-search-row % (table-search-results))
+                           [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
+                            {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
                    (search-request :rasta :q "test"))))))))
 
   (testing "Metrics on tables for which the user does not have access to should not show up in results"

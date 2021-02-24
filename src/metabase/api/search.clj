@@ -303,22 +303,20 @@
             (if (number? v)
               (not (zero? v))
               v))]
-    (let [search-query {:union-all (for [model search-config/searchable-models
-                                         :let  [query (search-query-for-model model search-ctx)]
-                                         :when (seq query)]
-                                     query)}
-          _            (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          results      (db/reducible-query search-query :max-rows search-config/db-max-results)
-          xf           (comp
-                        (filter check-permissions-for-model)
-                        ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-                        (map #(update % :favorite bit->boolean))
-                        (map #(update % :archived bit->boolean))
-                        (map (partial scoring/score-and-result (:search-string search-ctx)))
-                        (filter some?))]
-      (->> results
-           (transduce xf scoring/accumulate-top-results)
-           (map :result)))))
+    (let [search-query      {:union-all (for [model search-config/searchable-models
+                                              :let  [query (search-query-for-model model search-ctx)]
+                                              :when (seq query)]
+                                          query)}
+          _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
+          reducible-results (db/reducible-query search-query :max-rows search-config/db-max-results)
+          xf                (comp
+                             (filter check-permissions-for-model)
+                             ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
+                             (map #(update % :favorite bit->boolean))
+                             (map #(update % :archived bit->boolean))
+                             (map (partial scoring/score-and-result (:search-string search-ctx)))
+                             (filter some?))]
+      (scoring/top-results reducible-results xf))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
