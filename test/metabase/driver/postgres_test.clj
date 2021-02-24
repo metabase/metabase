@@ -282,7 +282,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
-                                              :dimension    ["field-id" (mt/id :users :user_id)]}}})
+                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]
@@ -298,7 +298,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
-                                              :dimension    ["field-id" (mt/id :users :user_id)]}}})
+                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]

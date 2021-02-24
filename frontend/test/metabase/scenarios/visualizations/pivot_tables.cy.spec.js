@@ -154,16 +154,16 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should allow collapsing rows", () => {
     // open a pivot table of order count grouped by source, category x year
-    const b1 = ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"];
+    const b1 = ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"];
     const b2 = [
       "fk->",
-      ["field-id", ORDERS.PRODUCT_ID],
-      ["field-id", PRODUCTS.CATEGORY],
+      ["field", ORDERS.PRODUCT_ID, null],
+      ["field", PRODUCTS.CATEGORY, null],
     ];
     const b3 = [
       "fk->",
       ["field-id", ORDERS.USER_ID],
-      ["field-id", PEOPLE.SOURCE],
+      ["field", PEOPLE.SOURCE, null],
     ];
 
     visitQuestionAdhoc({
@@ -461,7 +461,7 @@ describe("scenarios > visualizations > pivot tables", () => {
               ["sum", ["expression", "Twice Total"]],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
             ],
           },
           type: "query",
@@ -489,7 +489,11 @@ describe("scenarios > visualizations > pivot tables", () => {
           query: {
             "source-table": PRODUCTS_ID,
             expressions: {
-              category_foo: ["concat", ["field-id", PRODUCTS.CATEGORY], "foo"],
+              category_foo: [
+                "concat",
+                ["field", PRODUCTS.CATEGORY, null],
+                "foo",
+              ],
             },
             aggregation: [["count"]],
             breakout: [["expression", "category_foo"]],
@@ -673,11 +677,11 @@ const testQuery = {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
     breakout: [
-      ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.SOURCE]],
+      ["fk->", ["field-id", ORDERS.USER_ID], ["field", PEOPLE.SOURCE, null]],
       [
         "fk->",
-        ["field-id", ORDERS.PRODUCT_ID],
-        ["field-id", PRODUCTS.CATEGORY],
+        ["field", ORDERS.PRODUCT_ID, null],
+        ["field", PRODUCTS.CATEGORY, null],
       ],
     ],
   },

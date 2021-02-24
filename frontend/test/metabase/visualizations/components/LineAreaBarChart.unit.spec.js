@@ -180,7 +180,7 @@ const dateTimeCard = {
       query: {
         "source-table": 1,
         aggregation: [["sum", ["field-id", 4]]],
-        breakout: [["datetime-field", ["field-id", 1], "month"]],
+        breakout: [["datetime-field", ["field", 1, null], "month"]],
       },
     },
     id: 25,

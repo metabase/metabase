@@ -25,7 +25,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"],
+            ["datetime-field", ["field", ORDERS.CREATED_AT, null], "week"],
           ],
         },
         type: "query",
@@ -161,13 +161,13 @@ describe("scenarios > question > nested", () => {
             "source-table": ORDERS_ID,
             aggregation: [["count"]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "month"],
               [
                 "datetime-field",
                 [
                   "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CREATED_AT],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.CREATED_AT, null],
                 ],
                 "month",
               ],
@@ -268,7 +268,7 @@ describe("scenarios > question > nested", () => {
       description: "Discounted orders.",
       definition: {
         aggregation: [["count"]],
-        filter: ["not-null", ["field-id", ORDERS.DISCOUNT]],
+        filter: ["not-null", ["field", ORDERS.DISCOUNT, null]],
         "source-table": ORDERS_ID,
       },
       table_id: ORDERS_ID,
@@ -493,8 +493,8 @@ function ordersJoinProducts(name) {
             "source-table": PRODUCTS_ID,
             condition: [
               "=",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
             ],
             alias: "Products",
           },

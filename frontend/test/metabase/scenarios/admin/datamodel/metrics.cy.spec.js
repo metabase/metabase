@@ -175,7 +175,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
                 "sum",
                 [
                   "*",
-                  ["field-id", ORDERS.DISCOUNT],
+                  ["field", ORDERS.DISCOUNT, null],
                   ["field-id", ORDERS.QUANTITY],
                 ],
               ],

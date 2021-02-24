@@ -502,11 +502,22 @@ export class FieldDimension extends Dimension {
    * Return a copy of this FieldDimension that excludes `options`.
    */
   withoutOptions(...options) {
-    const newOptions = _.omit(this._options, ...options);
+    // optimization: if we don't have any options, we can return ourself as-is
+    if (!this._options) {
+      return this;
+    }
+
+    let newOptions = _.omit(this._options, ...options);
     // don't need to make a new object if nothing has changed.
     if (this._options === newOptions) {
       return this;
     }
+
+    // canonically, `:field` clause should have null options instead of empty map
+    if (!Object.entries(this._options).length) {
+      newOptions = null;
+    }
+
     return new FieldDimension(
       this._fieldIdOrName,
       newOptions,

@@ -82,7 +82,7 @@ export default class Parameters extends Component {
             // widget, we should start with an array to match.
             value = [value];
           }
-          // field IDs can be either ["field-id", <id>] or ["field-literal", <name>, <type>]
+          // field IDs can be either ["field", <integer-id>, <options>] or ["field", <string-name>, <options>]
           const fieldIds = parameter.field_ids || [];
           const fields = fieldIds.map(
             id =>

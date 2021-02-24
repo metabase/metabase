@@ -31,7 +31,7 @@ describe("PivotByDrill", () => {
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
-            breakout: [["datetime-field", ["field-id", 1], "day"]],
+            breakout: [["datetime-field", ["field", 1, null], "day"]],
           },
           type: "query",
         },

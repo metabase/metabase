@@ -95,14 +95,14 @@ describe("UnderlyingRecordsDrill", () => {
       "source-table": PEOPLE.id,
       condition: [
         "=",
-        ["field-id", ORDERS.USER_ID.id],
-        ["joined-field", "User", ["field-id", PEOPLE.ID.id]],
+        ["field", ORDERS.USER_ID.id, null],
+        ["field", PEOPLE.ID.id, { "join-alias": "User" }],
       ],
     };
     const query = ORDERS.query()
       .join(join)
       .aggregate(["count"])
-      .breakout(["joined-field", "User", ["field-id", PEOPLE.STATE.id]]);
+      .breakout(["field", PEOPLE.STATE.id, { "source-field": "User" }]);
 
     const actions = UnderlyingRecordsDrill(getActionProps(query, "CA"));
     expect(actions).toHaveLength(1);
@@ -113,7 +113,7 @@ describe("UnderlyingRecordsDrill", () => {
       joins: [join],
       filter: [
         "=",
-        ["joined-field", "User", ["field-id", PEOPLE.STATE.id]],
+        ["field", PEOPLE.STATE.id, { "source-field": "User" }],
         "CA",
       ],
     });
@@ -157,14 +157,10 @@ describe("UnderlyingRecordsDrill", () => {
         "and",
         [
           "=",
-          [
-            "fk->",
-            ["field-id", ORDERS.USER_ID.id],
-            ["field-id", PEOPLE.STATE.id],
-          ],
+          ["field", PEOPLE.STATE.id, { "source-field": ORDERS.USER_ID.id }],
           "CA",
         ],
-        [">", ["field-id", ORDERS.TOTAL.id], 42],
+        [">", ["field", ORDERS.TOTAL.id, null], 42],
       ],
       "source-table": 1,
     });

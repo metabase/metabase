@@ -97,7 +97,7 @@ describe("metabase/lib/expressions/compile", () => {
       ]);
       expect(compile({ source: "average(A)", ...aggregationOpts })).toEqual([
         "avg",
-        ["field-id", 1],
+        ["field", 1, null],
       ]);
     });
 

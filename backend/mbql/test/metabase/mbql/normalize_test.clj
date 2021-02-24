@@ -437,7 +437,11 @@
      {:query {:fields [[:field 1 {:a 100, :b 300}]]}}
 
      {:query {:fields [[:field [:field [:field 1 {:a 100, :b 200}] {:b 300}] {:a 400, :c 500}]]}}
-     {:query {:fields [[:field 1 {:a 400, :b 300, :c 500}]]}}}))
+     {:query {:fields [[:field 1 {:a 400, :b 300, :c 500}]]}}}
+
+    "We should remove empty options maps"
+    {[:field 2 {}]
+     [:field 2 nil]}))
 
 
 ;;; ------------------------------------------------ binning strategy ------------------------------------------------

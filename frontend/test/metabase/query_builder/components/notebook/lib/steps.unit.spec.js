@@ -15,7 +15,7 @@ const summarizedQuery = {
   breakout: [
     [
       "fk->",
-      ["field-id", ORDERS.PRODUCT_ID.id],
+      ["field", ORDERS.PRODUCT_ID.id, null],
       ["field-id", PRODUCTS.CATEGORY.id],
     ],
   ],
@@ -23,7 +23,7 @@ const summarizedQuery = {
 
 const filteredQuery = {
   ...rawDataQuery,
-  filter: ["=", ["field-id", ORDERS.USER_ID.id], 1],
+  filter: ["=", ["field", ORDERS.USER_ID.id, null], 1],
 };
 
 const filteredAndSummarizedQuery = {

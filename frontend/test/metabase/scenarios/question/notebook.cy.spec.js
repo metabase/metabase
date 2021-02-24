@@ -265,16 +265,16 @@ describe("scenarios > question > notebook", () => {
             "source-table": ORDERS_ID,
             aggregation: [["count"]],
             breakout: [
-              ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
-              ["joined-field", "People - User", ["field-id", PEOPLE.SOURCE]],
+              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+              ["field", PEOPLE.SOURCE, { "join-alias": "People - User" }],
             ],
             joins: [
               {
                 alias: "Products",
                 condition: [
                   "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
                 ],
                 fields: "all",
                 "source-table": PRODUCTS_ID,
@@ -284,7 +284,7 @@ describe("scenarios > question > notebook", () => {
                 condition: [
                   "=",
                   ["field-id", ORDERS.USER_ID],
-                  ["joined-field", "People - User", ["field-id", PEOPLE.ID]],
+                  ["field", PEOPLE.ID, { "join-alias": "People - User" }],
                 ],
                 fields: "all",
                 "source-table": PEOPLE_ID,
@@ -304,17 +304,17 @@ describe("scenarios > question > notebook", () => {
           database: 1,
           query: {
             "source-table": REVIEWS_ID,
-            aggregation: [["avg", ["field-id", REVIEWS.RATING]]],
+            aggregation: [["avg", ["field", REVIEWS.RATING, null]]],
             breakout: [
-              ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
+              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
             ],
             joins: [
               {
                 alias: "Products",
                 condition: [
                   "=",
-                  ["field-id", REVIEWS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ["field", REVIEWS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
                 ],
                 fields: "all",
                 "source-table": PRODUCTS_ID,
@@ -367,7 +367,7 @@ describe("scenarios > question > notebook", () => {
           query: {
             "source-table": PRODUCTS_ID,
             aggregation: [["count"]],
-            breakout: [["field-id", PRODUCTS.CATEGORY]],
+            breakout: [["field", PRODUCTS.CATEGORY, null]],
             "order-by": [["asc", ["aggregation", 0]]],
           },
           type: "query",
@@ -389,11 +389,11 @@ describe("scenarios > question > notebook", () => {
                   fields: "all",
                   condition: [
                     "=",
-                    ["field-id", PRODUCTS.CATEGORY],
+                    ["field", PRODUCTS.CATEGORY, null],
                     [
-                      "joined-field",
-                      ALIAS,
-                      ["field-literal", "CATEGORY", "type/Text"],
+                      "field",
+                      "CATEGORY",
+                      { "base-type": "type/Text", "join-alias": ALIAS },
                     ],
                   ],
                   "source-table": `card__${questionId}`,
@@ -442,7 +442,7 @@ describe("scenarios > question > notebook", () => {
                 ],
               ],
               breakout: [
-                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+                ["datetime-field", ["field", ORDERS.CREATED_AT, null], "month"],
               ],
             },
             aggregation: [["min", ["field-literal", "Revenue", "type/Float"]]],
@@ -480,20 +480,17 @@ describe("scenarios > question > notebook", () => {
                 "source-table": PRODUCTS_ID,
                 condition: [
                   "=",
-                  ["field-id", REVIEWS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ["field", REVIEWS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
                 ],
                 alias: "Products",
               },
             ],
             aggregation: [
-              [
-                "sum",
-                ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
-              ],
+              ["sum", ["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
             ],
             breakout: [
-              ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "year"],
+              ["datetime-field", ["field", REVIEWS.CREATED_AT, null], "year"],
             ],
           },
           database: 1,
@@ -638,7 +635,7 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
       database: 1,
       query: {
         aggregation: ["sum", ["field-id", ORDERS.TOTAL]],
-        breakout: [["field-id", ORDERS.PRODUCT_ID]],
+        breakout: [["field", ORDERS.PRODUCT_ID, null]],
         "source-table": ORDERS_ID,
       },
       type: "query",
@@ -653,7 +650,7 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
         database: 1,
         query: {
           aggregation: ["sum", ["field-id", PRODUCTS.RATING]],
-          breakout: [["field-id", PRODUCTS.ID]],
+          breakout: [["field", PRODUCTS.ID, null]],
           "source-table": PRODUCTS_ID,
         },
         type: "query",
@@ -674,11 +671,11 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
                 alias: ALIAS,
                 condition: [
                   "=",
-                  ["field-literal", "PRODUCT_ID", "type/Integer"],
+                  ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
                   [
-                    "joined-field",
-                    ALIAS,
-                    ["field-literal", "ID", "type/BigInteger"],
+                    "field",
+                    "ID",
+                    { "base-type": "type/BigInteger", "join-alias": ALIAS },
                   ],
                 ],
                 fields: "all",

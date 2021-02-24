@@ -356,8 +356,8 @@
   [[_ id-or-name opts :as clause]]
   (if (is-clause? :field id-or-name)
     (let [[_ nested-id-or-name nested-opts] id-or-name]
-      (canonicalize-mbql-clause [:field nested-id-or-name (merge nested-opts opts)]))
-    clause))
+      (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
+    [:field id-or-name (not-empty opts)]))
 
 ;;; legacy Field clauses
 

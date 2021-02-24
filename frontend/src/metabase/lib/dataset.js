@@ -67,19 +67,22 @@ export function fieldRefWithOption(fieldRef, key, value) {
 
 export const keyForColumn = (column: Column): string => {
   const ref = fieldRefForColumn(column);
-  // match bug where joined-field returned field-id instead
-  if (Array.isArray(ref) && ref[0] === "joined-field") {
-    return JSON.stringify(["ref", ref[2]]);
-  }
-  // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
-  if (
-    Array.isArray(ref) &&
-    ref[0] !== "field-literal" &&
-    ref[0] !== "aggregation"
-  ) {
-    return JSON.stringify(["ref", ref]);
-  }
-  return JSON.stringify(["name", column.name]);
+  return ["ref", ref];
+  /* const dimension = FieldDimension.parseMBQL(ref);
+   * // match bug where field w/ join alias returned field w/o join alias instead
+   * if (dimension && dimension.getOption("join-alias")) {
+   *   return JSON.stringify(["ref", dimension.withoutOptions("join-alias").mbql()]);
+   * }
+
+   * // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
+   * if (
+   *   Array.isArray(ref) &&
+   *   ref[0] !== "field-literal" &&
+   *   ref[0] !== "aggregation"
+   * ) {
+   *   return JSON.stringify(["ref", ref]);
+   * }
+   * return JSON.stringify(["name", column.name]); */
 };
 
 /**

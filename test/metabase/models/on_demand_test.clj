@@ -35,7 +35,7 @@
               :template-tags {:category {:name         "category"
                                          :display-name "Category"
                                          :type         "dimension"
-                                         :dimension    ["field-id" (u/the-id field-or-id)]
+                                         :dimension    [:field (u/the-id field-or-id) nil]
                                          :widget-type  "category"
                                          :default      "Widget"}}}})
 

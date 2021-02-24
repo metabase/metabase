@@ -33,15 +33,15 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               "datetime-field",
               [
                 "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.CREATED_AT],
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.CREATED_AT, null],
               ],
               "month",
             ],
             [
               "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.CATEGORY],
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.CATEGORY, null],
             ],
           ],
         },
@@ -87,7 +87,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+            ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
           ],
         },
         type: "query",
@@ -104,11 +104,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           query: {
             "source-table": ORDERS_ID,
             aggregation: [
-              ["avg", ["field-id", ORDERS.DISCOUNT]],
+              ["avg", ["field", ORDERS.DISCOUNT, null]],
               ["avg", ["field-id", ORDERS.QUANTITY]],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
             ],
           },
           type: "query",
@@ -378,11 +378,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
                 "source-table": `card__${SQL_ID}`,
                 condition: [
                   "=",
-                  ["field-id", PEOPLE.ID],
+                  ["field", PEOPLE.ID, null],
                   [
-                    "joined-field",
-                    ALIAS,
-                    ["field-literal", "ID", "type/BigInteger"],
+                    "field",
+                    "ID",
+                    { "base-type": "type/BigInteger", "join-alias": ALIAS },
                   ],
                 ],
                 alias: ALIAS,

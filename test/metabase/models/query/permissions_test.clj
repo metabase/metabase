@@ -244,7 +244,7 @@
                           :source-table (str "card__" card-id)
                           :condition    [:=
                                          $id
-                                         ["joined-field" "__alias__" ["field-literal" "USER_ID" "type/Integer"]]]}]
+                                         [:field "USER_ID" {:base-type :type/Integer, :join-alias "__alias__"}]]}]
                  :limit 10})
               :throw-exceptions? true))))
 

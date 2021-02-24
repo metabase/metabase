@@ -83,8 +83,8 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               "source-table": PEOPLE_ID,
               aggregation: [["count"]],
               breakout: [
-                ["field-id", PEOPLE.SOURCE],
-                ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
+                ["field", PEOPLE.SOURCE, null],
+                ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
               ],
             },
             type: "query",
@@ -140,10 +140,10 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               breakout: [
                 [
                   "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.CATEGORY, null],
                 ],
-                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+                ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
               ],
             },
             type: "query",
@@ -197,7 +197,10 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                       {
                         parameter_id: "91bace6e",
                         card_id: QUESTION_ID,
-                        target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                        target: [
+                          "dimension",
+                          ["field", PRODUCTS.CATEGORY, null],
+                        ],
                       },
                     ],
                   },

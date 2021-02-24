@@ -73,7 +73,7 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["binning-strategy", ["field-id", ORDERS.TOTAL.id], "default"],
+          ["binning-strategy", ["field", ORDERS.TOTAL.id, null], "default"],
         ],
       });
     });
@@ -94,7 +94,12 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["binning-strategy", ["field-id", ORDERS.TOTAL.id], "bin-width", 1],
+          [
+            "binning-strategy",
+            ["field", ORDERS.TOTAL.id, null],
+            "bin-width",
+            1,
+          ],
         ],
       });
     });

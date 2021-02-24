@@ -175,12 +175,6 @@ function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
 
   let fieldRef = fieldRefForColumn(dimensions[0].column);
 
-  if (Array.isArray(fieldRef) && fieldRef[0] === "field-id") {
-    fieldRef = ["field-id", field.id];
-  } else if (Array.isArray(fieldRef) && fieldRef[0] === "fk->") {
-    fieldRef = ["fk->", fieldRef[1], field.id];
-  }
-
   if (Array.isArray(breakoutTemplate)) {
     const prevDimension = _.find(dimensions, dimension =>
       breakoutTemplateMatchesDimension(breakoutTemplate, dimension),

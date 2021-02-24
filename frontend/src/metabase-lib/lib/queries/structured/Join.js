@@ -378,11 +378,14 @@ export default class Join extends MBQLObjectClause {
   }
 
   joinedDimension(dimension: Dimension) {
-    return this.query().parseFieldReference([
-      "joined-field",
-      this.alias,
-      dimension.mbql(),
-    ]);
+    if (dimension instanceof FieldDimension) {
+      return dimension.withOptions({ "join-alias": this.alias }).mbql();
+    }
+    console.warn(
+      "Don't know how to create joined dimension with %s",
+      dimension,
+    );
+    return dimension.mbql();
   }
 
   dependentMetadata() {

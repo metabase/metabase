@@ -129,16 +129,16 @@ describe("scenarios > dashboard", () => {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
           breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+            ["datetime-field", ["field", ORDERS.CREATED_AT, null], "day"],
             [
               "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.ID],
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, null],
             ],
             [
               "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.CATEGORY],
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.CATEGORY, null],
             ],
           ],
           filter: ["=", ["field-id", ORDERS.USER_ID], 1],
@@ -243,7 +243,7 @@ describe("scenarios > dashboard", () => {
                   {
                     parameter_id: "92eb69ea",
                     card_id: questionId,
-                    target: ["dimension", ["field-id", PEOPLE.ID]],
+                    target: ["dimension", ["field", PEOPLE.ID, null]],
                   },
                 ],
                 visualization_settings: {
@@ -364,7 +364,7 @@ describe("scenarios > dashboard", () => {
               name: "filter",
               "display-name": "Filter",
               type: "dimension",
-              dimension: ["field-id", ORDERS.CREATED_AT],
+              dimension: ["field", ORDERS.CREATED_AT, null],
               "widget-type": "date/month-year",
               default: null,
             },
@@ -397,7 +397,7 @@ describe("scenarios > dashboard", () => {
                 {
                   parameter_id: "d3b78b27",
                   card_id: 1,
-                  target: ["dimension", ["field-id", ORDERS.CREATED_AT]],
+                  target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
                 },
               ],
               visualization_settings: {},
@@ -477,8 +477,8 @@ describe("scenarios > dashboard", () => {
                 "dimension",
                 [
                   "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.CATEGORY, null],
                 ],
               ],
             },
@@ -571,7 +571,7 @@ describe("scenarios > dashboard", () => {
                   {
                     parameter_id: "719fe1c2",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
                   },
                   {
                     parameter_id: "a73b7c9",

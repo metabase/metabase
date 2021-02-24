@@ -89,17 +89,14 @@ describe("getParameterMappingOptions", () => {
           sectionName: "Joined Table",
           name: "Created At",
           icon: "calendar",
-          target: [
-            "dimension",
-            ["joined-field", "Joined Table", ["field-id", 1]],
-          ],
+          target: ["dimension", ["field", 1, { "join-alias": "Joined Table" }]],
           isForeign: true,
         },
         {
           sectionName: "Product",
           name: "Created At",
           icon: "calendar",
-          target: ["dimension", ["fk->", ["field-id", 32], ["field-id", 22]]],
+          target: ["dimension", ["field", 22, { "source-field": 32 }]],
           isForeign: true,
         },
       ]);
@@ -121,7 +118,7 @@ describe("getParameterMappingOptions", () => {
           icon: "calendar",
           target: [
             "dimension",
-            ["field-literal", "CREATED_AT", "type/DateTime"],
+            ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
           ],
           isForeign: false,
         },

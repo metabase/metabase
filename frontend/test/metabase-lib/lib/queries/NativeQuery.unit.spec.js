@@ -207,7 +207,7 @@ describe("NativeQuery", () => {
         assocIn(
           q.datasetQuery(),
           ["native", "template-tags", "foo", "dimension"],
-          ["field-id", 123],
+          ["field", 123, null],
         ),
       );
       expect(q.canRun()).toBe(true);
@@ -307,7 +307,7 @@ describe("NativeQuery", () => {
         .setTemplateTag("category", {
           name: "category",
           type: "dimension",
-          dimension: ["field-id", PRODUCTS.CATEGORY.id],
+          dimension: ["field", PRODUCTS.CATEGORY.id, null],
         });
       const dimensions = q.dimensionOptions().dimensions;
       expect(dimensions).toHaveLength(1);

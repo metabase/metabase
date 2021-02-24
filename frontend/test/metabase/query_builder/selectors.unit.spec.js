@@ -27,16 +27,16 @@ describe("getIsResultDirty", () => {
 
     it("should be dirty if the fields were changed", () => {
       const state = getState(
-        { "source-table": 1, fields: [["field-id", 1]] },
-        { "source-table": 1, fields: [["field-id", 2]] },
+        { "source-table": 1, fields: [["field", 1, null]] },
+        { "source-table": 1, fields: [["field", 2, null]] },
       );
       expect(getIsResultDirty(state)).toBe(true);
     });
 
     it("should not be dirty if the fields were reordered", () => {
       const state = getState(
-        { "source-table": 1, fields: [["field-id", 1], ["field-id", 2]] },
-        { "source-table": 1, fields: [["field-id", 2], ["field-id", 1]] },
+        { "source-table": 1, fields: [["field", 1, null], ["field", 2, null]] },
+        { "source-table": 1, fields: [["field", 2, null], ["field", 1, null]] },
       );
       expect(getIsResultDirty(state)).toBe(false);
     });
@@ -45,11 +45,17 @@ describe("getIsResultDirty", () => {
       const state = getState(
         {
           "source-table": 1,
-          fields: [["fk->", ["field-id", 1], ["field-id", 2]], ["field-id", 1]],
+          fields: [
+            ["fk->", ["field", 1, null], ["field", 2, null]],
+            ["field", 1, null],
+          ],
         },
         {
           "source-table": 1,
-          fields: [["field-id", 1], ["fk->", ["field-id", 1], ["field-id", 2]]],
+          fields: [
+            ["field", 1, null],
+            ["fk->", ["field", 1, null], ["field", 2, null]],
+          ],
         },
       );
       expect(getIsResultDirty(state)).toBe(false);
@@ -61,9 +67,9 @@ describe("getIsResultDirty", () => {
         {
           "source-table": 1,
           fields: [
-            ["field-id", 1],
-            ["field-id", 2],
-            ["field-id", 3],
+            ["field", 1, null],
+            ["field", 2, null],
+            ["field", 3, null],
             ["field-id", 4],
             ["field-id", 5],
             ["field-id", 6],

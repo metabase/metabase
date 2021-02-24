@@ -22,7 +22,7 @@ describe("scenarios > question > null", () => {
         database: 1,
         query: {
           "source-table": ORDERS_ID,
-          fields: [["field-id", ORDERS.DISCOUNT]],
+          fields: [["field", ORDERS.DISCOUNT, null]],
           filter: ["=", ["field-id", ORDERS.ID], 1],
         },
         type: "query",
@@ -60,7 +60,7 @@ describe("scenarios > question > null", () => {
             NewDiscount: [
               "case",
               [[["=", ["field-id", ORDERS.ID], 2], 0]],
-              { default: ["field-id", ORDERS.DISCOUNT] },
+              { default: ["field", ORDERS.DISCOUNT, null] },
             ],
           },
           filter: ["=", ["field-id", ORDERS.ID], 1, 2, 3],

@@ -12,76 +12,77 @@ describe("Dimension", () => {
     describe("parseMBQL(mbql metadata)", () => {
       it("should parse (deprecated) bare field ID", () => {
         const dimension = Dimension.parseMBQL(ORDERS.PRODUCT_ID.id, metadata);
-        expect(dimension.mbql()).toEqual(["field-id", ORDERS.PRODUCT_ID.id]);
+        expect(dimension.mbql()).toEqual(["field", ORDERS.PRODUCT_ID.id, null]);
         expect(dimension.render()).toEqual("Product ID");
       });
       it("should parse field-id", () => {
         const dimension = Dimension.parseMBQL(
-          ["field-id", ORDERS.PRODUCT_ID.id],
+          ["field", ORDERS.PRODUCT_ID.id, null],
           metadata,
         );
-        expect(dimension.mbql()).toEqual(["field-id", ORDERS.PRODUCT_ID.id]);
+        expect(dimension.mbql()).toEqual(["field", ORDERS.PRODUCT_ID.id, null]);
         expect(dimension.render()).toEqual("Product ID");
       });
       it("should parse fk-> with bare field IDs", () => {
         const dimension = Dimension.parseMBQL(
-          ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.CATEGORY.id],
+          [
+            "field",
+            PRODUCTS.CATEGORY.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
+          ],
           metadata,
         );
         expect(dimension.mbql()).toEqual([
-          "fk->",
-          ["field-id", ORDERS.PRODUCT_ID.id],
-          ["field-id", PRODUCTS.CATEGORY.id],
+          [
+            "field",
+            PRODUCTS.CATEGORY.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
+          ],
         ]);
       });
       it("should parse fk-> with field-id", () => {
         const dimension = Dimension.parseMBQL(
           [
-            "fk->",
-            ["field-id", ORDERS.PRODUCT_ID.id],
-            ["field-id", PRODUCTS.CATEGORY.id],
+            "field",
+            PRODUCTS.CATEGORY.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
           ],
           metadata,
         );
         expect(dimension.mbql()).toEqual([
-          "fk->",
-          ["field-id", ORDERS.PRODUCT_ID.id],
-          ["field-id", PRODUCTS.CATEGORY.id],
+          "field",
+          PRODUCTS.CATEGORY.id,
+          { "source-field": ORDERS.PRODUCT_ID.id },
         ]);
         expect(dimension.render()).toEqual("Product → Category");
       });
 
       it("should parse datetime-field", () => {
         const dimension = Dimension.parseMBQL(
-          ["datetime-field", ["field-id", PRODUCTS.CREATED_AT.id], "hour"],
+          ["field", PRODUCTS.CREATED_AT.id, { "temporal-unit": "hour" }],
           metadata,
         );
         expect(dimension.mbql()).toEqual([
-          "datetime-field",
-          ["field-id", PRODUCTS.CREATED_AT.id],
-          "hour",
+          "field",
+          PRODUCTS.CREATED_AT.id,
+          { "temporal-unit": "hour" },
         ]);
         expect(dimension.render()).toEqual("Created At: Hour");
       });
 
-      it("should parse datetime-field with fk->", () => {
+      it("should parse datetime-field with fk source-field", () => {
         const dimension = Dimension.parseMBQL(
           [
-            "datetime-field",
-            ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.CREATED_AT.id],
-            "hour",
+            "field",
+            PRODUCTS.CREATED_AT.id,
+            { "temporal-unit": "hour", "source-field": ORDERS.PRODUCT_ID.id },
           ],
           metadata,
         );
         expect(dimension.mbql()).toEqual([
-          "datetime-field",
-          [
-            "fk->",
-            ["field-id", ORDERS.PRODUCT_ID.id],
-            ["field-id", PRODUCTS.CREATED_AT.id],
-          ],
-
-          "hour",
+          "field",
+          PRODUCTS.CREATED_AT.id,
+          { "temporal-unit": "hour", "source-field": ORDERS.PRODUCT_ID.id },
         ]);
         expect(dimension.render()).toEqual("Product → Created At: Hour");
       });
@@ -90,26 +91,26 @@ describe("Dimension", () => {
     describe("isEqual(other)", () => {
       it("returns true for equivalent field-ids", () => {
         const d1 = Dimension.parseMBQL(1, metadata);
-        const d2 = Dimension.parseMBQL(["field-id", 1], metadata);
+        const d2 = Dimension.parseMBQL(["field", 1], metadata);
         expect(d1.isEqual(d2)).toEqual(true);
-        expect(d1.isEqual(["field-id", 1])).toEqual(true);
+        expect(d1.isEqual(["field", 1])).toEqual(true);
         expect(d1.isEqual(1)).toEqual(true);
       });
       it("returns false for different type clauses", () => {
         const d1 = Dimension.parseMBQL(
-          ["fk->", ["field-id", 1], ["field-id", 2]],
+          ["field", 2, { "source-field": 1 }],
           metadata,
         );
-        const d2 = Dimension.parseMBQL(["field-id", 1], metadata);
+        const d2 = Dimension.parseMBQL(["field", 1], metadata);
         expect(d1.isEqual(d2)).toEqual(false);
       });
       it("returns false for same type clauses with different arguments", () => {
         const d1 = Dimension.parseMBQL(
-          ["fk->", ["field-id", 1], ["field-id", 2]],
+          ["field", 2, { "source-field": 1 }],
           metadata,
         );
         const d2 = Dimension.parseMBQL(
-          ["fk->", ["field-id", 1], ["field-id", 3]],
+          ["field", 3, { "source-field": 1 }],
           metadata,
         );
         expect(d1.isEqual(d2)).toEqual(false);
@@ -145,9 +146,9 @@ describe("Dimension", () => {
         );
         expect(dimension).toBeInstanceOf(FKDimension);
         expect(dimension.mbql()).toEqual([
-          "fk->",
-          ["field-id", ORDERS.PRODUCT_ID.id],
-          ["field-id", PRODUCTS.CATEGORY.id],
+          "field",
+          PRODUCTS.CATEGORY.id,
+          { "source-field": ORDERS.PRODUCT_ID.id },
         ]);
       });
     });
@@ -155,19 +156,23 @@ describe("Dimension", () => {
 
   describe("FieldIDDimension", () => {
     const dimension = Dimension.parseMBQL(
-      ["field-id", ORDERS.TOTAL.id],
+      ["field", ORDERS.TOTAL.id, null],
       metadata,
     );
     const categoryDimension = Dimension.parseMBQL(
-      ["field-id", PRODUCTS.CATEGORY.id],
+      ["field", PRODUCTS.CATEGORY.id, null],
       metadata,
     );
 
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
-        it('returns a "field-id" clause', () => {
-          expect(dimension.mbql()).toEqual(["field-id", ORDERS.TOTAL.id]);
-        });
+        it(
+          'returns a "field" clause',
+          () => {
+            expect(dimension.mbql()).toEqual(["field", ORDERS.TOTAL.id, null]);
+          },
+          null,
+        );
       });
       describe("displayName()", () => {
         it("returns the field name", () => {
@@ -181,7 +186,7 @@ describe("Dimension", () => {
         it("returns 'Default' for non-numeric fields", () => {
           expect(
             Dimension.parseMBQL(
-              ["field-id", PRODUCTS.CATEGORY.id],
+              ["field", PRODUCTS.CATEGORY.id, null],
               metadata,
             ).subDisplayName(),
           ).toEqual("Default");
@@ -202,7 +207,7 @@ describe("Dimension", () => {
           display_name: "Total",
           base_type: "type/Float",
           semantic_type: "type/Currency",
-          field_ref: ["field-id", ORDERS.TOTAL.id],
+          field_ref: ["field", ORDERS.TOTAL.id, null],
         });
       });
     });
@@ -210,11 +215,7 @@ describe("Dimension", () => {
 
   describe("FKDimension", () => {
     const dimension = Dimension.parseMBQL(
-      [
-        "fk->",
-        ["field-id", ORDERS.PRODUCT_ID.id],
-        ["field-id", PRODUCTS.TITLE.id],
-      ],
+      ["field", PRODUCTS.TITLE.id, { "source-field": ORDERS.PRODUCT_ID.id }],
       metadata,
     );
 
@@ -234,11 +235,11 @@ describe("Dimension", () => {
 
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
-        it('returns a "fk->" clause', () => {
+        it("returns a fk clause", () => {
           expect(dimension.mbql()).toEqual([
-            "fk->",
-            ["field-id", ORDERS.PRODUCT_ID.id],
-            ["field-id", PRODUCTS.TITLE.id],
+            "field",
+            PRODUCTS.TITLE.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
           ]);
         });
       });
@@ -266,9 +267,9 @@ describe("Dimension", () => {
           semantic_type: "type/Category",
           fk_field_id: ORDERS.PRODUCT_ID.id,
           field_ref: [
-            "fk->",
-            ["field-id", ORDERS.PRODUCT_ID.id],
-            ["field-id", PRODUCTS.TITLE.id],
+            "field",
+            PRODUCTS.TITLE.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
           ],
         });
       });
@@ -277,7 +278,7 @@ describe("Dimension", () => {
 
   describe("DatetimeFieldDimension", () => {
     const dimension = Dimension.parseMBQL(
-      ["datetime-field", ORDERS.CREATED_AT.id, "month"],
+      ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
       metadata,
     );
 
@@ -305,11 +306,11 @@ describe("Dimension", () => {
 
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
-        it('returns a "datetime-field" clause', () => {
+        it("returns a field clause with temporal unit", () => {
           expect(dimension.mbql()).toEqual([
-            "datetime-field",
-            ["field-id", ORDERS.CREATED_AT.id],
-            "month",
+            "field",
+            ORDERS.CREATED_AT.id,
+            { "temporal-unit": "month" },
           ]);
         });
       });
@@ -337,9 +338,9 @@ describe("Dimension", () => {
           base_type: "type/DateTime",
           semantic_type: null,
           field_ref: [
-            "datetime-field",
-            ["field-id", ORDERS.CREATED_AT.id],
-            "month",
+            "field",
+            ORDERS.CREATED_AT.id,
+            { "temporal-unit": "month" },
           ],
           unit: "month",
         });
@@ -349,7 +350,7 @@ describe("Dimension", () => {
 
   describe("BinningStrategyDimension", () => {
     const dimension = Dimension.parseMBQL(
-      ["field-id", ORDERS.TOTAL.id],
+      ["field", ORDERS.TOTAL.id, null],
       metadata,
     ).dimensions()[1];
 
@@ -366,12 +367,11 @@ describe("Dimension", () => {
 
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
-        it('returns a "binning-strategy" clause', () => {
+        it("returns a field clause with binning-strategy", () => {
           expect(dimension.mbql()).toEqual([
-            "binning-strategy",
-            ["field-id", ORDERS.TOTAL.id],
-            "num-bins",
-            10,
+            "field",
+            ORDERS.TOTAL.id,
+            { binning: { strategy: "num-bins", "num-bins": 10 } },
           ]);
         });
       });
@@ -400,10 +400,9 @@ describe("Dimension", () => {
           base_type: "type/Float",
           semantic_type: "type/Currency",
           field_ref: [
-            "binning-strategy",
-            ["field-id", ORDERS.TOTAL.id],
-            "num-bins",
-            10,
+            "field",
+            ORDERS.TOTAL.id,
+            { binning: { strategy: "num-bins", "num-bins": 10 } },
           ],
         });
       });
@@ -457,17 +456,17 @@ describe("Dimension", () => {
 
   describe("JoinedDimension", () => {
     const dimension = Dimension.parseMBQL(
-      ["joined-field", "join1", ["field-id", ORDERS.TOTAL.id]],
+      ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
       metadata,
     );
 
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
-        it('returns a "joined-field" clause', () => {
+        it('returns a joined "field" clause', () => {
           expect(dimension.mbql()).toEqual([
-            "joined-field",
-            "join1",
-            ["field-id", ORDERS.TOTAL.id],
+            "field",
+            ORDERS.TOTAL.id,
+            { "join-alias": "join1" },
           ]);
         });
       });
@@ -493,7 +492,7 @@ describe("Dimension", () => {
           display_name: "Total",
           base_type: "type/Float",
           semantic_type: "type/Currency",
-          field_ref: ["joined-field", "join1", ["field-id", ORDERS.TOTAL.id]],
+          field_ref: ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
         });
       });
     });
@@ -523,7 +522,7 @@ describe("Dimension", () => {
 
       describe("column()", () => {
         function sumOf(column) {
-          return aggregation(["sum", ["field-id", column.id]]);
+          return aggregation(["sum", ["field", column.id]]);
         }
 
         it("should clear unaggregated semantic types", () => {
@@ -543,7 +542,7 @@ describe("Dimension", () => {
         it("should return a float field for sum of order total", () => {
           const { base_type } = aggregation([
             "sum",
-            ["field-id", ORDERS.TOTAL.id],
+            ["field", ORDERS.TOTAL.id, null],
           ]).field();
           expect(base_type).toBe("type/Float");
         });
@@ -551,7 +550,7 @@ describe("Dimension", () => {
         it("should return an int field for count distinct of product category", () => {
           const { base_type } = aggregation([
             "distinct",
-            ["field-id", PRODUCTS.CATEGORY.id],
+            ["field", PRODUCTS.CATEGORY.id, null],
           ]).field();
           expect(base_type).toBe("type/Integer");
         });

@@ -52,7 +52,7 @@ describe("scenarios > question > new", () => {
               ["sum", ["field-id", ORDERS.TOTAL]],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "year"],
             ],
             "order-by": [["desc", ["aggregation", 1]]],
           },
@@ -187,7 +187,7 @@ describe("scenarios > question > new", () => {
             "source-table": ORDERS_ID,
             aggregation: [["sum", ["field-id", ORDERS.SUBTOTAL]]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "month"],
             ],
           },
           type: "query",
@@ -308,7 +308,7 @@ describe("scenarios > question > new", () => {
             "source-table": ORDERS_ID,
             breakout: [
               ["field-id", ORDERS.QUANTITY],
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["datetime-field", ["field", ORDERS.CREATED_AT, null], "month"],
             ],
           },
           type: "query",

@@ -43,7 +43,7 @@ describe("ObjectDetailDrill", () => {
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       "source-table": PRODUCTS.id,
-      filter: ["=", ["field-id", PRODUCTS.ID.id], 42],
+      filter: ["=", ["field", PRODUCTS.ID.id, null], 42],
     });
   });
 });

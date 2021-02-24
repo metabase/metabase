@@ -22,7 +22,7 @@ const QUERY = Question.create({
   .query()
   .aggregate(["count"])
   .filter(["time-interval", ["field-id", ORDERS.CREATED_AT.id], -30, "day"])
-  .filter(["=", ["field-id", ORDERS.TOTAL.id], 1234])
+  .filter(["=", ["field", ORDERS.TOTAL.id, null], 1234])
   .filter([
     "contains",
     ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.TITLE.id],

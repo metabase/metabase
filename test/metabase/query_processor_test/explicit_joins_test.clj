@@ -248,7 +248,7 @@
                                                           :alias        "c"
                                                           :fields       "all"
                                                           :condition    [:= $id &c.checkins.id]}]
-                                          :order-by     [["asc" ["joined-field" "c" $checkins.id]]]
+                                          :order-by     [["asc" &c.checkins.id]]
                                           :limit        3})))]
         (is (= (mapv mt/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
                columns))
