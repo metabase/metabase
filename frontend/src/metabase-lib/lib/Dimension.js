@@ -706,12 +706,7 @@ export class FieldDimension extends Dimension {
 
     // Add FK dimensions if this field is an FK
     const field = this.field();
-    if (
-      field &&
-      field.target &&
-      field.target.table &&
-      field.target.table.fields
-    ) {
+    if (field.target && field.target.table && field.target.table.fields) {
       const fkDimensions = field.target.table.fields.map(
         field =>
           new FieldDimension(
@@ -725,7 +720,7 @@ export class FieldDimension extends Dimension {
     }
 
     // Add temporal dimensions
-    if (field && field.isDate()) {
+    if (field.isDate()) {
       const temporalDimensions = DATETIME_UNITS.map(unit =>
         this.withTemporalUnit(unit),
       );
@@ -799,7 +794,7 @@ export class FieldDimension extends Dimension {
   }
 
   render() {
-    let displayName = this.field().displayName();
+    let displayName = this.displayName();
 
     if (this.fk()) {
       const fkDisplayName =
@@ -1066,7 +1061,13 @@ export class AggregationDimension extends Dimension {
   }
 }
 
-export class TemplateTagDimension extends Dimension {
+export class TemplateTagDimension extends FieldDimension {
+  constructor(tagName, metadata, query) {
+    super(null, null, metadata, query, {
+      _tagName: tagName,
+    });
+  }
+
   dimension() {
     if (this._query) {
       const tag = this.tag();
@@ -1091,7 +1092,7 @@ export class TemplateTagDimension extends Dimension {
   }
 
   tagName() {
-    return this._args[0];
+    return this._tagName;
   }
 
   displayName() {
