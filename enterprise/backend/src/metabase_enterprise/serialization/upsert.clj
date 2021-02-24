@@ -95,25 +95,28 @@
         (catch Throwable _
           (insert-many-individually! model on-error entities))))))
 
+(defn- partition-by-action
+  [{:keys [mode on-error]} model entities]
+  (let [same?                        (comp nil? second diff/diff)]
+    (->> entities
+         (map-indexed (fn [position entity]
+                        [position
+                         entity
+                         (select-identical model entity)]))
+         (group-by (fn [[_ entity existing]]
+                     (case mode
+                       :update (cond
+                                 (same? existing entity) :skip
+                                 existing                :update
+                                 :else                   :insert)
+                       :skip   (if existing
+                                 :skip
+                                 :insert))))) ))
+
 (defn maybe-upsert-many!
   "Batch upsert-or-skip"
-  [{:keys [mode on-error]} model entities]
-  (let [same?                        (comp nil? second diff/diff)
-        {:keys [update insert skip]} (->> entities
-                                          (map-indexed (fn [position entity]
-                                                         [position
-                                                          entity
-                                                          (select-identical model entity)]))
-                                          (group-by (fn [[_ entity existing]]
-                                                      (case mode
-                                                        :update (cond
-                                                                  (same? existing entity) :skip
-                                                                  existing                :update
-                                                                  :else                   :insert)
-                                                        :skip   (if existing
-                                                                  :skip
-                                                                  :insert)))))]
-
+  [{:keys [mode on-error] :as context} model entities]
+  (let [{:keys [update insert skip]} (partition-by-action context model entities)]
     (doseq [[_ entity _] insert]
       (log/info (trs "Inserting {0}" (name-for-logging (name model) entity))))
     (doseq [[_ _ existing] skip]
@@ -137,3 +140,11 @@
                      [id position])))
          (sort-by second)
          (map first))))
+
+(defn maybe-fixup-card-template-ids!
+  [context model entities selected-ids]
+  (let [{:keys [update _ _]} (partition-by-action context model entities)
+        id-set (set selected-ids)
+        final-ents (filter #(id-set (:id (nth % 2))) update)]
+    (maybe-upsert-many! context model
+                        (map second final-ents))))

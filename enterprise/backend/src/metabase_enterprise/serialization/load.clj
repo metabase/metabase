@@ -6,7 +6,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name->context]]
-            [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
+            [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many! maybe-fixup-card-template-ids!]]
             [metabase.config :as config]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.util]
@@ -278,10 +278,18 @@
 
 (defmethod load "cards"
   [path context]
-  (let [paths (list-dirs path)]
-    (maybe-upsert-many! context Card
-      (for [card (slurp-many paths)]
-        (resolve-card card context)))
+  (let [paths (list-dirs path)
+        touched-card-ids (maybe-upsert-many!
+                          context Card
+                          (for [card (slurp-many paths)]
+                            (resolve-card card context)))]
+
+    (maybe-fixup-card-template-ids!
+     (assoc context :mode :update)
+     Card
+     (for [card (slurp-many paths)] (resolve-card card (assoc context :mode :update)))
+     touched-card-ids)
+
     ;; Nested cards
     (doseq [path paths]
       (load (str path "/cards") context))))
