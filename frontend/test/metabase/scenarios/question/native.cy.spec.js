@@ -366,4 +366,39 @@ describe("scenarios > question > native", () => {
     // Filter dropdown field
     cy.get("fieldset").contains("Filter");
   });
+
+  it("should reorder template tags by drag and drop (metabase#9357)", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+
+    // Write a query with parameter firstparameter,nextparameter,lastparameter.
+    cy.get(".ace_content").type(
+      "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
+      {
+        parseSpecialCharSequences: false,
+        delay: 0,
+      },
+    );
+
+    // Drag the firstparameter to last position
+    cy.get("fieldset .Icon-empty")
+      .first()
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 5, 5, { force: true })
+      .trigger("mousemove", 430, 0, { force: true })
+      .trigger("mouseup", 430, 0, { force: true });
+
+    // Ensure they're in the right order
+    cy.findAllByText("Variable name")
+      .parent()
+      .as("variableField");
+
+    cy.get("@variableField")
+      .first()
+      .findByText("nextparameter");
+
+    cy.get("@variableField")
+      .last()
+      .findByText("firstparameter");
+  });
 });
