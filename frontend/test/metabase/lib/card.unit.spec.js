@@ -126,7 +126,10 @@ describe("lib/card", () => {
     it("should consider a saved card dirty if the current card doesn't match the last saved version", () => {
       expect(
         isCardDirty(
-          getCard({ hasOriginalCard: true, queryFields: [["field", 21, null]] }),
+          getCard({
+            hasOriginalCard: true,
+            queryFields: [["field", 21, null]],
+          }),
           getCard({ hasOriginalCard: false }),
         ),
       ).toBe(true);

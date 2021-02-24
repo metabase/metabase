@@ -211,7 +211,11 @@ describe("scenarios > question > custom columns", () => {
         database: 1,
         query: {
           expressions: {
-            [CC_NAME]: ["*", ["field", CE_NAME, {"base-type": "type/Float"}], 1234],
+            [CC_NAME]: [
+              "*",
+              ["field", CE_NAME, { "base-type": "type/Float" }],
+              1234,
+            ],
           },
           "source-query": {
             aggregation: [
@@ -328,7 +332,11 @@ describe("scenarios > question > custom columns", () => {
             ],
           },
           expressions: {
-            [CC_NAME]: ["*", ["field", "sum", {"base-type": "type/Float"}], 2],
+            [CC_NAME]: [
+              "*",
+              ["field", "sum", { "base-type": "type/Float" }],
+              2,
+            ],
           },
         },
         database: 1,

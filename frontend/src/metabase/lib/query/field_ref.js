@@ -55,7 +55,7 @@ export function getFieldTarget(field, tableDef, path = []) {
     return {
       table: tableDef,
       field: Table.getField(tableDef, fieldId),
-      path
+      path,
     };
   }
 

@@ -27,7 +27,9 @@ describe("Filter", () => {
         ).toBe(true);
       });
       it("should return false for a field that doesn't exists", () => {
-        expect(filter(["=", ["field", 12341234, null], 42]).isValid()).toBe(false);
+        expect(filter(["=", ["field", 12341234, null], 42]).isValid()).toBe(
+          false,
+        );
       });
       it("should return true for a filter with an expression for the field", () => {
         expect(

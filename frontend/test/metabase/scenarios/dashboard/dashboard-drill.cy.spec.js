@@ -101,12 +101,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
                   "table.columns": [
                     {
                       name: "STATE",
-                      fieldRef: ["field", "STATE", {"base-type": "type/Text"}],
+                      fieldRef: [
+                        "field",
+                        "STATE",
+                        { "base-type": "type/Text" },
+                      ],
                       enabled: false,
                     },
                     {
                       name: "CITY",
-                      fieldRef: ["field", "CITY", {"base-type": "type/Text"}],
+                      fieldRef: ["field", "CITY", { "base-type": "type/Text" }],
                       enabled: true,
                     },
                   ],

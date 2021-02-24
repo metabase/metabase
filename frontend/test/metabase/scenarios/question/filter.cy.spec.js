@@ -149,7 +149,11 @@ describe("scenarios > question > filter", () => {
               aggregation: [["count"]],
               breakout: [["field", PRODUCTS.CATEGORY, null]],
             },
-            filter: [">", ["field", "count", {"base-type": "type/Integer"}], 1],
+            filter: [
+              ">",
+              ["field", "count", { "base-type": "type/Integer" }],
+              1,
+            ],
           },
           type: "query",
         },
@@ -344,7 +348,7 @@ describe("scenarios > question > filter", () => {
       dataset_query: {
         database: 1,
         query: {
-          filter: [">", ["field", CE_NAME, {"base-type": "type/Float"}], 0],
+          filter: [">", ["field", CE_NAME, { "base-type": "type/Float" }], 0],
           "source-query": {
             aggregation: [
               ["aggregation-options", ["+", 1, 1], { "display-name": CE_NAME }],
@@ -563,7 +567,11 @@ describe("scenarios > question > filter", () => {
               ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
             ],
           },
-          filter: ["<=", ["field", "count", {"base-type": "type/Integer"}], 20],
+          filter: [
+            "<=",
+            ["field", "count", { "base-type": "type/Integer" }],
+            20,
+          ],
         },
         type: "query",
       },

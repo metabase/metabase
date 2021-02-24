@@ -124,7 +124,7 @@ describe("scenarios > dashboard", () => {
       name: "11007",
       dataset_query: {
         database: 1,
-        filter: [">", ["field", "sum", {"base-type": "type/Float"}], 100],
+        filter: [">", ["field", "sum", { "base-type": "type/Float" }], 100],
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],

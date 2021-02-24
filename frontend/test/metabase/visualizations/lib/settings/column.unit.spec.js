@@ -54,7 +54,7 @@ describe("column settings", () => {
   // DISABLED to match legacy behavior until we determine the best way to reference columns
   xit("should find by column 'field-literal' ref", () => {
     const series = seriesWithColumn({
-      field_ref: ["field", "foo", {"base-type": "type/Float"}],
+      field_ref: ["field", "foo", { "base-type": "type/Float" }],
     });
     const defs = { ...columnSettings() };
     const stored = {
@@ -70,7 +70,7 @@ describe("column settings", () => {
   });
   it("should find by column name if it also has a 'field-literal' ref", () => {
     const series = seriesWithColumn({
-      field_ref: ["field", "foo", {"base-type": "type/Float"}],
+      field_ref: ["field", "foo", { "base-type": "type/Float" }],
     });
     const defs = { ...columnSettings() };
     const stored = {

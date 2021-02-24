@@ -145,7 +145,10 @@ describe("visualization_settings", () => {
       it("should include fieldRef in default table.columns", () => {
         const card = { visualization_settings: {} };
         const cols = [
-          NumberColumn({ name: "some number", field_ref: ["field", 123, null] }),
+          NumberColumn({
+            name: "some number",
+            field_ref: ["field", 123, null],
+          }),
         ];
         const {
           "table.columns": [setting],

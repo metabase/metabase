@@ -29,7 +29,7 @@ const filteredAndSummarizedQuery = {
 
 const postAggregationFilterQuery = {
   "source-query": filteredAndSummarizedQuery,
-  filter: [">", ["field", "count", {"base-type": "type/Integer"}], 10],
+  filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
 };
 
 const getQuestionStepsForMBQLQuery = query =>

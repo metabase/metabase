@@ -593,7 +593,7 @@ describe("StructuredQuery", () => {
         expect(query.fieldReferenceForColumn({ id: ORDERS.TOTAL.id })).toEqual([
           "field",
           ORDERS.TOTAL.id,
-          null
+          null,
         ]);
       });
     });

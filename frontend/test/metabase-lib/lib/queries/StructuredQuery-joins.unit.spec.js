@@ -54,7 +54,7 @@ describe("StructuredQuery nesting", () => {
       expect(options.dimensions[0].mbql()).toEqual([
         "field",
         "ID",
-        {"base-type": "type/BigInteger"},
+        { "base-type": "type/BigInteger" },
       ]);
     });
   });

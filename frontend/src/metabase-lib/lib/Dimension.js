@@ -849,7 +849,7 @@ export class FieldDimension extends Dimension {
    * Return a copy of this field with join alias set to `newAlias`.
    */
   withJoinAlias(newAlias) {
-    return this.withOptions({"join-alias": newAlias});
+    return this.withOptions({ "join-alias": newAlias });
   }
 
   join() {
@@ -866,7 +866,7 @@ export class FieldDimension extends Dimension {
   }
 
   withBinningOptions(newBinningOptions) {
-    return this.withOptions({"binning": newBinningOptions});
+    return this.withOptions({ binning: newBinningOptions });
   }
 
   getBinningOption(option) {

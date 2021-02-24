@@ -306,7 +306,7 @@ export default class StructuredQuery extends AtomicQuery {
             new Field({
               ...column,
               // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
-              id: ["field", column.name, {"base-type": column.base_type}],
+              id: ["field", column.name, { "base-type": column.base_type }],
               source: "fields",
               // HACK: need to thread the query through to this fake Field
               query: this,
@@ -1115,7 +1115,7 @@ export default class StructuredQuery extends AtomicQuery {
     const table = this.table();
     if (table) {
       const dimensionIsFKReference = dimension =>
-        dimension.field && dimension.field() && dimension.field().isFK()
+        dimension.field && dimension.field() && dimension.field().isFK();
       // NOCOMMIT
       // const dimensionIsFKReference = dimension => dimension.fk();
 
