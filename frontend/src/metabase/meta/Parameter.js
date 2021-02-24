@@ -126,7 +126,7 @@ const timeParameterValueDeserializers: Deserializer[] = [
     testRegex: /^(\d{4}-\d{2})$/,
     deserialize: (matches, fieldRef) => [
       "=",
-      ["datetime-field", fieldRef, "month"],
+      ["field", fieldRef[1], { ...fieldRef[2], "temporal-unit": "month" }],
       moment(matches[0], "YYYY-MM").format("YYYY-MM-DD"),
     ],
   },
@@ -134,7 +134,7 @@ const timeParameterValueDeserializers: Deserializer[] = [
     testRegex: /^(Q\d-\d{4})$/,
     deserialize: (matches, fieldRef) => [
       "=",
-      ["datetime-field", fieldRef, "quarter"],
+      ["field", fieldRef[1], { ...fieldRef[2], "temporal-unit": "quarter" }],
       moment(matches[0], "[Q]Q-YYYY").format("YYYY-MM-DD"),
     ],
   },

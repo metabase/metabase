@@ -276,7 +276,9 @@ describe("scenarios > question > nested", () => {
       // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
       const ORIGINAL_QUERY = {
         aggregation: ["metric", METRIC_ID],
-        breakout: [["binning-strategy", ["field-id", ORDERS.TOTAL], "default"]],
+        breakout: [
+          ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
+        ],
         "source-table": ORDERS_ID,
       };
 

@@ -134,7 +134,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["binning-strategy", ["field-id", ORDERS.SUBTOTAL], "default"],
+            ["field", ORDERS.SUBTOTAL, { binning: { strategy: "default" } }],
           ],
         },
         database: 1,
@@ -401,7 +401,11 @@ describe("scenarios > visualizations > pivot tables", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["binning-strategy", ["field-id", ORDERS.TOTAL], "num-bins", 100],
+            [
+              "field",
+              ORDERS.TOTAL,
+              { binning: { strategy: "num-bins", "num-bins": 100 } },
+            ],
           ],
         },
         database: 1,

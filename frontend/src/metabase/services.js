@@ -5,6 +5,7 @@ import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -44,10 +45,11 @@ export function maybeUsePivotEndpoint(
   function canonicalFieldRef(ref) {
     // Field refs between the query and setting might differ slightly.
     // This function trims binned dimensions to just the field-id
-    if (ref[0] === "binning-strategy") {
-      return ref.slice(0, 2);
+    const dimension = FieldDimension.parseMBQL(ref);
+    if (!dimension) {
+      return ref;
     }
-    return ref;
+    return dimension.withoutOptions("binning").mbql();
   }
 
   const question = new Question(card, metadata);

@@ -14,7 +14,9 @@ import { getIn } from "icepick";
 
 // Helpers for defining drill-down progressions
 const CategoryDrillDown = type => [field => isa(field.semantic_type, type)];
-const DateTimeDrillDown = unit => [["datetime-field", isDate, unit]];
+const DateTimeDrillDown = unit => [
+  ["field", isDate, { "temporal-unit": unit }],
+];
 
 const LatLonDrillDown = (binningStrategy, arg) => {
   const options = { binning: { strategy: binningStrategy } };
@@ -66,18 +68,34 @@ const DEFAULT_DRILL_DOWN_PROGRESSIONS = [
   ],
   // generic num-bins drill down
   [
-    [["binning-strategy1", isAny, "num-bins", () => true]],
-    [["binning-strategy2", isAny, "default"]],
+    [
+      [
+        "field",
+        isAny,
+        { binning: { strategy: "num-bins", "num-bins": () => true } },
+      ],
+    ],
+    ["field", isAny, { binning: { strategy: "default" } }],
   ],
   // generic bin-width drill down
   [
-    [["binning-strategy3", isAny, "bin-width", () => true]],
     [
       [
-        "binning-strategy4",
+        "field",
         isAny,
-        "bin-width",
-        (binWidth: number) => binWidth / 10,
+        { binning: { strategy: "bin-width", "bin-width": () => true } },
+      ],
+    ],
+    [
+      [
+        "field",
+        isAny,
+        {
+          binning: {
+            strategy: "bin-width",
+            "bin-width": (binWidth: number) => binWidth / 10,
+          },
+        },
       ],
     ],
   ],
@@ -219,24 +237,32 @@ function breakoutsForBreakoutTemplates(breakoutTemplates, dimensions, table) {
 // Guesses the breakout corresponding to the provided columm object
 function columnToBreakout(column) {
   if (column.unit) {
-    return ["datetime-field", column.id, column.unit];
+    return ["field", column.id, { "temporal-unit": column.unit }];
   } else if (column.binning_info) {
     const binningStrategy = column.binning_info.binning_strategy;
 
     switch (binningStrategy) {
       case "bin-width":
         return [
-          "binning-strategy5",
+          "field",
           column.id,
-          "bin-width",
-          column.binning_info.bin_width,
+          {
+            binning: {
+              strategy: "bin-width",
+              "bin-width": column.binning_info.bin_width,
+            },
+          },
         ];
       case "num-bins":
         return [
-          "binning-strategy6",
+          "field",
           column.id,
-          "num-bins",
-          column.binning_info.num_bins,
+          {
+            binning: {
+              strategy: "num-bins",
+              "num-bins": column.binning_info.num_bins,
+            },
+          },
         ];
       default:
         return null;
