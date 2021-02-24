@@ -170,19 +170,6 @@ describe("visualization_settings", () => {
       ]);
       expect(settings).toEqual({ foo: "bar" });
     });
-    // TODO -- make sure column settings are normalized on the backend FIXME NOCOMMIT
-    /* it("should normalize stored columnSettings keys", () => {
-     *   const oldKey = `["ref",["fk->",1,2]]`;
-     *   const newKey = `["ref",["fk->",["field-id",1],["field-id",2]]]`;
-     *   const settings = getStoredSettingsForSeries([
-     *     {
-     *       card: {
-     *         visualization_settings: { column_settings: { [oldKey]: "blah" } },
-     *       },
-     *     },
-     *   ]);
-     *   expect(settings.column_settings).toEqual({ [newKey]: "blah" });
-     * }); */
   });
   describe("table.cell_column", () => {
     it("should pick the first metric column", () => {

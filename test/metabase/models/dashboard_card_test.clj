@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [expectations :refer :all]
             [metabase.models.card :refer [Card]]
+            [metabase.models.card-test :as card-test]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer :all]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
@@ -219,3 +220,15 @@
                :card_id      (u/the-id card)
                :target       [:dimension [:field (mt/id :venues :id) nil]]}]
              (db/select-one-field :parameter_mappings DashboardCard :id (u/the-id dashcard)))))))
+
+(deftest normalize-visualization-settings-test
+  (testing "DashboardCard visualization settings should get normalized to use modern MBQL syntax"
+    (mt/with-temp* [Card      [card]
+                    Dashboard [dashboard]]
+      (card-test/test-visualization-settings-normalization
+       (fn [original expected]
+         (mt/with-temp DashboardCard [dashcard {:dashboard_id           (u/the-id dashboard)
+                                                :card_id                (u/the-id card)
+                                                :visualization_settings {:column_settings {original {:currency "BTC"}}}}]
+           (is (= {:column_settings {expected {:currency "BTC"}}}
+                  (db/select-one-field :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))

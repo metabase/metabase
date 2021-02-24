@@ -42,8 +42,7 @@ describe("column settings", () => {
     const defs = { ...columnSettings() };
     const stored = {
       column_settings: {
-        // NOCOMMIT FIXME -- Backend should normalize
-        '["ref",["field-id",42]]': {
+        '["ref",["field",42,null]]': {
           currency: "BTC",
         },
       },
@@ -59,8 +58,7 @@ describe("column settings", () => {
     const defs = { ...columnSettings() };
     const stored = {
       column_settings: {
-        // NOCOMMIT -- FIXME -- REFS SHOULD GET NORMALIZED
-        '["ref",["field-literal","foo","type/Float"]]': {
+        '["ref",["field","foo",{"base-type":"type/Float"}]]': {
           currency: "BTC",
         },
       },

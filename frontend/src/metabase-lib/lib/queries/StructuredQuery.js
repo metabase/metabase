@@ -1116,8 +1116,6 @@ export default class StructuredQuery extends AtomicQuery {
     if (table) {
       const dimensionIsFKReference = dimension =>
         dimension.field && dimension.field() && dimension.field().isFK();
-      // NOCOMMIT
-      // const dimensionIsFKReference = dimension => dimension.fk();
 
       const filteredNonFKDimensions = this.dimensions().filter(dimensionFilter);
       // .filter(d => !dimensionIsFKReference(d));
@@ -1141,8 +1139,6 @@ export default class StructuredQuery extends AtomicQuery {
 
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
       for (const dimension of fkDimensions) {
-        // NOCOMMIT
-        // const field = dimension.fk().field();
         const field = dimension.field();
         if (field && explicitJoins.has(keyForFk(field, field.target))) {
           continue;
