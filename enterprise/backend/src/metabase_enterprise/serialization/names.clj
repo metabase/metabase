@@ -224,11 +224,11 @@
       (try
         (s/validate (s/maybe Context) context)
         (catch Exception e
-          (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
-                        (str/join ", " (map name (keys (:value (ex-data e)))))
-                        fully-qualified-name)
-            {:fully-qualified-name fully-qualified-name
-             :context              context}))))))
+          (throw (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
+                         (str/join ", " (map name (keys (:value (ex-data e)))))
+                         fully-qualified-name)
+                    {:fully-qualified-name fully-qualified-name
+                     :context              context})))))))
 
 (defn name-for-logging
   "Return a string representation of entity suitable for logs"

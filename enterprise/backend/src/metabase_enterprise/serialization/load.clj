@@ -6,7 +6,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name->context]]
-            [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many! maybe-fixup-card-template-ids!]]
+            [metabase-enterprise.serialization.upsert :refer [maybe-fixup-card-template-ids! maybe-upsert-many!]]
             [metabase.config :as config]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.util]
@@ -246,11 +246,12 @@
     (:source-query query) (update-in query [:source-query] fully-qualified-name->id-rec)
     true query))
 
-
 (defn- source-card
   [fully-qualified-name]
-  (let [{:keys [card]} (fully-qualified-name->context fully-qualified-name)]
-    card))
+  (try
+    (-> (fully-qualified-name->context fully-qualified-name) :card)
+    (catch Throwable e
+      (log/warn e))))
 
 (defn- resolve-native
   [template-tags]

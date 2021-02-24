@@ -95,7 +95,8 @@
         (catch Throwable _
           (insert-many-individually! model on-error entities))))))
 
-(defn- partition-by-action
+(defn- group-by-action
+  "Return `entities` grouped by the action that needs to be done given the `context`."
   [{:keys [mode on-error]} model entities]
   (let [same?                        (comp nil? second diff/diff)]
     (->> entities
@@ -111,12 +112,12 @@
                                  :else                   :insert)
                        :skip   (if existing
                                  :skip
-                                 :insert))))) ))
+                                 :insert)))))))
 
 (defn maybe-upsert-many!
   "Batch upsert-or-skip"
   [{:keys [mode on-error] :as context} model entities]
-  (let [{:keys [update insert skip]} (partition-by-action context model entities)]
+  (let [{:keys [update insert skip]} (group-by-action context model entities)]
     (doseq [[_ entity _] insert]
       (log/info (trs "Inserting {0}" (name-for-logging (name model) entity))))
     (doseq [[_ _ existing] skip]
@@ -142,8 +143,11 @@
          (map first))))
 
 (defn maybe-fixup-card-template-ids!
+  "Upserts `entities` that are in `selected-ids`. Cards with template-tags that refer to other cards need a second pass
+  of fixing the card-ids. To not overwrite cards that were skipped in previous step, classify entities and validate
+  against the ones that were just modified."
   [context model entities selected-ids]
-  (let [{:keys [update _ _]} (partition-by-action context model entities)
+  (let [{:keys [update _ _]} (group-by-action context model entities)
         id-set (set selected-ids)
         final-ents (filter #(id-set (:id (nth % 2))) update)]
     (maybe-upsert-many! context model
