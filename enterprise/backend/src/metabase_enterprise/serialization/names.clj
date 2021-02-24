@@ -132,7 +132,9 @@
 
 (def ^:private ^{:arglists '([context model entity-name])} path->context
   "Extract entities from a logical path."
-  (memoize path->context*))
+  ;(memoize path->context*)
+   path->context*
+  )
 
 (defmethod path->context* "databases"
   [context _ db-name]
