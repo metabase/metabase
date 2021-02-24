@@ -67,7 +67,7 @@ function ExtraSeries(count = 2) {
         NumberColumn({
           display_name: "Count",
           source: "aggregation",
-          field_ref: ["field-id", 4],
+          field_ref: ["field", 4, null],
         }),
       ],
       rows: [["A", count]],

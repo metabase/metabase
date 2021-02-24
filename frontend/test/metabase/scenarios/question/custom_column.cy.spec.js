@@ -211,7 +211,7 @@ describe("scenarios > question > custom columns", () => {
         database: 1,
         query: {
           expressions: {
-            [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
+            [CC_NAME]: ["*", ["field", CE_NAME, {"base-type": "type/Float"}], 1234],
           },
           "source-query": {
             aggregation: [
@@ -256,11 +256,7 @@ describe("scenarios > question > custom columns", () => {
           aggregation: [
             [
               "distinct",
-              [
-                "fk->",
-                ["field", ORDERS.PRODUCT_ID, null],
-                ["field", PRODUCTS.ID, null],
-              ],
+              ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
             ],
             ["sum", ["expression", CC_NAME]],
           ],
@@ -325,14 +321,14 @@ describe("scenarios > question > custom columns", () => {
         query: {
           "source-query": {
             "source-table": ORDERS_ID,
-            filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
-            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            filter: [">", ["field", ORDERS.SUBTOTAL, null], 0],
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
             breakout: [
               ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           expressions: {
-            [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+            [CC_NAME]: ["*", ["field", "sum", {"base-type": "type/Float"}], 2],
           },
         },
         database: 1,
@@ -465,9 +461,9 @@ describe("scenarios > question > custom columns", () => {
               ],
               {
                 default: [
-                  "fk->",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.CREATED_AT, null],
+                  "field",
+                  PRODUCTS.CREATED_AT,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               },
             ],

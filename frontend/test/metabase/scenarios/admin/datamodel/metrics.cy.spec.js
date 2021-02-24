@@ -48,7 +48,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.request("POST", "/api/metric", {
         definition: {
           aggregation: ["count"],
-          filter: ["<", ["field-id", ORDERS.TOTAL], 100],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
           "source-table": ORDERS_ID,
         },
         name: "orders < 100",
@@ -176,7 +176,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
                 [
                   "*",
                   ["field", ORDERS.DISCOUNT, null],
-                  ["field-id", ORDERS.QUANTITY],
+                  ["field", ORDERS.QUANTITY, null],
                 ],
               ],
               { "display-name": "CE" },

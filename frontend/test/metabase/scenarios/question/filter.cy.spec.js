@@ -149,7 +149,7 @@ describe("scenarios > question > filter", () => {
               aggregation: [["count"]],
               breakout: [["field", PRODUCTS.CATEGORY, null]],
             },
-            filter: [">", ["field-literal", "count", "type/Integer"], 1],
+            filter: [">", ["field", "count", {"base-type": "type/Integer"}], 1],
           },
           type: "query",
         },
@@ -344,7 +344,7 @@ describe("scenarios > question > filter", () => {
       dataset_query: {
         database: 1,
         query: {
-          filter: [">", ["field-literal", CE_NAME, "type/Float"], 0],
+          filter: [">", ["field", CE_NAME, {"base-type": "type/Float"}], 0],
           "source-query": {
             aggregation: [
               ["aggregation-options", ["+", 1, 1], { "display-name": CE_NAME }],
@@ -563,7 +563,7 @@ describe("scenarios > question > filter", () => {
               ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
             ],
           },
-          filter: ["<=", ["field-literal", "count", "type/Integer"], 20],
+          filter: ["<=", ["field", "count", {"base-type": "type/Integer"}], 20],
         },
         type: "query",
       },
@@ -643,9 +643,9 @@ describe("scenarios > question > filter", () => {
             ">",
             ["field", ORDERS.CREATED_AT, null],
             [
-              "fk->",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.CREATED_AT, null],
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "source-field": ORDERS.PRODUCT_ID },
             ],
           ],
         },
@@ -675,17 +675,17 @@ describe("scenarios > question > filter", () => {
               [
                 "sum",
                 [
-                  "fk->",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.PRICE, null],
+                  "field",
+                  PRODUCTS.PRICE,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
             ],
             breakout: [
               [
-                "fk->",
-                ["field", ORDERS.PRODUCT_ID, null],
-                ["field", PRODUCTS.CATEGORY, null],
+                "field",
+                PRODUCTS.CATEGORY,
+                { "source-field": ORDERS.PRODUCT_ID },
               ],
             ],
           },
@@ -721,7 +721,7 @@ describe("scenarios > question > filter", () => {
         database: 1,
         query: {
           "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],
@@ -758,7 +758,7 @@ describe("scenarios > question > filter", () => {
         database: 1,
         query: {
           "source-table": PEOPLE_ID,
-          expressions: { [CC_NAME]: ["length", ["field-id", PEOPLE.CITY]] },
+          expressions: { [CC_NAME]: ["length", ["field", PEOPLE.CITY, null]] },
           filter: ["!=", ["expression", CC_NAME], 3],
         },
         type: "query",

@@ -154,7 +154,7 @@ describe("scenarios > question > nested", () => {
       dataset_query: {
         database: 1,
         query: {
-          filter: [">", ["field-literal", "count", "type/Integer"], 5],
+          filter: [">", ["field", "count", {"base-type": "type/Integer"}], 5],
           "source-query": {
             "source-table": ORDERS_ID,
             aggregation: [["count"]],
@@ -304,7 +304,7 @@ describe("scenarios > question > nested", () => {
           dataset_query: {
             database: 1,
             query: {
-              filter: [">", ["field-literal", "TOTAL", "type/Float"], 50],
+              filter: [">", ["field", "TOTAL", {"base-type": "type/Float"}], 50],
               "source-query": ORIGINAL_QUERY,
             },
             type: "query",

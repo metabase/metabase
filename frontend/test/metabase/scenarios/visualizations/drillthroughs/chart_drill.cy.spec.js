@@ -95,7 +95,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             "source-table": ORDERS_ID,
             aggregation: [
               ["avg", ["field", ORDERS.DISCOUNT, null]],
-              ["avg", ["field-id", ORDERS.QUANTITY]],
+              ["avg", ["field", ORDERS.QUANTITY, null]],
             ],
             breakout: [
               ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],

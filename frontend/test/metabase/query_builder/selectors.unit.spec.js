@@ -45,17 +45,11 @@ describe("getIsResultDirty", () => {
       const state = getState(
         {
           "source-table": 1,
-          fields: [
-            ["fk->", ["field", 1, null], ["field", 2, null]],
-            ["field", 1, null],
-          ],
+          fields: [["field", 2, { "source-field": 1 }], ["field", 1, null]],
         },
         {
           "source-table": 1,
-          fields: [
-            ["field", 1, null],
-            ["fk->", ["field", 1, null], ["field", 2, null]],
-          ],
+          fields: [["field", 1, null], ["field", 2, { "source-field": 1 }]],
         },
       );
       expect(getIsResultDirty(state)).toBe(false);
@@ -70,10 +64,10 @@ describe("getIsResultDirty", () => {
             ["field", 1, null],
             ["field", 2, null],
             ["field", 3, null],
-            ["field-id", 4],
-            ["field-id", 5],
-            ["field-id", 6],
-            ["field-id", 7],
+            ["field", 4, null],
+            ["field", 5, null],
+            ["field", 6, null],
+            ["field", 7, null],
           ],
         },
       );

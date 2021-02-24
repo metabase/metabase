@@ -23,7 +23,7 @@ describe("StructuredQuery", () => {
     });
 
     describe("joins", () => {
-      it("should not remove join referencing valid field-id", () => {
+      it("should not remove join referencing valid field ID", () => {
         const q = ORDERS.query().join(JOIN);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);

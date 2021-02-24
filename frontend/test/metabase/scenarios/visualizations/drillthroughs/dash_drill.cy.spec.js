@@ -49,7 +49,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             database: 1,
             query: {
               aggregation: [["count"]],
-              filter: [">", ["field-id", ORDERS.TOTAL], 100],
+              filter: [">", ["field", ORDERS.TOTAL, null], 100],
               "source-table": ORDERS_ID,
             },
             type: "query",

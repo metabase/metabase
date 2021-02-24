@@ -258,7 +258,11 @@ describe("StructuredQuery", () => {
         expect(
           makeQueryWithAggregation([
             "sum",
-            ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.TITLE.id],
+            [
+              "field",
+              PRODUCTS.TITLE.id,
+              { "source-field": ORDERS.PRODUCT_ID.id },
+            ],
           ])
             .aggregations()[0]
             .displayName(),
@@ -587,8 +591,9 @@ describe("StructuredQuery", () => {
     describe("fieldReferenceForColumn", () => {
       xit('should return `["field", 1, null]` for a normal column', () => {
         expect(query.fieldReferenceForColumn({ id: ORDERS.TOTAL.id })).toEqual([
-          "field-id",
+          "field",
           ORDERS.TOTAL.id,
+          null
         ]);
       });
     });

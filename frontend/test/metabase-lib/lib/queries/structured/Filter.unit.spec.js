@@ -27,11 +27,11 @@ describe("Filter", () => {
         ).toBe(true);
       });
       it("should return false for a field that doesn't exists", () => {
-        expect(filter(["=", ["field-id", 12341234], 42]).isValid()).toBe(false);
+        expect(filter(["=", ["field", 12341234, null], 42]).isValid()).toBe(false);
       });
       it("should return true for a filter with an expression for the field", () => {
         expect(
-          filter(["=", ["/", ["field-id", 12341234], 43], 42]).isValid(),
+          filter(["=", ["/", ["field", 12341234, null], 43], 42]).isValid(),
         ).toBe(true);
       });
     });
@@ -46,7 +46,7 @@ describe("Filter", () => {
   describe("setDimension", () => {
     it("should set the dimension for existing filter clause", () => {
       expect(
-        filter(["=", ["field-id", ORDERS.SUBTOTAL.id], 42]).setDimension(
+        filter(["=", ["field", ORDERS.SUBTOTAL.id, null], 42]).setDimension(
           ["field", ORDERS.TOTAL.id, null],
           {
             useDefaultOperator: true,

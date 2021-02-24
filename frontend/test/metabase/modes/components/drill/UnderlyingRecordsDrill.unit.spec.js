@@ -122,18 +122,18 @@ describe("UnderlyingRecordsDrill", () => {
       .breakout(ORDERS.USER_ID.foreign(PEOPLE.STATE))
       .nest()
       .aggregate(["count"])
-      .breakout(["field-literal", "STATE", "type/Text"]);
+      .breakout(["field", "STATE", {"base-type": "type/Text"}]);
 
     const actions = UnderlyingRecordsDrill(getActionProps(query, "CA"));
     expect(actions).toHaveLength(1);
     const q = actions[0].question();
 
     expect(q.query().query()).toEqual({
-      filter: ["=", ["field-literal", "STATE", "type/Text"], "CA"],
+      filter: ["=", ["field", "STATE", {"base-type": "type/Text"}], "CA"],
       "source-query": {
         "source-table": ORDERS.id,
         aggregation: [["count"]],
-        breakout: [["fk->", ["field-id", 7], ["field-id", 19]]],
+        breakout: [["field", 19, { "source-field": 7 }]],
       },
     });
     expect(q.display()).toEqual("table");

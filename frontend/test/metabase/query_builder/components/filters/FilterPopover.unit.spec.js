@@ -25,7 +25,7 @@ const QUERY = Question.create({
   .filter(["=", ["field", ORDERS.TOTAL.id, null], 1234])
   .filter([
     "contains",
-    ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.TITLE.id],
+    ["field", PRODUCTS.TITLE.id, { "source-field": ORDERS.PRODUCT_ID.id }],
     "asdf",
   ]);
 

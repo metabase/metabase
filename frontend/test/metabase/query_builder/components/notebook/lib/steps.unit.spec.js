@@ -13,11 +13,7 @@ const summarizedQuery = {
   ...rawDataQuery,
   aggregation: [["count"]],
   breakout: [
-    [
-      "fk->",
-      ["field", ORDERS.PRODUCT_ID.id, null],
-      ["field-id", PRODUCTS.CATEGORY.id],
-    ],
+    ["field", PRODUCTS.CATEGORY.id, { "source-field": ORDERS.PRODUCT_ID.id }],
   ],
 };
 
@@ -33,7 +29,7 @@ const filteredAndSummarizedQuery = {
 
 const postAggregationFilterQuery = {
   "source-query": filteredAndSummarizedQuery,
-  filter: [">", ["field-literal", "count", "type/Integer"], 10],
+  filter: [">", ["field", "count", {"base-type": "type/Integer"}], 10],
 };
 
 const getQuestionStepsForMBQLQuery = query =>

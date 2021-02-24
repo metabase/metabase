@@ -1,4 +1,4 @@
-import { isValidField } from "metabase/lib/query/field_ref";
+import { isValidField, isExpressionField } from "metabase/lib/query/field_ref";
 
 describe("field_ref", () => {
   describe("isValidField", () => {
@@ -12,5 +12,10 @@ describe("field_ref", () => {
       expect(isValidField(["field", 1, { "join-alias": "foo" }])).toBe(true);
     });
     // TODO: remaininng field types
+  });
+  describe("isExpressionField", () => {
+    it("should be valid for an expression clause", () => {
+      expect(isExpressionField(["expression", "foo"])).toBeTruthy();
+    });
   });
 });

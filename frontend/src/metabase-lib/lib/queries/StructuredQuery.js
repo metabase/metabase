@@ -306,7 +306,7 @@ export default class StructuredQuery extends AtomicQuery {
             new Field({
               ...column,
               // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
-              id: ["field-literal", column.name, column.base_type],
+              id: ["field", column.name, {"base-type": column.base_type}],
               source: "fields",
               // HACK: need to thread the query through to this fake Field
               query: this,
@@ -439,6 +439,7 @@ export default class StructuredQuery extends AtomicQuery {
       // $FlowFixMe
       const clause = query[listName]()[index];
       if (!this._validateClause(clause)) {
+        console.warn("Removing invalid MBQL clause", clause);
         query = clause.remove();
         // since we're removing them in order we need to decrement index when we remove one
         index -= 1;
@@ -1114,7 +1115,9 @@ export default class StructuredQuery extends AtomicQuery {
     const table = this.table();
     if (table) {
       const dimensionIsFKReference = dimension =>
-        dimension.field && dimension.field() && dimension.field().isFK();
+        dimension.field && dimension.field() && dimension.field().isFK()
+      // NOCOMMIT
+      // const dimensionIsFKReference = dimension => dimension.fk();
 
       const filteredNonFKDimensions = this.dimensions().filter(dimensionFilter);
       // .filter(d => !dimensionIsFKReference(d));
@@ -1138,6 +1141,8 @@ export default class StructuredQuery extends AtomicQuery {
 
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
       for (const dimension of fkDimensions) {
+        // NOCOMMIT
+        // const field = dimension.fk().field();
         const field = dimension.field();
         if (field && explicitJoins.has(keyForFk(field, field.target))) {
           continue;
@@ -1420,7 +1425,9 @@ export default class StructuredQuery extends AtomicQuery {
     if (dimension instanceof FieldDimension && dimension.isStringFieldName()) {
       const sourceQuery = this.sourceQuery();
       if (sourceQuery) {
-        const index = sourceQuery.columnNames().indexOf(dimension.name());
+        const index = sourceQuery
+          .columnNames()
+          .indexOf(dimension.fieldIdOrName());
         if (index >= 0) {
           return sourceQuery.columnDimensions()[index];
         }

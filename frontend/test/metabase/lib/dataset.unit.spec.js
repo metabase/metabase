@@ -236,7 +236,7 @@ describe("metabase/util/dataset", () => {
               : undefined,
           };
           expect(keyForColumn(col, [col])).toEqual(
-            // NOTE: not ideal, matches existing behavior, but should be ["field-literal", "foo", "type/Integer"]
+            // NOTE: not ideal, matches existing behavior, but should be ["field", "foo", {"base-type": "type/Integer"}]
             JSON.stringify(["name", "foo"]),
           );
         });
@@ -249,7 +249,7 @@ describe("metabase/util/dataset", () => {
                 : undefined,
             }),
           ).toEqual(
-            // NOTE: not ideal, matches existing behavior, but should be ["field-literal", "foo", "type/Integer"]
+            // NOTE: not ideal, matches existing behavior, but should be ["field", "foo", {"base-type": "type/Integer"}]
             JSON.stringify(["name", "foo"]),
           );
         });

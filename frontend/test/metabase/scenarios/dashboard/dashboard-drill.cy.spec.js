@@ -101,12 +101,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
                   "table.columns": [
                     {
                       name: "STATE",
-                      fieldRef: ["field-literal", "STATE", "type/Text"],
+                      fieldRef: ["field", "STATE", {"base-type": "type/Text"}],
                       enabled: false,
                     },
                     {
                       name: "CITY",
-                      fieldRef: ["field-literal", "CITY", "type/Text"],
+                      fieldRef: ["field", "CITY", {"base-type": "type/Text"}],
                       enabled: true,
                     },
                   ],
@@ -376,9 +376,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
               target: [
                 "dimension",
                 [
-                  "fk->",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.CATEGORY, null],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
             },
@@ -602,10 +602,7 @@ function createDashboard(
               {
                 parameter_id: "e8f79be9",
                 card_id: questionId,
-                target: [
-                  "dimension",
-                  ["fk->", ["field-id", 11], ["field-id", 22]],
-                ],
+                target: ["dimension", ["field", 22, { "source-field": 11 }]],
               },
             ],
             visualization_settings,

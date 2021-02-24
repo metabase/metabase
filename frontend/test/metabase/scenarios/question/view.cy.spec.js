@@ -130,7 +130,7 @@ describe("scenarios > question > view", () => {
                 name: "vendor",
                 "display-name": "VENDOR",
                 type: "dimension",
-                dimension: ["field-id", PRODUCTS.VENDOR],
+                dimension: ["field", PRODUCTS.VENDOR, null],
                 "widget-type": "id",
               },
             },

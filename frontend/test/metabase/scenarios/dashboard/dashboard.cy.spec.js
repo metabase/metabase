@@ -124,10 +124,10 @@ describe("scenarios > dashboard", () => {
       name: "11007",
       dataset_query: {
         database: 1,
-        filter: [">", ["field-literal", "sum", "type/Float"], 100],
+        filter: [">", ["field", "sum", {"base-type": "type/Float"}], 100],
         query: {
           "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
             ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
@@ -468,9 +468,9 @@ describe("scenarios > dashboard", () => {
               target: [
                 "dimension",
                 [
-                  "fk->",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.CATEGORY, null],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
             },
@@ -558,7 +558,7 @@ describe("scenarios > dashboard", () => {
                   {
                     parameter_id: "9f20a0d5",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.TITLE]],
+                    target: ["dimension", ["field", PRODUCTS.TITLE, null]],
                   },
                   {
                     parameter_id: "719fe1c2",
@@ -568,7 +568,7 @@ describe("scenarios > dashboard", () => {
                   {
                     parameter_id: "a73b7c9",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.VENDOR]],
+                    target: ["dimension", ["field", PRODUCTS.VENDOR, null]],
                   },
                 ],
                 visualization_settings: {},

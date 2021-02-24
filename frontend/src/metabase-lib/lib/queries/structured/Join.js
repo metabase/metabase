@@ -140,17 +140,14 @@ export default class Join extends MBQLObjectClause {
     if (alias !== this.alias) {
       const join = this.set({ ...this, alias });
       // propagate alias change to join dimension
-      // TODO: do this in a generic way for all joined-field clauses in the query
       const joinDimension = join.joinDimension();
       if (
         joinDimension instanceof FieldDimension &&
         joinDimension.joinAlias() &&
         joinDimension.joinAlias() === this.alias
       ) {
-        // TODO: JoinedDimension should have setJoinAlias()
-        const mbql = joinDimension.mbql();
-        mbql[1] = alias;
-        return join.setJoinDimension(mbql);
+        const newDimension = joinDimension.withJoinAlias(alias);
+        return join.setJoinDimension(newDimension);
       } else {
         return join;
       }
@@ -272,6 +269,7 @@ export default class Join extends MBQLObjectClause {
     }
     return new DimensionOptions(options);
   }
+  // TODO -- in what way is this setting a "parent dimension"? These names make no sense
   setParentDimension(dimension: Dimension | ConcreteField): Join {
     if (dimension instanceof Dimension) {
       dimension = dimension.mbql();
@@ -379,13 +377,13 @@ export default class Join extends MBQLObjectClause {
 
   joinedDimension(dimension: Dimension) {
     if (dimension instanceof FieldDimension) {
-      return dimension.withOptions({ "join-alias": this.alias }).mbql();
+      return dimension.withJoinAlias(this.alias);
     }
     console.warn(
-      "Don't know how to create joined dimension with %s",
+      "Don't know how to create joined dimension with:",
       dimension,
     );
-    return dimension.mbql();
+    return dimension;
   }
 
   dependentMetadata() {

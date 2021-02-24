@@ -454,10 +454,10 @@ describe("scenarios > visualizations > pivot tables", () => {
           query: {
             "source-table": ORDERS_ID,
             expressions: {
-              "Twice Total": ["*", ["field-id", ORDERS.TOTAL], 2],
+              "Twice Total": ["*", ["field", ORDERS.TOTAL, null], 2],
             },
             aggregation: [
-              ["sum", ["field-id", ORDERS.TOTAL]],
+              ["sum", ["field", ORDERS.TOTAL, null]],
               ["sum", ["expression", "Twice Total"]],
             ],
             breakout: [
@@ -677,12 +677,8 @@ const testQuery = {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
     breakout: [
-      ["fk->", ["field-id", ORDERS.USER_ID], ["field", PEOPLE.SOURCE, null]],
-      [
-        "fk->",
-        ["field", ORDERS.PRODUCT_ID, null],
-        ["field", PRODUCTS.CATEGORY, null],
-      ],
+      ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
     ],
   },
   database: 1,

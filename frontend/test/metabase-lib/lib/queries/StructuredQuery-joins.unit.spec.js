@@ -52,9 +52,9 @@ describe("StructuredQuery nesting", () => {
       const options = j.parentDimensionOptions();
       expect(options.count).toBe(7);
       expect(options.dimensions[0].mbql()).toEqual([
-        "field-literal",
+        "field",
         "ID",
-        "type/BigInteger",
+        {"base-type": "type/BigInteger"},
       ]);
     });
   });

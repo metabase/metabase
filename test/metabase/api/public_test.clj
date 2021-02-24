@@ -588,7 +588,7 @@
 (deftest check-that-param-info-comes-back-for-mbql-cards--fk---
   (with-temp-public-dashboard-and-card [dash card dashcard]
     (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["fk->" (mt/id :checkins :venue_id) (mt/id :venues :price)])
+    (add-dimension-param-mapping-to-dashcard! dashcard card [:field (mt/id :venues :price) {:source-field (mt/id :checkins :venue_id)}])
     (is (= (price-param-values)
            (GET-param-values dash)))))
 

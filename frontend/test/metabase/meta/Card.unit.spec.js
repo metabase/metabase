@@ -114,7 +114,7 @@ describe("metabase/meta/Card", () => {
         {
           card_id: 1,
           parameter_id: 4,
-          target: ["dimension", ["fk->", ["field-id", 4], ["field-id", 5]]],
+          target: ["dimension", ["field", 5, { "source-field": 4 }]],
         },
       ];
       it("should return question URL with no parameters", () => {

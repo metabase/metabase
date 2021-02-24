@@ -173,7 +173,7 @@ export default class Field extends Base {
 
   dimension() {
     if (Array.isArray(this.id)) {
-      // if ID is an array, it's a MBQL field reference, typically "field-literal"
+      // if ID is an array, it's a MBQL field reference, typically "field"
       return Dimension.parseMBQL(this.id, this.metadata, this.query);
     } else {
       return Dimension.parseMBQL(

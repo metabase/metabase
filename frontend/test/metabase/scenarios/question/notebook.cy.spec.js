@@ -80,7 +80,7 @@ describe("scenarios > question > notebook", () => {
         database: 1,
         query: {
           "source-table": ORDERS_ID,
-          filter: ["between", ["field-id", ORDERS.ID], 96, 97],
+          filter: ["between", ["field", ORDERS.ID, null], 96, 97],
         },
         type: "query",
       },
@@ -283,7 +283,7 @@ describe("scenarios > question > notebook", () => {
                 alias: "People - User",
                 condition: [
                   "=",
-                  ["field-id", ORDERS.USER_ID],
+                  ["field", ORDERS.USER_ID, null],
                   ["field", PEOPLE.ID, { "join-alias": "People - User" }],
                 ],
                 fields: "all",
@@ -437,7 +437,7 @@ describe("scenarios > question > notebook", () => {
               aggregation: [
                 [
                   "aggregation-options",
-                  ["sum", ["field-id", ORDERS.SUBTOTAL]],
+                  ["sum", ["field", ORDERS.SUBTOTAL, null]],
                   { "display-name": "Revenue" },
                 ],
               ],
@@ -636,7 +636,7 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
     dataset_query: {
       database: 1,
       query: {
-        aggregation: ["sum", ["field-id", ORDERS.TOTAL]],
+        aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
         breakout: [["field", ORDERS.PRODUCT_ID, null]],
         "source-table": ORDERS_ID,
       },
@@ -651,7 +651,7 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
       dataset_query: {
         database: 1,
         query: {
-          aggregation: ["sum", ["field-id", PRODUCTS.RATING]],
+          aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
           breakout: [["field", PRODUCTS.ID, null]],
           "source-table": PRODUCTS_ID,
         },

@@ -120,12 +120,12 @@ describe("Legacy Q_DEPRECATED library", () => {
       const query = {
         "source-table": 0,
         aggregation: [["count"]],
-        breakout: [["fk->", ["field", 1, null], ["field", 2, null]]],
-        "order-by": [["asc", ["fk->", ["field", 1, null], ["field", 2, null]]]],
+        breakout: [["field", 2, { "source-field": 1 }]],
+        "order-by": [["asc", ["field", 2, { "source-field": 1 }]]],
       };
       Q_DEPRECATED.cleanQuery(query);
       expect(query["order-by"]).toEqual([
-        ["asc", ["fk->", ["field", 1, null], ["field", 2, null]]],
+        ["asc", ["field", 2, { "source-field": 1 }]],
       ]);
     });
 
@@ -155,16 +155,16 @@ describe("Legacy Q_DEPRECATED library", () => {
       ]);
     });
 
-    it("should replace order-by clauses with the exact matching fk-> version in the breakout", () => {
+    it("should replace order-by clauses with the exact matching fk version in the breakout", () => {
       const query = {
         "source-table": 0,
         aggregation: [["count"]],
-        breakout: [["fk->", ["field", 1, null], ["field", 2, null]]],
+        breakout: [["field", 2, { "source-field": 1 }]],
         "order-by": [["asc", ["field", 2, null]]],
       };
       Q_DEPRECATED.cleanQuery(query);
       expect(query["order-by"]).toEqual([
-        ["asc", ["fk->", ["field", 1, null], ["field", 2, null]]],
+        ["asc", ["field", 2, { "source-field": 1 }]],
       ]);
     });
   });

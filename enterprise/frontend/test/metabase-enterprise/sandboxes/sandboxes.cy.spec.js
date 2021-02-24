@@ -384,9 +384,9 @@ describeWithToken("formatting > sandboxes", () => {
               aggregation: [["count"]],
               breakout: [
                 [
-                  "fk->",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.CATEGORY, null],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
               "source-table": ORDERS_ID,

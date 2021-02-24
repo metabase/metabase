@@ -179,7 +179,7 @@ const dateTimeCard = {
       type: "query",
       query: {
         "source-table": 1,
-        aggregation: [["sum", ["field-id", 4]]],
+        aggregation: [["sum", ["field", 4, null]]],
         breakout: [["field", 1, { "temporal-unit": "month" }]],
       },
     },
@@ -356,7 +356,7 @@ const numberCard = {
       query: {
         "source-table": 4,
         aggregation: [["count"]],
-        breakout: [["field-id", 33]],
+        breakout: [["field", 33, null]],
       },
     },
     id: 86,

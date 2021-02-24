@@ -44,7 +44,7 @@ describe("getParameterMappingOptions", () => {
           sectionName: "Review",
           icon: "calendar",
           name: "Created At",
-          target: ["dimension", ["field-id", REVIEWS.CREATED_AT.id]],
+          target: ["dimension", ["field", REVIEWS.CREATED_AT.id, null]],
           isForeign: false,
         },
         {
@@ -54,9 +54,9 @@ describe("getParameterMappingOptions", () => {
           target: [
             "dimension",
             [
-              "fk->",
-              ["field-id", REVIEWS.PRODUCT_ID.id],
-              ["field-id", PRODUCTS.CREATED_AT.id],
+              "field",
+              PRODUCTS.CREATED_AT.id,
+              { "source-field": REVIEWS.PRODUCT_ID.id },
             ],
           ],
           isForeign: true,
@@ -82,7 +82,7 @@ describe("getParameterMappingOptions", () => {
           sectionName: "Review",
           name: "Created At",
           icon: "calendar",
-          target: ["dimension", ["field-id", 30]],
+          target: ["dimension", ["field", 30, null]],
           isForeign: false,
         },
         {
