@@ -18,7 +18,7 @@ import type {
 
 import type { IconName } from "metabase-types/types";
 
-import { /*DATETIME_UNITS,*/ formatBucketing } from "metabase/lib/query_time";
+import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import type Aggregation from "./queries/structured/Aggregation";
 import StructuredQuery from "./queries/StructuredQuery";
 
@@ -701,6 +701,48 @@ export class FieldDimension extends Dimension {
     );
   }
 
+  dimensions() {
+    let dimensions = super.dimensions();
+
+    // Add FK dimensions if this field is an FK
+    const field = this.field();
+    if (
+      field &&
+      field.target &&
+      field.target.table &&
+      field.target.table.fields
+    ) {
+      const fkDimensions = field.target.table.fields.map(
+        field =>
+          new FieldDimension(
+            field.id,
+            { "source-field": this._fieldIdOrName },
+            this._metadata,
+            this._query,
+          ),
+      );
+      dimensions = [...dimensions, ...fkDimensions];
+    }
+
+    // Add temporal dimensions
+    if (field && field.isDate()) {
+      const temporalDimensions = DATETIME_UNITS.map(unit =>
+        this.withTemporalUnit(unit),
+      );
+      dimensions = [...dimensions, ...temporalDimensions];
+    }
+
+    return dimensions;
+  }
+
+  defaultDimension(dimensionTypes = []) {
+    const field = this.field();
+    if (field && field.isDate()) {
+      return this.withTemporalUnit(field.getDefaultDateTimeUnit());
+    }
+    return super.defaultDimension(dimensionTypes);
+  }
+
   _dimensionForOption(option) {
     const dimension = option.mbql
       ? FieldDimension.parseMBQLOrWarn(option.mbql, this._metadata, this._query)
@@ -879,36 +921,6 @@ export class FieldDimension extends Dimension {
 }
 
 const isFieldDimension = dimension => dimension instanceof FieldDimension;
-
-/* export class DatetimeFieldDimension extends FieldDimension {
- *   static dimensions(parent: Dimension): Dimension[] {
- *     if (isFieldDimension(parent) && parent.field().isDate()) {
- *       return DATETIME_UNITS.map(
- *         unit =>
- *           new DatetimeFieldDimension(
- *             parent,
- *             [unit],
- *             this._metadata,
- *             this._query,
- *           ),
- *       );
- *     }
- *     return [];
- *   }
- *
- *   static defaultDimension(parent: Dimension): ?Dimension {
- *     if (isFieldDimension(parent) && parent.field().isDate()) {
- *       return new DatetimeFieldDimension(
- *         parent,
- *         [parent.field().getDefaultDateTimeUnit()],
- *         this._metadata,
- *         this._query,
- *       );
- *     }
- *     return null;
- *   }
- *
- * } */
 
 /**
  * Expression reference, `["expression", expression-name]`

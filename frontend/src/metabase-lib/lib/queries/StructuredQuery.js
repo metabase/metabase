@@ -462,7 +462,7 @@ export default class StructuredQuery extends AtomicQuery {
     try {
       return clause.isValid();
     } catch (e) {
-      console.warn("Error thrown while validating clause:", clause);
+      console.warn("Error thrown while validating clause", clause, e);
       return false;
     }
   }
