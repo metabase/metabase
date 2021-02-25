@@ -16,6 +16,8 @@ const {
   PRODUCTS_ID,
   PEOPLE,
   PEOPLE_ID,
+  REVIEWS,
+  REVIEWS_ID,
 } = SAMPLE_DATASET;
 
 describe("scenarios > question > filter", () => {
@@ -833,5 +835,41 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
     // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
     cy.get("[contenteditable='true']");
+  });
+
+  it.skip("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": REVIEWS_ID,
+          filter: [
+            "contains",
+            ["field-id", REVIEWS.REVIEWER],
+            "MULLER",
+            { "case-sensitive": false },
+          ],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+    cy.wait("@dataset");
+    cy.findByText("wilma-muller");
+    cy.findByText("Reviewer contains MULLER").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
+    cy.get("[contenteditable='true']").contains(
+      'contains([Reviewer], "MULLER")',
+    );
+    cy.findByRole("button", { name: "Done" }).click();
+    cy.wait("@dataset.2").then(xhr => {
+      expect(xhr.response.body.data.rows).to.have.lengthOf(1);
+    });
+    cy.findByText("wilma-muller");
   });
 });
