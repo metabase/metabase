@@ -228,9 +228,7 @@ export function getParameterMappingOptions(
             name: dimension.displayName(),
             icon: dimension.icon(),
             target: ["dimension", dimension.mbql()],
-            isForeign:
-              dimension.getOption("source-field") ||
-              dimension.getOption("join-alias"),
+            isForeign: !!(dimension.fk() || dimension.joinAlias()),
           })),
         ),
     );

@@ -433,6 +433,19 @@ export class FieldDimension extends Dimension {
    * be a `:field` clause
    */
   static parseMBQLOrWarn(mbql, metadata = null, query = null) {
+    // if some some reason someone passes in a raw integer ID instead of a proper Field form, go ahead and parse it
+    // anyway -- there seems to be a lot of code that does this -- but log an error message so we can fix it.
+    if (typeof mbql === "number") {
+      console.error(
+        "FieldDimension.parseMBQLOrWarn() called with a raw integer Field ID. This is an error. Fixme!",
+        mbql,
+      );
+      return FieldDimension.parseMBQLOrWarn(
+        ["field", mbql, null],
+        metadata,
+        query,
+      );
+    }
     const dimension = FieldDimension.parseMBQL(mbql, metadata, query);
     if (!dimension) {
       console.warn("Unknown MBQL Field clause", mbql);

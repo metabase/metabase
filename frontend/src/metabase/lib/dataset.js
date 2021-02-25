@@ -11,7 +11,10 @@ import type {
 import type { Field as FieldReference } from "metabase-types/types/Query";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
+import Dimension, {
+  AggregationDimension,
+  FieldDimension,
+} from "metabase-lib/lib/Dimension";
 import type Question from "metabase-lib/lib/Question";
 
 type ColumnSetting = {
@@ -66,27 +69,36 @@ export function fieldRefWithOption(fieldRef, key, value) {
 }
 
 export const keyForColumn = (column: Column): string => {
-  const ref = fieldRefForColumn(column);
-  return ["ref", ref];
-  /* const dimension = FieldDimension.parseMBQL(ref);
-   * // match bug where field w/ join alias returned field w/o join alias instead
-   * if (dimension && dimension.getOption("join-alias")) {
-   *   return JSON.stringify(["ref", dimension.withoutOptions("join-alias").mbql()]);
-   * }
+  if (!column.field_ref) {
+    console.error("column is missing field_ref", column);
+    return null;
+  }
 
-   * // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
-   * if (
-   *   Array.isArray(ref) &&
-   *   ref[0] !== "field-literal" &&
-   *   ref[0] !== "aggregation"
-   * ) {
-   *   return JSON.stringify(["ref", ref]);
-   * }
-   * return JSON.stringify(["name", column.name]); */
+  let dimension = Dimension.parseMBQL(column.field_ref);
+  if (!dimension) {
+    console.warn("Unknown field_ref", column.field_ref);
+    return JSON.stringify(column.field_ref);
+  }
+
+  dimension = dimension.baseDimension();
+
+  // match bug where field w/ join alias returned field w/o join alias instead
+  if (dimension instanceof FieldDimension) {
+    dimension = dimension.withoutOptions("join-alias");
+  }
+
+  // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
+  const isLegacyRef =
+    (dimension instanceof FieldDimension && dimension.isStringFieldName()) ||
+    dimension instanceof AggregationDimension;
+
+  return JSON.stringify(
+    isLegacyRef ? ["name", column.name] : ["ref", dimension.mbql()],
+  );
 };
 
 /**
- * Finds the column object from the dataset results for the given `table.columns` column setting
+ * finds the column object from the dataset results for the given `table.columns` column setting
  * @param  {Column[]} columns             Dataset results columns
  * @param  {ColumnSetting} columnSetting  A "column setting" from the `table.columns` settings
  * @return {?Column}                      A result column

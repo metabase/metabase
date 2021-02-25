@@ -223,13 +223,6 @@ describe("Legacy Q_DEPRECATED library", () => {
       },
     };
 
-    it("should return field object for old-style local field", () => {
-      const target = Q_DEPRECATED.getFieldTarget(1, table1);
-      expect(target.table).toEqual(table1);
-      expect(target.field).toEqual(field1);
-      expect(target.path).toEqual([]);
-      expect(target.unit).toEqual(undefined);
-    });
     it("should return field object for new-style local field", () => {
       const target = Q_DEPRECATED.getFieldTarget(["field", 1, null], table1);
       expect(target.table).toEqual(table1);

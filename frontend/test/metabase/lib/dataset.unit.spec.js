@@ -257,7 +257,7 @@ describe("metabase/util/dataset", () => {
     }
 
     describe("with field_ref", () => {
-      it("should return [ref [field ...]] for joined-field", () => {
+      it("should return [ref [field ...]] for joined field", () => {
         const col = {
           name: "foo",
           id: 1,
