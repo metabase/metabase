@@ -59,13 +59,9 @@ export function fieldRefForColumn(column: Column): ?FieldReference {
   );
 }
 
-export function fieldRefWithOption(fieldRef, key, value) {
-  const fieldIdOrName = fieldRef[1];
-  const options = fieldRef[2];
-  const newOptions = options ? _.clone() : {};
-  newOptions[key] = value;
-
-  return ["field", fieldIdOrName, newOptions];
+export function fieldRefWithOption(fieldRef: any, key: string, value: any): FieldReference {
+  const dimension = FieldDimension.parseMBQLOrWarn(fieldRef);
+  return dimension && dimension.withOption(key, value).mbql();
 }
 
 export const keyForColumn = (column: Column): string => {

@@ -413,13 +413,13 @@ export class FieldDimension extends Dimension {
   /**
    * Whether `clause` is an array, and a valid `:field` clause
    */
-  static isFieldClause(clause) {
+  static isFieldClause(clause): boolean {
     return (
       Array.isArray(clause) && clause.length === 3 && clause[0] === "field"
     );
   }
 
-  static parseMBQL(mbql, metadata = null, query = null) {
+  static parseMBQL(mbql, metadata = null, query = null): ?FieldDimension {
     if (FieldDimension.isFieldClause(mbql)) {
       return Object.freeze(
         new FieldDimension(mbql[1], mbql[2], metadata, query),
@@ -432,7 +432,7 @@ export class FieldDimension extends Dimension {
    * Parse MBQL field clause or log a warning message if it could not be parsed. Use this when you expect the clause to
    * be a `:field` clause
    */
-  static parseMBQLOrWarn(mbql, metadata = null, query = null) {
+  static parseMBQLOrWarn(mbql, metadata = null, query = null): ?FieldDimension {
     // if some some reason someone passes in a raw integer ID instead of a proper Field form, go ahead and parse it
     // anyway -- there seems to be a lot of code that does this -- but log an error message so we can fix it.
     if (typeof mbql === "number") {
@@ -456,7 +456,7 @@ export class FieldDimension extends Dimension {
   /**
    * Canonically the field clause should use `null` instead of empty options. Keys with null values should get removed.
    */
-  static normalizeOptions(options) {
+  static normalizeOptions(options: {}): {} {
     if (!options) {
       return null;
     }
@@ -514,21 +514,21 @@ export class FieldDimension extends Dimension {
   /**
    * Get an option from the field options map, if there is one.
    */
-  getOption(k) {
+  getOption(k: string): any {
     return this._options && this._options[k];
   }
 
   /**
    * Return integer ID *or* string name of the Field this `field` clause refers to.
    */
-  fieldIdOrName() {
+  fieldIdOrName(): string|number  {
     return this._fieldIdOrName;
   }
 
   /**
    * Whether this Field clause has an integer Field ID (as opposed to a string Field name).
    */
-  isIntegerFieldId() {
+  isIntegerFieldId(): boolean {
     return typeof this._fieldIdOrName === "number";
   }
 
@@ -536,11 +536,11 @@ export class FieldDimension extends Dimension {
    * Whether this Field clause has a string Field name (as opposed to an integer Field ID). This generally means the
    * Field comes from a native query.
    */
-  isStringFieldName() {
+  isStringFieldName(): boolean {
     return typeof this._fieldIdOrName === "string";
   }
 
-  field() {
+  field(): {} {
     if (this.isIntegerFieldId()) {
       return (
         (this._metadata && this._metadata.field(this._fieldIdOrName)) ||
@@ -577,7 +577,7 @@ export class FieldDimension extends Dimension {
   /**
    * Return a copy of this FieldDimension that excludes `options`.
    */
-  withoutOptions(...options) {
+  withoutOptions(...options: string[]): FieldDimension {
     // optimization: if we don't have any options, we can return ourself as-is
     if (!this._options) {
       return this;
@@ -600,28 +600,28 @@ export class FieldDimension extends Dimension {
   /**
    * Return a copy of this FieldDimension with any temporal bucketing options removed.
    */
-  withoutTemporalBucketing() {
+  withoutTemporalBucketing(): FieldDimension {
     return this.withoutOptions("temporal-unit");
   }
 
   /**
    * Return a copy of this FieldDimension with any binning options removed.
    */
-  withoutBinning() {
+  withoutBinning(): FieldDimension {
     return this.withoutOptions("binning");
   }
 
   /**
    * Return a copy of this FieldDimension with any temporal bucketing or binning options removed.
    */
-  baseDimension() {
+  baseDimension(): FieldDimension {
     return this.withoutTemporalBucketing().withoutBinning();
   }
 
   /**
    * Return a copy of this FieldDimension that includes the specified `options`.
    */
-  withOptions(options) {
+  withOptions(options: {}): FieldDimension {
     // optimization : if options is empty return self as-is
     if (!options || !Object.entries(options).length) {
       return this;
@@ -636,12 +636,22 @@ export class FieldDimension extends Dimension {
   }
 
   /**
+   * Return a copy of this FieldDimension with option `key` set to `value`.
+   */
+  withOption(key: string, value: any): FieldDimension {
+    return this.withOptions({
+      [key]: value
+    });
+  }
+
+  /**
    * Return a copy of this FieldDimension, bucketed by the specified temporal unit.
    */
-  withTemporalUnit(unit) {
+  withTemporalUnit(unit: string): FieldDimension {
     return this.withOptions({ "temporal-unit": unit });
   }
 
+  // no idea what this does or if it's even used anywhere.
   foreign(dimension: Dimension): FieldDimension {
     if (isFieldDimension(dimension)) {
       return dimension.withOptions({ "source-field": this._fieldIdOrName });
@@ -663,7 +673,7 @@ export class FieldDimension extends Dimension {
     return this.field().displayName(...args);
   }
 
-  subDisplayName() {
+  subDisplayName(): string {
     if (this._subDisplayName) {
       return this._subDisplayName;
     }
@@ -691,7 +701,7 @@ export class FieldDimension extends Dimension {
   /**
    * Short string that describes the binning options used. Used for both subTriggerDisplayName() and render()
    */
-  describeBinning() {
+  describeBinning(): string {
     if (!this.binningOptions()) {
       return "";
     }
@@ -712,14 +722,14 @@ export class FieldDimension extends Dimension {
   /**
    * Whether this is a numeric Field that can be binned
    */
-  isBinnable() {
+  isBinnable(): boolean {
     const defaultDimension = this.defaultDimension();
     return (
       isFieldDimension(defaultDimension) && defaultDimension.binningOptions()
     );
   }
 
-  dimensions() {
+  dimensions(): FieldDimension[] {
     let dimensions = super.dimensions();
     const field = this.field();
 
@@ -748,7 +758,7 @@ export class FieldDimension extends Dimension {
     return dimensions;
   }
 
-  defaultDimension(dimensionTypes = []) {
+  defaultDimension(dimensionTypes = []): FieldDimension {
     const field = this.field();
     if (field && field.isDate()) {
       return this.withTemporalUnit(field.getDefaultDateTimeUnit());
@@ -756,7 +766,7 @@ export class FieldDimension extends Dimension {
     return super.defaultDimension(dimensionTypes);
   }
 
-  _dimensionForOption(option) {
+  _dimensionForOption(option): FieldDimension {
     const dimension = option.mbql
       ? FieldDimension.parseMBQLOrWarn(option.mbql, this._metadata, this._query)
       : this;
@@ -811,7 +821,7 @@ export class FieldDimension extends Dimension {
     return "";
   }
 
-  render() {
+  render(): string {
     let displayName = this.displayName();
 
     if (this.fk()) {

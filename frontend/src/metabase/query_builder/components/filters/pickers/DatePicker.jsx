@@ -169,10 +169,9 @@ function getDateTimeField(
 export function getDateTimeFieldTarget(
   field: ConcreteField,
 ): LocalFieldReference | ForeignFieldReference | ExpressionReference {
-  if (FieldRef.isLocalField(field) && field[2] && field[2]["temporal-unit"]) {
-    // $FlowFixMe:
-    return (field: // $FlowFixMe:
-    LocalFieldReference | ExpressionReference);
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension && dimension.temporalUnit()) {
+    return dimension.withoutTemporalBucketing().mbql();
   } else {
     // $FlowFixMe
     return field;
