@@ -253,6 +253,10 @@
                       :graph.goal_value 5.9
                       :graph.dimensions ["the_day"]
                       :graph.metrics    ["total_per_day"]}]
+        (f original original)))
+
+    (testing "Don't normalize key-value pairs in maps that could be interpreted as MBQL clauses"
+      (let [original {:field-id 1}]
         (f original original)))))
 
 (deftest normalize-visualization-settings-test
