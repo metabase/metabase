@@ -709,9 +709,24 @@
      joins
      unique-aliases)))
 
+(defn- remove-empty [x]
+  (cond
+    (map? x)
+    (not-empty (into {} (for [[k v] x
+                              :let  [v (remove-empty v)]
+                              :when (some? v)]
+                          [k v])))
+
+    (sequential? x)
+    (not-empty (into (empty x) (filter some? (map remove-empty x))))
+
+    :else
+    x))
+
 (s/defn update-field-options :- mbql.s/field
   "Like `clojure.core/update`, but for the options in a `:field` clause."
   [[_ id-or-name opts] :- mbql.s/field f & args]
+  ;; TODO -- this should canonicalize the clause afterwards
   [:field id-or-name (not-empty (apply f opts args))])
 
 (defn assoc-field-options

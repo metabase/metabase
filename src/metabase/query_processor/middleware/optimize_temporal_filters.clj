@@ -13,12 +13,11 @@
   #{:second :minute :hour :day :week :month :quarter :year})
 
 (defn- temporal-unit [field]
-  (mbql.u/match-one field [:field _ opts] (:temporal-unit opts)))
+  (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts)))
 
 (defn- optimizable-field? [field]
   (mbql.u/match-one field
-    [:field _ opts]
-    (optimizable-units (:temporal-unit opts))))
+    [:field _ (_ :guard (comp optimizable-units :temporal-unit))]))
 
 (defmulti ^:private can-optimize-filter?
   mbql.u/dispatch-by-clause-name-or-class)
@@ -42,7 +41,7 @@
     true
 
     [(_ :guard #{:absolute-datetime :relative-datetime}) _ (unit :guard optimizable-units)]
-    (= (datetime-field-unit field) unit)))
+    (= (temporal-unit field) unit)))
 
 (defmethod can-optimize-filter? :default
   [filter-clause]
@@ -68,21 +67,19 @@
 (s/defn ^:private temporal-literal-upper-bound [unit t :- java.time.temporal.Temporal]
   (:end (u.date/range t unit)))
 
-(defn- change-datetime-field-unit-to-default [field]
-  (mbql.u/replace field
-    [:datetime-field wrapped _]
-    [:datetime-field wrapped :default]))
+(defn- change-temporal-unit-to-default [field]
+  (mbql.u/update-field-options field assoc :temporal-unit :default))
 
 (defmulti ^:private temporal-value-lower-bound
   "Get a clause representing the *lower* bound that should be used when converting a `temporal-value-clause` (e.g.
   `:absolute-datetime` or `:relative-datetime`) to an optimized range."
-  {:arglists '([temporal-value-clause datetime-field-unit])}
+  {:arglists '([temporal-value-clause temporal-unit])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmulti ^:private temporal-value-upper-bound
   "Get a clause representing the *upper* bound that should be used when converting a `temporal-value-clause` (e.g.
   `:absolute-datetime` or `:relative-datetime`) to an optimized range."
-  {:arglists '([temporal-value-clause datetime-field-unit])}
+  {:arglists '([temporal-value-clause temporal-unit])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod temporal-value-lower-bound :absolute-datetime
@@ -94,12 +91,12 @@
   [:absolute-datetime (temporal-literal-upper-bound unit t) :default])
 
 (defmethod temporal-value-lower-bound :relative-datetime
-  [[_ n unit] datetime-field-unit]
-  [:relative-datetime (if (= n :current) 0 n) (or unit datetime-field-unit)])
+  [[_ n unit] temporal-unit]
+  [:relative-datetime (if (= n :current) 0 n) (or unit temporal-unit)])
 
 (defmethod temporal-value-upper-bound :relative-datetime
-  [[_ n unit] datetime-field-unit]
-  [:relative-datetime (inc (if (= n :current) 0 n)) (or unit datetime-field-unit)])
+  [[_ n unit] temporal-unit]
+  [:relative-datetime (inc (if (= n :current) 0 n)) (or unit temporal-unit)])
 
 (defmulti ^:private optimize-filter
   "Optimize a filter clause agat a bucketed `:datetime-field` clause and `:absolute-datetime` or `:relative-datetime`
@@ -108,13 +105,13 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod optimize-filter :=
-  [[_ field [_ inst unit]]]
+  [[_ field temporal-value]]
   (let [temporal-unit (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
-    (when (= unit temporal-unit)
-      (let [field' (change-field-temporal-unit-to-default field)]
+    (when (field-and-temporal-value-have-compatible-units? field temporal-value)
+      (let [field' (change-temporal-unit-to-default field)]
         [:and
-         [:>= field' [:absolute-datetime (lower-bound unit inst) :default]]
-         [:< field'  [:absolute-datetime (upper-bound unit inst) :default]]]))))
+         [:>= field' (temporal-value-lower-bound temporal-value temporal-unit)]
+         [:< field'  (temporal-value-upper-bound temporal-value temporal-unit)]]))))
 
 (defmethod optimize-filter :!=
   [filter-clause]
@@ -123,8 +120,8 @@
 (defn- optimize-comparison-filter
   [optimize-temporal-value-fn [filter-type field temporal-value] new-filter-type]
   [new-filter-type
-   (change-datetime-field-unit-to-default field)
-   (optimize-temporal-value-fn temporal-value (datetime-field-unit field))])
+   (change-temporal-unit-to-default field)
+   (optimize-temporal-value-fn temporal-value (temporal-unit field))])
 
 (defmethod optimize-filter :<
   [filter-clause]
@@ -144,10 +141,10 @@
 
 (defmethod optimize-filter :between
   [[_ field lower-bound upper-bound]]
-  (let [field' (change-datetime-field-unit-to-default field)]
+  (let [field' (change-temporal-unit-to-default field)]
     [:and
-     [:>= field' (temporal-value-lower-bound lower-bound (datetime-field-unit field))]
-     [:<  field' (temporal-value-upper-bound upper-bound (datetime-field-unit field))]]))
+     [:>= field' (temporal-value-lower-bound lower-bound (temporal-unit field))]
+     [:<  field' (temporal-value-upper-bound upper-bound (temporal-unit field))]]))
 
 (defn- optimize-temporal-filters* [query]
   (mbql.u/replace query

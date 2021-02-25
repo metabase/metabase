@@ -975,4 +975,8 @@
 
   (testing "Should remove empty options"
     (is (= [:field 1 nil]
-           (mbql.u/update-field-options [:field 1 {:a 1}] dissoc :a)))))
+           (mbql.u/update-field-options [:field 1 {:a 1}] dissoc :a))))
+
+  (testing "Should normalize the clause"
+    [:field 1 nil]
+    (mbql.u/update-field-options [:field 1 {:a {:b 1}}] assoc-in [:a :b] nil)))
