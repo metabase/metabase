@@ -11,7 +11,7 @@
   #### CANONICALIZING THE QUERY
 
   Rewriting deprecated MBQL 95/98 syntax and other things that are still supported for backwards-compatibility in
-  canonical MBQL 2000 syntax. For example `{:breakout [:count 10]}` becomes `{:breakout [[:count [:field-id 10]]]}`.
+  canonical modern MBQL syntax. For example `{:breakout [:count 10]}` becomes `{:breakout [[:count [:field 10 nil]]]}`.
 
   #### WHOLE-QUERY TRANSFORMATIONS
 
@@ -32,7 +32,6 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.mbql.predicates :as mbql.pred]
             [metabase.mbql.util :as mbql.u]
             [metabase.util.i18n :refer [tru]]))
 
@@ -42,7 +41,15 @@
   namespace.)"
   [x]
   (and (sequential? x)
+       (not (instance? clojure.lang.MapEntry x))
        ((some-fn keyword? string?) (first x))))
+
+(defn- maybe-normalize-token
+  "Normalize token `x`, but only if it's a keyword or string."
+  [x]
+  (if ((some-fn keyword? string?) x)
+    (mbql.u/normalize-token x)
+    x))
 
 (defn is-clause?
   "If `x` an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
@@ -55,7 +62,7 @@
   [k-or-ks x]
   (and
    (mbql-clause? x)
-   (let [clause-name (mbql.u/normalize-token (first x))]
+   (let [clause-name (maybe-normalize-token (first x))]
      (if (coll? k-or-ks)
        ((set k-or-ks) clause-name)
        (= k-or-ks clause-name)))))
@@ -68,7 +75,7 @@
 (declare normalize-tokens)
 
 (defmulti ^:private normalize-mbql-clause-tokens
-  (comp mbql.u/normalize-token first))
+  (comp maybe-normalize-token first))
 
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
@@ -83,7 +90,19 @@
   [[_ field strategy-name strategy-param]]
   (if strategy-param
     (conj (normalize-mbql-clause-tokens [:binning-strategy field strategy-name]) strategy-param)
-    [:binning-strategy (normalize-tokens field :ignore-path) (mbql.u/normalize-token strategy-name)]))
+    [:binning-strategy (normalize-tokens field :ignore-path) (maybe-normalize-token strategy-name)]))
+
+(defmethod normalize-mbql-clause-tokens :field
+  [[_ id-or-name opts]]
+  (let [opts (normalize-tokens opts :ignore-path)]
+    [:field
+     id-or-name
+     (cond-> opts
+       (:base-type opts)     (update :base-type keyword)
+       (:temporal-unit opts) (update :temporal-unit keyword)
+       (:binning opts)       (update :binning (fn [binning]
+                                                (cond-> binning
+                                                  (:strategy binning) (update :strategy keyword)))))]))
 
 (defmethod normalize-mbql-clause-tokens :field-literal
   ;; Similarly, for Field literals, keep the arg as-is, but make sure it is a string."
@@ -99,8 +118,8 @@
   ;; normalize the unit, and `:as` (if present) tokens, and the Field."
   [[_ field as-or-unit maybe-unit]]
   (if maybe-unit
-    [:datetime-field (normalize-tokens field :ignore-path) :as (mbql.u/normalize-token maybe-unit)]
-    [:datetime-field (normalize-tokens field :ignore-path) (mbql.u/normalize-token as-or-unit)]))
+    [:datetime-field (normalize-tokens field :ignore-path) :as (maybe-normalize-token maybe-unit)]
+    [:datetime-field (normalize-tokens field :ignore-path) (maybe-normalize-token as-or-unit)]))
 
 (defmethod normalize-mbql-clause-tokens :time-interval
   ;; `time-interval`'s `unit` should get normalized, and `amount` if it's not an integer."
@@ -112,8 +131,8 @@
      (normalize-tokens field :ignore-path)
      (if (integer? amount)
        amount
-       (mbql.u/normalize-token amount))
-     (mbql.u/normalize-token unit)]))
+       (maybe-normalize-token amount))
+     (maybe-normalize-token unit)]))
 
 (defmethod normalize-mbql-clause-tokens :relative-datetime
   ;; Normalize a `relative-datetime` clause. `relative-datetime` comes in two flavors:
@@ -122,23 +141,25 @@
   ;;   [:relative-datetime -10 :day] ; amount & unit"
   [[_ amount unit]]
   (if unit
-    [:relative-datetime amount (mbql.u/normalize-token unit)]
+    [:relative-datetime amount (maybe-normalize-token unit)]
     [:relative-datetime :current]))
 
 (defmethod normalize-mbql-clause-tokens :interval
   [[_ amount unit]]
-  [:interval amount (mbql.u/normalize-token unit)])
+  [:interval amount (maybe-normalize-token unit)])
 
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default get just the clause name normalized (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and the
   ;; args are left as-is.
   [[clause-name & args]]
-  (into [(mbql.u/normalize-token clause-name)] (map #(normalize-tokens % :ignore-path)) args))
+  (into [(maybe-normalize-token clause-name)] (map #(normalize-tokens % :ignore-path)) args))
 
 (defn- aggregation-subclause?
   [x]
   (or (when ((some-fn keyword? string?) x)
-        (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :* :sum-where :count-where :share :var :median :percentile} (mbql.u/normalize-token x)))
+        (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :*
+           :sum-where :count-where :share :var :median :percentile}
+         (maybe-normalize-token x)))
       (when (mbql-clause? x)
         (aggregation-subclause? (first x)))))
 
@@ -149,7 +170,7 @@
   (cond
     ;; something like {:aggregations :count}
     ((some-fn keyword? string?) ag-clause)
-    (mbql.u/normalize-token ag-clause)
+    (maybe-normalize-token ag-clause)
 
     ;; named aggregation ([:named <ag> <name>])
     (is-clause? :named ag-clause)
@@ -190,19 +211,19 @@
   [template-tags]
   (into {} (for [[tag-name tag-def] template-tags]
              [(mbql.u/qualified-name tag-name)
-              (let [tag-def (-> (normalize-tokens tag-def :ignore-path)
-                                (update :type mbql.u/normalize-token))]
+              (let [tag-def (normalize-tokens tag-def :ignore-path)]
                 (cond-> tag-def
-                  (:widget-type tag-def) (update :widget-type mbql.u/normalize-token)))])))
+                  (:type tag-def)        (update :type maybe-normalize-token)
+                  (:widget-type tag-def) (update :widget-type maybe-normalize-token)))])))
 
 (defn- normalize-query-parameter [{:keys [type target], :as param}]
   (cond-> param
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
-    type   (update :type mbql.u/normalize-token)
+    type   (update :type maybe-normalize-token)
     target (update :target #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [source-query]
-  (let [{native? :native, :as source-query} (m/map-keys mbql.u/normalize-token source-query)]
+  (let [{native? :native, :as source-query} (m/map-keys maybe-normalize-token source-query)]
     (if native?
       (-> source-query
           (set/rename-keys {:native :query})
@@ -215,26 +236,28 @@
   (let [{:keys [strategy fields alias], :as join} (normalize-tokens join :query)]
     (cond-> join
       strategy
-      (update :strategy mbql.u/normalize-token)
+      (update :strategy maybe-normalize-token)
 
       ((some-fn keyword? string?) fields)
-      (update :fields mbql.u/normalize-token)
+      (update :fields maybe-normalize-token)
 
       alias
       (update :alias mbql.u/qualified-name))))
+
+(declare canonicalize-mbql-clauses)
 
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata]
   {:pre [(map? metadata)]}
   (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :semantic_type :visibility_type :source :unit])
-      (m/update-existing :field_ref normalize-tokens)
+      (m/update-existing :field_ref (comp canonicalize-mbql-clauses normalize-tokens))
       (m/update-existing :fingerprint walk/keywordize-keys)))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
   [native-query]
-  (let [native-query (m/map-keys mbql.u/normalize-token native-query)]
+  (let [native-query (m/map-keys maybe-normalize-token native-query)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
@@ -243,7 +266,7 @@
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
   defined below."
-  {:type            mbql.u/normalize-token
+  {:type            maybe-normalize-token
    ;; don't normalize native queries
    :native          normalize-native-query
    :query           {:aggregation     normalize-ag-clause-tokens
@@ -253,7 +276,7 @@
                      :source-metadata {::sequence normalize-source-metadata}
                      :joins           {::sequence normalize-join}}
    :parameters      {::sequence normalize-query-parameter}
-   :context         #(some-> % mbql.u/normalize-token)
+   :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}})
 
 (defn normalize-tokens
@@ -286,7 +309,7 @@
         ;; Each recursive call appends to the keypath above so we can handle top-level clauses in a special way if needed
         (map? x)
         (into {} (for [[k v] x
-                       :let  [k (mbql.u/normalize-token k)]]
+                       :let  [k (maybe-normalize-token k)]]
                    [k (normalize-tokens v (conj (vec path) k))]))
 
         ;; MBQL clauses handled above because of special cases
@@ -304,7 +327,7 @@
         x)
       (catch Throwable e
         (throw (ex-info (tru "Error normalizing form.")
-                        {:form x, :path path}
+                        {:form x, :path path, :special-fn special-fn}
                         e))))))
 
 
@@ -312,111 +335,225 @@
 ;;; |                                                  CANONICALIZE                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(declare canonicalize-mbql-clauses)
-(declare canonicalize-expression-subclause)
-
 (defn- wrap-implicit-field-id
-  "Wrap raw integer Field IDs (i.e., those in an implicit 'field' position) in a `:field-id` clause if they're not
+  "Wrap raw integer Field IDs (i.e., those in an implicit 'field' position) in a `:field` clause if they're not
   already. Done for MBQL 95 backwards-compatibility. e.g.:
 
-    {:filter [:= 10 20]} ; -> {:filter [:= [:field-id 10] 20]}"
+    {:filter [:= 10 20]} ; -> {:filter [:= [:field 10 nil] 20]}"
   [field]
   (if (integer? field)
-    [:field-id field]
+    [:field field nil]
     field))
 
-(defn- canonicalize-filter [filter-clause]
-  (mbql.u/replace filter-clause
-    seq? (recur (vec &match))
+(defmulti ^:private canonicalize-mbql-clause
+  {:arglists '([clause])}
+  (fn [clause]
+    (when (mbql-clause? clause)
+      (first clause))))
 
-    ;; for `and`/`or`/`not` compound filters, recurse on the arg(s), then simplify the whole thing
-    [(filter-name :guard #{:and :or :not}) & args]
-    (mbql.u/simplify-compound-filter
-     (apply vector
-            filter-name
-            ;; we need to canonicalize any other mbql clauses that might show up in
-            ;; args like datetime-field here because simplify-compund-filter validates
-            ;; its output :(
-            (map (comp canonicalize-mbql-clauses canonicalize-filter) args)))
+(defmethod canonicalize-mbql-clause :default
+  [clause]
+  clause)
 
-    [:inside field-1 field-2 & coordinates]
-    (apply vector :inside (wrap-implicit-field-id field-1) (wrap-implicit-field-id field-2)  coordinates)
+(defn- canonicalize-implicit-field-id
+  "If `clause` is a raw integer ID wrap it in a `:field` clause. Either way, canonicalize the resulting clause."
+  [clause]
+  (canonicalize-mbql-clause (wrap-implicit-field-id clause)))
 
-    ;; if you put a `:datetime-field` inside a `:time-interval` we should fix it for you
-    [:time-interval [:datetime-field field _] & args]
-    (recur (apply vector :time-interval field args))
+(defmethod canonicalize-mbql-clause :field
+  [[_ id-or-name opts :as clause]]
+  (if (is-clause? :field id-or-name)
+    (let [[_ nested-id-or-name nested-opts] id-or-name]
+      (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
+    ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
+    ;; afterwards
+    [:field id-or-name (not-empty opts)]))
 
-    ;; all the other filter types have an implict field ID for the first arg
-    ;; (e.g. [:= 10 20] gets canonicalized to [:= [:field-id 10] 20]
-    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain
-                           := :!= :< :<= :> :>=
-                           :is-empty :not-empty :is-null :not-null
-                           :between :inside :time-interval}) arg & args]
-    (apply vector filter-name (if (mbql-clause? arg)
-                                (canonicalize-expression-subclause arg)
-                                ;; Support legacy expressions like [:> 1 25] where 1 is a field id.
-                                (wrap-implicit-field-id arg))
-           (map canonicalize-expression-subclause args))
+;;; legacy Field clauses
 
-    ;; don't wrap segment IDs in `:field-id`
-    [:segment _]
-    &match
-    _
-    (throw (IllegalArgumentException. (str (tru "Illegal filter clause: {0}" filter-clause))))))
+(defmethod canonicalize-mbql-clause :field-id
+  [[_ id]]
+  ;; if someone is dumb and does something like [:field-id [:field-literal ...]] be nice and fix it for them.
+  (if (mbql-clause? id)
+    (canonicalize-mbql-clause id)
+    [:field id nil]))
 
-(defn- canonicalize-expression-subclause
-  "Remove `:rows` type aggregation (long-since deprecated; simpliy means no aggregation) if present, and wrap
-  `:field-ids` where appropriate."
-  [expr-subclause]
-  (mbql.u/replace expr-subclause
-    seq? (recur (vec &match))
+(defmethod canonicalize-mbql-clause :field-literal
+  [[_ field-name base-type]]
+  [:field field-name {:base-type base-type}])
 
-    [:rows & _]
-    nil
+(defmethod canonicalize-mbql-clause :fk->
+  [[_ field-1 field-2]]
+  (let [[_ source _]       (canonicalize-implicit-field-id field-1)
+        [_ dest dest-opts] (canonicalize-implicit-field-id field-2)]
+    [:field dest (assoc dest-opts :source-field source)]))
 
-    ;; for aggregations wrapped in aggregation-options we can leave it as-is and just canonicalize the subclause
-    [:aggregation-options wrapped-ag options]
-    [:aggregation-options (canonicalize-expression-subclause wrapped-ag) options]
+(defmethod canonicalize-mbql-clause :joined-field
+  [[_ join-alias field]]
+  (-> (canonicalize-implicit-field-id field)
+      (mbql.u/assoc-field-options :join-alias join-alias)))
 
-    ;; for legacy `:named` aggregations convert them to a new-style `:aggregation-options` clause.
-    ;;
-    ;; 99.99% of clauses should have no options, however if they do and `:use-as-display-name?` is false (default is
-    ;; true) then generate options to change `:name` rather than `:display-name`
-    [:named wrapped-ag expr-name & more]
-    (canonicalize-expression-subclause
-     [:aggregation-options wrapped-ag (let [[{:keys [use-as-display-name?]}] more]
-                                        (if (false? use-as-display-name?)
-                                          {:name expr-name}
-                                          {:display-name expr-name}))])
+(defmethod canonicalize-mbql-clause :datetime-field
+  [clause]
+  (case (count clause)
+    3
+    (let [[_ field unit] clause]
+      (-> (canonicalize-implicit-field-id field)
+          (mbql.u/with-temporal-unit unit)))
 
-    ;; for metric macros (e.g. [:metric <metric-id>]) do not wrap the metric in a :field-id clause
-    [:metric _]
-    &match
+    4
+    (let [[_ field _ unit] clause]
+      (canonicalize-mbql-clause [:datetime-field field unit]))))
 
-    [(expr-type :guard #{:share :count-where}) pred]
-    [expr-type (canonicalize-filter pred)]
+(defmethod canonicalize-mbql-clause :binning-strategy
+  [[_ field strategy param binning-options]]
+  (let [[_ id-or-name opts] (canonicalize-implicit-field-id field)]
+    [:field
+     id-or-name
+     (assoc opts :binning (merge {:strategy strategy}
+                                 (when param
+                                   {strategy param})
+                                 binning-options))]))
 
-    [:sum-where field pred]
-    [:sum-where (canonicalize-expression-subclause field) (canonicalize-filter pred)]
+;;; filter clauses
 
-    [:case clauses options]
-    (if options
-      (conj (canonicalize-expression-subclause [:case clauses])
-            (normalize-tokens options :ignore-path))
-      [:case (for [[pred expr] clauses]
-               [[(canonicalize-filter pred) (canonicalize-expression-subclause expr)]])])
+;; For `and`/`or`/`not` compound filters, recurse on the arg(s), then simplify the whole thing.
+(defn- canonicalize-compound-filter-clause [[filter-name & args]]
+  (mbql.u/simplify-compound-filter
+   (into [filter-name]
+         ;; we need to canonicalize any other mbql clauses that might show up in args here because
+         ;; simplify-compund-filter validates its output :(
+         (map canonicalize-mbql-clause args))))
 
-    [(expr-type :guard (complement #{:field-id})) (implicit-field-id :guard integer?)]
-    [expr-type (wrap-implicit-field-id implicit-field-id)]
+(doseq [clause-name [:and :or :not]]
+  (defmethod canonicalize-mbql-clause clause-name
+    [clause]
+    (canonicalize-compound-filter-clause clause)))
 
-    [expr-type & args]
-    (apply
-     vector
-     expr-type
-     ;; if args are also ag subclauses normalize those, but things like numbers are allowed too so leave them as-is
-     (for [arg args]
-       (cond-> arg
-         (mbql-clause? arg) canonicalize-expression-subclause)))))
+(defmethod canonicalize-mbql-clause :inside
+  [[_ field-1 field-2 & coordinates]]
+  (into [:inside
+         (canonicalize-implicit-field-id field-1)
+         (canonicalize-implicit-field-id field-2)]
+        coordinates))
+
+(defmethod canonicalize-mbql-clause :time-interval
+  [[_ field & args]]
+  ;; if you specify a `:temporal-unit` for the Field inside a `:time-interval`, remove it. The unit in
+  ;; `:time-interval` takes precedence.
+  (let [field (cond-> (canonicalize-implicit-field-id field)
+                (mbql.u/is-clause? :field field) (mbql.u/update-field-options dissoc :temporal-unit))]
+    (into [:time-interval field] args)))
+
+;; all the other filter types have an implict field ID for the first arg
+;; (e.g. [:= 10 20] gets canonicalized to [:= [:field-id 10] 20]
+(defn- canonicalize-simple-filter-clause
+  [[filter-name first-arg & other-args]]
+  ;; Support legacy expressions like [:> 1 25] where 1 is a field id.
+  (into [filter-name (canonicalize-implicit-field-id first-arg)]
+        (map canonicalize-mbql-clause other-args)))
+
+(doseq [clause-name [:starts-with :ends-with :contains :does-not-contain
+                     := :!= :< :<= :> :>=
+                     :is-empty :not-empty :is-null :not-null
+                     :between]]
+  (defmethod canonicalize-mbql-clause clause-name
+    [clause]
+    (canonicalize-simple-filter-clause clause)))
+
+;;; aggregations/expression subclauses
+
+;; Remove `:rows` type aggregation (long-since deprecated; simpliy means no aggregation) if present
+(defmethod canonicalize-mbql-clause :rows
+  [_]
+  nil)
+
+;; TODO -- if options is empty, should we just unwrap the clause?
+(defmethod canonicalize-mbql-clause :aggregation-options
+  [[_ wrapped-aggregation-clause options]]
+  [:aggregation-options (canonicalize-mbql-clause wrapped-aggregation-clause) options])
+
+;; for legacy `:named` aggregations convert them to a new-style `:aggregation-options` clause.
+;;
+;; 99.99% of clauses should have no options, however if they do and `:use-as-display-name?` is false (default is
+;; true) then generate options to change `:name` rather than `:display-name`
+(defmethod canonicalize-mbql-clause :named
+  [[_ wrapped-ag expr-name & more]]
+  (canonicalize-mbql-clause
+   [:aggregation-options
+    (canonicalize-mbql-clause wrapped-ag)
+    (let [[{:keys [use-as-display-name?]}] more]
+      (if (false? use-as-display-name?)
+        {:name expr-name}
+        {:display-name expr-name}))]))
+
+(defn- canonicalize-count-clause [[clause-name field]]
+  (if field
+    [clause-name (canonicalize-implicit-field-id field)]
+    [clause-name]))
+
+(doseq [clause-name [:count :cum-count]]
+  (defmethod canonicalize-mbql-clause clause-name
+    [clause]
+    (canonicalize-count-clause clause)))
+
+(defn- canonicalize-simple-aggregation-with-field
+  [[clause-name field]]
+  [clause-name (canonicalize-implicit-field-id field)])
+
+(doseq [clause-name [:avg :cum-sum :distinct :stddev :sum :min :max :median :var]]
+  (defmethod canonicalize-mbql-clause clause-name
+    [clause]
+    (canonicalize-simple-aggregation-with-field clause)))
+
+(defmethod canonicalize-mbql-clause :percentile
+  [[_ field percentile]]
+  [:percentile (canonicalize-implicit-field-id field) percentile])
+
+(defn- canonicalize-filtered-aggregation-clause
+  [[clause-name filter-subclause]]
+  [clause-name (canonicalize-mbql-clause filter-subclause)])
+
+(doseq [clause-name [:share :count-where]]
+  (defmethod canonicalize-mbql-clause clause-name
+    [clause]
+    (canonicalize-filtered-aggregation-clause clause)))
+
+(defmethod canonicalize-mbql-clause :sum-where
+  [[_ field filter-subclause]]
+  [:sum-where (canonicalize-mbql-clause field) (canonicalize-mbql-clause filter-subclause)])
+
+(defmethod canonicalize-mbql-clause :case
+  [[_ clauses options]]
+  (if options
+    (conj (canonicalize-mbql-clause [:case clauses])
+          (normalize-tokens options :ignore-path))
+    [:case (vec (for [[pred expr] clauses]
+                  [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))]))
+
+;;; top-level key canonicalization
+
+(defn- canonicalize-mbql-clauses
+  "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
+  [mbql-query]
+  (walk/prewalk
+   (fn [x]
+     (cond
+       (map? x)
+       (m/map-vals canonicalize-mbql-clauses x)
+
+       (not (mbql-clause? x))
+       x
+
+       :else
+       (try
+         (canonicalize-mbql-clause x)
+         (catch Throwable e
+           (log/error (tru "Invalid clause:") x)
+           (throw (ex-info (tru "Invalid MBQL clause")
+                           {:clause x}
+                           e))))))
+   mbql-query))
 
 (defn- wrap-single-aggregations
   "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
@@ -448,8 +585,13 @@
   clause."
   [aggregations]
   (->> (wrap-single-aggregations aggregations)
-       (keep canonicalize-expression-subclause)
+       (keep canonicalize-mbql-clauses)
        vec))
+
+(defn- canonicalize-breakouts [breakouts]
+  (if (mbql-clause? breakouts)
+    (recur [breakouts])
+    (not-empty (mapv wrap-implicit-field-id breakouts))))
 
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"
@@ -467,17 +609,30 @@
     [:ascending field]  (recur [:asc field])
     [:descending field] (recur [:desc field])
 
-    [:asc field]  [:asc  (wrap-implicit-field-id field)]
-    [:desc field] [:desc (wrap-implicit-field-id field)]
+    [:asc field]  [:asc  (canonicalize-implicit-field-id field)]
+    [:desc field] [:desc (canonicalize-implicit-field-id field)]
 
     ;; this case should be the first one hit when we come in with a vector of clauses e.g. [[:asc 1] [:desc 2]]
     [& clauses] (vec (distinct (map canonicalize-order-by clauses)))))
 
 (declare canonicalize-inner-mbql-query)
 
+(defn- canonicalize-template-tag [{:keys [dimension], :as tag}]
+  (cond-> tag
+    dimension (update :dimension canonicalize-mbql-clause)))
+
+(defn- canonicalize-template-tags [tags]
+  (into {} (for [[tag-name tag] tags]
+             [tag-name (canonicalize-template-tag tag)])))
+
+(defn- canonicalize-native-query [{:keys [template-tags], :as native-query}]
+  (cond-> native-query
+    template-tags (update :template-tags canonicalize-template-tags)))
+
 (defn- canonicalize-source-query [{native? :native, :as source-query}]
   (cond-> source-query
-    (not native?) canonicalize-inner-mbql-query))
+    (not native?) canonicalize-inner-mbql-query
+    native?       canonicalize-native-query))
 
 (defn- non-empty? [x]
   (if (coll? x)
@@ -489,56 +644,10 @@
   [mbql-query]
   (cond-> mbql-query
     (non-empty? (:aggregation  mbql-query)) (update :aggregation  canonicalize-aggregations)
-    (non-empty? (:breakout     mbql-query)) (update :breakout     (partial mapv wrap-implicit-field-id))
+    (non-empty? (:breakout     mbql-query)) (update :breakout     canonicalize-breakouts)
     (non-empty? (:fields       mbql-query)) (update :fields       (partial mapv wrap-implicit-field-id))
-    (non-empty? (:filter       mbql-query)) (update :filter       canonicalize-filter)
     (non-empty? (:order-by     mbql-query)) (update :order-by     canonicalize-order-by)
     (non-empty? (:source-query mbql-query)) (update :source-query canonicalize-source-query)))
-
-
-(def ^:private mbql-clause->canonicalization-fn
-  {:fk->
-   (fn [_ field-1 field-2]
-     [:fk-> (wrap-implicit-field-id field-1) (wrap-implicit-field-id field-2)])
-
-   :datetime-field
-   (fn
-     ([_ field unit]
-      [:datetime-field (wrap-implicit-field-id field) unit])
-     ([_ field _ unit]
-      [:datetime-field (wrap-implicit-field-id field) unit]))
-
-   :field-id
-   (fn [_ id]
-     ;; if someone is dumb and does something like [:field-id [:field-literal ...]] be nice and fix it for them.
-     (if (mbql-clause? id)
-       id
-       [:field-id id]))
-
-   :binning-strategy
-   (fn canonicalize-binning-strategy
-     ([_ field strategy-name]
-      [:binning-strategy (wrap-implicit-field-id field) strategy-name])
-     ([_ field strategy-name strategy-param]
-      (conj (canonicalize-binning-strategy nil field strategy-name) strategy-param)))})
-
-(defn- canonicalize-mbql-clauses
-  "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
-  [mbql-query]
-  (walk/prewalk
-   (fn [clause]
-     (if-not (mbql-clause? clause)
-       clause
-       (let [[clause-name & _] clause
-             f                 (mbql-clause->canonicalization-fn clause-name)]
-         (if f
-           (try
-             (apply f clause)
-             (catch Throwable e
-               (log/error (tru "Invalid clause:") clause)
-               (throw e)))
-           clause))))
-   mbql-query))
 
 (def ^:private ^{:arglists '([query])} canonicalize-inner-mbql-query
   (comp canonicalize-mbql-clauses canonicalize-top-level-mbql-clauses))
@@ -554,12 +663,14 @@
 (defn- canonicalize
   "Canonicalize a query [MBQL query], rewriting the query as if you perfectly followed the recommended style guides for
   writing MBQL. Does things like removes unneeded and empty clauses, converts older MBQL '95 syntax to MBQL '98, etc."
-  [{:keys [query parameters source-metadata], :as outer-query}]
+  [{:keys [query parameters source-metadata native], :as outer-query}]
   (try
     (cond-> outer-query
       source-metadata move-source-metadata-to-mbql-query
       query           (update :query canonicalize-inner-mbql-query)
-      parameters      (update :parameters (partial mapv canonicalize-mbql-clauses)))
+      parameters      (update :parameters (partial mapv canonicalize-mbql-clauses))
+      native          (update :native canonicalize-native-query)
+      true            canonicalize-mbql-clauses)
     (catch Throwable e
       (throw (ex-info (tru "Error canonicalizing query")
                       {:query query}
@@ -587,11 +698,12 @@
   [{{:keys [breakout fields]} :query, :as query}]
   (if-not (and (seq breakout) (seq fields))
     query
-    ;; get a set of all Field clauses (of any type) in the breakout. For `datetime-field` clauses, we'll include both
+    ;; get a set of all Field clauses (of any type) in the breakout. For temporal-bucketed fields, we'll include both
     ;; the bucketed `[:datetime-field <field> ...]` clause and the `<field>` clause it wraps
     (let [breakout-fields (set (reduce concat (mbql.u/match breakout
-                                                [:datetime-field field-clause _] [&match field-clause]
-                                                mbql.pred/Field?                 [&match])))]
+                                                [:field id-or-name opts]
+                                                [&match
+                                                 [:field id-or-name (dissoc opts :temporal-unit)]])))]
       ;; now remove all the Fields in `:fields` that match the ones in the set
       (update-in query [:query :fields] (comp vec (partial remove breakout-fields))))))
 

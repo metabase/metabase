@@ -25,29 +25,29 @@
     (letfn [(optimize [filter-type]
               (#'optimize-datetime-filters/optimize-filter
                [filter-type
-                [:datetime-field [:field-id 1] :day]
+                [:field 1 {:temporal-unit :day}]
                 [:absolute-datetime (t/zoned-date-time "2014-03-04T12:30Z[UTC]") :day]]))]
       (testing :<
         (is (= [:<
-                [:datetime-field [:field-id 1] :default]
+                [:field 1 {:temporal-unit :default}]
                 [:absolute-datetime (t/zoned-date-time "2014-03-04T00:00Z[UTC]") :default]]
                (optimize :<))
             "day(field) < day('2014-03-04T12:30') => day(field) < '2014-03-04' => field < '2014-03-04T00:00'"))
       (testing :<=
         (is (= [:<
-                [:datetime-field [:field-id 1] :default]
+                [:field 1 {:temporal-unit :default}]
                 [:absolute-datetime (t/zoned-date-time "2014-03-05T00:00Z[UTC]") :default]]
                (optimize :<=))
             "day(field) <= day('2014-03-04T12:30') => day(field) <= '2014-03-04' => field < '2014-03-05T00:00'"))
       (testing :>
         (is (= [:>=
-                [:datetime-field [:field-id 1] :default]
+                [:field 1 {:temporal-unit :default}]
                 [:absolute-datetime (t/zoned-date-time "2014-03-05T00:00Z[UTC]") :default]]
                (optimize :>))
             "day(field) > day('2014-03-04T12:30') => day(field) > '2014-03-04' => field >= '2014-03-05T00:00'"))
       (testing :>=
         (is (= [:>=
-                [:datetime-field [:field-id 1] :default]
+                [:field 1 {:temporal-unit :default}]
                 [:absolute-datetime (t/zoned-date-time "2014-03-04T00:00Z[UTC]") :default]]
                (optimize :>=))
             "day(field) >= day('2014-03-04T12:30') => day(field) >= '2014-03-04' => field >= '2014-03-04T00:00'")))))
@@ -94,51 +94,51 @@
         (testing unit
           (testing :=
             (is (= [:and
-                    [:>= [:datetime-field [:field-id 1] :default] lower]
-                    [:< [:datetime-field [:field-id 1] :default] upper]]
+                    [:>= [:field 1 {:temporal-unit :default}] lower]
+                    [:< [:field 1 {:temporal-unit :default}] upper]]
                    (optimize-datetime-filters
                     [:=
-                     [:datetime-field [:field-id 1] unit]
+                     [:field 1 {:temporal-unit unit}]
                      [:absolute-datetime filter-value unit]]))))
           (testing :!=
             (is (= [:or
-                    [:< [:datetime-field [:field-id 1] :default] lower]
-                    [:>= [:datetime-field [:field-id 1] :default] upper]]
+                    [:< [:field 1 {:temporal-unit :default}] lower]
+                    [:>= [:field 1 {:temporal-unit :default}] upper]]
                    (optimize-datetime-filters
                     [:!=
-                     [:datetime-field [:field-id 1] unit]
+                     [:field 1 {:temporal-unit unit}]
                      [:absolute-datetime filter-value unit]]))))
           (testing :<
-            (is (= [:< [:datetime-field [:field-id 1] :default] lower]
+            (is (= [:< [:field 1 {:temporal-unit :default}] lower]
                    (optimize-datetime-filters
                     [:<
-                     [:datetime-field [:field-id 1] unit]
+                     [:field 1 {:temporal-unit unit}]
                      [:absolute-datetime filter-value unit]]))))
           (testing :<=
-            (is (= [:< [:datetime-field [:field-id 1] :default] upper]
+            (is (= [:< [:field 1 {:temporal-unit :default}] upper]
                    (optimize-datetime-filters
                     [:<=
-                     [:datetime-field [:field-id 1] unit]
+                     [:field 1 {:temporal-unit unit}]
                      [:absolute-datetime filter-value unit]]))))
           (testing :>
-            (is (= [:>= [:datetime-field [:field-id 1] :default] upper]
+            (is (= [:>= [:field 1 {:temporal-unit :default}] upper]
                    (optimize-datetime-filters
                     [:>
-                     [:datetime-field [:field-id 1] unit]
+                     [:field 1 {:temporal-unit unit}]
                      [:absolute-datetime filter-value unit]]))))
           (testing :>=
-            (is (= [:>= [:datetime-field [:field-id 1] :default] lower]
+            (is (= [:>= [:field 1 {:temporal-unit :default}] lower]
                    (optimize-datetime-filters
                     [:>=
-                     [:datetime-field [:field-id 1] unit]
+                     [:field 1 {:temporal-unit unit}]
                      [:absolute-datetime filter-value unit]]))))
           (testing :between
             (is (= [:and
-                    [:>= [:datetime-field [:field-id 1] :default] lower]
-                    [:< [:datetime-field [:field-id 1] :default] upper]]
+                    [:>= [:field 1 {:temporal-unit :default}] lower]
+                    [:< [:field 1 {:temporal-unit :default}] upper]]
                    (optimize-datetime-filters
                     [:between
-                     [:datetime-field [:field-id 1] unit]
+                     [:field 1 {:temporal-unit unit}]
                      [:absolute-datetime filter-value unit]
                      [:absolute-datetime filter-value unit]])))))))))
 
@@ -146,7 +146,7 @@
   (let [query {:database 1
                :type     :query
                :query    {:filter [:=
-                                   [:datetime-field [:field-id 1] :day]
+                                   [:field 1 {:temporal-unit :day}]
                                    [:absolute-datetime t :day]]}}]
     (-> (mt/test-qp-middleware optimize-datetime-filters/optimize-datetime-filters query)
         (get-in [:pre :query :filter]))))
@@ -168,15 +168,15 @@
                   (format "upper bound of day(%s) in the %s timezone should be %s" t timezone-id upper)))
             (testing "optimize-with-datetime"
               (let [expected [:and
-                              [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime lower :default]]
-                              [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime upper :default]]]]
+                              [:>= [:field 1 {:temporal-unit :default}] [:absolute-datetime lower :default]]
+                              [:<  [:field 1 {:temporal-unit :default}] [:absolute-datetime upper :default]]]]
                 (is (= expected
                        (optimize-filter-clauses t))
                     (format "= %s in the %s timezone should be optimized to range %s -> %s"
                             t timezone-id lower upper))))))))))
 
 (deftest skip-optimization-test
-  (let [clause [:= [:datetime-field [:field-id 1] :day] [:absolute-datetime #t "2019-01-01" :month]]]
+  (let [clause [:= [:field 1 {:temporal-unit :day}] [:absolute-datetime #t "2019-01-01" :month]]]
     (is (= clause
            (optimize-datetime-filters clause))
         "Filters with different units in the datetime field and absolute-datetime shouldn't get optimized")))

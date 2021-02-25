@@ -36,11 +36,7 @@ describe("UnderlyingRecordsDrill", () => {
     const value = "2018-01-01T00:00:00Z";
     const query = ORDERS.query()
       .aggregate(["count"])
-      .breakout([
-        "datetime-field",
-        ["field-id", ORDERS.CREATED_AT.id],
-        "month",
-      ]);
+      .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }]);
     const actions = UnderlyingRecordsDrill(getActionProps(query, value));
     expect(actions).toHaveLength(1);
     const q = actions[0].question();
@@ -48,7 +44,7 @@ describe("UnderlyingRecordsDrill", () => {
       "source-table": ORDERS.id,
       filter: [
         "=",
-        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "month"],
+        ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
         value,
       ],
     });
@@ -59,9 +55,9 @@ describe("UnderlyingRecordsDrill", () => {
     const query = ORDERS.query()
       .aggregate(["count"])
       .breakout([
-        "datetime-field",
-        ["field-id", ORDERS.CREATED_AT.id],
-        "day-of-week",
+        "field",
+        ORDERS.CREATED_AT.id,
+        { "temporal-unit": "day-of-week" },
       ]);
 
     const actions = UnderlyingRecordsDrill(getActionProps(query, value));
@@ -82,7 +78,7 @@ describe("UnderlyingRecordsDrill", () => {
       "source-table": ORDERS.id,
       filter: [
         "=",
-        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "day-of-week"],
+        ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day-of-week" }],
         null,
       ],
     });
@@ -95,14 +91,14 @@ describe("UnderlyingRecordsDrill", () => {
       "source-table": PEOPLE.id,
       condition: [
         "=",
-        ["field-id", ORDERS.USER_ID.id],
-        ["joined-field", "User", ["field-id", PEOPLE.ID.id]],
+        ["field", ORDERS.USER_ID.id, null],
+        ["field", PEOPLE.ID.id, { "join-alias": "User" }],
       ],
     };
     const query = ORDERS.query()
       .join(join)
       .aggregate(["count"])
-      .breakout(["joined-field", "User", ["field-id", PEOPLE.STATE.id]]);
+      .breakout(["field", PEOPLE.STATE.id, { "join-alias": "User" }]);
 
     const actions = UnderlyingRecordsDrill(getActionProps(query, "CA"));
     expect(actions).toHaveLength(1);
@@ -111,11 +107,7 @@ describe("UnderlyingRecordsDrill", () => {
     expect(q.query().query()).toEqual({
       "source-table": ORDERS.id,
       joins: [join],
-      filter: [
-        "=",
-        ["joined-field", "User", ["field-id", PEOPLE.STATE.id]],
-        "CA",
-      ],
+      filter: ["=", ["field", PEOPLE.STATE.id, { "join-alias": "User" }], "CA"],
     });
     expect(q.display()).toEqual("table");
   });
@@ -126,18 +118,18 @@ describe("UnderlyingRecordsDrill", () => {
       .breakout(ORDERS.USER_ID.foreign(PEOPLE.STATE))
       .nest()
       .aggregate(["count"])
-      .breakout(["field-literal", "STATE", "type/Text"]);
+      .breakout(["field", "STATE", { "base-type": "type/Text" }]);
 
     const actions = UnderlyingRecordsDrill(getActionProps(query, "CA"));
     expect(actions).toHaveLength(1);
     const q = actions[0].question();
 
     expect(q.query().query()).toEqual({
-      filter: ["=", ["field-literal", "STATE", "type/Text"], "CA"],
+      filter: ["=", ["field", "STATE", { "base-type": "type/Text" }], "CA"],
       "source-query": {
         "source-table": ORDERS.id,
         aggregation: [["count"]],
-        breakout: [["fk->", ["field-id", 7], ["field-id", 19]]],
+        breakout: [["field", 19, { "source-field": 7 }]],
       },
     });
     expect(q.display()).toEqual("table");
@@ -157,14 +149,10 @@ describe("UnderlyingRecordsDrill", () => {
         "and",
         [
           "=",
-          [
-            "fk->",
-            ["field-id", ORDERS.USER_ID.id],
-            ["field-id", PEOPLE.STATE.id],
-          ],
+          ["field", PEOPLE.STATE.id, { "source-field": ORDERS.USER_ID.id }],
           "CA",
         ],
-        [">", ["field-id", ORDERS.TOTAL.id], 42],
+        [">", ["field", ORDERS.TOTAL.id, null], 42],
       ],
       "source-table": 1,
     });

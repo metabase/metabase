@@ -22,8 +22,8 @@ describe("scenarios > question > null", () => {
         database: 1,
         query: {
           "source-table": ORDERS_ID,
-          fields: [["field-id", ORDERS.DISCOUNT]],
-          filter: ["=", ["field-id", ORDERS.ID], 1],
+          fields: [["field", ORDERS.DISCOUNT, null]],
+          filter: ["=", ["field", ORDERS.ID, null], 1],
         },
         type: "query",
       },
@@ -55,15 +55,15 @@ describe("scenarios > question > null", () => {
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["expression", "NewDiscount"]]],
-          breakout: [["field-id", ORDERS.ID]],
+          breakout: [["field", ORDERS.ID, null]],
           expressions: {
             NewDiscount: [
               "case",
-              [[["=", ["field-id", ORDERS.ID], 2], 0]],
-              { default: ["field-id", ORDERS.DISCOUNT] },
+              [[["=", ["field", ORDERS.ID, null], 2], 0]],
+              { default: ["field", ORDERS.DISCOUNT, null] },
             ],
           },
-          filter: ["=", ["field-id", ORDERS.ID], 1, 2, 3],
+          filter: ["=", ["field", ORDERS.ID, null], 1, 2, 3],
         },
         type: "query",
       },
@@ -104,7 +104,7 @@ describe("scenarios > question > null", () => {
                   {
                     parameter_id: "1f97c149",
                     card_id: questionId,
-                    target: ["dimension", ["field-id", ORDERS.ID]],
+                    target: ["dimension", ["field", ORDERS.ID, null]],
                   },
                 ],
               },

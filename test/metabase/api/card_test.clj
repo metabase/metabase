@@ -974,9 +974,9 @@
                              :dataset_query          (assoc-in
                                                       (mbql-count-query (mt/id) (mt/id :checkins))
                                                       [:query :breakout]
-                                                      [["datetime-field"
+                                                      [[:field
                                                         (mt/id :checkins :date)
-                                                        "hour"]])}
+                                                        {:temporal-unit :hour}]])}
             :expected-email "the question was edited by Crowberto Corv"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))

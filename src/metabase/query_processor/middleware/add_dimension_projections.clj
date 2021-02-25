@@ -50,13 +50,13 @@
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
   [fields :- [mbql.s/Field]]
-  (when-let [field-ids (seq (map second (filter (partial mbql.u/is-clause? :field-id) fields)))]
+  (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
     (u/key-by :field_id (db/select [Dimension :field_id :name :human_readable_field_id]
-                          :field_id [:in (set field-ids)]
+                          :field_id [:in field-ids]
                           :type     "external"))))
 
-(s/defn ^:private create-remap-col-tuples :- [[(s/one mbql.s/field-id            "Field")
-                                               (s/one mbql.s/fk->                "remapped FK Field")
+(s/defn ^:private create-remap-col-tuples :- [[(s/one mbql.s/field            "Field")
+                                               (s/one mbql.s/field            "remapped FK Field")
                                                (s/one ExternalRemappingDimension "remapping Dimension info")]]
   "Return tuples of `:field-id` clauses, the new remapped column `:fk->` clauses that the Field should be remapped to,
   and the Dimension that suggested the remapping, which is used later in this middleware for post-processing. Order is
@@ -68,13 +68,11 @@
     (let [unique-name (comp (mbql.u/unique-name-generator) :name Field)]
       (vec
        (mbql.u/match fields
-         ;; don't match Field IDs nested in other clauses
-         [(_ :guard keyword?) [:field-id _] & _] nil
-
-         [:field-id (id :guard field-id->remapping-dimension)]
+         ;; don't match Fields that have been joined from another Table
+         [:field (id :guard (every-pred integer? field-id->remapping-dimension)) (_ :guard (complement (some-fn :join-alias :source-field)))]
          (let [dimension (field-id->remapping-dimension id)]
            [&match
-            [:fk-> &match [:field-id (:human_readable_field_id dimension)]]
+            [:field (:human_readable_field_id dimension) {:source-field id}]
             (assoc dimension
               :field_name                (-> dimension :field_id unique-name)
               :human_readable_field_name (-> dimension :human_readable_field_id unique-name))]))))))
@@ -83,7 +81,7 @@
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
   the newly remapped column. This should order by the text of the remapped column vs. the id of the source column
   before the remapping"
-  [field->remapped-col :- {mbql.s/field-id, mbql.s/fk->}, order-by-clauses :- [mbql.s/OrderBy]]
+  [field->remapped-col :- {mbql.s/field mbql.s/field}, order-by-clauses :- [mbql.s/OrderBy]]
   (->> (for [[direction field, :as order-by-clause] order-by-clauses]
          (if-let [remapped-col (get field->remapped-col field)]
            [direction remapped-col]
@@ -95,9 +93,9 @@
   [field->remapped-col breakout-clause]
   (->> breakout-clause
        (mapcat (fn [field]
-              (if-let [remapped-col (get field->remapped-col field)]
-                [remapped-col field]
-                [field])))
+                 (if-let [remapped-col (get field->remapped-col field)]
+                   [remapped-col field]
+                   [field])))
        distinct
        vec))
 
@@ -107,7 +105,7 @@
   and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
   [{{:keys [fields order-by breakout source-query]} :query, :as query} :- mbql.s/Query]
   (let [[source-query-remappings query]
-        (if (and source-query (not (:native source-query))) ;; Only do lifting if source is MBQL query
+        (if (and source-query (not (:native source-query))) ; Only do lifting if source is MBQL query
           (let [[source-query-remappings source-query] (add-fk-remaps (assoc query :query source-query))]
             [source-query-remappings (assoc-in query [:query :source-query] (:query source-query))])
           [nil query])]
@@ -145,7 +143,7 @@
    remapping-dimensions   :- (s/maybe [ExternalRemappingDimension])
    internal-remap-columns :- (s/maybe [su/Map])]
   ;; We have to complicate our lives a bit and account for the possibility that dimensions might be
-  ;; used in an upstream `source-query`. If so, `columns` will treat them as `:field-literal`s, erasing
+  ;; used in an upstream `source-query`. If so, `columns` will treat them as `:field` w/ names, erasing
   ;; IDs. In that case reconstruct the mappings using names.
   ;;
   ;; TODO:

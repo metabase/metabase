@@ -1,7 +1,8 @@
 (ns metabase.mbql.normalize-test
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
-            [metabase.mbql.normalize :as normalize]))
+            [metabase.mbql.normalize :as normalize]
+            [metabase.util :as u]))
 
 (defn- tests {:style/indent 2} [f-symb f group->input->expected]
   (doseq [[group input->expected] group->input->expected]
@@ -62,7 +63,14 @@
 
     "... but they should be converted to strings if passed in as a KW for some reason"
     {{:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}
-     {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}))
+     {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}
+
+    "modern :field clauses should get normalized"
+    {[:field 2 {"temporal-unit" "day"}]
+     [:field 2 {:temporal-unit :day}]
+
+     [:field 2 {"binning" {"strategy" "default"}}]
+     [:field 2 {:binning {:strategy :default}}]}))
 
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
@@ -300,7 +308,16 @@
       :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}
      {:database 4,
       :type     :query
-      :query    {:source-query {:source-table 1, :aggregation :rows}}}}))
+      :query    {:source-query {:source-table 1, :aggregation :rows}}}}
+
+    "Don't keywordize keys that aren't present in template tag maps"
+    {{:database 1
+      :type     :native
+      :native   {:template-tags {"x" {}}}}
+
+     {:database 1
+      :type     :native
+      :native   {:template-tags {"x" {}}}}}))
 
 
 
@@ -414,19 +431,35 @@
 
 (deftest wrap-implicit-field-id-test
   (testing "Does our `wrap-implict-field-id` fn work?"
-    (doseq [input [10 [:field-id 10]]]
+    (doseq [input [10 [:field 10 nil]]]
       (testing (pr-str (list 'wrap-implicit-field-id input))
-        (is (= [:field-id 10]
-               (#'normalize/wrap-implicit-field-id input)))))))
+        (is (= [:field 10 nil]
+               (#'normalize/wrap-implicit-field-id input)))))
+    (testing "Leave legacy clauses as-is; we'll replace them elsewhere"
+      (is (= [:field-id 10]
+             (#'normalize/wrap-implicit-field-id [:field-id 10]))))))
+
+(deftest canonicalize-field-test
+  (canonicalize-tests
+    "If someone accidentally nests `:field` clauses, we should fix it for them."
+    {{:query {:fields [[:field [:field 1 {:a 100, :b 200}] {:b 300}]]}}
+     {:query {:fields [[:field 1 {:a 100, :b 300}]]}}
+
+     {:query {:fields [[:field [:field [:field 1 {:a 100, :b 200}] {:b 300}] {:a 400, :c 500}]]}}
+     {:query {:fields [[:field 1 {:a 400, :b 300, :c 500}]]}}}
+
+    "We should remove empty options maps"
+    {[:field 2 {}]
+     [:field 2 nil]}))
 
 
 ;;; ------------------------------------------------ binning strategy ------------------------------------------------
 
 (deftest canonicalize-binning-strategy-test
   (canonicalize-tests
-   "make sure `binning-strategy` wraps implicit Field IDs"
-   {{:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}
-    {:query {:breakout [[:binning-strategy [:field-id 10] :bin-width 2000]]}}}))
+    "make sure `binning-strategy` wraps implicit Field IDs"
+    {{:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}
+     {:query {:breakout [[:field 10 {:binning {:strategy :bin-width, :bin-width 2000}}]]}}}))
 
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
@@ -435,7 +468,7 @@
   (canonicalize-tests
     "field ID should get wrapped in field-id and ags should be converted to multiple ag syntax"
     {{:query {:aggregation [:count 10]}}
-     {:query {:aggregation [[:count [:field-id 10]]]}}}
+     {:query {:aggregation [[:count [:field 10 nil]]]}}}
 
     "ag with no Field ID"
     {{:query {:aggregation [:count]}}
@@ -443,7 +476,7 @@
 
     "if already wrapped in field-id it's ok"
     {{:query {:aggregation [:count [:field-id 1000]]}}
-     {:query {:aggregation [[:count [:field-id 1000]]]}}}
+     {:query {:aggregation [[:count [:field 1000 nil]]]}}}
 
     "ags in the canonicalized format should pass thru ok"
     {{:query {:aggregation [[:metric "ga:sessions"] [:metric "ga:1dayUsers"]]}}
@@ -462,11 +495,11 @@
 
     "make sure we handle single :count with :field-id correctly"
     {{:query {:aggregation [:count [:field-id 10]]}}
-     {:query {:aggregation [[:count [:field-id 10]]]}}}
+     {:query {:aggregation [[:count [:field 10 nil]]]}}}
 
     "make sure for multiple aggregations we can handle `:count` that doesn't appear wrapped in brackets"
     {{:query {:aggregation [:count [:sum 10]]}}
-     {:query {:aggregation [[:count] [:sum [:field-id 10]]]}}}
+     {:query {:aggregation [[:count] [:sum [:field 10 nil]]]}}}
 
     (str "this doesn't make sense, but make sure if someone specifies a `:rows` ag and another one we don't end up "
          "with a `nil` in the ags list")
@@ -479,29 +512,29 @@
 
     "a mix of unwrapped & wrapped should still work"
     {{:query {:aggregation [:count [:sum 10] [:count 20] :count]}}
-     {:query {:aggregation [[:count] [:sum [:field-id 10]] [:count [:field-id 20]] [:count]]}}}
+     {:query {:aggregation [[:count] [:sum [:field 10 nil]] [:count [:field 20 nil]] [:count]]}}}
 
     "legacy `:named` aggregation clauses should get converted to `:aggregation-options`"
     {{:query {:aggregation [:named [:sum 10] "Sum *TEN*"]}}
-     {:query {:aggregation [[:aggregation-options [:sum [:field-id 10]] {:display-name "Sum *TEN*"}]]}}
+     {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {:display-name "Sum *TEN*"}]]}}
 
      {:query {:aggregation [:named [:sum 10] "Sum *TEN*" {:use-as-display-name? false}]}}
-     {:query {:aggregation [[:aggregation-options [:sum [:field-id 10]] {:name "Sum *TEN*"}]]}}}
+     {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {:name "Sum *TEN*"}]]}}}
 
     "subclauses of `:aggregation-options` should get canonicalized correctly"
-    {{:query {:aggregation [:aggregation-options [:sum 10] {}]}}
-     {:query {:aggregation [[:aggregation-options] [:sum [:field-id 10]]]}}}
+    {{:query {:aggregation [[:aggregation-options [:sum 10] {}]]}}
+     {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {}]]}}}
 
     "make sure expression aggregations work correctly"
     {{:query {:aggregation [:+ [:sum 10] 2]}}
-     {:query {:aggregation [[:+ [:sum [:field-id 10]] 2]]}}
+     {:query {:aggregation [[:+ [:sum [:field 10 nil]] 2]]}}
 
      {:query {:aggregation [:+ [:sum 10] [:* [:sum 20] [:sum 30]]]}}
-     {:query {:aggregation [[:+ [:sum [:field-id 10]] [:* [:sum [:field-id 20]] [:sum [:field-id 30]]]]]}}}
+     {:query {:aggregation [[:+ [:sum [:field 10 nil]] [:* [:sum [:field 20 nil]] [:sum [:field 30 nil]]]]]}}}
 
     "expression ags should handle varargs"
     {{:query {:aggregation [[:+ [:sum 10] [:sum 20] [:sum 30]]]}}
-     {:query {:aggregation [[:+ [:sum [:field-id 10]] [:sum [:field-id 20]] [:sum [:field-id 30]]]]}}}
+     {:query {:aggregation [[:+ [:sum [:field 10 nil]] [:sum [:field 20 nil]] [:sum [:field 30 nil]]]]}}}
 
     "METRICS shouldn't get canonicalized in some kind of wacky way"
     {{:query {:aggregation [:+ [:metric 1] 2]}}
@@ -512,15 +545,26 @@
      {:query {:aggregation [[:cum-count]]}}
 
      {:query {:aggregation [:cum-count 10]}}
-     {:query {:aggregation [[:cum-count [:field-id 10]]]}}}
+     {:query {:aggregation [[:cum-count [:field 10 nil]]]}}}
 
     "should handle seqs without a problem"
     {{:query {:aggregation '([:min 1] [:min 2])}}
-     {:query {:aggregation [[:min [:field-id 1]] [:min [:field-id 2]]]}}}
+     {:query {:aggregation [[:min [:field 1 nil]] [:min [:field 2 nil]]]}}}
 
     "make sure canonicalization can handle aggregations with expressions where the Field normally goes"
     {{:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}
-     {:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}}))
+     {:query {:aggregation [[:sum [:* [:field 4 nil] [:field 1 nil]]]]}}
+
+     {:query {:aggregation [[:sum [:* [:field 4 nil] [:field 1 nil]]]]}}
+     {:query {:aggregation [[:sum [:* [:field 4 nil] [:field 1 nil]]]]}}}
+
+    "Make sure `:case`  expressions get canonicalized correctly"
+    {{:query {:aggregation [:sum [:case [[[:< [:field-id 37331] 2] 2] [[:< [:field-id 37331] 4] 1]]]]}}
+     {:query {:aggregation [[:sum [:case [[[:< [:field 37331 nil] 2] 2] [[:< [:field 37331 nil] 4] 1]]]]]}}}
+
+    ":percentile"
+    {{:query {:aggregation [[:percentile [:field-id 37809] 0.9]]}}
+     {:query {:aggregation [[:percentile [:field 37809 nil] 0.9]]}}}))
 
 
 ;;; ---------------------------------------------------- breakout ----------------------------------------------------
@@ -529,17 +573,20 @@
   (canonicalize-tests
     "implicit Field IDs should get wrapped in [:field-id] in :breakout"
     {{:query {:breakout [10]}}
-     {:query {:breakout [[:field-id 10]]}}
+     {:query {:breakout [[:field 10 nil]]}}
 
      {:query {:breakout [10 20]}}
-     {:query {:breakout [[:field-id 10] [:field-id 20]]}}}
+     {:query {:breakout [[:field 10 nil] [:field 20 nil]]}}}
 
     "should handle seqs"
     {{:query {:breakout '(10 20)}}
-     {:query {:breakout [[:field-id 10] [:field-id 20]]}}
+     {:query {:breakout [[:field 10 nil] [:field 20 nil]]}}
 
      {:query {:breakout [[:field-id 1000]]}}
-     {:query {:breakout [[:field-id 1000]]}}}))
+     {:query {:breakout [[:field 1000 nil]]}}
+
+     {:query {:breakout [[:field 1000 nil]]}}
+     {:query {:breakout [[:field 1000 nil]]}}}))
 
 
 ;;; ----------------------------------------------------- fields -----------------------------------------------------
@@ -548,17 +595,17 @@
   (canonicalize-tests
     "implicit Field IDs should get wrapped in [:field-id] in :fields"
     {{:query {:fields [10]}}
-     {:query {:fields [[:field-id 10]]}}
+     {:query {:fields [[:field 10 nil]]}}
 
      {:query {:fields [10 20]}}
-     {:query {:fields [[:field-id 10] [:field-id 20]]}}
+     {:query {:fields [[:field 10 nil] [:field 20 nil]]}}
 
      {:query {:fields [[:field-id 1000]]}}
-     {:query {:fields [[:field-id 1000]]}}}
+     {:query {:fields [[:field 1000 nil]]}}}
 
     "should handle seqs"
     {{:query {:fields '(10 20)}}
-     {:query {:fields [[:field-id 10] [:field-id 20]]}}}))
+     {:query {:fields [[:field 10 nil] [:field 20 nil]]}}}))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -567,24 +614,24 @@
   (canonicalize-tests
     "implicit Field IDs should get wrapped in [:field-id] in filters"
     {{:query {:filter [:= 10 20]}}
-     {:query {:filter [:= [:field-id 10] 20]}}
+     {:query {:filter [:= [:field 10 nil] 20]}}
 
      {:query {:filter [:and [:= 10 20] [:= 20 30]]}}
-     {:query {:filter [:and [:= [:field-id 10] 20] [:= [:field-id 20] 30]]}}
+     {:query {:filter [:and [:= [:field 10 nil] 20] [:= [:field 20 nil] 30]]}}
 
      {:query {:filter [:between 10 20 30]}}
-     {:query {:filter [:between [:field-id 10] 20 30]}}}
+     {:query {:filter [:between [:field 10 nil] 20 30]}}}
 
     "`:inside` filters should get implict Field IDs for the first two args"
     {{:query {:filter [:inside 1 2 90 -90 90 -90]}}
-     {:query {:filter [:inside [:field-id 1] [:field-id 2] 90 -90 90 -90]}}}
+     {:query {:filter [:inside [:field 1 nil] [:field 2 nil] 90 -90 90 -90]}}}
 
     "compound filters with only one arg should get automatically de-compounded"
     {{:query {:filter [:and [:= 100 2]]}}
-     {:query {:filter [:= [:field-id 100] 2]}}
+     {:query {:filter [:= [:field 100 nil] 2]}}
 
      {:query {:filter [:or [:= 100 2]]}}
-     {:query {:filter [:= [:field-id 100] 2]}}}
+     {:query {:filter [:= [:field 100 nil] 2]}}}
 
     "compound filters should \"pull-up\" any args that are the same compound filter"
     {{:query {:filter [:and
@@ -595,10 +642,10 @@
                         [:= [:field-id 300] 3]
                         [:= [:field-id 400] 4]]]}}
      {:query {:filter [:and
-                       [:= [:field-id 100] 1]
-                       [:= [:field-id 200] 2]
-                       [:= [:field-id 300] 3]
-                       [:= [:field-id 400] 4]]}}
+                       [:= [:field 100 nil] 1]
+                       [:= [:field 200 nil] 2]
+                       [:= [:field 300 nil] 3]
+                       [:= [:field 400 nil] 4]]}}
 
      {:query {:filter [:and
                        [:> [:field-id 4] 1]
@@ -607,10 +654,10 @@
                         [:= [:field-id 5] "abc"]
                         [:between [:field-id 9] 0 25]]]}}
      {:query {:filter [:and
-                       [:> [:field-id 4] 1]
-                       [:is-null [:field-id 7]]
-                       [:= [:field-id 5] "abc"]
-                       [:between [:field-id 9] 0 25]]}}
+                       [:> [:field 4 nil] 1]
+                       [:is-null [:field 7 nil]]
+                       [:= [:field 5 nil] "abc"]
+                       [:between [:field 9 nil] 0 25]]}}
 
      {:query {:filter [:or
                        [:or
@@ -620,10 +667,10 @@
                         [:= [:field-id 300] 3]
                         [:= [:field-id 400] 4]]]}}
      {:query {:filter [:or
-                       [:= [:field-id 100] 1]
-                       [:= [:field-id 200] 2]
-                       [:= [:field-id 300] 3]
-                       [:= [:field-id 400] 4]]}}
+                       [:= [:field 100 nil] 1]
+                       [:= [:field 200 nil] 2]
+                       [:= [:field 300 nil] 3]
+                       [:= [:field 400 nil] 4]]}}
 
      {:query {:filter [:or
                        [:> [:field-id 4] 1]
@@ -632,22 +679,22 @@
                         [:= [:field-id 5] "abc"]
                         [:between [:field-id 9] 0 25]]]}}
      {:query {:filter [:or
-                       [:> [:field-id 4] 1]
-                       [:is-null [:field-id 7]]
-                       [:= [:field-id 5] "abc"]
-                       [:between [:field-id 9] 0 25]]}}}
+                       [:> [:field 4 nil] 1]
+                       [:is-null [:field 7 nil]]
+                       [:= [:field 5 nil] "abc"]
+                       [:between [:field 9 nil] 0 25]]}}}
 
     "not inside of a not should get elimated entirely"
     {{:query {:filter [:not [:not [:= [:field-id 100] 1]]]}}
-     {:query {:filter [:= [:field-id 100] 1]}}}
+     {:query {:filter [:= [:field 100 nil] 1]}}}
 
     "make sure we don't overwrite options if specified"
     {{:query {:filter [:contains 10 "ABC" {:case-sensitive false}]}}
-     {:query {:filter [:contains [:field-id 10] "ABC" {:case-sensitive false}]}}}
+     {:query {:filter [:contains [:field 10 nil] "ABC" {:case-sensitive false}]}}}
 
     "or for time-interval options"
     {[:time-interval 10 -30 :day {:include-current true}]
-     [:time-interval 10 -30 :day {:include-current true}]}
+     [:time-interval [:field 10 nil] -30 :day {:include-current true}]}
 
     "make sure empty filter clauses don't explode in canonicalize"
     {{:database 1, :type :query, :query {:filter []}}
@@ -664,41 +711,41 @@
       :query    {:filter
                  [:and
                   [:segment "gaid:-11"]
-                  [:time-interval [:field-id 6851] -365 :day {}]]}}}
+                  [:time-interval [:field 6851 nil] -365 :day {}]]}}}
 
     "should handle seqs"
     {{:query {:filter '(:and
                         [:= 100 1]
                         [:= 200 2])}}
-     {:query {:filter [:and [:= [:field-id 100] 1] [:= [:field-id 200] 2]]}}}
+     {:query {:filter [:and [:= [:field 100 nil] 1] [:= [:field 200 nil] 2]]}}}
 
     "if you put a `:datetime-field` inside a `:time-interval` we should fix it for you"
     {{:query {:filter [:time-interval [:datetime-field [:field-id 8] :month] -30 :day]}}
-     {:query {:filter [:time-interval [:field-id 8] -30 :day]}}}
+     {:query {:filter [:time-interval [:field 8 nil] -30 :day]}}}
 
     "fk-> clauses should get the field-id treatment"
     {{:query {:filter [:= [:fk-> 10 20] "ABC"]}}
-     {:query {:filter [:= [:fk-> [:field-id 10] [:field-id 20]] "ABC"]}}}
+     {:query {:filter [:= [:field 20 {:source-field 10}] "ABC"]}}}
 
     "as should datetime-field clauses..."
     {{:query {:filter [:= [:datetime-field 10 :day] "2018-09-05"]}}
-     {:query {:filter [:= [:datetime-field [:field-id 10] :day] "2018-09-05"]}}}
+     {:query {:filter [:= [:field 10 {:temporal-unit :day}] "2018-09-05"]}}}
 
     "MBQL 95 datetime-field clauses ([:datetime-field <field> :as <unit>]) should get converted to MBQL 2000"
     {{:query {:filter [:= [:datetime-field 10 :as :day] "2018-09-05"]}}
-     {:query {:filter [:= [:datetime-field [:field-id 10] :day] "2018-09-05"]}}}
+     {:query {:filter [:= [:field 10 {:temporal-unit :day}] "2018-09-05"]}}}
 
     "if someone is dumb and passes something like a field-literal inside a field-id, fix it for them."
     {{:query {:filter [:= [:field-id [:field-literal "my_field" "type/Number"]] 10]}}
-     {:query {:filter [:= [:field-literal "my_field" "type/Number"] 10]}}}
+     {:query {:filter [:= [:field "my_field" {:base-type "type/Number"}] 10]}}}
 
     "we should fix :field-ids inside :field-ids too"
     {{:query {:filter [:= [:field-id [:field-id 1]] 10]}}
-     {:query {:filter [:= [:field-id 1] 10]}}}
+     {:query {:filter [:= [:field 1 nil] 10]}}}
 
     "we should handle seqs no prob"
     {{:query {:filter '(:= 1 10)}}
-     {:query {:filter [:= [:field-id 1] 10]}}}))
+     {:query {:filter [:= [:field 1 nil] 10]}}}))
 
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
@@ -707,30 +754,30 @@
   (canonicalize-tests
     "ORDER BY: MBQL 95 [field direction] should get translated to MBQL 98+ [direction field]"
     {{:query {:order-by [[[:field-id 10] :asc]]}}
-     {:query {:order-by [[:asc [:field-id 10]]]}}}
+     {:query {:order-by [[:asc [:field 10 nil]]]}}}
 
     "MBQL 95 old order-by names should be handled"
     {{:query {:order-by [[10 :ascending]]}}
-     {:query {:order-by [[:asc [:field-id 10]]]}}}
+     {:query {:order-by [[:asc [:field 10 nil]]]}}}
 
     "field-id should be added if needed"
     {{:query {:order-by [[10 :asc]]}}
-     {:query {:order-by [[:asc [:field-id 10]]]}}
+     {:query {:order-by [[:asc [:field 10 nil]]]}}
 
      {:query {:order-by [[:asc 10]]}}
-     {:query {:order-by [[:asc [:field-id 10]]]}}}
+     {:query {:order-by [[:asc [:field 10 nil]]]}}}
 
 
     "we should handle seqs no prob"
     {{:query {:order-by '((1 :ascending))}}
-     {:query {:order-by [[:asc [:field-id 1]]]}}}
+     {:query {:order-by [[:asc [:field 1 nil]]]}}}
 
     "duplicate order-by clauses should get removed"
     {{:query {:order-by [[:asc [:field-id 1]]
                          [:desc [:field-id 2]]
                          [:asc 1]]}}
-     {:query {:order-by [[:asc [:field-id 1]]
-                         [:desc [:field-id 2]]]}}}))
+     {:query {:order-by [[:asc [:field 1 nil]]
+                         [:desc [:field 2 nil]]]}}}))
 
 
 ;;; ------------------------------------------------- source queries -------------------------------------------------
@@ -773,44 +820,44 @@
     {(str "If you specify a field in a breakout and in the Fields clause, we should go ahead and remove it from the "
           "Fields clause, because it is (obviously) implied that you should get that Field back.")
      {{:type  :query
-       :query {:breakout [[:field-id 1] [:field-id 2]]
-               :fields   [[:field-id 2] [:field-id 3]]}}
+       :query {:breakout [[:field 1 nil] [:field 2 nil]]
+               :fields   [[:field 2 nil] [:field 3 nil]]}}
       {:type  :query
-       :query {:breakout [[:field-id 1] [:field-id 2]]
-               :fields   [[:field-id 3]]}}}
+       :query {:breakout [[:field 1 nil] [:field 2 nil]]
+               :fields   [[:field 3 nil]]}}}
 
      "should work with FKs"
      {{:type  :query
-       :query {:breakout [[:field-id 1]
-                          [:fk-> [:field-id 2] [:field-id 4]]]
-               :fields   [[:fk-> [:field-id 2] [:field-id 4]]
-                          [:field-id 3]]}}
+       :query {:breakout [[:field 1 nil]
+                          [:field 4 {:source-field 2}]]
+               :fields   [[:field 4 {:source-field 2}]
+                          [:field 3 nil]]}}
       {:type  :query
-       :query {:breakout [[:field-id 1]
-                          [:fk-> [:field-id 2] [:field-id 4]]]
-               :fields   [[:field-id 3]]}}}
+       :query {:breakout [[:field 1 nil]
+                          [:field 4 {:source-field 2}]]
+               :fields   [[:field 3 nil]]}}}
 
      "should work if the Field is bucketed in the breakout & in fields"
      {{:type  :query
-       :query {:breakout [[:field-id 1]
-                          [:datetime-field [:fk-> [:field-id 2] [:field-id 4]] :month]]
-               :fields   [[:datetime-field [:fk-> [:field-id 2] [:field-id 4]] :month]
-                          [:field-id 3]]}}
+       :query {:breakout [[:field 1 nil]
+                          [:field 4 {:source-field 2, :temporal-unit :month}]]
+               :fields   [[:field 4 {:source-field 2, :temporal-unit :month}]
+                          [:field 3 nil]]}}
       {:type  :query
-       :query {:breakout [[:field-id 1]
-                          [:datetime-field [:fk-> [:field-id 2] [:field-id 4]] :month]]
-               :fields   [[:field-id 3]]}}}
+       :query {:breakout [[:field 1 nil]
+                          [:field 4 {:source-field 2, :temporal-unit :month}]]
+               :fields   [[:field 3 nil]]}}}
 
      "should work if the Field is bucketed in the breakout but not in fields"
      {{:type  :query
-       :query {:breakout [[:field-id 1]
-                          [:datetime-field [:fk-> [:field-id 2] [:field-id 4]] :month]]
-               :fields   [[:fk-> [:field-id 2] [:field-id 4]]
-                          [:field-id 3]]}}
+       :query {:breakout [[:field 1 nil]
+                          [:field 4 {:source-field 2, :temporal-unit :month}]]
+               :fields   [[:field 4 {:source-field 2}]
+                          [:field 3 nil]]}}
       {:type  :query
-       :query {:breakout [[:field-id 1]
-                          [:datetime-field [:fk-> [:field-id 2] [:field-id 4]] :month]]
-               :fields   [[:field-id 3]]}}}}))
+       :query {:breakout [[:field 1 nil]
+                          [:field 4 {:source-field 2, :temporal-unit :month}]]
+               :fields   [[:field 3 nil]]}}}}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -838,6 +885,33 @@
       {:a {:b 100}, :c {:d nil}}
       {:a {:b 100}}}}))
 
+(deftest remove-empty-options-from-field-clause-test
+  (tests 'remove-empty-clauses #'normalize/remove-empty-clauses
+    {"We should remove empty options maps"
+     {[:field 2 {}]
+      [:field 2 nil]
+
+      [:field 2 {:binning {}}]
+      [:field 2 nil]}
+
+     "We should remove nil keys from options maps"
+     {[:field 2 {:join-alias nil}]
+      [:field 2 nil]
+
+      [:field 2 {:binning {:strategy nil}}]
+      [:field 2 nil]}
+
+     "Don't remove false values from options map"
+     {[:field 2 {:x false}]
+      [:field 2 {:x false}]}
+
+     "Remove empty sequences from options map"
+     {[:field 2 {:x []}]
+      [:field 2 nil]
+
+      [:field 2 {:x [{:y nil}]}]
+      [:field 2 nil]}}))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
@@ -847,9 +921,9 @@
   (testing "With an ugly MBQL 95 query, does everything get normalized nicely?"
     (is (= {:type  :query
             :query {:source-table 10
-                    :breakout     [[:field-id 10] [:field-id 20]]
-                    :filter       [:= [:field-id 10] [:datetime-field [:field-id 20] :day]]
-                    :order-by     [[:desc [:field-id 10]]]}}
+                    :breakout     [[:field 10 nil] [:field 20 nil]]
+                    :filter       [:= [:field 10 nil] [:field 20 {:temporal-unit :day}]]
+                    :order-by     [[:desc [:field 10 nil]]]}}
            (normalize/normalize {:type  "query"
                                  :query {"source_table" 10
                                          "AGGREGATION"  "ROWS"
@@ -863,7 +937,7 @@
                          :template-tags {"names_list" {:name         "names_list"
                                                        :display-name "Names List"
                                                        :type         :dimension
-                                                       :dimension    [:field-id 49]}}}
+                                                       :dimension    [:field 49 nil]}}}
             :parameters [{:type   :text
                           :target [:dimension [:template-tag "names_list"]]
                           :value  ["BBQ" "Bakery" "Bar"]}]}
@@ -883,7 +957,7 @@
             :type     :query
             :query    {:source-table 2
                        :filter       [:and
-                                      [:= [:field-id 3] "Toucan-friendly"]
+                                      [:= [:field 3 nil] "Toucan-friendly"]
                                       [:segment 4]
                                       [:segment 5]]}}
            (normalize/normalize
@@ -917,8 +991,8 @@
 
 (deftest e2e-rows-aggregation-test
   (testing "make sure `rows` aggregations get removed"
-    (is (= {:database 4,
-            :type     :query,
+    (is (= {:database 4
+            :type     :query
             :query    {:source-query {:source-table 1}}}
            (normalize/normalize
             {:database 4
@@ -928,10 +1002,10 @@
 (deftest e2e-parameters-test
   (testing (str "make sure that parameters get normalized/canonicalized correctly. value should not get normalized, "
                 "but type should; target should do canonicalization for MBQL clauses")
-    (is (= {:type       :query,
+    (is (= {:type       :query
             :query      {:source-table 1}
-            :parameters [{:type :id, :target [:dimension [:fk-> [:field-id 3265] [:field-id 4575]]], :value ["field-id"]}
-                         {:type :date/all-options, :target [:dimension [:field-id 3270]], :value "thismonth"}]}
+            :parameters [{:type :id, :target [:dimension [:field 4575 {:source-field 3265}]], :value ["field-id"]}
+                         {:type :date/all-options, :target [:dimension [:field 3270 nil]], :value "thismonth"}]}
            (normalize/normalize
             {:type       :query
              :query      {:source-table 1}
@@ -1019,13 +1093,146 @@
 (deftest empty-test
   (testing "test a query with :is-empty"
     (is (= {:query {:filter [:and
-                             [:> [:field-id 4] 1]
-                             [:is-empty [:field-id 7]]
-                             [:= [:field-id 5] "abc"]
-                             [:between [:field-id 9] 0 25]]}}
+                             [:> [:field 4 nil] 1]
+                             [:is-empty [:field 7 nil]]
+                             [:= [:field 5 nil] "abc"]
+                             [:between [:field 9 nil] 0 25]]}}
            (#'normalize/canonicalize {:query {:filter [:and
                                                        [:> [:field-id 4] 1]
                                                        [:is-empty [:field-id 7]]
                                                        [:and
                                                         [:= [:field-id 5] "abc"]
                                                         [:between [:field-id 9] 0 25]]]}})))))
+
+(deftest modernize-fields-test
+  (testing "some extra tests for Field clause canonicalization to the modern `:field` clause."
+    (doseq [[form expected] {[:=
+                              [:datetime-field [:joined-field "source" [:field-id 100]] :month]
+                              "2021-02-18"]
+                             [:= [:field 100 {:join-alias "source", :temporal-unit :month}] "2021-02-18"]
+
+                             [:binning-strategy [:field-id 1] :default]
+                             [:field 1 {:binning {:strategy :default}}]
+
+                             [:binning-strategy [:field 1] :bin-width]
+                             [:field 1 {:binning {:strategy :bin-width}}]}]
+      (testing (u/pprint-to-str form)
+        (is (= expected
+               (#'normalize/canonicalize-mbql-clauses form)))))))
+
+(deftest modernize-fields-e2e-test
+  (testing "Should be able to modernize legacy MBQL '95 Field clauses"
+    (is (= {:database 1
+            :type     :query
+            :query    {:source-table 3
+                       :breakout     [[:field 11 {:temporal-unit :month}]]
+                       :aggregation  [[:count]]}}
+           (normalize/normalize
+            {:database 1
+             :type     :query
+             :query    {:source-table 3
+                        :breakout     [[:datetime-field 11 :month]]
+                        :aggregation  [[:count]]}}))))
+
+  (testing "Fixes for stuff like old-style breakout with a single clause should still work with the new `:field` clause"
+    (is (= {:database 1
+            :type     :query
+            :query    {:filter       [:> [:field "count" {:base-type :type/Integer}] 5]
+                       :source-query {:source-table 2
+                                      :aggregation  [[:count]]
+                                      :breakout     [[:field 3 {:temporal-unit :month, :source-field 4}]]}}}
+           (normalize/normalize
+            {:database 1
+             :type     :query
+             :query    {:filter       [:> [:field "count" {:base-type :type/Integer}] 5]
+                        :source-query {:source-table 2
+                                       :aggregation  [[:count]]
+                                       :breakout     [:field 3 {:temporal-unit :month, :source-field 4}]}}})))))
+
+(deftest normalize-fragment-test
+  (testing "normalize-fragment"
+    (testing "shouldn't try to do anything crazy non-standard MBQL clauses like `:dimension` (from automagic dashboards)"
+      (is (= [:time-interval [:dimension "JoinDate"] -30 :day]
+             (normalize/normalize-fragment [:query :filter]
+               ["time-interval" ["dimension" "JoinDate"] -30 "day"]))))
+
+    (testing "should be able to modernize Fields anywhere we find them"
+      (is (= [[:> [:field 1 nil] 3]
+              [:and
+               [:= [:field 2 nil] 2]
+               [:segment 1]]
+              [:metric 1]]
+             (normalize/normalize-fragment nil
+               [[:> [:field-id 1] 3]
+                ["and" [:= ["FIELD-ID" 2] 2]
+                 ["segment" 1]]
+                [:metric 1]]))))
+
+    (testing "Should be able to modern Field options anywhere"
+      (is (= [:field 2 {:temporal-unit :day}]
+             (normalize/normalize-fragment nil
+               [:field 2 {"temporal-unit" "day"}]))))))
+
+(deftest normalize-source-metadata-test
+  (testing "normalize-source-metadata"
+    (testing "should convert legacy field_refs to modern `:field` clauses"
+      (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
+             (normalize/normalize-source-metadata
+              {:field_ref ["datetime-field" ["field-id" 1] "month"]}))))
+    (testing "should correctly keywordize Field options"
+      (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
+             (normalize/normalize-source-metadata
+              {:field_ref ["field" 1 {:temporal-unit "month"}]}))))))
+
+(deftest do-not-normalize-fingerprints-test
+  (testing "Numbers in fingerprints shouldn't get normalized"
+    (let [fingerprint {:global {:distinct-count 1, :nil% 0}
+                       :type   {:type/Number {:min 1
+                                              :q1  1
+                                              :q3  1
+                                              :max 1
+                                              :sd  0
+                                              :avg 1}}}]
+      (is (= fingerprint
+             (normalize/normalize fingerprint)))
+      (let [query {:query
+                   {:source-query
+                    {:native     "SELECT USER_ID FROM ORDERS LIMIT 1"
+                     :parameters [{:type   :category
+                                   :target [:variable [:template-tag "sandbox"]]
+                                   :value  "1"}]}
+                    :database        1
+                    :source-metadata [{:name          "USER_ID"
+                                       :display_name  "USER_ID"
+                                       :base_type     :type/Integer
+                                       :field_ref     [:field "USER_ID" {:base-type :type/Integer}]
+                                       :fingerprint   fingerprint}]}}]
+        (is (= query
+               (normalize/normalize query)))))))
+
+(deftest error-messages-test
+  (testing "Normalization error messages should be sane"
+    (let [bad-query {:database 1
+                     :type     :native
+                     :native   {:template-tags {100 [:field-id "WOW"]}}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Error normalizing query"
+           (normalize/normalize bad-query)))
+      (let [e (try
+                (normalize/normalize bad-query)
+                nil
+                (catch Throwable e
+                  e))]
+        (testing "Should have meaningful ex-data"
+          (is (instance? clojure.lang.ExceptionInfo e))
+          (is (= {:query bad-query}
+                 (ex-data e))))
+        (testing "\nParent exception(s) should be even more specific"
+          (let [cause (some-> ^Throwable e .getCause)]
+            (is (= "Error normalizing form."
+                   (.getMessage cause)))
+            (is (= {:form       bad-query
+                    :path       []
+                    :special-fn nil}
+                   (ex-data cause)))))))))

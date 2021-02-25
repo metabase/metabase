@@ -11,11 +11,7 @@ describe("ZoomDrill", () => {
   it("should be return correct new for month -> week", () => {
     const query = ORDERS.query()
       .aggregate(["count"])
-      .breakout([
-        "datetime-field",
-        ["field-id", ORDERS.CREATED_AT.id],
-        "month",
-      ]);
+      .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }]);
 
     const actions = ZoomDrill({
       question: query.question(),
@@ -37,12 +33,10 @@ describe("ZoomDrill", () => {
       aggregation: [["count"]],
       filter: [
         "=",
-        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "month"],
+        ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
         "2018-01-01T00:00:00Z",
       ],
-      breakout: [
-        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "week"],
-      ],
+      breakout: [["field", ORDERS.CREATED_AT.id, { "temporal-unit": "week" }]],
     });
     expect(newCard.display).toEqual("line");
   });

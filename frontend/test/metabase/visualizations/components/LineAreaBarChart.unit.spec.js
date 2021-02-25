@@ -53,7 +53,7 @@ const millisecondCard = {
       query: {
         "source-table": 1784,
         aggregation: [["count"]],
-        breakout: [["datetime-field", ["field-id", 8159], "week"]],
+        breakout: [["field", 8159, { "temporal-unit": "week" }]],
       },
     },
     id: 83,
@@ -179,8 +179,8 @@ const dateTimeCard = {
       type: "query",
       query: {
         "source-table": 1,
-        aggregation: [["sum", ["field-id", 4]]],
-        breakout: [["datetime-field", ["field-id", 1], "month"]],
+        aggregation: [["sum", ["field", 4, null]]],
+        breakout: [["field", 1, { "temporal-unit": "month" }]],
       },
     },
     id: 25,
@@ -356,7 +356,7 @@ const numberCard = {
       query: {
         "source-table": 4,
         aggregation: [["count"]],
-        breakout: [["field-id", 33]],
+        breakout: [["field", 33, null]],
       },
     },
     id: 86,

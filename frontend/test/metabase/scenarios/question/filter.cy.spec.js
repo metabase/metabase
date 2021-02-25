@@ -101,13 +101,16 @@ describe("scenarios > question > filter", () => {
                         card_id: Q2_ID,
                         target: [
                           "dimension",
-                          ["field-id", PRODUCTS.CREATED_AT],
+                          ["field", PRODUCTS.CREATED_AT, null],
                         ],
                       },
                       {
                         parameter_id: "20976cce",
                         card_id: Q2_ID,
-                        target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                        target: [
+                          "dimension",
+                          ["field", PRODUCTS.CATEGORY, null],
+                        ],
                       },
                     ],
                   },
@@ -144,9 +147,13 @@ describe("scenarios > question > filter", () => {
             "source-query": {
               "source-table": PRODUCTS_ID,
               aggregation: [["count"]],
-              breakout: [["field-id", PRODUCTS.CATEGORY]],
+              breakout: [["field", PRODUCTS.CATEGORY, null]],
             },
-            filter: [">", ["field-literal", "count", "type/Integer"], 1],
+            filter: [
+              ">",
+              ["field", "count", { "base-type": "type/Integer" }],
+              1,
+            ],
           },
           type: "query",
         },
@@ -200,7 +207,7 @@ describe("scenarios > question > filter", () => {
                       card_id: QUESTION_ID,
                       target: [
                         "dimension",
-                        ["field-literal", "CATEGORY", "type/Text"],
+                        ["field", "CATEGORY", { "base-type": "type/Text" }],
                       ],
                     },
                   ],
@@ -268,13 +275,13 @@ describe("scenarios > question > filter", () => {
             "and",
             [
               "between",
-              ["field-id", PRODUCTS.CREATED_AT],
+              ["field", PRODUCTS.CREATED_AT, null],
               "2019-04-15",
               "2019-04-15",
             ],
             [
               "between",
-              ["joined-field", "Products", ["field-id", PRODUCTS.CREATED_AT]],
+              ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
               "2019-04-15",
               "2019-04-15",
             ],
@@ -284,8 +291,8 @@ describe("scenarios > question > filter", () => {
               alias: "Products",
               condition: [
                 "=",
-                ["field-id", PRODUCTS.ID],
-                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ["field", PRODUCTS.ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
               ],
               fields: "all",
               "source-table": PRODUCTS_ID,
@@ -341,12 +348,12 @@ describe("scenarios > question > filter", () => {
       dataset_query: {
         database: 1,
         query: {
-          filter: [">", ["field-literal", CE_NAME, "type/Float"], 0],
+          filter: [">", ["field", CE_NAME, { "base-type": "type/Float" }], 0],
           "source-query": {
             aggregation: [
               ["aggregation-options", ["+", 1, 1], { "display-name": CE_NAME }],
             ],
-            breakout: [["field-id", PRODUCTS.CATEGORY]],
+            breakout: [["field", PRODUCTS.CATEGORY, null]],
             "source-table": PRODUCTS_ID,
           },
         },
@@ -377,7 +384,7 @@ describe("scenarios > question > filter", () => {
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
-          breakout: [["field-id", PRODUCTS.CATEGORY]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
         },
         database: 1,
       },
@@ -429,12 +436,12 @@ describe("scenarios > question > filter", () => {
                   {
                     parameter_id: "c32a49e1",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
                   },
                   {
                     parameter_id: "f2bf003c",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.ID]],
+                    target: ["dimension", ["field", PRODUCTS.ID, null]],
                   },
                 ],
               },
@@ -497,7 +504,7 @@ describe("scenarios > question > filter", () => {
               "display-name": CATEGORY_FILTER.display_name,
               type: CATEGORY_FILTER.type,
               default: "Doohickey",
-              dimension: ["field-id", PRODUCTS.CATEGORY],
+              dimension: ["field", PRODUCTS.CATEGORY, null],
               "widget-type": "category",
             },
             [ID_FILTER.name]: {
@@ -554,13 +561,17 @@ describe("scenarios > question > filter", () => {
         query: {
           "source-query": {
             "source-table": ORDERS_ID,
-            filter: [">", ["field-id", ORDERS.CREATED_AT], "2020-01-01"],
+            filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
             aggregation: [["count"]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
             ],
           },
-          filter: ["<=", ["field-literal", "count", "type/Integer"], 20],
+          filter: [
+            "<=",
+            ["field", "count", { "base-type": "type/Integer" }],
+            20,
+          ],
         },
         type: "query",
       },
@@ -638,11 +649,11 @@ describe("scenarios > question > filter", () => {
           "source-table": ORDERS_ID,
           filter: [
             ">",
-            ["field-id", ORDERS.CREATED_AT],
+            ["field", ORDERS.CREATED_AT, null],
             [
-              "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.CREATED_AT],
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "source-field": ORDERS.PRODUCT_ID },
             ],
           ],
         },
@@ -672,21 +683,25 @@ describe("scenarios > question > filter", () => {
               [
                 "sum",
                 [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.PRICE],
+                  "field",
+                  PRODUCTS.PRICE,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
             ],
             breakout: [
               [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.CATEGORY],
+                "field",
+                PRODUCTS.CATEGORY,
+                { "source-field": ORDERS.PRODUCT_ID },
               ],
             ],
           },
-          filter: ["=", ["field-literal", "CATEGORY", "type/Text"], "Widget"],
+          filter: [
+            "=",
+            ["field", "CATEGORY", { "base-type": "type/Text" }],
+            "Widget",
+          ],
         },
         type: "query",
       },
@@ -714,9 +729,9 @@ describe("scenarios > question > filter", () => {
         database: 1,
         query: {
           "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
           breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],
         },
         type: "query",
@@ -751,7 +766,7 @@ describe("scenarios > question > filter", () => {
         database: 1,
         query: {
           "source-table": PEOPLE_ID,
-          expressions: { [CC_NAME]: ["length", ["field-id", PEOPLE.CITY]] },
+          expressions: { [CC_NAME]: ["length", ["field", PEOPLE.CITY, null]] },
           filter: ["!=", ["expression", CC_NAME], 3],
         },
         type: "query",

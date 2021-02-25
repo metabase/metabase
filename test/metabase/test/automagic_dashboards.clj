@@ -1,9 +1,12 @@
 (ns metabase.test.automagic-dashboards
   "Helper functions and macros for writing tests for automagic dashboards."
-  (:require [metabase.mbql.normalize :as normalize]
+  (:require [clojure.test :refer :all]
+            [metabase.mbql.normalize :as normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Dashboard DashboardCard]]
             [metabase.test :as mt]
+            [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (defmacro with-dashboard-cleanup
@@ -20,24 +23,35 @@
                (when (map? form)
                  (:url form))))))
 
-(defn- valid-urls?
+(defn- test-urls-are-valid
   [dashboard]
-  (->> dashboard
-       collect-urls
-       (every? (fn [url]
-                 (mt/user-http-request :rasta :get 200 (format "automagic-dashboards/%s"
-                                                               (subs url 16)))))))
+  (doseq [url (collect-urls dashboard)]
+    (testing (format "\nURL = %s" (pr-str url))
+      (is (schema= {:name        su/NonBlankString
+                    :description su/NonBlankString
+                    s/Keyword    s/Any}
+                   (mt/user-http-request :rasta :get 200 (format "automagic-dashboards/%s" (subs url 16))))))))
 
-(defn- valid-card? [{query :dataset_query}]
-  (nil? (s/check mbql.s/Query (normalize/normalize query))))
+(defn- test-card-is-valid [{query :dataset_query, :as card}]
+  (testing "Card should be valid"
+    (testing (format "\nCard =\n%s\n" (u/pprint-to-str card))
+      (testing "Card query should be valid"
+        (is (schema= mbql.s/Query
+                     (normalize/normalize query)))))))
 
-(defn valid-dashboard?
+(defn test-dashboard-is-valid
   "Is generated dashboard valid?
    Tests that the dashboard has cards, the queries for those cards are valid, all related URLs are
    valid, and that it has correct metadata."
   [dashboard]
-  (assert (:name dashboard))
-  (assert (-> dashboard :ordered_cards count pos?))
-  (assert (valid-urls? dashboard))
-  (assert (every? valid-card? (keep :card (:ordered_cards dashboard))))
-  true)
+  (testing (format "Dashboard should be valid")
+    (testing (format "\nDashboard =\n%s\n" (u/pprint-to-str dashboard))
+      (testing "Dashboard should have a name"
+        (is (some? (:name dashboard))))
+      (testing "Cards should have at least one Card"
+        (is (-> dashboard :ordered_cards count pos?)))
+      (testing "URLs should be valid"
+        (test-urls-are-valid dashboard))
+      (testing "Dashboard's cards should be valid"
+        (doseq [card (keep :card (:ordered_cards dashboard))]
+          (test-card-is-valid card))))))

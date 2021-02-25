@@ -27,7 +27,7 @@
                                       :<= {:end-date "2019-11-18"}
                                       :>  {:start-date "2019-11-19"}
                                       :>= {:start-date "2019-11-18"}}]
-        (let [filter-clause [filter-type [:datetime-field 'field :day] [:absolute-datetime (t/local-date "2019-11-18") :day]]]
+        (let [filter-clause [filter-type [:field 'field {:temporal-unit :day}] [:absolute-datetime (t/local-date "2019-11-18") :day]]]
           (testing filter-clause
             (is (= expected
                    (#'ga.qp/parse-filter:interval filter-clause)))))))
@@ -46,29 +46,29 @@
                    :>= {:message  "`>=` filter — month is greater than or equal to 4 months ago, i.e. after June 2019"
                         :expected {:start-date "2019-07-01"}}}]
             (testing (str "\n" message)
-              (let [filter-clause [filter-type [:datetime-field 'field :month] [:relative-datetime -4 :month]]]
+              (let [filter-clause [filter-type [:field 'field {:temporal-unit :month}] [:relative-datetime -4 :month]]]
                 (testing filter-clause
                   (is (= expected
                          (#'ga.qp/parse-filter:interval filter-clause)))))))
           (testing "\ndatetime-field bucketing unit != relative-datetime bucketing unit"
             (testing "Day == 4 months ago, i.e. July 18th"
-              (let [filter-clause [:= [:datetime-field 'field :day] [:relative-datetime -4 :month]]]
+              (let [filter-clause [:= [:field 'field {:temporal-unit :day}] [:relative-datetime -4 :month]]]
                 (testing filter-clause
                   (is (= {:start-date "2019-07-18", :end-date "2019-07-18"}
                          (#'ga.qp/parse-filter:interval filter-clause)))))))
           (testing "\n:between filter"
             (is (= {:start-date "2019-07-01", :end-date "2019-10-31"}
                    (#'ga.qp/parse-filter:interval [:between
-                                                   [:datetime-field 'field :month]
+                                                   [:field 'field {:temporal-unit :month}]
                                                    [:relative-datetime -4 :month]
                                                    [:relative-datetime -1 :month]]))
                 ":between is inclusive!!!!")))
         (testing "\nthis week should be based on the report timezone — see #9467"
           (testing "\nSanity check - with UTC timezone, current week *should* be different when going from 11 PM Sat -> 1 AM Sun"
             (is (not= (mt/with-clock (t/mock-clock (t/instant "2019-11-30T23:00:00Z") (t/zone-id "UTC"))
-                        (#'ga.qp/parse-filter:interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]]))
+                        (#'ga.qp/parse-filter:interval [:= [:field 'field {:temporal-unit :week}] [:relative-datetime 0 :week]]))
                       (mt/with-clock (t/mock-clock (t/instant "2019-12-01T01:00:00Z") (t/zone-id "UTC"))
-                        (#'ga.qp/parse-filter:interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]])))))
+                        (#'ga.qp/parse-filter:interval [:= [:field 'field {:temporal-unit :week}] [:relative-datetime 0 :week]])))))
           (testing (str "\nthis week at Saturday 6PM local time (Saturday 11PM UTC) should be the same as this week "
                         "Saturday 8PM local time (Sunday 1 AM UTC)")
             (mt/with-report-timezone-id "US/Eastern"
@@ -77,6 +77,6 @@
                   (testing (format "\nSystem timezone = %s" system-timezone)
                     (is (= {:start-date "2019-11-24", :end-date "2019-11-30"}
                            (mt/with-clock (t/mock-clock (t/instant "2019-11-30T23:00:00Z") (t/zone-id system-timezone))
-                             (#'ga.qp/parse-filter:interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]]))
+                             (#'ga.qp/parse-filter:interval [:= [:field 'field {:temporal-unit :week}] [:relative-datetime 0 :week]]))
                            (mt/with-clock (t/mock-clock (t/instant "2019-12-01T01:00:00Z") (t/zone-id system-timezone))
-                             (#'ga.qp/parse-filter:interval [:= [:datetime-field 'field :week] [:relative-datetime 0 :week]]))))))))))))))
+                             (#'ga.qp/parse-filter:interval [:= [:field 'field {:temporal-unit :week}] [:relative-datetime 0 :week]]))))))))))))))

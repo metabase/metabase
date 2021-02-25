@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -32,7 +33,7 @@ export default class TimeGroupingPopover extends Component {
   }
 
   static propTypes = {
-    field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+    field: PropTypes.oneOfType([PropTypes.array]), // field Ref
     onFieldChange: PropTypes.func.isRequired,
   };
 
@@ -59,11 +60,11 @@ export default class TimeGroupingPopover extends Component {
   };
 
   setField(bucketing) {
-    this.props.onFieldChange([
-      "datetime-field",
-      this.props.field[1],
-      bucketing,
-    ]);
+    const dimension = FieldDimension.parseMBQLOrWarn(this.props.field);
+    if (dimension) {
+      const mbql = dimension.withTemporalUnit(bucketing).mbql();
+      this.props.onFieldChange(mbql);
+    }
   }
 
   render() {

@@ -1,33 +1,13 @@
 import _ from "underscore";
 
 import Field from "metabase-lib/lib/metadata/Field";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import * as Table from "./table";
 
 import { TYPE } from "metabase/lib/types";
 
-// DEPRECATED
-export function isRegularField(field: FieldReference): boolean {
-  return typeof field === "number";
-}
-
 export function isLocalField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "field-id";
-}
-
-export function isForeignKeyField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "fk->";
-}
-
-export function isDatetimeField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "datetime-field";
-}
-
-export function isBinningStrategy(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "binning-strategy";
-}
-
-export function isFieldLiteral(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "field-literal";
+  return Array.isArray(field) && field[0] === "field";
 }
 
 export function isExpressionField(field: FieldReference): boolean {
@@ -38,30 +18,11 @@ export function isAggregateField(field: FieldReference): boolean {
   return Array.isArray(field) && field[0] === "aggregation";
 }
 
-export function isJoinedField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "joined-field";
-}
-
 export function isValidField(field) {
   return (
-    isRegularField(field) ||
-    isLocalField(field) ||
-    (isForeignKeyField(field) &&
-      (isLocalField(field[1]) || isRegularField(field[1])) &&
-      (isLocalField(field[2]) || isRegularField(field[2]))) ||
-    // datetime field can  be either 4-item (deprecated): ["datetime-field", <field>, "as", <unit>]
-    // or 3 item (preferred style): ["datetime-field", <field>, <unit>]
-    (isDatetimeField(field) &&
-      isValidField(field[1]) &&
-      (field.length === 4
-        ? field[2] === "as" && typeof field[3] === "string" // deprecated
-        : typeof field[2] === "string")) ||
+    (isLocalField(field) && field.length === 3) ||
     (isExpressionField(field) && _.isString(field[1])) ||
-    (isAggregateField(field) && typeof field[1] === "number") ||
-    (isJoinedField(field) &&
-      typeof field[1] === "string" &&
-      isValidField(field[2])) ||
-    isFieldLiteral(field)
+    (isAggregateField(field) && typeof field[1] === "number")
   );
 }
 
@@ -73,57 +34,30 @@ export function isSameField(fieldA, fieldB, exact = false) {
   }
 }
 
-// gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime-field cast.
+/**
+ * Get the target field ID (recursively) from a Field clause. For Field clauses that use string Field names, this
+ * returns the Field clause directly. FIXME !!!
+ */
 export function getFieldTargetId(field: FieldReference): ?FieldId {
-  if (isRegularField(field)) {
+  if (isLocalField(field)) {
     // $FlowFixMe
-    return field;
-  } else if (isLocalField(field)) {
-    // $FlowFixMe
-    return field[1];
-  } else if (isForeignKeyField(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[2]);
-  } else if (isDatetimeField(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[1]);
-  } else if (isBinningStrategy(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[1]);
-  } else if (isFieldLiteral(field)) {
-    return field;
-  } else if (isJoinedField(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[2]);
+    // return field[1];
+    return typeof field[1] === "number" ? field[1] : field;
   }
-  console.warn("Unknown field type: ", field);
+  console.warn("Unknown field type:", field);
 }
 
-// gets the table and field definitions from from a raw, fk->, or datetime-field field
-export function getFieldTarget(field, tableDef, path = []) {
-  if (isRegularField(field)) {
-    return { table: tableDef, field: Table.getField(tableDef, field), path };
-  } else if (isLocalField(field)) {
-    return getFieldTarget(field[1], tableDef, path);
-  } else if (isForeignKeyField(field)) {
-    const fkFieldId = getFieldTargetId(field[1]);
-    const fkFieldDef = Table.getField(tableDef, fkFieldId);
-    const targetTableDef = fkFieldDef && fkFieldDef.target.table;
-    return getFieldTarget(field[2], targetTableDef, path.concat(fkFieldDef));
-  } else if (isDatetimeField(field)) {
-    return {
-      ...getFieldTarget(field[1], tableDef, path),
-      unit: getDatetimeUnit(field),
-    };
-  } else if (isBinningStrategy(field)) {
-    return getFieldTarget(field[1], tableDef, path);
-  } else if (isExpressionField(field)) {
+/*
+ * Gets the table and field definitions from a Field clause.
+ */
+export function getFieldTarget(fieldClause, tableDef, path = []) {
+  if (isExpressionField(fieldClause)) {
     // hmmm, since this is a dynamic field we'll need to build this here
     // but base it on Field object, since some functions are used, when adding as filter
     const fieldDef = new Field({
-      display_name: field[1],
-      name: field[1],
-      expression_name: field[1],
+      display_name: fieldClause[1],
+      name: fieldClause[1],
+      expression_name: fieldClause[1],
       table: tableDef,
       metadata: tableDef.metadata,
       // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
@@ -135,17 +69,42 @@ export function getFieldTarget(field, tableDef, path = []) {
       field: fieldDef,
       path: path,
     };
-  } else if (isFieldLiteral(field)) {
-    return { table: tableDef, field: Table.getField(tableDef, field), path }; // just pretend it's a normal field
   }
 
-  console.warn("Unknown field type: ", field);
+  const dimension = FieldDimension.parseMBQLOrWarn(fieldClause);
+  if (!dimension) {
+    return null;
+  }
+
+  const info = {
+    table: tableDef,
+    field: Table.getField(tableDef, dimension.field().id),
+    path,
+  };
+
+  // TODO -- not really sure what is happening here, but it makes the tests pass.
+  const fk = dimension.fk();
+  if (fk) {
+    const fkFieldId = fk.field().id;
+    const fkFieldDef = Table.getField(tableDef, fkFieldId);
+    const targetTableDef = fkFieldDef && fkFieldDef.target.table;
+    return getFieldTarget(
+      dimension.withoutOptions("source-field").mbql(),
+      targetTableDef,
+      path.concat(fkFieldDef),
+    );
+  }
+
+  if (dimension.temporalUnit()) {
+    info.unit = dimension.temporalUnit();
+  }
+
+  return info;
 }
 
-export function getDatetimeUnit(field) {
-  if (field.length === 4) {
-    return field[3]; // deprecated
-  } else {
-    return field[2];
+export function getDatetimeUnit(fieldClause) {
+  if (isLocalField(fieldClause)) {
+    const dimension = FieldDimension.parseMBQLOrWarn(fieldClause);
+    return dimension && dimension.temporalUnit();
   }
 }

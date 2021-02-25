@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-joins
-  "Middleware that creates corresponding `:joins` for Tables referred to by `:fk->` clauses and replaces those clauses
-  with `:joined-field` clauses."
+  "Middleware that creates corresponding `:joins` for Tables referred to by `:field` clauses with `:source-field` info
+  in the options and adds `:join-alias` info to those `:field` clauses."
   (:refer-clojure :exclude [alias])
   (:require [clojure.set :as set]
             [medley.core :as m]
@@ -16,8 +16,8 @@
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 
-(defn- fk-references [x]
-  (set (mbql.u/match x :fk-> &match)))
+(defn- implicitly-joined-fields [x]
+  (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))] &match)))
 
 (defn- join-alias [dest-table-name source-fk-field-name]
   (apply str (take 30 (str dest-table-name "__via__" source-fk-field-name))))
@@ -45,16 +45,22 @@
               (assoc :alias join-alias
                      :fields :none
                      :strategy :left-join
-                     :condition [:= [:field-id fk-field-id] [:joined-field join-alias [:field-id pk-id]]])
+                     :condition [:= [:field fk-field-id nil] [:field pk-id {:join-alias join-alias}]])
               (dissoc :fk-name :table-name :pk-id)
-              (vary-meta assoc ::needs [:field-id fk-field-id])))))))
+              (vary-meta assoc ::needs [:field fk-field-id nil])))))))
 
-(defn- fk-references->joins
-  "Create implicit join maps for a set of `fk->clauses`."
-  [fk->clauses]
+(defn- implicitly-joined-fields->joins
+  "Create implicit join maps for a set of `field-clauses-with-source-field`."
+  [field-clauses-with-source-field]
   (distinct
-   (let [fk-field-ids (set (for [clause fk->clauses]
-                             (mbql.u/match-one clause [:field-id id] id)))]
+   (let [fk-field-ids (->> field-clauses-with-source-field
+                           (map (fn [clause]
+                                  (mbql.u/match-one clause
+                                    [:field (id :guard integer?) (opts :guard (every-pred :source-field (complement :join-alias)))]
+                                    (:source-field opts))))
+                           (filter integer?)
+                           set
+                           not-empty)]
      (fk-ids->join-infos fk-field-ids))))
 
 (defn- visible-joins
@@ -65,9 +71,10 @@
          (when source-query
            (visible-joins source-query)))))
 
-(defn- replace-fk-forms
-  "Replace `:fk->` forms in `form` with `:joined-field` forms using the corresponding join."
+(defn- add-join-alias-to-fields-with-source-field
+  "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`."
   [form]
+  ;; Build a map of FK Field ID -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
   (let [fk-field-id->join-alias (reduce
                                  (fn [m {:keys [fk-field-id], join-alias :alias}]
                                    (if (or (not fk-field-id)
@@ -77,15 +84,17 @@
                                  {}
                                  (visible-joins form))]
     (cond-> (mbql.u/replace form
-              [:fk-> [:field-id fk-field-id] dest-field]
-              (let [join-alias (or (fk-field-id->join-alias fk-field-id)
-                                   (throw (ex-info (tru "Cannot find Table ID for Field {0}" fk-field-id)
+              [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
+              (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
+                                   (throw (ex-info (tru "Cannot find Table ID for Field {0}" (:source-field opts))
                                                    {:resolving  &match
                                                     :candidates fk-field-id->join-alias})))]
-                [:joined-field (fk-field-id->join-alias fk-field-id) dest-field]))
+                [:field id-or-name (assoc opts :join-alias join-alias)]))
       (sequential? (:fields form)) (update :fields distinct))))
 
-(defn- already-has-join? [{:keys [joins source-query]} {join-alias :alias, :as join}]
+(defn- already-has-join?
+  "Whether the current query level already has a join with the same alias."
+  [{:keys [joins source-query]} {join-alias :alias, :as join}]
   (or (some #(= (:alias %) join-alias)
             joins)
       (when source-query
@@ -99,13 +108,13 @@
     form
     (let [needed (set (filter some? (map (comp ::needs meta) joins)))]
       (update-in form [:source-query :fields] (fn [existing-fields]
-                                                (distinct
-                                                 (concat existing-fields needed)))))))
+                                                (distinct (concat existing-fields needed)))))))
 
 (defn- add-referenced-fields-to-source [form reused-joins]
   (let [reused-join-alias? (set (map :alias reused-joins))
         referenced-fields  (set (mbql.u/match (dissoc form :source-query :joins)
-                                  [:joined-field (_ :guard reused-join-alias?) _]
+                                  [:field _ (_ :guard (fn [{:keys [join-alias]}]
+                                                        (reused-join-alias? join-alias)))]
                                   &match))]
     (update-in form [:source-query :fields] (fn [existing-fields]
                                               (distinct
@@ -133,11 +142,11 @@
             (add-referenced-fields-to-source reused-joins))))))
 
 (defn- resolve-implicit-joins-this-level
-  "Add new `:joins` for tables referenced by `:fk->` forms. Replace `fk->` forms with `:joined-field` forms. Add
-  additional `:fields` to source query if needed to perform the join."
+  "Add new `:joins` for tables referenced by `:field` forms with a `:source-field`. Add `:join-alias` info to those
+  `:fields`. Add additional `:fields` to source query if needed to perform the join."
   [form]
-  (let [fk-references  (fk-references form)
-        new-joins      (fk-references->joins fk-references)
+  (let [implicitly-joined-fields  (implicitly-joined-fields form)
+        new-joins      (implicitly-joined-fields->joins implicitly-joined-fields)
         required-joins (remove (partial already-has-join? form) new-joins)
         reused-joins   (set/difference (set new-joins) (set required-joins))]
     (cond-> form
@@ -145,8 +154,7 @@
                                             (m/distinct-by
                                              :alias
                                              (concat existing-joins required-joins))))
-      true                 replace-fk-forms
-      ;; true            add-condition-fields-to-source
+      true                 add-join-alias-to-fields-with-source-field
       true                 (add-fields-to-source reused-joins))))
 
 (defn- resolve-implicit-joins [{:keys [source-query joins], :as inner-query}]
@@ -161,7 +169,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- add-implicit-joins* [query]
-  (if (mbql.u/match-one (:query query) :fk->)
+  (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
       (when-not (driver/supports? driver/*driver* :foreign-keys)
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
@@ -171,11 +179,11 @@
     query))
 
 (defn add-implicit-joins
-  "Fetch and store any Tables other than the source Table referred to by `fk->` clauses in an MBQL query, and add a
-  `:join-tables` key inside the MBQL inner query containing information about the `JOIN`s (or equivalent) that need to
-  be performed for these tables.
+  "Fetch and store any Tables other than the source Table referred to by `:field` clauses with `:source-field` in an
+  MBQL query, and add a `:join-tables` key inside the MBQL inner query containing information about the `JOIN`s (or
+  equivalent) that need to be performed for these tables.
 
-  This middleware also replaces all `fk->` clauses with `joined-field` clauses, which are easier to work with."
+  This middleware also adds `:join-alias` info to all `:field` forms with `:source-field`s."
   [qp]
   (fn [query rff context]
     (qp (add-implicit-joins* query) rff context)))

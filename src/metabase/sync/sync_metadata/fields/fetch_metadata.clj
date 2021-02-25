@@ -40,7 +40,7 @@
   "Recursively add entries for any nested-fields to `field`."
   [metabase-field    :- common/TableMetadataFieldWithID
    parent-id->fields :- {common/ParentID #{common/TableMetadataFieldWithID}}]
-  (let [nested-fields (get parent-id->fields (u/get-id metabase-field))]
+  (let [nested-fields (get parent-id->fields (u/the-id metabase-field))]
     (if-not (seq nested-fields)
       metabase-field
       (assoc metabase-field :nested-fields (set (for [nested-field nested-fields]
@@ -62,9 +62,9 @@
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
   (db/select [Field :name :database_type :base_type :semantic_type :parent_id :id :description :database_position]
-    :table_id  (u/get-id table)
+    :table_id  (u/the-id table)
     :active    true
-    {:order-by (table/field-order-rule table)}))
+    {:order-by table/field-order-rule}))
 
 (s/defn our-metadata :- #{common/TableMetadataFieldWithID}
   "Return information we have about Fields for a `table` in the application database in (almost) exactly the same

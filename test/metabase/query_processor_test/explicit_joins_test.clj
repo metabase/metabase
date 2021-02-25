@@ -248,7 +248,7 @@
                                                           :alias        "c"
                                                           :fields       "all"
                                                           :condition    [:= $id &c.checkins.id]}]
-                                          :order-by     [["asc" ["joined-field" "c" $checkins.id]]]
+                                          :order-by     [["asc" &c.checkins.id]]
                                           :limit        3})))]
         (is (= (mapv mt/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
                columns))
@@ -270,7 +270,7 @@
                                           :joins        [{:alias        "u"
                                                           :source-table $$users
                                                           :condition    [:= *checkins.id &u.users.id]}]
-                                          :order-by     [[:asc [:field-literal (mt/format-name "id") :type/Integer]]]
+                                          :order-by     [[:asc [:field (mt/format-name "id") {:base-type :type/Integer}]]]
                                           :limit        3})))]
         (is (= [(mt/format-name "id") "sum"]
                columns))
@@ -336,8 +336,9 @@
                         :alias        "venues"
                         :source-table (str "card__" card-id)
                         :strategy         :inner-join
-                        :condition    [:= [:field-literal "count" :type/Number]
-                                       [:joined-field "venues" [:field-literal "count" :type/Number]]]}]
+                        :condition    [:=
+                                       [:field "count" {:base-type :type/Number}]
+                                       [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
                       :order-by     [[:asc $venue_id]]
                       :limit        3})))))))))
 
@@ -390,8 +391,9 @@
                                       :alias        "venues"
                                       :fields       :all
                                       :strategy     :inner-join
-                                      :condition    [:= [:field-literal "count" :type/Number]
-                                                     [:joined-field "venues" [:field-literal "count" :type/Number]]]}]
+                                      :condition    [:=
+                                                     [:field "count" {:base-type :type/Number}]
+                                                     [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
                       :order-by     [[:asc $venue_id]]
                       :limit        3})))))))))
 

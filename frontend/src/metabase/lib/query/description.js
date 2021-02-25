@@ -384,7 +384,13 @@ export function formatQueryDescription(parts, options = {}) {
 }
 
 export function getDatetimeFieldUnit(field) {
-  return field && field[3];
+  if (field && FIELD_REF.isLocalField(field)) {
+    const options = field[2];
+    if (options) {
+      return options["temporal-unit"];
+    }
+  }
+  return null;
 }
 
 export function getAggregationType(aggregation) {
@@ -398,7 +404,7 @@ export function getAggregationField(aggregation) {
 export function getQueryColumn(tableMetadata, field) {
   const target = FIELD_REF.getFieldTarget(field, tableMetadata);
   const column = { ...target.field };
-  if (FIELD_REF.isDatetimeField(field)) {
+  if (FIELD_REF.isLocalField(field) && getDatetimeFieldUnit(field)) {
     column.unit = getDatetimeFieldUnit(field);
   }
   return column;

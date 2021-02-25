@@ -29,8 +29,8 @@ describe("Join", () => {
         alias: "x",
         condition: [
           "=",
-          ["field-id", 3],
-          ["joined-field", "x", ["field-id", 24]],
+          ["field", 3, null],
+          ["field", 24, { "join-alias": "x" }],
         ],
         "source-table": 3,
       });
@@ -42,8 +42,8 @@ describe("Join", () => {
         alias: "x",
         condition: [
           "=",
-          ["field-id", ORDERS.PRODUCT_ID.id],
-          ["joined-field", "x", ["field-id", REVIEWS.PRODUCT_ID.id]],
+          ["field", ORDERS.PRODUCT_ID.id, null],
+          ["field", REVIEWS.PRODUCT_ID.id, { "join-alias": "x" }],
         ],
         "source-table": REVIEWS.id,
       });
@@ -55,11 +55,11 @@ describe("Join", () => {
         alias: "Reviews - Product",
         condition: [
           "=",
-          ["field-id", ORDERS.PRODUCT_ID.id],
+          ["field", ORDERS.PRODUCT_ID.id, null],
           [
-            "joined-field",
-            "Reviews - Product",
-            ["field-id", REVIEWS.PRODUCT_ID.id],
+            "field",
+            REVIEWS.PRODUCT_ID.id,
+            { "join-alias": "Reviews - Product" },
           ],
         ],
         "source-table": REVIEWS.id,
@@ -78,8 +78,8 @@ describe("Join", () => {
         alias: "Products",
         condition: [
           "=",
-          ["field-id", ORDERS.PRODUCT_ID.id],
-          ["joined-field", "Products", ["field-id", PRODUCTS.ID.id]],
+          ["field", ORDERS.PRODUCT_ID.id, null],
+          ["field", PRODUCTS.ID.id, { "join-alias": "Products" }],
         ],
         "source-table": PRODUCTS.id,
       });

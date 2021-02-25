@@ -303,7 +303,7 @@
                                  :template-tags {:date {:name         "date"
                                                         :display-name "Date"
                                                         :type         "dimension"
-                                                        :dimension    [:field-id (mt/id :checkins :date)]
+                                                        :dimension    [:field (mt/id :checkins :date) nil]
                                                         :widget-type  "date/quarter-year"}}}}
    :enable_embedding true
    :embedding_params {:date :enabled}})
@@ -505,7 +505,7 @@
             (is (= "completed"
                    (:status (http/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/get-id series-card))))))))))))))
 
-;;; ------------------------------- GET /api/embed/card/:token/field/:field-id/values --------------------------------
+;;; ------------------------------- GET /api/embed/card/:token/field/:field/values nil --------------------------------
 
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str
@@ -561,7 +561,7 @@
            (db/update! Card (u/get-id card) :enable_embedding false)
            (http/client :get 400 (field-values-url card (mt/id :venues :name)))))))
 
-;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field-id/values -----------------------------
+;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
 
 (defn- do-with-embedding-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
@@ -571,8 +571,8 @@
                                               :card_id            (u/get-id card)
                                               :parameter_mappings [{:card_id (u/get-id card)
                                                                     :target  [:dimension
-                                                                              [:field-id
-                                                                               (mt/id table-kw field-kw)]]}]}]]
+                                                                              [:field
+                                                                               (mt/id table-kw field-kw) nil]]}]}]]
       (f dashboard card dashcard))))
 
 
@@ -650,17 +650,17 @@
                 (is (= "Embedding is not enabled for this object."
                        (http/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
                                     :value "33 T")))))]
-      (testing "GET /api/embed/card/:token/field/:field-id/search/:search-field-id"
+      (testing "GET /api/embed/card/:token/field/:field/search/:search-field-id nil"
         (testing "Search for Field values for a Card"
           (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
             (tests Card card))))
-      (testing "GET /api/embed/dashboard/:token/field/:field-id/search/:search-field-id"
+      (testing "GET /api/embed/dashboard/:token/field/:field/search/:search-field-id nil"
         (testing "Search for Field values for a Dashboard"
           (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
             (tests Dashboard dashboard)))))))
 
 
-;;; ----------------------- GET /api/embed/card/:token/field/:field-id/remapping/:remapped-id ------------------------
+;;; ----------------------- GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil ------------------------
 
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "embed/"
@@ -694,7 +694,7 @@
                      (http/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
                                   :value "10")))))]
 
-    (testing "GET /api/embed/card/:token/field/:field-id/remapping/:remapped-id"
+    (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
       (testing "Get remapped Field values for a Card"
         (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
           (tests Card card)))
@@ -704,7 +704,7 @@
                  (http/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
                               :value "10"))))))
 
-    (testing "GET /api/embed/dashboard/:token/field/:field-id/remapping/:remapped-id"
+    (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
       (testing "Get remapped Field values for a Dashboard"
         (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
           (tests Dashboard dashboard)))
