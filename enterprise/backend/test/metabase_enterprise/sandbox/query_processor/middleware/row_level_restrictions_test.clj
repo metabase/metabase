@@ -868,7 +868,11 @@
           (mt/with-column-remappings [orders.product_id products.title]
             (do-tests)))))))
 
-(defn- set-query-metadata-for-gtap-card! [group table-name param-name param-value]
+(defn- set-query-metadata-for-gtap-card!
+  "Find the GTAP Card associated with Group and table-name and add `:result_metadata` to it. Because we (probably) need
+  a parameter in order to run the query to get metadata, pass `param-name` and `param-value` template tag parameters
+  when running the query."
+  [group table-name param-name param-value]
   (let [card-id (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
         query   (db/select-one-field :dataset_query Card :id (u/the-id card-id))
         results (mt/with-test-user :crowberto

@@ -127,12 +127,17 @@
 
 (s/defn ^:private preprocess-source-query :- mbql.s/SourceQuery
   [source-query :- mbql.s/SourceQuery]
-  (let [query        {:database (:id (qp.store/database))
-                      :type     :query
-                      :query    source-query}
-        preprocessed (binding [api/*current-user-id* nil]
-                       ((requiring-resolve 'metabase.query-processor/query->preprocessed) query))]
-    (select-keys (:query preprocessed) [:source-query :source-metadata])))
+  (try
+    (let [query        {:database (:id (qp.store/database))
+                        :type     :query
+                        :query    source-query}
+          preprocessed (binding [api/*current-user-id* nil]
+                         ((requiring-resolve 'metabase.query-processor/query->preprocessed) query))]
+      (select-keys (:query preprocessed) [:source-query :source-metadata]))
+    (catch Throwable e
+      (throw (ex-info (tru "Error preprocessing source query when applying GTAP")
+                      {:source-query source-query}
+                      e)))))
 
 (s/defn ^:private card-gtap->source
   [{card-id :card_id, :as gtap}]
