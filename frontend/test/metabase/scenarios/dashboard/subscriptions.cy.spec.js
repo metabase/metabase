@@ -131,11 +131,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         },
       });
       openDashboardSubscriptions();
+      cy.findByText("Send it to Slack").click();
+      cy.findByText("Send this dashboard to Slack");
     });
 
     it("should not enable 'Done' button before channel is selected (metabase#14494)", () => {
-      cy.findByText("Send it to Slack").click();
-      cy.findByText("Send this dashboard to Slack");
       cy.findAllByRole("button", { name: "Done" }).should("be.disabled");
       cy.findByText("Pick a user or channel...").click();
       cy.findByText("#work").click();
