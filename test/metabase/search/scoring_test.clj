@@ -103,22 +103,27 @@
            (score ["rasta" "the" "toucan"]
                   (result-row "Rasta the toucan"))))))
 
-(deftest accumulate-top-results-test
+(deftest top-results-test
   (let [xf (map identity)]
     (testing "a non-full queue behaves normally"
-      (let [items (map (fn [i]
-                         {:score  [2 2 i]
-                          :result (str "item " i)})
-                       (range 10))]
-        (is (= items
-               (transduce xf search/accumulate-top-results items)))))
+      (let [items (->> (range 10)
+                       reverse ;; descending order
+                       (map (fn [i]
+                              {:score  [2 2 i]
+                               :result (str "item " i)})))]
+        (is (= (map :result items)
+               (search/top-results items xf)))))
     (testing "a full queue only saves the top items"
-      (let [sorted-items (map (fn [i]
-                                {:score  [1 2 3 i]
-                                 :result (str "item " i)})
-                              (range (+ 10 search-config/max-filtered-results)))]
-        (is (= (drop 10 sorted-items)
-               (transduce xf search/accumulate-top-results (shuffle sorted-items))))))))
+      (let [sorted-items (->> (+ 10 search-config/max-filtered-results)
+                              range
+                              reverse ;; descending order
+                              (map (fn [i]
+                                     {:score  [1 2 3 i]
+                                      :result (str "item " i)})))]
+        (is (= (->> sorted-items
+                    (take search-config/max-filtered-results)
+                    (map :result))
+               (search/top-results (shuffle sorted-items) xf)))))))
 
 (deftest match-context-test
   (let [context  #'search/match-context
@@ -163,11 +168,13 @@
   (let [score #'search/pinned-score
         item (fn [collection-position] {:collection_position collection-position})]
     (testing "it provides a sortable score"
-      (is (= [1 2 3 0 nil]
+      (is (= [1 2 3 nil 0]
              (->> [(item 0)
+                    ;; nil and 0 could theoretically be in either order, but it's a stable sort, so this is fine
                    (item nil)
                    (item 3)
                    (item 1)
                    (item 2)]
                   (sort-by score)
+                  reverse
                   (map :collection_position)))))))

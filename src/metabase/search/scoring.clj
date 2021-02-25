@@ -126,7 +126,8 @@
 (def ^:private model->sort-position
   (into {} (map-indexed (fn [i model]
                           [(str/lower-case (name model)) i])
-                        search-config/searchable-models)))
+                        ;; Reverse so that they're in descending order
+                        (reverse search-config/searchable-models))))
 
 (defn- text-score-with-match
   [query-string result]
@@ -137,10 +138,16 @@
 
 (defn- pinned-score
   [{pos :collection_position}]
+  ;; low is better (top of the list), but nil or 0 should be at the bottom
   (if (or (nil? pos)
           (zero? pos))
     0
-    (/ -1 pos)))
+    (/ 1 pos)))
+
+(defn- dashboard-count-score
+  [{:keys [dashboardcard_count]}]
+  ;; higher is better; nil should count as 0
+  (or dashboardcard_count 0))
 
 (defn- compare-score-and-result
   "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
@@ -150,7 +157,7 @@
 
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
-  [{:keys [result column match-context-thunk]}]
+  [{:keys [result column match-context-thunk]} score]
   (let [{:keys [name display_name
                 collection_id collection_name]} result]
     (-> result
@@ -162,7 +169,8 @@
          :context        (when-not (search-config/displayed-columns column)
                            (match-context-thunk))
          :collection     {:id   collection_id
-                          :name collection_name})
+                          :name collection_name}
+         :score          score)
         (dissoc
          :collection_id
          :collection_name
@@ -171,12 +179,12 @@
 (defn- combined-score
   [{:keys [text-score result]}]
   [(pinned-score result)
-   (- text-score)
-   (model->sort-position (:model result))
-   (:name result)])
+   (dashboard-count-score result)
+   text-score
+   (model->sort-position (:model result))])
 
-(defn accumulate-top-results
-  "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) sent to it"
+(defn- accumulate-top-results
+  "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) items sent to it"
   ([] (PriorityQueue. search-config/max-filtered-results compare-score-and-result))
   ([^PriorityQueue q]
    (loop [acc []]
@@ -198,5 +206,17 @@
   "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
   [query-string result]
   (when-let [hit (text-score-with-match query-string result)]
-    {:score (combined-score hit)
-     :result (serialize hit)}))
+    (let [score (combined-score hit)]
+      {:score score
+       :result (serialize hit score)})))
+
+(defn top-results
+  "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the
+  transformation and returns a seq of the results sorted by score. The transforming function is expected to output
+  maps with `:score` and `:result` keys."
+  [reducible-results xf]
+  (->> reducible-results
+       (transduce xf accumulate-top-results)
+       ;; Make it descending: high scores first
+       reverse
+       (map :result)))
