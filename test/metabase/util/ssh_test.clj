@@ -178,21 +178,22 @@
 
 (deftest ssh-tunnel-works
   (testing "ssh tunnel can properly tunnel"
-    ;; this will try to open a TCP connection via the tunnel.
-    (sshu/with-ssh-tunnel [details-with-tunnel {:tunnel-enabled                true
-                                                :tunnel-user                   ssh-username
-                                                :tunnel-host                   "127.0.0.1"
-                                                :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
-                                                :tunnel-private-key            (slurp ssh-key-with-passphrase)
-                                                :tunnel-private-key-passphrase ssh-key-passphrase
-                                                :host                          "127.0.0.1"
-                                                :port                          41414}]
-      (with-open [server (doto (ServerSocket. 41414)
-                           (.setSoTimeout 10000))
-                  socket (Socket.)]
-        (let [server-thread (future (with-open [client-socket (.accept server)
-                                                out-server    (PrintWriter. (.getOutputStream client-socket) true)]
-                                      (.println out-server "hello from the ssh tunnel")))]
+    (with-open [server (doto (ServerSocket. 0) ; 0 -- let ServerSocket pick a random port
+                         (.setSoTimeout 10000))
+                socket (Socket.)]
+      (let [port          (.getLocalPort server)
+            server-thread (future (with-open [client-socket (.accept server)
+                                              out-server    (PrintWriter. (.getOutputStream client-socket) true)]
+                                    (.println out-server "hello from the ssh tunnel")))]
+        ;; this will try to open a TCP connection via the tunnel.
+        (sshu/with-ssh-tunnel [details-with-tunnel {:tunnel-enabled                true
+                                                    :tunnel-user                   ssh-username
+                                                    :tunnel-host                   "127.0.0.1"
+                                                    :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
+                                                    :tunnel-private-key            (slurp ssh-key-with-passphrase)
+                                                    :tunnel-private-key-passphrase ssh-key-passphrase
+                                                    :host                          "127.0.0.1"
+                                                    :port                          port}]
           (.connect socket (InetSocketAddress. "127.0.0.1" ^Integer (:tunnel-entrance-port details-with-tunnel)) 3000)
           ;; cause our future to run to completion
           (u/deref-with-timeout server-thread 12000)

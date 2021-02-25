@@ -18,6 +18,7 @@ import type {
 } from "metabase-types/types/Parameter";
 import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 import moment from "moment";
 
@@ -88,6 +89,14 @@ type DeserializeFn = (
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ) => FieldFilter;
 
+const withTemporalUnit = (fieldRef, unit) => {
+  const dimension =
+    (fieldRef && FieldDimension.parseMBQLOrWarn(fieldRef)) ||
+    new FieldDimension(null);
+
+  return dimension.withTemporalUnit(unit).mbql();
+};
+
 const timeParameterValueDeserializers: Deserializer[] = [
   {
     testRegex: /^past([0-9]+)([a-z]+)s(~)?$/,
@@ -126,7 +135,7 @@ const timeParameterValueDeserializers: Deserializer[] = [
     testRegex: /^(\d{4}-\d{2})$/,
     deserialize: (matches, fieldRef) => [
       "=",
-      ["datetime-field", fieldRef, "month"],
+      withTemporalUnit(fieldRef, "month"),
       moment(matches[0], "YYYY-MM").format("YYYY-MM-DD"),
     ],
   },
@@ -134,7 +143,7 @@ const timeParameterValueDeserializers: Deserializer[] = [
     testRegex: /^(Q\d-\d{4})$/,
     deserialize: (matches, fieldRef) => [
       "=",
-      ["datetime-field", fieldRef, "quarter"],
+      withTemporalUnit(fieldRef, "quarter"),
       moment(matches[0], "[Q]Q-YYYY").format("YYYY-MM-DD"),
     ],
   },

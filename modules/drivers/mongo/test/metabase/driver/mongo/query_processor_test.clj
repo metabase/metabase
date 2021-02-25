@@ -75,9 +75,9 @@
                             (mongo.qp/mbql->native
                              (mt/mbql-query attempts
                                {:aggregation [[:count]]
-                                :breakout    [[:datetime-field $datetime :month]
-                                              [:datetime-field $datetime :day]]
-                                :filter      [:= [:datetime-field $datetime :month] [:relative-datetime -1 :month]]})))]
+                                :breakout    [[:field %datetime {:temporal-unit :month}]
+                                              [:field %datetime {:temporal-unit :day}]]
+                                :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime~~~month" "datetime~~~day" "count"]
                         :query       [{"$match"
                                        {:$expr

@@ -20,16 +20,16 @@ describe("QuickFilterDrill", () => {
     let newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       "source-table": ORDERS.id,
-      filter: ["<", ["field-id", ORDERS.TOTAL.id], 42],
+      filter: ["<", ["field", ORDERS.TOTAL.id, null], 42],
     });
     expect(newCard.display).toEqual("table");
   });
-  it('should be valid for click on "joined-field" numeric cell ', () => {
+  it('should be valid for click on joined "field" numeric cell ', () => {
     const actions = QuickFilterDrill({
       question: ORDERS.question(),
       clicked: {
         column: ORDERS.TOTAL.column({
-          field_ref: ["joined-field", "foo", ["field-id", ORDERS.TOTAL.id]],
+          field_ref: ["field", ORDERS.TOTAL.id, { "join-alias": "foo" }],
         }),
         value: 42,
       },
@@ -38,7 +38,7 @@ describe("QuickFilterDrill", () => {
     let newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       "source-table": ORDERS.id,
-      filter: ["<", ["joined-field", "foo", ["field-id", ORDERS.TOTAL.id]], 42],
+      filter: ["<", ["field", ORDERS.TOTAL.id, { "join-alias": "foo" }], 42],
     });
     expect(newCard.display).toEqual("table");
   });

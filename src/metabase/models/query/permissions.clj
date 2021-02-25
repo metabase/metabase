@@ -4,6 +4,7 @@
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
   (:require [clojure.tools.logging :as log]
             [metabase.api.common :as api]
+            [metabase.mbql.normalize :as normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
@@ -85,9 +86,9 @@
              ;; Any `::native` placeholders from above mean we need native ad-hoc query permissions for this DATABASE
              (perms/adhoc-native-query-path database-or-id)
              ;; anything else (i.e., a normal table) just gets normal table permissions
-             (table-perms-fn (u/get-id database-or-id)
+             (table-perms-fn (u/the-id database-or-id)
                              (table-or-id->schema table-or-id)
-                             (u/get-id table-or-id)))))))
+                             (u/the-id table-or-id)))))))
 
 (s/defn ^:private source-card-read-perms :- #{perms/ObjectPath}
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
@@ -114,17 +115,21 @@
   [query :- {:query su/Map, s/Keyword s/Any}
    {:keys [throw-exceptions? already-preprocessed?], :as perms-opts} :- PermsOptions]
   (try
-    ;; if we are using a Card as our perms are that Card's (i.e. that Card's Collection's) read perms
-    (if-let [source-card-id (qputil/query->source-card-id query)]
-      (source-card-read-perms source-card-id)
-      ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-      (let [{:keys [query database]} (cond-> query
-                                       (not already-preprocessed?) preprocess-query)]
-        (tables->permissions-path-set database (query->source-table-ids query) perms-opts)))
+    (let [query (normalize/normalize query)]
+      ;; if we are using a Card as our perms are that Card's (i.e. that Card's Collection's) read perms
+      (if-let [source-card-id (qputil/query->source-card-id query)]
+        (source-card-read-perms source-card-id)
+        ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
+        (let [{:keys [query database]} (cond-> query
+                                         (not already-preprocessed?) preprocess-query)]
+          (tables->permissions-path-set database (query->source-table-ids query) perms-opts))))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it (except for superusers who get to see everything)
     (catch Throwable e
-      (let [e (ex-info "Error calculating permissions for query" {:query query} e)]
+      (let [e (ex-info "Error calculating permissions for query"
+                       {:query (or (u/ignore-exceptions (normalize/normalize query))
+                                   query)}
+                       e)]
         (when throw-exceptions?
           (throw e))
         (log/error e))
@@ -133,12 +138,13 @@
 (s/defn ^:private perms-set* :- #{perms/ObjectPath}
   "Does the heavy lifting of creating the perms set. `opts` will indicate whether exceptions should be thrown and
   whether full or segmented table permissions should be returned."
-  [{query-type :type, database :database, :as query}, perms-opts :- PermsOptions]
+  [{query-type :type, database :database, :as query} perms-opts :- PermsOptions]
   (cond
     (empty? query)                   #{}
     (= (keyword query-type) :native) #{(perms/adhoc-native-query-path database)}
     (= (keyword query-type) :query)  (mbql-permissions-path-set query perms-opts)
-    :else                            (throw (Exception. (tru "Invalid query type: {0}" query-type)))))
+    :else                            (throw (ex-info (tru "Invalid query type: {0}" query-type)
+                                                     {:query query}))))
 
 (defn segmented-perms-set
   "Calculate the set of permissions including segmented (not full) table permissions."

@@ -70,9 +70,8 @@
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
-(defn field-order-rule
+(def field-order-rule
   "How should we order fields."
-  [_]
   [[:position :asc] [:%lower.name :asc]])
 
 (defn update-field-positions!
@@ -120,12 +119,12 @@
 
 (defn ^:hydrate fields
   "Return the Fields belonging to a single `table`."
-  [{:keys [id] :as table}]
+  [{:keys [id]}]
   (db/select Field
     :table_id        id
     :active          true
     :visibility_type [:not= "retired"]
-    {:order-by (field-order-rule table)}))
+    {:order-by field-order-rule}))
 
 (defn metrics
   "Retrieve the Metrics for a single `table`."
@@ -140,11 +139,11 @@
 (defn field-values
   "Return the FieldValues for all Fields belonging to a single `table`."
   {:hydrate :field_values, :arglists '([table])}
-  [{:keys [id] :as table}]
+  [{:keys [id]}]
   (let [field-ids (db/select-ids Field
                     :table_id        id
                     :visibility_type "normal"
-                    {:order-by (field-order-rule table)})]
+                    {:order-by field-order-rule})]
     (when (seq field-ids)
       (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
 
@@ -192,7 +191,7 @@
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
-        {:order-by       (field-order-rule tables)}))
+        {:order-by       field-order-rule}))
     tables))
 
 

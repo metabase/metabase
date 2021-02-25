@@ -211,14 +211,18 @@ describe("scenarios > question > custom columns", () => {
         database: 1,
         query: {
           expressions: {
-            [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
+            [CC_NAME]: [
+              "*",
+              ["field", CE_NAME, { "base-type": "type/Float" }],
+              1234,
+            ],
           },
           "source-query": {
             aggregation: [
               ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
             "source-table": ORDERS_ID,
           },
@@ -256,17 +260,11 @@ describe("scenarios > question > custom columns", () => {
           aggregation: [
             [
               "distinct",
-              [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.ID],
-              ],
+              ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
             ],
             ["sum", ["expression", CC_NAME]],
           ],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
         type: "query",
       },
@@ -298,7 +296,7 @@ describe("scenarios > question > custom columns", () => {
           "source-query": {
             aggregation: [["cum-count"]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
             "source-table": ORDERS_ID,
           },
@@ -327,14 +325,18 @@ describe("scenarios > question > custom columns", () => {
         query: {
           "source-query": {
             "source-table": ORDERS_ID,
-            filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
-            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            filter: [">", ["field", ORDERS.SUBTOTAL, null], 0],
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           expressions: {
-            [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+            [CC_NAME]: [
+              "*",
+              ["field", "sum", { "base-type": "type/Float" }],
+              2,
+            ],
           },
         },
         database: 1,
@@ -370,7 +372,7 @@ describe("scenarios > question > custom columns", () => {
         query: {
           "source-table": PRODUCTS_ID,
           expressions: {
-            [CC_NAME]: ["concat", ["field-id", PRODUCTS.CATEGORY], "2"],
+            [CC_NAME]: ["concat", ["field", PRODUCTS.CATEGORY, null], "2"],
           },
           aggregation: [["count"]],
           breakout: [["expression", CC_NAME]],
@@ -402,8 +404,8 @@ describe("scenarios > question > custom columns", () => {
               "source-table": PRODUCTS_ID,
               condition: [
                 "=",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
               ],
               alias: "Products",
             },
@@ -411,7 +413,7 @@ describe("scenarios > question > custom columns", () => {
           expressions: {
             [CE_NAME]: [
               "ceil",
-              ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
+              ["field", PRODUCTS.PRICE, { "join-alias": "Products" }],
             ],
           },
         },
@@ -461,15 +463,15 @@ describe("scenarios > question > custom columns", () => {
               "case",
               [
                 [
-                  [">", ["field-id", ORDERS.DISCOUNT], 0],
-                  ["field-id", ORDERS.CREATED_AT],
+                  [">", ["field", ORDERS.DISCOUNT, null], 0],
+                  ["field", ORDERS.CREATED_AT, null],
                 ],
               ],
               {
                 default: [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CREATED_AT],
+                  "field",
+                  PRODUCTS.CREATED_AT,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               },
             ],

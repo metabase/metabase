@@ -74,7 +74,7 @@
                 {:source-table $$venues
                  :order-by     [[:asc $id]]
                  :filter       [:=
-                                [:joined-field "c" $categories.name]
+                                &c.categories.name
                                 [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
                  :fields       [$id $name $category_id $latitude $longitude $price]
                  :limit        100
@@ -83,7 +83,7 @@
                                  :strategy     :left-join
                                  :condition    [:=
                                                 $category_id
-                                                [:joined-field "c" $categories.id]]
+                                                &c.categories.id]
                                  :fk-field-id  (mt/id :venues :category_id)
                                  :fields       :none}]})))))))
 
@@ -119,24 +119,24 @@
                 ::id-swap
                 (mt/mbql-query checkins
                                  {:source-query {:source-table $$checkins
-                                                 :fields       [$id [:datetime-field $date :default] $user_id $venue_id]
+                                                 :fields       [$id [:field %date {:temporal-unit :default}] $user_id $venue_id]
                                                  :filter       [:>
                                                                 $date
                                                                 [:absolute-datetime #t "2015-01-01T00:00:00.000000000-00:00" :default]],},
                                   :aggregation  [[:count]]
-                                  :order-by     [[:asc [:joined-field "v" $venues.name]]]
-                                  :breakout     [[:joined-field "v" $venues.name]],
+                                  :order-by     [[:asc &v.venues.name]]
+                                  :breakout     [&v.venues.name]
                                   :filter       [:and
                                                  [:starts-with
-                                                  [:joined-field "v" $venues.name]
+                                                  &v.venues.name
                                                   [:value "F" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
-                                                 [:> [:field-literal "user_id" :type/Integer] 0]]
+                                                 [:> [:field "user_id" {:base-type :type/Integer}] 0]]
                                   :joins        [{:source-table $$venues
                                                   :alias        "v"
                                                   :strategy     :left-join
                                                   :condition    [:=
                                                                  $venue_id
-                                                                 [:joined-field "v" $venues.id]]
+                                                                 &v.venues.id]
                                                   :fk-field-id  (mt/id :checkins :venue_id)
                                                   :fields       :none}]}))))))))
 
@@ -214,23 +214,24 @@
 (defn- query-on-dataset-with-nils
   [query]
   (mt/rows
-    (qp/process-query {:database (mt/id)
-                       :type     :query
-                       :query    (merge
-                                  {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
-                                   :order-by     [[:asc [:field-literal "A" :type/Text]]]}
-                                  query)})))
+    (qp/process-query
+     {:database (mt/id)
+      :type     :query
+      :query    (merge
+                 {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
+                  :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
+                 query)})))
 
 (deftest correct-for-null-behaviour
   (testing "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs get propagated out of expressions)."
     (is (= [[nil] ["bar"]]
-           (query-on-dataset-with-nils {:filter [:not [:starts-with [:field-literal "A" :type/Text] "f"]]})))
+           (query-on-dataset-with-nils {:filter [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]]})))
     (is (= [[nil] ["bar"]]
-           (query-on-dataset-with-nils {:filter [:not [:ends-with [:field-literal "A" :type/Text] "o"]]})))
+           (query-on-dataset-with-nils {:filter [:not [:ends-with [:field "A" {:base-type :type/Text}] "o"]]})))
     (is (= [[nil] ["bar"]]
-           (query-on-dataset-with-nils {:filter [:not [:contains [:field-literal "A" :type/Text] "f"]]})))
+           (query-on-dataset-with-nils {:filter [:not [:contains [:field "A" {:base-type :type/Text}] "f"]]})))
     (is (= [[nil] ["bar"]]
-           (query-on-dataset-with-nils {:filter [:!= [:field-literal "A" :type/Text] "foo"]}))))
+           (query-on-dataset-with-nils {:filter [:!= [:field "A" {:base-type :type/Text}] "foo"]}))))
   (testing "Null behaviour correction fix should work with joined fields (#13534)"
     (is (= [[1000]]
            (mt/rows
@@ -256,16 +257,16 @@
           pretty-sql))))
 
 (deftest joined-field-clauses-test
-  (testing "Should correctly compile `:joined-field` clauses"
+  (testing "Should correctly compile `:field` clauses with `:join-alias`"
     (testing "when the join is at the same level"
       (is (= "SELECT c.NAME AS c__NAME FROM VENUES LEFT JOIN CATEGORIES c ON VENUES.CATEGORY_ID = c.ID"
              (mbql->native
               (mt/mbql-query venues
-                {:fields [[:joined-field "c" $categories.name]]
-                 :joins  [{:fields       [[:joined-field "c" $categories.name]]
+                {:fields [&c.categories.name]
+                 :joins  [{:fields       [&c.categories.name]
                            :source-table $$categories
                            :strategy     :left-join
-                           :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                           :condition    [:= $category_id &c.categories.id]
                            :alias        "c"}]})))))
     (testing "when the join is NOT at the same level"
       (is (= (str "SELECT source.c__NAME AS c__NAME "
@@ -277,13 +278,13 @@
                   ") source")
              (mbql->native
               (mt/mbql-query venues
-                {:fields       [[:joined-field "c" $categories.name]]
+                {:fields       [&c.categories.name]
                  :source-query {:source-table $$venues
-                                :fields       [[:joined-field "c" $categories.name]]
-                                :joins        [{:fields       [[:joined-field "c" $categories.name]]
+                                :fields       [&c.categories.name]
+                                :joins        [{:fields       [&c.categories.name]
                                                 :source-table $$categories
                                                 :strategy     :left-join
-                                                :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                                                :condition    [:= $category_id &c.categories.id]
                                                 :alias        "c"}]}})))))))
 
 (deftest ambiguous-field-metadata-test
@@ -331,7 +332,8 @@
                   "FROM ("
                   "SELECT PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY,"
                   " PEOPLE__via__USER_ID.SOURCE AS PEOPLE__via__USER_ID__SOURCE,"
-                  " ORDERS.CREATED_AT AS CREATED_AT, abs(0) AS \"pivot-grouping\","
+                  " ORDERS.CREATED_AT AS CREATED_AT,"
+                  " abs(0) AS \"pivot-grouping\","
                   " ORDERS.PRODUCT_ID AS PRODUCT_ID,"
                   " PRODUCTS__via__PRODUCT_ID.ID AS PRODUCTS__via__PRODUCT_ID__ID,"
                   " ORDERS.USER_ID AS USER_ID, PEOPLE__via__USER_ID.ID AS PEOPLE__via__USER_ID__ID "
@@ -362,22 +364,22 @@
                                &PEOPLE__via__USER_ID.people.source
                                !year.created_at
                                [:expression "pivot-grouping"]]
-                 :filter      [:and
-                               [:or
-                                [:=
-                                 &PEOPLE__via__USER_ID.people.source
-                                 [:value "Facebook" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]
-                                [:=
-                                 &PEOPLE__via__USER_ID.people.source
-                                 [:value "Google" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]]
-                               [:or
-                                [:=
-                                 &PRODUCTS__via__PRODUCT_ID.products.category
-                                 [:value "Doohickey" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]
-                                [:=
-                                 &PRODUCTS__via__PRODUCT_ID.products.category
-                                 [:value "Gizmo" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]]
-                               [:between !year.created_at [:relative-datetime -2 :year] [:relative-datetime -1 :year]]]
+                 :filter     [:and
+                              [:or
+                               [:=
+                                &PEOPLE__via__USER_ID.people.source
+                                [:value "Facebook" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]
+                               [:=
+                                &PEOPLE__via__USER_ID.people.source
+                                [:value "Google" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]]
+                              [:or
+                               [:=
+                                &PRODUCTS__via__PRODUCT_ID.products.category
+                                [:value "Doohickey" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]
+                               [:=
+                                &PRODUCTS__via__PRODUCT_ID.products.category
+                                [:value "Gizmo" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]]
+                              [:between !year.created_at [:relative-datetime -2 :year] [:relative-datetime -1 :year]]]
                  :expressions {:pivot-grouping [:abs 0]}
                  :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
                                [:asc &PEOPLE__via__USER_ID.people.source]

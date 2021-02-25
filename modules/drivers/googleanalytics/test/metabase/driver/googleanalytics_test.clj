@@ -52,22 +52,22 @@
     (is (= (ga-query {:metrics    "ga:users"
                       :dimensions "ga:browser"})
            (mbql->native {:query {:aggregation [[:metric "ga:users"]]
-                                  :breakout    [[:field-literal "ga:browser"]]}}))))
+                                  :breakout    [[:field "ga:browser" nil]]}}))))
   (testing "query w/ segment (filter)"
     (is (= (ga-query {:segment "gaid::-4"})
            (mbql->native {:query {:filter [:segment "gaid::-4"]}}))))
   (testing "query w/ non-segment filter"
     (is (= (ga-query {:filters "ga:continent==North America"})
-           (mbql->native {:query {:filter [:= [:field-literal "ga:continent"] [:value "North America"]]}}))))
+           (mbql->native {:query {:filter [:= [:field "ga:continent" nil] [:value "North America"]]}}))))
   (testing "query w/ segment & non-segment filter"
     (is (= (ga-query {:filters "ga:continent==North America"
                       :segment "gaid::-4"})
            (mbql->native {:query {:filter [:and
                                            [:segment "gaid::-4"]
-                                           [:= [:field-literal "ga:continent"] [:value "North America"]]]}})))))
+                                           [:= [:field "ga:continent" nil] [:value "North America"]]]}})))))
 
 (defn- ga-date-field [unit]
-  [:datetime-field [:field-literal "ga:date"] unit])
+  [:field "ga:date" {:temporal-unit unit}])
 
 (deftest filter-by-absolute-datetime-test
   (is (= (ga-query {:start-date "2016-11-08", :end-date "2016-11-08"})
@@ -198,27 +198,27 @@
               [[:metric "ga:totalEvents"]]
 
               :breakout
-              [[:field-id (u/the-id event-label-field)]]
+              [[:field (u/the-id event-label-field) nil]]
 
               :filter
               [:and
                [:segment "gaid::-4"]
                [:=
-                [:field-id (u/the-id event-action-field)]
+                [:field (u/the-id event-action-field) nil]
                 [:value "Run Query" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]
                [:between
-                [:datetime-field [:field-id (u/the-id date-field)] :day]
+                [:field (u/the-id date-field) {:temporal-unit :day}]
                 [:relative-datetime -30 :day]
                 [:relative-datetime -1 :day]]
                [:!=
-                [:field-id (u/the-id event-label-field)]
+                [:field (u/the-id event-label-field) nil]
                 [:value "(not set)" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]
                [:!=
-                [:field-id (u/the-id event-label-field)]
+                [:field (u/the-id event-label-field) nil]
                 [:value "url" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]]
 
               :order-by
-              [[:asc [:field-id (u/the-id event-label-field)]]]}})
+              [[:asc [:field (u/the-id event-label-field) nil]]]}})
 
 (deftest almost-e2e-test-1
   ;; system timezone ID shouldn't affect generated query
@@ -247,10 +247,10 @@
               :aggregation  [[:metric "ga:totalEvents"]]
               :filter       [:and
                              [:segment "gaid::-4"]
-                             [:= [:field-id (u/the-id event-action-field)] "Run Query"]
-                             [:time-interval [:field-id (u/the-id date-field)] -30 :day]
-                             [:!= [:field-id (u/the-id event-label-field)] "(not set)" "url"]]
-              :breakout     [[:field-id (u/the-id event-label-field)]]}})
+                             [:= [:field (u/the-id event-action-field) nil] "Run Query"]
+                             [:time-interval [:field (u/the-id date-field) nil] -30 :day]
+                             [:!= [:field (u/the-id event-label-field) nil] "(not set)" "url"]]
+              :breakout     [[:field (u/the-id event-label-field) nil]]}})
 
 (deftest almost-e2e-test-2
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
@@ -335,9 +335,9 @@
                      :end-date   "2019-10-31"
                      :sort       "ga:date"}
                     (-> {:query    {:source-table (:id table)
-                                    :filter       [:time-interval [:field-id (:id date-field)] -4 :month]
+                                    :filter       [:time-interval [:field (:id date-field) nil] -4 :month]
                                     :aggregation  [[:metric "ga:users"]]
-                                    :breakout     [[:datetime-field [:field-id (:id date-field)] :day]]}
+                                    :breakout     [[:field (:id date-field) {:temporal-unit :day}]]}
                          :type     :query
                          :database (:id db)}
                         qp/query->native
@@ -364,7 +364,7 @@
                                               :query    {:source-table (u/the-id table)
                                                          :aggregation  [[:METRIC "ga:sessions"]
                                                                         [:METRIC "ga:1dayUsers"]]
-                                                         :breakout     [[:datetime-field [:field-id (u/the-id field)] :day]]}}
+                                                         :breakout     [[:field (u/the-id field) {:temporal-unit :day}]]}}
                      :result_metadata        [{:base_type    :type/Date
                                                :display_name "Date"
                                                :name         "ga:date"

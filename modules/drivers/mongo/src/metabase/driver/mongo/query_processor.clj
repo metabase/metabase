@@ -124,12 +124,6 @@
 
       :else field-name)))
 
-(defmethod ->lvalue :field-id [[_ field-id]] (->lvalue (qp.store/field field-id)))
-(defmethod ->rvalue :field-id [[_ field-id]] (->rvalue (qp.store/field field-id)))
-
-(defmethod ->lvalue :field-literal [[_ field-name]] (name field-name))
-(defmethod ->rvalue :field-literal [[_ field-name]] (str \$ (name field-name))) ; TODO - not sure if right?
-
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
 ;;    aggregations[0] = 20
@@ -138,11 +132,17 @@
   [[_ index]]
   (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index)))
 
-(defmethod ->lvalue :datetime-field
-  [[_ field-clause unit]]
+(defn- with-lvalue-temporal-bucketing [field unit]
   (if (= unit :default)
-    (->lvalue field-clause)
-    (str (->lvalue field-clause) "~~~" (name unit))))
+    field
+    (str field "~~~" (name unit))))
+
+(defmethod ->lvalue :field
+  [[_ id-or-name {:keys [temporal-unit]}]]
+  (cond-> (if (integer? id-or-name)
+            (->lvalue (qp.store/field id-or-name))
+            (name id-or-name))
+    temporal-unit (with-lvalue-temporal-bucketing temporal-unit)))
 
 (defn- day-of-week
   [column]
@@ -167,14 +167,11 @@
                                                  [resolution])]
                                 [part (str (name parts) \. (name part))]))}))
 
-(defmethod ->rvalue :datetime-field
-  [[_ field-clause unit]]
+(defn- with-rvalue-temporal-bucketing
+  [field unit]
   (if (= unit :default)
-    (->rvalue field-clause)
-    (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
-          field    (when (integer? field-id)
-                     (qp.store/field field-id))
-          column   (->rvalue field-clause)]
+    field
+    (let [column field]
       (letfn [(truncate [unit]
                 (truncate-to-resolution column unit))]
         (case unit
@@ -212,6 +209,13 @@
 
           :year
           (truncate :year))))))
+
+(defmethod ->rvalue :field
+  [[_ id-or-name {:keys [temporal-unit]}]]
+  (cond-> (if (integer? id-or-name)
+            (->rvalue (qp.store/field id-or-name))
+            (str \$ (name id-or-name)))
+    temporal-unit (with-rvalue-temporal-bucketing temporal-unit)))
 
 ;; Values clauses below; they only need to implement `->rvalue`
 
@@ -531,10 +535,10 @@
      (assoc-in
       m
       (mbql.u/match-one field-clause
-        [:field-id field-id]
+        [:field (field-id :guard integer?) _]
         (str/split (->lvalue field-clause) #"\.")
 
-        [:field-literal field-name _]
+        [:field (field-name :guard string?) _]
         [field-name])
       (->rvalue field-clause)))
    (ordered-map/ordered-map)

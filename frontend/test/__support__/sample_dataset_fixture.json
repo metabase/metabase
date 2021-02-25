@@ -32,7 +32,7 @@
         "description": "Because we want to know the total I ugess",
         "table_id": 1,
         "definition": {
-          "aggregation": [["sum", ["field-id", 6]]],
+          "aggregation": [["sum", ["field", 6, null]]],
           "source-table": 1
         },
         "creator": {
@@ -66,7 +66,7 @@
         "description": "If it's more expensive it must be better",
         "table_id": 1,
         "definition": {
-          "filter": [">", ["field-id", 6], 30],
+          "filter": [">", ["field", 6, null], 30],
           "source-table": 1
         },
         "creator": {
@@ -591,28 +591,28 @@
         "points_of_interest": null,
         "values": [],
         "default_dimension_option": {
-          "mbql": ["binning-strategy", null, "default"],
+          "mbql": ["field", null, {"binning": {"strategy": "default"}}],
           "name": "Auto bin",
           "type": "type/Number"
         },
         "dimension_options": [
           {
-            "mbql": ["binning-strategy", null, "default"],
+            "mbql": ["field", null, {"binning": {"strategy": "default"}}],
             "name": "Auto bin",
             "type": "type/Number"
           },
           {
-            "mbql": ["binning-strategy", null, "num-bins", 10],
+            "mbql": ["field", null, {"binning": {"strategy": "num-bins", "num-bins": 10}}],
             "name": "10 bins",
             "type": "type/Number"
           },
           {
-            "mbql": ["binning-strategy", null, "num-bins", 50],
+            "mbql": ["field", null, {"binning": {"strategy": "num-bins", "num-bins": 50}}],
             "name": "50 bins",
             "type": "type/Number"
           },
           {
-            "mbql": ["binning-strategy", null, "num-bins", 100],
+            "mbql": ["field", null, {"binning": {"strategy": "num-bins", "num-bins": 100}}],
             "name": "100 bins",
             "type": "type/Number"
           },

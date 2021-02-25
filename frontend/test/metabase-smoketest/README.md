@@ -11,7 +11,7 @@ From the root of the repository:
 - If you already have built Metabase with `./bin/build`, just run this to run all the tests.
 
 ```shell
-yarn run test-cypress-no-build --testFiles frontend/test/metabase-smoketest
+yarn run test-cypress-no-build --folder frontend/test/metabase-smoketest
 ```
 
 - Active development, add `--open`

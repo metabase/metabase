@@ -62,6 +62,9 @@ export function formatSegmentName(segment, options) {
 
 // DIMENSIONS
 
+/**
+ * Find dimension with matching `name` in query. TODO - How is this "parsing" a dimension? Not sure about this name.
+ */
 export function parseDimension(name, { query }) {
   // FIXME: this is pretty inefficient, create a lookup table?
   return query
@@ -78,6 +81,10 @@ export function formatDimensionName(dimension, options) {
   return formatIdentifier(getDimensionName(dimension), options);
 }
 
+/**
+ * TODO -- this doesn't really return the dimension *name*, does it? It returns the 'rendered' dimension decscription
+ * with the FK symbol (→) replaced with a different character.
+ */
 export function getDimensionName(
   dimension,
   separator = EDITOR_FK_SYMBOLS.default,

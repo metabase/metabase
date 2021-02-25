@@ -3,6 +3,7 @@
   (:require [clojure.set :as set]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.mbql.normalize :as normalize]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -24,17 +25,18 @@
 
 (def ^:private ContextBearingForm
   [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
-                         (comp #{:field-id :metric :segment :fk->}
+                         (comp #{:field :metric :segment}
                                qp.util/normalize-token))
           "head")
    s/Any])
 
 (defn- collect-context-bearing-forms
   [form]
-  (into #{}
-        (comp (remove (s/checker ContextBearingForm))
-              (map #(update % 0 qp.util/normalize-token)))
-    (tree-seq sequential? identity form)))
+  (let [form (normalize/normalize-fragment [:query :filter] form)]
+    (into #{}
+          (comp (remove (s/checker ContextBearingForm))
+                (map #(update % 0 qp.util/normalize-token)))
+          (tree-seq sequential? identity form))))
 
 (defmulti
   ^{:doc "Return the relevant parts of a given entity's definition.

@@ -7,11 +7,10 @@ import Link from "metabase/components/Link";
 import { Box, Flex } from "grid-styled";
 
 import Search from "metabase/entities/search";
-import Database from "metabase/entities/databases";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import EntityItem from "metabase/components/EntityItem";
+import SearchResult from "metabase/search/components/SearchResult";
 import Subhead from "metabase/components/type/Subhead";
 import { FILTERS } from "metabase/collections/components/ItemTypeFilterBar";
 
@@ -50,17 +49,7 @@ export default class SearchApp extends React.Component {
                 .groupBy("model")
                 .value();
 
-              // either use the specified filter type or order the full set according to our preferred order
-              // (this should probably just be the default return from the endpoint no?
-              const resultDisplay = resultsByType[location.query.type] || [
-                ...(resultsByType.dashboard || []),
-                ...(resultsByType.metric || []),
-                ...(resultsByType.table || []),
-                ...(resultsByType.segment || []),
-                ...(resultsByType.card || []),
-                ...(resultsByType.collection || []),
-                ...(resultsByType.pulse || []),
-              ];
+              const resultDisplay = resultsByType[location.query.type] || list;
 
               const searchFilters = FILTERS.concat(
                 {
@@ -147,55 +136,7 @@ export default class SearchApp extends React.Component {
 const SearchResultSection = ({ title, items }) => (
   <Card>
     {items.map(item => {
-      let extraInfo;
-      switch (item.model) {
-        case "table":
-        case "segment":
-        case "metric":
-          extraInfo = (
-            <Flex align="center" color={color("text-medium")}>
-              <Icon name="database" size={8} mr="4px" />
-              <span className="text-small text-bold" style={{ lineHeight: 1 }}>
-                <Database.Name id={item.database_id} />
-              </span>
-            </Flex>
-          );
-          break;
-        case "collection":
-          break;
-        default:
-          extraInfo = (
-            <div className="inline-block">
-              <Flex align="center" color={color("text-medium")}>
-                <Icon name="folder" size={10} mr="4px" />
-                <span
-                  className="text-small text-bold"
-                  style={{ lineHeight: 1 }}
-                >
-                  {item.collection_name || t`Our Analytics`}
-                </span>
-              </Flex>
-            </div>
-          );
-          break;
-      }
-
-      return (
-        <Link
-          to={item.getUrl()}
-          key={item.id}
-          data-metabase-event={`Search Results;Item Click;${item.model}`}
-        >
-          <EntityItem
-            variant="list"
-            name={item.getName()}
-            iconName={item.getIcon()}
-            iconColor={item.getColor()}
-            item={item}
-            extraInfo={extraInfo}
-          />
-        </Link>
-      );
+      return <SearchResult result={item} />;
     })}
   </Card>
 );

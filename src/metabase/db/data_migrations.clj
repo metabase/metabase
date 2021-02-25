@@ -350,11 +350,13 @@
       (db/update-where! model {:collection_id nil}
         :collection_id (u/get-id new-collection)))))
 
-
-;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-;; !!                                                                                                               !!
-;; !!    Please seriously consider whether any new migrations you write here could be written as Liquibase ones     !!
-;; !!    (using preConditions where appropriate). Only add things here if absolutely necessary. If you do add       !!
-;; !!    do add new ones here, please add them above this warning message, so people will see it in the future.     !!
-;; !!                                                                                                               !!
-;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+(defmigration ^{:added "0.39.0"} migrate-map-regions
+  (transduce
+   (filter (fn [{{map-region :map.region} :visualization_settings}]
+             (= map-region "us_states")))
+   (completing
+    (fn [_ {card-id :id, {map-region :map.region, :as viz-settings} :visualization_settings}]
+      (let [new-settings (update viz-settings :map.region str/upper-case)]
+        (db/update! Card card-id :visualization_settings new-settings))))
+   nil
+   (db/select-reducible [Card :id :visualization_settings])))

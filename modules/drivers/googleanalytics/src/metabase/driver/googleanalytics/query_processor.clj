@@ -22,17 +22,11 @@
 
 (defmethod ->rvalue Object [this] this)
 
-(defmethod ->rvalue :field-id
-  [[_ field-id]]
-  (:name (qp.store/field field-id)))
-
-(defmethod ->rvalue :field-literal
-  [[_ field-name]]
-  field-name)
-
-(defmethod ->rvalue :datetime-field
-  [[_ field]]
-  (->rvalue field))
+(defmethod ->rvalue :field
+  [[_ id-or-name options]]
+  (if (integer? id-or-name)
+    (:name (qp.store/field id-or-name))
+    id-or-name))
 
 ;; TODO - I think these next two methods are no longer used, since `->date-range` handles these clauses
 (defmethod ->rvalue :absolute-datetime
@@ -112,8 +106,11 @@
                  ""
                  (str/join "," (for [breakout-field breakout-clause]
                                  (mbql.u/match-one breakout-field
-                                   [:datetime-field _ unit] (unit->ga-dimension unit)
-                                   _                        (->rvalue &match)))))})
+                                   [:field _ (options :guard :temporal-unit)]
+                                   (unit->ga-dimension (:temporal-unit options))
+
+                                   _
+                                   (->rvalue &match)))))})
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -182,12 +179,14 @@
     ;; remove all clauses that operate on datetime fields or built-in segments because we don't want to handle them
     ;; here, we'll do that seperately with the filter:interval and handle-filter:built-in-segment stuff below
     ;;
-    ;; (Recall that `auto-bucket-datetimes` guarantees all datetime Fields will be wrapped by `:datetime-field`
+    ;; (Recall that `auto-bucket-datetimes` guarantees all datetime Fields will get `:temporal-unit`
     ;; clauses in a fully-preprocessed query.)
     (let [filter-str (parse-filter (mbql.u/replace filter-clause
-                                     [:segment (_ :guard mbql.u/ga-id?)] nil
-                                     [_ [:datetime-field & _] & _] nil))]
+                                     [:segment (_ :guard mbql.u/ga-id?)]
+                                     nil
 
+                                     [_ [:field _ (_ :guard :temporal-unit)] & _]
+                                     nil))]
       (when-not (str/blank? filter-str)
         {:filters filter-str}))))
 
@@ -261,7 +260,8 @@
 
 (defn- field->unit [field]
   (or (mbql.u/match-one field
-        [:datetime-field _ unit] unit)
+        [:field _ (options :guard :temporal-unit)]
+        (:temporal-unit options))
       :day))
 
 (defmulti ^:private parse-filter:interval
@@ -332,7 +332,7 @@
     #{:!= :starts-with :ends-with :contains}
     nil
 
-    [(_ :guard #{:< :> :<= :>= :between :=}) [(_ :guard (partial not= :datetime-field)) & _] & _]
+    [(_ :guard #{:< :> :<= :>= :between :=}) [_ _ (_ :guard (complement :temporal-unit))] & _]
     nil))
 
 (defn- normalize-unit [unit]
@@ -342,9 +342,14 @@
   "Replace all unsupported datetime units with the default"
   [filter-clause]
   (mbql.u/replace filter-clause
-    [:datetime-field field unit]        [:datetime-field field (normalize-unit unit)]
-    [:absolute-datetime timestamp unit] [:absolute-datetime timestamp (normalize-unit unit)]
-    [:relative-datetime amount unit]    [:relative-datetime amount (normalize-unit unit)]))
+    [:field field (options :guard :temporal-unit)]
+    [:field field (update options :temporal-unit normalize-unit)]
+
+    [:absolute-datetime timestamp unit]
+    [:absolute-datetime timestamp (normalize-unit unit)]
+
+    [:relative-datetime amount unit]
+    [:relative-datetime amount (normalize-unit unit)]))
 
 (defn- add-start-end-dates [filter-clause]
   (merge {:start-date earliest-date, :end-date latest-date} filter-clause))
@@ -391,9 +396,14 @@
                       :asc  ""
                       :desc "-")
                     (mbql.u/match-one field
-                      [:datetime-field _ unit] (unit->ga-dimension unit)
-                      [:aggregation index]     (mbql.u/aggregation-at-index query index)
-                      [& _]                    (->rvalue &match))))))}))
+                     [:field _ (options :guard :temporal-unit)]
+                     (unit->ga-dimension (:temporal-unit options))
+
+                     [:aggregation index]
+                     (mbql.u/aggregation-at-index query index)
+
+                     [& _]
+                     (->rvalue &match))))))}))
 
 
 ;;; ----------------------------------------------------- limit ------------------------------------------------------

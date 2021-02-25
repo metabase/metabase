@@ -106,7 +106,7 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: ORDERS_ID,
         card_id: null,
         attribute_remappings: {
-          [USER_ATTRIBUTE]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          [USER_ATTRIBUTE]: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
       });
 
@@ -123,7 +123,7 @@ describeWithToken("formatting > sandboxes", () => {
                 name: TTAG_NAME,
                 "display-name": "CID",
                 type: "dimension",
-                dimension: ["field-id", PEOPLE.ID],
+                dimension: ["field", PEOPLE.ID, null],
                 "widget-type": "id",
               },
             },
@@ -227,7 +227,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", PEOPLE.ID]],
+          [ATTR_UID]: ["dimension", ["field", PEOPLE.ID, null]],
         },
         card_id: null,
         group_id: COLLECTION_GROUP,
@@ -284,7 +284,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
         card_id: null,
         group_id: COLLECTION_GROUP,
@@ -309,11 +309,11 @@ describeWithToken("formatting > sandboxes", () => {
                 "case",
                 [
                   [
-                    [">", ["field-id", ORDERS.DISCOUNT], 0],
-                    ["field-id", ORDERS.DISCOUNT],
+                    [">", ["field", ORDERS.DISCOUNT, null], 0],
+                    ["field", ORDERS.DISCOUNT, null],
                   ],
                 ],
-                { default: ["field-id", ORDERS.TOTAL] },
+                { default: ["field", ORDERS.TOTAL, null] },
               ],
             },
             "source-table": ORDERS_ID,
@@ -359,7 +359,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.request("POST", "/api/mt/gtap", {
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+            [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
           card_id: null,
           group_id: COLLECTION_GROUP,
@@ -384,9 +384,9 @@ describeWithToken("formatting > sandboxes", () => {
               aggregation: [["count"]],
               breakout: [
                 [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
               "source-table": ORDERS_ID,
@@ -435,7 +435,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
         card_id: null,
         group_id: COLLECTION_GROUP,
@@ -459,15 +459,15 @@ describeWithToken("formatting > sandboxes", () => {
           query: {
             aggregation: [["count"]],
             breakout: [
-              ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.CATEGORY]],
+              ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
             ],
             joins: [
               {
                 alias: PRODUCTS_ALIAS,
                 condition: [
                   "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
                 ],
                 fields: "all",
                 "source-table": PRODUCTS_ID,
@@ -534,7 +534,7 @@ describeWithToken("formatting > sandboxes", () => {
             type: "query",
             query: {
               "source-table": ORDERS_ID,
-              filter: [">", ["field-id", ORDERS.TOTAL], 10],
+              filter: [">", ["field", ORDERS.TOTAL, null], 10],
             },
             database: 1,
           },
@@ -547,7 +547,7 @@ describeWithToken("formatting > sandboxes", () => {
 
           cy.request("POST", "/api/mt/gtap", {
             attribute_remappings: {
-              [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+              [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
             },
             card_id: CARD_ID,
             group_id: COLLECTION_GROUP,
@@ -562,7 +562,7 @@ describeWithToken("formatting > sandboxes", () => {
             type: "query",
             query: {
               "source-table": PRODUCTS_ID,
-              filter: [">", ["field-id", PRODUCTS.PRICE], 10],
+              filter: [">", ["field", PRODUCTS.PRICE, null], 10],
             },
             database: 1,
           },
@@ -575,7 +575,7 @@ describeWithToken("formatting > sandboxes", () => {
 
           cy.request("POST", "/api/mt/gtap", {
             attribute_remappings: {
-              [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+              [ATTR_CAT]: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             },
             card_id: CARD_ID,
             group_id: COLLECTION_GROUP,
@@ -773,7 +773,7 @@ describeWithToken("formatting > sandboxes", () => {
           group_id: COLLECTION_GROUP,
           card_id: null,
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+            [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
         });
 
@@ -814,7 +814,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.request("POST", "/api/mt/gtap", {
           attribute_remappings: {
-            user_id: ["dimension", ["field-id", ORDERS.USER_ID]],
+            user_id: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
           card_id: null,
           table_id: ORDERS_ID,
@@ -825,7 +825,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.request("POST", "/api/mt/gtap", {
           attribute_remappings: {
-            user_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+            user_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
           },
           card_id: null,
           table_id: PRODUCTS_ID,
@@ -848,11 +848,7 @@ describeWithToken("formatting > sandboxes", () => {
             query: {
               aggregation: [["count"]],
               breakout: [
-                [
-                  "joined-field",
-                  PRODUCTS_ALIAS,
-                  ["field-id", PRODUCTS.CATEGORY],
-                ],
+                ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
               ],
               joins: [
                 {
@@ -860,8 +856,8 @@ describeWithToken("formatting > sandboxes", () => {
                   "source-table": PRODUCTS_ID,
                   condition: [
                     "=",
-                    ["field-id", ORDERS.PRODUCT_ID],
-                    ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                    ["field", ORDERS.PRODUCT_ID, null],
+                    ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
                   ],
                   alias: PRODUCTS_ALIAS,
                 },
@@ -978,7 +974,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log("**-- 1. Sandbox `Orders` table --**");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
         card_id: null,
         table_id: ORDERS_ID,
@@ -988,7 +984,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log("**-- 2. Sandbox `Products` table --**");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+          [ATTR_CAT]: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         },
         card_id: null,
         table_id: PRODUCTS_ID,
@@ -1094,8 +1090,8 @@ function createJoinedQuestion(name) {
             "source-table": PRODUCTS_ID,
             condition: [
               "=",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
             ],
             alias: "Products",
           },

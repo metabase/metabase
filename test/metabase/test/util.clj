@@ -264,19 +264,6 @@
   [obj]
   (json/parse-string (json/generate-string obj) keyword))
 
-
-(defn mappify
-  "Walk `coll` and convert all record types to plain Clojure maps. Useful because expectations will consider an instance
-  of a record type to be different from a plain Clojure map, even if all keys & values are the same."
-  [coll]
-  {:style/indent 0}
-  (walk/postwalk (fn [x]
-                   (if (map? x)
-                     (into {} x)
-                     x))
-                 coll))
-
-
 (defn do-with-temporary-setting-value
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as `binding`.

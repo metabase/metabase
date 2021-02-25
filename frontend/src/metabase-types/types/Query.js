@@ -249,47 +249,41 @@ export type ConcreteField =
   | DatetimeField
   | BinnedField;
 
-export type LocalFieldReference = ["field-id", FieldId] | FieldId; // @deprecated: use ["field-id", FieldId]
+export type LocalFieldReference = ["field", FieldId, {} | null];
 
 export type ForeignFieldReference = [
-  "fk->",
-  ["field-id", FieldId],
-  ["field-id", FieldId],
+  "field",
+  FieldId | string,
+  { "source-field": FieldId | string },
 ];
 
 export type ExpressionReference = ["expression", ExpressionName];
 
-export type FieldLiteral = ["field-literal", string, BaseType]; // ["field-literal", name, base-type]
+export type FieldLiteral = ["field", string, { "base-type": BaseType }];
 
-export type JoinedFieldReference = ["joined-field", JoinAlias, ConcreteField];
+export type JoinedFieldReference = [
+  "field",
+  FieldId | string,
+  { "join-alias": string },
+];
 
-export type DatetimeField =
-  | [
-      "datetime-field",
-      LocalFieldReference | ForeignFieldReference,
-      DatetimeUnit,
-    ]
-  | [
-      "datetime-field",
-      LocalFieldReference | ForeignFieldReference,
-      "as",
-      DatetimeUnit,
-    ]; // @deprecated: don't include the "as" element
+export type DatetimeField = [
+  "field",
+  FieldId | string,
+  { "temporal-unit": DatetimeUnit },
+];
 
-export type BinnedField =
-  | ["binning-strategy", LocalFieldReference | ForeignFieldReference, "default"] // default binning (as defined by backend)
-  | [
-      "binning-strategy",
-      LocalFieldReference | ForeignFieldReference,
-      "num-bins",
-      number,
-    ] // number of bins
-  | [
-      "binning-strategy",
-      LocalFieldReference | ForeignFieldReference,
-      "bin-width",
-      number,
-    ]; // width of each bin
+// @deprecated
+export type BinnedField = [
+  "field",
+  FieldId | string,
+  {
+    binning:
+      | { strategy: "num-bins", "num-bins": number }
+      | { strategy: "bin-width", "bin-width": number }
+      | { strategy: "default" },
+  },
+];
 
 export type AggregateField = ["aggregation", number];
 

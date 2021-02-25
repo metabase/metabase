@@ -17,7 +17,7 @@ describe("actions", () => {
         "source-table": ORDERS.id,
         filter: [
           "=",
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "day"],
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }],
           "2018-04-27T00:00:00+02:00",
         ],
       });

@@ -516,7 +516,7 @@
                 (m/update-existing details k (constantly (get-in database [:details k])))
                 details))
             details
-            database/sensitive-fields))))
+            (database/sensitive-fields-for-db database)))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."

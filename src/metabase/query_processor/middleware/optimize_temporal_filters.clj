@@ -12,11 +12,13 @@
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})
 
-(defn- datetime-field-unit [field]
-  (mbql.u/match-one field [:datetime-field _ unit] unit))
+(defn- temporal-unit [field]
+  (mbql.u/match-one field [:field _ opts] (:temporal-unit opts)))
 
 (defn- optimizable-field? [field]
-  (optimizable-units (datetime-field-unit field)))
+  (mbql.u/match-one field
+    [:field _ opts]
+    (optimizable-units (:temporal-unit opts))))
 
 (defmulti ^:private can-optimize-filter?
   mbql.u/dispatch-by-clause-name-or-class)
@@ -106,13 +108,13 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod optimize-filter :=
-  [[_ field temporal-value]]
-  (let [[_ _ datetime-field-unit] (mbql.u/match-one field :datetime-field)]
-    (when (field-and-temporal-value-have-compatible-units? field temporal-value)
-      (let [field' (change-datetime-field-unit-to-default field)]
+  [[_ field [_ inst unit]]]
+  (let [temporal-unit (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
+    (when (= unit temporal-unit)
+      (let [field' (change-field-temporal-unit-to-default field)]
         [:and
-         [:>= field' (temporal-value-lower-bound temporal-value datetime-field-unit)]
-         [:< field'  (temporal-value-upper-bound temporal-value datetime-field-unit)]]))))
+         [:>= field' [:absolute-datetime (lower-bound unit inst) :default]]
+         [:< field'  [:absolute-datetime (upper-bound unit inst) :default]]]))))
 
 (defmethod optimize-filter :!=
   [filter-clause]
@@ -181,11 +183,11 @@
   bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
   bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
 
-    [:= [:datetime-field [:field-id 1] :month] [:absolute-datetime #t \"2019-09-01\" :month]]
+    [:= [:field 1 {:temporal-unit :month}] [:absolute-datetime #t \"2019-09-01\" :month]]
     ->
     [:and
-     [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-09-01\" :month]]
-     [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-10-01\" :month]]]
+     [:>= [:field 1 {:temporal-unit :default}] [:absolute-datetime #t \"2019-09-01\" :month]]
+     [:<  [:field 1 {:temporal-unit :default}] [:absolute-datetime #t \"2019-10-01\" :month]]]
 
   The equivalent SQL, before and after, looks like:
 

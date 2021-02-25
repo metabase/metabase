@@ -62,7 +62,7 @@
 
 (defn- expected-tables [db-or-id]
   (map table-details (db/select Table
-                       :db_id (u/get-id db-or-id), :active true
+                       :db_id (u/the-id db-or-id), :active true
                        {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
@@ -188,7 +188,7 @@
     (testing "Check that we can delete a Database"
       (mt/with-temp Database [db]
         ((mt/user->client :crowberto) :delete 204 (format "database/%d" (:id db)))
-        (is (false? (db/exists? Database :id (u/get-id db))))))))
+        (is (false? (db/exists? Database :id (u/the-id db))))))))
 
 (deftest update-database-test
   (testing "PUT /api/database/:id"
@@ -331,7 +331,7 @@
 
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge
-   {:id           (format "card__%d" (u/get-id card))
+   {:id           (format "card__%d" (u/the-id card))
     :db_id        (:database_id card)
     :display_name (:name card)
     :schema       "Everything else"
@@ -356,7 +356,7 @@
         (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
                                 (disj :details))]
           (doseq [db ((mt/user->client :rasta) :get 200 "database")]
-            (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
+            (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
                      (set (keys db)))))))))
 
@@ -366,7 +366,7 @@
       (testing query-param
         (mt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
           (doseq [db ((mt/user->client :rasta) :get 200 (str "database" query-param))]
-            (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
+            (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= (expected-tables db)
                      (:tables db))))))))))
 
@@ -439,7 +439,7 @@
           (testing "The saved questions virtual DB should be the last DB in the list"
             (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
               ;; run the Card which will populate its result_metadata column
-              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card)))
               ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
               (let [response (last ((mt/user->client :crowberto) :get 200 (str "database" params)))]
                 (is (schema= SavedQuestionsDB
@@ -450,7 +450,7 @@
             (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
               (mt/with-temporary-setting-values [enable-nested-queries false]
                 ;; run the Card which will populate its result_metadata column
-                ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+                ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card)))
                 ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
                 (is (= nil
                        (fetch-virtual-database)))))))
@@ -458,11 +458,11 @@
         (testing "should pretend Collections are schemas"
           (mt/with-temp* [Collection [stamp-collection {:name "Stamps"}]
                           Collection [coin-collection  {:name "Coins"}]
-                          Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/get-id stamp-collection))]
-                          Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/get-id coin-collection))]]
+                          Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/the-id stamp-collection))]
+                          Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/the-id coin-collection))]]
             ;; run the Cards which will populate their result_metadata columns
             (doseq [card [stamp-card coin-card]]
-              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
             ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
             ;; Collection name as their Schema
             (let [response (last ((mt/user->client :crowberto) :get 200 (str "database" params)))]
@@ -485,11 +485,11 @@
         (testing "should remove Cards that belong to a driver that doesn't support nested queries"
           (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
                           Card     [bad-card {:name            "Bad Card"
-                                              :dataset_query   {:database (u/get-id bad-db)
+                                              :dataset_query   {:database (u/the-id bad-db)
                                                                 :type     :native
                                                                 :native   {:query "[QUERY GOES HERE]"}}
                                               :result_metadata [{:name "sparrows"}]
-                                              :database_id     (u/get-id bad-db)}]
+                                              :database_id     (u/the-id bad-db)}]
                           Card     [ok-card  (assoc (card-with-native-query "OK Card")
                                                     :result_metadata [{:name "finches"}])]]
             (let [response (fetch-virtual-database)]
@@ -542,8 +542,8 @@
          response
          (assoc (virtual-table-for-card card)
                 :fields [{:name                     "age_in_bird_years"
-                          :table_id                 (str "card__" (u/get-id card))
-                          :id                       ["field-literal" "age_in_bird_years" "type/*"]
+                          :table_id                 (str "card__" (u/the-id card))
+                          :id                       ["field" "age_in_bird_years" {:base-type "type/*"}]
                           :semantic_type            nil
                           :base_type                nil
                           :default_dimension_option nil
@@ -590,7 +590,7 @@
                                     :metadata_sync      schedule-map-for-hourly}}))]
              (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
                      :metadata_sync_schedule      "0 0 * * * ? *"}
-                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db))))))
+                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db))))))
            (finally (db/delete! Database :name db-name))))))
 
 (deftest update-schedules-for-existing-db
@@ -601,7 +601,7 @@
     (testing "Can we UPDATE the schedules for an existing database?"
       (testing "We cannot if we don't mark `:let-user-control-scheduling`"
         (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
-          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/get-id db))
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
                                 (assoc db :schedules attempted))
           (is (not= expected
                     (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
@@ -633,7 +633,7 @@
               :metadata_sync_schedule      "0 0 * * * ? *"
               :schedules                   {:cache_field_values schedule-map-for-last-friday-at-11pm
                                             :metadata_sync      schedule-map-for-hourly}}
-             (-> ((mt/user->client :crowberto) :get 200 (format "database/%d" (u/get-id db)))
+             (-> ((mt/user->client :crowberto) :get 200 (format "database/%d" (u/the-id db)))
                  (select-keys [:cache_field_values_schedule :metadata_sync_schedule :schedules])))))))
 
 ;; Five minutes
@@ -641,7 +641,7 @@
 
 (defn- deliver-when-db [promise-to-deliver expected-db]
   (fn [db]
-    (when (= (u/get-id db) (u/get-id expected-db))
+    (when (= (u/the-id db) (u/the-id expected-db))
       (deliver promise-to-deliver true))))
 
 (deftest trigger-metadata-sync-for-db-test
@@ -651,7 +651,7 @@
       (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
         (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
                       analyze/analyze-db!             (deliver-when-db analyze-called? db)]
-          ((mt/user->client :crowberto) :post 200 (format "database/%d/sync_schema" (u/get-id db)))
+          ((mt/user->client :crowberto) :post 200 (format "database/%d/sync_schema" (u/the-id db)))
           ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
           ;; however if something went wrong, don't hang forever, eventually timeout and fail
           (testing "sync called?"
@@ -671,9 +671,9 @@
     (let [update-field-values-called? (promise)]
       (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
         (with-redefs [field-values/update-field-values! (fn [synced-db]
-                                                          (when (= (u/get-id synced-db) (u/get-id db))
+                                                          (when (= (u/the-id synced-db) (u/the-id db))
                                                             (deliver update-field-values-called? :sync-called)))]
-          ((mt/user->client :crowberto) :post 200 (format "database/%d/rescan_values" (u/get-id db)))
+          ((mt/user->client :crowberto) :post 200 (format "database/%d/rescan_values" (u/the-id db)))
           (is (= :sync-called
                  (deref update-field-values-called? long-timeout :sync-never-called))))))))
 
@@ -685,19 +685,19 @@
 (deftest discard-db-fieldvalues
   (testing "Can we DISCARD all the FieldValues for a DB?"
     (mt/with-temp* [Database    [db       {:engine "h2", :details (:details (mt/db))}]
-                    Table       [table-1  {:db_id (u/get-id db)}]
-                    Table       [table-2  {:db_id (u/get-id db)}]
-                    Field       [field-1  {:table_id (u/get-id table-1)}]
-                    Field       [field-2  {:table_id (u/get-id table-2)}]
-                    FieldValues [values-1 {:field_id (u/get-id field-1), :values [1 2 3 4]}]
-                    FieldValues [values-2 {:field_id (u/get-id field-2), :values [1 2 3 4]}]]
-      ((mt/user->client :crowberto) :post 200 (format "database/%d/discard_values" (u/get-id db)))
+                    Table       [table-1  {:db_id (u/the-id db)}]
+                    Table       [table-2  {:db_id (u/the-id db)}]
+                    Field       [field-1  {:table_id (u/the-id table-1)}]
+                    Field       [field-2  {:table_id (u/the-id table-2)}]
+                    FieldValues [values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}]
+                    FieldValues [values-2 {:field_id (u/the-id field-2), :values [1 2 3 4]}]]
+      ((mt/user->client :crowberto) :post 200 (format "database/%d/discard_values" (u/the-id db)))
       (testing "values-1 still exists?"
         (is (= false
-               (db/exists? FieldValues :id (u/get-id values-1)))))
+               (db/exists? FieldValues :id (u/the-id values-1)))))
       (testing "values-2 still exists?"
         (is (= false
-               (db/exists? FieldValues :id (u/get-id values-2))))))))
+               (db/exists? FieldValues :id (u/the-id values-2))))))))
 
 (deftest nonadmins-cant-discard-all-fieldvalues
   (testing "Non-admins should not be allowed to discard all FieldValues"
@@ -816,7 +816,7 @@
                       Card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
-          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
         (is (= ["Everything else"
                 "My Collection"]
                ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id))))))
@@ -922,7 +922,7 @@
                       Card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
-          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
         (testing "Should be able to get saved questions in a specific collection"
           (is (= [{:id           (format "card__%d" (:id card-1))
                    :db_id        (mt/id)

@@ -62,7 +62,7 @@
                  :dimensions       []
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at]))
-           (-> ((mt/user->client :rasta) :get 200 (format "field/%d" (mt/id :users :name)))
+           (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at]))))))
 
 (deftest get-field-summary-test
@@ -70,7 +70,7 @@
     ;; TODO -- why doesn't this come back as a dictionary ?
     (is (= [["count" 75]
             ["distincts" 75]]
-           ((mt/user->client :rasta) :get 200 (format "field/%d/summary" (mt/id :categories :name)))))))
+           (mt/user-http-request :rasta :get 200 (format "field/%d/summary" (mt/id :categories :name)))))))
 
 (defn simple-field-details [field]
   (select-keys field [:name :display_name :description :visibility_type :semantic_type :fk_target_field_id]))
@@ -89,7 +89,7 @@
                     :fk_target_field_id nil}
                    original-val)))
           ;; set it
-          ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id) {:name            "something else"
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:name            "something else"
                                                                                        :display_name    "yay"
                                                                                        :description     "foobar"
                                                                                        :semantic_type   :type/Name
@@ -104,7 +104,7 @@
                       :fk_target_field_id nil}
                      updated-val)))
             ;; unset it
-            ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id) {:description   nil
+            (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description   nil
                                                                                  :semantic_type nil})
             (testing "response"
               (is (= {:name               "Field Test"
@@ -125,7 +125,7 @@
             (is (= true
                    original-val)))
           ;; unset the :type/FK semantic-type
-          ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
           (testing "after API call"
             (is (= nil
                    (db/select-one-field :fk_target_field_id Field, :id field-id)))))))))
@@ -134,7 +134,7 @@
   (testing "PUT /api/field/:id"
     (testing "check that you *can* set `:fk_target_field_id` if it *is* the proper base type"
       (mt/with-temp Field [{field-id :id} {:base_type :type/Integer}]
-        ((mt/user->client :crowberto) :put 200 (str "field/" field-id) {:semantic_type :type/UNIXTimestampSeconds})
+        (mt/user-http-request :crowberto :put 200 (str "field/" field-id) {:semantic_type :type/UNIXTimestampSeconds})
         (is (= :type/UNIXTimestampSeconds
                (db/select-one-field :semantic_type Field, :id field-id)))))))
 
@@ -155,15 +155,15 @@
           (db/update! FieldValues id :human_readable_values nil))
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price)}
-               ((mt/user->client :rasta) :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
+               (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
 
     (testing "Should return nothing for a field whose `has_field_values` is not `list`"
       (is (= {:values [], :field_id (mt/id :venues :id)}
-             ((mt/user->client :rasta) :get 200 (format "field/%d/values" (mt/id :venues :id))))))
+             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :id))))))
 
     (testing "Sensisitive fields do not have field values and should return empty"
       (is (= {:values [], :field_id (mt/id :users :password)}
-             ((mt/user->client :rasta) :get 200 (format "field/%d/values" (mt/id :users :password))))))))
+             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))))
 
 (def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 
@@ -175,16 +175,16 @@
         (testing "fetch initial values"
           (is (= {:values [[5] [6] [7] [8] [9]], :field_id true}
                  (mt/boolean-ids-and-timestamps
-                  ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))
+                  (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
         (testing "update values"
           (is (= {:status "success"}
                  (mt/boolean-ids-and-timestamps
-                  ((mt/user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+                  (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                    {:values (map vector (range 1 5))})))))
         (testing "fetch updated values"
           (is (= {:values [[1] [2] [3] [4]], :field_id true}
                  (mt/boolean-ids-and-timestamps
-                  ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))))))
+                  (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
 (deftest update-field-values-with-human-readable-values-test
   (testing "POST /api/field/:id/values"
@@ -194,16 +194,16 @@
         (testing "fetch initial values"
           (is (= {:values [[nil] [1] [2] [3] [4]], :field_id true}
                  (mt/boolean-ids-and-timestamps
-                  ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))
+                  (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
         (testing "update values"
           (is (= {:status "success"}
                  (mt/boolean-ids-and-timestamps
-                  ((mt/user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+                  (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                    {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))))
         (testing "fetch updated values"
           (is (= {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
                  (mt/boolean-ids-and-timestamps
-                  ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))))))
+                  (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
 (deftest create-field-values-when-not-present-test
   (testing "POST /api/field/:id/values"
@@ -214,10 +214,10 @@
        (mt/with-temp Field [{field-id :id} list-field]
          (is (= {:values [], :field_id true}
                 (mt/boolean-ids-and-timestamps
-                 ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id)))))
+                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))
 
          (is (= {:status "success"}
-                ((mt/user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+                (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                  {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
 
          (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"]}
@@ -225,7 +225,7 @@
 
          (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
                 (mt/boolean-ids-and-timestamps
-                 ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))))))
+                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
 (deftest remove-field-values-test
   (testing "POST /api/field/:id/values"
@@ -234,13 +234,13 @@
         (mt/with-temp FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]
           (testing "before updating values"
             (is (= {:values [[1] [2] [3] [4]], :field_id true}
-                   (mt/boolean-ids-and-timestamps ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))
+                   (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
           (testing "API response"
             (is (= {:status "success"}
-                   ((mt/user->client :crowberto) :post 200 (format "field/%d/values" field-id) {:values [], :field_id true}))))
+                   (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values [], :field_id true}))))
           (testing "after updating values"
             (is (= {:values [], :field_id true}
-                   (mt/boolean-ids-and-timestamps ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))[]))
+                   (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))[]))
 
       (testing "should be able to unset just the human-readable values"
         (mt/with-temp FieldValues [{field-value-id :id} {:values                (range 1 5)
@@ -248,18 +248,18 @@
                                                          :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
             (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
-                   (mt/boolean-ids-and-timestamps ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))
+                   (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
           (testing "API response"
             (is (= {:status "success"}
-                   ((mt/user->client :crowberto) :post 200 (format "field/%d/values" field-id) {:values [[1] [2] [3] [4]]}))))
+                   (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values [[1] [2] [3] [4]]}))))
           (testing "after updating values"
             (is (= {:values [[1] [2] [3] [4]], :field_id true}
-                   (mt/boolean-ids-and-timestamps ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id)))))))))
+                   (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
 
     (testing "attempting to updated values should throw when human readable values are present but not for every value"
       (mt/with-temp Field [{field-id :id} {:name "Field Test", :base_type :type/Integer, :has_field_values "list"}]
         (is (= "If remapped values are specified, they must be specified for all field values"
-               ((mt/user->client :crowberto) :post 400 (format "field/%d/values" field-id)
+               (mt/user-http-request :crowberto :post 400 (format "field/%d/values" field-id)
                 {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
 
 (defn- dimension-for-field [field-id]
@@ -271,7 +271,7 @@
   {:style/indent 1}
   [field-id map-to-post & {:keys [expected-status-code]
                            :or   {expected-status-code 200}}]
-  ((mt/user->client :crowberto) :post expected-status-code (format "field/%d/dimension" field-id) map-to-post))
+  (mt/user-http-request :crowberto :post expected-status-code (format "field/%d/dimension" field-id) map-to-post))
 
 (deftest create-update-dimension-test
   (mt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
@@ -301,13 +301,13 @@
                     :field_id                true}
                    (mt/boolean-ids-and-timestamps updated-dim)))
             (testing "attempting to create a dimension when one already exists should update the existing"
-              (is (= (u/get-id new-dim)
-                     (u/get-id updated-dim))))))))))
+              (is (= (u/the-id new-dim)
+                     (u/the-id updated-dim))))))))))
 
 (deftest virtual-field-values-test
   (testing "Check that trying to get values for a 'virtual' field just returns a blank values map"
     (is (= {:values []}
-           ((mt/user->client :rasta) :get 200 (format "field/%s/values" (codec/url-encode "field-literal,created_at,type/Datetime")))))))
+           (mt/user-http-request :rasta :get 200 (format "field/%s/values" (codec/url-encode "field,created_at,{base-type,type/Datetime}")))))))
 
 (deftest create-dimension-with-human-readable-field-id-test
   (testing "POST /api/field/:id/dimension"
@@ -340,7 +340,7 @@
     (testing "Non-admin users can't update dimension"
       (mt/with-temp Field [{field-id :id} {:name "Field Test 1"}]
         (is (= "You don't have permissions to do that."
-               ((mt/user->client :rasta) :post 403 (format "field/%d/dimension" field-id)
+               (mt/user-http-request :rasta :post 403 (format "field/%d/dimension" field-id)
                 {:name "some dimension name", :type "external"})))))))
 
 (deftest delete-dimension-test
@@ -357,7 +357,7 @@
                   :human_readable_field_id false
                   :field_id                true}
                  (mt/boolean-ids-and-timestamps (dimension-for-field field-id)))))
-        ((mt/user->client :crowberto) :delete 204 (format "field/%d/dimension" field-id))
+        (mt/user-http-request :crowberto :delete 204 (format "field/%d/dimension" field-id))
         (testing "after deletion"
           (is (= []
                  (dimension-for-field field-id))))))))
@@ -367,7 +367,7 @@
     (testing "Non-admin users can't delete a dimension"
       (mt/with-temp Field [{field-id :id} {:name "Field Test 1"}]
         (is (= "You don't have permissions to do that."
-               ((mt/user->client :rasta) :delete 403 (format "field/%d/dimension" field-id))))))))
+               (mt/user-http-request :rasta :delete 403 (format "field/%d/dimension" field-id))))))))
 
 (deftest clear-external-dimension-when-fk-semantic-type-is-removed-test
   (testing "PUT /api/field/:id"
@@ -386,7 +386,7 @@
                   :human_readable_field_id true
                   :field_id                true}
                  (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1)))))
-        ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id-1) {:semantic_type nil})
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-1) {:semantic_type nil})
         (testing "after update"
           (is (= []
                  (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1)))))))))
@@ -411,7 +411,7 @@
             (is (= expected
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1)))))
           ;; now change something unrelated: description
-          ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id-1)
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-1)
            {:description "something diffrent"})
           (testing "after API request"
             (is (= expected
@@ -431,7 +431,7 @@
                 :semantic_type      :type/FK
                 :fk_target_field_id true}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
-      ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
       (testing "after change"
         (is (= {:name               "Field Test 2"
                 :display_name       "Field Test 2"
@@ -457,7 +457,7 @@
                   :semantic_type      :type/FK
                   :fk_target_field_id true}
                  (mt/boolean-ids-and-timestamps before-change))))
-        ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
         (testing "after change"
           (let [after-change (simple-field-details (Field field-id-3))]
             (is (= {:name               "Field Test 3"
@@ -483,7 +483,7 @@
                 :semantic_type      nil
                 :fk_target_field_id false}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
-      ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
                                                                              :fk_target_field_id field-id-1})
       (testing "after change"
         (is (= {:name               "Field Test 2"
@@ -509,7 +509,7 @@
                   :semantic_type      :type/FK
                   :fk_target_field_id true}
                  (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
-        ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id-2) {:description "foo"})
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:description "foo"})
         (testing "after change"
           (is (= {:name               "Field Test 2"
                   :display_name       "Field Test 2"
@@ -534,7 +534,7 @@
                   :human_readable_field_id false
                   :field_id                true}
                  (mt/boolean-ids-and-timestamps (dimension-for-field field-id)))))
-        ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id) {:semantic_type "type/Text"})
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type "type/Text"})
         (testing "after API request"
           (is (= []
                  (dimension-for-field field-id))))))
@@ -553,7 +553,7 @@
           (testing "before API request"
             (is (= expected
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id)))))
-          ((mt/user->client :crowberto) :put 200 (format "field/%d" field-id) {:has_field_values "list"})
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:has_field_values "list"})
           (testing "after API request"
             (is (= expected
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id))))))))))
@@ -561,9 +561,9 @@
 (deftest update-field-settings-test
   (testing "Can we update Field.settings, and fetch it?"
     (mt/with-temp Field [field {:name "Crissy Field"}]
-      ((mt/user->client :crowberto) :put 200 (format "field/%d" (u/get-id field)) {:settings {:field_is_cool true}})
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" (u/the-id field)) {:settings {:field_is_cool true}})
       (is (= {:field_is_cool true}
-             (-> ((mt/user->client :crowberto) :get 200 (format "field/%d" (u/get-id field)))
+             (-> (mt/user-http-request :crowberto :get 200 (format "field/%d" (u/the-id field)))
                  :settings))))))
 
 (deftest search-values-test

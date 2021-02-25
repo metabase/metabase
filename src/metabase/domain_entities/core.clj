@@ -35,8 +35,9 @@
   [bindings :- Bindings, source :- SourceName, dimension-reference :- DimensionReference]
   (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
     (if maybe-dimension
-      (cond->> (get-in bindings [table-or-dimension :dimensions maybe-dimension])
-        (not= source table-or-dimension) (vector :joined-field table-or-dimension))
+      (let [field-clause (get-in bindings [table-or-dimension :dimensions maybe-dimension])]
+        (cond-> field-clause
+          (not= source table-or-dimension) (mbql.u/assoc-field-options :join-alias table-or-dimension)))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
 (s/defn resolve-dimension-clauses
@@ -51,8 +52,8 @@
   "Return MBQL clause for a given field-like object."
   [{:keys [id name base_type]}]
   (if id
-    [:field-id id]
-    [:field-literal name base_type]))
+    [:field id nil]
+    [:field name {:base-type base_type}]))
 
 (defn- has-attribute?
   [entity {:keys [field domain_entity has_many]}]
@@ -94,7 +95,7 @@
      :dimensions          dimensions
      :type                type
      :description         description
-     :source_table        (u/get-id table)
+     :source_table        (u/the-id table)
      :name                name}))
 
 (defn domain-entity-for-table

@@ -160,11 +160,23 @@
 
 (deftest other-clauses-test
   (testing "Make sure we apply the transformation to predicates in all parts of the query, not only `:filter`"
-    (is (= (mt/dataset sad-toucan-incidents
-             (mt/mbql-query incidents
+    (mt/dataset sad-toucan-incidents
+      (is (= (mt/mbql-query incidents
                {:aggregation [[:share
-                               [:> !day.timestamp [:absolute-datetime (t/zoned-date-time "2015-06-01T00:00Z[UTC]") :day]]]]}))
-           (mt/dataset sad-toucan-incidents
+                               [:> !day.timestamp [:absolute-datetime (t/zoned-date-time "2015-06-01T00:00Z[UTC]") :day]]]]})
              (wrap-value-literals
                (mt/mbql-query incidents
                  {:aggregation [[:share [:> !day.timestamp "2015-06-01"]]]})))))))
+
+(deftest base-type-test
+  (testing "Make sure base-type from `:field` w/ name is picked up correctly"
+    (is (= {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]]
+            :filter       [:not [:starts-with
+                                 [:field "A" {:base-type :type/Text}]
+                                 [:value "f" {:base_type :type/Text}]]]
+            :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
+           (#'wrap-value-literals/wrap-value-literals-in-mbql-query
+            {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]],
+             :filter       [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]],
+             :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
+            nil)))))

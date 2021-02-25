@@ -2,7 +2,11 @@
 
 import moment from "moment";
 
-import { rangeForValue, fieldRefForColumn } from "metabase/lib/dataset";
+import {
+  rangeForValue,
+  fieldRefForColumn,
+  fieldRefWithOption,
+} from "metabase/lib/dataset";
 import { isDate, isNumber } from "metabase/lib/schema_metadata";
 
 import type { Breakout } from "metabase-types/types/Query";
@@ -11,6 +15,7 @@ import { parseTimestamp } from "metabase/lib/time";
 
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 export { drillDownForDimensions } from "./drilldown";
 
@@ -75,9 +80,11 @@ export function distribution(question: Question, column): ?Question {
   const query = question.query();
   if (query instanceof StructuredQuery) {
     const breakout = isDate(column)
-      ? ["datetime-field", fieldRefForColumn(column), "month"]
+      ? fieldRefWithOption(fieldRefForColumn(column), "temporal-unit", "month")
       : isNumber(column)
-      ? ["binning-strategy", fieldRefForColumn(column), "default"]
+      ? fieldRefWithOption(fieldRefForColumn(column), "binning", {
+          strategy: "default",
+        })
       : fieldRefForColumn(column);
     return query
       .clearAggregations()
@@ -120,6 +127,17 @@ export function drillUnderlyingRecords(
 
 // STRUCTURED QUERY UTILITIES
 
+const fieldRefWithTemporalUnit = (mbqlClause, unit) => {
+  const dimension = FieldDimension.parseMBQLOrWarn(mbqlClause);
+  if (dimension) {
+    return dimension.withTemporalUnit(unit).mbql();
+  }
+  return mbqlClause;
+};
+
+const fieldRefWithTemporalUnitForColumn = (column, unit) =>
+  fieldRefWithTemporalUnit(fieldRefForColumn(column), unit);
+
 export function drillFilter(
   query: StructuredQuery,
   value,
@@ -129,7 +147,7 @@ export function drillFilter(
   if (isDate(column)) {
     filter = [
       "=",
-      ["datetime-field", fieldRefForColumn(column), column.unit],
+      fieldRefWithTemporalUnitForColumn(column, column.unit),
       parseTimestamp(value, column.unit).format(),
     ];
   } else {
@@ -207,7 +225,10 @@ export function updateDateTimeFilter(
     }
 
     // update the breakout
-    query = addOrUpdateBreakout(query, ["datetime-field", fieldRef, unit]);
+    query = addOrUpdateBreakout(
+      query,
+      fieldRefWithTemporalUnit(fieldRef, unit),
+    );
 
     // round to start of the original unit
     start = start.startOf(column.unit);
@@ -220,14 +241,14 @@ export function updateDateTimeFilter(
       // is the start and end are the same (in whatever the original unit was) then just do an "="
       return addOrUpdateFilter(query, [
         "=",
-        ["datetime-field", fieldRef, column.unit],
+        fieldRefWithTemporalUnit(fieldRef, column.unit),
         start.format(),
       ]);
     } else {
       // otherwise do a between
       return addOrUpdateFilter(query, [
         "between",
-        ["datetime-field", fieldRef, column.unit],
+        fieldRefWithTemporalUnit(fieldRef, column.unit),
         start.format(),
         end.format(),
       ]);

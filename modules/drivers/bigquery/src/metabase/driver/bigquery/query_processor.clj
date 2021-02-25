@@ -157,23 +157,28 @@
   [_]
   :time)
 
-(defmethod temporal-type :datetime-field
-  [[_ field unit]]
-  ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
-  ;;
-  ;; `:year` is both an extract unit and a truncate unit in terms of `u.date` capabilities, but in MBQL it should be a
-  ;; truncation operation
-  (if ((disj u.date/extract-units :year) unit)
+(defmethod temporal-type :field
+  [[_ id-or-name {:keys [base-type temporal-unit], :as opts} :as clause]]
+  (cond
+    (contains? (meta clause) :bigquery/temporal-type)
+    (:bigquery/temporal-type (meta clause))
+
+    ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
+    ;;
+    ;; `:year` is both an extract unit and a truncate unit in terms of `u.date` capabilities, but in MBQL it should be a
+    ;; truncation operation
+    ((disj u.date/extract-units :year) temporal-unit)
     nil
-    (temporal-type field)))
+
+    (integer? id-or-name)
+    (temporal-type (qp.store/field id-or-name))
+
+    base-type
+    (base-type->temporal-type base-type)))
 
 (defmethod temporal-type :default
   [x]
-  (if (contains? (meta x) :bigquery/temporal-type)
-    (:bigquery/temporal-type (meta x))
-    (mbql.u/match-one x
-      [:field-id id]               (temporal-type (qp.store/field id))
-      [:field-literal _ base-type] (base-type->temporal-type base-type))))
+  (:bigquery/temporal-type (meta x)))
 
 (defn- with-temporal-type {:style/indent 0} [x new-type]
   (if (= (temporal-type x) new-type)
@@ -432,11 +437,10 @@
                                     more)))
         (vary-meta assoc ::already-qualified? true))))
 
-(doseq [clause-type [:datetime-field :field-literal :field-id]]
-  (defmethod sql.qp/->honeysql [:bigquery clause-type]
-    [driver clause]
-    (let [hsql-form ((get-method sql.qp/->honeysql [:sql clause-type]) driver clause)]
-      (with-temporal-type hsql-form (temporal-type clause)))))
+(defmethod sql.qp/->honeysql [:bigquery :field]
+  [driver clause]
+  (let [hsql-form ((get-method sql.qp/->honeysql [:sql :field]) driver clause)]
+    (with-temporal-type hsql-form (temporal-type clause))))
 
 (defmethod sql.qp/->honeysql [:bigquery :relative-datetime]
   [driver clause]

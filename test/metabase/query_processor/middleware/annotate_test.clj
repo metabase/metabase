@@ -38,8 +38,8 @@
                         [[1] [2] [nil] [3]]))))
 
     (testing "should disambiguate duplicate names"
-      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}
-              {:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a_2" :type/Integer]}]
+      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field "a" {:base-type :type/Integer}]}
+              {:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field "a_2" {:base-type :type/Integer}]}]
              (annotate/column-info
               {:type :native}
               {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
@@ -52,13 +52,13 @@
 
 (defn- info-for-field
   ([field-id]
-   (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type)) :id field-id))
+   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type)) :id field-id)))
 
   ([table-key field-key]
    (info-for-field (mt/id table-key field-key))))
 
 (deftest col-info-field-ids-test
-  (testing "make sure columns are comming back the way we'd expect for :field-literal clauses"
+  (testing {:base-type "make sure columns are comming back the way we'd expect for :field clauses"}
     (mt/with-everything-store
       (mt/$ids venues
         (is (= [(merge (info-for-field :venues :price)
@@ -69,12 +69,11 @@
                  {:type :query, :query {:fields [$price]}}
                  {:columns [:price]}))))))))
 
-;; TODO - I think this can be removed, now that `fk->` forms are "sugar" and replaced with `:joined-field` clauses
-;; before the query ever makes it to the 'annotate' stage
 (deftest col-info-for-fks-and-joins-test
   (mt/with-everything-store
     (mt/$ids venues
-      (testing "when an `fk->` form is used, we should add in `:fk_field_id` info about the source Field"
+      (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
+                    "info about the source Field")
         (is (= [(merge (info-for-field :categories :name)
                        {:fk_field_id %category_id
                         :source      :fields
@@ -85,8 +84,8 @@
                  {:columns [:name]})))))
 
       (testing "joins"
-        (testing (str "we should get `:fk_field_id` and information where possible when using `:joined-field` clauses; "
-                      "display_name should include the display name of the FK field  (for IMPLICIT JOINS)")
+        (testing (str "we should get `:fk_field_id` and information where possible when using joins; "
+                      "display_name should include the display name of the FK field (for IMPLICIT JOINS)")
           (is (= [(merge (info-for-field :categories :name)
                          {:display_name "Category → Name"
                           :source       :fields
@@ -105,7 +104,7 @@
                    {:columns [:name]})))))
 
         (testing (str "for EXPLICIT JOINS (which do not include an `:fk-field-id` in the Join info) the returned "
-                      "`:field_ref` should be a `joined-field` clause instead of an `fk->` clause")
+                      "`:field_ref` should be have only `:join-alias`, and no `:source-field`")
           (is (= [(merge (info-for-field :categories :name)
                          {:display_name "Categories → Name"
                           :source       :fields
@@ -143,67 +142,73 @@
                  :field_ref    !month.*price/Number}]
                (doall
                 (annotate/column-info
-                 {:type :query, :query {:fields [[:datetime-field [:field-literal "price" :type/Number] :month]]}}
+                 {:type :query, :query {:fields [[:field "price" {:base-type :type/Number, :temporal-unit :month}]]}}
                  {:columns [:price]}))))))))
 
 (deftest col-info-for-binning-strategy-test
-  (testing "when binning-strategy is used, include `:binning_info`"
+  (testing "when binning strategy is used, include `:binning_info`"
     (is (= [{:name         "price"
              :base_type    :type/Number
              :display_name "Price"
              :unit         :month
              :source       :fields
              :binning_info {:num_bins 10, :bin_width 5, :min_value -100, :max_value 100, :binning_strategy :num-bins}
-             :field_ref    [:binning-strategy
-                            [:datetime-field [:field-literal "price" :type/Number] :month]
-                            :num-bins 10
-                            {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100}]}]
+             :field_ref    [:field "price" {:base-type     :type/Number
+                                            :temporal-unit :month
+                                            :binning       {:strategy  :num-bins
+                                                            :num-bins  10
+                                                            :bin-width 5
+                                                            :min-value -100
+                                                            :max-value 100}}]}]
            (doall
             (annotate/column-info
              {:type  :query
-              :query {:fields [[:binning-strategy
-                                [:datetime-field [:field-literal "price" :type/Number] :month]
-                                :num-bins 10
-                                {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100}]]}}
+              :query {:fields [[:field "price" {:base-type     :type/Number
+                                                :temporal-unit :month
+                                                :binning       {:strategy  :num-bins
+                                                                :num-bins  10
+                                                                :bin-width 5
+                                                                :min-value -100
+                                                                :max-value 100}}]]}}
              {:columns [:price]}))))))
 
 (deftest col-info-combine-parent-field-names-test
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
-                    Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/get-id parent)}]]
+                    Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
       (mt/with-everything-store
         (is (= {:description     nil
                 :table_id        (mt/id :venues)
                 :semantic_type   nil
                 :name            "parent.child"
                 :settings        nil
-                :field_ref       [:field-id (u/get-id child)]
-                :parent_id       (u/get-id parent)
-                :id              (u/get-id child)
+                :field_ref       [:field (u/the-id child) nil]
+                :parent_id       (u/the-id parent)
+                :id              (u/the-id child)
                 :visibility_type :normal
                 :display_name    "Child"
                 :fingerprint     nil
                 :base_type       :type/Text}
-               (into {} (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))))))
+               (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
 
   (testing "nested-nested fields should include grandparent name (etc)"
     (tt/with-temp* [Field [grandparent {:name "grandparent", :table_id (mt/id :venues)}]
-                    Field [parent      {:name "parent", :table_id (mt/id :venues), :parent_id (u/get-id grandparent)}]
-                    Field [child       {:name "child", :table_id (mt/id :venues), :parent_id (u/get-id parent)}]]
+                    Field [parent      {:name "parent", :table_id (mt/id :venues), :parent_id (u/the-id grandparent)}]
+                    Field [child       {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
       (mt/with-everything-store
         (is (= {:description     nil
                 :table_id        (mt/id :venues)
                 :semantic_type   nil
                 :name            "grandparent.parent.child"
                 :settings        nil
-                :field_ref       [:field-id (u/get-id child)]
-                :parent_id       (u/get-id parent)
-                :id              (u/get-id child)
+                :field_ref       [:field (u/the-id child) nil]
+                :parent_id       (u/the-id parent)
+                :id              (u/the-id child)
                 :visibility_type :normal
                 :display_name    "Child"
                 :fingerprint     nil
                 :base_type       :type/Text}
-               (into {} (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)]))))))))
+               (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil]))))))))
 
 (deftest col-info-field-literals-test
   (testing "field literals should get the information from the matching `:source-metadata` if it was supplied"
@@ -211,13 +216,13 @@
       (is (= {:name          "sum"
               :display_name  "sum of User ID"
               :base_type     :type/Integer
-              :field_ref     [:field-literal "sum" :type/Integer]
+              :field_ref     [:field "sum" {:base-type :type/Integer}]
               :semantic_type :type/FK}
              (#'annotate/col-info-for-field-clause
               {:source-metadata
                [{:name "abc", :display_name "another Field", :base_type :type/Integer, :semantic_type :type/FK}
                 {:name "sum", :display_name "sum of User ID", :base_type :type/Integer, :semantic_type :type/FK}]}
-              [:field-literal "sum" :type/Integer]))))))
+              [:field "sum" {:base-type :type/Integer}]))))))
 
 (deftest col-info-expressions-test
   (mt/with-everything-store
@@ -268,11 +273,11 @@
 
     (testing ":distinct"
       (is (= {:name "count", :display_name "Distinct values of ID"}
-             (aggregation-names [:distinct [:field-id (mt/id :venues :id)]]))))
+             (aggregation-names [:distinct [:field (mt/id :venues :id) nil]]))))
 
     (testing ":sum"
       (is (= {:name "sum", :display_name "Sum of ID"}
-             (aggregation-names [:sum [:field-id (mt/id :venues :id)]])))))
+             (aggregation-names [:sum [:field (mt/id :venues :id) nil]])))))
 
   (testing "expressions"
     (testing "simple expression"
@@ -283,40 +288,40 @@
       (is (= {:name "expression", :display_name "Min of ID + (2 * Average of Price)"}
              (aggregation-names
               [:+
-               [:min [:field-id (mt/id :venues :id)]]
-               [:* 2 [:avg [:field-id (mt/id :venues :price)]]]]))))
+               [:min [:field (mt/id :venues :id) nil]]
+               [:* 2 [:avg [:field (mt/id :venues :price) nil]]]]))))
 
     (testing "very complicated expression"
       (is (= {:name "expression", :display_name "Min of ID + (2 * Average of Price * 3 * (Max of Category ID - 4))"}
              (aggregation-names
               [:+
-               [:min [:field-id (mt/id :venues :id)]]
+               [:min [:field (mt/id :venues :id) nil]]
                [:*
                 2
-                [:avg [:field-id (mt/id :venues :price)]]
+                [:avg [:field (mt/id :venues :price) nil]]
                 3
-                [:- [:max [:field-id (mt/id :venues :category_id)]] 4]]])))))
+                [:- [:max [:field (mt/id :venues :category_id) nil]] 4]]])))))
 
   (testing "`aggregation-options`"
     (testing "`:name` and `:display-name`"
       (is (= {:name "generated_name", :display_name "User-specified Name"}
              (aggregation-names
               [:aggregation-options
-               [:+ [:min [:field-id (mt/id :venues :id)]] [:* 2 [:avg [:field-id (mt/id :venues :price)]]]]
+               [:+ [:min [:field (mt/id :venues :id) nil]] [:* 2 [:avg [:field (mt/id :venues :price) nil]]]]
                {:name "generated_name", :display-name "User-specified Name"}]))))
 
     (testing "`:name` only"
       (is (= {:name "generated_name", :display_name "Min of ID + (2 * Average of Price)"}
              (aggregation-names
               [:aggregation-options
-               [:+ [:min [:field-id (mt/id :venues :id)]] [:* 2 [:avg [:field-id (mt/id :venues :price)]]]]
+               [:+ [:min [:field (mt/id :venues :id) nil]] [:* 2 [:avg [:field (mt/id :venues :price) nil]]]]
                {:name "generated_name"}]))))
 
     (testing "`:display-name` only"
       (is (= {:name "expression", :display_name "User-specified Name"}
              (aggregation-names
               [:aggregation-options
-               [:+ [:min [:field-id (mt/id :venues :id)]] [:* 2 [:avg [:field-id (mt/id :venues :price)]]]]
+               [:+ [:min [:field (mt/id :venues :id) nil]] [:* 2 [:avg [:field (mt/id :venues :price) nil]]]]
                {:display-name "User-specified Name"}]))))))
 
 (defn- col-info-for-aggregation-clause
@@ -436,24 +441,24 @@
          (infered-col-type  [:coalesce "foo" "bar"])))
   (is (= {:base_type     :type/Text
           :semantic_type :type/Name}
-         (infered-col-type  [:coalesce [:field-id (mt/id :venues :name)] "bar"]))))
+         (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"]))))
 
 (deftest test-case
   (is (= {:base_type    :type/Text
           :semantic_type nil}
-         (infered-col-type [:case [[[:> [:field-id (mt/id :venues :price)] 2] "big"]]])))
+         (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] "big"]]])))
   (is (= {:base_type    :type/Float
           :semantic_type :type/Number}
-         (infered-col-type [:case [[[:> [:field-id (mt/id :venues :price)] 2]
-                                    [:+ [:field-id (mt/id :venues :price)] 1]]]])))
+         (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2]
+                                    [:+ [:field (mt/id :venues :price) nil] 1]]]])))
   (testing "Make sure we skip nils when infering case return type"
     (is (= {:base_type    :type/Float
             :semantic_type :type/Number}
-           (infered-col-type [:case [[[:< [:field-id (mt/id :venues :price)] 10] [:value nil {:base_type :type/Number}]]
-                                     [[:> [:field-id (mt/id :venues :price)] 2] 10]]]))))
+           (infered-col-type [:case [[[:< [:field (mt/id :venues :price) nil] 10] [:value nil {:base_type :type/Number}]]
+                                     [[:> [:field (mt/id :venues :price) nil] 2] 10]]]))))
   (is (= {:base_type    :type/Float
           :semantic_type :type/Number}
-         (infered-col-type [:case [[[:> [:field-id (mt/id :venues :price)] 2] [:+ [:field-id (mt/id :venues :price)] 1]]]]))))
+         (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))
 
 (deftest unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"
@@ -534,7 +539,7 @@
                       (mt/mbql-query venues
                         {:joins [{:fields       :all
                                   :source-table $$categories
-                                  :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                                  :condition    [:= $category_id &c.categories.id]
                                   :alias        "c"}]}))]
       (doseq [level [0 1 2 3]]
         (testing (format "%d level(s) of nesting" level)
@@ -547,8 +552,8 @@
                         {:name "LATITUDE",    :id %latitude,        :field_ref $latitude}
                         {:name "LONGITUDE",   :id %longitude,       :field_ref $longitude}
                         {:name "PRICE",       :id %price,           :field_ref $price}
-                        {:name "ID_2",        :id %categories.id,   :field_ref [:joined-field "c" $categories.id]}
-                        {:name "NAME_2",      :id %categories.name, :field_ref [:joined-field "c" $categories.name]}])
+                        {:name "ID_2",        :id %categories.id,   :field_ref &c.categories.id}
+                        {:name "NAME_2",      :id %categories.name, :field_ref &c.categories.name}])
                      (map #(select-keys % [:name :id :field_ref])
                           (:cols (add-column-info nested-query {}))))))))))))
 
@@ -566,7 +571,7 @@
                             (mt/mbql-query orders
                               {:joins [{:fields       :all
                                         :source-table $$products
-                                        :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                        :condition    [:= $product_id &Products.products.id]
                                         :alias        "Products"}]
                                :limit 10}))]
             (doseq [level (range 4)]
@@ -579,5 +584,5 @@
                               :base_type    :type/Text
                               :semantic_type nil
                               :id           %ean
-                              :field_ref    [:joined-field "Products" $ean]})
+                              :field_ref    &Products.ean})
                            (ean-metadata (add-column-info nested-query {}))))))))))))))

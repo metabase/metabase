@@ -17,7 +17,7 @@
   (testing "Pulses should get sent with the row-level restrictions of the User that created them."
     (letfn [(send-pulse-created-by-user! [user-kw]
               (mt.tu/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                                       :remappings {:cat ["variable" [:field-id (mt/id :venues :category_id)]]}}}
+                                                       :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
                                  :attributes {"cat" 50}}
                 (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps` binds the current test user; we don't want that falsely affecting results
@@ -80,7 +80,7 @@
 
 (deftest user-attributes-test
   (testing "Pulses should be sandboxed correctly by User login_attributes"
-    (mt.tu/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field-id (mt/id :venues :price)]]}}}
+    (mt.tu/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                        :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
@@ -100,7 +100,7 @@
 
 (deftest pulse-preview-test
   (testing "Pulse preview endpoints should be sandboxed"
-    (mt.tu/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field-id (mt/id :venues :price)]]}}}
+    (mt.tu/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                        :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
@@ -129,7 +129,7 @@
 
 (deftest csv-downloads-test
   (testing "CSV/XLSX downloads should be sandboxed"
-    (mt.tu/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field-id (mt/id :venues :price)]]}}}
+    (mt.tu/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                        :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
