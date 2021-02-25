@@ -584,7 +584,7 @@ for (const rule of ALL_RULES) {
     // this just visits every child
     for (const type in ctx) {
       for (const child of ctx[type]) {
-        if (!child.tokenType) {
+        if (!child.tokenType && child.name) {
           const match = this.visit(child, currentContext);
           if (match) {
             return match;
