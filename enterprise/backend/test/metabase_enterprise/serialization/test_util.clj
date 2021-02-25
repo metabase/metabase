@@ -83,6 +83,21 @@
                                   {:source-query
                                    {:source-table ~'table-id
                                     }}}}}]
+                   Card       [{~'card-id-native-query :id}
+                               {:query_type :native
+                                :name "My Native Nested Query Card"
+                                :collection_id ~'collection-id
+                                :dataset_query
+                                {:type :native
+                                 :database ~'db-id
+                                 :native
+                                 {:query "{{#1}}"
+                                  :template-tags
+                                  {"#1"{:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                        :name "#1"
+                                        :display-name "#1"
+                                        :type "card"
+                                        :card-id ~'card-id}}}}}]
                    DashboardCard       [{~'dashcard-id :id}
                                         {:dashboard_id ~'dashboard-id
                                          :card_id ~'card-id}]

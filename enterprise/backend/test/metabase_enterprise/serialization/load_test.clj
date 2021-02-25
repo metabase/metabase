@@ -58,6 +58,7 @@
                          [Card          (Card card-id-root)]
                          [Card          (Card card-id-nested)]
                          [Card          (Card card-id-nested-query)]
+                         [Card          (Card card-id-native-query)]
                          [DashboardCard (DashboardCard dashcard-id)]])]
       (with-world-cleanup
         (load dump-dir {:on-error :abort :mode :skip})
