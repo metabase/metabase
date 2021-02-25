@@ -19,6 +19,7 @@ const IconWrapper = styled.div`
   background-color: #ddecfa;
   color: ${color("brand")};
   margin-right: 10px;
+  flex-shrink: 0;
 `;
 
 const ResultLink = styled(Link)`
@@ -182,8 +183,10 @@ function DefaultResult({ result, options }) {
     <ResultLink to={result.getUrl()}>
       <Flex align="center">
         <ItemIcon item={result} />
-        <Title>{result.name}</Title>
-        {formatCollection(result.getCollection())}
+        <Box>
+          <Title>{result.name}</Title>
+          {formatCollection(result.getCollection())}
+        </Box>
       </Flex>
       {formatContext(result.context, options.compact)}
     </ResultLink>
