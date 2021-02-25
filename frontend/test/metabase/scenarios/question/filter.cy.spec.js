@@ -862,7 +862,6 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Reviewer contains MULLER").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
     cy.get("[contenteditable='true']").contains(
       'contains([Reviewer], "MULLER")',
     );
