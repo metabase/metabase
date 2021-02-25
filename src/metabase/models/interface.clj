@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.schema :as mbql.s]
@@ -110,9 +111,17 @@
             (some-> k u/qualified-name json/parse-string normalize/normalize json/generate-string))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
-                       [(normalize-column-settings-key k) v])))]
-    (cond-> viz-settings
-      (:column_settings viz-settings) (update :column_settings normalize-column-settings))))
+                       [(normalize-column-settings-key k) v])))
+          (normalize-mbql-clauses [form]
+            (walk/postwalk
+             (fn [form]
+               (if (and (vector? form)
+                        (string? (first form)))
+                 (normalize/normalize form)
+                 form))
+             form))]
+    (cond-> (normalize-mbql-clauses viz-settings)
+            (:column_settings viz-settings) (update :column_settings normalize-column-settings))))
 
 (models/add-type! :visualization-settings
   :in  json-in

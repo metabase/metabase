@@ -229,6 +229,6 @@
        (fn [original expected]
          (mt/with-temp DashboardCard [dashcard {:dashboard_id           (u/the-id dashboard)
                                                 :card_id                (u/the-id card)
-                                                :visualization_settings {:column_settings {original {:currency "BTC"}}}}]
-           (is (= {:column_settings {expected {:currency "BTC"}}}
+                                                :visualization_settings original}]
+           (is (= expected
                   (db/select-one-field :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))

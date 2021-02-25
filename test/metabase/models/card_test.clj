@@ -213,28 +213,44 @@
 
 ;; this is a separate function so we can use the same tests for DashboardCards as well
 (defn test-visualization-settings-normalization [f]
-  (doseq [[original expected] {[:ref [:field-literal "foo" :type/Float]]
-                               [:ref [:field "foo" {:base-type :type/Float}]]
+  (testing "visualization settings should get normalized to use modern MBQL syntax"
+    (testing "Field references in column settings"
+      (doseq [[original expected] {[:ref [:field-literal "foo" :type/Float]]
+                                   [:ref [:field "foo" {:base-type :type/Float}]]
 
-                               [:ref [:field-id 1]]
-                               [:ref [:field 1 nil]]
+                                   [:ref [:field-id 1]]
+                                   [:ref [:field 1 nil]]
 
-                               [:ref [:expression "wow"]]
-                               [:ref [:expression "wow"]]}
-          ;; also check that normalization of already-normalized refs is idempotent
-          original [original expected]
-          ;; frontend uses JSON-serialized versions of the MBQL clauses as keys
-          :let     [original (json/generate-string original)
-                    expected (json/generate-string expected)]]
-    (testing (format "Viz settings field ref key %s should get normalized to %s"
-                     (pr-str original)
-                     (pr-str expected))
-      (f original expected))))
+                                   [:ref [:expression "wow"]]
+                                   [:ref [:expression "wow"]]}
+              ;; also check that normalization of already-normalized refs is idempotent
+              original [original expected]
+              ;; frontend uses JSON-serialized versions of the MBQL clauses as keys
+              :let     [original (json/generate-string original)
+                        expected (json/generate-string expected)]]
+        (testing (format "Viz settings field ref key %s should get normalized to %s"
+                         (pr-str original)
+                         (pr-str expected))
+          (f
+           {:column_settings {original {:currency "BTC"}}}
+           {:column_settings {expected {:currency "BTC"}}}))))
+
+    (testing "Other MBQL field clauses"
+      (let [original {:map.type                 "region"
+                      :map.region               "us_states"
+                      :pivot_table.column_split {:rows    [["datetime-field" ["field-id" 807] "year"]],
+                                                 :columns [["fk->" ["field-id" 805] ["field-id" 808]]],
+                                                 :values  [["aggregation" 0]]}}
+            expected {:map.type                 "region"
+                      :map.region               "us_states"
+                      :pivot_table.column_split {:rows    [[:field 807 {:temporal-unit :year}]]
+                                                 :columns [[:field 808 {:source-field 805}]]
+                                                 :values  [[:aggregation 0]]}}]
+        (f original expected)))))
 
 (deftest normalize-visualization-settings-test
-  (testing "Card visualization settings should get normalized to use modern MBQL syntax"
-    (test-visualization-settings-normalization
-     (fn [original expected]
-       (mt/with-temp Card [card {:visualization_settings {:column_settings {original {:currency "BTC"}}}}]
-         (is (= {:column_settings {expected {:currency "BTC"}}}
-                (db/select-one-field :visualization_settings Card :id (u/the-id card)))))))))
+  (test-visualization-settings-normalization
+   (fn [original expected]
+     (mt/with-temp Card [card {:visualization_settings original}]
+       (is (= expected
+              (db/select-one-field :visualization_settings Card :id (u/the-id card))))))))

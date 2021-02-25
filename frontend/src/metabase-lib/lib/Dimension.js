@@ -111,6 +111,11 @@ export default class Dimension {
     return !!dimensionA && !!dimensionB && dimensionA.isEqual(dimensionB);
   }
 
+  // for nice debugging/console output.
+  get [Symbol.toStringTag]() {
+    return "mbql = " + JSON.stringify(this.mbql());
+  }
+
   /**
    * Sub-dimensions for the provided dimension of this type.
    * @abstract
@@ -703,9 +708,9 @@ export class FieldDimension extends Dimension {
 
   dimensions() {
     let dimensions = super.dimensions();
+    const field = this.field();
 
     // Add FK dimensions if this field is an FK
-    const field = this.field();
     if (field.target && field.target.table && field.target.table.fields) {
       const fkDimensions = field.target.table.fields.map(
         field =>
