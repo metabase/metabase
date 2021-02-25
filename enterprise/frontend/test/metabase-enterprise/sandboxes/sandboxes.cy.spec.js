@@ -144,10 +144,12 @@ describeWithToken("formatting > sandboxes", () => {
         });
       });
 
-      cy.updatePermissionsSchema({
-        schema: {
-          [ORDERS_ID]: { query: "segmented", read: "all" },
-          [PEOPLE_ID]: { query: "segmented", read: "all" },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+            [PEOPLE_ID]: { query: "segmented", read: "all" },
+          },
         },
         user_group: DATA_GROUP,
       });
@@ -234,12 +236,14 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: PEOPLE_ID,
       });
 
-      cy.updatePermissionsSchema({
-        schema: {
-          [ORDERS_ID]: "all",
-          [PEOPLE_ID]: { query: "segmented", read: "all" },
-          [PRODUCTS_ID]: "all",
-          [REVIEWS_ID]: "all",
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [ORDERS_ID]: "all",
+            [PEOPLE_ID]: { query: "segmented", read: "all" },
+            [PRODUCTS_ID]: "all",
+            [REVIEWS_ID]: "all",
+          },
         },
       });
 
@@ -291,9 +295,11 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: ORDERS_ID,
       });
 
-      cy.updatePermissionsSchema({
-        schema: {
-          [ORDERS_ID]: { query: "segmented", read: "all" },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
         },
       });
 
@@ -366,10 +372,12 @@ describeWithToken("formatting > sandboxes", () => {
           table_id: ORDERS_ID,
         });
 
-        cy.updatePermissionsSchema({
-          schema: {
-            [PRODUCTS_ID]: "all",
-            [ORDERS_ID]: { query: "segmented", read: "all" },
+        cy.updatePermissionsSchemas({
+          schemas: {
+            PUBLIC: {
+              [PRODUCTS_ID]: "all",
+              [ORDERS_ID]: { query: "segmented", read: "all" },
+            },
           },
         });
 
@@ -442,10 +450,12 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: ORDERS_ID,
       });
 
-      cy.updatePermissionsSchema({
-        schema: {
-          [PRODUCTS_ID]: "all",
-          [ORDERS_ID]: { query: "segmented", read: "all" },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [PRODUCTS_ID]: "all",
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
         },
       });
 
@@ -583,10 +593,12 @@ describeWithToken("formatting > sandboxes", () => {
           });
         });
 
-        cy.updatePermissionsSchema({
-          schema: {
-            [PRODUCTS_ID]: { query: "segmented", read: "all" },
-            [ORDERS_ID]: { query: "segmented", read: "all" },
+        cy.updatePermissionsSchemas({
+          schemas: {
+            PUBLIC: {
+              [PRODUCTS_ID]: { query: "segmented", read: "all" },
+              [ORDERS_ID]: { query: "segmented", read: "all" },
+            },
           },
         });
 
@@ -713,10 +725,12 @@ describeWithToken("formatting > sandboxes", () => {
             });
           });
 
-          cy.updatePermissionsSchema({
-            schema: {
-              [PRODUCTS_ID]: { query: "segmented", read: "all" },
-              [ORDERS_ID]: { query: "segmented", read: "all" },
+          cy.updatePermissionsSchemas({
+            schemas: {
+              PUBLIC: {
+                [PRODUCTS_ID]: { query: "segmented", read: "all" },
+                [ORDERS_ID]: { query: "segmented", read: "all" },
+              },
             },
           });
 
@@ -777,10 +791,12 @@ describeWithToken("formatting > sandboxes", () => {
           },
         });
 
-        cy.updatePermissionsSchema({
-          schema: {
-            [ORDERS_ID]: { query: "segmented", read: "all" },
-            [PRODUCTS_ID]: "all",
+        cy.updatePermissionsSchemas({
+          schemas: {
+            PUBLIC: {
+              [ORDERS_ID]: { query: "segmented", read: "all" },
+              [PRODUCTS_ID]: "all",
+            },
           },
         });
 
@@ -832,10 +848,12 @@ describeWithToken("formatting > sandboxes", () => {
           group_id: COLLECTION_GROUP,
         });
 
-        cy.updatePermissionsSchema({
-          schema: {
-            [PRODUCTS_ID]: { query: "segmented", read: "all" },
-            [ORDERS_ID]: { query: "segmented", read: "all" },
+        cy.updatePermissionsSchemas({
+          schemas: {
+            PUBLIC: {
+              [PRODUCTS_ID]: { query: "segmented", read: "all" },
+              [ORDERS_ID]: { query: "segmented", read: "all" },
+            },
           },
         });
 
@@ -995,10 +1013,12 @@ describeWithToken("formatting > sandboxes", () => {
         group_id: COLLECTION_GROUP,
       });
 
-      cy.updatePermissionsSchema({
-        schema: {
-          [PRODUCTS_ID]: { query: "segmented", read: "all" },
-          [ORDERS_ID]: { query: "segmented", read: "all" },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [PRODUCTS_ID]: { query: "segmented", read: "all" },
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
         },
       });
 

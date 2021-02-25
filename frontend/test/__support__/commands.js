@@ -37,10 +37,10 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "updatePermissionsSchema",
-  ({ schema = {}, user_group = 4, database_id = 1 } = {}) => {
-    if (typeof schema !== "object") {
-      throw new Error("`schema` must be an object!");
+  "updatePermissionsSchemas",
+  ({ schemas = {}, user_group = 4, database_id = 1 } = {}) => {
+    if (typeof schemas !== "object") {
+      throw new Error("`schemas` must be an object!");
     }
 
     cy.log("**-- Fetch permissions graph --**");
@@ -49,9 +49,7 @@ Cypress.Commands.add(
         const UPDATED_GROUPS = Object.assign(groups, {
           [user_group]: {
             [database_id]: {
-              schemas: {
-                public: schema,
-              },
+              schemas,
             },
           },
         });

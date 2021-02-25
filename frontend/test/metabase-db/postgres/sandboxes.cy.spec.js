@@ -94,10 +94,12 @@ describeWithToken("postgres > user > query", () => {
           group_id: COLLECTION_GROUP,
         });
 
-        cy.updatePermissionsSchema({
+        cy.updatePermissionsSchemas({
           database_id: PG_DB_ID,
-          schema: {
-            [PEOPLE_ID]: { query: "segmented", read: "all" },
+          schemas: {
+            public: {
+              [PEOPLE_ID]: { query: "segmented", read: "all" },
+            },
           },
         });
 
