@@ -1295,7 +1295,7 @@ export const viewNextObjectDetail = () => {
     const question = getQuestion(getState());
     const filter = question.query().filters()[0];
 
-    const newFilter = ["=", filter[1], filter[2] + 1];
+    const newFilter = ["=", filter[1], parseInt(filter[2]) + 1];
 
     dispatch.action(VIEW_NEXT_OBJECT_DETAIL);
 
@@ -1324,7 +1324,7 @@ export const viewPreviousObjectDetail = () => {
       return false;
     }
 
-    const newFilter = ["=", filter[1], filter[2] - 1];
+    const newFilter = ["=", filter[1], parseInt(filter[2]) - 1];
 
     dispatch.action(VIEW_PREVIOUS_OBJECT_DETAIL);
 
