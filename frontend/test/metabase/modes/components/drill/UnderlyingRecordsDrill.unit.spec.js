@@ -109,7 +109,7 @@ describe("UnderlyingRecordsDrill", () => {
       joins: [join],
       filter: [
         "=",
-        ["field", PEOPLE.STATE.id, { "source-field": "User" }],
+        ["field", PEOPLE.STATE.id, { "join-alias": "User" }],
         "CA",
       ],
     });
