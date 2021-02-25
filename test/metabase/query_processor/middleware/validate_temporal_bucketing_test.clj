@@ -11,18 +11,19 @@
 (deftest validate-temporal-bucketing-test
   (mt/dataset attempted-murders
     (mt/with-everything-store
-      (doseq [field-clause-type [:field-id :field-literal]]
+      (doseq [field-clause-type [:id :name]]
         (testing (format "With %s clauses" field-clause-type)
           (letfn [(query [field unit]
                     (mt/mbql-query attempts
                       {:filter [:=
-                                [:datetime-field
+                                [:field
                                  (case field-clause-type
-                                   :field-id [:field-id (mt/id :attempts field)]
-                                   :field-literal [:field-literal
-                                                   (db/select-one-field :name Field :id (mt/id :attempts field))
-                                                   (db/select-one-field :base_type Field :id (mt/id :attempts field))])
-                                 unit]
+                                   :id (mt/id :attempts field)
+                                   :name (db/select-one-field :name Field :id (mt/id :attempts field)))
+                                 (merge
+                                  {:temporal-unit unit}
+                                  (when (= field-clause-type :name)
+                                    {:base-type (db/select-one-field :base_type Field :id (mt/id :attempts field))}))]
                                 [:relative-datetime -1 unit]]}))]
             ;; I don't think we need to test every possible combination in the world here -- that will get tested by
             ;; other stuff
@@ -52,7 +53,7 @@
         (doseq [unit [:default :hour :day]]
           (testing (format "Unit = %s" unit)
             (is (some? (validate (mt/mbql-query incidents
-                                   {:filter [:= [:datetime-field $timestamp unit]]}))))))))))
+                                   {:filter [:= [:field %timestamp {:temporal-unit unit}]]}))))))))))
 
 (deftest e2e-test
   (testing "We should throw an Exception if you try to do something that makes no sense, e.g. bucketing a DATE by MINUTE"

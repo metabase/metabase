@@ -27,18 +27,18 @@
 (defmethod valid-units-for-base-type :type/DateTime [_] valid-datetime-units)
 
 (defn- validate-temporal-bucketing* [query]
-  (doseq [[_ field unit :as clause] (mbql.u/match query :datetime-field)]
-    (let [base-type   (mbql.u/match-one field
-                        [:field-id id]               (:base_type (qp.store/field id))
-                        [:field-literal _ base-type] base-type)
+  (doseq [[_ id-or-name {:keys [temporal-unit base-type]} :as clause] (mbql.u/match query [:field _ (_ :guard :temporal-unit)])]
+    (let [base-type (if (integer? id-or-name)
+                      (:base_type (qp.store/field id-or-name))
+                      base-type)
           valid-units (valid-units-for-base-type base-type)]
-      (when-not (valid-units unit)
+      (when-not (valid-units temporal-unit)
         (throw (ex-info (tru "Unsupported temporal bucketing: You can''t bucket a {0} Field by {1}."
-                             base-type unit)
+                             base-type temporal-unit)
                         {:type        qp.error-type/invalid-query
                          :field       clause
                          :base-type   base-type
-                         :unit        unit
+                         :unit        temporal-unit
                          :valid-units valid-units}))))))
 
 (defn validate-temporal-bucketing
