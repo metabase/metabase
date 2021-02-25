@@ -13,7 +13,6 @@ import DateOperatorSelector from "../DateOperatorSelector";
 import DateUnitSelector from "../DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
 
-import * as FieldRef from "metabase/lib/query/field_ref";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 import type {

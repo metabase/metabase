@@ -13,7 +13,7 @@ import type {
   ParameterMappingUIOption,
 } from "metabase-types/types/Parameter";
 
-import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/lib/Dimension";
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
 import { t } from "ttag";
