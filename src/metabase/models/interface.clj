@@ -111,21 +111,25 @@
             (some-> k u/qualified-name json/parse-string normalize/normalize json/generate-string))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
-                       [(normalize-column-settings-key k) v])))
+                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
+          (mbql-field-clause? [form]
+            (and (vector? form)
+                 (#{"field-id" "fk->" "datetime-field" "joined-field" "binning-strategy" "field"
+                    "aggregation" "expression"}
+                  (first form))))
           (normalize-mbql-clauses [form]
             (walk/postwalk
              (fn [form]
-               (if (and (vector? form)
-                        (string? (first form)))
-                 (normalize/normalize form)
-                 form))
+               (cond-> form
+                 (mbql-field-clause? form) normalize/normalize))
              form))]
-    (cond-> (normalize-mbql-clauses viz-settings)
-            (:column_settings viz-settings) (update :column_settings normalize-column-settings))))
+    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings"))
+      (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
+      true                                 normalize-mbql-clauses)))
 
 (models/add-type! :visualization-settings
   :in  json-in
-  :out (comp normalize-visualization-settings json-out-with-keywordization))
+  :out (comp normalize-visualization-settings json-out-without-keywordization))
 
 ;; For DashCard parameter lists
 (defn- normalize-parameter-mapping-targets [parameter-mappings]

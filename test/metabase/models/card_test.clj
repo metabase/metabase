@@ -246,7 +246,14 @@
                       :pivot_table.column_split {:rows    [[:field 807 {:temporal-unit :year}]]
                                                  :columns [[:field 808 {:source-field 805}]]
                                                  :values  [[:aggregation 0]]}}]
-        (f original expected)))))
+        (f original expected)))
+
+    (testing "Don't normalize non-MBQL arrays"
+      (let [original {:graph.show_goal  true
+                      :graph.goal_value 5.9
+                      :graph.dimensions ["the_day"]
+                      :graph.metrics    ["total_per_day"]}]
+        (f original original)))))
 
 (deftest normalize-visualization-settings-test
   (test-visualization-settings-normalization
