@@ -1,5 +1,6 @@
 (ns metabase.util.ssh
   (:require [clojure.tools.logging :as log]
+            [metabase.driver :as driver]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u])
   (:import java.io.ByteArrayInputStream
@@ -120,7 +121,13 @@
   [details]
   (:tunnel-enabled details))
 
-(defn include-ssh-tunnel
+(defn ssh-tunnel-open?
+  "Is the SSH tunnel currently open for these connection details?"
+  [details]
+  (when-let [session (:tunnel-session details)]
+    (.isOpen ^ClientSession session)))
+
+(defn include-ssh-tunnel!
   "Updates connection details for a data warehouse to use the ssh tunnel host and port
   For drivers that enter hosts including the protocol (https://host), copy the protocol over as well"
   [details]
@@ -129,27 +136,42 @@
           [session ^PortForwardingTracker tracker] (start-ssh-tunnel! (assoc details :host host))
           tunnel-entrance-port                     (.. tracker getBoundAddress getPort)
           tunnel-entrance-host                     (.. tracker getBoundAddress getHostName)
+          orig-port                                (:port details)
           details-with-tunnel                      (assoc details
                                                           :port tunnel-entrance-port ;; This parameter is set dynamically when the connection is established
                                                           :host (str proto "localhost") ;; SSH tunnel will always be through localhost
+                                                          :orig-port orig-port
                                                           :tunnel-entrance-host tunnel-entrance-host
                                                           :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
+                                                          :tunnel-enabled true
                                                           :tunnel-session session
                                                           :tunnel-tracker tracker)]
       details-with-tunnel)
     details))
 
+(defmethod driver/incorporate-ssh-tunnel-details :sql-jdbc
+  [_ db-details]
+  (cond (not (use-ssh-tunnel? db-details))
+        ;; no ssh tunnel in use
+        db-details
+        (ssh-tunnel-open? db-details)
+        ;; tunnel in use, and is open
+        db-details
+        :default
+        ;; tunnel in use, and is not open
+        (include-ssh-tunnel! db-details)))
+
 (defn close-tunnel!
   "Close a running tunnel session"
   [details]
-  (when (use-ssh-tunnel? details)
+  (when (and (use-ssh-tunnel? details) (ssh-tunnel-open? details))
     (.close ^ClientSession (:tunnel-session details))))
 
 (defn do-with-ssh-tunnel
   "Starts an SSH tunnel, runs the supplied function with the tunnel open, then closes it"
   [details f]
   (if (use-ssh-tunnel? details)
-    (let [details-with-tunnel (include-ssh-tunnel details)]
+    (let [details-with-tunnel (include-ssh-tunnel! details)]
       (try
         (log/trace (u/format-color 'cyan "<< OPENED SSH TUNNEL >>"))
         (f details-with-tunnel)
