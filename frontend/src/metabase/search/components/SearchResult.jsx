@@ -115,8 +115,9 @@ function Score({ score }) {
       {`\n\n
       Pinned:    ${score[0]}
       Dashboard: ${score[1]}
-      Text:      ${score[2]}
-      Model:     ${score[3]}
+      Recency:   ${score[2]}
+      Text:      ${score[3]}
+      Model:     ${score[4]}
       Raw:       ${score && score.join(", ")}`}
     </pre>
   );

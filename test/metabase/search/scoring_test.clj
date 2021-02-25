@@ -1,5 +1,6 @@
 (ns metabase.search.scoring-test
   (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.search.config :as search-config]
             [metabase.search.scoring :as search]))
 
@@ -178,3 +179,28 @@
                   (sort-by score)
                   reverse
                   (map :collection_position)))))))
+
+(deftest recency-score-test
+  (let [score    #'search/recency-score
+        now      (t/offset-date-time)
+        item     (fn [id updated-at] {:id id :updated_at updated-at})
+        days-ago (fn [days] (t/minus now (t/days days)))]
+    (testing "it provides a sortable score"
+      (is (= [1 2 3 4]
+             (->> [(item 1 (days-ago 0))
+                   (item 2 (days-ago 1))
+                   (item 3 (days-ago 50))
+                   (item 4 nil)]
+                  shuffle
+                  (sort-by score)
+                  reverse
+                  (map :id)))))
+    (testing "it treats stale items as being equally old"
+      (let [stale search-config/stale-time-in-days]
+        (is (= [1 2 3 4]
+               (->> [(item 1 (days-ago (+ stale 1)))
+                     (item 2 (days-ago (+ stale 50)))
+                     (item 3 nil)
+                     (item 4 (days-ago stale))]
+                    (sort-by score)
+                    (map :id))))))))

@@ -1,6 +1,7 @@
 (ns metabase.search.scoring
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
+            [java-time :as t]
             [metabase.search.config :as search-config]
             [schema.core :as s])
     (:import java.util.PriorityQueue))
@@ -149,6 +150,18 @@
   ;; higher is better; nil should count as 0
   (or dashboardcard_count 0))
 
+(defn- recency-score
+  [{:keys [updated_at]}]
+  (let [stale-time search-config/stale-time-in-days
+        days-ago (if updated_at
+                   (t/time-between updated_at
+                                   (t/offset-date-time)
+                                   :days)
+                   stale-time)]
+    (/
+     (max (- stale-time days-ago) 0)
+     stale-time)))
+
 (defn- compare-score-and-result
   "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
   compared in order."
@@ -180,6 +193,7 @@
   [{:keys [text-score result]}]
   [(pinned-score result)
    (dashboard-count-score result)
+   (recency-score result)
    text-score
    (model->sort-position (:model result))])
 

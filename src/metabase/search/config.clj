@@ -14,6 +14,11 @@
   "Number of results to return in an API response"
   50)
 
+(def ^:const stale-time-in-days
+  "Results older than this number of days are all considered to be equally old. In other words, there is a ranking
+  bonus for results newer than this (scaled to just how recent they are). c.f. `search.scoring/recency-score`"
+  180)
+
 (def searchable-models
   "Models that can be searched. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
@@ -55,7 +60,7 @@
 
 (def ^:private default-columns
   "Columns returned for all models."
-  [:id :name :description :archived])
+  [:id :name :description :archived :updated_at])
 
 (def ^:private favorite-col
   "Case statement to return boolean values of `:favorite` for Card and Dashboard."
@@ -96,7 +101,7 @@
 
 (defmethod columns-for-model (class Collection)
   [_]
-  (conj default-columns [:id :collection_id] [:name :collection_name]))
+  (conj (remove #{:updated_at} default-columns) [:id :collection_id] [:name :collection_name]))
 
 (defmethod columns-for-model (class Segment)
   [_]
@@ -112,6 +117,7 @@
    :name
    :display_name
    :description
+   :updated_at
    [:id :table_id]
    [:db_id :database_id]
    [:schema :table_schema]

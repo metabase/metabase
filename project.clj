@@ -147,7 +147,7 @@
    [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.15.1" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
+   [toucan "1.15.3" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
                                  org.clojure/tools.namespace
                                  honeysql]]
@@ -367,7 +367,7 @@
                            #_:unused-locals]
       :exclude-linters    [    ; Turn this off temporarily until we finish removing self-deprecated functions & macros
                            :deprecations
-                           ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
+                           ;; this has a fit in libs that use Potemkin `import-vars` such as `java-time`
                            :implicit-dependencies
                            ;; too many false positives for now
                            :unused-ret-vals]}}]
