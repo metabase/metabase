@@ -572,6 +572,11 @@
        (keep canonicalize-mbql-clauses)
        vec))
 
+(defn- canonicalize-breakouts [breakouts]
+  (if (mbql-clause? breakouts)
+    (recur [breakouts])
+    (not-empty (mapv wrap-implicit-field-id breakouts))))
+
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"
   [clauses]
@@ -623,7 +628,7 @@
   [mbql-query]
   (cond-> mbql-query
     (non-empty? (:aggregation  mbql-query)) (update :aggregation  canonicalize-aggregations)
-    (non-empty? (:breakout     mbql-query)) (update :breakout     (partial mapv wrap-implicit-field-id))
+    (non-empty? (:breakout     mbql-query)) (update :breakout     canonicalize-breakouts)
     (non-empty? (:fields       mbql-query)) (update :fields       (partial mapv wrap-implicit-field-id))
     (non-empty? (:order-by     mbql-query)) (update :order-by     canonicalize-order-by)
     (non-empty? (:source-query mbql-query)) (update :source-query canonicalize-source-query)))

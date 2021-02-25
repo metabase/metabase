@@ -263,7 +263,7 @@ class Step {
     );
   }
 
-  applyToDimensions(dimensions: FieldDimension[]): ?FieldDimension[] {
+  applyToDimensions(dimensions: FieldDimension[]): ?(FieldDimension[]) {
     const newBreakouts = this._transforms.map(transform => {
       const matchingDimension = _.find(dimensions, d =>
         transform.canBeAppliedToDimension(d),

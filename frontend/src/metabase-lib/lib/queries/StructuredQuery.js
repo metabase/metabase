@@ -1164,7 +1164,7 @@ export default class StructuredQuery extends AtomicQuery {
 
   // FIELD OPTIONS
 
-  fieldOptions(fieldFilter: FieldFilter = field => true) {
+  fieldOptions(fieldFilter: FieldFilter = field => true): DimensionOptions {
     const dimensionFilter = dimension => {
       const field = dimension.field && dimension.field();
       return !field || (field.isDimension() && fieldFilter(field));

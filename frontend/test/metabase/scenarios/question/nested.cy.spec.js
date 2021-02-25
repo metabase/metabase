@@ -159,6 +159,7 @@ describe("scenarios > question > nested", () => {
             "source-table": ORDERS_ID,
             aggregation: [["count"]],
             breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
               [
                 "field",
                 PRODUCTS.CREATED_AT,

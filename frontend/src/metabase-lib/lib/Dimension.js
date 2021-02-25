@@ -521,7 +521,7 @@ export class FieldDimension extends Dimension {
   /**
    * Return integer ID *or* string name of the Field this `field` clause refers to.
    */
-  fieldIdOrName(): string|number  {
+  fieldIdOrName(): string | number {
     return this._fieldIdOrName;
   }
 
@@ -640,7 +640,7 @@ export class FieldDimension extends Dimension {
    */
   withOption(key: string, value: any): FieldDimension {
     return this.withOptions({
-      [key]: value
+      [key]: value,
     });
   }
 

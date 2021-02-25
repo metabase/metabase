@@ -109,7 +109,11 @@ export default class ViewFilterPopover extends Component {
   handleDimensionChange = (dimension: Dimension) => {
     let filter = this.state.filter;
     if (!filter || filter.query() !== dimension.query()) {
-      filter = new Filter([], null, dimension.query());
+      filter = new Filter(
+        [],
+        null,
+        dimension.query() || (filter && filter.query()) || this.props.query,
+      );
     }
     this.setFilter(
       filter.setDimension(dimension.mbql(), { useDefaultOperator: true }),

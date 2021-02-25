@@ -1096,7 +1096,22 @@
              :type     :query
              :query    {:source-table 3
                         :breakout     [[:datetime-field 11 :month]]
-                        :aggregation  [[:count]]}})))))
+                        :aggregation  [[:count]]}}))))
+
+  (testing "Fixes for stuff like old-style breakout with a single clause should still work with the new `:field` clause"
+    (is (= {:database 1
+            :type     :query
+            :query    {:filter       [:> [:field "count" {:base-type :type/Integer}] 5]
+                       :source-query {:source-table 2
+                                      :aggregation  [[:count]]
+                                      :breakout     [[:field 3 {:temporal-unit :month, :source-field 4}]]}}}
+           (normalize/normalize
+            {:database 1
+             :type     :query
+             :query    {:filter       [:> [:field "count" {:base-type :type/Integer}] 5]
+                        :source-query {:source-table 2
+                                       :aggregation  [[:count]]
+                                       :breakout     [:field 3 {:temporal-unit :month, :source-field 4}]}}})))))
 
 (deftest normalize-fragment-test
   (testing "normalize-fragment"

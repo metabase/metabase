@@ -59,7 +59,11 @@ export function fieldRefForColumn(column: Column): ?FieldReference {
   );
 }
 
-export function fieldRefWithOption(fieldRef: any, key: string, value: any): FieldReference {
+export function fieldRefWithOption(
+  fieldRef: any,
+  key: string,
+  value: any,
+): FieldReference {
   const dimension = FieldDimension.parseMBQLOrWarn(fieldRef);
   return dimension && dimension.withOption(key, value).mbql();
 }
