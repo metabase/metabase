@@ -69,15 +69,16 @@ export function fieldRefWithOption(fieldRef, key, value) {
 }
 
 export const keyForColumn = (column: Column): string => {
-  if (!column.field_ref) {
+  let fieldRef = column.field_ref;
+  if (!fieldRef) {
     console.error("column is missing field_ref", column);
-    return null;
+    fieldRef = new FieldDimension(column.name).mbql();
   }
 
-  let dimension = Dimension.parseMBQL(column.field_ref);
+  let dimension = Dimension.parseMBQL(fieldRef);
   if (!dimension) {
-    console.warn("Unknown field_ref", column.field_ref);
-    return JSON.stringify(column.field_ref);
+    console.warn("Unknown field_ref", fieldRef);
+    return JSON.stringify(fieldRef);
   }
 
   dimension = dimension.baseDimension();
