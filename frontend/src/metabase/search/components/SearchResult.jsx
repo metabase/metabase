@@ -42,6 +42,11 @@ const ResultLink = styled(Link)`
     }
   }
 
+  h3 {
+    line-height: 1.2em;
+    word-wrap: break-word;
+  }
+
   .Icon-info {
     color: ${color("text-light")};
   }
