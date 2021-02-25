@@ -98,7 +98,7 @@ describe("UnderlyingRecordsDrill", () => {
     const query = ORDERS.query()
       .join(join)
       .aggregate(["count"])
-      .breakout(["field", PEOPLE.STATE.id, { "source-field": "User" }]);
+      .breakout(["field", PEOPLE.STATE.id, { "join-alias": "User" }]);
 
     const actions = UnderlyingRecordsDrill(getActionProps(query, "CA"));
     expect(actions).toHaveLength(1);
