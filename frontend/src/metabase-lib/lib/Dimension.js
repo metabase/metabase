@@ -480,10 +480,12 @@ export class FieldDimension extends Dimension {
     super(null, [fieldIdOrName, options], metadata, query);
     this._fieldIdOrName = fieldIdOrName;
     this._options = Object.freeze(FieldDimension.normalizeOptions(options));
-    additionalProperties &&
+
+    if (additionalProperties) {
       Object.keys(additionalProperties).forEach(k => {
         this[k] = additionalProperties[k];
       });
+    }
 
     Object.freeze(this);
   }
@@ -583,15 +585,9 @@ export class FieldDimension extends Dimension {
       return this;
     }
 
-    const newOptions = _.omit(this._options, ...options);
-    // don't need to make a new object if nothing has changed.
-    if (this._options === newOptions) {
-      return this;
-    }
-
     return new FieldDimension(
       this._fieldIdOrName,
-      newOptions,
+      _.omit(this._options, ...options),
       this._metadata,
       this._query,
     );
@@ -657,14 +653,6 @@ export class FieldDimension extends Dimension {
       return dimension.withOptions({ "source-field": this._fieldIdOrName });
     }
   }
-
-  /**
-   * @deprecated -- use withTemporalUnit() instead
-   */
-  datetime(unit: DatetimeUnit): FieldDimension {
-    return this.withTemporalUnit(unit);
-  }
-
   columnName() {
     return this.isIntegerFieldId() ? super.columnName() : this._fieldIdOrName;
   }
