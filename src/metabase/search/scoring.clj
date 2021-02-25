@@ -157,7 +157,7 @@
 
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
-  [{:keys [result column match-context-thunk]}]
+  [{:keys [result column match-context-thunk]} score]
   (let [{:keys [name display_name
                 collection_id collection_name]} result]
     (-> result
@@ -169,7 +169,8 @@
          :context        (when-not (search-config/displayed-columns column)
                            (match-context-thunk))
          :collection     {:id   collection_id
-                          :name collection_name})
+                          :name collection_name}
+         :score          score)
         (dissoc
          :collection_id
          :collection_name
@@ -205,8 +206,9 @@
   "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
   [query-string result]
   (when-let [hit (text-score-with-match query-string result)]
-    {:score (combined-score hit)
-     :result (serialize hit)}))
+    (let [score (combined-score hit)]
+      {:score score
+       :result (serialize hit score)})))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the

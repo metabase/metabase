@@ -103,6 +103,19 @@ const Title = styled("h3")`
   margin-bottom: 4px;
 `;
 
+function Score({ score }) {
+  return (
+    <pre className="hide search-score">
+      {`\n\n
+      Pinned:    ${score[0]}
+      Dashboard: ${score[1]}
+      Text:      ${score[2]}
+      Model:     ${score[3]}
+      Raw:       ${score && score.join(", ")}`}
+    </pre>
+  );
+}
+
 // Generally these should be at the bottom of the list I'd hope
 function CollectionResult({ collection }) {
   return (
@@ -110,6 +123,7 @@ function CollectionResult({ collection }) {
       <Flex align="center">
         <ItemIcon item={collection} />
         <Title>{collection.name}</Title>
+        <Score score={collection.score} />
       </Flex>
     </ResultLink>
   );
@@ -148,6 +162,7 @@ function DashboardResult({ dashboard, options }) {
         <Box>
           <Title>{dashboard.name}</Title>
           {formatCollection(dashboard.getCollection())}
+          <Score score={dashboard.score} />
         </Box>
       </Flex>
       {formatContext(dashboard.context, options.compact)}
@@ -163,6 +178,7 @@ function QuestionResult({ question, options }) {
         <Box>
           <Title>{question.name}</Title>
           {formatCollection(question.getCollection())}
+          <Score score={question.score} />
         </Box>
         {question.description && (
           <Box ml="auto">
@@ -184,6 +200,7 @@ function DefaultResult({ result, options }) {
         <ItemIcon item={result} />
         <Title>{result.name}</Title>
         {formatCollection(result.getCollection())}
+        <Score score={result.score} />
       </Flex>
       {formatContext(result.context, options.compact)}
     </ResultLink>

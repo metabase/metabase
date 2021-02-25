@@ -127,7 +127,9 @@
               :when  (contains? #{keep-database-id nil} (:database_id result))]
           (-> result
               mt/boolean-ids-and-timestamps
-              (update-in [:collection :name] #(some-> % string?)))))))))
+              (update-in [:collection :name] #(some-> % string?))
+              ;; `:score` is just used for debugging and would be a pain to match against
+              (dissoc :score))))))))
 
 (defn- search-request
   [& args]
