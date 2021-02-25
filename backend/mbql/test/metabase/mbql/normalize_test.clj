@@ -308,7 +308,16 @@
       :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}
      {:database 4,
       :type     :query
-      :query    {:source-query {:source-table 1, :aggregation :rows}}}}))
+      :query    {:source-query {:source-table 1, :aggregation :rows}}}}
+
+    "Don't keywordize keys that aren't present in template tag maps"
+    {{:database 1
+      :type     :native
+      :native   {:template-tags {"x" {}}}}
+
+     {:database 1
+      :type     :native
+      :native   {:template-tags {"x" {}}}}}))
 
 
 
@@ -1200,3 +1209,30 @@
                                        :fingerprint   fingerprint}]}}]
         (is (= query
                (normalize/normalize query)))))))
+
+(deftest error-messages-test
+  (testing "Normalization error messages should be sane"
+    (let [bad-query {:database 1
+                     :type     :native
+                     :native   {:template-tags {100 [:field-id "WOW"]}}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Error normalizing query"
+           (normalize/normalize bad-query)))
+      (let [e (try
+                (normalize/normalize bad-query)
+                nil
+                (catch Throwable e
+                  e))]
+        (testing "Should have meaningful ex-data"
+          (is (instance? clojure.lang.ExceptionInfo e))
+          (is (= {:query bad-query}
+                 (ex-data e))))
+        (testing "\nParent exception(s) should be even more specific"
+          (let [cause (some-> ^Throwable e .getCause)]
+            (is (= "Error normalizing form."
+                   (.getMessage cause)))
+            (is (= {:form       bad-query
+                    :path       []
+                    :special-fn nil}
+                   (ex-data cause)))))))))

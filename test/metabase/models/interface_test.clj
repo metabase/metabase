@@ -10,24 +10,25 @@
 (defn- type-fn [toucan-type in-or-out]
   (-> @@#'t.models/type-fns toucan-type in-or-out))
 
-(deftest handle-empty-template-tags-test
-  (testing (str "an empty template tag like the one below is invalid. Rather than potentially destroy an entire API "
+(deftest handle-bad-template-tags-test
+  (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
                 "response because of one malformed Card, dump the error to the logs and return nil.")
     (is (= nil
            ((type-fn :metabase-query :out)
             (json/generate-string
              {:database 1
               :type     :native
-              :native   {:template-tags {"x" {}}}}))))))
+              :native   {:template-tags 1000}}))))))
 
-(deftest validate-saves-test
+(deftest template-tag-validate-saves-test
   (testing "on the other hand we should be a little more strict on the way and disallow you from saving the invalid stuff"
+    ;; TODO -- we should make sure this returns a good error message so we don't have to dig thru the exception chain.
     (is (thrown?
          Exception
          ((type-fn :metabase-query :in)
           {:database 1
            :type     :native
-           :native   {:template-tags {"x" {}}}})))))
+           :native   {:template-tags {100 [:field-id "WOW"]}}})))))
 
 (deftest normalize-metric-segment-definition-test
   (testing "Legacy Metric/Segment definitions should get normalized"
