@@ -365,6 +365,8 @@
   (if (is-clause? :field id-or-name)
     (let [[_ nested-id-or-name nested-opts] id-or-name]
       (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
+    ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
+    ;; afterwards
     [:field id-or-name (not-empty opts)]))
 
 ;;; legacy Field clauses

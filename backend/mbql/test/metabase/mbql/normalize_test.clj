@@ -876,6 +876,33 @@
       {:a {:b 100}, :c {:d nil}}
       {:a {:b 100}}}}))
 
+(deftest remove-empty-options-from-field-clause-test
+  (tests 'remove-empty-clauses #'normalize/remove-empty-clauses
+    {"We should remove empty options maps"
+     {[:field 2 {}]
+      [:field 2 nil]
+
+      [:field 2 {:binning {}}]
+      [:field 2 nil]}
+
+     "We should remove nil keys from options maps"
+     {[:field 2 {:join-alias nil}]
+      [:field 2 nil]
+
+      [:field 2 {:binning {:strategy nil}}]
+      [:field 2 nil]}
+
+     "Don't remove false values from options map"
+     {[:field 2 {:x false}]
+      [:field 2 {:x false}]}
+
+     "Remove empty sequences from options map"
+     {[:field 2 {:x []}]
+      [:field 2 nil]
+
+      [:field 2 {:x [{:y nil}]}]
+      [:field 2 nil]}}))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |

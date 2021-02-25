@@ -183,6 +183,31 @@ describe("Dimension", () => {
       metadata,
     );
 
+    describe("STATIC METHODS", () => {
+      describe("normalizeOptions()", () => {
+        it("should remove empty options map", () => {
+          expect(FieldDimension.normalizeOptions(null)).toEqual(null);
+          expect(FieldDimension.normalizeOptions({})).toEqual(null);
+        });
+        it("should remove null/undefined keys", () => {
+          expect(
+            FieldDimension.normalizeOptions({
+              x: false,
+              y: null,
+              z: undefined,
+            }),
+          ).toEqual({ x: false });
+        });
+        it("should recursively normalize maps options", () => {
+          expect(
+            FieldDimension.normalizeOptions({ binning: { x: null } }),
+          ).toBe(null);
+        });
+        // TODO -- it should also remove empty arrays, but we currently don't have any situations where there might be
+        // one.
+      });
+    });
+
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it(

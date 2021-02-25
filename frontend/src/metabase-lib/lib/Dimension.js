@@ -458,14 +458,16 @@ export class FieldDimension extends Dimension {
     if (!options) {
       return null;
     }
-    // remove null values from the map.
-    Object.keys(options).forEach(k => {
-      if (options[k] == null) {
-        delete options[k];
-      }
-    });
 
-    return !Object.entries(options).length ? null : options;
+    // recursively normalize maps inside options.
+    options = _.mapObject(options, val =>
+      typeof val === "object" ? this.normalizeOptions(val) : val,
+    );
+
+    // remove null/undefined options from map.
+    options = _.omit(options, value => value == null);
+
+    return _.isEmpty(options) ? null : options;
   }
 
   constructor(
