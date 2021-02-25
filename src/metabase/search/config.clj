@@ -15,8 +15,9 @@
   50)
 
 (def searchable-models
-  "Models that can be searched. The order of this list also influences the order of the results."
-  [Card Dashboard Pulse Collection Segment Metric Table])
+  "Models that can be searched. The order of this list also influences the order of the results: items earlier in the
+  list will be ranked higher."
+  [Dashboard Metric Segment Card Collection Table Pulse])
 
 (defn model-name->class
   "Given a model name as a string, return its Class."
