@@ -460,7 +460,7 @@ export class FieldDimension extends Dimension {
     }
     // remove null values from the map.
     Object.keys(options).forEach(k => {
-      if (options[k] === null || options[k] === undefined) {
+      if (options[k] == null) {
         delete options[k];
       }
     });
