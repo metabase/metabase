@@ -10,8 +10,6 @@ import type Metadata from "./metadata/Metadata";
 import type {
   ConcreteField,
   LocalFieldReference,
-  // ForeignFieldReference,
-  // DatetimeField,
   ExpressionReference,
   DatetimeUnit,
 } from "metabase-types/types/Query";
