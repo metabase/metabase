@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.names
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
@@ -226,7 +227,8 @@
       (try
         (s/validate (s/maybe Context) context)
         (catch Exception e
-          (throw (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
+          (log/warn
+           (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
                          (str/join ", " (map name (keys (:value (ex-data e)))))
                          fully-qualified-name)
                     {:fully-qualified-name fully-qualified-name
