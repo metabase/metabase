@@ -107,11 +107,7 @@ describe("UnderlyingRecordsDrill", () => {
     expect(q.query().query()).toEqual({
       "source-table": ORDERS.id,
       joins: [join],
-      filter: [
-        "=",
-        ["field", PEOPLE.STATE.id, { "join-alias": "User" }],
-        "CA",
-      ],
+      filter: ["=", ["field", PEOPLE.STATE.id, { "join-alias": "User" }], "CA"],
     });
     expect(q.display()).toEqual("table");
   });

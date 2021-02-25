@@ -244,7 +244,8 @@
   * `:print-metadata?` -- whether to print metadata columns such as `:cols`or `:source-metadata`
     in the query/results
 
-  * `:print-names?` -- whether to print comments with the names of fields as part of `:field-id` forms
+  * `:print-names?` -- whether to print comments with the names of fields/tables as part of `:field` forms and
+    for `:source-table`
 
   * `:validate-query?` -- whether to validate the query after each preprocessing step, so you can figure out who's
     breaking it. (TODO -- `mbql-to-native` middleware currently leaves the old mbql `:query` in place,

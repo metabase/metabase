@@ -1147,3 +1147,29 @@
       (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
              (normalize/normalize-source-metadata
               {:field_ref ["field" 1 {:temporal-unit "month"}]}))))))
+
+(deftest do-not-normalize-fingerprints-test
+  (testing "Numbers in fingerprints shouldn't get normalized"
+    (let [fingerprint {:global {:distinct-count 1, :nil% 0}
+                       :type   {:type/Number {:min 1
+                                              :q1  1
+                                              :q3  1
+                                              :max 1
+                                              :sd  0
+                                              :avg 1}}}]
+      (is (= fingerprint
+             (normalize/normalize fingerprint)))
+      (let [query {:query
+                   {:source-query
+                    {:native     "SELECT USER_ID FROM ORDERS LIMIT 1"
+                     :parameters [{:type   :category
+                                   :target [:variable [:template-tag "sandbox"]]
+                                   :value  "1"}]}
+                    :database        1
+                    :source-metadata [{:name          "USER_ID"
+                                       :display_name  "USER_ID"
+                                       :base_type     :type/Integer
+                                       :field_ref     [:field "USER_ID" {:base-type :type/Integer}]
+                                       :fingerprint   fingerprint}]}}]
+        (is (= query
+               (normalize/normalize query)))))))

@@ -41,7 +41,15 @@
   namespace.)"
   [x]
   (and (sequential? x)
+       (not (instance? clojure.lang.MapEntry x))
        ((some-fn keyword? string?) (first x))))
+
+(defn- maybe-normalize-token
+  "Normalize token `x`, but only if it's a keyword or string."
+  [x]
+  (if ((some-fn keyword? string?) x)
+    (mbql.u/normalize-token x)
+    x))
 
 (defn is-clause?
   "If `x` an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
@@ -54,7 +62,7 @@
   [k-or-ks x]
   (and
    (mbql-clause? x)
-   (let [clause-name (mbql.u/normalize-token (first x))]
+   (let [clause-name (maybe-normalize-token (first x))]
      (if (coll? k-or-ks)
        ((set k-or-ks) clause-name)
        (= k-or-ks clause-name)))))
@@ -67,7 +75,7 @@
 (declare normalize-tokens)
 
 (defmulti ^:private normalize-mbql-clause-tokens
-  (comp mbql.u/normalize-token first))
+  (comp maybe-normalize-token first))
 
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
@@ -82,7 +90,7 @@
   [[_ field strategy-name strategy-param]]
   (if strategy-param
     (conj (normalize-mbql-clause-tokens [:binning-strategy field strategy-name]) strategy-param)
-    [:binning-strategy (normalize-tokens field :ignore-path) (mbql.u/normalize-token strategy-name)]))
+    [:binning-strategy (normalize-tokens field :ignore-path) (maybe-normalize-token strategy-name)]))
 
 (defmethod normalize-mbql-clause-tokens :field
   [[_ id-or-name opts]]
@@ -110,8 +118,8 @@
   ;; normalize the unit, and `:as` (if present) tokens, and the Field."
   [[_ field as-or-unit maybe-unit]]
   (if maybe-unit
-    [:datetime-field (normalize-tokens field :ignore-path) :as (mbql.u/normalize-token maybe-unit)]
-    [:datetime-field (normalize-tokens field :ignore-path) (mbql.u/normalize-token as-or-unit)]))
+    [:datetime-field (normalize-tokens field :ignore-path) :as (maybe-normalize-token maybe-unit)]
+    [:datetime-field (normalize-tokens field :ignore-path) (maybe-normalize-token as-or-unit)]))
 
 (defmethod normalize-mbql-clause-tokens :time-interval
   ;; `time-interval`'s `unit` should get normalized, and `amount` if it's not an integer."
@@ -123,8 +131,8 @@
      (normalize-tokens field :ignore-path)
      (if (integer? amount)
        amount
-       (mbql.u/normalize-token amount))
-     (mbql.u/normalize-token unit)]))
+       (maybe-normalize-token amount))
+     (maybe-normalize-token unit)]))
 
 (defmethod normalize-mbql-clause-tokens :relative-datetime
   ;; Normalize a `relative-datetime` clause. `relative-datetime` comes in two flavors:
@@ -133,25 +141,25 @@
   ;;   [:relative-datetime -10 :day] ; amount & unit"
   [[_ amount unit]]
   (if unit
-    [:relative-datetime amount (mbql.u/normalize-token unit)]
+    [:relative-datetime amount (maybe-normalize-token unit)]
     [:relative-datetime :current]))
 
 (defmethod normalize-mbql-clause-tokens :interval
   [[_ amount unit]]
-  [:interval amount (mbql.u/normalize-token unit)])
+  [:interval amount (maybe-normalize-token unit)])
 
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default get just the clause name normalized (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and the
   ;; args are left as-is.
   [[clause-name & args]]
-  (into [(mbql.u/normalize-token clause-name)] (map #(normalize-tokens % :ignore-path)) args))
+  (into [(maybe-normalize-token clause-name)] (map #(normalize-tokens % :ignore-path)) args))
 
 (defn- aggregation-subclause?
   [x]
   (or (when ((some-fn keyword? string?) x)
         (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :*
            :sum-where :count-where :share :var :median :percentile}
-         (mbql.u/normalize-token x)))
+         (maybe-normalize-token x)))
       (when (mbql-clause? x)
         (aggregation-subclause? (first x)))))
 
@@ -162,7 +170,7 @@
   (cond
     ;; something like {:aggregations :count}
     ((some-fn keyword? string?) ag-clause)
-    (mbql.u/normalize-token ag-clause)
+    (maybe-normalize-token ag-clause)
 
     ;; named aggregation ([:named <ag> <name>])
     (is-clause? :named ag-clause)
@@ -204,18 +212,18 @@
   (into {} (for [[tag-name tag-def] template-tags]
              [(mbql.u/qualified-name tag-name)
               (let [tag-def (-> (normalize-tokens tag-def :ignore-path)
-                                (update :type mbql.u/normalize-token))]
+                                (update :type maybe-normalize-token))]
                 (cond-> tag-def
-                  (:widget-type tag-def) (update :widget-type mbql.u/normalize-token)))])))
+                  (:widget-type tag-def) (update :widget-type maybe-normalize-token)))])))
 
 (defn- normalize-query-parameter [{:keys [type target], :as param}]
   (cond-> param
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
-    type   (update :type mbql.u/normalize-token)
+    type   (update :type maybe-normalize-token)
     target (update :target #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [source-query]
-  (let [{native? :native, :as source-query} (m/map-keys mbql.u/normalize-token source-query)]
+  (let [{native? :native, :as source-query} (m/map-keys maybe-normalize-token source-query)]
     (if native?
       (-> source-query
           (set/rename-keys {:native :query})
@@ -228,10 +236,10 @@
   (let [{:keys [strategy fields alias], :as join} (normalize-tokens join :query)]
     (cond-> join
       strategy
-      (update :strategy mbql.u/normalize-token)
+      (update :strategy maybe-normalize-token)
 
       ((some-fn keyword? string?) fields)
-      (update :fields mbql.u/normalize-token)
+      (update :fields maybe-normalize-token)
 
       alias
       (update :alias mbql.u/qualified-name))))
@@ -249,7 +257,7 @@
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
   [native-query]
-  (let [native-query (m/map-keys mbql.u/normalize-token native-query)]
+  (let [native-query (m/map-keys maybe-normalize-token native-query)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
@@ -258,7 +266,7 @@
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
   defined below."
-  {:type            mbql.u/normalize-token
+  {:type            maybe-normalize-token
    ;; don't normalize native queries
    :native          normalize-native-query
    :query           {:aggregation     normalize-ag-clause-tokens
@@ -268,7 +276,7 @@
                      :source-metadata {::sequence normalize-source-metadata}
                      :joins           {::sequence normalize-join}}
    :parameters      {::sequence normalize-query-parameter}
-   :context         #(some-> % mbql.u/normalize-token)
+   :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}})
 
 (defn normalize-tokens
@@ -301,7 +309,7 @@
         ;; Each recursive call appends to the keypath above so we can handle top-level clauses in a special way if needed
         (map? x)
         (into {} (for [[k v] x
-                       :let  [k (mbql.u/normalize-token k)]]
+                       :let  [k (maybe-normalize-token k)]]
                    [k (normalize-tokens v (conj (vec path) k))]))
 
         ;; MBQL clauses handled above because of special cases
@@ -319,7 +327,7 @@
         x)
       (catch Throwable e
         (throw (ex-info (tru "Error normalizing form.")
-                        {:form x, :path path}
+                        {:form x, :path path, :special-fn special-fn}
                         e))))))
 
 
@@ -527,15 +535,21 @@
   "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
   [mbql-query]
   (walk/prewalk
-   (fn [clause]
-     (if-not (mbql-clause? clause)
-       clause
+   (fn [x]
+     (cond
+       (map? x)
+       (m/map-vals canonicalize-mbql-clauses x)
+
+       (not (mbql-clause? x))
+       x
+
+       :else
        (try
-         (canonicalize-mbql-clause clause)
+         (canonicalize-mbql-clause x)
          (catch Throwable e
-           (log/error (tru "Invalid clause:") clause)
+           (log/error (tru "Invalid clause:") x)
            (throw (ex-info (tru "Invalid MBQL clause")
-                           {:clause clause}
+                           {:clause x}
                            e))))))
    mbql-query))
 

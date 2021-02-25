@@ -31,6 +31,7 @@
   `normalize` this handles pre-normalized clauses as well.)"
   [x]
   (and (sequential? x)
+       (not (instance? clojure.lang.MapEntry x))
        (keyword? (first x))))
 
 (defn is-clause?

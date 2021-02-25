@@ -190,10 +190,10 @@
   (testing "does the middleware avoid barfing if for some reason the Field could not be resolved in the DB?"
     ;; (That is the job of the resolve middleware to worry about that stuff.)
     (is (= {:source-table 1
-            :breakout     [[:field-id Integer/MAX_VALUE]]}
+            :breakout     [[:field Integer/MAX_VALUE nil]]}
            (auto-bucket-mbql
             {:source-table 1
-             :breakout     [[:field-id Integer/MAX_VALUE]]})))))
+             :breakout     [[:field Integer/MAX_VALUE nil]]})))))
 
 (deftest auto-bucket-unix-timestamp-fields-test
   (testing "do UNIX TIMESTAMP fields get auto-bucketed?"
