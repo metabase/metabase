@@ -56,9 +56,14 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
   logicalNotExpression(ctx) {
     const expr = this.visit(ctx.operands[0]);
-    const [fn, ...args] = expr;
-    const shorthand = NEGATIVE_FILTER_SHORTHANDS[fn];
-    return shorthand ? [shorthand, ...args] : ["not", expr];
+    if (Array.isArray(expr)) {
+      const [fn, ...args] = expr;
+      const shorthand = NEGATIVE_FILTER_SHORTHANDS[fn];
+      if (shorthand) {
+        return [shorthand, ...args];
+      }
+    }
+    return ["not", expr];
   }
   relationalExpression(ctx) {
     return this._collapseOperators(ctx.operands, ctx.operators);

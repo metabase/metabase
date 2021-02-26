@@ -177,6 +177,7 @@ describe("metabase/lib/expressions/compile", () => {
     it("should compile logical operations", () => {
       expect(filter("NOT A")).toEqual(["not", ["segment", "A"]]);
       expect(filter("NOT 0")).toEqual(["not", 0]);
+      expect(filter("NOT 'Answer'")).toEqual(["not", "Answer"]);
       expect(filter("NOT NOT 0")).toEqual(["not", ["not", 0]]);
       expect(filter("1 OR 2")).toEqual(["or", 1, 2]);
       expect(filter("2 AND 3")).toEqual(["and", 2, 3]);
@@ -190,6 +191,7 @@ describe("metabase/lib/expressions/compile", () => {
     it("should compile segments", () => {
       expect(filter("[Expensive]")).toEqual(["segment", "Expensive"]);
       expect(filter("NOT [Good]")).toEqual(["not", ["segment", "Good"]]);
+      expect(filter("NOT Answer")).toEqual(["not", ["segment", "Answer"]]);
     });
     it("should compile negative filters", () => {
       expect(filter("NOT CONTAINS('X','Y')")).toEqual([
