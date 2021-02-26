@@ -265,12 +265,12 @@
               (sync/sync-database! db)
               (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text
                                                      :display_name "COL1"
-                                                     :field_ref    [:field-literal "COL1" :type/Text]
+                                                     :field_ref    [:field "COL1" {:base-type :type/Text}]
                                                      :name         "COL1"
                                                      :source       :native}
                                                     {:base_type    :type/Decimal
                                                      :display_name "COL2"
-                                                     :field_ref    [:field-literal "COL2" :type/Decimal]
+                                                     :field_ref    [:field "COL2" {:base-type :type/Decimal}]
                                                      :name         "COL2"
                                                      :source       :native}]
                                              :rows [["First Row"  19.10M]
