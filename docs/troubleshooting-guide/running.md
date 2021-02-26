@@ -29,4 +29,4 @@ The `-XX:HeapDumpPath` flag is optional, with the current directory being the de
 
 ### Metabase cannot read or write from a file or folder (IOError)
 
-If you find an error regarding file permissions when using Metabase, like not being able to read a SQLite database or a custom GeoJSON, we also have you covered in this section about [Metabase not being able to read from a file or folder](docker.html)
+If you find an error regarding file permissions, like Metabase being unable to read a SQLite database or a custom GeoJSON, check out the section "Metabase can't read to/from a file or directory" in our [Docker troubleshooting guide](docker.md).
