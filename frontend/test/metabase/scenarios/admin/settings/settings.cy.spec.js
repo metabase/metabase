@@ -51,7 +51,7 @@ describe("scenarios > admin > settings", () => {
 
     // NOTE: This test is not concerned with HOW we style the error message - only that there is one.
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
-    cy.log("**Making sure we display an error message in UI**");
+    cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
     cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
   });

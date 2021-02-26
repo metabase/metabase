@@ -10,7 +10,7 @@ describeWithToken("audit > ad-hoc", () => {
     beforeEach(() => {
       restore();
 
-      cy.log("**Run ad hoc native query as normal user**");
+      cy.log("Run ad hoc native query as normal user");
       signInAsNormalUser();
       cy.visit("/question/new");
       cy.findByText("Native query").click();
@@ -35,7 +35,7 @@ describeWithToken("audit > ad-hoc", () => {
           cy.findByText("Ad-hoc").click();
         });
 
-      cy.log("**Assert that the query page is not blank**");
+      cy.log("Assert that the query page is not blank");
       cy.url().should("include", "/admin/audit/query/");
 
       cy.get(".PageTitle").contains("Query");

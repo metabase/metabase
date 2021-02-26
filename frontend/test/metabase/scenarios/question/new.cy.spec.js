@@ -165,7 +165,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("Group by")
         .parent()
         .within(() => {
-          cy.log("**Reported failing since v0.33.5.1**");
+          cy.log("Reported failing since v0.33.5.1");
           cy.log(
             "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
           );
@@ -202,7 +202,7 @@ describe("scenarios > question > new", () => {
       });
 
       cy.wait("@cardQuery");
-      cy.log("**Reported missing in v0.33.1**");
+      cy.log("Reported missing in v0.33.1");
       cy.get(".AdminSelect")
         .as("select")
         .contains(/All Time/i);
@@ -250,7 +250,7 @@ describe("scenarios > question > new", () => {
           .type(FORMULA)
           .blur();
 
-        cy.log("**Fails after blur in v0.36.6**");
+        cy.log("Fails after blur in v0.36.6");
         // Implicit assertion
         cy.get("[contentEditable=true]").contains(FORMULA);
       });
@@ -322,8 +322,8 @@ describe("scenarios > question > new", () => {
         cy.findByText("13710");
 
         cy.wait("@cardQuery");
-        cy.log("**Reported failing on v0.35 - v0.37.0.2**");
-        cy.log("**Bug: showing blank visualization**");
+        cy.log("Reported failing on v0.35 - v0.37.0.2");
+        cy.log("Bug: showing blank visualization");
         cy.get(".ScalarValue").contains("33");
       });
     });

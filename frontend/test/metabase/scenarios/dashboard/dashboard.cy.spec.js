@@ -86,7 +86,7 @@ describe("scenarios > dashboard", () => {
 
     saveDashboard();
 
-    cy.log("**Assert that the selected filter is present in the dashboard**");
+    cy.log("Assert that the selected filter is present in the dashboard");
     cy.icon("location");
     cy.findByText("State");
   });
@@ -276,7 +276,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should display column options for cross-filter (metabase#14473)", () => {
-    cy.log("**-- 1. Create a question --**");
+    cy.log("Create a question");
 
     cy.request("POST", "/api/card", {
       name: "14473",
@@ -288,12 +288,12 @@ describe("scenarios > dashboard", () => {
       display: "table",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("**-- 2. Create a dashboard --**");
+      cy.log("Create a dashboard");
 
       cy.request("POST", "/api/dashboard", {
         name: "14473D",
       }).then(({ body: { id: DASHBOARD_ID } }) => {
-        cy.log("**-- 3. Add 4 filters to the dashboard --**");
+        cy.log("Add 4 filters to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
           parameters: [
@@ -314,7 +314,7 @@ describe("scenarios > dashboard", () => {
           ],
         });
 
-        cy.log("**-- 4. Add previously created question to the dashboard --**");
+        cy.log("Add previously created question to the dashboard");
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
         });
@@ -336,7 +336,7 @@ describe("scenarios > dashboard", () => {
   it.skip("should show QB question on a dashboard with filter connected to card without data-permission (metabase#12720)", () => {
     // In this test we're using already present question ("Orders") and the dashboard with that question ("Orders in a dashboard")
     cy.log(
-      "**-- 1. Add filter to the dashboard with the default value (after January 1st, 2020) --**",
+      "Add filter to the dashboard with the default value (after January 1st, 2020)",
     );
     cy.request("PUT", "/api/dashboard/1", {
       parameters: [
@@ -350,7 +350,7 @@ describe("scenarios > dashboard", () => {
       ],
     });
 
-    cy.log("**-- 2. Create SQL question with a filter --**");
+    cy.log("Create SQL question with a filter");
 
     cy.request("POST", "/api/card", {
       name: "12720_SQL",
@@ -375,13 +375,13 @@ describe("scenarios > dashboard", () => {
       display: "table",
       visualization_settings: {},
     }).then(({ body: { id: SQL_ID } }) => {
-      cy.log("**-- 3. Add SQL question to the dashboard --**");
+      cy.log("Add SQL question to the dashboard");
 
       cy.request("POST", "/api/dashboard/1/cards", {
         cardId: SQL_ID,
       }).then(({ body: { id: SQL_DASH_CARD_ID } }) => {
         cy.log(
-          "**-- 4. Edit both cards (adjust their size and connect them to the filter) --**",
+          "Edit both cards (adjust their size and connect them to the filter)",
         );
 
         cy.request("PUT", "/api/dashboard/1/cards", {
@@ -447,7 +447,7 @@ describe("scenarios > dashboard", () => {
     // In this test we're using already present dashboard ("Orders in a dashboard")
     const FILTER_ID = "d7988e02";
 
-    cy.log("**-- 1. Add filter to the dashboard --**");
+    cy.log("Add filter to the dashboard");
     cy.request("PUT", "/api/dashboard/1", {
       parameters: [
         {
@@ -459,7 +459,7 @@ describe("scenarios > dashboard", () => {
       ],
     });
 
-    cy.log("**-- 2. Connect filter to the existing card --**");
+    cy.log("Connect filter to the existing card");
     cy.request("PUT", "/api/dashboard/1/cards", {
       cards: [
         {
@@ -507,14 +507,14 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Orders in a dashboard").click();
 
     cy.log(
-      "**-- Clicking on the filter again should NOT send another query to the source DB again! Results should have been cached by now. --**",
+      "Clicking on the filter again should NOT send another query to the source DB again! Results should have been cached by now.",
     );
     cy.get("@filterWidget").click();
     expectedRouteCalls({ route_alias: "fetchFromDB", calls: 1 });
   });
 
   it.skip("should not send additional card queries for all filters (metabase#13150)", () => {
-    cy.log("**-- 1. Create a question --**");
+    cy.log("Create a question");
 
     cy.request("POST", "/api/card", {
       name: "13150 (Products)",
@@ -526,12 +526,12 @@ describe("scenarios > dashboard", () => {
       display: "table",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("**-- 2. Create a dashboard --**");
+      cy.log("Create a dashboard");
 
       cy.request("POST", "/api/dashboard", {
         name: "13150D",
       }).then(({ body: { id: DASHBOARD_ID } }) => {
-        cy.log("**-- 3. Add 3 filters to the dashboard --**");
+        cy.log("Add 3 filters to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
           parameters: [
@@ -546,12 +546,12 @@ describe("scenarios > dashboard", () => {
           ],
         });
 
-        cy.log("**-- 4. Add previously created qeustion to the dashboard --**");
+        cy.log("Add previously created qeustion to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
-          cy.log("**-- 5. Connect all filters to the card --**");
+          cy.log("Connect all filters to the card");
 
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cards: [

@@ -44,7 +44,7 @@ describe("scenarios > collection_defaults", () => {
 
     describe("new collections", () => {
       beforeEach(() => {
-        cy.log("**--Create new collection--**");
+        cy.log("Create new collection");
         cy.request("POST", "/api/collection", {
           name: collection.name,
           color: "#ff9a9a",
@@ -71,7 +71,7 @@ describe("scenarios > collection_defaults", () => {
       describe("a new sub-collection", () => {
         beforeEach(() => {
           cy.log(
-            "**--Create a sub collection within previously created collection--**",
+            "Create a sub collection within previously created collection",
           );
           cy.request("POST", "/api/collection", {
             name: sub_collection.name,
@@ -147,7 +147,7 @@ describe("scenarios > collection_defaults", () => {
               "Third collection",
             );
 
-            cy.log("**-- Create two more nested collections --**");
+            cy.log("Create two more nested collections");
             [
               "Fourth collection",
               "Fifth collection with a very long name",
@@ -370,7 +370,7 @@ describe("scenarios > collection_defaults", () => {
           cy.findByText(/Our analytics/i);
           cy.findByText(/My personal collection/i);
           cy.findByText("Parent").should("not.exist");
-          cy.log("**Reported failing from v0.34.3**");
+          cy.log("Reported failing from v0.34.3");
           cy.findByText("Child");
         });
       });
@@ -465,7 +465,7 @@ describe("scenarios > collection_defaults", () => {
 
     it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
       cy.visit("/collection/root");
-      cy.log("**Move 'Second collection' to the root");
+      cy.log("Move 'Second collection' to the root");
       openDropdownFor("First collection");
       cy.findByText("Second collection").click();
       cy.icon("pencil").click();
