@@ -31,10 +31,9 @@ import type {
 import type { AggregationOperator } from "metabase-types/types/Metadata";
 
 import Dimension, {
-  FKDimension,
+  FieldDimension,
   ExpressionDimension,
   AggregationDimension,
-  FieldLiteralDimension,
 } from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
@@ -279,13 +278,13 @@ export default class StructuredQuery extends AtomicQuery {
       if (dateField) {
         return this.filter([
           "time-interval",
-          ["field-id", dateField.id],
+          ["field", dateField.id, null],
           -365,
           "day",
         ])
           .aggregate(["metric", "ga:users"])
           .aggregate(["metric", "ga:pageviews"])
-          .breakout(["datetime-field", ["field-id", dateField.id], "week"]);
+          .breakout(["field", dateField.id, { "temporal-unit": "week" }]);
       }
     }
     return this;
@@ -307,7 +306,7 @@ export default class StructuredQuery extends AtomicQuery {
             new Field({
               ...column,
               // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
-              id: ["field-literal", column.name, column.base_type],
+              id: ["field", column.name, { "base-type": column.base_type }],
               source: "fields",
               // HACK: need to thread the query through to this fake Field
               query: this,
@@ -440,6 +439,7 @@ export default class StructuredQuery extends AtomicQuery {
       // $FlowFixMe
       const clause = query[listName]()[index];
       if (!this._validateClause(clause)) {
+        console.warn("Removing invalid MBQL clause", clause);
         query = clause.remove();
         // since we're removing them in order we need to decrement index when we remove one
         index -= 1;
@@ -462,7 +462,7 @@ export default class StructuredQuery extends AtomicQuery {
     try {
       return clause.isValid();
     } catch (e) {
-      console.warn("Error thrown while validating clause:", clause);
+      console.warn("Error thrown while validating clause", clause, e);
       return false;
     }
   }
@@ -1145,7 +1145,7 @@ export default class StructuredQuery extends AtomicQuery {
         }
 
         const fkDimensions = dimension
-          .dimensions([FKDimension])
+          .dimensions([FieldDimension])
           .filter(dimensionFilter);
 
         if (fkDimensions.length > 0) {
@@ -1164,7 +1164,7 @@ export default class StructuredQuery extends AtomicQuery {
 
   // FIELD OPTIONS
 
-  fieldOptions(fieldFilter: FieldFilter = field => true) {
+  fieldOptions(fieldFilter: FieldFilter = field => true): DimensionOptions {
     const dimensionFilter = dimension => {
       const field = dimension.field && dimension.field();
       return !field || (field.isDimension() && fieldFilter(field));
@@ -1253,7 +1253,7 @@ export default class StructuredQuery extends AtomicQuery {
             f.parent_id == null
           );
         })
-        .sortBy(d => d.field().name.toLowerCase())
+        .sortBy(d => d.displayName().toLowerCase())
         .sortBy(d => {
           const type = d.field().semantic_type;
           return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
@@ -1418,10 +1418,12 @@ export default class StructuredQuery extends AtomicQuery {
    * returns the corresponding {Dimension} in the sourceQuery, if any
    */
   dimensionForSourceQuery(dimension: Dimension): ?Dimension {
-    if (dimension instanceof FieldLiteralDimension) {
+    if (dimension instanceof FieldDimension && dimension.isStringFieldName()) {
       const sourceQuery = this.sourceQuery();
       if (sourceQuery) {
-        const index = sourceQuery.columnNames().indexOf(dimension.name());
+        const index = sourceQuery
+          .columnNames()
+          .indexOf(dimension.fieldIdOrName());
         if (index >= 0) {
           return sourceQuery.columnDimensions()[index];
         }

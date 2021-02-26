@@ -9,18 +9,18 @@
 (deftest filter->field-map-test
   (is (= {}
          (#'binning/filter->field-map [:and
-                                       [:= [:field-id 1] 10]
-                                       [:= [:field-id 2] 10]])))
+                                       [:= [:field 1 nil] 10]
+                                       [:= [:field 2 nil] 10]])))
 
-  (is (= {1 [[:< [:field-id 1] 10] [:> [:field-id 1] 1]]
-          2 [[:> [:field-id 2] 20] [:< [:field-id 2] 10]]
-          3 [[:between [:field-id 3] 5 10]]}
+  (is (= {1 [[:< [:field 1 nil] 10] [:> [:field 1 nil] 1]]
+          2 [[:> [:field 2 nil] 20] [:< [:field 2 nil] 10]]
+          3 [[:between [:field 3 nil] 5 10]]}
          (#'binning/filter->field-map [:and
-                                       [:< [:field-id 1] 10]
-                                       [:> [:field-id 1] 1]
-                                       [:> [:field-id 2] 20]
-                                       [:< [:field-id 2] 10]
-                                       [:between [:field-id 3] 5 10]]))))
+                                       [:< [:field 1 nil] 10]
+                                       [:> [:field 1 nil] 1]
+                                       [:> [:field 2 nil] 20]
+                                       [:< [:field 2 nil] 10]
+                                       [:between [:field 3 nil] 5 10]]))))
 
 (deftest floor-to-test
   (mt/are+ [x expected] (= expected
@@ -51,22 +51,22 @@
 (deftest extract-bounds-test
   (mt/are+ [field-id->filters expected] (= expected
                                            (#'binning/extract-bounds 1 test-min-max-fingerprint field-id->filters))
-    {1 [[:> [:field-id 1] 1] [:< [:field-id 1] 10]]}
+    {1 [[:> [:field 1 nil] 1] [:< [:field 1 nil] 10]]}
     {:min-value 1, :max-value 10}
 
-    {1 [[:between [:field-id 1] 1 10]]}
+    {1 [[:between [:field 1 nil] 1 10]]}
     {:min-value 1, :max-value 10}
 
     {}
     {:min-value 100, :max-value 1000}
 
-    {1 [[:> [:field-id 1] 500]]}
+    {1 [[:> [:field 1 nil] 500]]}
     {:min-value 500, :max-value 1000}
 
-    {1 [[:< [:field-id 1] 500]]}
+    {1 [[:< [:field 1 nil] 500]]}
     {:min-value 100, :max-value 500}
 
-    {1 [[:> [:field-id 1] 200] [:< [:field-id 1] 800] [:between [:field-id 1] 600 700]]}
+    {1 [[:> [:field 1 nil] 200] [:< [:field 1 nil] 800] [:between [:field 1 nil] 600 700]]}
     {:min-value 600, :max-value 700}))
 
 (deftest nicer-breakout-test
@@ -102,11 +102,13 @@
 (deftest update-binning-strategy-test
   (mt/with-temp Field [field (test-field)]
     (is (= {:query    {:source-table (mt/id :checkins)
-                       :breakout     [[:binning-strategy
-                                       [:field-id (u/the-id field)]
-                                       :num-bins
-                                       8
-                                       {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30}]]}
+                       :breakout     [[:field (u/the-id field)
+                                       {:binning
+                                        {:strategy  :num-bins
+                                         :num-bins  8
+                                         :min-value 0.0
+                                         :max-value 240.0
+                                         :bin-width 30}}]]}
             :type     :query
             :database (mt/id)}
            (mt/with-everything-store
@@ -114,18 +116,18 @@
               (mt/test-qp-middleware
                binning/update-binning-strategy
                {:query    {:source-table (mt/id :checkins)
-                           :breakout     [[:binning-strategy [:field-id (u/the-id field)] :default]]}
+                           :breakout     [[:field (u/the-id field) {:binning {:strategy :default}}]]}
                 :type     :query
                 :database (mt/id)})))))
 
     (testing "should work recursively on nested queries"
       (is (= {:query    {:source-query
                          {:source-table (mt/id :checkins)
-                          :breakout     [[:binning-strategy
-                                          [:field-id (u/the-id field)]
-                                          :num-bins
-                                          8
-                                          {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30}]]}}
+                          :breakout     [[:field (u/the-id field) {:binning {:strategy  :num-bins
+                                                                             :num-bins  8
+                                                                             :min-value 0.0
+                                                                             :max-value 240.0
+                                                                             :bin-width 30}}]]}}
               :type     :query
               :database (mt/id)}
              (mt/with-everything-store
@@ -134,7 +136,7 @@
                  binning/update-binning-strategy
                  {:query    {:source-query
                              {:source-table (mt/id :checkins)
-                              :breakout     [[:binning-strategy [:field-id (u/the-id field)] :default]]}}
+                              :breakout     [[:field (u/the-id field) {:binning {:strategy :default}}]]}}
                   :type     :query
                   :database (mt/id)}))))))))
 
@@ -148,6 +150,6 @@
             [4 6]]
          (->> (mt/run-mbql-query nil
                 {:source-table (str "card__" card-id)
-                 :breakout     [[:binning-strategy [:field-literal "PRICE" :type/Float] :default]]
+                 :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
                  :aggregation  [[:count]]})
               (mt/formatted-rows [int int]))))))

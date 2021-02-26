@@ -101,7 +101,7 @@
     (is (thrown? Exception
                  (into {} (#'values/value-for-tag
                            {:name      "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
-                            :dimension ["field-id" (mt/id :checkins :date)]}
+                            :dimension [:field (mt/id :checkins :date) nil]}
                            nil)))))
 
   (testing "required and default specified"

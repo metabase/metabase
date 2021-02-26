@@ -15,8 +15,9 @@
   50)
 
 (def searchable-models
-  "Models that can be searched. The order of this list also influences the order of the results."
-  [Card Dashboard Pulse Collection Segment Metric Table])
+  "Models that can be searched. The order of this list also influences the order of the results: items earlier in the
+  list will be ranked higher."
+  [Dashboard Metric Segment Card Collection Table Pulse])
 
 (defn model-name->class
   "Given a model name as a string, return its Class."
@@ -60,6 +61,13 @@
   "Case statement to return boolean values of `:favorite` for Card and Dashboard."
   [(hsql/call :case [:not= :fave.id nil] true :else false) :favorite])
 
+(def ^:private dashboardcard-count-col
+  "Subselect to get the count of associated DashboardCards"
+   [{:select [:%count.*]
+     :from   [:report_dashboardcard]
+     :where  [:= :report_dashboardcard.card_id :card.id]}
+    :dashboardcard_count])
+
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
   [:table_id
@@ -76,7 +84,7 @@
 (defmethod columns-for-model (class Card)
   [_]
   (conj default-columns :collection_id :collection_position [:collection.name :collection_name] :dataset_query
-        favorite-col))
+        favorite-col dashboardcard-count-col))
 
 (defmethod columns-for-model (class Dashboard)
   [_]

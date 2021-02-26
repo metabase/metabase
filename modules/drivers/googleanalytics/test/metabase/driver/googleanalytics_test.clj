@@ -12,13 +12,10 @@
             [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data.users :as users]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.db :as db]))
 
 (comment metabase.driver.googleanalytics/keep-me)
 
@@ -55,22 +52,22 @@
     (is (= (ga-query {:metrics    "ga:users"
                       :dimensions "ga:browser"})
            (mbql->native {:query {:aggregation [[:metric "ga:users"]]
-                                  :breakout    [[:field-literal "ga:browser"]]}}))))
+                                  :breakout    [[:field "ga:browser" nil]]}}))))
   (testing "query w/ segment (filter)"
     (is (= (ga-query {:segment "gaid::-4"})
            (mbql->native {:query {:filter [:segment "gaid::-4"]}}))))
   (testing "query w/ non-segment filter"
     (is (= (ga-query {:filters "ga:continent==North America"})
-           (mbql->native {:query {:filter [:= [:field-literal "ga:continent"] [:value "North America"]]}}))))
+           (mbql->native {:query {:filter [:= [:field "ga:continent" nil] [:value "North America"]]}}))))
   (testing "query w/ segment & non-segment filter"
     (is (= (ga-query {:filters "ga:continent==North America"
                       :segment "gaid::-4"})
            (mbql->native {:query {:filter [:and
                                            [:segment "gaid::-4"]
-                                           [:= [:field-literal "ga:continent"] [:value "North America"]]]}})))))
+                                           [:= [:field "ga:continent" nil] [:value "North America"]]]}})))))
 
 (defn- ga-date-field [unit]
-  [:datetime-field [:field-literal "ga:date"] unit])
+  [:field "ga:date" {:temporal-unit unit}])
 
 (deftest filter-by-absolute-datetime-test
   (is (= (ga-query {:start-date "2016-11-08", :end-date "2016-11-08"})
@@ -132,11 +129,16 @@
               (is (= (ga-query {:start-date "30daysAgo"
                                 :end-date   "today"})
                      (mbql->native {:query {:filter [:>= (ga-date-field :day) [:relative-datetime -30 :day]]}}))))
-            (testing "day is within last year"
-              (is (= (ga-query {:start-date "2018-11-19"
+            (testing "day > last year"
+              ;; [:relative-datetime -1 :year] => 2018
+              ;; day > 2018 => day >= 2018-01-02 (GA filters are inclusive)
+              ;; (This query doesn't really make a ton of sense, but this matches the behavior of the SQL drivers)
+              (is (= (ga-query {:start-date "2018-01-02"
                                 :end-date   "today"})
                      (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -1 :year]]}}))))
             (testing "year > last year"
+              ;; [:relative-datetime -1 :year] => 2018
+              ;; year > 2018 => year >= 2019 => year >= 2019
               (is (= (ga-query {:start-date "2019-01-01"
                                 :end-date   "today"})
                      (mbql->native {:query {:filter [:> (ga-date-field :year) [:relative-datetime -1 :year]]}}))))
@@ -155,18 +157,21 @@
 
 ;;; ----------------------------------------------- (Almost) E2E tests -----------------------------------------------
 
-(defn- do-with-some-fields [thunk]
-  (tt/with-temp* [Database [db                 {:engine "googleanalytics"}]
-                  Table    [table              {:name "98765432", :db_id (u/get-id db)}]
-                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/get-id table)}]
-                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/get-id table)}]
-                  Field    [date-field         {:name "ga:date", :base_type "type/Date", :table_id (u/get-id table)}]]
-    (data/with-db db
+(defn do-with-some-fields [thunk]
+  (mt/with-temp* [Database [db                 {:engine "googleanalytics"}]
+                  Table    [table              {:name "98765432", :db_id (u/the-id db)}]
+                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/the-id table)}]
+                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/the-id table)}]
+                  Field    [date-field         {:name "ga:date", :base_type "type/Date", :table_id (u/the-id table)}]]
+    (mt/with-db db
       (thunk {:db                 db
               :table              table
               :event-action-field event-action-field
               :event-label-field  event-label-field
               :date-field         date-field}))))
+
+(defmacro with-some-fields [fields-binding & body]
+  `(do-with-some-fields (fn [~(or (first fields-binding) '_)] ~@body)))
 
 ;; let's try a real-life GA query and see how it looks when it's all put together. This one has already been
 ;; preprocessed, so we're just checking it gets converted to the correct native query
@@ -184,36 +189,36 @@
    :mbql? true})
 
 (defn- preprocessed-query-with-some-fields [{:keys [db table event-action-field event-label-field date-field]}]
-  {:database (u/get-id db)
+  {:database (u/the-id db)
    :type     :query
    :query    {:source-table
-              (u/get-id table)
+              (u/the-id table)
 
               :aggregation
               [[:metric "ga:totalEvents"]]
 
               :breakout
-              [[:field-id (u/get-id event-label-field)]]
+              [[:field (u/the-id event-label-field) nil]]
 
               :filter
               [:and
                [:segment "gaid::-4"]
                [:=
-                [:field-id (u/get-id event-action-field)]
+                [:field (u/the-id event-action-field) nil]
                 [:value "Run Query" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]
                [:between
-                [:datetime-field [:field-id (u/get-id date-field)] :day]
+                [:field (u/the-id date-field) {:temporal-unit :day}]
                 [:relative-datetime -30 :day]
                 [:relative-datetime -1 :day]]
                [:!=
-                [:field-id (u/get-id event-label-field)]
+                [:field (u/the-id event-label-field) nil]
                 [:value "(not set)" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]
                [:!=
-                [:field-id (u/get-id event-label-field)]
+                [:field (u/the-id event-label-field) nil]
                 [:value "url" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]]
 
               :order-by
-              [[:asc [:field-id (u/get-id event-label-field)]]]}})
+              [[:asc [:field (u/the-id event-label-field) nil]]]}})
 
 (deftest almost-e2e-test-1
   ;; system timezone ID shouldn't affect generated query
@@ -228,24 +233,24 @@
                (do-with-some-fields
                 (fn [{:keys [db table event-action-field event-label-field date-field], :as objects}]
                   (qp.store/with-store
-                    (qp.store/fetch-and-store-database! (u/get-id db))
-                    (qp.store/fetch-and-store-tables! [(u/get-id table)])
-                    (qp.store/fetch-and-store-fields! (map u/get-id [event-action-field event-label-field date-field]))
+                    (qp.store/fetch-and-store-database! (u/the-id db))
+                    (qp.store/fetch-and-store-tables! [(u/the-id table)])
+                    (qp.store/fetch-and-store-fields! (map u/the-id [event-action-field event-label-field date-field]))
                     (ga.qp/mbql->native (preprocessed-query-with-some-fields objects)))))))))))
 
 ;; this was the above query before it was preprocessed. Make sure we actually handle everything correctly end-to-end
 ;; for the entire preprocessing process
 (defn- query-with-some-fields [{:keys [db table event-action-field event-label-field date-field]}]
-  {:database (u/get-id db)
+  {:database (u/the-id db)
    :type     :query
-   :query    {:source-table (u/get-id table)
+   :query    {:source-table (u/the-id table)
               :aggregation  [[:metric "ga:totalEvents"]]
               :filter       [:and
                              [:segment "gaid::-4"]
-                             [:= [:field-id (u/get-id event-action-field)] "Run Query"]
-                             [:time-interval [:field-id (u/get-id date-field)] -30 :day]
-                             [:!= [:field-id (u/get-id event-label-field)] "(not set)" "url"]]
-              :breakout     [[:field-id (u/get-id event-label-field)]]}})
+                             [:= [:field (u/the-id event-action-field) nil] "Run Query"]
+                             [:time-interval [:field (u/the-id date-field) nil] -30 :day]
+                             [:!= [:field (u/the-id event-label-field) nil] "(not set)" "url"]]
+              :breakout     [[:field (u/the-id event-label-field) nil]]}})
 
 (deftest almost-e2e-test-2
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
@@ -330,9 +335,9 @@
                      :end-date   "2019-10-31"
                      :sort       "ga:date"}
                     (-> {:query    {:source-table (:id table)
-                                    :filter       [:time-interval [:field-id (:id date-field)] -4 :month]
+                                    :filter       [:time-interval [:field (:id date-field) nil] -4 :month]
                                     :aggregation  [[:metric "ga:users"]]
-                                    :breakout     [[:datetime-field [:field-id (:id date-field)] :day]]}
+                                    :breakout     [[:field (:id date-field) {:temporal-unit :day}]]}
                          :type     :query
                          :database (:id db)}
                         qp/query->native
@@ -346,19 +351,20 @@
 ;; Can we *save* a GA query that has two aggregations?
 
 (deftest save-ga-query-test
-  (tt/with-temp* [Database [db    {:engine :googleanalytics}]
-                  Table    [table {:db_id (u/get-id db)}]
-                  Field    [field {:table_id (u/get-id table)}]]
-    (let [cnt (->> ((users/user->client :crowberto) :post 202 "card"
+  (mt/with-temp* [Database [db    {:engine :googleanalytics}]
+                  Table    [table {:db_id (u/the-id db)}]
+                  Field    [field {:table_id (u/the-id table)}]]
+    (let [cnt (->> (mt/user-http-request
+                    :crowberto :post 202 "card"
                     {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"
                      :display                :table
                      :visualization_settings {}
-                     :dataset_query          {:database (u/get-id db)
+                     :dataset_query          {:database (u/the-id db)
                                               :type     :query
-                                              :query    {:source-table (u/get-id table)
+                                              :query    {:source-table (u/the-id table)
                                                          :aggregation  [[:METRIC "ga:sessions"]
                                                                         [:METRIC "ga:1dayUsers"]]
-                                                         :breakout     [[:datetime-field [:field-id (u/get-id field)] :day]]}}
+                                                         :breakout     [[:field (u/the-id field) {:temporal-unit :day}]]}}
                      :result_metadata        [{:base_type    :type/Date
                                                :display_name "Date"
                                                :name         "ga:date"
@@ -373,7 +379,7 @@
                      :metadata_checksum      "i3uR1PM5q6uZfIpm0qZbb6Brcfw8S3/wejWolU0Bl1n1Dz/yqvLGxf/XXV6/uOBB75WhFE9V98pIw5Qm18VY6+rlzUnuaTfPvPbiJbh3D9w="})
                    ;; just make sure the API call actually worked by checking that the created Card is actually
                    ;; successfully saved in the DB
-                   u/get-id
+                   u/the-id
                    (db/count Card :id))]
       (is (= 1
              cnt)))))

@@ -11,7 +11,10 @@ import type {
 import type { Field as FieldReference } from "metabase-types/types/Query";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
+import Dimension, {
+  AggregationDimension,
+  FieldDimension,
+} from "metabase-lib/lib/Dimension";
 import type Question from "metabase-lib/lib/Question";
 
 type ColumnSetting = {
@@ -56,25 +59,47 @@ export function fieldRefForColumn(column: Column): ?FieldReference {
   );
 }
 
+export function fieldRefWithOption(
+  fieldRef: any,
+  key: string,
+  value: any,
+): FieldReference {
+  const dimension = FieldDimension.parseMBQLOrWarn(fieldRef);
+  return dimension && dimension.withOption(key, value).mbql();
+}
+
 export const keyForColumn = (column: Column): string => {
-  const ref = fieldRefForColumn(column);
-  // match bug where joined-field returned field-id instead
-  if (Array.isArray(ref) && ref[0] === "joined-field") {
-    return JSON.stringify(["ref", ref[2]]);
+  let fieldRef = column.field_ref;
+  if (!fieldRef) {
+    console.error("column is missing field_ref", column);
+    fieldRef = new FieldDimension(column.name).mbql();
   }
+
+  let dimension = Dimension.parseMBQL(fieldRef);
+  if (!dimension) {
+    console.warn("Unknown field_ref", fieldRef);
+    return JSON.stringify(fieldRef);
+  }
+
+  dimension = dimension.baseDimension();
+
+  // match bug where field w/ join alias returned field w/o join alias instead
+  if (dimension instanceof FieldDimension) {
+    dimension = dimension.withoutOptions("join-alias");
+  }
+
   // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
-  if (
-    Array.isArray(ref) &&
-    ref[0] !== "field-literal" &&
-    ref[0] !== "aggregation"
-  ) {
-    return JSON.stringify(["ref", ref]);
-  }
-  return JSON.stringify(["name", column.name]);
+  const isLegacyRef =
+    (dimension instanceof FieldDimension && dimension.isStringFieldName()) ||
+    dimension instanceof AggregationDimension;
+
+  return JSON.stringify(
+    isLegacyRef ? ["name", column.name] : ["ref", dimension.mbql()],
+  );
 };
 
 /**
- * Finds the column object from the dataset results for the given `table.columns` column setting
+ * finds the column object from the dataset results for the given `table.columns` column setting
  * @param  {Column[]} columns             Dataset results columns
  * @param  {ColumnSetting} columnSetting  A "column setting" from the `table.columns` settings
  * @return {?Column}                      A result column
@@ -146,7 +171,7 @@ export function syncTableColumnsToQuery(question: Question): Question {
         if (fieldRef) {
           const dimension = query.parseFieldReference(fieldRef);
           // NOTE: this logic should probably be in StructuredQuery
-          if (dimension instanceof JoinedDimension) {
+          if (dimension instanceof FieldDimension && dimension.joinAlias()) {
             const join = dimension.join();
             if (join) {
               query = join.addField(dimension.mbql()).parent();

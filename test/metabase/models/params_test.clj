@@ -10,15 +10,16 @@
             [toucan.util.test :as tt]))
 
 (deftest wrap-field-id-if-needed-test
-  (doseq [[x expected] {10                                 [:field-id 10]
-                        [:field-id 10]                     [:field-id 10]
-                        [:field-literal "name" :type/Text] [:field-literal "name" :type/Text]}]
+  (doseq [[x expected] {10                                      [:field 10 nil]
+                        [:field 10 nil]                         [:field 10 nil]
+                        [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
     (testing x
       (is (= expected
              (params/wrap-field-id-if-needed x)))))
   (testing "Should throw Exception if form is invalid"
-    (is (thrown?
-         java.lang.IllegalArgumentException
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Don't know how to wrap Field ID"
          (params/wrap-field-id-if-needed nil)))))
 
 
@@ -76,7 +77,7 @@
                                           :template-tags {"name" {:name         "name"
                                                                   :display_name "Name"
                                                                   :type         :dimension
-                                                                  :dimension    [:field-id (mt/id :venues :id)]}}}}}]
+                                                                  :dimension    [:field (mt/id :venues :id) nil]}}}}}]
       (is (= {(mt/id :venues :id) {:id               (mt/id :venues :id)
                                    :table_id         (mt/id :venues)
                                    :display_name     "ID"
@@ -118,14 +119,14 @@
   (let [card {:dataset_query (mt/native-query {:template-tags {"id"   {:name         "id"
                                                                        :display_name "ID"
                                                                        :type         :dimension
-                                                                       :dimension    [:field-id (mt/id :venues :id)]}
+                                                                       :dimension    [:field (mt/id :venues :id) nil]}
                                                                "name" {:name         "name"
                                                                        :display_name "Name"
                                                                        :type         :dimension
-                                                                       :dimension    [:field-literal "name" :type/Text]}}})}]
+                                                                       :dimension    [:field "name" {:base-type :type/Text}]}}})}]
     (testing "card->template-tag-field-clauses"
-      (is (= #{[:field-id (mt/id :venues :id)]
-               [:field-literal "name" :type/Text]}
+      (is (= #{[:field (mt/id :venues :id) nil]
+               [:field "name" {:base-type :type/Text}]}
              (params/card->template-tag-field-clauses card))))
 
     (testing "card->template-tag-field-ids"

@@ -70,10 +70,10 @@
    (col-defaults)
    (db/select-one [Field :id :table_id :semantic_type :base_type :name :display_name :fingerprint]
      :id (data/id table-kw field-kw))
-   {:field_ref [:field-id (data/id table-kw field-kw)]}
+   {:field_ref [:field (data/id table-kw field-kw) nil]}
    (when (#{:last_login :date} field-kw)
      {:unit      :default
-      :field_ref [:datetime-field [:field-id (data/id table-kw field-kw)] :default]})))
+      :field_ref [:field (data/id table-kw field-kw) {:temporal-unit :default}]})))
 
 (defn- expected-column-names
   "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."
@@ -135,7 +135,7 @@
   {:arglists '([col] [table-kw field-kw])}
   ([{field-name :name, base-type :base_type, unit :unit, :as col}]
    (-> col
-       (assoc :field_ref [:field-literal field-name base-type]
+       (assoc :field_ref [:field field-name {:base-type base-type}]
               :source    :fields)
        (dissoc :description :parent_id :visibility_type)))
 
@@ -153,7 +153,7 @@
   {:arglists '([col] [table-kw field-kw])}
   ([{field-name :name, base-type :base_type, unit :unit, :as col}]
    (assoc col
-          :field_ref [:field-literal field-name base-type]
+          :field_ref [:field field-name {:base-type base-type}]
           :source    :fields))
 
   ([table-kw field-kw]
@@ -166,7 +166,7 @@
         dest-col   (col dest-table-kw dest-field-kw)]
     (-> dest-col
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
-        (assoc :field_ref    [:fk-> [:field-id (:id source-col)] [:field-id (:id dest-col)]]
+        (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
                :fk_field_id  (:id source-col)
                :source_alias (#'joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
                                                  (:name source-col))))))
@@ -185,7 +185,7 @@
                       {:database db-id
                        :type     :query
                        :query    {:source-table table-id
-                                  :fields       [[:field_id field-id]]
+                                  :fields       [[:field field-id nil]]
                                   :limit        1}})}))))))
 
 (defn native-query-col
@@ -310,7 +310,7 @@
   [results]
   (when (#{:failed "failed"} (:status results))
     (throw (ex-info (str (or (:error results) "Error running query"))
-             (if (map? results) results {:results results}))))
+                    (if (map? results) results {:results results}))))
   (:data results))
 
 (defn rows
@@ -318,7 +318,8 @@
   {:style/indent 0}
   [results]
   (or (some-> (data results) :rows vec)
-      (throw (ex-info "Query does not have any :rows in results." results))))
+      (throw (ex-info "Query does not have any :rows in results."
+                      (if (map? results) results {:result results})))))
 
 (defn formatted-rows
   "Combines `rows` and `format-rows-by`."

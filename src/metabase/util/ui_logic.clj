@@ -60,9 +60,9 @@
 
 (defn- column-name->index
   "The results seq is seq of vectors, this function returns the index in that vector of the given `COLUMN-NAME`"
-  [^String column-name {:keys [cols] :as result}]
+  [column-name {:keys [cols] :as result}]
   (first (remove nil? (map-indexed (fn [idx column]
-                                     (when (.equalsIgnoreCase column-name (:name column))
+                                     (when (.equalsIgnoreCase (name column-name) (name (:name column)))
                                        idx))
                                    cols))))
 

@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses-test
   (:require [clojure.test :refer :all]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.test-util :as qp.test-util]
@@ -29,44 +30,44 @@
 (deftest add-order-bys-for-breakouts-test
   (testing "we should add order-bys for breakout clauses"
     (is (= {:source-table 1
-            :breakout     [[:field-id 1]]
-            :order-by     [[:asc [:field-id 1]]]}
+            :breakout     [[:field 1 nil]]
+            :order-by     [[:asc [:field 1 nil]]]}
            (#'add-implicit-clauses/add-implicit-breakout-order-by
             {:source-table 1
-             :breakout     [[:field-id 1]]})))
+             :breakout     [[:field 1 nil]]})))
     (testing "Add Field to existing order-by"
       (is (= {:source-table 1
-              :breakout     [[:field-id 2]]
-              :order-by     [[:asc [:field-id 1]]
-                             [:asc [:field-id 2]]]}
+              :breakout     [[:field 2 nil]]
+              :order-by     [[:asc [:field 1 nil]]
+                             [:asc [:field 2 nil]]]}
              (#'add-implicit-clauses/add-implicit-breakout-order-by
               {:source-table 1
-               :breakout     [[:field-id 2]]
-               :order-by     [[:asc [:field-id 1]]]}))))
+               :breakout     [[:field 2 nil]]
+               :order-by     [[:asc [:field 1 nil]]]}))))
 
     (testing "...but not if the Field is already in an order-by"
       (is (= {:source-table 1
-              :breakout     [[:field-id 1]]
-              :order-by     [[:asc [:field-id 1]]]}
+              :breakout     [[:field 1 nil]]
+              :order-by     [[:asc [:field 1 nil]]]}
              (#'add-implicit-clauses/add-implicit-breakout-order-by
               {:source-table 1
-               :breakout     [[:field-id 1]]
-               :order-by     [[:asc [:field-id 1]]]})))
+               :breakout     [[:field 1 nil]]
+               :order-by     [[:asc [:field 1 nil]]]})))
       (is (= {:source-table 1
-              :breakout     [[:field-id 1]]
-              :order-by     [[:desc [:field-id 1]]]}
+              :breakout     [[:field 1 nil]]
+              :order-by     [[:desc [:field 1 nil]]]}
              (#'add-implicit-clauses/add-implicit-breakout-order-by
               {:source-table 1
-               :breakout     [[:field-id 1]]
-               :order-by     [[:desc [:field-id 1]]]})))
+               :breakout     [[:field 1 nil]]
+               :order-by     [[:desc [:field 1 nil]]]})))
       (testing "With a datetime-field"
         (is (= {:source-table 1
-                :breakout     [[:datetime-field [:field-id 1] :day]]
-                :order-by     [[:asc [:field-id 1]]]}
+                :breakout     [[:field 1 {:temporal-unit :day}]]
+                :order-by     [[:asc [:field 1 nil]]]}
                (#'add-implicit-clauses/add-implicit-breakout-order-by
                 {:source-table 1
-                 :breakout     [[:datetime-field [:field-id 1] :day]]
-                 :order-by     [[:asc [:field-id 1]]]})))))))
+                 :breakout     [[:field 1 {:temporal-unit :day}]]
+                 :order-by     [[:asc [:field 1 nil]]]})))))))
 
 (deftest add-order-bys-for-no-aggregations-test
   (testing "We should add sorted implicit Fields for a query with no aggregations"
@@ -89,8 +90,8 @@
                 {:fields [ ;; all fields with lower positions should get sorted first according to rules above
                           $id $name $category_id $latitude $longitude $price
                           ;; followed by position = 100, then position = 101
-                          [:field-id (u/the-id field-1)]
-                          [:field-id (u/the-id field-2)]]}))
+                          [:field (u/the-id field-1) nil]
+                          [:field (u/the-id field-2) nil]]}))
              (#'add-implicit-clauses/add-implicit-fields (:query (mt/mbql-query venues))))))))
 
 (deftest default-bucketing-test
@@ -99,7 +100,7 @@
       (is (= (:query
               (mt/mbql-query venues
                 {:fields [$id $name
-                          [:datetime-field [:field-id (u/the-id field)] :default]
+                          [:field (u/the-id field) {:temporal-unit :default}]
                           $category_id $latitude $longitude $price]}))
              (#'add-implicit-clauses/add-implicit-fields (:query (mt/mbql-query venues))))))))
 
@@ -111,8 +112,8 @@
            (mt/mbql-query checkins
              {:aggregation [[:count]]
               :breakout    [!month.$date]}))]
-      (is (schema= {:fields   (s/eq [[:field-id (mt/id :checkins :date)]
-                                     [:field-literal "count" :type/BigInteger]])
+      (is (schema= {:fields   (s/eq [[:field (mt/id :checkins :date) nil]
+                                     [:field "count" {:base-type :type/BigInteger}]])
                     s/Keyword s/Any}
                    (#'add-implicit-clauses/add-implicit-fields
                     (:query (mt/mbql-query checkins
@@ -120,10 +121,10 @@
                                :source-metadata source-metadata}))))))))
 
 (deftest joined-field-test
-  (testing "When adding implicit `:fields` clauses, should use `joined-field` clauses for joined fields (#14745)"
+  (testing "When adding implicit `:fields` clauses, should include `join-alias` clauses for joined fields (#14745)"
     (doseq [field-ref (mt/$ids
-                        [[:joined-field "c" $categories.name]
-                         [:datetime-field [:joined-field "c" $categories.name] :default]])]
+                        [[:field %categories.name {:join-alias "c"}]
+                         [:field %categories.name {:join-alias "c", :temporal-unit :default}]])]
       (testing (format "field ref = %s" (pr-str field-ref))
         (let [query (mt/mbql-query venues
                       {:source-query    {:source-table $$venues
@@ -155,6 +156,8 @@
                                           :display_name "Category → Name"
                                           :base_type    :type/Text
                                           :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
-          (is (= (mt/$ids [$venues.id &c.categories.name $venues.category_id->categories.name])
+          (is (= (mt/$ids [$venues.id
+                           (mbql.u/update-field-options field-ref dissoc :temporal-unit)
+                           $venues.category_id->categories.name])
                  (get-in (mt/test-qp-middleware add-implicit-clauses/add-implicit-clauses query)
                          [:pre :query :fields]))))))))

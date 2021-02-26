@@ -107,11 +107,8 @@
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id field-id value]
   (let [field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
-                       (if (= this-field-table-id source-table-id)
-                         ;; field in the same table as the "primary" field
-                         [:field-id field-id]
-                         ;; field belonging to a different table
-                         [:joined-field (joined-table-alias this-field-table-id) [:field-id field-id]]))]
+                       [:field field-id (when-not (= this-field-table-id source-table-id)
+                                          {:join-alias (joined-table-alias this-field-table-id)})])]
     (cond
       ;; e.g. {$$venues.price [:between 2 3]} -> [:between $venues.price 2 3]
       ;; this is not really supported by the API directly
@@ -316,14 +313,9 @@
    (fn [query {{lhs-table-id :table, lhs-field-id :field} :lhs, {rhs-table-id :table, rhs-field-id :field} :rhs}]
      (let [join {:source-table rhs-table-id
                  :condition    [:=
-                                (if (= lhs-table-id source-table-id)
-                                  [:field-id lhs-field-id]
-                                  [:joined-field
-                                   (joined-table-alias lhs-table-id)
-                                   [:field-id lhs-field-id]])
-                                [:joined-field
-                                 (joined-table-alias rhs-table-id)
-                                 [:field-id rhs-field-id]]]
+                                [:field lhs-field-id (when-not (= lhs-table-id source-table-id)
+                                                       {:join-alias (joined-table-alias lhs-table-id)})]
+                                [:field rhs-field-id {:join-alias (joined-table-alias rhs-table-id)}]]
                  :alias        (joined-table-alias rhs-table-id)}]
        (log/tracef "Adding join against %s\n%s"
                    (name-for-logging Table rhs-table-id) (u/pprint-to-str join))
@@ -356,11 +348,10 @@
                    joined-table-ids      (set (map #(get-in % [:rhs :table]) joins))
                    original-field-clause (when original-field-id
                                            (let [original-table-id (field/field-id->table-id original-field-id)]
-                                             (if (= source-table-id original-table-id)
-                                               [:field-id original-field-id]
-                                               [:joined-field
-                                                (joined-table-alias original-table-id)
-                                                [:field-id original-field-id]])))]
+                                             [:field
+                                              original-field-id
+                                              (when-not (= source-table-id original-table-id)
+                                                {:join-alias (joined-table-alias original-table-id)})]))]
                (when original-field-id
                  (log/tracef "Finding values of %s, remapped from %s."
                              (name-for-logging Field field-id)
@@ -374,12 +365,12 @@
                            ;; original-field-id is used to power Field->Field breakouts. We include both remapped and
                            ;; original
                            :breakout     (if original-field-clause
-                                           [original-field-clause [:field-id field-id]]
-                                           [[:field-id field-id]])
+                                           [original-field-clause [:field field-id nil]]
+                                           [[:field field-id nil]])
                            ;; return the lesser of limit (if set) or max results
                            :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
                           (when original-field-clause
-                            {;; don't return rows that don't have values for the original Field. e.g. if
+                            { ;; don't return rows that don't have values for the original Field. e.g. if
                              ;; venues.category_id is remapped to categories.name and we do a search with prefix 's',
                              ;; we only want to return [category_id name] tuples where [category_id] is not nil
                              ;;
@@ -389,7 +380,7 @@
                              :filter    [:not-null original-field-clause]
                              ;; for Field->Field remapping we want to return pairs of [original-value remapped-value],
                              ;; but sort by [remapped-value]
-                             :order-by [[:asc [:field-id field-id]]]}))
+                             :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
                    (add-filters source-table-id joined-table-ids constraints)))})
 
@@ -619,7 +610,7 @@
 
 (s/defn filterable-field-ids
   "Return the subset of `filter-ids` we can actually use in a `chain-filter` query to fetch values of Field with
-  `field-id`.
+  `id`.
 
     ;; maybe we can't filter against Field 2 because there's no FK-> relationship
     (filterable-field-ids 1 #{2 3 4}) ; -> #{3 4}"
@@ -630,4 +621,4 @@
                                               (into {} (for [id filter-field-ids] [id nil]))
                                               nil)]
       (set (mbql.u/match (-> mbql-query :query :filter)
-             [:field-id id] id)))))
+             [:field (id :guard integer?) _] id)))))

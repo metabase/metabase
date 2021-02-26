@@ -64,14 +64,14 @@ describe("metabase/meta/Parameter", () => {
     it("should parse 2017-05", () => {
       expect(dateParameterValueToMBQL("2017-05", null)).toEqual([
         "=",
-        ["datetime-field", null, "month"],
+        ["field", null, { "temporal-unit": "month" }],
         "2017-05-01",
       ]);
     });
     it("should parse Q1-2017", () => {
       expect(dateParameterValueToMBQL("Q1-2017", null)).toEqual([
         "=",
-        ["datetime-field", null, "quarter"],
+        ["field", null, { "temporal-unit": "quarter" }],
         "2017-01-01",
       ]);
     });

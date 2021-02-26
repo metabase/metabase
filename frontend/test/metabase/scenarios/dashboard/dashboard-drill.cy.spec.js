@@ -101,12 +101,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
                   "table.columns": [
                     {
                       name: "STATE",
-                      fieldRef: ["field-literal", "STATE", "type/Text"],
+                      fieldRef: [
+                        "field",
+                        "STATE",
+                        { "base-type": "type/Text" },
+                      ],
                       enabled: false,
                     },
                     {
                       name: "CITY",
-                      fieldRef: ["field-literal", "CITY", "type/Text"],
+                      fieldRef: ["field", "CITY", { "base-type": "type/Text" }],
                       enabled: true,
                     },
                   ],
@@ -305,7 +309,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
                   {
                     parameter_id: "18024e69",
                     card_id: questionId,
-                    target: ["dimension", ["field-id", REVIEWS.RATING]],
+                    target: ["dimension", ["field", REVIEWS.RATING, null]],
                   },
                 ],
               },
@@ -376,9 +380,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
               target: [
                 "dimension",
                 [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
             },
@@ -413,7 +417,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           "source-table": REVIEWS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "month"],
+            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "month" }],
           ],
         },
         type: "query",
@@ -480,7 +484,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
                   {
                     parameter_id: "4ff53514",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", REVIEWS.CREATED_AT]],
+                    target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
                   },
                 ],
               },
@@ -602,10 +606,7 @@ function createDashboard(
               {
                 parameter_id: "e8f79be9",
                 card_id: questionId,
-                target: [
-                  "dimension",
-                  ["fk->", ["field-id", 11], ["field-id", 22]],
-                ],
+                target: ["dimension", ["field", 22, { "source-field": 11 }]],
               },
             ],
             visualization_settings,

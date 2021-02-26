@@ -68,7 +68,7 @@ export default class PartialQueryBuilder extends Component {
       const dateField = table.fields.find(f => f.name === "ga:date");
       if (dateField) {
         queryWithFilters = query
-          .filter(["time-interval", ["field-id", dateField.id], -365, "day"])
+          .filter(["time-interval", ["field", dateField.id, null], -365, "day"])
           .aggregate(["metric", "ga:users"]);
       }
     } else {

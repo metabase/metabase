@@ -20,6 +20,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.query-processor-test :as sql.qp.test]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -91,7 +92,7 @@
    (->> (mt/dataset sad-toucan-incidents
           (mt/run-mbql-query incidents
             {:aggregation [[:count]]
-             :breakout    [[:datetime-field $timestamp unit]]
+             :breakout    [[:field %timestamp {:temporal-unit unit}]]
              :limit       10}))
         mt/rows
         (mt/format-rows-by [->long-if-number int])))
@@ -392,11 +393,8 @@
   (-> (mt/dataset sad-toucan-incidents
         (mt/run-mbql-query incidents
           {:aggregation [[:count]]
-           :breakout    [[:datetime-field $timestamp :day]]
-           :filter      [:between
-                         [:datetime-field $timestamp :default]
-                         start-date-str
-                         end-date-str]}))
+           :breakout    [!day.timestamp]
+           :filter      [:between !default.timestamp start-date-str end-date-str]}))
       mt/rows
       first
       second
@@ -817,7 +815,7 @@
            (mt/formatted-rows [int int]
              (mt/run-mbql-query checkins
                {:aggregation [[:count]]
-                :breakout    [[:datetime-field $date :quarter-of-year]]}))))))
+                :breakout    [!quarter-of-year.date]}))))))
 
 (deftest group-by-year-test
   (mt/test-drivers (mt/normal-drivers)
@@ -842,7 +840,7 @@
            (mt/formatted-rows [str int]
              (mt/run-mbql-query checkins
                {:aggregation [[:count]]
-                :breakout    [[:datetime-field $date :year]]}))))))
+                :breakout    [!year.date]}))))))
 
 ;; RELATIVE DATES
 (p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds]
@@ -904,7 +902,7 @@
           (let [results (mt/run-mbql-query checkins
                           {:aggregation [[:count]]
                            :filter      [:=
-                                         [:datetime-field $timestamp field-grouping]
+                                         [:field %timestamp {:temporal-unit field-grouping}]
                                          (cons :relative-datetime relative-datetime-args)]})]
             (or (some-> results mt/first-row first int)
                 results))))))
@@ -965,7 +963,7 @@
   (let [results (mt/dataset checkins:1-per-day
                   (mt/run-mbql-query checkins
                     {:aggregation [[:count]]
-                     :breakout    [[:datetime-field $timestamp breakout-by]]
+                     :breakout    [[:field %timestamp {:temporal-unit breakout-by}]]
                      :filter      [:time-interval $timestamp with-interval filter-by]}))]
     {:rows (or (-> results :row_count)
                (throw (ex-info "Query failed!" results)))
@@ -994,7 +992,7 @@
 ;;
 ;; This should only apply when comparing Fields to `yyyy-MM-dd` date strings.
 ;;
-;; e.g. `[:= <field> "2018-11-19"] should get rewritten as `[:= [:datetime-field <field> :day] "2018-11-19"]` if
+;; e.g. `[:= <field> "2018-11-19"] should get rewritten as `[:= [:field <field> {:temporal-unit :day}] "2018-11-19"]` if
 ;; `<field>` is a `:type/DateTime` Field
 ;;
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
@@ -1006,7 +1004,7 @@
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  :filter      [:= [:field-id $timestamp] (t/format "yyyy-MM-dd" (u.date/truncate :day))]}))))))
+                  :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]}))))))
 
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
   ;; created checkins DBs so we can run it against Snowflake as well.
@@ -1016,7 +1014,7 @@
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  :filter      [:= [:field-id $timestamp] "2019-01-16"]}))))
+                  :filter      [:= [:field $timestamp nil] "2019-01-16"]}))))
 
       (testing "Check that automatic bucketing still happens when using compound filter clauses (#9127)"
         (is (= [[1]]
@@ -1024,8 +1022,8 @@
                  (mt/run-mbql-query checkins
                    {:aggregation [[:count]]
                     :filter      [:and
-                                  [:= [:field-id $timestamp] "2019-01-16"]
-                                  [:= [:field-id $id] 6]]})))))))
+                                  [:= [:field $timestamp nil] "2019-01-16"]
+                                  [:= [:field $id nil] 6]]})))))))
 
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
@@ -1037,8 +1035,8 @@
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  :filter      [:= [:field-id $timestamp] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
-                                                               "T14:16:00Z")]}))))))))
+                  :filter      [:= [:field $timestamp nil] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
+                                                                "T14:16:00Z")]}))))))))
 
 (def ^:private addition-unit-filtering-vals
   [[3        :day             "2014-03-03"]
@@ -1058,7 +1056,7 @@
    (mt/formatted-rows [int]
      (mt/run-mbql-query checkins
        {:aggregation [[:count]]
-        :filter      [:= [:datetime-field $date unit] filter-value]}))))
+        :filter      [:= [:field %date {:temporal-unit unit}] filter-value]}))))
 
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
@@ -1069,13 +1067,36 @@
               (format "count of rows where (= (%s date) %s) should be %d" (name unit) filter-value expected-count)))))))
 
 (deftest legacy-default-datetime-bucketing-test
-  (testing (str "Datetime fields that aren't wrapped in datetime-field clauses should get default :day bucketing for "
-                "legacy reasons. See #9014")
+  (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
+                "bucketing for legacy reasons. See #9014")
     (is (= (str "SELECT count(*) AS \"count\" "
                 "FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = CAST(now() AS date)")
+                "WHERE ("
+                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(now() AS date) "
+                "AND "
+                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), now()) AS date)"
+                ")")
            (:query
             (qp/query->native
              (mt/mbql-query checkins
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
+
+(deftest compile-time-interval-test
+  (testing "Make sure time-intervals work the way they're supposed to."
+    (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
+      (is (= (str "SELECT CAST(CHECKINS.DATE AS date) AS DATE "
+                  "FROM CHECKINS "
+                  "WHERE ("
+                  "CHECKINS.DATE >= parsedatetime(formatdatetime(dateadd('month', CAST(-4 AS long), now()), 'yyyyMM'), 'yyyyMM')"
+                  " AND "
+                  "CHECKINS.DATE < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM')) "
+                  "GROUP BY CAST(CHECKINS.DATE AS date) "
+                  "ORDER BY CAST(CHECKINS.DATE AS date) ASC "
+                  "LIMIT 1048576")
+             (sql.qp.test/pretty-sql
+              (:query
+               (qp/query->native
+                (mt/mbql-query checkins
+                  {:filter   [:time-interval $date -4 :month]
+                   :breakout [[:datetime-field $date :day]]})))))))))

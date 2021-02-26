@@ -63,7 +63,7 @@
 
 (defn- extract-dimensions
   [mbql]
-  (mbql.u/match (mbql.normalize/normalize mbql) [:dimension dimension] dimension))
+  (mbql.u/match (mbql.normalize/normalize mbql) [:dimension dimension & _] dimension))
 
 (def ^:private ^{:arglists '([m])} stringify-keys
   (partial m/map-keys name))

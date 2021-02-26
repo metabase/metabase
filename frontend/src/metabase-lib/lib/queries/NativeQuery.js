@@ -303,10 +303,7 @@ export default class NativeQuery extends AtomicQuery {
   ): DimensionOptions {
     const dimensions = this.templateTags()
       .filter(tag => tag.type === "dimension")
-      .map(
-        tag =>
-          new TemplateTagDimension(null, [tag.name], this.metadata(), this),
-      )
+      .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
       .filter(dimensionFilter);
     return new DimensionOptions({
       dimensions: dimensions,

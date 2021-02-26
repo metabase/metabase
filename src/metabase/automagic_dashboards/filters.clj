@@ -1,47 +1,24 @@
 (ns metabase.automagic-dashboards.filters
   (:require [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field :refer [Field]]
-            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private FieldReference
-  [(s/one (s/constrained su/KeywordOrString
-                         (comp #{:field-id :fk-> :field-literal} qp.util/normalize-token))
-          "head")
-   (s/cond-pre s/Int su/KeywordOrString (s/recursive #'FieldReference))])
-
 (def ^{:arglists '([form])} field-reference?
   "Is given form an MBQL field reference?"
-  (complement (s/checker FieldReference)))
+  (complement (s/checker mbql.s/field)))
 
-(defmulti
-  ^{:doc "Extract field ID from a given field reference form."
-    :arglists '([op & args])}
-  field-reference->id (comp qp.util/normalize-token first))
-
-(defmethod field-reference->id :field-id
-  [[_ id]]
-  (if (sequential? id)
-    (field-reference->id id)
-    id))
-
-(defmethod field-reference->id :fk->
-  [[_ _ id]]
-  (if (sequential? id)
-    (field-reference->id id)
-    id))
-
-(defmethod field-reference->id :field-literal
-  [[_ name _]]
-  name)
+(defn field-reference->id
+  "Extract field ID from a given field reference form."
+  [clause]
+  (mbql.u/match-one clause [:field id _] id))
 
 (defn collect-field-references
-  "Collect all field references (`[:field-id]`, `[:fk->]` or `[:field-literal]` forms) from a given
+  "Collect all `:field` references from a given
    form."
   [form]
   (->> form
@@ -115,9 +92,9 @@
          (keep (fn [[_ [fk & fks]]]
                  ;; Bail out if there is more than one FK from the same table
                  (when (empty? fks)
-                   [(:table_id fk) [:fk-> (u/get-id fk) (u/get-id field)]])))
-         (into {(:table_id field) [:field-id (u/get-id field)]}))
-    (constantly [:field-literal (:name field) (:base_type field)])))
+                   [(:table_id fk) [:field (u/the-id field) {:source-field (u/the-id fk)}]])))
+         (into {(:table_id field) [:field (u/the-id field) nil]}))
+    (constantly [:field (:name field) {:base-type (:base_type field)}])))
 
 (defn- filter-for-card
   [card field]
@@ -196,13 +173,13 @@
   "Returns a sequence of filter subclauses making up `filter-clause` by flattening `:and` compound filters.
 
     (flatten-filter-clause [:and
-                            [:= [:field-id 1] 2]
+                            [:= [:field 1 nil] 2]
                             [:and
-                             [:= [:field-id 3] 4]
-                             [:= [:field-id 5] 6]]])
-    ;; -> ([:= [:field-id 1] 2]
-           [:= [:field-id 3] 4]
-           [:= [:field-id 5] 6])"
+                             [:= [:field 3 nil] 4]
+                             [:= [:field 5 nil] 6]]])
+    ;; -> ([:= [:field 1 nil] 2]
+           [:= [:field 3 nil] 4]
+           [:= [:field 5 nil] 6])"
   [[clause-name, :as filter-clause]]
   (when (seq filter-clause)
     (if (= clause-name :and)

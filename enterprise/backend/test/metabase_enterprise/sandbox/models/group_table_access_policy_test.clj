@@ -14,10 +14,10 @@
                                                 :group_id             (u/the-id (group/all-users))
                                                 :attribute_remappings {"venue_id"
                                                                        {:type   "category"
-                                                                        :target ["variable" ["field-id" (mt/id :venues :id)]]
+                                                                        :target ["variable" ["field" (mt/id :venues :id) nil]]
                                                                         :value  5}}}]
       (is (= {"venue_id" {:type   :category
-                          :target [:variable [:field-id (mt/id :venues :id)]]
+                          :target [:variable [:field (mt/id :venues :id) nil]]
                           :value  5}}
              (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap)))))
 
@@ -25,8 +25,8 @@
                   "get normalized correctly.")
       (mt/with-temp GroupTableAccessPolicy [gtap {:table_id             (mt/id :venues)
                                                   :group_id             (u/the-id (group/all-users))
-                                                  :attribute_remappings {"user" ["variable" ["field-id" (mt/id :venues :id)]]}}]
-        (is (= {"user" [:variable [:field-id (mt/id :venues :id)]]}
+                                                  :attribute_remappings {"user" ["variable" ["field" (mt/id :venues :id) nil]]}}]
+        (is (= {"user" [:variable [:field (mt/id :venues :id) nil]]}
                (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap))))))))
 
 (deftest disallow-changing-table-id-test
@@ -78,7 +78,7 @@
           (is (= :ok
                  (f (mt/mbql-query venues
                       {:fields (for [id (shuffle (map :id (qp/query->expected-cols (mt/mbql-query venues))))]
-                                 [:field-id id])})))))))))
+                                 [:field id nil])})))))))))
 
 (deftest disallow-queries-that-change-types-test
   (testing "Don't allow saving a Sandboxing query that changes the type of a column vs. the type in the Table it replaces (#13715)"
