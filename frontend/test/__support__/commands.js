@@ -82,3 +82,15 @@ Cypress.Commands.add("updateCollectionGraph", (groupsCollectionObject = {}) => {
     },
   );
 });
+
+Cypress.Commands.overwrite("log", (originalFn, message) => {
+  window.logCalls = window.logCalls || 1;
+
+  Cypress.log({
+    displayName: `--- ${window.logCalls}. ${message} ---`,
+    name: `--- ${window.logCalls}. ${message} ---`,
+    message: "",
+  });
+
+  window.logCalls++;
+});
