@@ -164,10 +164,11 @@
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]
-  (reify
-    hformat/ToSql
-    (to-sql [_]
-      (str "substring(" (hformat/to-sql (sql.qp/->honeysql driver arg)) " FROM " (hformat/to-sql pattern) ")"))))
+  (let [col-name (hformat/to-sql (sql.qp/->honeysql driver arg))]
+    (reify
+      hformat/ToSql
+      (to-sql [_]
+        (str "substring(" col-name " FROM " (hformat/to-sql pattern) ")")))))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
