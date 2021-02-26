@@ -70,7 +70,6 @@ describe("pie chart", () => {
     getAllByText("50,1%");
   });
 
-
   it("should show a condensed tooltip for squashed slices", () => {
     const rows = [["foo", 0.5], ["bar", 0.49], ["baz", 0.002], ["qux", 0.008]];
     const { container, getAllByText, queryAllByText } = render(
