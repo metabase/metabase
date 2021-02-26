@@ -29,7 +29,6 @@
              (#'mongo.qp/query->collection-name {:query {:source-query
                                                          {:native [{:collection "wow"}]}}}))))))
 
-;; disabled for now -- re-enable in #14835
 (deftest relative-datetime-test
   (mt/test-driver :mongo
     (testing "Make sure relative datetimes are compiled sensibly"

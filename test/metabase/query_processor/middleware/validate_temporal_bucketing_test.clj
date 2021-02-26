@@ -18,7 +18,7 @@
                       {:filter [:=
                                 [:field
                                  (case field-clause-type
-                                   :id (mt/id :attempts field)
+                                   :id   (mt/id :attempts field)
                                    :name (db/select-one-field :name Field :id (mt/id :attempts field)))
                                  (merge
                                   {:temporal-unit unit}

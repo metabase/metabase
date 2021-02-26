@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.optimize-temporal-filters
-  "Middlware that optimizes equality filter clauses agat bucketed temporal fields. See docstring for
+  "Middlware that optimizes equality filter clauses against bucketed temporal fields. See docstring for
   `optimize-temporal-filters` for more details."
   (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -99,7 +99,7 @@
   [:relative-datetime (inc (if (= n :current) 0 n)) (or unit temporal-unit)])
 
 (defmulti ^:private optimize-filter
-  "Optimize a filter clause agat a bucketed `:datetime-field` clause and `:absolute-datetime` or `:relative-datetime`
+  "Optimize a filter clause against a temporal-bucketed `:field` clause and `:absolute-datetime` or `:relative-datetime`
   value by converting to an unbucketed range."
   {:arglists '([clause])}
   mbql.u/dispatch-by-clause-name-or-class)

@@ -218,60 +218,63 @@
 (deftest optimize-relative-datetimes-test
   (testing "Should optimize relative-datetime clauses (#11837)"
     (mt/dataset attempted-murders
-      (testing "last month"
-        (is (= (mt/mbql-query attempts
-                 {:aggregation [[:count]]
-                  :filter      [:and
-                                [:>=
-                                 [:field %datetime {:temporal-unit :default}]
-                                 [:relative-datetime -1 :month]]
-                                [:<
-                                 [:field %datetime {:temporal-unit :default}]
-                                 [:relative-datetime 0 :month]]]})
+      ;; second/millisecond are not currently allowed in `:relative-datetime`, but if we add them we can re-enable
+      ;; their tests
+      (doseq [unit [#_:millisecond #_:second :minute :hour :day :week :month :quarter :year]]
+        (testing (format "last %s" unit)
+          (is (= (mt/mbql-query attempts
+                   {:aggregation [[:count]]
+                    :filter      [:and
+                                  [:>=
+                                   [:field %datetime {:temporal-unit :default}]
+                                   [:relative-datetime -1 unit]]
+                                  [:<
+                                   [:field %datetime {:temporal-unit :default}]
+                                   [:relative-datetime 0 unit]]]})
 
-               (optimize-temporal-filters
-                (mt/mbql-query attempts
-                  {:aggregation [[:count]]
-                   :filter      [:=
-                                 [:field %datetime {:temporal-unit :month}]
-                                 [:relative-datetime -1 :month]]})))))
-      (testing "this month"
-        ;; test the various different ways we might refer to 'now'
-        (doseq [clause [[:relative-datetime 0]
-                        [:relative-datetime :current]
-                        [:relative-datetime 0 :month]]]
-          (testing (format "clause = %s" (pr-str clause))
-            (is (= (mt/mbql-query attempts
-                     {:aggregation [[:count]]
-                      :filter      [:and
-                                    [:>=
-                                     [:field %datetime {:temporal-unit :default}]
-                                     [:relative-datetime 0 :month]]
-                                    [:<
-                                     [:field %datetime {:temporal-unit :default}]
-                                     [:relative-datetime 1 :month]]]})
-                   (optimize-temporal-filters
-                    (mt/mbql-query attempts
-                      {:aggregation [[:count]]
-                       :filter      [:=
-                                     [:field %datetime {:temporal-unit :month}]
-                                     clause]})))))))
-      (testing "next month"
-        (is (= (mt/mbql-query attempts
-                 {:aggregation [[:count]]
-                  :filter      [:and
-                                [:>=
-                                 [:field %datetime {:temporal-unit :default}]
-                                 [:relative-datetime 1 :month]]
-                                [:<
-                                 [:field %datetime {:temporal-unit :default}]
-                                 [:relative-datetime 2 :month]]]})
-               (optimize-temporal-filters
-                (mt/mbql-query attempts
-                  {:aggregation [[:count]]
-                   :filter      [:=
-                                 [:field %datetime {:temporal-unit :month}]
-                                 [:relative-datetime 1 :month]]}))))))))
+                 (optimize-temporal-filters
+                  (mt/mbql-query attempts
+                    {:aggregation [[:count]]
+                     :filter      [:=
+                                   [:field %datetime {:temporal-unit unit}]
+                                   [:relative-datetime -1 unit]]})))))
+        (testing (format "this %s" unit)
+          ;; test the various different ways we might refer to 'now'
+          (doseq [clause [[:relative-datetime 0]
+                          [:relative-datetime :current]
+                          [:relative-datetime 0 unit]]]
+            (testing (format "clause = %s" (pr-str clause))
+              (is (= (mt/mbql-query attempts
+                       {:aggregation [[:count]]
+                        :filter      [:and
+                                      [:>=
+                                       [:field %datetime {:temporal-unit :default}]
+                                       [:relative-datetime 0 unit]]
+                                      [:<
+                                       [:field %datetime {:temporal-unit :default}]
+                                       [:relative-datetime 1 unit]]]})
+                     (optimize-temporal-filters
+                      (mt/mbql-query attempts
+                        {:aggregation [[:count]]
+                         :filter      [:=
+                                       [:field %datetime {:temporal-unit unit}]
+                                       clause]})))))))
+        (testing (format "next %s" unit)
+          (is (= (mt/mbql-query attempts
+                   {:aggregation [[:count]]
+                    :filter      [:and
+                                  [:>=
+                                   [:field %datetime {:temporal-unit :default}]
+                                   [:relative-datetime 1 unit]]
+                                  [:<
+                                   [:field %datetime {:temporal-unit :default}]
+                                   [:relative-datetime 2 unit]]]})
+                 (optimize-temporal-filters
+                  (mt/mbql-query attempts
+                    {:aggregation [[:count]]
+                     :filter      [:=
+                                   [:field %datetime {:temporal-unit unit}]
+                                   [:relative-datetime 1 unit]]})))))))))
 
 (deftest optimize-mixed-temporal-values-test
   (testing "We should be able to optimize mixed usages of `:absolute-datetime` and `:relative-datetime`"

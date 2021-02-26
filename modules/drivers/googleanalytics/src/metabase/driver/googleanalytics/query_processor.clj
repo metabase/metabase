@@ -387,23 +387,22 @@
 
 (defn- handle-order-by [{:keys [order-by], :as query}]
   (when order-by
-    {:sort (str/join
-            ","
-            (remove
-             str/blank?
-             (for [[direction field] order-by]
-               (str (case direction
-                      :asc  ""
-                      :desc "-")
-                    (mbql.u/match-one field
-                     [:field _ (options :guard :temporal-unit)]
-                     (unit->ga-dimension (:temporal-unit options))
+    {:sort (->> order-by
+                (map (fn [[direction field]]
+                       (str (case direction
+                              :asc  ""
+                              :desc "-")
+                            (mbql.u/match-one field
+                              [:field _ (options :guard :temporal-unit)]
+                              (unit->ga-dimension (:temporal-unit options))
 
-                     [:aggregation index]
-                     (mbql.u/aggregation-at-index query index)
+                              [:aggregation index]
+                              (mbql.u/aggregation-at-index query index)
 
-                     [& _]
-                     (->rvalue &match))))))}))
+                              [& _]
+                              (->rvalue &match)))))
+                (remove str/blank?)
+                (str/join ","))}))
 
 
 ;;; ----------------------------------------------------- limit ------------------------------------------------------
