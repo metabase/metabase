@@ -288,6 +288,7 @@ export default class PieChart extends Component {
     const formatPercent = percent =>
       formatValue(percent, {
         column: cols[metricIndex],
+        number_separators: settings.column(cols[metricIndex]).number_separators,
         jsx: true,
         majorWidth: 0,
         number_style: "percent",
