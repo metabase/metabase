@@ -41,22 +41,15 @@ describeWithToken("postgres > user > query", () => {
       cy.request("PUT", `/api/user/${USER_ID}/qbnewb`, {});
     });
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
-    cy.request("GET", "/api/permissions/graph", {}).then(
-      ({ body: { groups, revision } }) => {
-        cy.request("PUT", "/api/permissions/graph", {
-          revision,
-          groups: {
-            [ALL_USERS_GROUP]: {
-              [PG_DB_ID]: { schemas: "none", native: "none" },
-            },
-            [DATA_GROUP]: { [PG_DB_ID]: { schemas: "all", native: "write" } },
-            [COLLECTION_GROUP]: {
-              [PG_DB_ID]: { schemas: "none", native: "none" },
-            },
-          },
-        });
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [PG_DB_ID]: { schemas: "none", native: "none" },
       },
-    );
+      [DATA_GROUP]: { [PG_DB_ID]: { schemas: "all", native: "write" } },
+      [COLLECTION_GROUP]: {
+        [PG_DB_ID]: { schemas: "none", native: "none" },
+      },
+    });
   });
 
   it.skip("should handle the use of `regexextract` in a sandboxed table (metabase#14873)", () => {
@@ -101,9 +94,12 @@ describeWithToken("postgres > user > query", () => {
           group_id: COLLECTION_GROUP,
         });
 
-        updatePermissionsGraph({
-          schema: {
-            [PEOPLE_ID]: { query: "segmented", read: "all" },
+        cy.updatePermissionsSchemas({
+          database_id: PG_DB_ID,
+          schemas: {
+            public: {
+              [PEOPLE_ID]: { query: "segmented", read: "all" },
+            },
           },
         });
 
@@ -128,44 +124,4 @@ function signInAsSandboxedUser() {
     username: sandboxed_user.email,
     password: sandboxed_user.password,
   });
-}
-
-/**
- * As per definition for `PUT /graph` from `permissions.clj`:
- *
- * This should return the same graph, in the same format,
- * that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary.
- * This modified graph must correspond to the `PermissionsGraph` schema.
- *
- * That's why we must chain GET and PUT requests one after the other.
- */
-
-function updatePermissionsGraph({
-  schema = {},
-  user_group = COLLECTION_GROUP,
-  database_id = PG_DB_ID,
-} = {}) {
-  if (typeof schema !== "object") {
-    throw new Error("`schema` must be an object!");
-  }
-
-  cy.log("**-- Fetch permissions graph --**");
-  cy.request("GET", "/api/permissions/graph", {}).then(
-    ({ body: { groups, revision } }) => {
-      // This mutates the original `groups` object => we'll pass it next to the `PUT` request
-      groups[user_group] = {
-        [database_id]: {
-          schemas: {
-            public: schema,
-          },
-        },
-      };
-
-      cy.log("**-- Update/save permissions --**");
-      cy.request("PUT", "/api/permissions/graph", {
-        groups,
-        revision,
-      });
-    },
-  );
 }

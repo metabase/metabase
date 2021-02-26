@@ -144,10 +144,12 @@ describeWithToken("formatting > sandboxes", () => {
         });
       });
 
-      updatePermissionsGraph({
-        schema: {
-          [ORDERS_ID]: { query: "segmented", read: "all" },
-          [PEOPLE_ID]: { query: "segmented", read: "all" },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+            [PEOPLE_ID]: { query: "segmented", read: "all" },
+          },
         },
         user_group: DATA_GROUP,
       });
@@ -234,12 +236,14 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: PEOPLE_ID,
       });
 
-      updatePermissionsGraph({
-        schema: {
-          [ORDERS_ID]: "all",
-          [PEOPLE_ID]: { query: "segmented", read: "all" },
-          [PRODUCTS_ID]: "all",
-          [REVIEWS_ID]: "all",
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [ORDERS_ID]: "all",
+            [PEOPLE_ID]: { query: "segmented", read: "all" },
+            [PRODUCTS_ID]: "all",
+            [REVIEWS_ID]: "all",
+          },
         },
       });
 
@@ -291,9 +295,11 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: ORDERS_ID,
       });
 
-      updatePermissionsGraph({
-        schema: {
-          [ORDERS_ID]: { query: "segmented", read: "all" },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
         },
       });
 
@@ -366,10 +372,12 @@ describeWithToken("formatting > sandboxes", () => {
           table_id: ORDERS_ID,
         });
 
-        updatePermissionsGraph({
-          schema: {
-            [PRODUCTS_ID]: "all",
-            [ORDERS_ID]: { query: "segmented", read: "all" },
+        cy.updatePermissionsSchemas({
+          schemas: {
+            PUBLIC: {
+              [PRODUCTS_ID]: "all",
+              [ORDERS_ID]: { query: "segmented", read: "all" },
+            },
           },
         });
 
@@ -442,10 +450,12 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: ORDERS_ID,
       });
 
-      updatePermissionsGraph({
-        schema: {
-          [PRODUCTS_ID]: "all",
-          [ORDERS_ID]: { query: "segmented", read: "all" },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [PRODUCTS_ID]: "all",
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
         },
       });
 
@@ -583,10 +593,12 @@ describeWithToken("formatting > sandboxes", () => {
           });
         });
 
-        updatePermissionsGraph({
-          schema: {
-            [PRODUCTS_ID]: { query: "segmented", read: "all" },
-            [ORDERS_ID]: { query: "segmented", read: "all" },
+        cy.updatePermissionsSchemas({
+          schemas: {
+            PUBLIC: {
+              [PRODUCTS_ID]: { query: "segmented", read: "all" },
+              [ORDERS_ID]: { query: "segmented", read: "all" },
+            },
           },
         });
 
@@ -713,10 +725,12 @@ describeWithToken("formatting > sandboxes", () => {
             });
           });
 
-          updatePermissionsGraph({
-            schema: {
-              [PRODUCTS_ID]: { query: "segmented", read: "all" },
-              [ORDERS_ID]: { query: "segmented", read: "all" },
+          cy.updatePermissionsSchemas({
+            schemas: {
+              PUBLIC: {
+                [PRODUCTS_ID]: { query: "segmented", read: "all" },
+                [ORDERS_ID]: { query: "segmented", read: "all" },
+              },
             },
           });
 
@@ -777,10 +791,12 @@ describeWithToken("formatting > sandboxes", () => {
           },
         });
 
-        updatePermissionsGraph({
-          schema: {
-            [ORDERS_ID]: { query: "segmented", read: "all" },
-            [PRODUCTS_ID]: "all",
+        cy.updatePermissionsSchemas({
+          schemas: {
+            PUBLIC: {
+              [ORDERS_ID]: { query: "segmented", read: "all" },
+              [PRODUCTS_ID]: "all",
+            },
           },
         });
 
@@ -832,10 +848,12 @@ describeWithToken("formatting > sandboxes", () => {
           group_id: COLLECTION_GROUP,
         });
 
-        updatePermissionsGraph({
-          schema: {
-            [PRODUCTS_ID]: { query: "segmented", read: "all" },
-            [ORDERS_ID]: { query: "segmented", read: "all" },
+        cy.updatePermissionsSchemas({
+          schemas: {
+            PUBLIC: {
+              [PRODUCTS_ID]: { query: "segmented", read: "all" },
+              [ORDERS_ID]: { query: "segmented", read: "all" },
+            },
           },
         });
 
@@ -995,10 +1013,12 @@ describeWithToken("formatting > sandboxes", () => {
         group_id: COLLECTION_GROUP,
       });
 
-      updatePermissionsGraph({
-        schema: {
-          [PRODUCTS_ID]: { query: "segmented", read: "all" },
-          [ORDERS_ID]: { query: "segmented", read: "all" },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [PRODUCTS_ID]: { query: "segmented", read: "all" },
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
         },
       });
 
@@ -1039,46 +1059,6 @@ function signInAsSandboxedUser() {
     username: sandboxed_user.email,
     password: sandboxed_user.password,
   });
-}
-
-/**
- * As per definition for `PUT /graph` from `permissions.clj`:
- *
- * This should return the same graph, in the same format,
- * that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary.
- * This modified graph must correspond to the `PermissionsGraph` schema.
- *
- * That's why we must chain GET and PUT requests one after the other.
- */
-
-function updatePermissionsGraph({
-  schema = {},
-  user_group = COLLECTION_GROUP,
-  database_id = 1,
-} = {}) {
-  if (typeof schema !== "object") {
-    throw new Error("`schema` must be an object!");
-  }
-
-  cy.log("**-- Fetch permissions graph --**");
-  cy.request("GET", "/api/permissions/graph", {}).then(
-    ({ body: { groups, revision } }) => {
-      // This mutates the original `groups` object => we'll pass it next to the `PUT` request
-      groups[user_group] = {
-        [database_id]: {
-          schemas: {
-            PUBLIC: schema,
-          },
-        },
-      };
-
-      cy.log("**-- Update/save permissions --**");
-      cy.request("PUT", "/api/permissions/graph", {
-        groups,
-        revision,
-      });
-    },
-  );
 }
 
 function createJoinedQuestion(name) {
