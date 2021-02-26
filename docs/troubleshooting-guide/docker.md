@@ -152,7 +152,7 @@ Ensure that the user who is running Metabase has permission to read and write to
 - If you are running Metabase as a JAR file in your local machine or server, check the user who is running the Java process.
 - If you're running Metabase from the Docker container, make sure you're using the `/metabase.db` directory.
 
-If you are running metabase from the jar file in any *nix (Unix like) operating system, in order to see which user is running metabase you have to open a terminal and type `ps -uA | grep metabase`.
+If you're running Metabase from the JAR in any *nix (Unix like) operating system, in order to see which user is running Metabase, you have to open a terminal and type `ps -uA | grep metabase`.
 
 ## Helpful tidbits
 
