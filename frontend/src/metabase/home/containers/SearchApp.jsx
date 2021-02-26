@@ -37,8 +37,8 @@ export default class SearchApp extends React.Component {
                 return (
                   <Card>
                     <EmptyState
-                      title={t`No results`}
-                      message={t`Metabase couldn't find any results for your search.`}
+                      title={t`Didn't find anything`}
+                      message={t`There weren't any results for your search.`}
                       illustrationElement={<img src={NoResults} />}
                     />
                   </Card>
