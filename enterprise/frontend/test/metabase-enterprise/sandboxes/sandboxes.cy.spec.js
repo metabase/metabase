@@ -1050,6 +1050,100 @@ describeWithToken("formatting > sandboxes", () => {
       cy.contains("Subtotal").should("not.exist");
       cy.contains("37.65").should("not.exist");
     });
+
+    it.skip("should work with pivot tables (metabase#14969)", () => {
+      cy.log("**-- 1. Sandbox `Orders` table --**");
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings: {
+          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+        },
+        card_id: null,
+        table_id: ORDERS_ID,
+        group_id: COLLECTION_GROUP,
+      });
+
+      cy.log("**-- 2. Sandbox `People` table --**");
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings: {
+          [ATTR_UID]: ["dimension", ["field-id", PEOPLE.ID]],
+        },
+        card_id: null,
+        table_id: PEOPLE_ID,
+        group_id: COLLECTION_GROUP,
+      });
+
+      cy.log("**-- 3. Sandbox `Products` table --**");
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings: {
+          [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+        },
+        card_id: null,
+        table_id: PRODUCTS_ID,
+        group_id: COLLECTION_GROUP,
+      });
+
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [PRODUCTS_ID]: { query: "segmented", read: "all" },
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+            [PEOPLE_ID]: { query: "segmented", read: "all" },
+          },
+        },
+      });
+
+      cy.request("POST", "/api/card/", {
+        name: "14969",
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                "source-table": PEOPLE_ID,
+                condition: [
+                  "=",
+                  ["field-id", ORDERS.USER_ID],
+                  ["joined-field", "People - User", ["field-id", PEOPLE.ID]],
+                ],
+                alias: "People - User",
+              },
+            ],
+            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            breakout: [
+              ["joined-field", "People - User", ["field-id", PEOPLE.SOURCE]],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
+              ],
+            ],
+          },
+          database: 1,
+        },
+        display: "pivot",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.server();
+        cy.route("POST", `/api/card/pivot/${QUESTION_ID}/query`).as(
+          "cardQuery",
+        );
+
+        signOut();
+        signInAsSandboxedUser();
+
+        cy.visit(`/question/${QUESTION_ID}`);
+
+        cy.wait("@cardQuery").then(xhr => {
+          expect(xhr.response.body.cause).not.to.exist;
+        });
+      });
+
+      cy.findByText("Organic");
+      cy.findByText("Row totals");
+      cy.findByText("Grand totals");
+    });
   });
 });
 
