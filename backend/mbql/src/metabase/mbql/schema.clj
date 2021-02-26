@@ -558,7 +558,7 @@
    relative-datetime
    Field))
 
-(def ^:private EqualityComparible
+(def ^:private EqualityComparable
   "Schema for things things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
   (s/maybe
    (s/cond-pre
@@ -570,7 +570,7 @@
     ExpressionArg
     value)))
 
-(def ^:private OrderComparible
+(def ^:private OrderComparable
   "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted."
   (s/if (partial is-clause? :value)
     value
@@ -594,24 +594,25 @@
 ;;
 ;;    [:!= [:field 1 nil] 2 3] --[DESUGAR]--> [:and [:!= [:field 1 nil] 2] [:!= [:field 1 nil] 3]]
 
-(defclause =,  field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
-(defclause !=, field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
+(defclause =,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
+(defclause !=, field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 
-(defclause <,  field OrderComparible, value-or-field OrderComparible)
-(defclause >,  field OrderComparible, value-or-field OrderComparible)
-(defclause <=, field OrderComparible, value-or-field OrderComparible)
-(defclause >=, field OrderComparible, value-or-field OrderComparible)
+(defclause <,  field OrderComparable, value-or-field OrderComparable)
+(defclause >,  field OrderComparable, value-or-field OrderComparable)
+(defclause <=, field OrderComparable, value-or-field OrderComparable)
+(defclause >=, field OrderComparable, value-or-field OrderComparable)
 
-(defclause between field OrderComparible, min OrderComparible, max OrderComparible)
+;; :between is INCLUSIVE just like SQL !!!
+(defclause between field OrderComparable, min OrderComparable, max OrderComparable)
 
 ;; SUGAR CLAUSE: This is automatically written as a pair of `:between` clauses by the `:desugar` middleware.
 (defclause ^:sugar inside
-  lat-field OrderComparible
-  lon-field OrderComparible
-  lat-max   OrderComparible
-  lon-min   OrderComparible
-  lat-min   OrderComparible
-  lon-max   OrderComparible)
+  lat-field OrderComparable
+  lon-field OrderComparable
+  lat-max   OrderComparable
+  lon-min   OrderComparable
+  lat-min   OrderComparable
+  lon-max   OrderComparable)
 
 ;; SUGAR CLAUSES: These are rewritten as `[:= <field> nil]` and `[:not= <field> nil]` respectively
 (defclause ^:sugar is-null,  field Field)

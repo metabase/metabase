@@ -1,26 +1,10 @@
 (ns metabase.mbql.util-test
   (:require [clojure.test :refer :all]
-            [java-time :as t]
             [metabase.mbql.util :as mbql.u]
             metabase.types))
 
 ;; fool cljr-refactor/the linter so it doesn't try to remove the unused dep on `metabase.types`
 (comment metabase.types/keep-me)
-
-(deftest relative-date-test
-  (let [t (t/zoned-date-time "2019-06-14T00:00:00.000Z[UTC]")]
-    (doseq [[unit n expected] [[:second  5 "2019-06-14T00:00:05Z[UTC]"]
-                               [:minute  5 "2019-06-14T00:05:00Z[UTC]"]
-                               [:hour    5 "2019-06-14T05:00:00Z[UTC]"]
-                               [:day     5 "2019-06-19T00:00:00Z[UTC]"]
-                               [:week    5 "2019-07-19T00:00:00Z[UTC]"]
-                               [:month   5 "2019-11-14T00:00:00Z[UTC]"]
-                               [:quarter 5 "2020-09-14T00:00:00Z[UTC]"]
-                               [:year    5 "2024-06-14T00:00:00Z[UTC]"]]]
-      (is (= (t/zoned-date-time expected)
-             (mbql.u/relative-date unit n t))
-          (format "%s plus %d %ss should be %s" t n unit expected)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     match                                                      |
@@ -991,4 +975,8 @@
 
   (testing "Should remove empty options"
     (is (= [:field 1 nil]
-           (mbql.u/update-field-options [:field 1 {:a 1}] dissoc :a)))))
+           (mbql.u/update-field-options [:field 1 {:a 1}] dissoc :a))))
+
+  (testing "Should normalize the clause"
+    [:field 1 nil]
+    (mbql.u/update-field-options [:field 1 {:a {:b 1}}] assoc-in [:a :b] nil)))

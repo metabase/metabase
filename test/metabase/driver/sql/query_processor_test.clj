@@ -242,10 +242,12 @@
                                :alias        "u"
                                :condition    [:= $user_id &u.users.id]}]}))))))
 
-(defn- pretty-sql [s]
-  (-> s
-      (str/replace #"\"([\w\d_]+)\"" "$1")
-      (str/replace #"PUBLIC\." "")))
+(defn pretty-sql [s]
+  (if-not (string? s)
+    s
+    (-> s
+        (str/replace #"\"([\w\d_]+)\"" "$1")
+        (str/replace #"PUBLIC\." ""))))
 
 (defn- mbql->native [query]
   (mt/with-everything-store

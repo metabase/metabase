@@ -1,10 +1,8 @@
 databaseChangeLog:
-# The quoting strategy decides when things like column names should be quoted.
-# This is in place to deal with Liquibase not knowing about all of the new
-# reserved words in MySQL 8+. Using a column name that is a reserved word
-# causes a failure. Quoting all objects breaks H2 support though as it will
-# quote table names but not quote that same table name in a foreign key reference
-# which will cause a failure when trying to initially setup the database.
+  # The quoting strategy decides when things like column names should be quoted. This is in place to deal with
+  # Liquibase not knowing about all of the new reserved words in MySQL 8+. Using a column name that is a reserved word
+  # causes a failure. Quoting all objects breaks H2 support though as it will quote table names but not quote that
+  # same table name in a foreign key reference which will cause a failure when trying to initially setup the database.
   - property:
       name: quote_strategy
       value: QUOTE_ALL_OBJECTS
@@ -7932,6 +7930,59 @@ databaseChangeLog:
             oldColumnName: special_type
             newColumnName: semantic_type
             columnDataType: varchar(255)
+
+  # Change the TaskHistory timestamp columns to higher-resolution columns: on MySQL, they previously only had *second*
+  # resolution, which caused annoying test failures and made it hard to correctly sort tasks that happened in quick
+  # succession.
+  #
+  # We have to give these columns default values as well, or MySQL is going to be very fussy about having two
+  # NOT NULL timestamp columns without default values at the same time.
+  #
+  # This is done in raw SQL because AFAIK there's no way in Liquibase to change a column type and give it a default
+  # value in a single statement, which we have to do to make MySQL happy.
+  - changeSet:
+      id: 282
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN started_at timestamp with time zone DEFAULT current_timestamp NOT NULL;
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN started_at TYPE timestamp with time zone,
+              ALTER COLUMN started_at SET DEFAULT current_timestamp;
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE task_history
+              MODIFY started_at timestamp(6) DEFAULT current_timestamp(6) NOT NULL;
+
+  - changeSet:
+      id: 283
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN ended_at timestamp with time zone DEFAULT current_timestamp NOT NULL;
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN ended_at TYPE timestamp with time zone,
+              ALTER COLUMN ended_at SET DEFAULT current_timestamp;
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE task_history
+              MODIFY ended_at timestamp(6) DEFAULT current_timestamp(6) NOT NULL;
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
