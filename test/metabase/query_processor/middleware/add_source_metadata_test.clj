@@ -184,36 +184,41 @@
               :source-metadata (venues-source-metadata)})
            (add-source-metadata
             (mt/mbql-query venues
-              {:source-query {:source-query {:source-query {:source-table $$venues}}}})))))
+              {:source-query {:source-query {:source-query {:source-table $$venues}}}}))))
 
-  (testing "Ok, how about a source query nested 3 levels with no `source-metadata`, but with `fields`"
-    (is (= (mt/mbql-query venues
-             {:source-query    {:source-query    {:source-query    {:source-table $$venues
-                                                                    :fields       [$id $name]}
-                                                  :source-metadata (venues-source-metadata :id :name)}
-                                :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (venues-source-metadata :id :name)})
-           (add-source-metadata
-            (mt/mbql-query venues
-              {:source-query {:source-query {:source-query {:source-table $$venues
-                                                            :fields       [$id $name]}}}})))))
-
-  (testing "Ok, how about a source query nested 3 levels with no `source-metadata`, but with breakouts/aggregations"
-    (is (= (let [metadata (concat
-                           (venues-source-metadata :price)
-                           (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))]
-             (mt/mbql-query venues
+    (testing "with `fields`"
+      (is (= (mt/mbql-query venues
                {:source-query    {:source-query    {:source-query    {:source-table $$venues
-                                                                      :aggregation  [[:count]]
-                                                                      :breakout     [$price]}
-                                                    :source-metadata metadata}
-                                  :source-metadata metadata}
-                :source-metadata metadata}))
-           (add-source-metadata
-            (mt/mbql-query venues
-              {:source-query {:source-query {:source-query {:source-table $$venues
-                                                            :aggregation  [[:count]]
-                                                            :breakout     [$price]}}}})))))
+                                                                      :fields       [$id $name]}
+                                                    :source-metadata (venues-source-metadata :id :name)}
+                                  :source-metadata (venues-source-metadata :id :name)}
+                :source-metadata (venues-source-metadata :id :name)})
+             (add-source-metadata
+              (mt/mbql-query venues
+                {:source-query {:source-query {:source-query {:source-table $$venues
+                                                              :fields       [$id $name]}}}})))))
+
+    (testing "with breakouts/aggregations"
+      ;; field ref for the count aggregation differs slightly depending on what level of the query we're at; at the
+      ;; most-deeply-nested level we can use the `[:aggregation 0]` ref to refer to it; at higher levels we have to
+      ;; refer to it with a field literal
+      (is (= (letfn [(metadata-with-count-field-ref [field-ref]
+                       (concat
+                        (venues-source-metadata :price)
+                        (let [[count-col] (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]}))]
+                          [(assoc count-col :field_ref field-ref)])))]
+               (mt/mbql-query venues
+                 {:source-query    {:source-query    {:source-query    {:source-table $$venues
+                                                                        :aggregation  [[:count]]
+                                                                        :breakout     [$price]}
+                                                      :source-metadata (metadata-with-count-field-ref [:aggregation 0])}
+                                    :source-metadata (metadata-with-count-field-ref *count/BigInteger)}
+                  :source-metadata (metadata-with-count-field-ref *count/BigInteger)}))
+             (add-source-metadata
+              (mt/mbql-query venues
+                {:source-query {:source-query {:source-query {:source-table $$venues
+                                                              :aggregation  [[:count]]
+                                                              :breakout     [$price]}}}}))))))
 
   (testing "can we add `source-metadata` to the parent level if the source query has a native source query, but itself has `source-metadata`?"
     (is (= (mt/mbql-query venues
