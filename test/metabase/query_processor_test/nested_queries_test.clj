@@ -1015,3 +1015,20 @@
                        :parameters [{:type   :category
                                      :target [:dimension [:field-literal "CATEGORY" :type/Text]]
                                      :value  "Widget"}]})))))))
+
+(deftest multi-level-aggregations-with-post-aggregation-filtering-test
+  (testing "Multi-level aggregations with filter is the last section (#14872)"
+    (mt/dataset sample-dataset
+      (is (schema= {:status (s/eq :completed)
+                    s/Keyword s/Any}
+                   (mt/run-mbql-query orders
+                     {:source-query {:source-query {:source-table $$orders
+                                                    :filter       [:= $id 1]
+                                                    :aggregation  [[:sum $total]]
+                                                    :breakout     [!day.created_at
+                                                                   $product_id->products.title
+                                                                   $product_id->products.category]}
+                                     :filter       [:> *sum/Float 100]
+                                     :aggregation  [[:sum *sum/Float]]
+                                     :breakout     [*TITLE/Text]}
+                      :filter       [:> *sum/Float 100]}))))))

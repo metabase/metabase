@@ -767,7 +767,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Rye").should("not.exist");
   });
 
-  it.skip("should handle multi-level aggregations with filter is the last position (metabase#14872)", () => {
+  it("should handle multi-level aggregations with filter is the last position (metabase#14872)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 

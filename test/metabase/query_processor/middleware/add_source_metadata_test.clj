@@ -354,3 +354,25 @@
                                     (dissoc col :field_ref :id))]
               (is (= expected-metadata
                      (added-metadata (assoc-in query [:query :source-metadata] legacy-metadata)))))))))))
+
+(deftest add-correct-metadata-fields-for-deeply-nested-source-queries-test
+  (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
+    (mt/dataset sample-dataset
+      (is (= (mt/$ids orders
+               [$product_id->products.title
+                [:aggregation 0]])
+             (->> (mt/mbql-query orders
+                    {:source-query {:source-query {:source-table $$orders
+                                                   :filter       [:= $id 1]
+                                                   :aggregation  [[:sum $total]]
+                                                   :breakout     [!day.created_at
+                                                                  $product_id->products.title
+                                                                  $product_id->products.category]}
+                                    :filter       [:> *sum/Float 100]
+                                    :aggregation  [[:sum *sum/Float]]
+                                    :breakout     [*TITLE/Text]}
+                     :filter       [:> *sum/Float 100]})
+                  add-source-metadata
+                  :query
+                  :source-metadata
+                  (map :field_ref)))))))
