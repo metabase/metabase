@@ -431,7 +431,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it.only("should allow drill-through for sandboxed user (metabase-enterprise#535)", () => {
+    it("should allow drill-through for sandboxed user (metabase-enterprise#535)", () => {
       const PRODUCTS_ALIAS = "Products";
       const QUESTION_NAME = "EE_535";
 
