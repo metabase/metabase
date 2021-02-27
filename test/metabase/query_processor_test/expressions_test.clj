@@ -379,20 +379,19 @@
 (deftest string-operations-from-subquery
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions :regex) :redshift)
     (testing "regex-match-first and replace work when evaluated against a subquery (#14873)"
-      (mt/dataset sample-dataset
-        (let [a-word  "a_word"
+      (mt/dataset test-data
+        (let [r-word  "r_word"
               no-sp   "no_spaces"
-              ean     (mt/id :products :ean)
-              results (mt/run-mbql-query products
-                        {:expressions  {a-word
-                                         [:regex-match-first [:field-id (mt/id :products :title)] "^A[^ ]+"]
-                                        no-sp
-                                         [:replace [:field-id (mt/id :products :title)] " " ""]}
-                         :source-query {:source-table $$products}
-                         :fields       [$title [:expression a-word] [:expression no-sp]]
-                         :filter       [:= [:field-id ean] "0157967025871" "4893655420066"]})]
-          (is (= ["Title" a-word no-sp]
+              id      (mt/id :venues :id)
+              results (mt/run-mbql-query venues
+                        {:expressions  {r-word [:regex-match-first [:field-id (mt/id :venues :name)] "^R[^ ]+"]
+                                        no-sp  [:replace [:field-id (mt/id :venues :name)] " " ""]}
+                         :source-query {:source-table $$venues}
+                         :fields       [$name [:expression r-word] [:expression no-sp]]
+                         :filter       [:= $id 1 95]
+                         :order-by     [[:asc $id]]})]
+          (is (= ["Name" r-word no-sp]
                  (map :display_name (mt/cols results))))
-          (is (= [["Aerodynamic Linen Coat" "Aerodynamic" "AerodynamicLinenCoat"]
-                  ["Awesome Rubber Wallet" "Awesome" "AwesomeRubberWallet"]]
+          (is (= [["Red Medicine" "Red" "RedMedicine"]
+                  ["Rush Street" "Rush" "RushStreet"]]
                  (mt/formatted-rows [str str str] results))))))))
