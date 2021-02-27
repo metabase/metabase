@@ -65,6 +65,8 @@ import { push } from "react-router-redux";
 import Collections from "metabase/entities/collections";
 import { MetabaseApi } from "metabase/services";
 
+import { processSource } from "metabase/lib/expressions/process";
+
 function autocompleteResults(card, prefix) {
   const databaseId = card && card.dataset_query && card.dataset_query.database;
   if (!databaseId) {
@@ -177,6 +179,9 @@ export default class QueryBuilder extends Component {
 
   componentWillMount() {
     this.props.initializeQB(this.props.location, this.props.params);
+
+    // Prime the expression parser & autocomplete
+    processSource({ source: "", targetOffset: 0 });
   }
 
   componentDidMount() {
