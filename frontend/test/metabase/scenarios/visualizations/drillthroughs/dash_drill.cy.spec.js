@@ -75,22 +75,17 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
       beforeEach(() => {
         // Create muliscalar card
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: CARD_NAME,
-          dataset_query: {
-            database: 1,
-            query: {
-              "source-table": PEOPLE_ID,
-              aggregation: [["count"]],
-              breakout: [
-                ["field-id", PEOPLE.SOURCE],
-                ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
-              ],
-            },
-            type: "query",
+          query: {
+            "source-table": PEOPLE_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field-id", PEOPLE.SOURCE],
+              ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
+            ],
           },
           display: "line",
-          visualization_settings: {},
         }).then(({ body: { id: CARD_ID } }) => {
           cy.createDashboard(DASHBOARD_NAME).then(
             ({ body: { id: DASHBOARD_ID } }) => {
@@ -128,29 +123,19 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       it("should respect visualization type when entering a question from a dashboard (metabase#13415)", () => {
         const QUESTION_NAME = "13415";
 
-        cy.log("Create a question");
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: QUESTION_NAME,
-          dataset_query: {
-            database: 1,
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-              breakout: [
-                [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
-                ],
-                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
               ],
-            },
-            type: "query",
-          },
-          display: "table",
-          visualization_settings: {
-            "table.pivot_column": "CATEGORY",
-            "table.cell_column": "count",
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+            ],
           },
         }).then(({ body: { id: QUESTION_ID } }) => {
           cy.createDashboard("13415D").then(

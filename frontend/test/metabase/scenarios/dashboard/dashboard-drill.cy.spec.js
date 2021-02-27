@@ -396,21 +396,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it.skip("should apply correct date range on a graph drill-through (metabase#13785)", () => {
     cy.log("Create a question");
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13785",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": REVIEWS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "month"],
-          ],
-        },
-        type: "query",
+      query: {
+        "source-table": REVIEWS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "month"],
+        ],
       },
       display: "bar",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard("13785D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add filter to the dashboard");
@@ -532,16 +527,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it.skip("should not remove click behavior on 'reset to defaults' (metabase#14919)", () => {
     const LINK_NAME = "Home";
 
-    // Create question
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14919",
-      dataset_query: {
-        database: 1,
-        query: { "source-table": PRODUCTS_ID },
-        type: "query",
-      },
-      display: "table",
-      visualization_settings: {},
+      query: { "source-table": PRODUCTS_ID },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard("14919D").then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard

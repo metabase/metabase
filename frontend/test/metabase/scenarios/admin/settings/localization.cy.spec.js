@@ -15,22 +15,15 @@ describe("scenarios > admin > permissions", () => {
     // filter: created before June 1st, 2016
     // summarize: Count by CreatedAt: Week
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders created before June 1st 2016",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"],
-          ],
-          filter: ["<", ["field-id", ORDERS.CREATED_AT], "2016-06-01"],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"]],
+        filter: ["<", ["field-id", ORDERS.CREATED_AT], "2016-06-01"],
       },
       display: "line",
-      visualization_settings: {},
     });
 
     // find and open that question
@@ -44,24 +37,20 @@ describe("scenarios > admin > permissions", () => {
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13604",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day-of-week"],
-          ],
-          filter: [
-            "between",
-            ["field-id", ORDERS.CREATED_AT],
-            "2020-03-02", // Monday
-            "2020-03-03", // Tuesday
-          ],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day-of-week"],
+        ],
+        filter: [
+          "between",
+          ["field-id", ORDERS.CREATED_AT],
+          "2020-03-02", // Monday
+          "2020-03-03", // Tuesday
+        ],
       },
       display: "bar",
       visualization_settings: {

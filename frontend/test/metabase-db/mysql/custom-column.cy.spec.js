@@ -21,26 +21,21 @@ describe.skip("mysql > user > question > custom column", () => {
 
     withDatabase(2, ({ PEOPLE, PEOPLE_ID }) => {
       cy.log("Create a question with `Source` column and abbreviated CC");
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: "12445",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": PEOPLE_ID,
-            breakout: [["expression", CC_NAME]],
-            expressions: {
-              [CC_NAME]: [
-                "substring",
-                ["field-id", PEOPLE.SOURCE],
-                0,
-                4, // we want 4 letter abbreviation
-              ],
-            },
+        query: {
+          "source-table": PEOPLE_ID,
+          breakout: [["expression", CC_NAME]],
+          expressions: {
+            [CC_NAME]: [
+              "substring",
+              ["field-id", PEOPLE.SOURCE],
+              0,
+              4, // we want 4 letter abbreviation
+            ],
           },
-          database: 2,
         },
-        display: "table",
-        visualization_settings: {},
+        database: 2,
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");

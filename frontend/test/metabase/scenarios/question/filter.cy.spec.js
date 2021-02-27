@@ -28,29 +28,14 @@ describe("scenarios > question > filter", () => {
 
   describe("dashboard filter dropdown/search (metabase#12985)", () => {
     it("Repro 1: should work for saved nested questions", () => {
-      cy.log("Create base card");
-
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: "Q1",
-        dataset_query: {
-          database: 1,
-          query: { "source-table": PRODUCTS_ID },
-          type: "query",
-        },
-        display: "table",
-        visualization_settings: {},
+        query: { "source-table": PRODUCTS_ID },
       }).then(({ body: { id: Q1_ID } }) => {
-        cy.log("Create nested card based on the first one");
-
-        cy.request("POST", "/api/card", {
+        // Create nested card based on the first one
+        cy.createQuestion({
           name: "Q2",
-          dataset_query: {
-            database: 1,
-            query: { "source-table": `card__${Q1_ID}` },
-            type: "query",
-          },
-          display: "table",
-          visualization_settings: {},
+          query: { "source-table": `card__${Q1_ID}` },
         }).then(({ body: { id: Q2_ID } }) => {
           cy.createDashboard("12985D").then(
             ({ body: { id: DASHBOARD_ID } }) => {
@@ -135,24 +120,16 @@ describe("scenarios > question > filter", () => {
     });
 
     it.skip("Repro 2: should work for aggregated questions", () => {
-      cy.log("Create question with aggregation");
-
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: "12985-v2",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-query": {
-              "source-table": PRODUCTS_ID,
-              aggregation: [["count"]],
-              breakout: [["field-id", PRODUCTS.CATEGORY]],
-            },
-            filter: [">", ["field-literal", "count", "type/Integer"], 1],
+        query: {
+          "source-query": {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [["field-id", PRODUCTS.CATEGORY]],
           },
-          type: "query",
+          filter: [">", ["field-literal", "count", "type/Integer"], 1],
         },
-        display: "table",
-        visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.createDashboard("12985-v2D").then(
           ({ body: { id: DASHBOARD_ID } }) => {
@@ -252,45 +229,40 @@ describe("scenarios > question > filter", () => {
   });
 
   it("'Between Dates' filter should behave consistently (metabase#12872)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "12872",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          filter: [
-            "and",
-            [
-              "between",
-              ["field-id", PRODUCTS.CREATED_AT],
-              "2019-04-15",
-              "2019-04-15",
-            ],
-            [
-              "between",
-              ["joined-field", "Products", ["field-id", PRODUCTS.CREATED_AT]],
-              "2019-04-15",
-              "2019-04-15",
-            ],
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        filter: [
+          "and",
+          [
+            "between",
+            ["field-id", PRODUCTS.CREATED_AT],
+            "2019-04-15",
+            "2019-04-15",
           ],
-          joins: [
-            {
-              alias: "Products",
-              condition: [
-                "=",
-                ["field-id", PRODUCTS.ID],
-                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-              ],
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-            },
+          [
+            "between",
+            ["joined-field", "Products", ["field-id", PRODUCTS.CREATED_AT]],
+            "2019-04-15",
+            "2019-04-15",
           ],
-        },
-        type: "query",
+        ],
+        joins: [
+          {
+            alias: "Products",
+            condition: [
+              "=",
+              ["field-id", PRODUCTS.ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ],
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+          },
+        ],
       },
       display: "scalar",
-      visualization_settings: {},
     }).then(({ body: { id: questionId } }) => {
       cy.visit(`/question/${questionId}`);
       cy.findByText("12872");
@@ -331,24 +303,18 @@ describe("scenarios > question > filter", () => {
   it.skip("should filter using Custom Expression from aggregated results (metabase#12839)", () => {
     const CE_NAME = "Simple Math";
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "12839",
-      dataset_query: {
-        database: 1,
-        query: {
-          filter: [">", ["field-literal", CE_NAME, "type/Float"], 0],
-          "source-query": {
-            aggregation: [
-              ["aggregation-options", ["+", 1, 1], { "display-name": CE_NAME }],
-            ],
-            breakout: [["field-id", PRODUCTS.CATEGORY]],
-            "source-table": PRODUCTS_ID,
-          },
+      query: {
+        filter: [">", ["field-literal", CE_NAME, "type/Float"], 0],
+        "source-query": {
+          aggregation: [
+            ["aggregation-options", ["+", 1, 1], { "display-name": CE_NAME }],
+          ],
+          breakout: [["field-id", PRODUCTS.CATEGORY]],
+          "source-table": PRODUCTS_ID,
         },
-        type: "query",
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: questionId } }) => {
       cy.server();
       cy.route("POST", `/api/card/${questionId}/query`).as("cardQuery");
@@ -364,20 +330,14 @@ describe("scenarios > question > filter", () => {
 
   it.skip("should not preserve cleared filter with the default value on refresh (metabase#13960)", () => {
     cy.log("Create a question");
-
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13960",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [["field-id", PRODUCTS.CATEGORY]],
-        },
-        database: 1,
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [["field-id", PRODUCTS.CATEGORY]],
       },
       display: "pie",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard("13960D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log(
@@ -538,25 +498,19 @@ describe("scenarios > question > filter", () => {
   it.skip("should not drop aggregated filters (metabase#11957)", () => {
     const AGGREGATED_FILTER = "Count is less than or equal to 20";
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "11957",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            filter: [">", ["field-id", ORDERS.CREATED_AT], "2020-01-01"],
-            aggregation: [["count"]],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
-            ],
-          },
-          filter: ["<=", ["field-literal", "count", "type/Integer"], 20],
+      query: {
+        "source-query": {
+          "source-table": ORDERS_ID,
+          filter: [">", ["field-id", ORDERS.CREATED_AT], "2020-01-01"],
+          aggregation: [["count"]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+          ],
         },
-        type: "query",
+        filter: ["<=", ["field-literal", "count", "type/Integer"], 20],
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
     });
@@ -652,37 +606,31 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should handle post-aggregation filter on questions with joined table (metabase#14811)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14811",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              [
-                "sum",
-                [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.PRICE],
-                ],
-              ],
-            ],
-            breakout: [
+      query: {
+        "source-query": {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "sum",
               [
                 "fk->",
                 ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.CATEGORY],
+                ["field-id", PRODUCTS.PRICE],
               ],
             ],
-          },
-          filter: ["=", ["field-literal", "CATEGORY", "type/Text"], "Widget"],
+          ],
+          breakout: [
+            [
+              "fk->",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", PRODUCTS.CATEGORY],
+            ],
+          ],
         },
-        type: "query",
+        filter: ["=", ["field-literal", "CATEGORY", "type/Text"], "Widget"],
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
       cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
@@ -699,21 +647,15 @@ describe("scenarios > question > filter", () => {
 
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14776",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-          ],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+        breakout: [
+          ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+        ],
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
@@ -736,19 +678,13 @@ describe("scenarios > question > filter", () => {
     cy.server();
     cy.route("POST", "/api/card/*/query").as("cardQuery");
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14843",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": PEOPLE_ID,
-          expressions: { [CC_NAME]: ["length", ["field-id", PEOPLE.CITY]] },
-          filter: ["!=", ["expression", CC_NAME], 3],
-        },
-        type: "query",
+      query: {
+        "source-table": PEOPLE_ID,
+        expressions: { [CC_NAME]: ["length", ["field-id", PEOPLE.CITY]] },
+        filter: ["!=", ["expression", CC_NAME], 3],
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
     });
