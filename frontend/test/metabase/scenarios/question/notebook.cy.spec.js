@@ -563,7 +563,7 @@ describe("scenarios > question > notebook", () => {
   });
 
   // TODO: add positive assertions to all 4 tests when we figure out implementation details
-  describe.skip("arithmetic (metabase#13175)", () => {
+  describe("arithmetic (metabase#13175)", () => {
     beforeEach(() => {
       openOrdersTable({ mode: "notebook" });
     });
@@ -598,6 +598,10 @@ describe("scenarios > question > notebook", () => {
         .click();
 
       cy.contains(/^redundant input/i).should("not.exist");
+
+      cy.findAllByRole("button")
+        .contains("Done")
+        .should("not.be.disabled");
     });
 
     const CASES = {
@@ -621,6 +625,10 @@ describe("scenarios > question > notebook", () => {
 
         cy.contains(/^expected closing parenthesis/i).should("not.exist");
         cy.contains(/^redundant input/i).should("not.exist");
+
+        cy.findAllByRole("button")
+          .contains("Done")
+          .should("not.be.disabled");
       });
     });
   });
