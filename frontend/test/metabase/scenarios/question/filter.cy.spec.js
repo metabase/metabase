@@ -52,70 +52,71 @@ describe("scenarios > question > filter", () => {
           display: "table",
           visualization_settings: {},
         }).then(({ body: { id: Q2_ID } }) => {
-          cy.log("Create a dashboard");
+          cy.createDashboard("12985D").then(
+            ({ body: { id: DASHBOARD_ID } }) => {
+              cy.log("Add 2 filters to the dashboard");
 
-          cy.request("POST", "/api/dashboard", {
-            name: "12985D",
-          }).then(({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add 2 filters to the dashboard");
-
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-              parameters: [
-                {
-                  name: "Date Filter",
-                  slug: "date_filter",
-                  id: "78d4ba0b",
-                  type: "date/all-options",
-                },
-                {
-                  name: "Category",
-                  slug: "category",
-                  id: "20976cce",
-                  type: "category",
-                },
-              ],
-            });
-
-            cy.log("Add nested card to the dashboard");
-
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: Q2_ID,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log("Connect dashboard filters to the nested card");
-
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+                parameters: [
                   {
-                    id: DASH_CARD_ID,
-                    card_id: Q2_ID,
-                    row: 0,
-                    col: 0,
-                    sizeX: 10,
-                    sizeY: 8,
-                    series: [],
-                    visualization_settings: {},
-                    // Connect both filters and to the card
-                    parameter_mappings: [
-                      {
-                        parameter_id: "78d4ba0b",
-                        card_id: Q2_ID,
-                        target: [
-                          "dimension",
-                          ["field-id", PRODUCTS.CREATED_AT],
-                        ],
-                      },
-                      {
-                        parameter_id: "20976cce",
-                        card_id: Q2_ID,
-                        target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
-                      },
-                    ],
+                    name: "Date Filter",
+                    slug: "date_filter",
+                    id: "78d4ba0b",
+                    type: "date/all-options",
+                  },
+                  {
+                    name: "Category",
+                    slug: "category",
+                    id: "20976cce",
+                    type: "category",
                   },
                 ],
               });
-            });
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
-          });
+
+              cy.log("Add nested card to the dashboard");
+
+              cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cardId: Q2_ID,
+              }).then(({ body: { id: DASH_CARD_ID } }) => {
+                cy.log("Connect dashboard filters to the nested card");
+
+                cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                  cards: [
+                    {
+                      id: DASH_CARD_ID,
+                      card_id: Q2_ID,
+                      row: 0,
+                      col: 0,
+                      sizeX: 10,
+                      sizeY: 8,
+                      series: [],
+                      visualization_settings: {},
+                      // Connect both filters and to the card
+                      parameter_mappings: [
+                        {
+                          parameter_id: "78d4ba0b",
+                          card_id: Q2_ID,
+                          target: [
+                            "dimension",
+                            ["field-id", PRODUCTS.CREATED_AT],
+                          ],
+                        },
+                        {
+                          parameter_id: "20976cce",
+                          card_id: Q2_ID,
+                          target: [
+                            "dimension",
+                            ["field-id", PRODUCTS.CATEGORY],
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                });
+              });
+              cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            },
+          );
         });
       });
 
@@ -153,59 +154,57 @@ describe("scenarios > question > filter", () => {
         display: "table",
         visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.log("Create a dashboard");
+        cy.createDashboard("12985-v2D").then(
+          ({ body: { id: DASHBOARD_ID } }) => {
+            cy.log("Add a category filter to the dashboard");
 
-        cy.request("POST", "/api/dashboard", {
-          name: "12985-v2D",
-        }).then(({ body: { id: DASHBOARD_ID } }) => {
-          cy.log("Add a category filter to the dashboard");
-
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-            parameters: [
-              {
-                name: "Category",
-                slug: "category",
-                id: "7c4htcv8",
-                type: "category",
-              },
-            ],
-          });
-
-          cy.log("Add previously created question to the dashboard");
-
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            cy.log("Connect dashboard filter to the aggregated card");
-
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+              parameters: [
                 {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
-                  series: [],
-                  visualization_settings: {},
-                  // Connect filter to the card
-                  parameter_mappings: [
-                    {
-                      parameter_id: "7c4htcv8",
-                      card_id: QUESTION_ID,
-                      target: [
-                        "dimension",
-                        ["field-literal", "CATEGORY", "type/Text"],
-                      ],
-                    },
-                  ],
+                  name: "Category",
+                  slug: "category",
+                  id: "7c4htcv8",
+                  type: "category",
                 },
               ],
             });
-          });
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
-        });
+
+            cy.log("Add previously created question to the dashboard");
+
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: QUESTION_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              cy.log("Connect dashboard filter to the aggregated card");
+
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: QUESTION_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 8,
+                    sizeY: 6,
+                    series: [],
+                    visualization_settings: {},
+                    // Connect filter to the card
+                    parameter_mappings: [
+                      {
+                        parameter_id: "7c4htcv8",
+                        card_id: QUESTION_ID,
+                        target: [
+                          "dimension",
+                          ["field-literal", "CATEGORY", "type/Text"],
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              });
+            });
+            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+          },
+        );
       });
 
       cy.findByPlaceholderText("Category").click();
@@ -380,11 +379,7 @@ describe("scenarios > question > filter", () => {
       display: "pie",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("Create a dashboard");
-
-      cy.request("POST", "/api/dashboard", {
-        name: "13960D",
-      }).then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard("13960D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log(
           "Add filters to the dashboard and set the default value to the first one",
         );

@@ -62,11 +62,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       "13927",
       `SELECT PEOPLE.STATE, PEOPLE.CITY from PEOPLE;`,
     ).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("Create a dashboard");
-
-      cy.request("POST", "/api/dashboard", {
-        name: "13927D",
-      }).then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard("13927D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add question to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -271,10 +267,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       display: "table",
       visualization_settings: {},
     }).then(({ body: { id: questionId } }) => {
-      // 3. create a dashboard
-      cy.request("POST", "/api/dashboard", {
-        name: "13062D",
-      }).then(({ body: { id: dashboardId } }) => {
+      cy.createDashboard("13062D").then(({ body: { id: dashboardId } }) => {
         // add filter to the dashboard
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           parameters: [
@@ -419,11 +412,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       display: "bar",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("Create a dashboard");
-
-      cy.request("POST", "/api/dashboard", {
-        name: "13785D",
-      }).then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard("13785D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add filter to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
@@ -554,10 +543,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       display: "table",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      // Create a dashboard
-      cy.request("POST", "/api/dashboard", {
-        name: "14919D",
-      }).then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard("14919D").then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
@@ -638,9 +624,7 @@ function createDashboard(
   { dashboardName = "dashboard", questionId, visualization_settings },
   callback,
 ) {
-  cy.request("POST", "/api/dashboard", {
-    name: dashboardName,
-  }).then(({ body: { id: dashboardId } }) => {
+  cy.createDashboard(dashboardName).then(({ body: { id: dashboardId } }) => {
     cy.request("PUT", `/api/dashboard/${dashboardId}`, {
       parameters: [
         {

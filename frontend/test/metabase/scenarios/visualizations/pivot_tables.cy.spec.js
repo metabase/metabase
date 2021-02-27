@@ -525,31 +525,30 @@ describe("scenarios > visualizations > pivot tables", () => {
         display: "pivot",
         visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.log("Create new dashboard");
-        cy.request("POST", "/api/dashboard", {
-          name: DASHBOARD_NAME,
-        }).then(({ body: { id: DASHBOARD_ID } }) => {
-          cy.log("Add previously created question to that dashboard");
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            cy.log("Resize the dashboard card");
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
-                {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 12,
-                  sizeY: 8,
-                },
-              ],
+        cy.createDashboard(DASHBOARD_NAME).then(
+          ({ body: { id: DASHBOARD_ID } }) => {
+            cy.log("Add previously created question to that dashboard");
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: QUESTION_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              cy.log("Resize the dashboard card");
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: QUESTION_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 12,
+                    sizeY: 8,
+                  },
+                ],
+              });
+              cy.log("Open the dashboard");
+              cy.visit(`/dashboard/${DASHBOARD_ID}`);
             });
-            cy.log("Open the dashboard");
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
-          });
-        });
+          },
+        );
       });
     });
 
@@ -586,37 +585,36 @@ describe("scenarios > visualizations > pivot tables", () => {
           enable_embedding: true,
         });
 
-        cy.log("Create new dashboard");
-        cy.request("POST", "/api/dashboard", {
-          name: DASHBOARD_NAME,
-        }).then(({ body: { id: DASHBOARD_ID } }) => {
-          cy.log("Add previously created question to that dashboard");
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            cy.log("Resize the dashboard card");
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
-                {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 12,
-                  sizeY: 8,
-                },
-              ],
+        cy.createDashboard(DASHBOARD_NAME).then(
+          ({ body: { id: DASHBOARD_ID } }) => {
+            cy.log("Add previously created question to that dashboard");
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: QUESTION_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              cy.log("Resize the dashboard card");
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: QUESTION_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 12,
+                    sizeY: 8,
+                  },
+                ],
+              });
             });
-          });
 
-          cy.log("Enable sharing");
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/public_link`);
+            cy.log("Enable sharing");
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/public_link`);
 
-          cy.log("Enable embedding");
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-            enable_embedding: true,
-          });
-        });
+            cy.log("Enable embedding");
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+              enable_embedding: true,
+            });
+          },
+        );
         cy.visit(`/question/${QUESTION_ID}`);
       });
     });

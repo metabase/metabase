@@ -60,9 +60,7 @@ function createQuestion(options, callback) {
 // Once created, add the provided questionId to the dashboard and then
 // map the city/state filters to the template-tags in the native query.
 function createDashboard({ dashboardName, questionId }, callback) {
-  cy.request("POST", "/api/dashboard", {
-    name: dashboardName,
-  }).then(({ body: { id: dashboardId } }) => {
+  cy.createDashboard(dashboardName).then(({ body: { id: dashboardId } }) => {
     cy.request("PUT", `/api/dashboard/${dashboardId}`, {
       parameters: [
         {

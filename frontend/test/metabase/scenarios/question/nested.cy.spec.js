@@ -229,11 +229,7 @@ describe("scenarios > question > nested", () => {
       },
     );
 
-    cy.log("Create a brand new dashboard");
-
-    cy.request("POST", "/api/dashboard", {
-      name: "13186D",
-    }).then(({ body: { id: DASBOARD_ID } }) => {
+    cy.createDashboard("13186D").then(({ body: { id: DASBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASBOARD_ID}`);
     });
 
