@@ -400,7 +400,10 @@ function Sidebars(props) {
       <ParameterSidebar
         parameter={parameter}
         otherParameters={otherParameters}
-        remove={() => removeParameter(editingParameterId)}
+        remove={() => {
+          setEditingParameter(null);
+          removeParameter(editingParameterId);
+        }}
         done={() => setEditingParameter(null)}
         showAddParameterPopover={showAddParameterPopover}
         setParameter={setParameter}
