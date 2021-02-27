@@ -1035,5 +1035,5 @@
                                                                  $product_id->products.category]}
                                    :filter       [:> *sum/Float 100]
                                    :aggregation  [[:sum *sum/Float]]
-                                   :breakout     [*TITLE/Text]}
+                                   :breakout     [*products.title]}
                     :filter       [:> *sum/Float 100]}))))))))
