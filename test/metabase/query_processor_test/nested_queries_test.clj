@@ -1021,8 +1021,9 @@
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
     (mt/dataset sample-dataset
       (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
-        (is (= [["Twitter" nil      0 401.51]
-                ["Twitter" "Widget" 0 498.59]]
+        (is (= (cond-> [["Twitter" "Widget" 0 498.59]
+                        ["Twitter" nil      0 401.51]]
+                 (mt/sorts-nil-first? driver/*driver*) reverse)
                (mt/formatted-rows [str str int 2.0]
                  (mt/run-mbql-query orders
                    {:source-query {:source-table $$orders
