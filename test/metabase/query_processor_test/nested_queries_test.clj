@@ -1017,7 +1017,7 @@
                                      :value  "Widget"}]})))))))
 
 (deftest multi-level-aggregations-with-post-aggregation-filtering-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset sample-dataset
         (is (= [["Awesome Bronze Plate" 115.23]

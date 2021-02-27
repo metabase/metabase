@@ -377,7 +377,7 @@
                    results))))))))
 
 (deftest string-operations-from-subquery
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions :regex) :redshift)
     (testing "regex-match-first and replace work when evaluated against a subquery (#14873)"
       (mt/dataset sample-dataset
         (let [a-word  "a_word"
