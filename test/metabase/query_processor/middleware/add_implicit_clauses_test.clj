@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses-test
   (:require [clojure.test :refer :all]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
@@ -158,3 +159,39 @@
           (is (= (mt/$ids [$venues.id &c.categories.name $venues.category_id->categories.name])
                  (get-in (mt/test-qp-middleware add-implicit-clauses/add-implicit-clauses query)
                          [:pre :query :fields]))))))))
+
+(deftest add-correct-implicit-fields-for-deeply-nested-source-queries-test
+  (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
+    (mt/dataset sample-dataset
+      (let [expected-cols (fn [query]
+                            (qp/query->expected-cols
+                             {:database (mt/id)
+                              :type     :query
+                              :query    query}))
+            q1            (mt/$ids orders
+                            {:source-table $$orders
+                             :filter       [:= $id 1]
+                             :aggregation  [[:sum $total]]
+                             :breakout     [!day.created_at
+                                            $product_id->products.title
+                                            $product_id->products.category]})
+            q2            (mt/$ids orders
+                            {:source-query    q1
+                             :filter          [:> *sum/Float 100]
+                             :aggregation     [[:sum *sum/Float]]
+                             :breakout        [$product_id->products.title]
+                             :source-metadata (expected-cols q1)})
+            q3            (mt/$ids orders
+                            {:source-query    q2
+                             :filter          [:> *sum/Float 100]
+                             :source-metadata (expected-cols q2)})
+            query         {:database (mt/id)
+                           :type     :query
+                           :query    q3}]
+        (is (= (mt/$ids orders
+                 [$product_id->products.title
+                  *sum/Float])
+               (-> (mt/test-qp-middleware add-implicit-clauses/add-implicit-clauses query)
+                   :pre
+                   :query
+                   :fields)))))))

@@ -1015,3 +1015,25 @@
                        :parameters [{:type   :category
                                      :target [:dimension [:field-literal "CATEGORY" :type/Text]]
                                      :value  "Widget"}]})))))))
+
+(deftest multi-level-aggregations-with-post-aggregation-filtering-test
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
+    (testing "Multi-level aggregations with filter is the last section (#14872)"
+      (mt/dataset sample-dataset
+        (is (= [["Awesome Bronze Plate" 115.23]
+                ["Mediocre Rubber Shoes" 101.04]
+                ["Mediocre Wooden Bench" 117.03]
+                ["Sleek Steel Table" 134.91]
+                ["Small Marble Hat" 102.8]]
+               (mt/formatted-rows [str 2.0]
+                 (mt/run-mbql-query orders
+                   {:source-query {:source-query {:source-table $$orders
+                                                  :filter       [:= $user_id 1]
+                                                  :aggregation  [[:sum $total]]
+                                                  :breakout     [!day.created_at
+                                                                 $product_id->products.title
+                                                                 $product_id->products.category]}
+                                   :filter       [:> *sum/Float 100]
+                                   :aggregation  [[:sum *sum/Float]]
+                                   :breakout     [*products.title]}
+                    :filter       [:> *sum/Float 100]}))))))))
