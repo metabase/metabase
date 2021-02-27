@@ -1015,3 +1015,51 @@
                        :parameters [{:type   :category
                                      :target [:dimension [:field-literal "CATEGORY" :type/Text]]
                                      :value  "Widget"}]})))))))
+
+(deftest nested-queries-with-expressions-and-joins-test
+  ;; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
+    (mt/dataset sample-dataset
+      (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
+        (is (= [["Twitter" nil      0 401.51]
+                ["Twitter" "Widget" 0 498.59]]
+               (mt/formatted-rows [str str int 2.0]
+                 (mt/run-mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :filter       [:= $user_id 1]
+                                   :fields       [$id
+                                                  $user_id
+                                                  $product_id
+                                                  $subtotal
+                                                  $tax
+                                                  $total
+                                                  $discount
+                                                  !default.created_at
+                                                  $quantity]}
+                    :aggregation  [[:sum $total]]
+                    :breakout     [&P.people.source
+                                   &PRODUCTS__via__PRODUCT_ID.products.category
+                                   [:expression "pivot-grouping"]]
+                    :limit        5
+                    :expressions  {:pivot-grouping [:abs 0]}
+                    :order-by     [[:asc &P.people.source]
+                                   [:asc &PRODUCTS__via__PRODUCT_ID.products.category]
+                                   [:asc [:expression "pivot-grouping"]]]
+                    :joins        [{:strategy     :left-join
+                                    :source-table $$people
+                                    :condition    [:= $user_id &P.people.id]
+                                    :alias        "P"}
+                                   {:source-query {:source-table $$products
+                                                   :filter       [:= $products.category "Widget"]
+                                                   :fields       [$products.id
+                                                                  $products.ean
+                                                                  $products.title
+                                                                  $products.category
+                                                                  $products.vendor
+                                                                  $products.price
+                                                                  $products.rating
+                                                                  !default.products.created_at]}
+                                    :strategy     :left-join
+                                    :alias        "PRODUCTS__via__PRODUCT_ID"
+                                    :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                    :fk-field-id  %product_id}]}))))))))
