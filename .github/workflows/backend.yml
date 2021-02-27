@@ -95,6 +95,6 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-reflection-${{ hashFiles('**/project.clj') }}
+        key: ${{ runner.os }}-reflection-warnings-${{ hashFiles('**/project.clj') }}
     - run: ./bin/reflection-linter
       name: Run reflection warnings checker
