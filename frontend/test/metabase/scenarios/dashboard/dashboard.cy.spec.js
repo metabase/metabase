@@ -264,17 +264,9 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should display column options for cross-filter (metabase#14473)", () => {
-    cy.log("Create a question");
-
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "14473",
-      dataset_query: {
-        type: "native",
-        native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
-        database: 1,
-      },
-      display: "table",
-      visualization_settings: {},
+      native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard("14473D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add 4 filters to the dashboard");
@@ -334,30 +326,22 @@ describe("scenarios > dashboard", () => {
       ],
     });
 
-    cy.log("Create SQL question with a filter");
-
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "12720_SQL",
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "SELECT * FROM ORDERS WHERE {{filter}}",
-          "template-tags": {
-            filter: {
-              id: "1d006bb7-045f-6c57-e41b-2661a7648276",
-              name: "filter",
-              "display-name": "Filter",
-              type: "dimension",
-              dimension: ["field-id", ORDERS.CREATED_AT],
-              "widget-type": "date/month-year",
-              default: null,
-            },
+      native: {
+        query: "SELECT * FROM ORDERS WHERE {{filter}}",
+        "template-tags": {
+          filter: {
+            id: "1d006bb7-045f-6c57-e41b-2661a7648276",
+            name: "filter",
+            "display-name": "Filter",
+            type: "dimension",
+            dimension: ["field-id", ORDERS.CREATED_AT],
+            "widget-type": "date/month-year",
+            default: null,
           },
         },
-        database: 1,
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: SQL_ID } }) => {
       cy.log("Add SQL question to the dashboard");
 

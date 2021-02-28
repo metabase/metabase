@@ -62,16 +62,12 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it.skip("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "14254",
-      dataset_query: {
-        type: "native",
-        native: {
-          query:
-            'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
-          "template-tags": {},
-        },
-        database: 1,
+      native: {
+        query:
+          'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
+        "template-tags": {},
       },
       display: "map",
       visualization_settings: {

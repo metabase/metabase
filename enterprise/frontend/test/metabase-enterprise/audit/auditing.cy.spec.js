@@ -13,28 +13,23 @@ const { PRODUCTS } = SAMPLE_DATASET;
 const year = new Date().getFullYear();
 
 function generateQuestions(user) {
-  cy.request("POST", `/api/card`, {
+  cy.createNativeQuestion({
     name: `${user} question`,
-    dataset_query: {
-      type: "native",
-      native: {
-        query: "SELECT * FROM products WHERE {{ID}}",
-        "template-tags": {
-          ID: {
-            id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-            name: "ID",
-            display_name: "ID",
-            type: "dimension",
-            dimension: ["field-id", PRODUCTS.ID],
-            "widget-type": "category",
-            default: null,
-          },
+    native: {
+      query: "SELECT * FROM products WHERE {{ID}}",
+      "template-tags": {
+        ID: {
+          id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+          name: "ID",
+          display_name: "ID",
+          type: "dimension",
+          dimension: ["field-id", PRODUCTS.ID],
+          "widget-type": "category",
+          default: null,
         },
       },
-      database: 1,
     },
     display: "scalar",
-    visualization_settings: {},
   });
 }
 
