@@ -578,9 +578,7 @@ describe("scenarios > question > notebook", () => {
         .click()
         .type("Example", { delay: 100 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
-        .should("not.be.disabled");
+      cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
 
     it("should work on custom filter", () => {
@@ -592,16 +590,13 @@ describe("scenarios > question > notebook", () => {
         .clear()
         .type("[Subtotal] - Tax > 20", { delay: 50 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
+      cy.findAllByRole("button", { name: "Done" })
         .should("not.be.disabled")
         .click();
 
       cy.contains(/^redundant input/i).should("not.exist");
 
-      cy.findAllByRole("button")
-        .contains("Done")
-        .should("not.be.disabled");
+      cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
 
     const CASES = {
@@ -626,9 +621,7 @@ describe("scenarios > question > notebook", () => {
         cy.contains(/^expected closing parenthesis/i).should("not.exist");
         cy.contains(/^redundant input/i).should("not.exist");
 
-        cy.findAllByRole("button")
-          .contains("Done")
-          .should("not.be.disabled");
+        cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
       });
     });
   });
