@@ -17,6 +17,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.cache-test :as cache-test]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.util :as qputil]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
@@ -292,16 +293,15 @@
             (perms/revoke-permissions! (perms-group/all-users) (mt/id))
             (perms/grant-collection-read-permissions! group collection)
             (mt/with-test-user :rasta
-              (is (= 1
-                     (count
-                      (mt/rows
-                        (qp/process-query
-                         {:database (mt/id)
-                          :type     :query
-                          :query    {:source-table (mt/id :venues)
-                                     :limit        1}
-                          :info     {:card-id    (u/the-id card)
-                                     :query-hash (byte-array 0)}}))))))))))
+              (binding [qp.perms/*card-id* (u/the-id card)]
+                (is (= 1
+                       (count
+                        (mt/rows
+                          (qp/process-query
+                           {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (mt/id :venues)
+                                       :limit        1}})))))))))))
 
     (testing (str "This test isn't covering a row level restrictions feature, but rather checking it it doesn't break "
                   "querying of a card as a nested query. Part of the row level perms check is looking at the table (or "

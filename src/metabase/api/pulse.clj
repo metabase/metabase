@@ -24,7 +24,8 @@
             [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
+            [toucan.hydrate :refer [hydrate]]
+            [metabase.query-processor.middleware.permissions :as qp.perms])
   (:import java.io.ByteArrayInputStream))
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
@@ -151,10 +152,12 @@
 (defn- pulse-card-query-results
   {:arglists '([card])}
   [{query :dataset_query, card-id :id}]
-  (qp/process-query-and-save-execution! (assoc query :async? false)
-    {:executed-by api/*current-user-id*
-     :context     :pulse
-     :card-id     card-id}))
+  (binding [qp.perms/*card-id* card-id]
+    (qp/process-query-and-save-execution!
+     (assoc query :async? false)
+     {:executed-by api/*current-user-id*
+      :context     :pulse
+      :card-id     card-id})))
 
 (api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."

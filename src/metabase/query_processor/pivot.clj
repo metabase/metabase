@@ -7,6 +7,7 @@
             [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]))
@@ -176,32 +177,33 @@
   ([query info]
    (run-pivot-query query info nil))
   ([query info context]
-   (qp.store/with-store
-     (let [context                 (merge (context.default/default-context) context)
-           query                   (mbql.normalize/normalize query)
-           main-breakout           (:breakout (:query query))
-           col-determination-query (add-grouping-field query main-breakout 0)
-           all-expected-cols       (qp/query->expected-cols (assoc col-determination-query :info info))
-           all-queries             (generate-queries query)]
-       (process-multiple-queries
-        all-queries
-        info
-        (assoc context
-               ;; this function needs to be executed at the start of every new query to
-               ;; determine the mapping for maintaining query shape
-               :column-mapping-fn (fn [query]
-                                    (let [query-cols (map-indexed vector (qp/query->expected-cols (assoc query :info info)))]
-                                      (map (fn [item]
-                                             (some #(when (= (:name item) (:name (second %)))
-                                                      (first %)) query-cols))
-                                           all-expected-cols)))
-               ;; this function needs to be called for each row so that it can actually
-               ;; shape the row according to the `:column-mapping-fn` above
-               :row-mapping-fn (fn [row context]
-                                 ;; the first query doesn't need any special mapping, it already has all the columns
-                                 (if-let [col-mapping (:pivot-column-mapping context)]
-                                   (map (fn [mapping]
-                                          (when mapping
-                                            (nth row mapping)))
-                                        col-mapping)
-                                   row))))))))
+   (binding [qp.perms/*card-id* (get info :card-id)]
+     (qp.store/with-store
+       (let [context                 (merge (context.default/default-context) context)
+             query                   (mbql.normalize/normalize query)
+             main-breakout           (:breakout (:query query))
+             col-determination-query (add-grouping-field query main-breakout 0)
+             all-expected-cols       (qp/query->expected-cols col-determination-query)
+             all-queries             (generate-queries query)]
+         (process-multiple-queries
+          all-queries
+          info
+          (assoc context
+                 ;; this function needs to be executed at the start of every new query to
+                 ;; determine the mapping for maintaining query shape
+                 :column-mapping-fn (fn [query]
+                                      (let [query-cols (map-indexed vector (qp/query->expected-cols query))]
+                                        (map (fn [item]
+                                               (some #(when (= (:name item) (:name (second %)))
+                                                        (first %)) query-cols))
+                                             all-expected-cols)))
+                 ;; this function needs to be called for each row so that it can actually
+                 ;; shape the row according to the `:column-mapping-fn` above
+                 :row-mapping-fn (fn [row context]
+                                   ;; the first query doesn't need any special mapping, it already has all the columns
+                                   (if-let [col-mapping (:pivot-column-mapping context)]
+                                     (map (fn [mapping]
+                                            (when mapping
+                                              (nth row mapping)))
+                                          col-mapping)
+                                     row)))))))))

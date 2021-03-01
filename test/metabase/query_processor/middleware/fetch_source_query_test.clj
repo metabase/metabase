@@ -91,7 +91,6 @@
                 :aggregation  [[:count]]
                 :breakout     [[:field-literal "price" :type/Integer]]})))))))
 
-;;
 (deftest nested-nested-queries-test
   (testing "make sure that nested nested queries work as expected"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/mbql-query venues

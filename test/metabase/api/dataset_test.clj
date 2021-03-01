@@ -249,38 +249,43 @@
            (parse-and-sort-csv result)))))
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
-  (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                            :type     :native
-                                            :native   {:query "SELECT * FROM USERS;"}}}]
-    (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
-                                       :query (json/generate-string
-                                               {:database mbql.s/saved-questions-virtual-database-id
-                                                :type     :query
-                                                :query    {:source-table (str "card__" (u/get-id card))}}))]
-      (is (some? result))
-      (when (some? result)
-        (is (= 16
-               (count (csv/read-csv result))))))))
+  (mt/with-temp-copy-of-db
+    (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+                                              :type     :native
+                                              :native   {:query "SELECT * FROM USERS;"}}}]
+      (letfn [(do-test []
+                (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                                   :query (json/generate-string
+                                                           {:database mbql.s/saved-questions-virtual-database-id
+                                                            :type     :query
+                                                            :query    {:source-table (str "card__" (u/the-id card))}}))]
+                  (is (some? result))
+                  (when (some? result)
+                    (is (= 16
+                           (count (csv/read-csv result)))))))]
+        (testing "with data perms"
+          (do-test))
+        (testing "with collection perms only"
+          (perms/revoke-permissions! (group/all-users) (mt/db))
+          (do-test))))))
 
 ;; POST /api/dataset/:format
-;;
-;; Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints
-;; -- even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
-;; from one that had it -- see #9831)
 (deftest formatted-results-ignore-query-constraints
-  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
-                                       :query (json/generate-string
-                                               {:database   (mt/id)
-                                                :type       :query
-                                                :query      {:source-table (mt/id :venues)}
-                                                :middleware
-                                                {:add-default-userland-constraints? true
-                                                 :userland-query?                   true}}))]
-      (is (some? result))
-      (when (some? result)
-        (is (= 101
-               (count (csv/read-csv result))))))))
+  (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
+    ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
+    (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+      (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                         :query (json/generate-string
+                                                 {:database (mt/id)
+                                                  :type     :query
+                                                  :query    {:source-table (mt/id :venues)}
+                                                  :middleware
+                                                  {:add-default-userland-constraints? true
+                                                   :userland-query?                   true}}))]
+        (is (some? result))
+        (when (some? result)
+          (is (= 101
+                 (count (csv/read-csv result)))))))))
 
 ;; non-"download" queries should still get the default constraints
 ;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)
