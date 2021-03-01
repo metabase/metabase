@@ -5,10 +5,19 @@ import {
   visitQuestionAdhoc,
   getIframeBody,
   popover,
+  sidebar,
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATASET;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATASET;
 
 const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
@@ -692,6 +701,54 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Grand totals");
     cy.findByText("Row totals");
     cy.findByText("200");
+  });
+
+  it.skip("should work with custom mapping of display values (metabase#14985)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+    cy.route("POST", "/api/dataset/pivot").as("datasetPivot");
+
+    cy.log("Remap 'Reviews Rating' display values to custom values");
+    cy.request("POST", `/api/field/${REVIEWS.RATING}/dimension`, {
+      name: "Rating",
+      type: "internal",
+      human_readable_field_id: null,
+    });
+    cy.request("POST", `/api/field/${REVIEWS.RATING}/values`, {
+      values: [[1, "A"], [2, "B"], [3, "C"], [4, "D"], [5, "E"]],
+    });
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": REVIEWS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field-id", REVIEWS.RATING],
+            ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "year"],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("Visualization").click();
+    sidebar().within(() => {
+      cy.findByText("Pivot Table")
+        .parent()
+        .should("have.css", "opacity", "1");
+      cy.icon("pivot_table").click({ force: true });
+    });
+
+    cy.wait("@datasetPivot");
+    cy.get(".Visualization").within(() => {
+      cy.contains("Row totals");
+      cy.findByText("333"); // Row totals for 2018
+      cy.findByText("Grand totals");
+    });
   });
 });
 
