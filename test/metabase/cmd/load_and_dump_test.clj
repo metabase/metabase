@@ -27,7 +27,7 @@
               db/*quoting-style*         (mdb.connection/quoting-style :h2)
               setting/*disable-cache*    true]
       (with-redefs [i18n.impl/site-locale-from-setting-fn (atom (constantly false))]
-        (refresh/refresh-integration-test-db-metadata)
+        ;; (refresh/refresh-integration-test-db-metadata)
         (mdb.setup/setup-db! :h2 spec true)
         (mtg/generate-data!)))))
 
