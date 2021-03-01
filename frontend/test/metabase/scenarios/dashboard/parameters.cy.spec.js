@@ -137,10 +137,10 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Save").click();
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
-    cy.log("**Filter name should be 'unnamed' and the value cleared**");
+    cy.log("Filter name should be 'unnamed' and the value cleared");
     cy.findByPlaceholderText(/unnamed/i);
 
-    cy.log("**URL should reset**");
+    cy.log("URL should reset");
     cy.location("pathname").should("eq", "/dashboard/1");
   });
 
@@ -219,7 +219,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
     cy.findByText("New question").should("not.exist");
 
-    cy.log("**Bug was breaking the dashboard at this point**");
+    cy.log("Bug was breaking the dashboard at this point");
     cy.visit("/dashboard/1");
     // error was always ending in "is undefined" when dashboard broke in the past
     cy.contains(/is undefined$/).should("not.exist");

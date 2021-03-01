@@ -20,9 +20,7 @@ describe.skip("mysql > user > question > custom column", () => {
     const CC_NAME = "Abbr";
 
     withDatabase(2, ({ PEOPLE, PEOPLE_ID }) => {
-      cy.log(
-        "**--1. Create a question with `Source` column and abbreviated CC--**",
-      );
+      cy.log("Create a question with `Source` column and abbreviated CC");
       cy.request("POST", "/api/card", {
         name: "12445",
         dataset_query: {

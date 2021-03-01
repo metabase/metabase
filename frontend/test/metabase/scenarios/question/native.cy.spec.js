@@ -248,7 +248,7 @@ describe("scenarios > question > native", () => {
       // We can ask variations of that question "on the fly"
       cy.findByText(QUESTION).click();
 
-      cy.log("**Apply a filter**");
+      cy.log("Apply a filter");
       cy.findAllByText("Filter")
         .first()
         .click();
@@ -306,7 +306,7 @@ describe("scenarios > question > native", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
       cy.findByText("14302");
-      cy.log("**Reported on v0.37.5 - Regression since v0.37.0**");
+      cy.log("Reported on v0.37.5 - Regression since v0.37.0");
       cy.findByText("Save").should("not.exist");
     });
   });
@@ -361,7 +361,7 @@ describe("scenarios > question > native", () => {
     cy.findByText(/Revert/i).click(); // Revert to the first revision
     cy.findByText(/Open Editor/i).click();
 
-    cy.log("**Reported failing on v0.35.3**");
+    cy.log("Reported failing on v0.35.3");
     cy.findByText(ORIGINAL_QUERY);
     // Filter dropdown field
     cy.get("fieldset").contains("Filter");

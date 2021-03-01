@@ -30,7 +30,7 @@ describe("scenarios > admin > people", () => {
     it("should render (metabase-enterprise#210)", () => {
       cy.visit("/admin/people");
 
-      cy.log("**Assert it loads People by default**");
+      cy.log("Assert it loads People by default");
       cy.get(".PageTitle").contains("People");
 
       cy.get(".ContentTable tbody tr")
@@ -44,7 +44,7 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Groups").click();
       });
 
-      cy.log("**Switch to 'Groups' and make sure it renders properly**");
+      cy.log("Switch to 'Groups' and make sure it renders properly");
       cy.get(".PageTitle").contains("Groups");
 
       // Administrators, All Users, collection, data
@@ -131,7 +131,7 @@ describe("scenarios > admin > people", () => {
         clickButton("Deactivate");
         cy.findByText(FULL_NAME).should("not.exist");
 
-        cy.log("**-- It should load inactive users --**");
+        cy.log("It should load inactive users");
         cy.findByText("Deactivated").click();
         cy.findByText(FULL_NAME);
         cy.icon("refresh").click();
