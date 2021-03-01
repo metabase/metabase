@@ -8,6 +8,7 @@ import Link from "metabase/components/Link";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
+import Question from "metabase-lib/lib/Question";
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
 import QuestionDataSource from "./QuestionDataSource";
@@ -259,6 +260,24 @@ export class ViewTitleHeader extends React.Component {
                 data-metabase-event={`Notebook Mode; Convert to SQL Click`}
               />
             </Box>
+          )}
+          {isNative && isSaved && (
+            <Link
+              to={new Question(
+                {
+                  dataset_query: {
+                    database: question.query().database().id,
+                    query: { "source-table": `card__${question.id()}` },
+                    type: "query",
+                  },
+                  display: "table",
+                  visualization_settings: {},
+                },
+                question.metadata(),
+              ).getUrl()}
+            >
+              <div className="Button Button--primary">Explore results</div>
+            </Link>
           )}
           {isRunnable && !isNativeEditorOpen && (
             <RunButtonWithTooltip
