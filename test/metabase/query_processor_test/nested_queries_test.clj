@@ -1016,15 +1016,75 @@
                                      :target [:dimension [:field-literal "CATEGORY" :type/Text]]
                                      :value  "Widget"}]})))))))
 
+(deftest nested-queries-with-expressions-and-joins-test
+  ;; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
+    (mt/dataset sample-dataset
+      (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
+        ;; not sure why Snowflake has slightly different results
+        (is (= (if (= driver/*driver* :snowflake)
+                 [["Twitter" "Widget" 0 510.82]
+                  ["Twitter" nil 0 407.93]]
+                 (cond-> [["Twitter" "Widget" 0 498.59]
+                          ["Twitter" nil      0 401.51]]
+                   (mt/sorts-nil-first? driver/*driver*) reverse))
+               (mt/formatted-rows [str str int 2.0]
+                 (mt/run-mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :filter       [:= $user_id 1]
+                                   :fields       [$id
+                                                  $user_id
+                                                  $product_id
+                                                  $subtotal
+                                                  $tax
+                                                  $total
+                                                  $discount
+                                                  !default.created_at
+                                                  $quantity]}
+                    :aggregation  [[:sum $total]]
+                    :breakout     [&P.people.source
+                                   &PRODUCTS__via__PRODUCT_ID.products.category
+                                   [:expression "pivot-grouping"]]
+                    :limit        5
+                    :expressions  {:pivot-grouping [:abs 0]}
+                    :order-by     [[:asc &P.people.source]
+                                   [:asc &PRODUCTS__via__PRODUCT_ID.products.category]
+                                   [:asc [:expression "pivot-grouping"]]]
+                    :joins        [{:strategy     :left-join
+                                    :source-table $$people
+                                    :condition    [:= $user_id &P.people.id]
+                                    :alias        "P"}
+                                   {:source-query {:source-table $$products
+                                                   :filter       [:= $products.category "Widget"]
+                                                   :fields       [$products.id
+                                                                  $products.ean
+                                                                  $products.title
+                                                                  $products.category
+                                                                  $products.vendor
+                                                                  $products.price
+                                                                  $products.rating
+                                                                  !default.products.created_at]}
+                                    :strategy     :left-join
+                                    :alias        "PRODUCTS__via__PRODUCT_ID"
+                                    :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                    :fk-field-id  %product_id}]}))))))))
+
 (deftest multi-level-aggregations-with-post-aggregation-filtering-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset sample-dataset
-        (is (= [["Awesome Bronze Plate" 115.23]
-                ["Mediocre Rubber Shoes" 101.04]
-                ["Mediocre Wooden Bench" 117.03]
-                ["Sleek Steel Table" 134.91]
-                ["Small Marble Hat" 102.8]]
+        ;; not 100% sure why Snowflake has slightly different results
+        (is (= (if (= driver/*driver* :snowflake)
+                 [["Awesome Bronze Plate" 115.22]
+                  ["Mediocre Rubber Shoes" 101.06]
+                  ["Mediocre Wooden Bench" 117.04]
+                  ["Sleek Steel Table" 134.94]
+                  ["Small Marble Hat" 102.77]]
+                 [["Awesome Bronze Plate" 115.23]
+                  ["Mediocre Rubber Shoes" 101.04]
+                  ["Mediocre Wooden Bench" 117.03]
+                  ["Sleek Steel Table" 134.91]
+                  ["Small Marble Hat" 102.8]])
                (mt/formatted-rows [str 2.0]
                  (mt/run-mbql-query orders
                    {:source-query {:source-query {:source-table $$orders

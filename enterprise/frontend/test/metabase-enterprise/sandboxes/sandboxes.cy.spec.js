@@ -1039,7 +1039,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.contains("37.65").should("not.exist");
     });
 
-    it.skip("should work with pivot tables (metabase#14969)", () => {
+    it("should work with pivot tables (metabase#14969)", () => {
       cy.log("**-- 1. Sandbox `Orders` table --**");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
@@ -1128,9 +1128,8 @@ describeWithToken("formatting > sandboxes", () => {
         });
       });
 
-      cy.findByText("Organic");
+      cy.findByText("Twitter");
       cy.findByText("Row totals");
-      cy.findByText("Grand totals");
     });
   });
 });

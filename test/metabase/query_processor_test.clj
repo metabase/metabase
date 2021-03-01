@@ -293,12 +293,12 @@
                (for [row rows]
                  (vec
                   (for [[f v] (partition 2 (interleave format-fns row))]
-                    (when (or v format-nil-values?)
+                    (when (or (some? v) format-nil-values?)
                       (try
                         (f v)
                         (catch Throwable e
                           (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
-                                   {:f f, :v v}
+                                   {:f f, :v v, :format-nil-values? format-nil-values?}
                                    e)))))))))
 
               :else
@@ -322,7 +322,7 @@
 
 (defn formatted-rows
   "Combines `rows` and `format-rows-by`."
-  {:style/indent 1}
+  {:style/indent :defn}
   ([format-fns response]
    (format-rows-by format-fns (rows response)))
 

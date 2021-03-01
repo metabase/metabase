@@ -912,7 +912,7 @@
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata :expressions])
                       (assoc :fields (-> query
-                                         (dissoc :source-query)
+                                         (dissoc :source-query :joins)
                                          (mbql.u/match #{:field-literal :field-id :joined-field :expression})
                                          distinct)))]
     (-> query
