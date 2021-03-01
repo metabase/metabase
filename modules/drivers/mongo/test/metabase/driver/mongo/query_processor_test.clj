@@ -32,21 +32,22 @@
 (deftest relative-datetime-test
   (mt/test-driver :mongo
     (testing "Make sure relative datetimes are compiled sensibly"
-      (mt/dataset attempted-murders
-        (is (= {:projections ["count"]
-                :query       [{"$match"
-                               {"$and"
-                                [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
-                                 {:$expr {"$lt"  ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
-                              {"$group" {"_id" nil, "count" {"$sum" 1}}}
-                              {"$sort" {"_id" 1}}
-                              {"$project" {"_id" false, "count" true}}]
-                :collection  "attempts"
-                :mbql?       true}
-               (qp/query->native
-                (mt/mbql-query attempts
-                  {:aggregation [[:count]]
-                   :filter      [:time-interval $datetime :last :month]}))))))))
+      (mt/with-clock #t "2021-02-17T10:36:00-08:00[US/Pacific]"
+        (mt/dataset attempted-murders
+          (is (= {:projections ["count"]
+                  :query       [{"$match"
+                                 {"$and"
+                                  [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                   {:$expr {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                                {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                {"$sort" {"_id" 1}}
+                                {"$project" {"_id" false, "count" true}}]
+                  :collection  "attempts"
+                  :mbql?       true}
+                 (qp/query->native
+                  (mt/mbql-query attempts
+                    {:aggregation [[:count]]
+                     :filter      [:time-interval $datetime :last :month]})))))))))
 
 (deftest no-initial-projection-test
   (mt/test-driver :mongo
@@ -155,23 +156,24 @@
 (deftest compile-time-interval-test
   (mt/test-driver :mongo
     (testing "Make sure time-intervals work the way they're supposed to."
-      (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
-        (is (= [{"$match"
-                 {"$and"
-                  [{:$expr {"$gte" ["$date" {:$dateFromString {:dateString "2020-10-01T00:00Z"}}]}}
-                   {:$expr {"$lt"  ["$date" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
-                {"$group"
-                 {"_id"
-                  {"date~~~day"
-                   {:$let
-                    {:vars {:parts {:$dateToParts {:date "$date"}}},
-                     :in {:$dateFromParts {:year "$$parts.year", :month "$$parts.month", :day "$$parts.day"}}}}}}}
-                {"$sort" {"_id" 1}}
-                {"$project" {"_id" false, "date~~~day" "$_id.date~~~day"}}
-                {"$sort" {"date~~~day" 1}}
-                {"$limit" 1048576}]
-               (:query
-                (qp/query->native
-                 (mt/mbql-query checkins
-                   {:filter   [:time-interval $date -4 :month]
-                    :breakout [[:datetime-field $date :day]]})))))))))
+      (mt/with-clock #t "2021-02-17T10:36:00-08:00[US/Pacific]"
+        (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
+          (is (= [{"$match"
+                   {"$and"
+                    [{:$expr {"$gte" ["$date" {:$dateFromString {:dateString "2020-10-01T00:00Z"}}]}}
+                     {:$expr {"$lt" ["$date" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                  {"$group"
+                   {"_id"
+                    {"date~~~day"
+                     {:$let
+                      {:vars {:parts {:$dateToParts {:date "$date"}}},
+                       :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month", :day "$$parts.day"}}}}}}}
+                  {"$sort" {"_id" 1}}
+                  {"$project" {"_id" false, "date~~~day" "$_id.date~~~day"}}
+                  {"$sort" {"date~~~day" 1}}
+                  {"$limit" 1048576}]
+                 (:query
+                  (qp/query->native
+                   (mt/mbql-query checkins
+                     {:filter   [:time-interval $date -4 :month]
+                      :breakout [[:datetime-field $date :day]]}))))))))))
