@@ -231,7 +231,8 @@
 
 (def ^:private test-columns-with-date-semantic-type
   (update test-columns 2 merge {:base_type    :type/Text
-                                :semantic_type :type/DateTime}))
+                                :effective_type :type/DateTime
+                                :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
   (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
