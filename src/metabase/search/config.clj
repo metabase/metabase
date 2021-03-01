@@ -19,6 +19,10 @@
   bonus for results newer than this (scaled to just how recent they are). c.f. `search.scoring/recency-score`"
   180)
 
+(def ^:const dashboard-count-ceiling
+  "Results in more dashboards than this are all considered to be equally popular."
+  50)
+
 (def searchable-models
   "Models that can be searched. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."

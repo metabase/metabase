@@ -76,6 +76,10 @@
                :text     (str/join " "
                                    (map :text matches-or-misses-map))}))))
 
+(def ^:const text-score-max
+  "The maximum text score that could be achieved without normalization. This value is then used to normalize it down to the interval [0, 1]"
+  4)
+
 (defn- text-score-with
   [scoring-fns query-tokens search-result]
   (let [scores (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model search-result)))
@@ -87,7 +91,7 @@
                                                                   match-tokens
                                                                   scoring-fns))]
                      :when  (> score 0)]
-                 {:text-score          score
+                 {:text-score          (/ score text-score-max)
                   :match               matched-text
                   :match-context-thunk #(match-context query-tokens match-tokens)
                   :column              column
@@ -120,9 +124,10 @@
   (comp (partial * factor) scorer))
 
 (def ^:private match-based-scorers
+  ;; If the below is modified, be sure to update `text-score-max`!
   [consecutivity-scorer
    total-occurrences-scorer
-   (weigh-by 1.5 exact-match-scorer)])
+   (weigh-by 2 exact-match-scorer)])
 
 (def ^:private model->sort-position
   (into {} (map-indexed (fn [i model]
@@ -130,11 +135,16 @@
                         ;; Reverse so that they're in descending order
                         (reverse search-config/searchable-models))))
 
+(defn- model-score
+  [{:keys [model]}]
+  (/ (or (model->sort-position model) 0)
+     (count model->sort-position)))
+
 (defn- text-score-with-match
-  [query-string result]
-  (when (seq query-string)
+  [raw-search-string result]
+  (when (seq raw-search-string)
     (text-score-with match-based-scorers
-                     (tokenize (normalize query-string))
+                     (tokenize (normalize raw-search-string))
                      result)))
 
 (defn- pinned-score
@@ -147,8 +157,9 @@
 
 (defn- dashboard-count-score
   [{:keys [dashboardcard_count]}]
-  ;; higher is better; nil should count as 0
-  (or dashboardcard_count 0))
+  (min (/ (or dashboardcard_count 0)
+          search-config/dashboard-count-ceiling)
+       1))
 
 (defn- recency-score
   [{:keys [updated_at]}]
@@ -170,7 +181,7 @@
 
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
-  [{:keys [result column match-context-thunk]} score]
+  [{:keys [result column match-context-thunk]} scores]
   (let [{:keys [name display_name
                 collection_id collection_name]} result]
     (-> result
@@ -183,19 +194,25 @@
                            (match-context-thunk))
          :collection     {:id   collection_id
                           :name collection_name}
-         :score          score)
+         :score          scores)
         (dissoc
          :collection_id
          :collection_name
          :display_name))))
 
-(defn- combined-score
+(defn- weights-and-scores
   [{:keys [text-score result]}]
-  [(pinned-score result)
-   (dashboard-count-score result)
-   (recency-score result)
-   text-score
-   (model->sort-position (:model result))])
+  [[10   text-score]
+   [2   (pinned-score result)]
+   [3/2 (recency-score result)]
+   [1   (dashboard-count-score result)]
+   [1/2 (model-score result)]])
+
+(defn- weighed-scores
+  [hit]
+  (->> hit
+       weights-and-scores
+       (map (fn [[weight score]] (* weight score)))))
 
 (defn- accumulate-top-results
   "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) items sent to it"
@@ -218,11 +235,11 @@
 
 (defn score-and-result
   "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
-  [query-string result]
-  (when-let [hit (text-score-with-match query-string result)]
-    (let [score (combined-score hit)]
-      {:score score
-       :result (serialize hit score)})))
+  [raw-search-string result]
+  (when-let [hit (text-score-with-match raw-search-string result)]
+    (let [scores (weighed-scores hit)]
+      {:score      (reduce + scores)
+       :result     (serialize hit scores)})))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the

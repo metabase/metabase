@@ -113,12 +113,12 @@ function Score({ score }) {
   return (
     <pre className="hide search-score">
       {`\n\n
-      Pinned:    ${score[0]}
-      Dashboard: ${score[1]}
+      Text:      ${score[0]}
+      Pinned:    ${score[1]}
       Recency:   ${score[2]}
-      Text:      ${score[3]}
+      Dashboard: ${score[3]}
       Model:     ${score[4]}
-      Raw:       ${score && score.join(", ")}`}
+      Total:     ${score && score.reduce((x, y) => x + y)}`}
     </pre>
   );
 }
