@@ -767,52 +767,6 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Rye").should("not.exist");
   });
 
-  it.skip("should handle multi-level aggregations with filter is the last position (metabase#14872)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
-    visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-query": {
-            "source-query": {
-              "source-table": ORDERS_ID,
-              filter: ["=", ["field-id", ORDERS.USER_ID], 1],
-              aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
-              breakout: [
-                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
-                [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.TITLE],
-                ],
-                [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
-                ],
-              ],
-            },
-            filter: [">", ["field-literal", "sum", "type/Float"], 100],
-            aggregation: [["sum", ["field-literal", "sum", "type/Float"]]],
-            breakout: [["field-literal", "TITLE", "type/Text"]],
-          },
-          filter: [">", ["field-literal", "sum", "type/Float"], 100],
-        },
-        database: 1,
-      },
-      display: "table",
-    });
-
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).not.to.exist;
-    });
-
-    cy.findByText(/Sum of Sum of Total/i);
-    cy.findByText("Awesome Bronze Plate");
-  });
-
   it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
     visitQuestionAdhoc({
       dataset_query: {
