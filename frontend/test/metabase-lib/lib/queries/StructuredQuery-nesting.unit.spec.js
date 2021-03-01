@@ -15,11 +15,11 @@ describe("StructuredQuery nesting", () => {
       expect(
         q
           .nest()
-          .filter(["=", ["field-id", ORDERS.TOTAL.id], 42])
+          .filter(["=", ["field", ORDERS.TOTAL.id, null], 42])
           .query(),
       ).toEqual({
         "source-query": { "source-table": ORDERS.id },
-        filter: ["=", ["field-id", ORDERS.TOTAL.id], 42],
+        filter: ["=", ["field", ORDERS.TOTAL.id, null], 42],
       });
     });
 
@@ -29,13 +29,13 @@ describe("StructuredQuery nesting", () => {
         q
           .nest()
           .sourceQuery()
-          .filter(["=", ["field-id", ORDERS.TOTAL.id], 42])
+          .filter(["=", ["field", ORDERS.TOTAL.id, null], 42])
           .parentQuery()
           .query(),
       ).toEqual({
         "source-query": {
           "source-table": ORDERS.id,
-          filter: ["=", ["field-id", ORDERS.TOTAL.id], 42],
+          filter: ["=", ["field", ORDERS.TOTAL.id, null], 42],
         },
       });
     });
@@ -43,15 +43,15 @@ describe("StructuredQuery nesting", () => {
     it("should return a table with correct dimensions", () => {
       const q = ORDERS.query()
         .aggregate(["count"])
-        .breakout(["field-id", ORDERS.PRODUCT_ID.id]);
+        .breakout(["field", ORDERS.PRODUCT_ID.id, null]);
       expect(
         q
           .nest()
           .filterDimensionOptions()
           .dimensions.map(d => d.mbql()),
       ).toEqual([
-        ["field-literal", "PRODUCT_ID", "type/Integer"],
-        ["field-literal", "count", "type/Integer"],
+        ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+        ["field", "count", { "base-type": "type/Integer" }],
       ]);
     });
   });
@@ -60,15 +60,19 @@ describe("StructuredQuery nesting", () => {
     it("should return filters for the last two stages", () => {
       const q = ORDERS.query()
         .aggregate(["count"])
-        .filter(["=", ["field-id", ORDERS.PRODUCT_ID.id], 1])
+        .filter(["=", ["field", ORDERS.PRODUCT_ID.id, null], 1])
         .nest()
-        .filter(["=", ["field-literal", "count", "type/Integer"], 2]);
+        .filter(["=", ["field", "count", { "base-type": "type/Integer" }], 2]);
       const filters = q.topLevelFilters();
       expect(filters).toHaveLength(2);
-      expect(filters[0]).toEqual(["=", ["field-id", ORDERS.PRODUCT_ID.id], 1]);
+      expect(filters[0]).toEqual([
+        "=",
+        ["field", ORDERS.PRODUCT_ID.id, null],
+        1,
+      ]);
       expect(filters[1]).toEqual([
         "=",
-        ["field-literal", "count", "type/Integer"],
+        ["field", "count", { "base-type": "type/Integer" }],
         2,
       ]);
     });
@@ -109,19 +113,23 @@ describe("StructuredQuery nesting", () => {
     it("should return same dimension if not nested", () => {
       const q = ORDERS.query();
       const d = q.topLevelDimension(
-        q.parseFieldReference(["field-id", ORDERS.TOTAL.id]),
+        q.parseFieldReference(["field", ORDERS.TOTAL.id, null]),
       );
-      expect(d.mbql()).toEqual(["field-id", ORDERS.TOTAL.id]);
+      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL.id, null]);
     });
     it("should return underlying dimension for a nested query", () => {
       const q = ORDERS.query()
         .aggregate(["count"])
-        .breakout(["field-id", ORDERS.TOTAL.id])
+        .breakout(["field", ORDERS.TOTAL.id, null])
         .nest();
       const d = q.topLevelDimension(
-        q.parseFieldReference(["field-literal", "TOTAL", "type/Float"]),
+        q.parseFieldReference([
+          "field",
+          "TOTAL",
+          { "base-type": "type/Float" },
+        ]),
       );
-      expect(d.mbql()).toEqual(["field-id", ORDERS.TOTAL.id]);
+      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL.id, null]);
     });
   });
 });

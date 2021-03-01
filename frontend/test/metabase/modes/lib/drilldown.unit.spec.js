@@ -23,7 +23,7 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "quarter"],
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "quarter" }],
         ],
       });
     });
@@ -38,7 +38,7 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "minute"],
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "minute" }],
         ],
       });
     });
@@ -73,7 +73,7 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["binning-strategy", ["field-id", ORDERS.TOTAL.id], "default"],
+          ["field", ORDERS.TOTAL.id, { binning: { strategy: "default" } }],
         ],
       });
     });
@@ -94,7 +94,11 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["binning-strategy", ["field-id", ORDERS.TOTAL.id], "bin-width", 1],
+          [
+            "field",
+            ORDERS.TOTAL.id,
+            { binning: { strategy: "bin-width", "bin-width": 1 } },
+          ],
         ],
       });
     });
@@ -108,16 +112,14 @@ describe("drilldown", () => {
       expect(drillDown).toEqual({
         breakouts: [
           [
-            "binning-strategy",
-            ["field-id", PEOPLE.LATITUDE.id],
-            "bin-width",
-            1,
+            "field",
+            PEOPLE.LATITUDE.id,
+            { binning: { strategy: "bin-width", "bin-width": 1 } },
           ],
           [
-            "binning-strategy",
-            ["field-id", PEOPLE.LONGITUDE.id],
-            "bin-width",
-            1,
+            "field",
+            PEOPLE.LONGITUDE.id,
+            { binning: { strategy: "bin-width", "bin-width": 1 } },
           ],
         ],
       });
@@ -147,29 +149,27 @@ describe("drilldown", () => {
       expect(drillDown).toEqual({
         breakouts: [
           [
-            "binning-strategy",
-            ["field-id", PEOPLE.LATITUDE.id],
-            "bin-width",
-            10,
+            "field",
+            PEOPLE.LATITUDE.id,
+            { binning: { strategy: "bin-width", "bin-width": 10 } },
           ],
           [
-            "binning-strategy",
-            ["field-id", PEOPLE.LONGITUDE.id],
-            "bin-width",
-            10,
+            "field",
+            PEOPLE.LONGITUDE.id,
+            { binning: { strategy: "bin-width", "bin-width": 10 } },
           ],
         ],
       });
     });
 
     // it("should return breakout by state for breakout by country", () => {
-    //     const drillDown = drillDownForDimensions([
-    //         { column: col(PEOPLE.STATE.id) }
-    //     ], metadata);
-    //     expect(drillDown).toEqual({ breakouts: [
-    //         ["binning-strategy", ["field-id", PEOPLE.LATITUDE.id], "bin-width", 1],
-    //         ["binning-strategy", ["field-id", PEOPLE.LONGITUDE.id], "bin-width", 1],
-    //     ]});
-    // })
+    //   const drillDown = drillDownForDimensions([
+    //     { column: col(PEOPLE.STATE.id) }
+    //   ], metadata);
+    //   expect(drillDown).toEqual({ breakouts: [
+    //     ["field", PEOPLE.LATITUDE.id, {"binning": {"strategy": "bin-width", "bin-width": 1}}],
+    //     ["field", PEOPLE.LONGITUDE.id, {"binning": {"strategy": "bin-width", "bin-width": 1}}]
+    //   ]});
+    // });
   });
 });

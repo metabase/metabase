@@ -4,7 +4,7 @@ import { MBQLObjectClause } from "./MBQLClause";
 import { t } from "ttag";
 
 import StructuredQuery from "../StructuredQuery";
-import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import { pluralize } from "metabase/lib/formatting";
@@ -140,16 +140,14 @@ export default class Join extends MBQLObjectClause {
     if (alias !== this.alias) {
       const join = this.set({ ...this, alias });
       // propagate alias change to join dimension
-      // TODO: do this in a generic way for all joined-field clauses in the query
       const joinDimension = join.joinDimension();
       if (
-        joinDimension instanceof JoinedDimension &&
+        joinDimension instanceof FieldDimension &&
+        joinDimension.joinAlias() &&
         joinDimension.joinAlias() === this.alias
       ) {
-        // TODO: JoinedDimension should have setJoinAlias()
-        const mbql = joinDimension.mbql();
-        mbql[1] = alias;
-        return join.setJoinDimension(mbql);
+        const newDimension = joinDimension.withJoinAlias(alias);
+        return join.setJoinDimension(newDimension);
       } else {
         return join;
       }
@@ -271,6 +269,7 @@ export default class Join extends MBQLObjectClause {
     }
     return new DimensionOptions(options);
   }
+  // TODO -- in what way is this setting a "parent dimension"? These names make no sense
   setParentDimension(dimension: Dimension | ConcreteField): Join {
     if (dimension instanceof Dimension) {
       dimension = dimension.mbql();
@@ -377,11 +376,11 @@ export default class Join extends MBQLObjectClause {
   }
 
   joinedDimension(dimension: Dimension) {
-    return this.query().parseFieldReference([
-      "joined-field",
-      this.alias,
-      dimension.mbql(),
-    ]);
+    if (dimension instanceof FieldDimension) {
+      return dimension.withJoinAlias(this.alias);
+    }
+    console.warn("Don't know how to create joined dimension with:", dimension);
+    return dimension;
   }
 
   dependentMetadata() {

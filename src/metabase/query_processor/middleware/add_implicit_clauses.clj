@@ -4,7 +4,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
-            [metabase.models.table :as table :refer [Table]]
+            [metabase.models.table :as table]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.store :as qp.store]
@@ -14,7 +14,6 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Add Implicit Fields                                               |
@@ -27,7 +26,7 @@
     :active          true
     :visibility_type [:not-in ["sensitive" "retired"]]
     :parent_id       nil
-    {:order-by (table/field-order-rule (Table table-id))}))
+    {:order-by table/field-order-rule}))
 
 (s/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
@@ -40,11 +39,10 @@
                        :type     error-type/invalid-query})))
     (mapv
      (fn [field]
-       (if (types/temporal-field? field)
-         ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
-         ;; default bucketing of `:day`
-         [:datetime-field [:field-id (u/the-id field)] :default]
-         [:field-id (u/the-id field)]))
+       ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
+       ;; default bucketing of `:day`
+       [:field (u/the-id field) (when (types/temporal-field? field)
+                                  {:temporal-unit :default})])
      fields)))
 
 (s/defn ^:private source-metadata->fields :- mbql.s/Fields
@@ -52,15 +50,18 @@
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
   (distinct
    (for [{field-name :name, base-type :base_type, field-id :id, field-ref :field_ref} source-metadata]
-     (or
-      ;; If field ref is something that includes information needed to be able to refer to the Field, return that
-      ;; directly.
-      (mbql.u/match-one field-ref #{:joined-field :fk->} &match)
-      (if field-id
-        ;; otherwise return a `field-id` clause if we have a Field ID to make it with.
-        [:field-id field-id]
-        ;; otherwise return a `field-literal` clause, e.g. for an aggregation.
-        [:field-literal field-name base-type])))))
+     ;; return field-ref directly if it's a `:field` clause already. It might include important info such as
+     ;; `:join-alias` or `:source-field`. Remove binning/temporal bucketing info. The Field should already be getting
+     ;; bucketed in the source query; don't need to apply bucketing again in the parent query.
+     (or (some-> (mbql.u/match-one field-ref :field)
+                 (mbql.u/update-field-options dissoc :binning :temporal-unit))
+         ;; otherwise construct a field reference that can be used to refer to this Field.
+         (if field-id
+           ;; If we have a Field ID, return a `:field` (id) clause
+           [:field field-id nil]
+           ;; otherwise return a `:field` (name) clause, e.g. for a Field that's the result of an aggregation or
+           ;; expression
+           [:field field-name {:base-type base-type}])))))
 
 (s/defn ^:private should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:

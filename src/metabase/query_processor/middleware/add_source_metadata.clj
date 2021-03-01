@@ -22,7 +22,8 @@
     (and (every? empty? [breakouts aggregations])
          (or (empty? fields)
              (and (= (count fields) (count nested-source-metadata))
-                  (every? #(mbql.u/is-clause? :field-literal (mbql.u/unwrap-field-clause %)) fields))))))
+                  (every? #(mbql.u/match-one % [:field (_ :guard string?) _])
+                          fields))))))
 
 (s/defn ^:private native-source-query->metadata :- (s/maybe [mbql.s/SourceQueryMetadata])
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
@@ -57,7 +58,7 @@
                      :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
         (for [col cols]
           (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
-                            :semantic_type :unit :fingerprint :settings :source_alias :field_ref])))
+                            :semantic_type :unit :fingerprint :settings :source_alias :field_ref :parent_id])))
       (catch Throwable e
         (log/error e (str (trs "Error determining expected columns for query")))
         nil))))
@@ -70,22 +71,36 @@
     (cond-> inner-query
       (seq metadata) (assoc :source-metadata metadata))))
 
-(defn- can-add-source-metadata?
-  "Can we add `:source-metadata` about the `:source-query` in this map? True if all of the following are true:
+(defn- legacy-source-metadata?
+  "Whether this source metadata is *legacy* source metadata from < 0.38.0. Legacy source metadata did not include
+  `:field_ref` or `:id`, which made it hard to correctly construct queries with. For MBQL queries, we're better off
+  ignoring legacy source metadata and using `qp/query->expected-cols` to infer the source metadata rather than relying
+  on old stuff that can produce incorrect queries. See #14788 for more information."
+  [source-metadata]
+  (and (seq source-metadata)
+       (every? nil? (map :field_ref source-metadata))))
 
-  *  The map (e.g. an 'inner' MBQL query or a Join) has a `:source-query`
-  *  The `:source-query` is an MBQL query, or a native source query with `:source-metadata`"
+(defn- should-add-source-metadata?
+  "Should we add `:source-metadata` about the `:source-query` in this map? True if all of the following are true:
+
+  * The map (e.g. an 'inner' MBQL query or a Join) has a `:source-query`
+
+  * The map does not *already* have `:source-metadata`, or the `:source-metadata` is 'legacy' source metadata from
+    versions < 0.38.0
+
+  * The `:source-query` is an MBQL query, or a native source query with `:source-metadata`"
   [{{native-source-query?              :native
      source-query-has-source-metadata? :source-metadata
      :as                               source-query} :source-query
     :keys                                            [source-metadata]}]
   (and source-query
-       (not source-metadata)
+       (or (not source-metadata)
+           (legacy-source-metadata? source-metadata))
        (or (not native-source-query?)
            source-query-has-source-metadata?)))
 
 (defn- maybe-add-source-metadata [x]
-  (if (and (map? x) (can-add-source-metadata? x))
+  (if (and (map? x) (should-add-source-metadata? x))
     (add-source-metadata x)
     x))
 

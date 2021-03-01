@@ -110,7 +110,7 @@
               ;; rename `:query` to `:native` because source queries have a slightly different shape
               (let [native-query (set/rename-keys native-query {:query :native})]
                 (cond-> native-query
-                  ;; trim trailing slashes from SQL, but not other types of native queries
+                  ;; trim trailing comments from SQL, but not other types of native queries
                   (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
                   (empty? template-tags)           (dissoc :template-tags))))
             (throw (ex-info (tru "Missing source query in Card {0}" card-id)

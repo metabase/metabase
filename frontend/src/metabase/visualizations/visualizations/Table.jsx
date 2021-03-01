@@ -156,8 +156,7 @@ export default class Table extends Component {
     },
     // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
     //   { name: "COLUMN_NAME", enabled: true }
-    //   { fieldRef: ["fk->", 1, 2], enabled: true }
-    //   { fieldRef: ["fk->", ["field-id", 1], ["field-id", 2]], enabled: true }
+    //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
     "table.columns": {
       section: t`Columns`,
       title: t`Visible columns`,

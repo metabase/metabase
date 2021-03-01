@@ -154,10 +154,17 @@
   "The string to replace passwords with when serializing Databases."
   "**MetabasePass**")
 
-(def ^:const sensitive-fields
-  "List of fields that should be obfuscated in API responses, as they contain sensitive data."
-  [:password :pass :tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase
-   :access-token :refresh-token :service-account-json])
+(defn sensitive-fields-for-db
+  "Gets all sensitive fields that should be redacted in API responses for a given database. Delegates to
+  driver.u/sensitive-fields using the given database's driver (if valid), so refer to that for full details. If a valid
+  driver can't be clearly determined, this simply returns the default set (driver.u/default-sensitive-fields)."
+  [database]
+  (if (and (some? database) (not-empty database))
+      (let [driver (driver.u/database->driver database)]
+        (if (some? driver)
+            (driver.u/sensitive-fields (driver.u/database->driver database))
+            driver.u/default-sensitive-fields))
+      driver.u/default-sensitive-fields))
 
 ;; when encoding a Database as JSON remove the `details` for any non-admin User. For admin users they can still see
 ;; the `details` but remove anything resembling a password. No one gets to see this in an API response!
@@ -171,5 +178,5 @@
                             (reduce
                              #(m/update-existing %1 %2 (constantly protected-password))
                              details
-                             sensitive-fields))))
+                             (sensitive-fields-for-db db)))))
     json-generator)))

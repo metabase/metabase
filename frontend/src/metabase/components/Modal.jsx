@@ -56,11 +56,11 @@ export class WindowModal extends Component {
     }
   }
 
-  handleDismissal() {
+  handleDismissal = () => {
     if (this.props.onClose) {
       this.props.onClose();
     }
-  }
+  };
 
   _modalComponent() {
     const className = cx(
@@ -70,7 +70,7 @@ export class WindowModal extends Component {
         .map(type => `Modal--${type}`),
     );
     return (
-      <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
+      <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
         <div className={cx(className, "relative bg-white rounded")}>
           {getModalContent({
             ...this.props,
@@ -160,6 +160,12 @@ export class FullPageModal extends Component {
     }, 300);
   }
 
+  handleDismissal = () => {
+    if (this.props.onClose) {
+      this.props.onClose();
+    }
+  };
+
   _renderModal(open) {
     ReactDOM.unstable_renderSubtreeIntoContainer(
       this,
@@ -177,7 +183,7 @@ export class FullPageModal extends Component {
               occupies the entire screen. We do this to put this modal on top of
               the OnClickOutsideWrapper popover stack.  Otherwise, clicks within
               this modal might be seen as clicks outside another popover. */}
-            <OnClickOutsideWrapper>
+            <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
               <div
                 className="full-height relative scroll-y"
                 style={motionStyle}

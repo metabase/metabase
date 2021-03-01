@@ -25,8 +25,8 @@
 
 (defn scorer->score
   [scorer]
-  (comp :score
-        (partial #'search/score-with [scorer])))
+  (comp :text-score
+        (partial #'search/text-score-with [scorer])))
 
 (deftest consecutivity-scorer-test
   (let [score (scorer->score #'search/consecutivity-scorer)]
@@ -103,13 +103,78 @@
            (score ["rasta" "the" "toucan"]
                   (result-row "Rasta the toucan"))))))
 
-(deftest accumulate-top-results-test
+(deftest top-results-test
   (let [xf (map identity)]
     (testing "a non-full queue behaves normally"
-      (let [items (map (fn [i] [[2 2 i] (str "item " i)]) (range 10))]
-        (is (= items
-               (transduce xf search/accumulate-top-results items)))))
+      (let [items (->> (range 10)
+                       reverse ;; descending order
+                       (map (fn [i]
+                              {:score  [2 2 i]
+                               :result (str "item " i)})))]
+        (is (= (map :result items)
+               (search/top-results items xf)))))
     (testing "a full queue only saves the top items"
-      (let [sorted-items (map (fn [i] [[1 2 3 i] (str "item " i)]) (range (+ 10 search-config/max-filtered-results)))]
-        (is (= (drop 10 sorted-items)
-               (transduce xf search/accumulate-top-results (shuffle sorted-items))))))))
+      (let [sorted-items (->> (+ 10 search-config/max-filtered-results)
+                              range
+                              reverse ;; descending order
+                              (map (fn [i]
+                                     {:score  [1 2 3 i]
+                                      :result (str "item " i)})))]
+        (is (= (->> sorted-items
+                    (take search-config/max-filtered-results)
+                    (map :result))
+               (search/top-results (shuffle sorted-items) xf)))))))
+
+(deftest match-context-test
+  (let [context  #'search/match-context
+        match    (fn [text] {:text text :is_match true})
+        no-match (fn [text] {:text text :is_match false})]
+    (testing "it groups matches together"
+      (is (=
+           [(no-match "this is")
+            (match "rasta toucan's")
+            (no-match "collection of")
+            (match "toucan")
+            (no-match "things")]
+           (context
+               ["rasta" "toucan"]
+               ["this" "is" "rasta" "toucan's" "collection" "of" "toucan" "things"]))))
+    (testing "it handles no matches"
+      (is (= [(no-match "aviary stats")]
+             (context
+                 ["rasta" "toucan"]
+                 ["aviary" "stats"]))))))
+
+(deftest test-largest-common-subseq-length
+  (let [subseq-length (partial #'search/largest-common-subseq-length =)]
+    (testing "greedy choice can't be taken"
+      (is (= 3
+             (subseq-length ["garden" "path" "this" "is" "not" "a" "garden" "path"]
+                            ["a" "garden" "path"]))))
+    (testing "no match"
+      (is (= 0
+             (subseq-length ["can" "not" "be" "found"]
+                            ["The" "toucan" "is" "a" "South" "American" "bird"]))))
+    (testing "long matches"
+      (is (= 28
+             (subseq-length (map str '(this social bird lives in small flocks in lowland rainforests in countries such as costa rica
+                                       it flies short distances between trees toucans rest in holes in trees))
+                            (map str '(here is some filler
+                                       this social bird lives in small flocks in lowland rainforests in countries such as costa rica
+                                       it flies short distances between trees toucans rest in holes in trees
+                                       here is some more filler))))))))
+
+(deftest pinned-score-test
+  (let [score #'search/pinned-score
+        item (fn [collection-position] {:collection_position collection-position})]
+    (testing "it provides a sortable score"
+      (is (= [1 2 3 nil 0]
+             (->> [(item 0)
+                    ;; nil and 0 could theoretically be in either order, but it's a stable sort, so this is fine
+                   (item nil)
+                   (item 3)
+                   (item 1)
+                   (item 2)]
+                  (sort-by score)
+                  reverse
+                  (map :collection_position)))))))

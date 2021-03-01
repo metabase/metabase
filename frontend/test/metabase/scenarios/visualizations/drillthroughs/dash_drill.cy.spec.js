@@ -49,7 +49,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             database: 1,
             query: {
               aggregation: [["count"]],
-              filter: [">", ["field-id", ORDERS.TOTAL], 100],
+              filter: [">", ["field", ORDERS.TOTAL, null], 100],
               "source-table": ORDERS_ID,
             },
             type: "query",
@@ -83,8 +83,8 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               "source-table": PEOPLE_ID,
               aggregation: [["count"]],
               breakout: [
-                ["field-id", PEOPLE.SOURCE],
-                ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
+                ["field", PEOPLE.SOURCE, null],
+                ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
               ],
             },
             type: "query",
@@ -139,11 +139,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               aggregation: [["count"]],
               breakout: [
                 [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
-                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
               ],
             },
             type: "query",
@@ -197,7 +197,10 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                       {
                         parameter_id: "91bace6e",
                         card_id: QUESTION_ID,
-                        target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                        target: [
+                          "dimension",
+                          ["field", PRODUCTS.CATEGORY, null],
+                        ],
                       },
                     ],
                   },

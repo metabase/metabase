@@ -118,13 +118,13 @@
    :type     :query
    :query    (data/$ids venues
                {:source_table $$venues
-                :fields       [[:field-id $id]
-                               [:field-id $name]
-                               [:field-id $category_id]]})})
+                :fields       [$id
+                               $name
+                               $category_id]})})
 
 (defn ^:deprecated call-with-segmented-test-setup [make-query-fn f]
   (data/with-temp-copy-of-db
-    (let [attr-remappings {:cat ["variable" [:field-id (data/id :venues :category_id)]]}]
+    (let [attr-remappings {:cat ["variable" [:field (data/id :venues :category_id) nil]]}]
       (tt/with-temp* [Card                       [card  {:name          "magic"
                                                          :dataset_query (make-query-fn (data/id))}]
                       PermissionsGroup           [group {:name "Restricted Venues"}]

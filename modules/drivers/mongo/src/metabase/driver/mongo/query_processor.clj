@@ -13,14 +13,14 @@
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as ui18n :refer [tru]]
             [metabase.util.schema :as su]
             [monger.operators :refer :all]
             [schema.core :as s])
-  (:import metabase.models.field.FieldInstance
-           org.bson.types.ObjectId))
+  (:import org.bson.types.ObjectId))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -29,13 +29,15 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage   {(s/eq $project)     {su/NonBlankString s/Any}})
-(def ^:private $SortStage      {(s/eq $sort)        {su/NonBlankString (s/enum -1 1)}})
-(def ^:private $MatchStage     {(s/eq $match)       {(s/constrained su/NonBlankString (partial not= $not)) s/Any}})
-(def ^:private $GroupStage     {(s/eq $group)       {su/NonBlankString s/Any}})
-(def ^:private $AddFieldsStage {(s/eq "$addFields") {su/NonBlankString s/Any}})
-(def ^:private $LimitStage     {(s/eq $limit)       su/IntGreaterThanZero})
-(def ^:private $SkipStage      {(s/eq $skip)        su/IntGreaterThanZero})
+(def ^:private $ProjectStage   {(s/eq $project)    {su/NonBlankString s/Any}})
+(def ^:private $SortStage      {(s/eq $sort)       {su/NonBlankString (s/enum -1 1)}})
+(def ^:private $MatchStage     {(s/eq $match)      {(s/constrained (s/cond-pre su/NonBlankString s/Keyword)
+                                                                   #(not (#{:$not "$not"} %)))
+                                                    s/Any}})
+(def ^:private $GroupStage     {(s/eq $group)      {su/NonBlankString s/Any}})
+(def ^:private $AddFieldsStage {(s/eq :$addFields) {su/NonBlankString s/Any}})
+(def ^:private $LimitStage     {(s/eq $limit)      su/IntGreaterThanZero})
+(def ^:private $SkipStage      {(s/eq $skip)       su/IntGreaterThanZero})
 
 (defn- is-stage? [stage]
   (fn [m] (= (first (keys m)) stage)))
@@ -44,13 +46,13 @@
   (s/both
    (s/constrained su/Map #(= (count (keys %)) 1) "map with a single key")
    (s/conditional
-    (is-stage? $project)     $ProjectStage
-    (is-stage? $sort)        $SortStage
-    (is-stage? $group)       $GroupStage
-    (is-stage? "$addFields") $AddFieldsStage
-    (is-stage? $match)       $MatchStage
-    (is-stage? $limit)       $LimitStage
-    (is-stage? $skip)        $SkipStage)))
+    (is-stage? $project)    $ProjectStage
+    (is-stage? $sort)       $SortStage
+    (is-stage? $group)      $GroupStage
+    (is-stage? :$addFields) $AddFieldsStage
+    (is-stage? $match)      $MatchStage
+    (is-stage? $limit)      $LimitStage
+    (is-stage? $skip)       $SkipStage)))
 
 (def ^:private Pipeline [Stage])
 
@@ -61,6 +63,7 @@
     [\"_id\" \"date~~~default\" \"user_id\" \"venue_id\"]"
   [s/Str])
 
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    QP Impl                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -68,24 +71,6 @@
 
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
-
-(defn- log-aggregation-pipeline [form]
-  (when-not i/*disable-qp-logging*
-    (log/tracef "\nMongo aggregation pipeline:\n%s\n"
-                (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
-
-
-;;; # STRUCTURED QUERY PROCESSOR
-
-;;; ## FORMATTING
-
-;; We're not allowed to use field names that contain a period in the Mongo aggregation $group stage.
-;; Not OK:
-;;   {"$group" {"source.username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
-;;
-;; For *nested* Fields, we'll replace the '.' with '___', and restore the original names afterward.
-;; Escaped:
-;;   {"$group" {"source___username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
 
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
@@ -98,18 +83,16 @@
   {:arglists '([field])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(defmulti ^:private ->initial-rvalue
-  "Return the rvalue that should be used in the *initial* projection for this `Field`."
-  {:arglists '([field])}
-  mbql.u/dispatch-by-clause-name-or-class)
+(defn- field-name-components [field]
+  (concat
+   (when-let [parent-id (:parent_id field)]
+     (field-name-components (qp.store/field parent-id)))
+   [(:name field)]))
 
 (defn field->name
   "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
-  ^String [^FieldInstance field, ^String separator]
-  (if-let [parent-id (:parent_id field)]
-    (str/join separator [(field->name (qp.store/field parent-id) separator)
-                         (:name field)])
-    (:name field)))
+  [field separator]
+  (str/join separator (field-name-components field)))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -118,57 +101,48 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
-
 (defmethod ->lvalue (class Field)
   [field]
-  (field->name field "___"))
-
-(defmethod ->initial-rvalue (class Field)
-  [{semantic-type :semantic_type, :as field}]
-  (let [field-name (str \$ (field->name field "."))]
-    (cond
-      ;; TIMEZONE FIXME — use `java.time` classes
-      (isa? (:semantic_type field) :type/UNIXTimestampMicroseconds)
-      {$add [(java.util.Date. 0) {$divide [field-name 1000]}]}
-
-      (isa? (:semantic_type field) :type/UNIXTimestampMilliseconds)
-      {$add [(java.util.Date. 0) field-name]}
-
-      (isa? (:semantic_type field) :type/UNIXTimestampSeconds)
-      {$add [(java.util.Date. 0) {$multiply [field-name 1000]}]}
-
-      :else field-name)))
+  (field->name field \.))
 
 (defmethod ->rvalue :default
   [x]
   x)
 
 (defmethod ->rvalue (class Field)
-  [field]
-  (str \$ (->lvalue field)))
+  [{semantic-type :semantic_type, :as field}]
+  (let [field-name (str \$ (field->name field "."))]
+    (cond
+      (isa? semantic-type :type/UNIXTimestampMicroseconds)
+      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970}}
 
-(defmethod ->lvalue         :field-id [[_ field-id]] (->lvalue          (qp.store/field field-id)))
-(defmethod ->initial-rvalue :field-id [[_ field-id]] (->initial-rvalue  (qp.store/field field-id)))
-(defmethod ->rvalue         :field-id [[_ field-id]] (->rvalue          (qp.store/field field-id)))
+      (isa? semantic-type :type/UNIXTimestampMilliseconds)
+      {:$dateFromParts {:millisecond field-name, :year 1970}}
 
-(defmethod ->lvalue         :field-literal [[_ field-name]] (name field-name))
-(defmethod ->initial-rvalue :field-literal [[_ field-name]] (str \$ (name field-name)))
-(defmethod ->rvalue         :field-literal [[_ field-name]] (str \$ (name field-name))) ; TODO - not sure if right?
+      (isa? semantic-type :type/UNIXTimestampSeconds)
+      {:$dateFromParts {:second field-name, :year 1970}}
+
+      :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
 ;;    aggregations[0] = 20
 ;;
-;; makes no sense. It doesn't have an initial projection either so no need to implement `->initial-rvalue`
 (defmethod ->lvalue :aggregation
   [[_ index]]
   (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index)))
-;; TODO - does this need to implement `->lvalue` and `->initial-rvalue` ?
 
+(defn- with-lvalue-temporal-bucketing [field unit]
+  (if (= unit :default)
+    field
+    (str field "~~~" (name unit))))
 
-(defmethod ->lvalue :datetime-field
-  [[_ field-clause unit]]
-  (str (->lvalue field-clause) "~~~" (name unit)))
+(defmethod ->lvalue :field
+  [[_ id-or-name {:keys [temporal-unit]}]]
+  (cond-> (if (integer? id-or-name)
+            (->lvalue (qp.store/field id-or-name))
+            (name id-or-name))
+    temporal-unit (with-lvalue-temporal-bucketing temporal-unit)))
 
 (defn- day-of-week
   [column]
@@ -186,52 +160,62 @@
                                       1]}
                           (* 24 60 60 1000)]}]})
 
-(defmethod ->initial-rvalue :datetime-field
-  [[_ field-clause unit]]
-  (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
-        field    (when (integer? field-id)
-                   (qp.store/field field-id))]
-    (mongo-let [column (->initial-rvalue field-clause)]
-      (letfn [(stringify
-                ([format-string]
-                 (stringify format-string column))
-                ([format-string fld]
-                 {:___date {:$dateToString {:format format-string
-                                            :date   fld}}}))]
+(defn- truncate-to-resolution [column resolution]
+  (mongo-let [parts {:$dateToParts {:date column}}]
+    {:$dateFromParts (into {} (for [part (concat (take-while (partial not= resolution)
+                                                             [:year :month :day :hour :minute :second :millisecond])
+                                                 [resolution])]
+                                [part (str (name parts) \. (name part))]))}))
+
+(defn- with-rvalue-temporal-bucketing
+  [field unit]
+  (if (= unit :default)
+    field
+    (let [column field]
+      (letfn [(truncate [unit]
+                (truncate-to-resolution column unit))]
         (case unit
-          :default         column
-          :minute          (stringify "%Y-%m-%dT%H:%M:00")
-          :minute-of-hour  {$minute column}
-          :hour            (stringify "%Y-%m-%dT%H:00:00")
-          :hour-of-day     {$hour column}
-          :day             (stringify "%Y-%m-%d")
-          :day-of-week     (day-of-week column)
-          :day-of-month    {$dayOfMonth column}
-          :day-of-year     {$dayOfYear column}
-          :week            (stringify "%Y-%m-%d" (week column))
-          :week-of-year    {"$ceil" {$divide [{$dayOfYear (week column)}
-                                              7.0]}}
-          :month           (stringify "%Y-%m")
-          :month-of-year   {$month column}
+          :default        column
+          :minute         (truncate :minute)
+          :minute-of-hour {$minute column}
+          :hour           (truncate :hour)
+          :hour-of-day    {$hour column}
+          :day            (truncate :day)
+          :day-of-week    (day-of-week column)
+          :day-of-month   {$dayOfMonth column}
+          :day-of-year    {$dayOfYear column}
+          :week           (truncate-to-resolution (week column) :day)
+          :week-of-year   {:$ceil {$divide [{$dayOfYear (week column)}
+                                            7.0]}}
+          :month          (truncate :month)
+          :month-of-year  {$month column}
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
-          :quarter         (stringify "%Y-%m" {$subtract [column
-                                                          {$multiply [{$subtract [{$mod [{$dayOfYear column}
-                                                                                         91]}
-                                                                                  3]}
-                                                                      (* 24 60 60 1000)]}]})
-          :quarter-of-year (mongo-let [month   {$month column}]
-                             {$divide [{$subtract [{$add [month 2]}
-                                                   {$mod [{$add [month 2]}
-                                                          3]}]}
-                                       3]})
-          :year            (stringify "%Y"))))))
+          :quarter
+          (mongo-let [parts {:$dateToParts {:date column}}]
+            {:$dateFromParts {:year  :$$parts.year
+                              :month {$subtract [:$$parts.month
+                                                 {$mod [{$add [:$$parts.month 2]}
+                                                        3]}]}}})
 
+          :quarter-of-year
+          (mongo-let [month {$month column}]
+            ;; TODO -- $floor ?
+            {$divide [{$subtract [{$add [month 2]}
+                                  {$mod [{$add [month 2]}
+                                         3]}]}
+                      3]})
 
-(defmethod ->rvalue :datetime-field
-  [this]
-  (str \$ (->lvalue this)))
+          :year
+          (truncate :year))))))
+
+(defmethod ->rvalue :field
+  [[_ id-or-name {:keys [temporal-unit]}]]
+  (cond-> (if (integer? id-or-name)
+            (->rvalue (qp.store/field id-or-name))
+            (str \$ (name id-or-name)))
+    temporal-unit (with-rvalue-temporal-bucketing temporal-unit)))
 
 ;; Values clauses below; they only need to implement `->rvalue`
 
@@ -246,75 +230,77 @@
     (ObjectId. (str value))
     value))
 
+(defn- $date-from-string [s]
+  {:$dateFromString {:dateString (str s)}})
+
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
-  (letfn [(stringify
-            ([format-string]
-             (stringify format-string t))
-            ([format-string t]
-             {:___date (t/format format-string t)}))
-          (extract [unit]
-            (u.date/extract t unit))]
-    (case (or unit :default)
-      :default         (t/to-java-date t)
-      :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
-      :minute-of-hour  (extract :minute)
-      :hour            (stringify "yyyy-MM-dd'T'HH:00:00")
-      :hour-of-day     (extract :hour)
-      :day             (stringify "yyyy-MM-dd")
-      :day-of-week     (extract :day-of-week)
-      :day-of-month    (extract :day-of-month)
-      :day-of-year     (extract :day-of-year)
-      :week            (stringify "yyyy-MM-dd" (u.date/truncate t :week))
-      :week-of-year    (extract :week-of-year)
-      :month           (stringify "yyyy-MM")
-      :month-of-year   (extract :month-of-year)
-      :quarter         (stringify "yyyy-MM" (u.date/truncate t :quarter))
-      :quarter-of-year (extract :quarter-of-year)
-      :year            (stringify "yyyy"))))
+  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
+                                   "UTC"))
+        t           (condp = (class t)
+                      java.time.LocalDate      t
+                      java.time.LocalTime      t
+                      java.time.LocalDateTime  t
+                      java.time.OffsetTime     (t/with-offset-same-instant t report-zone)
+                      java.time.OffsetDateTime (t/with-offset-same-instant t report-zone)
+                      java.time.ZonedDateTime  (t/offset-date-time (t/with-zone-same-instant t report-zone)))]
+    (letfn [(extract [unit]
+              (u.date/extract t unit))
+            (bucket [unit]
+              ($date-from-string (u.date/bucket t unit)))]
+      (case (or unit :default)
+        :default         ($date-from-string t)
+        :minute          (bucket :minute)
+        :minute-of-hour  (extract :minute-of-hour)
+        :hour            (bucket :hour)
+        :hour-of-day     (extract :hour-of-day)
+        :day             (bucket :day)
+        :day-of-week     (extract :day-of-week)
+        :day-of-month    (extract :day-of-month)
+        :day-of-year     (extract :day-of-year)
+        :week            (bucket :week)
+        :week-of-year    (extract :week-of-year)
+        :month           (bucket :month)
+        :month-of-year   (extract :month-of-year)
+        :quarter         (bucket :quarter)
+        :quarter-of-year (extract :quarter-of-year)
+        :year            (bucket :year)))))
 
-;; TODO - where's the part where we handle include-current?
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
-  (->rvalue [:absolute-datetime (u.date/add (or unit :day) amount) unit]))
+  (let [t (-> (t/zoned-date-time)
+              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
+                                                       "UTC"))))]
+    ($date-from-string
+     (t/offset-date-time
+      (if (= unit :default)
+        t
+        (-> t
+            (u.date/add unit amount)
+            (u.date/bucket unit)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
-;;; ----------------------------------------------- initial projection -----------------------------------------------
-
-(defn- identity-projection? [m]
-  (every? (fn [[k v]]
-            (= (str \$ k) v))
-          m))
-
-(s/defn ^:private add-initial-projection :- {:projections Projections, :query Pipeline}
-  [inner-query pipeline-ctx]
-  (let [all-fields (distinct (mbql.u/match inner-query #{:field-id :datetime-field}))]
-    (if-not (seq all-fields)
-      pipeline-ctx
-      (let [projection+initial-rvalue (for [field all-fields]
-                                        [(->lvalue field) (->initial-rvalue field)])
-            initial-projection        (into (ordered-map/ordered-map) projection+initial-rvalue)]
-        (cond-> (assoc pipeline-ctx :projections (mapv first projection+initial-rvalue))
-          ;; add the initial projection only if it's actually doing something
-          (not (identity-projection? initial-projection))
-          (update :query conj {$project initial-projection}))))))
-
-
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 (defmethod ->rvalue ::not [[_ value]]
   {$not (->rvalue value)})
 
-(defmulti ^:private parse-filter first)
+(defmulti ^:private compile-filter mbql.u/dispatch-by-clause-name-or-class)
 
-(defmethod parse-filter :between [[_ field min-val max-val]]
-  {(->lvalue field) {$gte (->rvalue min-val)
-                     $lte (->rvalue max-val)}})
+(def ^:private ^:dynamic *top-level-filter?*
+  "Whether we are compiling a top-level filter clause. This means we can generate somewhat simpler `$match` clauses that
+  don't need to use `$expr` (see below)."
+  true)
+
+(defmethod compile-filter :between
+  [[_ field min-val max-val]]
+  (compile-filter [:and
+                   [:>= field min-val]
+                   [:<= field max-val]]))
 
 (defn- str-match-pattern [options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)
@@ -322,25 +308,51 @@
     (let [case-sensitive? (get options :case-sensitive true)]
       (re-pattern (str (when-not case-sensitive? "(?i)") prefix (->rvalue value) suffix)))))
 
-(defmethod parse-filter :contains    [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v nil)})
-(defmethod parse-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
-(defmethod parse-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
+(defmethod compile-filter :contains    [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v nil)})
+(defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
+(defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
 
-(defmethod parse-filter :=  [[_ field value]] {(->lvalue field) {$eq  (->rvalue value)}})
-(defmethod parse-filter :!= [[_ field value]] {(->lvalue field) {$ne  (->rvalue value)}})
-(defmethod parse-filter :<  [[_ field value]] {(->lvalue field) {$lt  (->rvalue value)}})
-(defmethod parse-filter :>  [[_ field value]] {(->lvalue field) {$gt  (->rvalue value)}})
-(defmethod parse-filter :<= [[_ field value]] {(->lvalue field) {$lte (->rvalue value)}})
-(defmethod parse-filter :>= [[_ field value]] {(->lvalue field) {$gte (->rvalue value)}})
+(defn- simple-rvalue? [rvalue]
+  (and (string? rvalue)
+       (str/starts-with? rvalue "$")))
 
-(defmethod parse-filter :and [[_ & args]] {$and (mapv parse-filter args)})
-(defmethod parse-filter :or  [[_ & args]] {$or (mapv parse-filter args)})
+(defn- filter-expr [operator field value]
+  (let [field-rvalue (->rvalue field)
+        value-rvalue (->rvalue value)]
+    (if (and (simple-rvalue? field-rvalue) *top-level-filter?*)
+      ;; if we don't need to do anything fancy with field we can generate a clause like
+      ;;
+      ;;    {field {$eq 100}}
+      ;;
+      ;; this only works at the top level. Doesn't work inside compound expressions
+      {(str/replace-first field-rvalue #"^\$" "") {operator value-rvalue}}
+      ;; if we need to do something fancy then we have to use `$expr` e.g.
+      ;;
+      ;;    {$expr {$eq [{$add [$field 1]} 100]}}
+      {:$expr {operator [field-rvalue value-rvalue]}})))
+
+(defmethod compile-filter :=  [[_ field value]] (filter-expr $eq field value))
+(defmethod compile-filter :!= [[_ field value]] (filter-expr $ne field value))
+(defmethod compile-filter :<  [[_ field value]] (filter-expr $lt field value))
+(defmethod compile-filter :>  [[_ field value]] (filter-expr $gt field value))
+(defmethod compile-filter :<= [[_ field value]] (filter-expr $lte field value))
+(defmethod compile-filter :>= [[_ field value]] (filter-expr $gte field value))
+
+(defmethod compile-filter :and
+  [[_ & args]]
+  (binding [*top-level-filter?* false]
+    {$and (mapv compile-filter args)}))
+
+(defmethod compile-filter :or
+  [[_ & args]]
+  (binding [*top-level-filter?* false]
+    {$or (mapv compile-filter args)}))
 
 
 ;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
 ;; to negate everything, with the exception of the string filter clauses, which we will convert to a `{not <regex}`
 ;; clause (see `->rvalue` for `::not` above). `negate` below wraps the MBQL lib function
-(defmulti ^:private negate first)
+(defmulti ^:private negate mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod negate :default [clause]
   (mbql.u/negate-filter-clause clause))
@@ -352,20 +364,21 @@
 (defmethod negate :starts-with [[_ field v opts]] [:starts-with field [::not v] opts])
 (defmethod negate :ends-with   [[_ field v opts]] [:ends-with field [::not v] opts])
 
-(defmethod parse-filter :not [[_ subclause]]
-  (parse-filter (negate subclause)))
+(defmethod compile-filter :not [[_ subclause]]
+  (compile-filter (negate subclause)))
 
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if-not filter-clause
     pipeline-ctx
-    (update pipeline-ctx :query conj {$match (parse-filter filter-clause)})))
+    (update pipeline-ctx :query conj {$match (compile-filter filter-clause)})))
 
-(defmulti ^:private parse-cond first)
+(defmulti ^:private compile-cond mbql.u/dispatch-by-clause-name-or-class)
 
-(defmethod parse-cond :between [[_ field min-val max-val]]
-  (parse-cond [:and [:>= field min-val] [:< field max-val]]))
+(defmethod compile-cond :between [[_ field min-val max-val]]
+  (compile-cond [:and [:>= field min-val] [:< field max-val]]))
 
-(defn- indexOfCP
+(defn- index-of-code-point
+  "See https://docs.mongodb.com/manual/reference/operator/aggregation/indexOfCP/"
   [source needle case-sensitive?]
   (let [source (if case-sensitive?
                  (->rvalue source)
@@ -373,42 +386,49 @@
         needle (if case-sensitive?
                  (->rvalue needle)
                  {$toLower (->rvalue needle)})]
-    {"$indexOfCP" [source needle]}))
+    {:$indexOfCP [source needle]}))
 
-(defmethod parse-cond :contains    [[_ field value opts]] {$ne [(indexOfCP field value (get opts :case-sensitive true)) -1]})
-(defmethod parse-cond :starts-with [[_ field value opts]] {$eq [(indexOfCP field value (get opts :case-sensitive true)) 0]})
-(defmethod parse-cond :ends-with   [[_ field value opts]]
+(defmethod compile-cond :contains
+  [[_ field value opts]]
+  {$ne [(index-of-code-point field value (get opts :case-sensitive true)) -1]})
+
+(defmethod compile-cond :starts-with
+  [[_ field value opts]]
+  {$eq [(index-of-code-point field value (get opts :case-sensitive true)) 0]})
+
+(defmethod compile-cond :ends-with
+  [[_ field value opts]]
   (let [strcmp (fn [a b]
                  (if (get opts :case-sensitive true)
                    {$eq [a b]}
                    {$eq [{$strcasecmp [a b]} 0]}))]
-    (strcmp {"$substrCP" [(->rvalue field)
-                          {$subtract [{"$strLenCP" (->rvalue field)}
-                                      {"$strLenCP" (->rvalue value)}]}
-                          {"$strLenCP" (->rvalue value)}]}
+    (strcmp {:$substrCP [(->rvalue field)
+                         {$subtract [{:$strLenCP (->rvalue field)}
+                                     {:$strLenCP (->rvalue value)}]}
+                         {:$strLenCP (->rvalue value)}]}
             (->rvalue value))))
 
-(defmethod parse-cond :=  [[_ field value]] {$eq [(->rvalue field) (->rvalue value)]})
-(defmethod parse-cond :!= [[_ field value]] {$ne [(->rvalue field) (->rvalue value)]})
-(defmethod parse-cond :<  [[_ field value]] {$lt [(->rvalue field) (->rvalue value)]})
-(defmethod parse-cond :>  [[_ field value]] {$gt [(->rvalue field) (->rvalue value)]})
-(defmethod parse-cond :<= [[_ field value]] {$lte [(->rvalue field) (->rvalue value)]})
-(defmethod parse-cond :>= [[_ field value]] {$gte [(->rvalue field) (->rvalue value)]})
+(defmethod compile-cond :=  [[_ field value]] {$eq [(->rvalue field) (->rvalue value)]})
+(defmethod compile-cond :!= [[_ field value]] {$ne [(->rvalue field) (->rvalue value)]})
+(defmethod compile-cond :<  [[_ field value]] {$lt [(->rvalue field) (->rvalue value)]})
+(defmethod compile-cond :>  [[_ field value]] {$gt [(->rvalue field) (->rvalue value)]})
+(defmethod compile-cond :<= [[_ field value]] {$lte [(->rvalue field) (->rvalue value)]})
+(defmethod compile-cond :>= [[_ field value]] {$gte [(->rvalue field) (->rvalue value)]})
 
-(defmethod parse-cond :and [[_ & args]] {$and (mapv parse-cond args)})
-(defmethod parse-cond :or  [[_ & args]] {$or (mapv parse-cond args)})
+(defmethod compile-cond :and [[_ & args]] {$and (mapv compile-cond args)})
+(defmethod compile-cond :or  [[_ & args]] {$or (mapv compile-cond args)})
 
-(defmethod parse-cond :not [[_ subclause]]
-  (parse-cond (negate subclause)))
+(defmethod compile-cond :not [[_ subclause]]
+  (compile-cond (negate subclause)))
 
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (defmethod ->rvalue :case [[_ cases options]]
-  {"$switch" {:branches (for [[pred expr] cases]
-                          {:case (parse-cond pred)
-                           :then (->rvalue expr)})
-              :default  (->rvalue (:default options))}})
+  {:$switch {:branches (for [[pred expr] cases]
+                         {:case (compile-cond pred)
+                          :then (->rvalue expr)})
+             :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
   (mbql.u/match-one ag
@@ -439,7 +459,7 @@
     {$max (->rvalue arg)}
 
     [:sum-where arg pred]
-    {$sum {$cond {:if   (parse-cond pred)
+    {$sum {$cond {:if   (compile-cond pred)
                   :then (->rvalue arg)
                   :else 0}}}
 
@@ -464,10 +484,11 @@
   (concat
    (for [field breakout-fields]
      [(->lvalue field) (format "$_id.%s" (->lvalue field))])
-   (for [ag aggregations]
-     [(annotate/aggregation-name ag) (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
-                                       {$size "$count"} ; HACK
-                                       true)])))
+   (for [ag aggregations
+         :let [ag-name (annotate/aggregation-name ag)]]
+     [ag-name (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
+                {$size (str \$ ag-name)}
+                true)])))
 
 (defmulti ^:private expand-aggregation (comp first unwrap-named-ag))
 
@@ -498,37 +519,42 @@
         post-ags     (mapcat second expanded-ags)]
     [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
      (when (not-empty post-ags)
-       {"$addFields" (into (ordered-map/ordered-map) post-ags)})]))
+       {:$addFields (into (ordered-map/ordered-map) post-ags)})]))
 
-(defn- lvalue?
-  [x]
-  (try
-    (some? (->lvalue x))
-    (catch IllegalArgumentException _
-      false)))
+(defn- ordered-map-assoc-in [m ks v]
+  (cond
+    (= (count ks) 1)
+    (assoc (ordered-map/ordered-map m) (first ks) v)
+
+    (pos? (count ks))
+    (update (ordered-map/ordered-map m) (first ks) ordered-map-assoc-in (rest ks) v)))
+
+(defn- projection-group-map [fields]
+  (reduce
+   (fn [m field-clause]
+     (assoc-in
+      m
+      (mbql.u/match-one field-clause
+        [:field (field-id :guard integer?) _]
+        (str/split (->lvalue field-clause) #"\.")
+
+        [:field (field-name :guard string?) _]
+        [field-name])
+      (->rvalue field-clause)))
+   (ordered-map/ordered-map)
+   fields))
 
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
   [projected-fields breakout-fields aggregations]
   (mapcat
    (partial remove nil?)
-   [;; create a totally sweet made-up column called `___group` to store the fields we'd
-    ;; like to group by
-    (when (seq breakout-fields)
-      [{$project (into
-                  (ordered-map/ordered-map "_id"      "$_id"
-                                           "___group" (into
-                                                        (ordered-map/ordered-map)
-                                                        (for [field breakout-fields]
-                                                          [(->lvalue field) (->rvalue field)])))
-                  (comp (map (comp second unwrap-named-ag))
-                        (mapcat (fn [ag-fields]
-                                  (for [ag-field (mbql.u/match ag-fields lvalue?)]
-                                    [(->lvalue ag-field) (->rvalue ag-field)]))))
-                  aggregations)}])
-    ;; Now project onto the __group and the aggregation rvalue
-    (group-and-post-aggregations (when (seq breakout-fields) "$___group") aggregations)
-    [;; Sort by _id (___group)
+   [;; create the $group clause
+    (group-and-post-aggregations
+     (when (seq breakout-fields)
+       (projection-group-map breakout-fields))
+     aggregations)
+    [ ;; Sort by _id (group)
      {$sort {"_id" 1}}
      ;; now project back to the fields we expect
      {$project (into
@@ -610,8 +636,7 @@
   (reduce (fn [pipeline-ctx f]
             (f inner-query pipeline-ctx))
           {:projections [], :query []}
-          [add-initial-projection
-           handle-filter
+          [handle-filter
            handle-breakout+aggregation
            handle-order-by
            handle-fields
@@ -627,6 +652,11 @@
     (when (and (= (last &parents) :source-query)
                (not (contains? (set &parents) :joins)))
       (:collection &match))))
+
+(defn- log-aggregation-pipeline [form]
+  (when-not i/*disable-qp-logging*
+    (log/tracef "\nMongo aggregation pipeline:\n%s\n"
+                (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
 (defn mbql->native
   "Process and run an MBQL query."

@@ -30,19 +30,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           aggregation: [["count"]],
           breakout: [
             [
-              "datetime-field",
-              [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.CREATED_AT],
-              ],
-              "month",
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
             ],
-            [
-              "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.CATEGORY],
-            ],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
         },
         type: "query",
@@ -86,9 +78,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
         type: "query",
       },
@@ -104,11 +94,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           query: {
             "source-table": ORDERS_ID,
             aggregation: [
-              ["avg", ["field-id", ORDERS.DISCOUNT]],
-              ["avg", ["field-id", ORDERS.QUANTITY]],
+              ["avg", ["field", ORDERS.DISCOUNT, null]],
+              ["avg", ["field", ORDERS.QUANTITY, null]],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           type: "query",
@@ -234,7 +224,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
-          breakout: [["datetime-field", ORDERS.CREATED_AT, "week"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
         },
         type: "query",
       },
@@ -378,11 +368,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
                 "source-table": `card__${SQL_ID}`,
                 condition: [
                   "=",
-                  ["field-id", PEOPLE.ID],
+                  ["field", PEOPLE.ID, null],
                   [
-                    "joined-field",
-                    ALIAS,
-                    ["field-literal", "ID", "type/BigInteger"],
+                    "field",
+                    "ID",
+                    { "base-type": "type/BigInteger", "join-alias": ALIAS },
                   ],
                 ],
                 alias: ALIAS,
@@ -390,7 +380,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             ],
             aggregation: [["count"]],
             breakout: [
-              ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
+              ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
             ],
           },
           database: 1,

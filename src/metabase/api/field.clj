@@ -155,7 +155,7 @@
                         human_readable_field_id))
       [400 "Foreign key based remappings require a human readable field id"])
     (if-let [dimension (Dimension :field_id id)]
-      (db/update! Dimension (u/get-id dimension)
+      (db/update! Dimension (u/the-id dimension)
         {:type dimension-type
          :name dimension-name
          :human_readable_field_id human_readable_field_id})
@@ -195,7 +195,7 @@
   (memoize/ttl
    (fn [_ _ field]
      {:values   (map vector (field-values/distinct-values field))
-      :field_id (u/get-id field)})
+      :field_id (u/the-id field)})
    ;; Expire entires older than 30 days so we don't have entries for users and/or fields that
    ;; no longer exists hanging around.
    ;; (`clojure.core.cache/TTLCacheQ` (which `memoize` uses underneath) evicts all stale entries on
@@ -206,7 +206,7 @@
   [field]
   (fetch-sandboxed-field-values*
    api/*current-user-id*
-   (db/select-one-field :updated_at FieldValues :field_id (u/get-id field))
+   (db/select-one-field :updated_at FieldValues :field_id (u/the-id field))
    field))
 
 (api/defendpoint GET "/:id/values"
@@ -227,9 +227,9 @@
       :else
       (api/throw-403))))
 
-;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
-;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
-(api/defendpoint GET "/field-literal%2C:field-name%2Ctype%2F:field-type/values"
+;; match things like GET /field%2Ccreated_at%2options
+;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)
+(api/defendpoint GET "/field%2C:field-name%2C:options/values"
   "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
   convenience to simplify the frontend code. It just returns the standard 'empty' field values response."
   ;; we don't actually care what field-name or field-type are, so they're ignored
@@ -258,7 +258,7 @@
   [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
     (db/insert! FieldValues
-      :field_id (u/get-id field-or-id)
+      :field_id (u/the-id field-or-id)
       :values (map first value-pairs)
       :human_readable_values (when human-readable-values?
                                (map second value-pairs)))))
@@ -298,10 +298,10 @@
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
 (defn- table-id [field]
-  (u/get-id (:table_id field)))
+  (u/the-id (:table_id field)))
 
 (defn- db-id [field]
-  (u/get-id (db/select-one-field :db_id Table :id (table-id field))))
+  (u/the-id (db/select-one-field :db_id Table :id (table-id field))))
 
 (defn- follow-fks
   "Automatically follow the target IDs in an FK `field` until we reach the PK it points to, and return that. For
@@ -325,14 +325,14 @@
   {:database (db-id field)
    :type     :query
    :query    {:source-table (table-id field)
-              :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
+              :filter       [:starts-with [:field (u/the-id search-field) nil] value {:case-sensitive false}]
               ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
               ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
               ;; identifiers/aliases
-              :breakout     (if (= (u/get-id field) (u/get-id search-field))
-                              [[:field-id (u/get-id field)]]
-                              [[:field-id (u/get-id field)]
-                               [:field-id (u/get-id search-field)]])
+              :breakout     (if (= (u/the-id field) (u/the-id search-field))
+                              [[:field (u/the-id field) nil]]
+                              [[:field (u/the-id field) nil]
+                               [:field (u/the-id search-field) nil]])
               :limit        limit}})
 
 (s/defn search-values
@@ -354,7 +354,7 @@
           rows    (get-in results [:data :rows])]
       ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
       ;; return them as-is
-      (if-not (= (u/get-id field) (u/get-id search-field))
+      (if-not (= (u/the-id field) (u/the-id search-field))
         rows
         ;; However if the Fields are both the same results will be in the format [[v1] [v1]] so we need to double the
         ;; value to get the format the frontend expects
@@ -377,7 +377,6 @@
     (throw-if-no-read-or-segmented-perms search-field)
     (search-values field search-field value (when limit (Integer/parseInt limit)))))
 
-
 (defn remapped-value
   "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like
 
@@ -396,9 +395,9 @@
                    {:database (db-id field)
                     :type     :query
                     :query    {:source-table (table-id field)
-                               :filter       [:= [:field-id (u/get-id field)] value]
-                               :fields       [[:field-id (u/get-id field)]
-                                              [:field-id (u/get-id remapped-field)]]
+                               :filter       [:= [:field (u/the-id field) nil] value]
+                               :fields       [[:field (u/the-id field) nil]
+                                              [:field (u/the-id remapped-field) nil]]
                                :limit        1}})]
       ;; return first row if it exists
       (first (get-in results [:data :rows])))
@@ -410,7 +409,7 @@
 (defn parse-query-param-value-for-field
   "Parse a `value` passed as a URL query param in a way appropriate for the `field` it belongs to. E.g. for text Fields
   the value doesn't need to be parsed; for numeric Fields we should parse it as a number."
-  [field, ^String value]
+  [field ^String value]
   (if (isa? (:base_type field) :type/Number)
     (.parse (NumberFormat/getInstance) value)
     value))

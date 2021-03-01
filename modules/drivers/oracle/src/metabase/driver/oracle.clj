@@ -81,7 +81,7 @@
 
 (defmethod driver/can-connect? :oracle
   [driver details]
-  (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel details))]
+  (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel! details))]
     (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
 
 (defmethod driver/db-start-of-week :oracle

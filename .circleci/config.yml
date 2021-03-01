@@ -174,6 +174,7 @@ executors:
         environment:
           ACCEPT_EULA: Y
           SA_PASSWORD: 'P@ssw0rd'
+          MSSQL_MEMORY_LIMIT_MB: 1024
 
   fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
@@ -491,7 +492,7 @@ jobs:
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
-          find-args: ". -type f -name '*.clj' -or -name '*.java' -or -name deps.edn -or -name metabase-plugin.yaml"
+          find-args: ". -type f -name '*.clj' -or -name '*.java' -or -name '*.edn' -or -name '*.yaml' -or -name sample-dataset.db.mv.db"
       # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
@@ -523,21 +524,6 @@ jobs:
           root: /home/circleci/
           paths:
             - metabase/metabase
-
-  yaml-linter:
-    executor: node
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: .YAML-CHECKSUMS
-          find-args: ". -type f -name '*.yaml' -or -name '*.yml'"
-      - run-on-change:
-          # package.json is included in the cache key in case the yamllint dependency changes
-          checksum: '{{ checksum ".YAML-CHECKSUMS" }}-{{ checksum "package.json" }}'
-          steps:
-            - run-yarn-command:
-                command-name: Lint YAML files
-                command: lint-yaml `find resources -name '*.yaml' -or -name '*.yml'`
 
   verify-i18n-files:
     executor: metabase-ci
@@ -932,7 +918,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
-                  run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
+                  run test-cypress-no-build <<# parameters.only-single-database >> --folder << parameters.test-files-location >> <</ parameters.only-single-database >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -990,10 +976,6 @@ workflows:
   build:
     jobs:
       - checkout
-
-      - yaml-linter:
-          requires:
-            - fe-deps
 
       - verify-i18n-files:
           requires:

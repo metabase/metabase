@@ -87,7 +87,7 @@
           (is (= [{:display_name "NAME"
                    :base_type    :type/Text
                    :source       :native
-                   :field_ref    [:field-literal "NAME" :type/Text]
+                   :field_ref    [:field "NAME" {:base-type :type/Text}]
                    :name         "NAME"}]
                  (mt/cols results))))))))
 
@@ -97,7 +97,7 @@
       (is (= [{:display_name "D"
                :base_type    :type/DateTime
                :source       :native
-               :field_ref    [:field-literal "D" :type/DateTime]
+               :field_ref    [:field "D" {:base-type :type/DateTime}]
                :name         "D"}]
              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
@@ -118,7 +118,7 @@
                             :template-tags {"date" {:name         "date"
                                                     :display-name "date"
                                                     :type         :dimension
-                                                    :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                    :dimension    [:field (mt/id :checkins :date) nil]}}}
                :parameters [{:type :date/all-options
                              :target [:dimension [:template-tag "date"]]
                              :value "past30years"}]}))))))

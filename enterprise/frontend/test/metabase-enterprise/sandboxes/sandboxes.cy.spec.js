@@ -10,6 +10,7 @@ import {
   signOut,
   USER_GROUPS,
   remapDisplayValueToFK,
+  sidebar,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -105,7 +106,7 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: ORDERS_ID,
         card_id: null,
         attribute_remappings: {
-          [USER_ATTRIBUTE]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          [USER_ATTRIBUTE]: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
       });
 
@@ -122,7 +123,7 @@ describeWithToken("formatting > sandboxes", () => {
                 name: TTAG_NAME,
                 "display-name": "CID",
                 type: "dimension",
-                dimension: ["field-id", PEOPLE.ID],
+                dimension: ["field", PEOPLE.ID, null],
                 "widget-type": "id",
               },
             },
@@ -226,7 +227,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", PEOPLE.ID]],
+          [ATTR_UID]: ["dimension", ["field", PEOPLE.ID, null]],
         },
         card_id: null,
         group_id: COLLECTION_GROUP,
@@ -274,7 +275,8 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("11"); // Sum of orders for user with ID #1
     });
 
-    it.skip("SB question with `case` CC should substitute the `else` argument's table (metabase-enterprise#548)", () => {
+    // Note: This issue was ported from EE repo - it was previously known as (metabase-enterprise#548)
+    it("SB question with `case` CC should substitute the `else` argument's table (metabase#14859)", () => {
       const QUESTION_NAME = "EE_548";
       const CC_NAME = "CC_548"; // Custom column
 
@@ -282,7 +284,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
         card_id: null,
         group_id: COLLECTION_GROUP,
@@ -307,11 +309,11 @@ describeWithToken("formatting > sandboxes", () => {
                 "case",
                 [
                   [
-                    [">", ["field-id", ORDERS.DISCOUNT], 0],
-                    ["field-id", ORDERS.DISCOUNT],
+                    [">", ["field", ORDERS.DISCOUNT, null], 0],
+                    ["field", ORDERS.DISCOUNT, null],
                   ],
                 ],
-                { default: ["field-id", ORDERS.TOTAL] },
+                { default: ["field", ORDERS.TOTAL, null] },
               ],
             },
             "source-table": ORDERS_ID,
@@ -336,7 +338,7 @@ describeWithToken("formatting > sandboxes", () => {
           expect(xhr.response.body.error).not.to.exist;
         });
 
-        cy.findByText(CC_NAME);
+        cy.contains(CC_NAME);
       });
     });
 
@@ -357,7 +359,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.request("POST", "/api/mt/gtap", {
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+            [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
           card_id: null,
           group_id: COLLECTION_GROUP,
@@ -382,9 +384,9 @@ describeWithToken("formatting > sandboxes", () => {
               aggregation: [["count"]],
               breakout: [
                 [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
               "source-table": ORDERS_ID,
@@ -433,7 +435,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
         card_id: null,
         group_id: COLLECTION_GROUP,
@@ -457,15 +459,15 @@ describeWithToken("formatting > sandboxes", () => {
           query: {
             aggregation: [["count"]],
             breakout: [
-              ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.CATEGORY]],
+              ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
             ],
             joins: [
               {
                 alias: PRODUCTS_ALIAS,
                 condition: [
                   "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
                 ],
                 fields: "all",
                 "source-table": PRODUCTS_ID,
@@ -532,7 +534,7 @@ describeWithToken("formatting > sandboxes", () => {
             type: "query",
             query: {
               "source-table": ORDERS_ID,
-              filter: [">", ["field-id", ORDERS.TOTAL], 10],
+              filter: [">", ["field", ORDERS.TOTAL, null], 10],
             },
             database: 1,
           },
@@ -545,7 +547,7 @@ describeWithToken("formatting > sandboxes", () => {
 
           cy.request("POST", "/api/mt/gtap", {
             attribute_remappings: {
-              [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+              [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
             },
             card_id: CARD_ID,
             group_id: COLLECTION_GROUP,
@@ -560,7 +562,7 @@ describeWithToken("formatting > sandboxes", () => {
             type: "query",
             query: {
               "source-table": PRODUCTS_ID,
-              filter: [">", ["field-id", PRODUCTS.PRICE], 10],
+              filter: [">", ["field", PRODUCTS.PRICE, null], 10],
             },
             database: 1,
           },
@@ -573,7 +575,7 @@ describeWithToken("formatting > sandboxes", () => {
 
           cy.request("POST", "/api/mt/gtap", {
             attribute_remappings: {
-              [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+              [ATTR_CAT]: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             },
             card_id: CARD_ID,
             group_id: COLLECTION_GROUP,
@@ -771,7 +773,7 @@ describeWithToken("formatting > sandboxes", () => {
           group_id: COLLECTION_GROUP,
           card_id: null,
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+            [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
         });
 
@@ -812,7 +814,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.request("POST", "/api/mt/gtap", {
           attribute_remappings: {
-            user_id: ["dimension", ["field-id", ORDERS.USER_ID]],
+            user_id: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
           card_id: null,
           table_id: ORDERS_ID,
@@ -823,7 +825,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.request("POST", "/api/mt/gtap", {
           attribute_remappings: {
-            user_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+            user_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
           },
           card_id: null,
           table_id: PRODUCTS_ID,
@@ -846,11 +848,7 @@ describeWithToken("formatting > sandboxes", () => {
             query: {
               aggregation: [["count"]],
               breakout: [
-                [
-                  "joined-field",
-                  PRODUCTS_ALIAS,
-                  ["field-id", PRODUCTS.CATEGORY],
-                ],
+                ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
               ],
               joins: [
                 {
@@ -858,8 +856,8 @@ describeWithToken("formatting > sandboxes", () => {
                   "source-table": PRODUCTS_ID,
                   condition: [
                     "=",
-                    ["field-id", ORDERS.PRODUCT_ID],
-                    ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                    ["field", ORDERS.PRODUCT_ID, null],
+                    ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
                   ],
                   alias: PRODUCTS_ALIAS,
                 },
@@ -968,6 +966,66 @@ describeWithToken("formatting > sandboxes", () => {
       // Number of products with ID = 1 (and ID = 19)
       cy.findAllByText("93");
     });
+
+    it("should be able to remove columns via QB sidebar / settings (metabase#14841)", () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.log("**-- 1. Sandbox `Orders` table --**");
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings: {
+          [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
+        },
+        card_id: null,
+        table_id: ORDERS_ID,
+        group_id: COLLECTION_GROUP,
+      });
+
+      cy.log("**-- 2. Sandbox `Products` table --**");
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings: {
+          [ATTR_CAT]: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+        },
+        card_id: null,
+        table_id: PRODUCTS_ID,
+        group_id: COLLECTION_GROUP,
+      });
+
+      updatePermissionsGraph({
+        schema: {
+          [PRODUCTS_ID]: { query: "segmented", read: "all" },
+          [ORDERS_ID]: { query: "segmented", read: "all" },
+        },
+      });
+
+      signOut();
+      signInAsSandboxedUser();
+      createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
+        cy.visit(`/question/${QUESTION_ID}`);
+      });
+
+      cy.findByText("Settings").click();
+      sidebar()
+        .should("be.visible")
+        .within(() => {
+          // Remove the "Subtotal" column from within sidebar
+          cy.findByText("Subtotal")
+            .parent()
+            .find(".Icon-close")
+            .click();
+        });
+      cy.findAllByRole("button", { name: "Done" }).click();
+      // Rerun the query
+      cy.get(".Icon-play")
+        .last()
+        .click();
+
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+      cy.contains("Subtotal").should("not.exist");
+      cy.contains("37.65").should("not.exist");
+    });
   });
 });
 
@@ -1032,8 +1090,8 @@ function createJoinedQuestion(name) {
             "source-table": PRODUCTS_ID,
             condition: [
               "=",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
             ],
             alias: "Products",
           },

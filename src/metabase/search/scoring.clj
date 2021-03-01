@@ -33,9 +33,11 @@
            tally)
          (largest-common-subseq-length eq xs (rest ys) 0)
          (largest-common-subseq-length eq (rest xs) ys 0)))))
-   ;; Uses O(n*m) space with k < 2, so this gives us caching for at least a 22*22 search (or 50*10, etc) which sounds
-   ;; like more than enough. Memory is cheap and the items are small, so we may as well skew high
-   :fifo/threshold 1000))
+   ;; Uses O(n*m) space (the lengths of the two lists) with k≤2, so napkin math suggests this gives us caching for at
+   ;; least a 31*31 search (or 50*20, etc) which sounds like more than enough. Memory is cheap and the items are
+   ;; small, so we may as well skew high.
+   ;; As a precaution, the scorer that uses this limits the number of tokens (see the `take` call below)
+   :fifo/threshold 2000))
 
 ;;; Scoring
 
@@ -59,24 +61,46 @@
           (count search-tokens)))
        fs))
 
-(defn- score-with
-  [scoring-fns tokens result]
-  (let [scores (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model result)))
-                     :let   [target (-> result
-                                        (get column)
-                                        (search-config/column->string (:model result) column))
-                             score (reduce + (score-ratios tokens
-                                                           (-> target normalize tokenize)
-                                                           scoring-fns))]
-                     :when (> score 0)]
-                 {:score  score
-                  :match  target
-                  :column column})]
-    (when (seq scores)
-      (apply max-key :score scores))))
+(defn- match-context
+  "Breaks the matched-text into match/no-match chunks and returns a seq of them in order. Each chunk is a map with keys
+  `is_match` (true/false) and `text`"
+  [query-tokens match-tokens]
+  (->> match-tokens
+       (map (fn [match-token]
+              {:text match-token
+               :is_match (boolean (some #(matches? % match-token) query-tokens))}))
+       (partition-by :is_match)
+       (map (fn [matches-or-misses-map]
+              {:is_match (:is_match (first matches-or-misses-map))
+               :text     (str/join " "
+                                   (map :text matches-or-misses-map))}))))
 
-(def ^:private consecutivity-scorer
-  (partial largest-common-subseq-length matches?))
+(defn- text-score-with
+  [scoring-fns query-tokens search-result]
+  (let [scores (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model search-result)))
+                     :let   [matched-text (-> search-result
+                                              (get column)
+                                              (search-config/column->string (:model search-result) column))
+                             match-tokens (-> matched-text normalize tokenize)
+                             score        (reduce + (score-ratios query-tokens
+                                                                  match-tokens
+                                                                  scoring-fns))]
+                     :when  (> score 0)]
+                 {:text-score          score
+                  :match               matched-text
+                  :match-context-thunk #(match-context query-tokens match-tokens)
+                  :column              column
+                  :result              search-result})]
+    (when (seq scores)
+      (apply max-key :text-score scores))))
+
+(defn- consecutivity-scorer
+  [query-tokens match-tokens]
+  (largest-common-subseq-length
+   matches?
+   ;; See comment on largest-common-subseq-length re. its cache. This is a little conservative, but better to under- than over-estimate
+   (take 30 query-tokens)
+   (take 30 match-tokens)))
 
 (defn- total-occurrences-scorer
   [tokens haystack]
@@ -102,23 +126,65 @@
 (def ^:private model->sort-position
   (into {} (map-indexed (fn [i model]
                           [(str/lower-case (name model)) i])
-                        search-config/searchable-models)))
+                        ;; Reverse so that they're in descending order
+                        (reverse search-config/searchable-models))))
 
-(defn- score-with-match
+(defn- text-score-with-match
   [query-string result]
   (when (seq query-string)
-    (score-with match-based-scorers
-                (tokenize (normalize query-string))
-                result)))
+    (text-score-with match-based-scorers
+                     (tokenize (normalize query-string))
+                     result)))
+
+(defn- pinned-score
+  [{pos :collection_position}]
+  ;; low is better (top of the list), but nil or 0 should be at the bottom
+  (if (or (nil? pos)
+          (zero? pos))
+    0
+    (/ 1 pos)))
+
+(defn- dashboard-count-score
+  [{:keys [dashboardcard_count]}]
+  ;; higher is better; nil should count as 0
+  (or dashboardcard_count 0))
 
 (defn- compare-score-and-result
-  "Compare [score result] pairs. Must return -1, 0, or 1. The score is assumed to be a vector, and will be compared in
-  order."
-  [[score-1 _result-1] [score-2 _result-2]]
+  "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
+  compared in order."
+  [{score-1 :score} {score-2 :score}]
   (compare score-1 score-2))
 
-(defn accumulate-top-results
-  "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) sent to it"
+(defn- serialize
+  "Massage the raw result from the DB and match data into something more useful for the client"
+  [{:keys [result column match-context-thunk]} score]
+  (let [{:keys [name display_name
+                collection_id collection_name]} result]
+    (-> result
+        (assoc
+         :name           (if (or (= column :name)
+                                 (nil? display_name))
+                           name
+                           display_name)
+         :context        (when-not (search-config/displayed-columns column)
+                           (match-context-thunk))
+         :collection     {:id   collection_id
+                          :name collection_name}
+         :score          score)
+        (dissoc
+         :collection_id
+         :collection_name
+         :display_name))))
+
+(defn- combined-score
+  [{:keys [text-score result]}]
+  [(pinned-score result)
+   (dashboard-count-score result)
+   text-score
+   (model->sort-position (:model result))])
+
+(defn- accumulate-top-results
+  "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) items sent to it"
   ([] (PriorityQueue. search-config/max-filtered-results compare-score-and-result))
   ([^PriorityQueue q]
    (loop [acc []]
@@ -137,15 +203,20 @@
        (.offer item)))))
 
 (defn score-and-result
-  "Returns a pair of [score, result] or nil. The score is a vector of comparable things in priority order. The result
-  has `:matched_column` and `matched_text` injected in"
+  "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
   [query-string result]
-  (println query-string)
-  (let [{:keys [score column match] :as hit} (score-with-match query-string result)]
-    (and hit
-         [[(- score)
-           (model->sort-position (:model result))
-           (:name result)]
-          (assoc result
-                 :matched_column column
-                 :matched_text match)])))
+  (when-let [hit (text-score-with-match query-string result)]
+    (let [score (combined-score hit)]
+      {:score score
+       :result (serialize hit score)})))
+
+(defn top-results
+  "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the
+  transformation and returns a seq of the results sorted by score. The transforming function is expected to output
+  maps with `:score` and `:result` keys."
+  [reducible-results xf]
+  (->> reducible-results
+       (transduce xf accumulate-top-results)
+       ;; Make it descending: high scores first
+       reverse
+       (map :result)))

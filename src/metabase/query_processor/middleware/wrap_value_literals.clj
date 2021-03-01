@@ -26,18 +26,19 @@
     (merge
      field-info
      ;; add in a default unit for this Field so we know to wrap datetime strings in `absolute-datetime` below based on
-     ;; its presence. It will get replaced by `:datetime-field` unit if we're wrapped by one
+     ;; its presence. Its unit will get replaced by the`:temporal-unit` in `:field` options in the method below if
+     ;; present
      (when (types/temporal-field? field-info)
        {:unit :default}))))
 
-(defmethod type-info :field-id [[_ field-id]]
-  (type-info (qp.store/field field-id)))
-
-(defmethod type-info :joined-field [[_ _ field]]
-  (type-info field))
-
-(defmethod type-info :datetime-field [[_ field unit]]
-  (assoc (type-info field) :unit unit))
+(defmethod type-info :field [[_ id-or-name opts]]
+  (merge
+   (when (integer? id-or-name)
+     (type-info (qp.store/field id-or-name)))
+   (when (:temporal-unit opts)
+     {:unit (:temporal-unit opts)})
+   (when (:base-type opts)
+     {:base_type (:base-type opts)})))
 
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------

@@ -48,11 +48,11 @@ describe("scenarios > question > new", () => {
             "source-table": ORDERS_ID,
             aggregation: [
               ["count"],
-              ["sum", ["field-id", ORDERS.SUBTOTAL]],
-              ["sum", ["field-id", ORDERS.TOTAL]],
+              ["sum", ["field", ORDERS.SUBTOTAL, null]],
+              ["sum", ["field", ORDERS.TOTAL, null]],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
             ],
             "order-by": [["desc", ["aggregation", 1]]],
           },
@@ -141,7 +141,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("Fantastic Wool Shirt"); // order ID#3 with the same quantity
     });
 
-    it.skip("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
+    it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
       // save "Orders" as question
       cy.request("POST", "/api/card", {
         name: "11439",
@@ -185,9 +185,9 @@ describe("scenarios > question > new", () => {
           database: 1,
           query: {
             "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field-id", ORDERS.SUBTOTAL]]],
+            aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
           },
           type: "query",
@@ -307,8 +307,8 @@ describe("scenarios > question > new", () => {
           query: {
             "source-table": ORDERS_ID,
             breakout: [
-              ["field-id", ORDERS.QUANTITY],
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["field", ORDERS.QUANTITY, null],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
           },
           type: "query",

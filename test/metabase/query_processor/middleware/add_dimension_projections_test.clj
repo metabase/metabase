@@ -14,9 +14,9 @@
   {:database (mt/id)
    :type     :query
    :query    {:source-table (mt/id :venues)
-              :fields       [[:field-id (mt/id :venues :price)]
-                             [:field-id (mt/id :venues :longitude)]
-                             [:field-id (mt/id :venues :category_id)]]}})
+              :fields       [[:field (mt/id :venues :price) nil]
+                             [:field (mt/id :venues :longitude) nil]
+                             [:field (mt/id :venues :category_id) nil]]}})
 
 (def ^:private remapped-field
   {:name                      "Product"
@@ -25,7 +25,7 @@
    :field_name                "CATEGORY_ID"
    :human_readable_field_name "NAME"})
 
-(defn- do-with-fake-remappings-for-field-3 [f]
+(defn- do-with-fake-remappings-for-category-id [f]
   (with-redefs [add-dim-projections/fields->field-id->remapping-dimension
                 (constantly
                  {(mt/id :venues :category_id) {:name                    "Product"
@@ -35,46 +35,41 @@
 
 (deftest create-remap-col-tuples
   (testing "make sure we create the remap column tuples correctly"
-    (do-with-fake-remappings-for-field-3
+    (do-with-fake-remappings-for-category-id
      (fn []
-       (is (= [[[:field-id (mt/id :venues :category_id)]
-                [:fk-> [:field-id (mt/id :venues :category_id)] [:field-id (mt/id :categories :name)]]
+       (is (= [[[:field (mt/id :venues :category_id) nil]
+                [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
                 remapped-field]]
-              (#'add-dim-projections/create-remap-col-tuples [[:field-id (mt/id :venues :price)]
-                                                              [:field-id (mt/id :venues :longitude)]
-                                                              [:field-id (mt/id :venues :category_id)]])))))))
+              (#'add-dim-projections/create-remap-col-tuples [[:field (mt/id :venues :price) nil]
+                                                              [:field (mt/id :venues :longitude) nil]
+                                                              [:field (mt/id :venues :category_id) nil]])))))))
 
 (deftest add-fk-remaps-test
-  (do-with-fake-remappings-for-field-3
+  (do-with-fake-remappings-for-category-id
    (fn []
      (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
        (is (= [[remapped-field]
                (update-in example-query [:query :fields]
-                          conj [:fk-> [:field-id (mt/id :venues :category_id)]
-                                [:field-id (mt/id :categories :name)]])]
+                          conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}])]
               (#'add-dim-projections/add-fk-remaps example-query))))
 
      (testing "make sure we don't duplicate remappings"
        (is (= [[remapped-field]
                (update-in example-query [:query :fields]
-                          conj [:fk-> [:field-id (mt/id :venues :category_id)]
-                                [:field-id (mt/id :categories :name)]])]
+                          conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}])]
               (#'add-dim-projections/add-fk-remaps
                (update-in example-query [:query :fields]
-                          conj [:fk-> [:field-id (mt/id :venues :category_id)]
-                                [:field-id (mt/id :categories :name)]])))))
+                          conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}])))))
 
      (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
        (is (= [[remapped-field]
                (-> example-query
                    (assoc-in [:query :order-by]
-                             [[:asc [:fk-> [:field-id (mt/id :venues :category_id)]
-                                     [:field-id (mt/id :categories :name)]]]])
+                             [[:asc [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]]])
                    (update-in [:query :fields]
-                              conj [:fk-> [:field-id (mt/id :venues :category_id)]
-                                    [:field-id (mt/id :categories :name)]]))]
+                              conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]))]
               (-> example-query
-                  (assoc-in [:query :order-by] [[:asc [:field-id (mt/id :venues :category_id)]]])
+                  (assoc-in [:query :order-by] [[:asc [:field (mt/id :venues :category_id) nil]]])
                   (#'add-dim-projections/add-fk-remaps)))))
 
      (testing "adding FK remaps should replace any existing breakouts for a field with order bys for the FK remapping Field"
@@ -82,22 +77,20 @@
                (-> example-query
                    (assoc-in [:query :aggregation] [[:count]])
                    (assoc-in [:query :breakout]
-                             [[:fk-> [:field-id (mt/id :venues :category_id)]
-                               [:field-id (mt/id :categories :name)]]
-                              [:field-id (mt/id :venues :category_id)]])
+                             [[:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
+                              [:field (mt/id :venues :category_id) nil]])
                    (m/dissoc-in [:query :fields]))]
               (-> example-query
                   (m/dissoc-in [:query :fields])
                   (assoc-in [:query :aggregation] [[:count]])
-                  (assoc-in [:query :breakout] [[:field-id (mt/id :venues :category_id)]])
+                  (assoc-in [:query :breakout] [[:field (mt/id :venues :category_id) nil]])
                   (#'add-dim-projections/add-fk-remaps)))))
 
      (testing "make sure FK remaps work with nested queries"
        (let [example-query (assoc example-query :query {:source-query (:query example-query)})]
          (is (= [[remapped-field]
                  (update-in example-query [:query :source-query :fields]
-                            conj [:fk-> [:field-id (mt/id :venues :category_id)]
-                                  [:field-id (mt/id :categories :name)]])]
+                            conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}])]
                 (#'add-dim-projections/add-fk-remaps example-query))))))))
 
 
@@ -286,3 +279,24 @@
                       example-result-cols-price
                       example-result-cols-category]}
               []))))))
+
+(deftest dimension-remappings-test
+  (testing "Make sure columns from remapping Dimensions are spliced into the query during pre-processing"
+    (mt/dataset sample-dataset
+      (let [query (mt/mbql-query orders
+                    {:fields   [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity]
+                     :joins    [{:fields       :all
+                                 :source-table $$products
+                                 :condition    [:= $product_id &Products.products.id]
+                                 :alias        "Products"}]
+                     :order-by [[:asc $id]]
+                     :limit    2})]
+        (doseq [nesting-level [0 1]
+                :let          [query (mt/nest-query query nesting-level)]]
+          (testing (format "nesting level = %d" nesting-level)
+            (mt/with-column-remappings [orders.product_id products.title]
+              (is (= (update-in
+                      query
+                      (concat [:query] (repeat nesting-level :source-query) [:fields])
+                      concat [(mt/$ids orders $product_id->products.title)])
+                     (:pre (mt/test-qp-middleware add-dim-projections/add-remapping query)))))))))))

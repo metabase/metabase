@@ -110,7 +110,7 @@
             (concat
              (map (fn [[name param]]
                     {:name name
-                     :mbql ["datetime-field" nil param]
+                     :mbql [:field nil {:temporal-unit param}]
                      :type "type/DateTime"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
                   [[(deferred-tru "Minute") "minute"]
@@ -129,9 +129,11 @@
                    [(deferred-tru "Month of Year") "month-of-year"]
                    [(deferred-tru "Quarter of Year") "quarter-of-year"]])
              (conj
-              (mapv (fn [[name params]]
+              (mapv (fn [[name [strategy param]]]
                       {:name name
-                       :mbql (apply vector "binning-strategy" nil params)
+                       :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                          (when param
+                                                            {strategy param}))}]
                        :type "type/Number"})
                     [default-entry
                      [(deferred-tru "10 bins") ["num-bins" 10]]
@@ -141,9 +143,11 @@
                :mbql nil
                :type "type/Number"})
              (conj
-              (mapv (fn [[name params]]
+              (mapv (fn [[name [strategy param]]]
                       {:name name
-                       :mbql (apply vector "binning-strategy" nil params)
+                       :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                          (when param
+                                                            {strategy param}))}]
                        :type "type/Coordinate"})
                     [default-entry
                      [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
@@ -199,7 +203,6 @@
 (defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
-
                                        (supports-date-binning? field)
                                        [date-default-index datetime-dimension-indexes]
 
@@ -217,8 +220,8 @@
                                        :else
                                        [nil []])]
     (assoc field
-      :default_dimension_option default-option
-      :dimension_options        all-options)))
+           :default_dimension_option default-option
+           :dimension_options        all-options)))
 
 (defn- assoc-dimension-options [resp driver]
   (-> resp
@@ -277,7 +280,8 @@
           (assoc
            :table_id     (str "card__" card-id)
            :id           (or (:id col)
-                             [:field-literal (:name col) (or (:base_type col) :type/*)])
+                             ;; TODO -- what????
+                             [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
            ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
            ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
            ;; the dimension options

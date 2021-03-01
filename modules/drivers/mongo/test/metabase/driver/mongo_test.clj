@@ -7,6 +7,7 @@
             [metabase.driver :as driver]
             [metabase.driver.mongo :as mongo]
             [metabase.driver.util :as driver.u]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
@@ -77,7 +78,7 @@
                                             :display_name "count"
                                             :base_type    :type/Integer
                                             :source       :native
-                                            :field_ref    [:field-literal "count" :type/Integer]}]
+                                            :field_ref    [:field "count" {:base-type :type/Integer}]}]
                         :native_form      {:collection "venues"
                                            :query      native-query}
                         :results_timezone "UTC"}}
@@ -101,42 +102,53 @@
   (mt/test-driver :mongo
     (is (= {:schema nil
             :name   "venues"
-            :fields #{{:name          "name"
-                       :database-type "java.lang.String"
-                       :base-type     :type/Text
+            :fields #{{:name              "name"
+                       :database-type     "java.lang.String"
+                       :base-type         :type/Text
                        :database-position 1}
-                      {:name          "latitude"
-                       :database-type "java.lang.Double"
-                       :base-type     :type/Float
+                      {:name              "latitude"
+                       :database-type     "java.lang.Double"
+                       :base-type         :type/Float
                        :database-position 3}
-                      {:name          "longitude"
-                       :database-type "java.lang.Double"
-                       :base-type     :type/Float
+                      {:name              "longitude"
+                       :database-type     "java.lang.Double"
+                       :base-type         :type/Float
                        :database-position 4}
-                      {:name          "price"
-                       :database-type "java.lang.Long"
-                       :base-type     :type/Integer
+                      {:name              "price"
+                       :database-type     "java.lang.Long"
+                       :base-type         :type/Integer
                        :database-position 5}
-                      {:name          "category_id"
-                       :database-type "java.lang.Long"
-                       :base-type     :type/Integer
+                      {:name              "category_id"
+                       :database-type     "java.lang.Long"
+                       :base-type         :type/Integer
                        :database-position 2}
-                      {:name          "_id"
-                       :database-type "java.lang.Long"
-                       :base-type     :type/Integer
-                       :pk?           true
+                      {:name              "_id"
+                       :database-type     "java.lang.Long"
+                       :base-type         :type/Integer
+                       :pk?               true
                        :database-position 0}}}
            (driver/describe-table :mongo (mt/db) (Table (mt/id :venues)))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
-    (testing "Can we filter against nested columns?"
-      (mt/dataset geographical-tips
+    (mt/dataset geographical-tips
+      (testing "Can we filter against nested columns?"
         (is (= [[16]]
                (mt/rows
                  (mt/run-mbql-query tips
                    {:aggregation [[:count]]
-                    :filter      [:= $tips.source.username "tupac"]}))))))))
+                    :filter      [:= $tips.source.username "tupac"]})))))
+
+      (testing "Can we breakout against nested columns?"
+        (is (= [[nil 297]
+                ["amy" 20]
+                ["biggie" 11]
+                ["bob" 20]]
+               (mt/rows
+                 (mt/run-mbql-query tips
+                   {:aggregation [[:count]]
+                    :breakout    [$tips.source.username]
+                    :limit       4}))))))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
 (tx/defdataset ^:private all-null-columns
@@ -268,11 +280,11 @@
 (deftest xrays-test
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
-      (is (= true
-             (->> (magic/automagic-analysis (Field (mt/id :venues :price)) {})
-                  :ordered_cards
-                  (mapcat (comp :breakout :query :dataset_query :card))
-                  (not-any? #{[:binning-strategy [:field-id (mt/id :venues :price)] "default"]})))))))
+      (is (empty?
+           (mbql.u/match-one (->> (magic/automagic-analysis (Field (mt/id :venues :price)) {})
+                                  :ordered_cards
+                                  (mapcat (comp :breakout :query :dataset_query :card)))
+             [:field _ (_ :guard :binning)]))))))
 
 (deftest no-values-test
   (mt/test-driver :mongo
@@ -289,7 +301,7 @@
                          [3 "Artisan"  nil]]}
                  (->
                   (mt/run-mbql-query categories
-                    {:order-by [[:asc [:field-id $id]]]
+                    {:order-by [[:asc $id]]
                      :limit    3})
                   qp.t/data
                   (select-keys [:columns :rows])))))))))

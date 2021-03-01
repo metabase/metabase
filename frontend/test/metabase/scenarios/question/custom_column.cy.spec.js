@@ -6,6 +6,7 @@ import {
   _typeUsingPlaceholder,
   signInAsAdmin,
   openOrdersTable,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -210,14 +211,18 @@ describe("scenarios > question > custom columns", () => {
         database: 1,
         query: {
           expressions: {
-            [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
+            [CC_NAME]: [
+              "*",
+              ["field", CE_NAME, { "base-type": "type/Float" }],
+              1234,
+            ],
           },
           "source-query": {
             aggregation: [
               ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
             "source-table": ORDERS_ID,
           },
@@ -255,17 +260,11 @@ describe("scenarios > question > custom columns", () => {
           aggregation: [
             [
               "distinct",
-              [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.ID],
-              ],
+              ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
             ],
             ["sum", ["expression", CC_NAME]],
           ],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
         type: "query",
       },
@@ -297,7 +296,7 @@ describe("scenarios > question > custom columns", () => {
           "source-query": {
             aggregation: [["cum-count"]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
             "source-table": ORDERS_ID,
           },
@@ -326,14 +325,18 @@ describe("scenarios > question > custom columns", () => {
         query: {
           "source-query": {
             "source-table": ORDERS_ID,
-            filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
-            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            filter: [">", ["field", ORDERS.SUBTOTAL, null], 0],
+            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           expressions: {
-            [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+            [CC_NAME]: [
+              "*",
+              ["field", "sum", { "base-type": "type/Float" }],
+              2,
+            ],
           },
         },
         database: 1,
@@ -369,7 +372,7 @@ describe("scenarios > question > custom columns", () => {
         query: {
           "source-table": PRODUCTS_ID,
           expressions: {
-            [CC_NAME]: ["concat", ["field-id", PRODUCTS.CATEGORY], "2"],
+            [CC_NAME]: ["concat", ["field", PRODUCTS.CATEGORY, null], "2"],
           },
           aggregation: [["count"]],
           breakout: [["expression", CC_NAME]],
@@ -384,5 +387,106 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText(CC_NAME);
       cy.findByText("Gizmo2");
     });
+  });
+
+  it.skip("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
+    const CE_NAME = "Rounded price";
+
+    cy.request("POST", "/api/card", {
+      name: "14775",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              alias: "Products",
+            },
+          ],
+          expressions: {
+            [CE_NAME]: [
+              "ceil",
+              ["field", PRODUCTS.PRICE, { "join-alias": "Products" }],
+            ],
+          },
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.visit(`/question/${QUESTION_ID}/notebook`);
+    });
+
+    // Remove join
+    cy.findByText("Join data")
+      .parent()
+      .find(".Icon-close")
+      .click({ force: true }); // x is hidden and hover doesn't work so we have to force it
+    cy.findByText("Join data").should("not.exist");
+
+    cy.log("**Reported failing on 0.38.1-SNAPSHOT (6d77f099)**");
+    cy.get("[class*=NotebookCellItem]")
+      .contains(CE_NAME)
+      .should("not.exist");
+    cy.findByText("Visualize").click();
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).to.not.exist;
+    });
+    cy.contains("37.65");
+  });
+
+  it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
+    const CC_NAME = "CE with case";
+
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [CC_NAME]: [
+              "case",
+              [
+                [
+                  [">", ["field", ORDERS.DISCOUNT, null], 0],
+                  ["field", ORDERS.CREATED_AT, null],
+                ],
+              ],
+              {
+                default: [
+                  "field",
+                  PRODUCTS.CREATED_AT,
+                  { "source-field": ORDERS.PRODUCT_ID },
+                ],
+              },
+            ],
+          },
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+
+    cy.wait("@dataset").should(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+
+    cy.findByText(CC_NAME);
+    cy.contains("37.65");
   });
 });

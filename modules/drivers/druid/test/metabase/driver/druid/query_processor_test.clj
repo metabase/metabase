@@ -18,14 +18,14 @@
   [:absolute-datetime (u.date/parse s "UTC") :default])
 
 (deftest filter-intervals-test
-  (let [dt-field                 [:datetime-field [:field-id 1] :default]
-        filter-clause->intervals (comp (var-get #'druid.qp/compile-intervals) (var-get #'druid.qp/filter-clause->intervals))]
+  (let [dt-field                 [:field 1 {:temporal-unit :default}]
+        filter-clause->intervals (comp @#'druid.qp/compile-intervals @#'druid.qp/filter-clause->intervals)]
     (testing :=
       (is (= ["2015-10-04T00:00:00Z/2015-10-04T00:00:00.001Z"]
              (filter-clause->intervals [:= dt-field (str->absolute-dt "2015-10-04T00:00:00Z")]))
           ":= filters should get converted to intervals like `v/v+1`")
       (is (= nil
-             (filter-clause->intervals [:= [:field-id 1] "toucan"]))
+             (filter-clause->intervals [:= [:field 1 nil] "toucan"]))
           "Non-temporal filter clauses should return `nil` intervals"))
     (testing :<
       (is (= ["-5000/2015-10-11T00:00:00Z"]
@@ -50,12 +50,12 @@
           "When two filters have overlapping intervals it should generate a single logically equivalent interval")
       (is (= nil
              (filter-clause->intervals
-              [:and [:= [:field-id 1] "toucan"] [:= [:field-id 2] "threecan"]]))
+              [:and [:= [:field 1 nil] "toucan"] [:= [:field 2 nil] "threecan"]]))
           ":and clause should ignore non-temporal filters")
       (is (= ["2015-10-04T00:00:00Z/2015-10-04T00:00:00.001Z"]
              (filter-clause->intervals
               [:and
-               [:= [:field-id 1] "toucan"] [:= dt-field (str->absolute-dt "2015-10-04T00:00:00Z")]]))
+               [:= [:field 1 nil] "toucan"] [:= dt-field (str->absolute-dt "2015-10-04T00:00:00Z")]]))
           ":and clause with no temporal filters should be compiled to `nil` interval")
       (is (= ["2015-10-04T00:00:00Z/2015-10-04T00:00:00.001Z"]
              (filter-clause->intervals
@@ -76,21 +76,20 @@
              (filter-clause->intervals
               [:or
                [:>= dt-field (str->absolute-dt "2015-10-04T00:00:00Z")]
-               [:= [:field-id 1] "toucan"]]))
+               [:= [:field 1 nil] "toucan"]]))
           ":or clauses should ignore non-temporal filters")
       (is (= nil
              (filter-clause->intervals
               [:or
-               [:= [:field-id 1] "toucan"]
-               [:= [:field-id 2] "threecan"]]))
+               [:= [:field 1 nil] "toucan"]
+               [:= [:field 2 nil] "threecan"]]))
           ":or filters with no temporal filters should return nil"))))
 
 (defn- do-query->native [query]
   (driver/with-driver :druid
     (tqpt/with-flattened-dbdef
       (with-redefs [druid.qp/random-query-id (constantly "<Query ID>")]
-        (qp/query->native
-          query)))))
+        (qp/query->native query)))))
 
 (defmacro ^:private query->native [query]
   `(do-query->native
@@ -291,26 +290,26 @@
                                                 [{:name         "id"
                                                   :source       :native
                                                   :display_name "id"
-                                                  :field_ref    [:field-literal "id" :type/Text]
+                                                  :field_ref    [:field "id" {:base-type :type/Text}]
                                                   :base_type    :type/Text}
                                                  {:name         "user_name"
                                                   :source       :native
                                                   :display_name "user_name"
-                                                  :field_ref    [:field-literal "user_name" :type/Text]}
+                                                  :field_ref    [:field "user_name" {:base-type :type/Text}]}
                                                  {:name         "venue_price"
                                                   :source       :native
                                                   :display_name "venue_price"
                                                   :base_type    :type/Text
-                                                  :field_ref    [:field-literal "venue_price" :type/Text]}
+                                                  :field_ref    [:field "venue_price" {:base-type :type/Text}]}
                                                  {:name         "venue_name"
                                                   :source       :native
                                                   :display_name "venue_name"
-                                                  :field_ref    [:field-literal "venue_name" :type/Text]}
+                                                  :field_ref    [:field "venue_name" {:base-type :type/Text}]}
                                                  {:name         "count"
                                                   :source       :native
                                                   :display_name "count"
                                                   :base_type    :type/Integer
-                                                  :field_ref    [:field-literal "count" :type/Integer]}])
+                                                  :field_ref    [:field "count" {:base-type :type/Integer}]}])
                         :native_form      {:query native-query-1}
                         :results_timezone "UTC"}}
            (-> (process-native-query native-query-1)
@@ -589,7 +588,7 @@
                     (-> (qp/query->native query) :query (select-keys [:filter :queryType])))]
             (doseq [[message field] {"Make sure we can filter by numeric columns (#10935)" :venue_price
                                      "We should be able to filter by Metrics (#11823)"     :count}
-                    :let            [field-clause [:field-id (mt/id :checkins field)]
+                    :let            [field-clause [:field (mt/id :checkins field) nil]
                                      field-name   (name field)]]
               (testing message
                 (testing "scan query"

@@ -163,7 +163,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 3,
           table: 4,
-          breakout: [["field-id", 5]],
+          breakout: [["field", 5, null]],
         }),
       );
     });
@@ -182,7 +182,7 @@ describe("Reference utils.js", () => {
           database: 3,
           table: 4,
           display: "bar",
-          breakout: [["field-id", 5]],
+          breakout: [["field", 5, null]],
           aggregation: [["count"]],
         }),
       );
@@ -202,7 +202,7 @@ describe("Reference utils.js", () => {
           database: 3,
           table: 4,
           display: "pie",
-          breakout: [["field-id", 5]],
+          breakout: [["field", 5, null]],
           aggregation: [["count"]],
         }),
       );
@@ -233,7 +233,7 @@ describe("Reference utils.js", () => {
       expect(question).toEqual(
         getNewQuestion({
           aggregation: [["metric", 3]],
-          breakout: [["field-id", 4]],
+          breakout: [["field", 4, null]],
         }),
       );
     });

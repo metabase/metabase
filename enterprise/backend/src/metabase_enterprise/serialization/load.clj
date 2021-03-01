@@ -60,8 +60,12 @@
 (defn- mbql-fully-qualified-names->ids
   [entity]
   (mbql.util/replace (mbql.normalize/normalize-tokens entity)
+    ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     [:field-id (fully-qualified-name :guard string?)]
-    [:field-id (:field (fully-qualified-name->context fully-qualified-name))]
+    (mbql-fully-qualified-names->ids [:field fully-qualified-name nil])
+
+    [:field (fully-qualified-name :guard string?) opts]
+    [:field (:field (fully-qualified-name->context fully-qualified-name)) opts]
 
     [:metric (fully-qualified-name :guard string?)]
     [:metric (:metric (fully-qualified-name->context fully-qualified-name))]

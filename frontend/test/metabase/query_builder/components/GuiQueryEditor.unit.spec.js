@@ -49,7 +49,7 @@ describe("GuiQueryEditor", () => {
     })
       .query()
       .aggregate(["count"])
-      .breakout(["field-id", ORDERS.TOTAL.id]);
+      .breakout(["field", ORDERS.TOTAL.id, null]);
 
     render(getGuiQueryEditor(query));
     const ADD_ICONS = screen.getAllByRole("img", { name: /add/i });
