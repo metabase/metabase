@@ -26,7 +26,8 @@
 
 (defn scorer->score
   [scorer]
-  (comp :text-score
+  (comp (fn [s] (when s (* s search/text-score-max)))
+        :text-score
         (partial #'search/text-score-with [scorer])))
 
 (deftest consecutivity-scorer-test
@@ -204,3 +205,26 @@
                      (item 4 (days-ago stale))]
                     (sort-by score)
                     (map :id))))))))
+
+(deftest combined-test
+  (let [search-string     "custom expression examples"
+        labeled-results   {:a {:name "custom expression examples" :model "dashboard"}
+                           :b {:name "examples of custom expressions" :model "dashboard"}
+                           :c {:name "customer success stories"
+                               :dashboardcard_count 50
+                               :updated_at (t/offset-date-time)
+                               :collection_position 1
+                               :model "dashboard"}
+                           :d {:name "customer examples of bad sorting" :model "dashboard"}}
+        {:keys [a b c d]} labeled-results]
+    (is (= (map :name [a                ; exact text match
+                       b                ; good text match
+                       c                ; weak text match, but awesome other stuff
+                       d])              ; middling text match, no other signal
+           (->> labeled-results
+                vals
+                (map (partial search/score-and-result search-string))
+                (sort-by :score)
+                reverse
+                (map :result)
+                (map :name))))))
