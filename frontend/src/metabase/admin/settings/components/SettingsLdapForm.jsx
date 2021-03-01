@@ -12,7 +12,6 @@ import SettingsBatchForm from "./SettingsBatchForm";
 )
 export default class SettingsLdapForm extends React.Component {
   render() {
-    console.log("SettingsLdapForm.props", typeof this.props.settingValues);
     return (
       <SettingsBatchForm
         {...this.props}
@@ -54,7 +53,7 @@ export default class SettingsLdapForm extends React.Component {
               "ldap-sync-admin-group" in this.props.settingValues
                 ? "ldap-sync-admin-group"
                 : null,
-            ],
+            ].filter(Boolean),
           },
         ]}
       />
