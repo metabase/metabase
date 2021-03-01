@@ -19,6 +19,7 @@ const IconWrapper = styled.div`
   background-color: #ddecfa;
   color: ${color("brand")};
   margin-right: 10px;
+  flex-shrink: 0;
 `;
 
 const ResultLink = styled(Link)`
@@ -39,6 +40,11 @@ const ResultLink = styled(Link)`
     h3 {
       color: ${color("brand")};
     }
+  }
+
+  h3 {
+    line-height: 1.2em;
+    word-wrap: break-word;
   }
 
   .Icon-info {
@@ -198,9 +204,11 @@ function DefaultResult({ result, options }) {
     <ResultLink to={result.getUrl()}>
       <Flex align="center">
         <ItemIcon item={result} />
-        <Title>{result.name}</Title>
-        {formatCollection(result.getCollection())}
-        <Score score={result.score} />
+        <Box>
+          <Title>{result.name}</Title>
+          {formatCollection(result.getCollection())}
+          <Score score={result.score} />
+        </Box>
       </Flex>
       {formatContext(result.context, options.compact)}
     </ResultLink>
