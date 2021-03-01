@@ -18,14 +18,14 @@
             [metabase.pulse :as p]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [metabase.query-processor.middleware.permissions :as qp.perms])
+            [toucan.hydrate :refer [hydrate]])
   (:import java.io.ByteArrayInputStream))
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
@@ -44,7 +44,7 @@
   "Users can only create a pulse for `cards` they have access to."
   [cards]
   (doseq [card cards
-          :let [card-id (u/get-id card)]]
+          :let [card-id (u/the-id card)]]
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 
