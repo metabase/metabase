@@ -109,17 +109,9 @@ const Title = styled("h3")`
   margin-bottom: 4px;
 `;
 
-function Score({ score }) {
+function Score({ scores }) {
   return (
-    <pre className="hide search-score">
-      {`\n\n
-      Text:      ${score[0]}
-      Pinned:    ${score[1]}
-      Recency:   ${score[2]}
-      Dashboard: ${score[3]}
-      Model:     ${score[4]}
-      Total:     ${score && score.reduce((x, y) => x + y)}`}
-    </pre>
+    <pre className="hide search-score">{JSON.stringify(scores, null, 2)}</pre>
   );
 }
 
@@ -130,7 +122,7 @@ function CollectionResult({ collection }) {
       <Flex align="center">
         <ItemIcon item={collection} />
         <Title>{collection.name}</Title>
-        <Score score={collection.score} />
+        <Score scores={collection.scores} />
       </Flex>
     </ResultLink>
   );
@@ -169,7 +161,7 @@ function DashboardResult({ dashboard, options }) {
         <Box>
           <Title>{dashboard.name}</Title>
           {formatCollection(dashboard.getCollection())}
-          <Score score={dashboard.score} />
+          <Score scores={dashboard.scores} />
         </Box>
       </Flex>
       {formatContext(dashboard.context, options.compact)}
@@ -185,7 +177,7 @@ function QuestionResult({ question, options }) {
         <Box>
           <Title>{question.name}</Title>
           {formatCollection(question.getCollection())}
-          <Score score={question.score} />
+          <Score scores={question.scores} />
         </Box>
         {question.description && (
           <Box ml="auto">
@@ -208,7 +200,7 @@ function DefaultResult({ result, options }) {
         <Box>
           <Title>{result.name}</Title>
           {formatCollection(result.getCollection())}
-          <Score score={result.score} />
+          <Score scores={result.scores} />
         </Box>
       </Flex>
       {formatContext(result.context, options.compact)}

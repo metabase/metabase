@@ -194,7 +194,7 @@
                            (match-context-thunk))
          :collection     {:id   collection_id
                           :name collection_name}
-         :score          scores)
+         :scores          scores)
         (dissoc
          :collection_id
          :collection_name
@@ -202,17 +202,28 @@
 
 (defn- weights-and-scores
   [{:keys [text-score result]}]
-  [[10   text-score]
-   [2   (pinned-score result)]
-   [3/2 (recency-score result)]
-   [1   (dashboard-count-score result)]
-   [1/2 (model-score result)]])
+  [{:weight 10
+    :score  text-score
+    :name   "text"}
+   {:weight 2
+    :score  (pinned-score result)
+    :name   "pinned"}
+   {:weight 3/2
+    :score  (recency-score result)
+    :name   "recency"}
+   {:weight 1
+    :score  (dashboard-count-score result)
+    :name   "dashboard"}
+   {:weight 1/2
+    :score  (model-score result)
+    :name   "model"}])
 
-(defn- weighed-scores
+(defn- weighted-scores
   [hit]
   (->> hit
        weights-and-scores
-       (map (fn [[weight score]] (* weight score)))))
+       (map (fn [{:keys [weight score] :as composite-score}]
+              (assoc composite-score :weighted-score (* weight score))))))
 
 (defn- accumulate-top-results
   "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) items sent to it"
@@ -237,8 +248,8 @@
   "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
   [raw-search-string result]
   (when-let [hit (text-score-with-match raw-search-string result)]
-    (let [scores (weighed-scores hit)]
-      {:score      (reduce + scores)
+    (let [scores (weighted-scores hit)]
+      {:score      (reduce + (map :weighted-score scores))
        :result     (serialize hit scores)})))
 
 (defn top-results
