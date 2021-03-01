@@ -92,6 +92,20 @@ describe("scenarios > question > notebook", () => {
     cy.get("[contenteditable='true']").contains("between([ID], 96, 97)");
   });
 
+  it("should show the correct number of function arguments in a custom expression", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("contains([Category])", { delay: 50 });
+    cy.findAllByRole("button", { name: "Done" })
+      .should("not.be.disabled")
+      .click();
+    cy.contains(/^Function contains expects 2 arguments/i);
+  });
+
   describe("joins", () => {
     it("should allow joins", () => {
       // start a custom question with orders
