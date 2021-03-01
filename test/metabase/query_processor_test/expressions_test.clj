@@ -311,3 +311,24 @@
                 :limit       3
                 :order-by    [[:asc $id]]})))
         "Make sure an expression with a / in its name works")))
+
+(deftest string-operations-from-subquery
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+    (testing "regex-match-first and replace work when evaluated against a subquery (#14873)"
+      (mt/dataset sample-dataset
+        (let [a-word  "a_word"
+              no-sp   "no_spaces"
+              ean     (mt/id :products :ean)
+              results (mt/run-mbql-query products
+                        {:expressions  {a-word
+                                         [:regex-match-first [:field-id (mt/id :products :title)] "^A[^ ]+"]
+                                        no-sp
+                                         [:replace [:field-id (mt/id :products :title)] " " ""]}
+                         :source-query {:source-table $$products}
+                         :fields       [$title [:expression a-word] [:expression no-sp]]
+                         :filter       [:= [:field-id ean] "0157967025871" "4893655420066"]})]
+          (is (= ["Title" a-word no-sp]
+                 (map :display_name (mt/cols results))))
+          (is (= [["Aerodynamic Linen Coat" "Aerodynamic" "AerodynamicLinenCoat"]
+                  ["Awesome Rubber Wallet" "Awesome" "AwesomeRubberWallet"]]
+                 (mt/formatted-rows [str str str] results))))))))
