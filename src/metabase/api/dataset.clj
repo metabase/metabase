@@ -61,9 +61,9 @@
   "Schema for valid export formats for downloading query results."
   (apply s/enum (map u/qualified-name (qp.streaming/export-formats))))
 
-(defn export-format->context
+(s/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
-  in `export-foramt`.
+  in `export-format`.
 
     (export-format->context :json) ;-> :json-download"
   [export-format]
@@ -127,7 +127,7 @@
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check Database database)
   (let [info {:executed-by api/*current-user-id*
-              :context     (export-format->context :api)}]
+              :context     :ad-hoc}]
     (qp.streaming/streaming-response [context :api]
       (pivot/run-pivot-query (assoc query :async? true) info context))))
 
