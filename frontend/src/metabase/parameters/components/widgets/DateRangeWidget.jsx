@@ -35,7 +35,7 @@ export default class DateRangeWidget extends Component {
       : "";
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (nextProps.value !== this.props.value) {
       this.setState(parseDateRangeValue(nextProps.value));
     }

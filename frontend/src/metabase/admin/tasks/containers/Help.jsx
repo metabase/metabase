@@ -92,7 +92,7 @@ export default class Help extends Component {
     this.setState({ details: { ...this.state.details, ...details } });
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.fetchDetails();
   }
 

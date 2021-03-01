@@ -63,7 +63,7 @@ export default ({
       }
     };
 
-    componentWillReceiveProps({ options, value }) {
+    UNSAFE_componentWillReceiveProps({ options, value }) {
       const filtered = value
         ? options.filter(optionFilter.bind(null, value))
         : [];

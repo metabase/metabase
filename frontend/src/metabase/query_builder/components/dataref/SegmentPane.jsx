@@ -53,7 +53,7 @@ export default class SegmentPane extends Component {
     metadata: PropTypes.object.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.fetchTableMetadata(this.props.segment.table_id);
   }
 

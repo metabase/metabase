@@ -50,11 +50,11 @@ export default class SegmentFieldListContainer extends Component {
     await actions.wrappedFetchSegmentFields(this.props, this.props.segmentId);
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }
