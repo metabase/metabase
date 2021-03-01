@@ -455,10 +455,10 @@
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
-            ;; Rebind the `execute-select!` function so that we can capture the generated SQL and inspect it
-            (let [orig       (var-get #'sql-jdbc.execute/execute-select!)
+            ;; Rebind the `execute-statement!` function so that we can capture the generated SQL and inspect it
+            (let [orig       (var-get #'sql-jdbc.execute/execute-statement!)
                   sql-result (atom nil)]
-              (with-redefs [sql-jdbc.execute/execute-select!
+              (with-redefs [sql-jdbc.execute/execute-statement!
                             (fn [driver stmt sql]
                               (reset! sql-result sql)
                               (orig driver stmt sql))]

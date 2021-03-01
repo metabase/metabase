@@ -342,7 +342,7 @@
       (testing "It should be possible to return money column results (#3754)"
         (with-open [conn (sql-jdbc.execute/connection-with-timezone :postgres (mt/db) nil)
                     stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
-                    rs   (sql-jdbc.execute/execute-query! :postgres stmt)]
+                    rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
           (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
             (is (= [1000.00M]
                    (row-thunk))))))

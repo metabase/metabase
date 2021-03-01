@@ -88,17 +88,17 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti execute-query!
+(defmulti execute-prepared-statement!
   "Execute a `PreparedStatement`, returning a `ResultSet`. Default implementation simply calls `.executeQuery()`. It is
-  unlikely you will need to override this."
-  {:added "0.35.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.PreparedStatement stmt])}
+  unlikely you will need to override this. Prior to 0.39, this was named execute-query!"
+  {:added "0.39.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.PreparedStatement stmt])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti execute-select!
+(defmulti execute-statement!
   "Runs a SQL select query with a given `Statement`, returning a `ResultSet`. Default implementation simply calls
-  `.execute()` and then `.getResultSet()` if that returns true (throwing an exception if not). It is unlikely you will
-  need to override this."
+  `.execute()` for the given sql on the given statement, and then `.getResultSet()` if that returns true (throwing an
+  exception if not). It is unlikely you will need to override this."
   {:added "0.39.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.Statement stmt ^String sql])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -324,11 +324,11 @@
     (statement* driver conn canceled-chan)
     (prepared-statement* driver conn sql params canceled-chan)))
 
-(defmethod ^ResultSet execute-query! :sql-jdbc
+(defmethod ^ResultSet execute-prepared-statement! :sql-jdbc
   [_ ^PreparedStatement stmt]
   (.executeQuery stmt))
 
-(defmethod ^ResultSet execute-select! :sql-jdbc
+(defmethod ^ResultSet execute-statement! :sql-jdbc
   [driver ^Statement stmt ^String sql]
   (if (.execute stmt sql)
     (.getResultSet stmt)
@@ -338,8 +338,8 @@
 (defn- ^ResultSet execute-statement-or-prepared-statement [driver ^Statement stmt max-rows params sql]
   (let [st (doto stmt (.setMaxRows max-rows))]
     (if (use-statement? driver params)
-      (execute-select! driver st sql)
-      (execute-query! driver st))))
+      (execute-statement! driver st sql)
+      (execute-prepared-statement! driver st))))
 
 (defmethod read-column-thunk :default
   [driver ^ResultSet rs rsmeta ^long i]

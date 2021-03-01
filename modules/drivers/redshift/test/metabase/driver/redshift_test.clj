@@ -35,7 +35,7 @@
     (with-redefs [execute/prepared-statement (fn [_ _ sql _]
                                                (reset! native-query sql)
                                                (throw (Exception. "done")))
-                  execute/execute-select!    (fn [_ _ sql]
+                  execute/execute-statement! (fn [_ _ sql]
                                                (reset! native-query sql)
                                                (throw (Exception. "done")))]
       (u/ignore-exceptions

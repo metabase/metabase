@@ -119,7 +119,7 @@
         (letfn [(thunk []
                   (with-open [conn (sql-jdbc.execute/connection-with-timezone driver (mt/db) (qp.timezone/report-timezone-id-if-supported))
                               stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
-                              rs   (sql-jdbc.execute/execute-query! driver stmt)]
+                              rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
                     (let [rsmeta (.getMetaData rs)]
                       {:cols (sql-jdbc.execute/column-metadata driver rsmeta)
                        :rows (reduce conj [] (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))})))]
