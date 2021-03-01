@@ -562,8 +562,7 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  // TODO: add positive assertions to all 4 tests when we figure out implementation details
-  describe.skip("arithmetic (metabase#13175)", () => {
+  describe("arithmetic (metabase#13175)", () => {
     beforeEach(() => {
       openOrdersTable({ mode: "notebook" });
     });
@@ -578,9 +577,14 @@ describe("scenarios > question > notebook", () => {
         .click()
         .type("Example", { delay: 100 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
-        .should("not.be.disabled");
+      cy.findAllByRole("button", { name: "Done" })
+        .should("not.be.disabled")
+        .click();
+
+      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.contains("Example");
+      cy.contains("Big");
+      cy.contains("Small");
     });
 
     it("should work on custom filter", () => {
@@ -590,22 +594,25 @@ describe("scenarios > question > notebook", () => {
       cy.get("[contenteditable='true']")
         .click()
         .clear()
-        .type("[Subtotal] - Tax > 20", { delay: 50 });
+        .type("[Subtotal] - Tax > 140", { delay: 50 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
+      cy.contains(/^redundant input/i).should("not.exist");
+
+      cy.findAllByRole("button", { name: "Done" })
         .should("not.be.disabled")
         .click();
 
-      cy.contains(/^redundant input/i).should("not.exist");
+      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.contains("Showing 97 rows");
     });
 
     const CASES = {
-      CountIf: "CountIf(([Subtotal] + [Tax]) > 10)",
-      SumIf: "SumIf([Subtotal], ([Subtotal] + [Tax] > 20))",
+      CountIf: ["CountIf(([Subtotal] + [Tax]) > 10)", "18,760"],
+      SumIf: ["SumIf([Subtotal], ([Subtotal] + [Tax] > 20))", "1,447,850.28"],
     };
 
     Object.entries(CASES).forEach(([filter, formula]) => {
+      const [expression, result] = formula;
       it(`should work on custom aggregation with ${filter}`, () => {
         cy.findByText("Summarize").click();
         cy.findByText("Custom Expression").click();
@@ -613,14 +620,22 @@ describe("scenarios > question > notebook", () => {
         cy.get("[contenteditable='true']")
           .click()
           .clear()
-          .type(formula, { delay: 50 });
+          .type(expression, { delay: 50 });
 
         cy.findByPlaceholderText("Name (required)")
           .click()
-          .type("Ex", { delay: 100 });
+          .type(filter, { delay: 100 });
 
         cy.contains(/^expected closing parenthesis/i).should("not.exist");
         cy.contains(/^redundant input/i).should("not.exist");
+
+        cy.findAllByRole("button", { name: "Done" })
+          .should("not.be.disabled")
+          .click();
+
+        cy.findAllByRole("button", { name: "Visualize" }).click();
+        cy.contains(filter);
+        cy.contains(result);
       });
     });
   });
