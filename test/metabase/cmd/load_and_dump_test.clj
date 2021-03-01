@@ -7,16 +7,15 @@
             [metabase.cmd.load-from-h2 :as load-from-h2]
             [metabase.cmd.refresh-integration-test-db-metadata :as refresh]
             [metabase.db.connection :as mdb.connection]
+            [metabase.db.setup :as mdb.setup]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.models.setting :as setting]
-            [metabase.util.i18n.impl :as i18n.impl]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.generate :as mtg]
             [metabase.util.i18n.impl :as i18n.impl]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.db :as db]))
 
 (defn populate-h2-db! [h2-file]
   (let [spec {:subprotocol "h2"
