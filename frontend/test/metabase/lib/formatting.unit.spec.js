@@ -206,7 +206,7 @@ describe("formatting", () => {
         ),
       ).toEqual(true);
     });
-    it("should not return a component for links in jsx + rich mode if there's click behavior", () => {
+    it("should not return an ExternalLink for links in jsx + rich mode if there's click behavior", () => {
       const formatted = formatValue("http://metabase.com/", {
         jsx: true,
         rich: true,
@@ -218,8 +218,10 @@ describe("formatting", () => {
         },
         clicked: {},
       });
+      // it's not actually a link
       expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
-      expect(formatted).toEqual("foo");
+      // but it's formatted as a link
+      expect(formatted.props.className).toEqual("link link--wrappable");
     });
     it("should return a component for email addresses in jsx + rich mode", () => {
       expect(
