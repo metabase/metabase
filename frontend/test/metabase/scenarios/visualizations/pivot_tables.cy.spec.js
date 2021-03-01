@@ -1,4 +1,5 @@
 import {
+  signIn,
   signInAsAdmin,
   restore,
   visitQuestionAdhoc,
@@ -664,6 +665,33 @@ describe("scenarios > visualizations > pivot tables", () => {
     createAndVisitTestQuestion();
     cy.icon("download").click();
     popover().within(() => cy.findByText("Download full results"));
+  });
+
+  it.skip("should work for user without data permissions (metabase#14989)", () => {
+    cy.request("POST", "/api/card", {
+      name: "14989",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
+            ["field-id", PRODUCTS.CATEGORY],
+          ],
+        },
+        type: "query",
+      },
+      display: "pivot",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      signIn("nodata");
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+
+    cy.findByText("Grand totals");
+    cy.findByText("Row totals");
+    cy.findByText("200");
   });
 });
 
