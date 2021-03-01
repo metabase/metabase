@@ -28,10 +28,15 @@
            (#'values/value-for-tag
             {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil)))))
 
+(defn- to-field [{:keys [base_type] :as field}]
+  (map->FieldInstance
+   (merge {:coercion_strategy nil, :effective_type base_type, :semantic_type nil}
+          field)))
+
 (deftest field-filter-test
   (testing "specified"
     (testing "date range for a normal :type/Temporal field"
-      (is (= {:field (map->FieldInstance
+      (is (= {:field (to-field
                       {:name          "DATE"
                        :parent_id     nil
                        :table_id      (mt/id :checkins)
@@ -51,12 +56,13 @@
     (testing "date range for a UNIX timestamp field should work just like a :type/Temporal field (#11934)"
       (mt/dataset tupac-sightings
         (mt/$ids sightings
-          (is (= {:field (map->FieldInstance
-                          {:name          "TIMESTAMP"
-                           :parent_id     nil
-                           :table_id      $$sightings
-                           :base_type     :type/BigInteger
-                           :semantic_type :type/UNIXTimestampSeconds})
+          (is (= {:field (to-field
+                          {:name              "TIMESTAMP"
+                           :parent_id         nil
+                           :table_id          $$sightings
+                           :base_type         :type/BigInteger
+                           :effective_type    :type/DateTime
+                           :coercion_strategy :Coercion/UNIXSeconds->DateTime})
                   :value {:type  :date/range
                           :value "2020-02-01~2020-02-29"}}
                  (into {} (#'values/value-for-tag
@@ -70,7 +76,7 @@
                              :value  "2020-02-01~2020-02-29"}]))))))))
 
   (testing "unspecified"
-    (is (= {:field (map->FieldInstance
+    (is (= {:field (to-field
                     {:name          "DATE"
                      :parent_id     nil
                      :table_id      (mt/id :checkins)
@@ -85,7 +91,7 @@
                      nil)))))
 
   (testing "id requiring casting"
-    (is (= {:field (map->FieldInstance
+    (is (= {:field (to-field
                     {:name          "ID"
                      :parent_id     nil
                      :table_id      (mt/id :checkins)
@@ -105,7 +111,7 @@
                            nil)))))
 
   (testing "required and default specified"
-    (is (= {:field (map->FieldInstance
+    (is (= {:field (to-field
                     {:name          "DATE"
                      :parent_id     nil
                      :table_id      (mt/id :checkins)
@@ -124,7 +130,7 @@
 
 
   (testing "multiple values for the same tag should return a vector with multiple params instead of a single param"
-    (is (= {:field (map->FieldInstance
+    (is (= {:field (to-field
                     {:name          "DATE"
                      :parent_id     nil
                      :table_id      (mt/id :checkins)
@@ -140,7 +146,7 @@
                       {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}])))))
 
   (testing "Make sure defaults values get picked up for field filter clauses"
-    (is (= {:field (map->FieldInstance
+    (is (= {:field (to-field
                     {:name          "DATE"
                      :parent_id     nil
                      :table_id      (mt/id :checkins)

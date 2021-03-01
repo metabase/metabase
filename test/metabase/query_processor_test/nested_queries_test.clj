@@ -399,7 +399,8 @@
                        :unit      :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
-                (dissoc :semantic_type :table_id :id :settings :fingerprint))
+                (dissoc :semantic_type :effective_type :coercion_strategy :table_id
+                        :id :settings :fingerprint))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card {:dataset_query {:database (mt/id)
