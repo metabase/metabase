@@ -1142,7 +1142,6 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.findByText("Twitter");
       cy.findByText("Row totals");
-      cy.findByText("Grand totals");
     });
   });
 });
