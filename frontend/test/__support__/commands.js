@@ -21,12 +21,12 @@ Cypress.Commands.add(
       throw new Error("`groupsPermissionsObject` must be an object!");
     }
 
-    cy.log("**-- Fetch permissions graph --**");
+    cy.log("Fetch permissions graph");
     cy.request("GET", "/api/permissions/graph").then(
       ({ body: { groups, revision } }) => {
         const UPDATED_GROUPS = Object.assign(groups, groupsPermissionsObject);
 
-        cy.log("**-- Update/save permissions --**");
+        cy.log("Update/save permissions");
         cy.request("PUT", "/api/permissions/graph", {
           groups: UPDATED_GROUPS,
           revision,
@@ -43,7 +43,7 @@ Cypress.Commands.add(
       throw new Error("`schemas` must be an object!");
     }
 
-    cy.log("**-- Fetch permissions graph --**");
+    cy.log("Fetch permissions graph");
     cy.request("GET", "/api/permissions/graph").then(
       ({ body: { groups, revision } }) => {
         const UPDATED_GROUPS = Object.assign(groups, {
@@ -54,7 +54,7 @@ Cypress.Commands.add(
           },
         });
 
-        cy.log("**-- Update/save permissions --**");
+        cy.log("Update/save permissions");
         cy.request("PUT", "/api/permissions/graph", {
           groups: UPDATED_GROUPS,
           revision,
@@ -69,16 +69,35 @@ Cypress.Commands.add("updateCollectionGraph", (groupsCollectionObject = {}) => {
     throw new Error("`groupsCollectionObject` must be an object!");
   }
 
-  cy.log("**-- Fetch permissions graph --**");
+  cy.log("Fetch permissions graph");
   cy.request("GET", "/api/collection/graph").then(
     ({ body: { groups, revision } }) => {
       const UPDATED_GROUPS = Object.assign(groups, groupsCollectionObject);
 
-      cy.log("**-- Update/save permissions --**");
+      cy.log("Update/save permissions");
       cy.request("PUT", "/api/collection/graph", {
         groups: UPDATED_GROUPS,
         revision,
       });
     },
   );
+});
+
+/**
+ * OVERWRITES
+ */
+
+Cypress.Commands.overwrite("log", (originalFn, message) => {
+  Cypress.log({
+    displayName: `--- ${window.logCalls}. ${message} ---`,
+    name: `--- ${window.logCalls}. ${message} ---`,
+    message: "",
+  });
+
+  window.logCalls++;
+});
+
+// We want to reset the log counter for every new test (do not remove from this file)
+beforeEach(() => {
+  window.logCalls = 1;
 });

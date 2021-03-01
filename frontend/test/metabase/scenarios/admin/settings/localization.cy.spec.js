@@ -37,7 +37,7 @@ describe("scenarios > admin > permissions", () => {
     cy.visit("/collection/root");
     cy.findByText("Orders created before June 1st 2016").click();
 
-    cy.log("**Assert the dates on the X axis**");
+    cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
     cy.get(".axis.x").contains("April 25, 2016");
@@ -74,7 +74,7 @@ describe("scenarios > admin > permissions", () => {
     cy.visit("/collection/root");
     cy.findByText("13604").click();
 
-    cy.log("**Reported failing on v0.37.0.2 and labeled as `.Regression`**");
+    cy.log("Reported failing on v0.37.0.2 and labeled as `.Regression`");
     cy.get(".axis.x")
       .contains(/sunday/i)
       .should("not.exist");

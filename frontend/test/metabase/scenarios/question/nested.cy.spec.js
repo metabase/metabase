@@ -200,7 +200,7 @@ describe("scenarios > question > nested", () => {
       .click();
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.log("**Reported failing on v0.34.3 - v0.37.0.2**");
+    cy.log("Reported failing on v0.34.3 - v0.37.0.2");
     popover()
       .contains("Average of Total")
       .closest(".List-item")
@@ -208,11 +208,11 @@ describe("scenarios > question > nested", () => {
   });
 
   it.skip("should show all filter options for a nested question (metabase#13186)", () => {
-    cy.log("**-- 1. Create and save native question Q1 --**");
+    cy.log("Create and save native question Q1");
 
     createNativeQuestion("13816_Q1", "SELECT * FROM PRODUCTS").then(
       ({ body: { id: Q1_ID } }) => {
-        cy.log("**-- 2. Convert it to `query` and save as Q2 --**");
+        cy.log("Convert it to `query` and save as Q2");
 
         cy.request("POST", "/api/card", {
           name: "13816_Q2",
@@ -229,7 +229,7 @@ describe("scenarios > question > nested", () => {
       },
     );
 
-    cy.log("**-- 3. Create a brand new dashboard --**");
+    cy.log("Create a brand new dashboard");
 
     cy.request("POST", "/api/dashboard", {
       name: "13186D",
@@ -250,7 +250,7 @@ describe("scenarios > question > nested", () => {
     // ...and try to connect it to the question
     cy.findByText("Select…").click();
 
-    cy.log("**Reported failing in v0.36.4 (`Category` is missing)**");
+    cy.log("Reported failing in v0.36.4 (`Category` is missing)");
     popover().within(() => {
       cy.findByText(/Category/i);
       cy.findByText(/Title/i);
@@ -261,7 +261,7 @@ describe("scenarios > question > nested", () => {
   it.skip("should apply metrics including filter to the nested question (metabase#12507)", () => {
     const METRIC_NAME = "Discount Applied";
 
-    cy.log("**-- 1. Create a metric with a filter --**");
+    cy.log("Create a metric with a filter");
 
     cy.request("POST", "/api/metric", {
       name: METRIC_NAME,
@@ -280,9 +280,7 @@ describe("scenarios > question > nested", () => {
         "source-table": ORDERS_ID,
       };
 
-      cy.log(
-        "**-- 2. Create new question which uses previously defined metric --**",
-      );
+      cy.log("Create new question which uses previously defined metric");
 
       cy.request("POST", "/api/card", {
         name: "Orders with discount applied",
@@ -300,9 +298,7 @@ describe("scenarios > question > nested", () => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
-        cy.log(
-          "**-- 3. Create a nested question based on the previous one --**",
-        );
+        cy.log("Create a nested question based on the previous one");
 
         // we're adding filter and saving/overwriting the original question, keeping the same ID
         cy.request("PUT", `/api/card/${QUESTION_ID}`, {
@@ -316,7 +312,7 @@ describe("scenarios > question > nested", () => {
           },
         });
 
-        cy.log("**Reported failing since v0.35.2**");
+        cy.log("Reported failing since v0.35.2");
         cy.visit(`/question/${QUESTION_ID}`);
         cy.wait("@cardQuery").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
@@ -335,14 +331,14 @@ describe("scenarios > question > nested", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    cy.log("**-- 1. Remap Product ID's display value to `title` --**");
+    cy.log("Remap Product ID's display value to `title`");
     remapDisplayValueToFK({
       display_value: ORDERS.PRODUCT_ID,
       name: "Product ID",
       fk: PRODUCTS.TITLE,
     });
 
-    cy.log("**-- 2. Save simple 'Orders' table with remapped values --**");
+    cy.log("Save simple 'Orders' table with remapped values");
     cy.request("POST", "/api/card", {
       name: "Orders (remapped)",
       dataset_query: {
@@ -373,7 +369,7 @@ describe("scenarios > question > nested", () => {
 
       beforeEach(() => {
         if (test === "remapped") {
-          cy.log("**-- Remap Product ID's display value to `title` --**");
+          cy.log("Remap Product ID's display value to `title`");
           remapDisplayValueToFK({
             display_value: ORDERS.PRODUCT_ID,
             name: "Product ID",
@@ -449,7 +445,7 @@ describe("scenarios > question > nested", () => {
     cy.findByText("Group by")
       .parent()
       .within(() => {
-        cy.log("**Regression that worked on 0.37.9**");
+        cy.log("Regression that worked on 0.37.9");
         isSelected("Products → Category");
       });
 

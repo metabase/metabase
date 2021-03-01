@@ -22,7 +22,7 @@ describe("postgres > question > custom columns", () => {
     cy.findByText(PG_DB_NAME).click();
     cy.findByText("People").click();
 
-    cy.log("**-- 1. Create custom column using `regexextract()` --**");
+    cy.log("Create custom column using `regexextract()`");
 
     cy.icon("add_data").click();
     popover().within(() => {
@@ -36,7 +36,7 @@ describe("postgres > question > custom columns", () => {
         .click();
     });
 
-    cy.log("**-- 2. Add filter based on custom column--**");
+    cy.log("Add filter based on custom column");
 
     cy.findByText("Add filters to narrow your answer").click();
     popover().within(() => {
@@ -67,7 +67,7 @@ describe("postgres > question > custom columns", () => {
     cy.findByText(PG_DB_NAME).click();
     cy.findByText("People").click();
 
-    cy.log("**-- 1. Create custom column using `regexextract()` --**");
+    cy.log("Create custom column using `regexextract()`");
 
     cy.icon("add_data").click();
     popover().within(() => {
@@ -76,7 +76,7 @@ describe("postgres > question > custom columns", () => {
         .blur();
 
       // It removes escaped characters already on blur
-      cy.log("**Reported failing on v0.36.4**");
+      cy.log("Reported failing on v0.36.4");
       cy.contains(ESCAPED_REGEX);
     });
   });

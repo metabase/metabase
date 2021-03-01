@@ -35,7 +35,7 @@ describe("scenarios > question > null", () => {
     cy.visit("/collection/root");
     cy.findByText("13571").click();
 
-    cy.log("**'No Results since at least v0.34.3**");
+    cy.log("'No Results since at least v0.34.3");
     cy.findByText("Discount");
     cy.findByText("Empty");
   });
@@ -115,7 +115,7 @@ describe("scenarios > question > null", () => {
         cy.visit(`/dashboard/${dashboardId}?id=1`);
         cy.findByText("13626D");
 
-        cy.log("**Reported failing in v0.37.0.2**");
+        cy.log("Reported failing in v0.37.0.2");
         cy.get(".DashCard").within(() => {
           cy.get(".LoadingSpinner").should("not.exist");
           cy.findByText("13626");
@@ -130,7 +130,7 @@ describe("scenarios > question > null", () => {
   });
 
   it("dashboard should handle cards with null values (metabase#13801)", () => {
-    cy.log("**-- Create Question 1 --**");
+    cy.log("Create Question 1");
 
     cy.request("POST", "/api/card", {
       name: "13801_Q1",
@@ -142,7 +142,7 @@ describe("scenarios > question > null", () => {
       display: "scalar",
       visualization_settings: {},
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.log("**-- Create Question 2 --**");
+      cy.log("Create Question 2");
 
       cy.request("POST", "/api/card", {
         name: "13801_Q2",
@@ -154,14 +154,12 @@ describe("scenarios > question > null", () => {
         display: "scalar",
         visualization_settings: {},
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.log("**-- Create Dashboard --**");
+        cy.log("Create Dashboard");
 
         cy.request("POST", "/api/dashboard", {
           name: "13801D",
         }).then(({ body: { id: DASHBOARD_ID } }) => {
-          cy.log(
-            `**-- Add both previously created questions to the dashboard--**`,
-          );
+          cy.log("Add both previously created questions to the dashboard");
 
           [Q1_ID, Q2_ID].forEach((questionId, index) => {
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {

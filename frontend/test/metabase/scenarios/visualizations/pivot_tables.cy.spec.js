@@ -58,7 +58,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.contains(`Started from ${QUESTION_NAME}`);
 
-    cy.log("**-- Assertions on a table itself --**");
+    cy.log("Assertions on a table itself");
     cy.get(".Visualization").within(() => {
       cy.findByText(/Users? → Source/);
       cy.findByText("783"); // Affiliate - Doohickey
@@ -115,7 +115,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     // One field should now be empty
     cy.findByText("Drag fields here");
 
-    cy.log("**-- Implicit assertions on a table itself --**");
+    cy.log("Implicit assertions on a table itself");
     cy.get(".Visualization").within(() => {
       cy.findByText(/Products? → Category/);
       cy.findByText(/Users? → Source/);
@@ -304,12 +304,12 @@ describe("scenarios > visualizations > pivot tables", () => {
       .findByText(/Users? → Source/)
       .click();
 
-    cy.log("**-- Collapse the options panel --**");
+    cy.log("Collapse the options panel");
     cy.icon("chevronup").click();
     cy.findByText(/Formatting/).should("not.exist");
     cy.findByText(/See options/).should("not.exist");
 
-    cy.log("**-- Expand it again --**");
+    cy.log("Expand it again");
     cy.icon("chevrondown")
       .first()
       .click();
@@ -331,10 +331,10 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Formatting");
     cy.findByText(/See options/).click();
 
-    cy.log("**-- New panel for the column options --**");
+    cy.log("New panel for the column options");
     cy.findByText(/Column title/);
 
-    cy.log("**-- Change the title for this column --**");
+    cy.log("Change the title for this column");
     cy.get("input[id=column_title]")
       .clear()
       .type("ModifiedTITLE");
@@ -359,12 +359,12 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText(/Formatting/);
     cy.findByText(/See options/).click();
 
-    cy.log("**-- New panel for the column options --**");
+    cy.log("New panel for the column options");
     cy.findByText("Column title");
     cy.findByText("Style");
     cy.findByText("Separator style");
 
-    cy.log("**-- Change the value formatting --**");
+    cy.log("Change the value formatting");
     cy.findByText("Normal").click();
     cy.findByText("Percent").click();
     cy.findByText("Done").click();
@@ -508,22 +508,22 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   describe("dashboards", () => {
     beforeEach(() => {
-      cy.log("**--1. Create a question--**");
+      cy.log("Create a question");
       cy.request("POST", "/api/card", {
         name: QUESTION_NAME,
         dataset_query: testQuery,
         display: "pivot",
         visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.log("**--2. Create new dashboard--**");
+        cy.log("Create new dashboard");
         cy.request("POST", "/api/dashboard", {
           name: DASHBOARD_NAME,
         }).then(({ body: { id: DASHBOARD_ID } }) => {
-          cy.log("**--Add previously created question to that dashboard--**");
+          cy.log("Add previously created question to that dashboard");
           cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cardId: QUESTION_ID,
           }).then(({ body: { id: DASH_CARD_ID } }) => {
-            cy.log("**--Resize the dashboard card--**");
+            cy.log("Resize the dashboard card");
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cards: [
                 {
@@ -536,7 +536,7 @@ describe("scenarios > visualizations > pivot tables", () => {
                 },
               ],
             });
-            cy.log("**--Open the dashboard--**");
+            cy.log("Open the dashboard");
             cy.visit(`/dashboard/${DASHBOARD_ID}`);
           });
         });
@@ -561,30 +561,30 @@ describe("scenarios > visualizations > pivot tables", () => {
   describe("sharing (metabase#14447)", () => {
     beforeEach(() => {
       cy.viewport(1400, 800); // Row totals on embed preview was getting cut off at the normal width
-      cy.log("**--1. Create a question--**");
+      cy.log("Create a question");
       cy.request("POST", "/api/card", {
         name: QUESTION_NAME,
         dataset_query: testQuery,
         display: "pivot",
         visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.log("**--1a. Enable sharing--**");
+        cy.log("Enable sharing");
         cy.request("POST", `/api/card/${QUESTION_ID}/public_link`);
 
-        cy.log("**--1b. Enable embedding--**");
+        cy.log("Enable embedding");
         cy.request("PUT", `/api/card/${QUESTION_ID}`, {
           enable_embedding: true,
         });
 
-        cy.log("**--2. Create new dashboard--**");
+        cy.log("Create new dashboard");
         cy.request("POST", "/api/dashboard", {
           name: DASHBOARD_NAME,
         }).then(({ body: { id: DASHBOARD_ID } }) => {
-          cy.log("**--Add previously created question to that dashboard--**");
+          cy.log("Add previously created question to that dashboard");
           cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cardId: QUESTION_ID,
           }).then(({ body: { id: DASH_CARD_ID } }) => {
-            cy.log("**--Resize the dashboard card--**");
+            cy.log("Resize the dashboard card");
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cards: [
                 {
@@ -599,10 +599,10 @@ describe("scenarios > visualizations > pivot tables", () => {
             });
           });
 
-          cy.log("**--2a. Enable sharing--**");
+          cy.log("Enable sharing");
           cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/public_link`);
 
-          cy.log("**--2b. Enable embedding--**");
+          cy.log("Enable embedding");
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
             enable_embedding: true,
           });
@@ -699,7 +699,7 @@ function createAndVisitTestQuestion({ display = "pivot" } = {}) {
 function assertOnPivotSettings() {
   cy.get("[draggable=true]").as("fieldOption");
 
-  cy.log("**-- Implicit side-bar assertions --**");
+  cy.log("Implicit side-bar assertions");
   cy.findByText(/Pivot Table options/i);
 
   cy.findAllByText("Fields to use for the table").eq(0);
@@ -717,7 +717,7 @@ function assertOnPivotSettings() {
 }
 
 function assertOnPivotFields() {
-  cy.log("**-- Implicit assertions on a table itself --**");
+  cy.log("Implicit assertions on a table itself");
 
   cy.findByText(/Users? → Source/);
   cy.findByText(/Row totals/i);
