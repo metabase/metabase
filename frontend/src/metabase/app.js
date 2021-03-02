@@ -62,6 +62,7 @@ const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
 api.basename = BASENAME;
 
+// eslint-disable-next-line react-hooks/rules-of-hooks
 const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });
