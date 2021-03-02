@@ -25,7 +25,7 @@
     "pending": false,
     "before": true,
     "cy": true,
-    "Cypress": true,
+    "Cypress": true
   },
   "env": {
     "browser": true,
@@ -38,12 +38,16 @@
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
     "plugin:import/errors",
     "plugin:import/warnings"
   ],
   "settings": {
     "import/resolver": "webpack",
-    "import/ignore": ["\\.css$"]
+    "import/ignore": ["\\.css$"],
+    "react": {
+      "version": "detect"
+    }
   },
   "parserOptions": {
     "ecmaFeatures": {
