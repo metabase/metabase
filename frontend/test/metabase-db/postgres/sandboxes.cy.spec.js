@@ -37,7 +37,7 @@ describeWithToken("postgres > user > query", () => {
     signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
     createUser(sandboxed_user).then(({ body: { id: USER_ID } }) => {
-      cy.log("**-- Dismiss `it's ok to play around` modal for new users --**");
+      cy.log("Dismiss `it's ok to play around` modal for new users");
       cy.request("PUT", `/api/user/${USER_ID}/qbnewb`, {});
     });
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
@@ -61,7 +61,7 @@ describeWithToken("postgres > user > query", () => {
     cy.route("POST", "/api/dataset/pivot").as("pivotDataset");
 
     withDatabase(PG_DB_ID, ({ PEOPLE, PEOPLE_ID }) => {
-      cy.log("**-- 1. Create question with custom column --**");
+      cy.log("Create question with custom column");
       cy.request("POST", "/api/card", {
         name: "14873",
         dataset_query: {
@@ -84,7 +84,7 @@ describeWithToken("postgres > user > query", () => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
-        cy.log("**-- 2. Sandbox `People` table --**");
+        cy.log("Sandbox `People` table");
         cy.request("POST", "/api/mt/gtap", {
           attribute_remappings: {
             user_id: ["dimension", ["field-id", PEOPLE.ID]],
@@ -119,7 +119,7 @@ describeWithToken("postgres > user > query", () => {
 });
 
 function signInAsSandboxedUser() {
-  cy.log("**-- Logging in as sandboxed user --**");
+  cy.log("Logging in as sandboxed user");
   cy.request("POST", "/api/session", {
     username: sandboxed_user.email,
     password: sandboxed_user.password,

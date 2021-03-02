@@ -76,7 +76,7 @@ describe("mongodb > user > query", () => {
       cy.findByText("Visualize").click();
       cy.wait("@dataset");
 
-      cy.log("**Reported failing on stats ~v0.36.3**");
+      cy.log("Reported failing on stats ~v0.36.3");
       cy.findAllByText("1,966").should("have.length", 1); // City
       cy.findByText("49"); // State
     });

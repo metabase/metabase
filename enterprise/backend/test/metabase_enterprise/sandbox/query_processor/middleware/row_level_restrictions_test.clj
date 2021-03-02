@@ -17,6 +17,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.cache-test :as cache-test]
+            [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qputil]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
@@ -932,3 +933,47 @@
                 (testing "Should be able to run a query against Orders"
                   (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
+
+(deftest pivot-query-test
+  ;; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
+    (testing "Pivot table queries should work with sandboxed users (#14969)"
+      (mt/dataset sample-dataset
+        (mt/with-gtaps {:gtaps      (mt/$ids
+                                      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
+                                       :products {:remappings {:user_cat [:dimension $products.category]}}})
+                        :attributes {:user_id 1, :user_cat "Widget"}}
+          (perms/grant-permissions! &group (perms/table-query-path (Table (mt/id :people))))
+          ;; not sure why Snowflake has slightly different results
+          (is (= (if (= driver/*driver* :snowflake)
+                   [["Twitter" "Widget" 0 510.82]
+                    ["Twitter" nil      0 407.93]
+                    [nil       "Widget" 1 510.82]
+                    [nil       nil      1 407.93]
+                    ["Twitter" nil      2 918.75]
+                    [nil       nil      3 918.75]]
+                   (->> [["Twitter" nil      0 401.51]
+                         ["Twitter" "Widget" 0 498.59]
+                         [nil       nil      1 401.51]
+                         [nil       "Widget" 1 498.59]
+                         ["Twitter" nil      2 900.1]
+                         [nil       nil      3 900.1]]
+                        (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver*)
+                                       sort-str   (fn [s]
+                                                    (cond
+                                                      (some? s)  s
+                                                      nil-first? "A"
+                                                      :else      "Z"))]
+                                   (fn [[x y group]]
+                                     [group (sort-str x) (sort-str y)])))))
+                 (mt/formatted-rows [str str int 2.0]
+                   (qp.pivot/run-pivot-query
+                    (mt/mbql-query orders
+                      {:joins       [{:source-table $$people
+                                      :fields       :all
+                                      :condition    [:= $user_id &P.people.id]
+                                      :alias        "P"}]
+                       :aggregation [[:sum $total]]
+                       :breakout    [&P.people.source
+                                     $product_id->products.category]
+                       :limit       5}))))))))))

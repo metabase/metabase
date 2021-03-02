@@ -13,7 +13,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should not allow creation if there are no dashboard cards", () => {
-    cy.log("**Create fresh new dashboard**");
+    cy.log("Create fresh new dashboard");
     cy.request("POST", "/api/dashboard", {
       name: "Empty Dashboard",
     }).then(({ body: { id: DASHBOARD_ID } }) => {

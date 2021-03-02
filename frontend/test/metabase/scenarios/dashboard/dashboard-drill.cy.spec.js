@@ -56,23 +56,23 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it.skip("should insert values from hidden column on custom destination URL click through (metabase#13927)", () => {
-    cy.log("**-- 1. Create a question --**");
+    cy.log("Create a question");
 
     createNativeQuestion(
       "13927",
       `SELECT PEOPLE.STATE, PEOPLE.CITY from PEOPLE;`,
     ).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("**-- 2. Create a dashboard --**");
+      cy.log("Create a dashboard");
 
       cy.request("POST", "/api/dashboard", {
         name: "13927D",
       }).then(({ body: { id: DASHBOARD_ID } }) => {
-        cy.log("**-- 3. Add question to the dashboard --**");
+        cy.log("Add question to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
-          cy.log("**-- 4. Set card parameters --**");
+          cy.log("Set card parameters");
 
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cards: [
@@ -123,7 +123,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           "Click to find out which state does Rye belong to.",
         ).click();
 
-        cy.log("**Reported failing on v0.37.2**");
+        cy.log("Reported failing on v0.37.2");
         cy.location("pathname").should("eq", "/test/CO");
       });
     });
@@ -314,9 +314,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
         });
 
         // NOTE: The actual "Assertion" phase begins here
-        cy.log("**Reported failing on Metabase 1.34.3 and 0.36.2**");
+        cy.log("Reported failing on Metabase 1.34.3 and 0.36.2");
 
-        cy.log("**The first case**");
+        cy.log("The first case");
         // set filter values (ratings 5 and 4) directly through the URL
         cy.visit(`/dashboard/${dashboardId}?category=5&category=4`);
 
@@ -328,7 +328,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.findByText("Rating is equal to 2 selections");
         cy.contains("Reprehenderit non error"); // xavier's review
 
-        cy.log("**The second case**");
+        cy.log("The second case");
         // go back to the dashboard
         cy.visit(`/dashboard/${dashboardId}?category=5&category=4`);
         cy.findByText("2 selections");
@@ -344,9 +344,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     // In this test we're using already present dashboard ("Orders in a dashboard")
     const FILTER_ID = "7c9ege62";
 
-    cy.log(
-      "**-- 1. Add filter (with the default Category) to the dashboard --**",
-    );
+    cy.log("Add filter (with the default Category) to the dashboard");
     cy.request("PUT", "/api/dashboard/1", {
       parameters: [
         {
@@ -359,7 +357,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       ],
     });
 
-    cy.log("**-- 2. Connect filter to the existing card --**");
+    cy.log("Connect filter to the existing card");
     cy.request("PUT", "/api/dashboard/1/cards", {
       cards: [
         {
@@ -403,7 +401,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it.skip("should apply correct date range on a graph drill-through (metabase#13785)", () => {
-    cy.log("**-- 1. Create a question --**");
+    cy.log("Create a question");
 
     cy.request("POST", "/api/card", {
       name: "13785",
@@ -421,12 +419,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
       display: "bar",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("**-- 2. Create a dashboard --**");
+      cy.log("Create a dashboard");
 
       cy.request("POST", "/api/dashboard", {
         name: "13785D",
       }).then(({ body: { id: DASHBOARD_ID } }) => {
-        cy.log("**-- 3. Add filter to the dashboard --**");
+        cy.log("Add filter to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
           parameters: [
@@ -438,12 +436,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
             },
           ],
         });
-        cy.log("**-- 4. Add question to the dashboard --**");
+        cy.log("Add question to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
-          cy.log("**-- 5. Connect dashboard filter to the question --**");
+          cy.log("Connect dashboard filter to the question");
 
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cards: [
