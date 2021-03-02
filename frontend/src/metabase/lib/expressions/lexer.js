@@ -116,7 +116,7 @@ export const LogicalAndOperator = createToken({
 });
 
 export const LogicalOrOperator = createToken({
-  name: "LogicalPrOperator",
+  name: "LogicalOrOperator",
   pattern: Lexer.NA,
   label: "boolean operator",
 });
