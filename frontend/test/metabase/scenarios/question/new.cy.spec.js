@@ -40,26 +40,20 @@ describe("scenarios > question > new", () => {
     });
 
     it.skip("should handle (removing) multiple metrics when one is sorted (metabase#13990)", () => {
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: "12625",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["count"],
-              ["sum", ["field-id", ORDERS.SUBTOTAL]],
-              ["sum", ["field-id", ORDERS.TOTAL]],
-            ],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-            ],
-            "order-by": [["desc", ["aggregation", 1]]],
-          },
-          type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["count"],
+            ["sum", ["field-id", ORDERS.SUBTOTAL]],
+            ["sum", ["field-id", ORDERS.TOTAL]],
+          ],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          ],
+          "order-by": [["desc", ["aggregation", 1]]],
         },
-        display: "table",
-        visualization_settings: {},
       }).then(({ body: { id: QESTION_ID } }) => {
         cy.server();
         cy.route("POST", `/api/card/${QESTION_ID}/query`).as("cardQuery");
@@ -143,17 +137,11 @@ describe("scenarios > question > new", () => {
 
     it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
       // save "Orders" as question
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: "11439",
-        dataset_query: {
-          database: 1,
-          query: { "source-table": ORDERS_ID },
-          type: "query",
-        },
-        type: "query",
-        display: "table",
-        visualization_settings: {},
+        query: { "source-table": ORDERS_ID },
       });
+
       // it is essential for this repro to find question following these exact steps
       // (for example, visiting `/collection/root` would yield different result)
       cy.visit("/");
@@ -179,21 +167,16 @@ describe("scenarios > question > new", () => {
     });
 
     it.skip("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: "11183",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field-id", ORDERS.SUBTOTAL]]],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-            ],
-          },
-          type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field-id", ORDERS.SUBTOTAL]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
         },
         display: "line",
-        visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
@@ -299,22 +282,16 @@ describe("scenarios > question > new", () => {
 
     it.skip("trend visualization should work regardless of column order (metabase#13710)", () => {
       cy.server();
-
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: "13710",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": ORDERS_ID,
-            breakout: [
-              ["field-id", ORDERS.QUANTITY],
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-            ],
-          },
-          type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          breakout: [
+            ["field-id", ORDERS.QUANTITY],
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
         },
         display: "smartscalar",
-        visualization_settings: {},
       }).then(({ body: { id: questionId } }) => {
         cy.route("POST", `/api/card/${questionId}/query`).as("cardQuery");
 

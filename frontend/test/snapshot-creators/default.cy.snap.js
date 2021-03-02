@@ -130,44 +130,22 @@ describe("snapshots", () => {
 
   function createQuestionAndDashboard({ ORDERS, ORDERS_ID }) {
     // question 1: Orders
-    cy.request("POST", "/api/card", {
-      name: "Orders",
-      display: "table",
-      visualization_settings: {},
-      dataset_query: {
-        database: 1,
-        query: { "source-table": ORDERS_ID },
-        type: "query",
-      },
-    });
+    cy.createQuestion({ name: "Orders", query: { "source-table": ORDERS_ID } });
 
     // question 2: Orders, Count
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders, Count",
-      display: "table",
-      visualization_settings: {},
-      dataset_query: {
-        database: 1,
-        query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-        type: "query",
-      },
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
     });
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders, Count, Grouped by Created At (year)",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
-        },
-        database: 1,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"]],
       },
       display: "line",
-      visualization_settings: {},
     });
 
     // dashboard 1: Orders in a dashboard

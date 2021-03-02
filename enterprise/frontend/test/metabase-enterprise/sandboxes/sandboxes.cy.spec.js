@@ -299,31 +299,23 @@ describeWithToken("formatting > sandboxes", () => {
         },
       });
 
-      cy.log("Create and save a question");
-
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: QUESTION_NAME,
-        dataset_query: {
-          database: 1,
-          query: {
-            expressions: {
-              [CC_NAME]: [
-                "case",
+        query: {
+          expressions: {
+            [CC_NAME]: [
+              "case",
+              [
                 [
-                  [
-                    [">", ["field-id", ORDERS.DISCOUNT], 0],
-                    ["field-id", ORDERS.DISCOUNT],
-                  ],
+                  [">", ["field-id", ORDERS.DISCOUNT], 0],
+                  ["field-id", ORDERS.DISCOUNT],
                 ],
-                { default: ["field-id", ORDERS.TOTAL] },
               ],
-            },
-            "source-table": ORDERS_ID,
+              { default: ["field-id", ORDERS.TOTAL] },
+            ],
           },
-          type: "query",
+          "source-table": ORDERS_ID,
         },
-        display: "table",
-        visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
         signOut();
         signInAsSandboxedUser();
@@ -380,25 +372,20 @@ describeWithToken("formatting > sandboxes", () => {
         cy.log(
           "Create question based on steps in [#13641](https://github.com/metabase/metabase/issues/13641)",
         );
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: QUESTION_NAME,
-          dataset_query: {
-            database: 1,
-            query: {
-              aggregation: [["count"]],
-              breakout: [
-                [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
-                ],
+          query: {
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
               ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+            ],
+            "source-table": ORDERS_ID,
           },
           display: "bar",
-          visualization_settings: {},
         });
 
         signOut();
@@ -458,33 +445,28 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log(
         "Create question based on steps in https://github.com/metabase/metabase-enterprise/issues/535",
       );
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: QUESTION_NAME,
-        dataset_query: {
-          database: 1,
-          query: {
-            aggregation: [["count"]],
-            breakout: [
-              ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.CATEGORY]],
-            ],
-            joins: [
-              {
-                alias: PRODUCTS_ALIAS,
-                condition: [
-                  "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
-                ],
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-              },
-            ],
-            "source-table": ORDERS_ID,
-          },
-          type: "query",
+        query: {
+          aggregation: [["count"]],
+          breakout: [
+            ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.CATEGORY]],
+          ],
+          joins: [
+            {
+              alias: PRODUCTS_ALIAS,
+              condition: [
+                "=",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+              ],
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+            },
+          ],
+          "source-table": ORDERS_ID,
         },
         display: "bar",
-        visualization_settings: {},
       });
 
       signOut();
@@ -533,19 +515,12 @@ describeWithToken("formatting > sandboxes", () => {
         cy.route("POST", "/api/dataset").as("dataset");
 
         cy.log("Create 'Orders'-based question using QB");
-
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: "520_Orders",
-          dataset_query: {
-            type: "query",
-            query: {
-              "source-table": ORDERS_ID,
-              filter: [">", ["field-id", ORDERS.TOTAL], 10],
-            },
-            database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field-id", ORDERS.TOTAL], 10],
           },
-          display: "table",
-          visualization_settings: {},
         }).then(({ body: { id: CARD_ID } }) => {
           cy.log(
             "Sandbox `Orders` table based on this QB question and user attribute",
@@ -562,18 +537,12 @@ describeWithToken("formatting > sandboxes", () => {
         });
 
         cy.log("Create 'Products'-based question using QB");
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: "520_Products",
-          dataset_query: {
-            type: "query",
-            query: {
-              "source-table": PRODUCTS_ID,
-              filter: [">", ["field-id", PRODUCTS.PRICE], 10],
-            },
-            database: 1,
+          query: {
+            "source-table": PRODUCTS_ID,
+            filter: [">", ["field-id", PRODUCTS.PRICE], 10],
           },
-          display: "table",
-          visualization_settings: {},
         }).then(({ body: { id: CARD_ID } }) => {
           cy.log(
             "Sandbox `Products` table based on this QB question and user attribute",
@@ -847,37 +816,28 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.log("Create question with joins");
 
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: QUESTION_NAME,
-          dataset_query: {
-            database: 1,
-            query: {
-              aggregation: [["count"]],
-              breakout: [
-                [
-                  "joined-field",
-                  PRODUCTS_ALIAS,
-                  ["field-id", PRODUCTS.CATEGORY],
+          query: {
+            aggregation: [["count"]],
+            breakout: [
+              ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.CATEGORY]],
+            ],
+            joins: [
+              {
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
                 ],
-              ],
-              joins: [
-                {
-                  fields: "all",
-                  "source-table": PRODUCTS_ID,
-                  condition: [
-                    "=",
-                    ["field-id", ORDERS.PRODUCT_ID],
-                    ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
-                  ],
-                  alias: PRODUCTS_ALIAS,
-                },
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                alias: PRODUCTS_ALIAS,
+              },
+            ],
+            "source-table": ORDERS_ID,
           },
           display: "bar",
-          visualization_settings: {},
         });
 
         signOut();
@@ -1143,28 +1103,23 @@ function signInAsSandboxedUser() {
 }
 
 function createJoinedQuestion(name) {
-  return cy.request("POST", "/api/card", {
+  return cy.createQuestion({
     name,
-    dataset_query: {
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-            ],
-            alias: "Products",
-          },
-        ],
-      },
-      database: 1,
+
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          fields: "all",
+          "source-table": PRODUCTS_ID,
+          condition: [
+            "=",
+            ["field-id", ORDERS.PRODUCT_ID],
+            ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+          ],
+          alias: "Products",
+        },
+      ],
     },
-    display: "table",
-    visualization_settings: {},
   });
 }
