@@ -1131,6 +1131,34 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Twitter");
       cy.findByText("Row totals");
     });
+
+    it.skip("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
+      cy.log("**-- 1. Sandbox `Orders` table --**");
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings: {
+          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+        },
+        card_id: null,
+        table_id: ORDERS_ID,
+        group_id: COLLECTION_GROUP,
+      });
+
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
+        },
+      });
+      signInAsSandboxedUser();
+      cy.visit("/dashboard/1");
+      cy.icon("share").click();
+      cy.findByText("Dashboard subscriptions").click();
+      // We're starting without email or Slack being set up so it's expected to see the following:
+      cy.findByText("Create a dashboard subscription");
+      cy.findAllByRole("link", { name: "set up email" });
+      cy.findAllByRole("link", { name: "configure Slack" });
+    });
   });
 });
 
