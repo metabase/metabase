@@ -167,7 +167,7 @@
                                              :from   [:temp]}
                                  :quoting :ansi, :allow-dashed-names? true)]
             (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
-                        rs   (sql-jdbc.execute/execute-query! :sqlserver stmt)]
+                        rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
               (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
                 (is (= [#t "2019-02-01"]
                        (row-thunk))))))
@@ -197,7 +197,7 @@
             (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
               (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) nil)
                           stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
-                          rs   (sql-jdbc.execute/execute-query! :sqlserver stmt)]
+                          rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
                 (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
                   (is (= [expected]
                          (row-thunk))
