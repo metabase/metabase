@@ -742,6 +742,18 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     return null;
   } else if (
     options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.jsx
+  ) {
+    // Style this like a link if we're in a jsx context.
+    // It's not actually a link since we handle the click differently for dashboard and question targets.
+    return (
+      <div className="link link--wrappable">
+        {formatValueRaw(value, { ...options, jsx: false })}
+      </div>
+    );
+  } else if (
+    options.click_behavior &&
     options.click_behavior.linkTextTemplate
   ) {
     return renderLinkTextForClick(
