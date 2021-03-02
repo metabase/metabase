@@ -129,6 +129,7 @@
 
 (deftest match-context-test
   (let [context  #'search/match-context
+        tokens   (partial map str)
         match    (fn [text] {:text text :is_match true})
         no-match (fn [text] {:text text :is_match false})]
     (testing "it groups matches together"
@@ -145,7 +146,20 @@
       (is (= [(no-match "aviary stats")]
              (context
                  ["rasta" "toucan"]
-                 ["aviary" "stats"]))))))
+                 ["aviary" "stats"]))))
+    (testing "it abbreviates when necessary"
+      (is (= [(no-match "one two…eleven twelve")
+              (match "rasta toucan")
+              (no-match "alpha beta…the end")]
+             (context
+                 (tokens '(rasta toucan))
+                 (tokens '(one two
+                           this should not be included
+                           eleven twelve
+                           rasta toucan
+                           alpha beta
+                           some other noise
+                           the end))))))))
 
 (deftest test-largest-common-subseq-length
   (let [subseq-length (partial #'search/largest-common-subseq-length =)]
