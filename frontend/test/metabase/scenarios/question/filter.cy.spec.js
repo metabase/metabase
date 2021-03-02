@@ -730,7 +730,6 @@ describe("scenarios > question > filter", () => {
 
     // "case" is still there after typing a bit
     cy.get("[contenteditable='true']")
-      .as("inputField")
       .click()
       .type("c");
     popover().contains(/case/i);
