@@ -299,9 +299,6 @@ describe("scenarios > question > nested", () => {
       "Related issue [#14629](https://github.com/metabase/metabase/issues/14629)",
     );
 
-    cy.log("**single** quotes");
-    cy.log("**double** quotes");
-
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
@@ -312,7 +309,6 @@ describe("scenarios > question > nested", () => {
       fk: PRODUCTS.TITLE,
     });
 
-    cy.log("Save simple 'Orders' table with remapped values");
     cy.createQuestion({
       name: "Orders (remapped)",
       query: { "source-table": ORDERS_ID },
