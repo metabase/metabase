@@ -1,9 +1,11 @@
 (ns metabase.driver.redshift-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
-            [metabase.driver.sql-jdbc.execute :as execute]
+            [environ.core :as env]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
+            [metabase.models.setting :as setting]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
             [metabase.public-settings :as pubset]
@@ -15,7 +17,8 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import metabase.plugins.jdbc_proxy.ProxyDriver))
+  (:import (java.sql ResultSetMetaData ResultSet)
+           metabase.plugins.jdbc_proxy.ProxyDriver))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
@@ -24,20 +27,20 @@
   (mt/test-driver :redshift
     (testing "Make sure we're using the correct driver for Redshift"
       (let [driver (java.sql.DriverManager/getDriver "jdbc:redshift://host:5432/testdb")
-            driver (if (instance? metabase.plugins.jdbc_proxy.ProxyDriver driver)
+            driver (if (instance? ProxyDriver driver)
                      (jdbc-proxy/wrapped-driver driver)
                      driver)]
-        (is (= "com.amazon.redshift.jdbc.Driver"
+        ;; although we set this as com.amazon.redshift.jdbc42.Driver, that is apparently an alias for this "real" class
+        (is (= "com.amazon.redshift.Driver"
                (.getName (class driver))))))))
 
 (defn- query->native [query]
-  (let [native-query (atom nil)]
-    (with-redefs [execute/prepared-statement (fn [_ _ sql _]
-                                               (reset! native-query sql)
-                                               (throw (Exception. "done")))
-                  execute/execute-statement! (fn [_ _ sql]
-                                               (reset! native-query sql)
-                                               (throw (Exception. "done")))]
+  (let [native-query (atom nil)
+        check-sql-fn (fn [_ _ sql & _]
+                       (reset! native-query sql)
+                       (throw (Exception. "done")))]
+    (with-redefs [sql-jdbc.execute/prepared-statement check-sql-fn
+                  sql-jdbc.execute/execute-statement! check-sql-fn]
       (u/ignore-exceptions
         (qp/process-query query))
       @native-query)))
@@ -195,3 +198,31 @@
                    (map
                     (partial into {})
                     (db/select [Field :name :database_type :base_type] :table_id table-id))))))))))
+
+(defn- assert-jdbc-url-fetch-size [db fetch-size]
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource db))]
+    (let [md  (.getMetaData conn)
+          url (.getURL md)]
+      (is (str/includes? url (str "defaultRowFetchSize=" fetch-size))))))
+
+(deftest test-jdbc-fetch-size
+  (testing "Redshift JDBC fetch size is set correctly in PreparedStatement"
+    (mt/test-driver :redshift
+      ;; the default value should always be picked up if nothing is set
+      (assert-jdbc-url-fetch-size (mt/db) (:default (setting/resolve-setting :redshift-fetch-size)))
+      (mt/with-temporary-setting-values [redshift-fetch-size "14"]
+        ;; create a new DB in order to pick up the change to the setting here
+        (mt/with-temp Database [db {:engine :redshift, :details (:details (mt/db))}]
+          (mt/with-db db
+            ;; make sure the JDBC URL has the defaultRowFetchSize parameter set correctly
+            (assert-jdbc-url-fetch-size db 14)
+            ;; now, actually run a query and see if the PreparedStatement has the right fetchSize set
+            (mt/with-everything-store
+              (let [orig-fn sql-jdbc.execute/reducible-rows
+                    new-fn  (fn [driver ^ResultSet rs ^ResultSetMetaData rsmeta canceled-chan]
+                              (is (= 14 (.getFetchSize (.getStatement rs))))
+                              (orig-fn driver rs rsmeta canceled-chan))]
+                (with-redefs [sql-jdbc.execute/reducible-rows new-fn]
+                  (= [1] (-> {:query "SELECT 1"}
+                             (mt/native-query)
+                             (qp/process-query))))))))))))
