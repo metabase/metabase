@@ -1040,7 +1040,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should work with pivot tables (metabase#14969)", () => {
-      cy.log("**-- 1. Sandbox `Orders` table --**");
+      cy.log("Sandbox `Orders` table");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
@@ -1133,7 +1133,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it.skip("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
-      cy.log("**-- 1. Sandbox `Orders` table --**");
+      cy.log("Sandbox `Orders` table");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
