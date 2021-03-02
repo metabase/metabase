@@ -24,6 +24,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
 
+(driver/register! :oracle-ssl, :parent :oracle)
+
 (deftest connection-details->spec-test
   (doseq [[message expected-spec details]
           [["You should be able to connect with an SID"
@@ -40,14 +42,24 @@
             {:host         "localhost"
              :port         1521
              :service-name "MyCoolService"}]
-           ["You should be able to specifiy a Service Name *and* an SID"
+           ["You should be able to specify a Service Name *and* an SID"
             {:classname   "oracle.jdbc.OracleDriver"
              :subprotocol "oracle:thin"
              :subname     "@localhost:1521:ORCL/MyCoolService"}
             {:host         "localhost"
              :port         1521
              :service-name "MyCoolService"
-             :sid          "ORCL"}]]]
+             :sid          "ORCL"}]
+           ["You should be to specify SSL with a trust store"
+            {:classname                         "oracle.jdbc.OracleDriver"
+             :subprotocol                       "oracle:thin"
+             :subname                           (str "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=localhost)(PORT=1521)"
+                                                     ")(CONNECT_DATA=(SID=ORCL)(SERVICE_NAME=MyCoolService)))")}
+            {:host                    "localhost"
+             :port                    1521
+             :service-name            "MyCoolService"
+             :sid                     "ORCL"
+             :ssl                     true}]]]
     (is (= expected-spec
            (sql-jdbc.conn/connection-details->spec :oracle details))
         message)))

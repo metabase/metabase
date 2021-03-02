@@ -1,5 +1,6 @@
 (ns metabase.driver.oracle
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -16,7 +17,8 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
-            [metabase.util.ssh :as ssh])
+            [metabase.util.ssh :as ssh]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common])
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection ResultSet Types]
            [java.time Instant OffsetDateTime ZonedDateTime]
@@ -63,21 +65,40 @@
   [_ column-type]
   (database-type->base-type column-type))
 
+(defn- non-ssl-spec [spec host port sid service-name]
+  (assoc spec :subname (str "@" host
+                            ":" port
+                            (when sid
+                              (str ":" sid))
+                            (when service-name
+                              (str "/" service-name)))))
+
+(defn- ssl-spec [spec host port sid service-name]
+  (assoc spec :subname
+              (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
+                      host
+                      port
+                      (if sid (str "(SID=" sid ")") "")
+                      (if service-name (str "(SERVICE_NAME=" service-name ")") ""))))
+      ;(set/rename-keys {:ssl-truststore-path     "javax.net.ssl.trustStore"
+      ;                  :ssl-truststore-type     "javax.net.ssl.trustStoreType"
+      ;                  :ssl-truststore-password "javax.net.ssl.trustStorePassword"})))
+
+;;(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=servername)(PORT=2484))(CONNECT_DATA=(SERVICE_NAME=servicename)))
+;;host:port:sid/service-name
+
+;;jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=oracle-ci-test-db.ce4kuivej1tq.us-east-1.rds.amazonaws.com)(PORT=1521))(CONNECT_DATA=(SID=ORCL)))
+
 (defmethod sql-jdbc.conn/connection-details->spec :oracle
   [_ {:keys [host port sid service-name]
       :or   {host "localhost", port 1521}
       :as   details}]
   (assert (or sid service-name))
-  (merge
-   {:classname   "oracle.jdbc.OracleDriver"
-    :subprotocol "oracle:thin"
-    :subname     (str "@" host
-                      ":" port
-                      (when sid
-                        (str ":" sid))
-                      (when service-name
-                        (str "/" service-name)))}
-   (dissoc details :host :port :sid :service-name)))
+  (let [spec      {:classname "oracle.jdbc.OracleDriver" :subprotocol "oracle:thin"}
+        finish-fn (if (:ssl details) ssl-spec non-ssl-spec)]
+    (-> (merge spec details)
+        (dissoc :host :port :sid :service-name :ssl)
+        (finish-fn host port sid service-name))))
 
 (defmethod driver/can-connect? :oracle
   [driver details]

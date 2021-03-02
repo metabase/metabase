@@ -665,6 +665,8 @@ jobs:
       description:
         type: string
         default: ""
+      extra-env:
+        default: []
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -678,6 +680,7 @@ jobs:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: << parameters.driver >>
+                  << parameters.extra-env >>
                 command: lein with-profile +ci,+junit,+ee test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
@@ -1119,6 +1122,19 @@ workflows:
                 source: ORACLE_JDBC_JAR
                 dest: ojdbc8.jar
           driver: oracle
+
+      - test-driver:
+          name: be-tests-oracle-ssl-ee
+          requires:
+            - be-tests-oracle-ee
+          before-steps:
+            - fetch-jdbc-driver:
+                source: ORACLE_JDBC_JAR
+                dest: ojdbc8.jar
+          driver: oracle
+          extra-env:
+            MB_DB_PORT: 2484
+            JAVA_OPTS: "-Djavax.net.ssl.trustStore=resources/certificates/rds_root_ca_truststore.jks -Djavax.net.ssl.trustStoreType=JKS -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
 
       - test-driver:
           name: be-tests-postgres-ee
