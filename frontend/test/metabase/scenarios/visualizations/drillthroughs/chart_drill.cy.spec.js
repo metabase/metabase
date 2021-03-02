@@ -116,11 +116,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         display: "line",
         visualization_settings: {},
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.log("Create a dashboard");
-
-        cy.request("POST", "/api/dashboard", {
-          name: "13457D",
-        }).then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.createDashboard("13457D").then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add the first question to the dashboard");
 
           cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {

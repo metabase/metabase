@@ -45,11 +45,8 @@ describe("scenarios > dashboard > text-box", () => {
 
   describe("when text-box is the only element on the dashboard", () => {
     beforeEach(() => {
-      // Create dashboard
       cy.server();
-      cy.request("POST", "/api/dashboard", {
-        name: "Test Dashboard",
-      });
+      cy.createDashboard("Test Dashboard");
     });
 
     // fixed in metabase#11358

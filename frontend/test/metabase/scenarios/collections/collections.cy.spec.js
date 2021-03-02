@@ -262,7 +262,7 @@ describe("scenarios > collection_defaults", () => {
     describe("a new dashboard", () => {
       it("should be in the root collection", () => {
         // Make new dashboard and check collection name
-        cy.request("POST", "/api/dashboard", { name: dashboard_name });
+        cy.createDashboard(dashboard_name);
 
         cy.visit("/collection/root");
         cy.findByText(dashboard_name);
@@ -297,7 +297,7 @@ describe("scenarios > collection_defaults", () => {
     describe("a new dashboard", () => {
       it("should be in the root collection", () => {
         // Make new dashboard and check collection name
-        cy.request("POST", "/api/dashboard", { name: dashboard_name });
+        cy.createDashboard(dashboard_name);
 
         cy.visit("/collection/root");
         cy.findByText(dashboard_name);

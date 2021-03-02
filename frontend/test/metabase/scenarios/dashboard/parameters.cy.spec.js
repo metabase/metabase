@@ -48,7 +48,7 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should search across multiple fields", () => {
-    cy.request("POST", "/api/dashboard", { name: "my dash" });
+    cy.createDashboard("my dash");
 
     cy.visit("/collection/root");
     cy.findByText("my dash").click();
