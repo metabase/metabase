@@ -29,6 +29,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.interface :as i]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -222,18 +223,22 @@
     (&match :guard (every-pred map? :database (comp integer? :database)))
     (recur (dissoc &match :database))))
 
-(defn- add-card-id-to-info
-  "If the ID of the Card we've resolved (`::card-id`) was added by a previous step, add it to `:info` so it can be used
-  for permissions purposes; remove any `::card-id`s in the query."
-  [query]
+(s/defn ^:private extract-resolved-card-id :- {:card-id (s/maybe su/IntGreaterThanZero)
+                                               :query   su/Map}
+  "If the ID of the Card we've resolved (`::card-id`) was added by a previous step, remove it from `query`, and add it
+  to `:query` `:info` (so it can be included in the QueryExecution log), then return a map with the resolved
+  `:card-id` and updated `:query`."
+  [query :- su/Map]
   (let [card-id (get-in query [:query ::card-id])
         query   (mbql.u/replace-in query [:query]
                   (&match :guard (every-pred map? ::card-id))
                   (recur (dissoc &match ::card-id)))]
-    (cond-> query
-      card-id (update-in [:info :card-id] #(or % card-id)))))
+    {:query   (cond-> query
+                card-id (update-in [:info :card-id] #(or % card-id)))
+     :card-id card-id}))
 
-(s/defn ^:private resolve-all :- su/Map
+(s/defn ^:private resolve-all :- {:card-id (s/maybe su/IntGreaterThanZero)
+                                  :query   su/Map}
   "Recursively replace all Card ID source tables in `query` with resolved `:source-query` and `:source-metadata`. Since
   the `:database` is only useful for top-level source queries, we'll remove it from all other levels."
   [query :- su/Map]
@@ -244,14 +249,15 @@
       resolve-all*
       copy-source-query-database-ids
       remove-unneeded-database-ids
-      add-card-id-to-info))
+      extract-resolved-card-id))
 
-(s/defn ^:private resolve-card-id-source-tables* :- FullyResolvedQuery
+(s/defn ^:private resolve-card-id-source-tables* :- {:card-id (s/maybe su/IntGreaterThanZero)
+                                                     :query   FullyResolvedQuery}
   "Resolve `card__n`-style `:source-tables` in `query`."
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-not inner-query
     ;; for non-MBQL queries there's nothing to do since they have nested queries
-    outer-query
+    {:query outer-query, :card-id nil}
     ;; Otherwise attempt to expand any source queries as needed. Pull the `:database` key up into the top-level if it
     ;; exists
     (resolve-all outer-query)))
@@ -261,4 +267,8 @@
   `card__n` format."
   [qp]
   (fn [query rff context]
-    (qp (resolve-card-id-source-tables* query) rff context)))
+    (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
+      (if card-id
+        (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
+          (qp query rff context))
+        (qp query rff context)))))

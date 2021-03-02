@@ -14,6 +14,7 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]))
@@ -533,9 +534,8 @@
                   (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
                           [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
                          (mt/rows
-                           (qp/process-userland-query (assoc (:dataset_query card-2)
-                                                             :info {:executed-by (mt/user->id :rasta)
-                                                                    :card-id     (u/the-id card-2)}))))))))))))))
+                           (binding [qp.perms/*card-id* (u/the-id card-2)]
+                             (qp/process-query (:dataset_query card-2)))))))))))))))
 
 ;; try this in an end-to-end fashion using the API and make sure we can save a Card if we have appropriate read
 ;; permissions for the source query
