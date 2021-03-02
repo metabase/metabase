@@ -21,7 +21,6 @@
             [metabase.query-processor.util :as qputil]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
-            [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]
@@ -329,32 +328,6 @@
   (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (@tx.env/test-drivers :bigquery) (conj :bigquery)))
 
-;; HACK - Since BigQuery doesn't formally support foreign keys (meaning we can't sync them automatically), FK tests
-;; are disabled by default for BigQuery. We really want to test them here! The macros below let us "fake" FK support
-;; for BigQuery.
-(defn- do-enable-bigquery-fks [f]
-  (let [supports? driver/supports?]
-    (with-redefs [driver/supports? (fn [driver feature]
-                                     (if (= [driver feature] [:bigquery :foreign-keys])
-                                       true
-                                       (supports? driver feature)))]
-      (f))))
-
-(defmacro ^:private enable-bigquery-fks [& body]
-  `(do-enable-bigquery-fks (fn [] ~@body)))
-
-(defn- do-with-bigquery-fks [f]
-  (if-not (= driver/*driver* :bigquery)
-    (f)
-    (tu/with-temp-vals-in-db Field (mt/id :checkins :user_id) {:fk_target_field_id (mt/id :users :id)
-                                                               :special_type       "type/FK"}
-      (tu/with-temp-vals-in-db Field (mt/id :checkins :venue_id) {:fk_target_field_id (mt/id :venues :id)
-                                                                  :special_type       "type/FK"}
-        (f)))))
-
-(defmacro ^:private with-bigquery-fks [& body]
-  `(do-with-bigquery-fks (fn [] ~@body)))
-
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
     (enable-bigquery-fks
@@ -365,9 +338,8 @@
        (mt/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                     :venues   nil}
                        :attributes {"user" 5}}
-         (with-bigquery-fks
-           (is (= [[1 10] [2 36] [3 4] [4 5]]
-                  (run-checkins-count-broken-out-by-price-query))))))
+         (is (= [[1 10] [2 36] [3 4] [4 5]]
+                (run-checkins-count-broken-out-by-price-query)))))
 
      (testing (str "Test that we're able to use a GTAP for an FK related table. For this test, the user has segmented "
                    "permissions on checkins and venues, so we need to apply a GTAP to the original table (checkins) in "
@@ -375,17 +347,15 @@
        (mt/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                     :venues   (venues-price-mbql-gtap-def)}
                        :attributes {"user" 5, "price" 1}}
-         (with-bigquery-fks
-           (is (= #{[nil 45] [1 10]}
-                  (set (run-checkins-count-broken-out-by-price-query)))))))
+         (is (= #{[nil 45] [1 10]}
+                (set (run-checkins-count-broken-out-by-price-query))))))
 
      (testing "Test that the FK related table can be a \"default\" GTAP, i.e. a GTAP where the `card_id` is nil"
        (mt/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                     :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
                        :attributes {"user" 5, "price" 1}}
-         (with-bigquery-fks
-           (is (= #{[nil 45] [1 10]}
-                  (set (run-checkins-count-broken-out-by-price-query)))))))
+         (is (= #{[nil 45] [1 10]}
+                (set (run-checkins-count-broken-out-by-price-query))))))
 
      (testing (str "Test that we have multiple FK related, segmented tables. This test has checkins with a GTAP "
                    "question with venues and users having the default GTAP and segmented permissions")
@@ -393,15 +363,14 @@
                                     :venues   (dissoc (venues-price-mbql-gtap-def) :query)
                                     :users    {:remappings {:user ["variable" [:field-id (mt/id :users :id)]]}}}
                        :attributes {"user" 5, "price" 1}}
-         (with-bigquery-fks
-           (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
-                  (set
-                   (mt/format-rows-by [#(when % (int %)) str int]
-                     (mt/rows
-                       (mt/run-mbql-query checkins
-                         {:aggregation [[:count]]
-                          :order-by    [[:asc $venue_id->venues.price]]
-                          :breakout    [$venue_id->venues.price $user_id->users.name]}))))))))))))
+         (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
+                (set
+                 (mt/format-rows-by [#(when % (int %)) str int]
+                   (mt/rows
+                     (mt/run-mbql-query checkins
+                       {:aggregation [[:count]]
+                        :order-by    [[:asc $venue_id->venues.price]]
+                        :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)
