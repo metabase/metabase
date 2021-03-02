@@ -722,6 +722,19 @@ describe("scenarios > question > filter", () => {
     });
   });
 
+  it("should offer case expression in the auto-complete suggestions", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    popover().contains(/case/i);
+
+    // "case" is still there after typing a bit
+    cy.get("[contenteditable='true']")
+      .click()
+      .type("c");
+    popover().contains(/case/i);
+  });
+
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.request("POST", "/api/card", {
