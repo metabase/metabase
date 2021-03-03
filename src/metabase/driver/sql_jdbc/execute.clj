@@ -14,6 +14,7 @@
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
@@ -390,7 +391,7 @@
                                (execute-query! driver stmt)
                                (catch Throwable e
                                  (throw (ex-info (tru "Error executing query")
-                                                 {:sql sql, :params params}
+                                                 {:sql sql, :params params, :type qp.error-type/driver}
                                                  e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
