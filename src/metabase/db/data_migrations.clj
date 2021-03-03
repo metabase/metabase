@@ -7,6 +7,7 @@
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
   (:require [cemerick.friend.credentials :as creds]
+            [cheshire.core :as json]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
@@ -15,6 +16,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.humanization :as humanization]
@@ -334,6 +336,58 @@
       (db/update-where! model {:collection_id nil}
         :collection_id (u/get-id new-collection)))))
 
+(defn fix-click-through [{id :id card :card_visualization dashcard :dashcard_visualization}]
+  (let [merged                   (merge dashcard card)
+        top-level-click-behavior (when (contains? merged "click")
+                                   {"type"         (merged "click")
+                                    "linkType"     "url"
+                                    "linkTemplate" (merged "click_link_template")})
+        column-settings          (get merged "column_settings")
+        updated-columns          (reduce-kv (fn [m col field-settings]
+                                              (if (and (contains? field-settings "view_as")
+                                                       (contains? field-settings "link_template"))
+                                                (assoc m col
+                                                       {"type"             (field-settings "view_as")
+                                                        "linkType"         "url"
+                                                        "linkTemplate"     (field-settings "link_template")
+                                                        "linkTemplateText" (field-settings "link_text")} ) m)) {}
+                                            column-settings)]
+    {:id id
+     :visualization_settings
+     (merge dashcard
+            (when top-level-click-behavior
+              {"click_behavior" top-level-click-behavior})
+            (when (seq updated-columns)
+              {"column_settings" updated-columns}))}))
+
+(defn parse-to-json [& ks]
+  (fn [x]
+    (reduce #(update %1 %2 json/parse-string)
+            x
+            ks)))
+
+(defmigration ^{:added "0.39.0"} migrate-click-through
+  (transduce (comp (map (parse-to-json :card_visualization :dashcard_visualization))
+                   (map fix-click-through)
+                   (filter :visualization_settings))
+             (completing
+              (fn [_ {:keys [id visualization_settings]}]
+                (db/update! DashboardCard id :visualization_settings visualization_settings)))
+             nil
+             (db/query {:select    [:dashcard.id
+                                    [:card.visualization_settings :card_visualization]
+                                    [:dashcard.visualization_settings :dashcard_visualization]]
+                        :from      [[:report_dashboardcard :dashcard]]
+                        :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]]
+                        :where     [:or
+                                    [:like
+                                     :card.visualization_settings "%\"link_template\":%"]
+                                    [:like
+                                     :card.visualization_settings "%\"click_link_template\":%"]
+                                    [:like
+                                     :dashcard.visualization_settings "%\"link_template\":%"]
+                                    [:like
+                                     :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
