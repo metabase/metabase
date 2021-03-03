@@ -86,6 +86,10 @@ export function signInAsNormalUser() {
   signIn("normal");
 }
 
+export function signInAsSandboxedlUser() {
+  signIn("sandboxed");
+}
+
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }

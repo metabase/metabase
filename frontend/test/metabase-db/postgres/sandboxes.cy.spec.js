@@ -8,6 +8,7 @@ import {
   USER_GROUPS,
   describeWithToken,
   createUser,
+  signInAsSandboxedUser,
 } from "__support__/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
@@ -82,11 +83,3 @@ describeWithToken("postgres > user > query", () => {
     });
   });
 });
-
-function signInAsSandboxedUser() {
-  cy.log("Logging in as sandboxed user");
-  cy.request("POST", "/api/session", {
-    username: sandboxed_user.email,
-    password: sandboxed_user.password,
-  });
-}

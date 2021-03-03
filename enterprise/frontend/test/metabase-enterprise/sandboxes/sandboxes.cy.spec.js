@@ -12,6 +12,7 @@ import {
   USER_GROUPS,
   remapDisplayValueToFK,
   sidebar,
+  signInAsSandboxedUser,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -955,14 +956,6 @@ describeWithToken("formatting > sandboxes", () => {
     });
   });
 });
-
-function signInAsSandboxedUser() {
-  cy.log("Logging in as sandboxed user");
-  cy.request("POST", "/api/session", {
-    username: sandboxed.email,
-    password: sandboxed.password,
-  });
-}
 
 function createJoinedQuestion(name) {
   return cy.createQuestion({
