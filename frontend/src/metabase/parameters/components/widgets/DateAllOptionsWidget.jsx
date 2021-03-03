@@ -10,7 +10,10 @@ import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/meta/Parameter";
 
 import type { OperatorName } from "metabase/query_builder/components/filters/pickers/DatePicker";
-import type { FieldFilter } from "metabase-types/types/Query";
+import type {
+  FieldFilter,
+  LocalFieldReference,
+} from "metabase-types/types/Query";
 
 type UrlEncoded = string;
 

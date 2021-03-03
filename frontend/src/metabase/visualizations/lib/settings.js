@@ -1,6 +1,6 @@
 import { getIn } from "icepick";
 
-import * as React from 'react';
+import * as React from "react";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";

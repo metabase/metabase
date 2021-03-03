@@ -56,7 +56,7 @@ type Props = {
   filterOption: (option: Option, searchValue: string) => boolean,
 
   onInputChange?: string => string,
-  onInputKeyDown?: (event: SyntheticKeyboardEvent) => void,
+  onInputKeyDown?: event => void,
   onFocus?: () => void,
   onBlur?: () => void,
 
@@ -228,7 +228,7 @@ export default class TokenField extends Component {
     });
   };
 
-  onInputChange = ({ target: { value } }: SyntheticInputEvent) => {
+  onInputChange = ({ target: { value } }) => {
     const {
       updateOnInputChange,
       onInputChange,
@@ -260,7 +260,7 @@ export default class TokenField extends Component {
   };
 
   // capture events on the input to allow for convenient keyboard shortcuts
-  onInputKeyDown = (event: SyntheticKeyboardEvent) => {
+  onInputKeyDown = event => {
     if (this.props.onInputKeyDown) {
       this.props.onInputKeyDown(event);
     }
@@ -341,7 +341,7 @@ export default class TokenField extends Component {
     this.setState({ isFocused: false });
   };
 
-  onInputPaste = (e: SyntheticClipboardEvent) => {
+  onInputPaste = e => {
     if (this.props.parseFreeformValue) {
       e.preventDefault();
       const string = e.clipboardData.getData("Text");
@@ -357,7 +357,7 @@ export default class TokenField extends Component {
     }
   };
 
-  onMouseDownCapture = (e: SyntheticMouseEvent) => {
+  onMouseDownCapture = e => {
     const input = findDOMNode(this.refs.input);
     input.focus();
     // prevents clicks from blurring input while still allowing text selection:
@@ -370,7 +370,7 @@ export default class TokenField extends Component {
     this.setState({ isFocused: false });
   };
 
-  addSelectedOption(e: SyntheticKeyboardEvent) {
+  addSelectedOption(e) {
     const { multi } = this.props;
     const { filteredOptions, selectedOptionValue } = this.state;
     const input = findDOMNode(this.refs.input);

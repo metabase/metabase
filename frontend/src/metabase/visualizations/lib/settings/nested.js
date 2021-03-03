@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 
-import * as React from 'react';
+import * as React from "react";
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
