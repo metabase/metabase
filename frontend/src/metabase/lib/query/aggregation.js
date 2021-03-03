@@ -1,5 +1,3 @@
-/* @flow */
-
 import { noNullValues, add, update, remove, clear } from "./util";
 import * as FieldRef from "./field_ref";
 import { STANDARD_AGGREGATIONS } from "metabase/lib/expressions";

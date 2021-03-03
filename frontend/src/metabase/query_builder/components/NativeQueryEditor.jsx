@@ -1,4 +1,3 @@
-/* @flow weak */
 /*global ace*/
 
 import React, { Component } from "react";

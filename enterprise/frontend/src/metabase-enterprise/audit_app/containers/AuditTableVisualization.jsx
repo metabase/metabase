@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import { registerVisualization } from "metabase/visualizations/index";

@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import Value from "metabase/components/Value";

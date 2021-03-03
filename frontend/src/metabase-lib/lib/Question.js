@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 import { chain, assoc, dissoc, assocIn } from "icepick";
 

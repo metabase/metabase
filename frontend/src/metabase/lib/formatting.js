@@ -1,5 +1,3 @@
-/* @flow */
-
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment-timezone";

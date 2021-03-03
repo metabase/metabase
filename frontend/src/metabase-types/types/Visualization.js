@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { DatasetData, Column, Row } from "metabase-types/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase-types/types/Card";
 import type { ReduxAction } from "metabase-types/types/redux";

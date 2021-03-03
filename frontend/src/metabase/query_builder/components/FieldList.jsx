@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 
 import DimensionList from "./DimensionList";

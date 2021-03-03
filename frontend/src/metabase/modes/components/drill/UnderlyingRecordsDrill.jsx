@@ -1,5 +1,3 @@
-/* @flow */
-
 import { ngettext, msgid } from "ttag";
 import { inflect } from "metabase/lib/formatting";
 

@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type {
   TemplateTag,

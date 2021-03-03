@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { DashCard } from "metabase-types/types/Dashboard";
 
 export const GRID_WIDTH = 18;

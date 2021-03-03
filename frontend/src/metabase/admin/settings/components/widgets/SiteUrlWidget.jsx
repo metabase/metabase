@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 
 import InputWithSelectPrefix from "metabase/components/InputWithSelectPrefix";

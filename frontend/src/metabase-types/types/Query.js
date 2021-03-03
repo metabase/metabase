@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { TableId } from "./Table";
 import type { FieldId, BaseType } from "./Field";
 import type { SegmentId } from "./Segment";

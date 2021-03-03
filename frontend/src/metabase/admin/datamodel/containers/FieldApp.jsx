@@ -1,5 +1,3 @@
-/* @flow */
-
 /**
  * Settings editor for a single database field. Lets you change field type, visibility and display values / remappings.
  *

@@ -1,5 +1,3 @@
-/* @flow */
-
 import { op, args, noNullValues, add, update, remove, clear } from "./util";
 import { isValidField } from "./field_ref";
 import { STANDARD_FILTERS } from "metabase/lib/expressions";

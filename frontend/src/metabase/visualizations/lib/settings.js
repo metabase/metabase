@@ -1,4 +1,3 @@
-/* @flow */
 import { getIn } from "icepick";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";

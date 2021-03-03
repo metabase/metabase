@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import ParameterTargetWidget from "metabase/parameters/components/ParameterTargetWidget";

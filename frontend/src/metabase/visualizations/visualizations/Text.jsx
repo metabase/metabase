@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import styles from "./Text.css";

@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { findDOMNode } from "react-dom";
 import { t } from "ttag";
