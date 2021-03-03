@@ -34,6 +34,7 @@
 (defn normal-drivers-with-feature
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
+  {:arglists (list (into ['&] (sort driver/driver-features)))}
   [feature & more-features]
   (let [features (set (cons feature more-features))]
     (set (for [driver (normal-drivers)
@@ -44,6 +45,7 @@
 (defn normal-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid and Google Analytics) that DO NOT support
   `feature`."
+  {:arglists (list (into ['&] (sort driver/driver-features)))}
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
 

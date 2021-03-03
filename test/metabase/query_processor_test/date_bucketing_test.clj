@@ -1099,3 +1099,22 @@
             (is (= expected
                    (mt/first-row
                      (qp/process-query query))))))))))
+
+(deftest day-of-week-custom-start-of-week-test
+  ;; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (disj (mt/normal-drivers) :redshift)
+    (testing "`:day-of-week` bucketing should respect the `start-of-week` Setting (#13604)"
+      (doseq [[day [monday tuesday]] {:sunday  [2 3]
+                                      :monday  [1 2]
+                                      :tuesday [7 1]}]
+        (mt/with-temporary-setting-values [start-of-week day]
+          (mt/dataset sample-dataset
+            (is (= (sort-by
+                    first
+                    [[ monday 13]
+                     [tuesday 16]])
+                   (mt/formatted-rows [int int]
+                     (mt/run-mbql-query orders
+                       {:aggregation [[:count]]
+                        :breakout    [!day-of-week.created_at]
+                        :filter      [:between $created_at "2020-03-02" "2020-03-03"]}))))))))))
