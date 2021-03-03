@@ -3,6 +3,15 @@ import "./commands";
 
 export const version = require("../../../version.json");
 
+export const USER_GROUPS = {
+  ALL_USERS_GROUP: 1,
+  ADMIN_GROUP: 2,
+  COLLECTION_GROUP: 4,
+  DATA_GROUP: 5,
+};
+
+const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
+
 export const USERS = {
   admin: {
     first_name: "Bobby",
@@ -36,12 +45,6 @@ export const USERS = {
   },
 };
 
-export const USER_GROUPS = {
-  ALL_USERS_GROUP: 1,
-  ADMIN_GROUP: 2,
-  COLLECTION_GROUP: 4,
-  DATA_GROUP: 5,
-};
 
 export function signIn(user = "admin") {
   cy.log(`Logging in as ${user}`);
