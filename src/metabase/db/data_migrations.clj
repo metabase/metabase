@@ -336,7 +336,9 @@
       (db/update-where! model {:collection_id nil}
         :collection_id (u/get-id new-collection)))))
 
-(defn fix-click-through [{id :id card :card_visualization dashcard :dashcard_visualization}]
+(defn- fix-click-through
+  "Updates the dashboard card by pulling and renaming column behavior from the card."
+  [{id :id card :card_visualization dashcard :dashcard_visualization}]
   (let [merged                   (merge dashcard card)
         top-level-click-behavior (when (contains? merged "click")
                                    {"type"         (get merged "click")
@@ -364,7 +366,7 @@
               (when (seq updated-columns)
                 {"column_settings" updated-columns}))})))
 
-(defn parse-to-json [& ks]
+(defn- parse-to-json [& ks]
   (fn [x]
     (reduce #(update %1 %2 json/parse-string)
             x

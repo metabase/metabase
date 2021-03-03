@@ -215,7 +215,7 @@
              "linkType" "url",
              "linkTemplate" "http://example.com//{{id}}",
              "linkTemplateText" "here is my id: {{id}}"}}}}
-         (migrations/fix-click-through
+         (#'migrations/fix-click-through
           {:id 1,
            :card_visualization
            {"column_settings"
