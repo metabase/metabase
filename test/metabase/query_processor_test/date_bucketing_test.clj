@@ -1102,7 +1102,7 @@
 
 (deftest day-of-week-custom-start-of-week-test
   ;; sample-dataset doesn't work on Redshift yet -- see #14784
-  (mt/test-drivers (disj (mt/normal-drivers) :redshift)
+  (mt/test-drivers (disj (mt/normal-drivers) :presto :redshift)
     (testing "`:day-of-week` bucketing should respect the `start-of-week` Setting (#13604)"
       (doseq [[day [monday tuesday]] {:sunday  [2 3]
                                       :monday  [1 2]
