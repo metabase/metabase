@@ -20,7 +20,7 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin :as p])
   (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -383,10 +383,15 @@
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
-   (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-               stmt (doto (prepared-statement* driver conn sql params (context/canceled-chan context))
-                      (.setMaxRows max-rows))
-               rs   (execute-query! driver stmt)]
+   (with-open [conn          (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
+               stmt          (doto (prepared-statement* driver conn sql params (context/canceled-chan context))
+                               (.setMaxRows max-rows))
+               ^ResultSet rs (try
+                               (execute-query! driver stmt)
+                               (catch Throwable e
+                                 (throw (ex-info (tru "Error executing query")
+                                                 {:sql sql, :params params}
+                                                 e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))

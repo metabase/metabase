@@ -14,6 +14,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.ssh :as ssh])
@@ -88,6 +89,11 @@
   [_]
   :sunday)
 
+;; Oracle mod is a function like mod(x, y) rather than an operator like x mod y
+(defmethod hformat/fn-handler (u/qualified-name ::mod)
+  [_ x y]
+  (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
+
 (defn- trunc
   "Truncate a date. See also this [table of format
   templates](http://docs.oracle.com/cd/B28359_01/olap.111/b28126/dml_functions_2071.htm#CJAEFAIA)
@@ -104,23 +110,33 @@
 (defmethod sql.qp/date [:oracle :day]            [_ _ v] (trunc :dd v))
 (defmethod sql.qp/date [:oracle :day-of-month]   [_ _ v] (hsql/call :extract :day v))
 ;; [SIC] The format template for truncating to start of week is 'day' in Oracle #WTF
-(defmethod sql.qp/date [:oracle :week]           [_ _ v] (sql.qp/adjust-start-of-week :oracle (partial trunc :day) v))
 (defmethod sql.qp/date [:oracle :month]          [_ _ v] (trunc :month v))
 (defmethod sql.qp/date [:oracle :month-of-year]  [_ _ v] (hsql/call :extract :month v))
 (defmethod sql.qp/date [:oracle :quarter]        [_ _ v] (trunc :q v))
 (defmethod sql.qp/date [:oracle :year]           [_ _ v] (trunc :year v))
 
-(defmethod sql.qp/date [:oracle :day-of-year] [driver _ v]
+(defmethod sql.qp/date [:oracle :week]
+  [driver _ v]
+  (sql.qp/adjust-start-of-week driver (partial trunc :day) v))
+
+(defmethod sql.qp/date [:oracle :day-of-year]
+  [driver _ v]
   (hx/inc (hx/- (sql.qp/date driver :day v) (trunc :year v))))
 
-(defmethod sql.qp/date [:oracle :quarter-of-year] [driver _ v]
+(defmethod sql.qp/date [:oracle :quarter-of-year]
+  [driver _ v]
   (hx// (hx/+ (sql.qp/date driver :month-of-year (sql.qp/date driver :quarter v))
               2)
         3))
 
 ;; subtract number of days between today and first day of week, then add one since first day of week = 1
-(defmethod sql.qp/date [:oracle :day-of-week] [driver _ v]
-  (sql.qp/adjust-day-of-week :oracle (hx/->integer (hsql/call :to_char v (hx/literal :d)))))
+(defmethod sql.qp/date [:oracle :day-of-week]
+  [driver _ v]
+  (sql.qp/adjust-day-of-week
+   driver
+   (hx/->integer (hsql/call :to_char v (hx/literal :d)))
+   (driver.common/start-of-week-offset driver)
+   (partial hsql/call (u/qualified-name ::mod))))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 
