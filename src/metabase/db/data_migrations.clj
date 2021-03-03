@@ -350,7 +350,9 @@
                                                        {"type"             (field-settings "view_as")
                                                         "linkType"         "url"
                                                         "linkTemplate"     (field-settings "link_template")
-                                                        "linkTemplateText" (field-settings "link_text")} ) m)) {}
+                                                        "linkTemplateText" (field-settings "link_text")} )
+                                                m))
+                                            {}
                                             column-settings)]
     {:id id
      :visualization_settings
