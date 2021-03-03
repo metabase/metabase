@@ -1,11 +1,13 @@
 (ns release.set-build-options
-  (:require [metabuild-common.core :as u]
+  (:require [clojure.string :as str]
+            [metabuild-common.core :as u]
             [release.common :as c]))
 
 (defn prompt-and-set-build-options! []
   (let [[current-branch] (u/step "Determine current branch"
                            (u/sh "git" "symbolic-ref" "--short" "HEAD"))]
     (loop []
+      (println "Most recent releases:" (str/join ", " (c/recent-releases-by-minor-version-from-github)))
       (let [version (u/read-line-with-prompt "What version are we building (e.g. 0.36.0)?")
             branch  current-branch
             edition (case (first version)

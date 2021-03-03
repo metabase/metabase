@@ -1,6 +1,7 @@
 (ns release.common.upload
   (:require [metabuild-common.core :as u]
-            [release.common :as c]))
+            [release.common :as c]
+            [release.common.slack :as slack]))
 
 (defn upload-artifact!
   "Upload an artifact to downloads.metabase.com and create a CloudFront invalidation."
@@ -10,4 +11,5 @@
   ([source-file version filename]
    (u/step (format "Upload %s to %s" source-file (c/artifact-download-url version filename))
      (u/s3-copy! (u/assert-file-exists source-file) (c/s3-artifact-url version filename))
-     (u/create-cloudfront-invalidation! c/cloudfront-distribution-id (c/s3-artifact-path version filename)))))
+     (u/create-cloudfront-invalidation! c/cloudfront-distribution-id (c/s3-artifact-path version filename))
+     (slack/post-message! "Uploaded %s" (c/artifact-download-url version filename)))))

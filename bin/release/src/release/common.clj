@@ -156,11 +156,28 @@
 
 (defn- recent-tags-from-github
   "Recent tags for the current edition from GitHub."
+  ([]
+   (recent-tags-from-github (edition)))
+
+  ([ee-or-oss-or-nil]
+   (->> ((requiring-resolve 'release.common.github/recent-tags))
+        (filter (case ee-or-oss-or-nil
+                    :ee  (partial re-matches #"^v1(?:\.\d+){2,}$")
+                    :oss (partial re-matches #"^v0(?:\.\d+){2,}$")
+                    nil  (partial re-matches #"^v[01](?:\.\d+){2,}$"))))))
+
+(defn recent-releases-by-minor-version-from-github
+  "Return the last 3 OSS and last 3 EE release tags from GitHub. For informational purposes when we prompt you for the
+  version we're building."
   []
-  (->> ((requiring-resolve 'release.common.github/recent-tags))
-       (filter (case (edition)
-                 :ee  (partial re-matches #"v1(?:\.\d+){2,}$")
-                 :oss (partial re-matches #"v0(?:\.\d+){2,}$")))))
+  (->> (recent-tags-from-github nil)
+       (group-by #(Double/parseDouble (second (re-find #"^v(\d\.\d+).+$" %))))
+       (sort-by first)
+       reverse
+       (take 6)
+       (map (fn [[major-version tags]]
+              (first (sort-by identity version-greater-than tags))))
+       (sort-by identity version-greater-than)))
 
 (defn- most-recent-tag
   "Given a set of release `tags`, return the most recent one."

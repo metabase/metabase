@@ -1,7 +1,8 @@
 (ns release.docker
   "Code related to building, pushing, and validating new Docker images."
   (:require [metabuild-common.core :as u]
-            [release.common :as c]))
+            [release.common :as c]
+            [release.common.slack :as slack]))
 
 (defn build-docker-image! []
   (u/step "Build Docker image"
@@ -23,9 +24,13 @@
     ;; check-docker-image "$METABASE_DOCKER_REPO:v$VERSION"
     ))
 
+(defn- push-docker-tag! [tag]
+  (u/sh "docker" "push" tag)
+  (slack/post-message! "Pushed Docker tag %s" tag))
+
 (defn push-docker-image! []
   (u/step "Push Docker image"
-    (u/sh "docker" "push" (c/docker-tag))
+    (push-docker-tag! (c/docker-tag))
     (let [latest-tag (str (c/docker-image-name) ":latest")]
       (cond
         (c/pre-release-version?)
@@ -37,5 +42,5 @@
         :else
         (u/step (format "Pushing tag %s" latest-tag)
           (u/sh "docker" "tag" (c/docker-tag) latest-tag)
-          (u/sh "docker" "push" latest-tag)))))
+          (push-docker-tag! latest-tag)))))
   (validate-docker-image))
