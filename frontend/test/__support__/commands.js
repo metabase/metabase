@@ -143,9 +143,7 @@ Cypress.Commands.add(
   } = {}) => {
     // Extract the name of the table, as well as `schema` and `db_id` that we'll need later on for `cy.updatePermissionsSchemas()`
     cy.request("GET", "/api/table").then(({ body: tables }) => {
-      const [{ name, schema, db_id }] = tables.filter(table => {
-        return table.id === table_id;
-      });
+      const { name, schema, db_id } = tables.find(table => table.id === table_id);
       const [attr] = Object.keys(attribute_remappings);
 
       cy.log(`Sandbox "${name}" table on "${attr}" attribute`);
