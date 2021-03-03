@@ -66,7 +66,8 @@
                                             (if (= db-id mbql.s/saved-questions-virtual-database-id)
                                               "database/__virtual"
                                               (fully-qualified-name Database db-id))))
-      (m/update-existing entity :card_id (partial fully-qualified-name Card))
+      (m/update-existing entity :card_id (partial fully-qualified-name Card)) ; attibutes that refer to db fields use _
+      (m/update-existing entity :card-id (partial fully-qualified-name Card)) ; template-tags use dash
       (m/update-existing entity :source-table (fn [source-table]
                                                 (if (and (string? source-table)
                                                          (str/starts-with? source-table "card__"))
@@ -114,14 +115,14 @@
 
 (defn- dashboard-cards-for-dashboard
   [dashboard]
-  (let [dashboard-cards (db/select DashboardCard :dashboard_id (u/get-id dashboard))
+  (let [dashboard-cards (db/select DashboardCard :dashboard_id (u/the-id dashboard))
         series          (when (not-empty dashboard-cards)
                           (db/select DashboardCardSeries
-                            :dashboardcard_id [:in (map u/get-id dashboard-cards)]))]
+                            :dashboardcard_id [:in (map u/the-id dashboard-cards)]))]
     (for [dashboard-card dashboard-cards]
       (-> dashboard-card
           (assoc :series (for [series series
-                               :when (= (:dashboardcard_id series) (u/get-id dashboard-card))]
+                               :when (= (:dashboardcard_id series) (u/the-id dashboard-card))]
                            (-> series
                                (update :card_id (partial fully-qualified-name Card))
                                (dissoc :id :dashboardcard_id))))
@@ -140,11 +141,11 @@
 (defmethod serialize-one (type Pulse)
   [pulse]
   (assoc pulse
-    :cards    (for [card (db/select PulseCard :pulse_id (u/get-id pulse))]
+    :cards    (for [card (db/select PulseCard :pulse_id (u/the-id pulse))]
                 (-> card
                     (dissoc :id :pulse_id)
                     (update :card_id (partial fully-qualified-name Card))))
-    :channels (for [channel (db/select PulseChannel :pulse_id (u/get-id pulse))]
+    :channels (for [channel (db/select PulseChannel :pulse_id (u/the-id pulse))]
                 (strip-crud channel))))
 
 (defmethod serialize-one (type User)

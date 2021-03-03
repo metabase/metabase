@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.names
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
@@ -132,7 +133,9 @@
 
 (def ^:private ^{:arglists '([context model entity-name])} path->context
   "Extract entities from a logical path."
-  (memoize path->context*))
+  ;(memoize path->context*)
+   path->context*
+  )
 
 (defmethod path->context* "databases"
   [context _ db-name]
@@ -224,11 +227,12 @@
       (try
         (s/validate (s/maybe Context) context)
         (catch Exception e
-          (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
-                        (str/join ", " (map name (keys (:value (ex-data e)))))
-                        fully-qualified-name)
-            {:fully-qualified-name fully-qualified-name
-             :context              context}))))))
+          (log/warn
+           (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
+                         (str/join ", " (map name (keys (:value (ex-data e)))))
+                         fully-qualified-name)
+                    {:fully-qualified-name fully-qualified-name
+                     :context              context})))))))
 
 (defn name-for-logging
   "Return a string representation of entity suitable for logs"

@@ -4,8 +4,9 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name->context]]
-            [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
+            [metabase-enterprise.serialization.upsert :refer [maybe-fixup-card-template-ids! maybe-upsert-many!]]
             [metabase.config :as config]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.util]
@@ -27,7 +28,6 @@
             [metabase.models.setting :as setting]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :refer [User]]
-            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
@@ -240,24 +240,57 @@
       (str "card__" card)
       table)))
 
+(defn- fully-qualified-name->id-rec [query]
+  (cond
+    (:source-table query) (update-in query [:source-table] source-table)
+    (:source-query query) (update-in query [:source-query] fully-qualified-name->id-rec)
+    true query))
+
+(defn- source-card
+  [fully-qualified-name]
+  (try
+    (-> (fully-qualified-name->context fully-qualified-name) :card)
+    (catch Throwable e
+      (log/warn e))))
+
+(defn- resolve-native
+  [template-tags]
+  (m/map-vals #(m/update-existing % :card-id source-card) template-tags))
+
+(defn- resolve-card [card context]
+  (-> card
+      (update :table_id (comp :table fully-qualified-name->context))
+      (update :database_id (comp :database fully-qualified-name->context))
+      (update :dataset_query mbql-fully-qualified-names->ids)
+      (assoc :creator_id    @default-user
+             :collection_id (:collection context))
+      (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
+      (cond->
+          (-> card
+              :dataset_query
+              :type
+              mbql.util/normalize-token
+              (= :query)) (update-in [:dataset_query :query] fully-qualified-name->id-rec)
+          (-> card
+              :dataset_query
+              :native
+              :template-tags)
+          (m/update-existing-in [:dataset_query :native :template-tags] resolve-native))))
+
 (defmethod load "cards"
   [path context]
-  (let [paths (list-dirs path)]
-    (maybe-upsert-many! context Card
-      (for [card (slurp-many paths)]
-        (-> card
-            (update :table_id (comp :table fully-qualified-name->context))
-            (update :database_id (comp :database fully-qualified-name->context))
-            (update :dataset_query mbql-fully-qualified-names->ids)
-            (assoc :creator_id    @default-user
-                   :collection_id (:collection context))
-            (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
-            (cond->
-                (-> card
-                    :dataset_query
-                    :type
-                    qp.util/normalize-token
-                    (= :query)) (update-in [:dataset_query :query :source-table] source-table)))))
+  (let [paths (list-dirs path)
+        touched-card-ids (maybe-upsert-many!
+                          context Card
+                          (for [card (slurp-many paths)]
+                            (resolve-card card context)))]
+
+    (maybe-fixup-card-template-ids!
+     (assoc context :mode :update)
+     Card
+     (for [card (slurp-many paths)] (resolve-card card (assoc context :mode :update)))
+     touched-card-ids)
+
     ;; Nested cards
     (doseq [path paths]
       (load (str path "/cards") context))))
@@ -318,9 +351,9 @@
           (cond
             (and model dependent-on)
             {:model              (name model)
-             :model_id           (u/get-id model)
+             :model_id           (u/the-id model)
              :dependent_on_model (name dependent-on)
-             :dependent_on_id    (u/get-id dependent-on)
+             :dependent_on_id    (u/the-id dependent-on)
              :created_at         (java.util.Date.)}
 
             (nil? model)
