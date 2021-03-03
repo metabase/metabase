@@ -1,7 +1,8 @@
 (ns metabase.db.data-migrations-test
   "Tests to make sure the data migrations actually work as expected and don't break things. Shamefully, we have way less
   of these than we should... but that doesn't mean we can't write them for our new ones :)"
-  (:require [clojure.set :as set]
+  (:require [cheshire.core :as json]
+            [clojure.set :as set]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.db.data-migrations :as migrations]
@@ -242,8 +243,29 @@
             "graph.metrics" ["count"]}}))))
 
 (deftest migrate-click-through-test
-  (let [card-vis     "{\"column_settings\":{\"[\\\"ref\\\",[\\\"field-id\\\",2]]\":{\"view_as\":\"link\",\"link_template\":\"http://example.com/{{ID}}\",\"link_text\":\"here's an id: {{ID}}\"},\"[\\\"ref\\\",[\\\"field-id\\\",6]]\":{\"view_as\":\"link\",\"link_template\":\"http://example.com//{{id}}\",\"link_text\":\"here is my id: {{id}}\"}},\"table.pivot_column\":\"QUANTITY\",\"table.cell_column\":\"DISCOUNT\",\"click\":\"link\",\"click_link_template\":\"http://example.com/{{count}}\",\"graph.dimensions\":[\"CREATED_AT\"],\"graph.metrics\":[\"count\"],\"graph.show_values\":true}"
-        dashcard-vis "{\"click\":\"link\",\"click_link_template\":\"http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}\",\"graph.dimensions\":[\"CREATED_AT\",\"CATEGORY\"],\"graph.metrics\":[\"count\"]}"]
+  (let [card-vis     (json/generate-string
+                      {"column_settings"
+                       {"[\"ref\",[\"field-id\",2]]"
+                        {"view_as" "link",
+                         "link_template" "http://example.com/{{ID}}",
+                         "link_text" "here's an id: {{ID}}"},
+                        "[\"ref\",[\"field-id\",6]]"
+                        {"view_as" "link",
+                         "link_template" "http://example.com//{{id}}",
+                         "link_text" "here is my id: {{id}}"}},
+                       "table.pivot_column" "QUANTITY",
+                       "table.cell_column" "DISCOUNT",
+                       "click" "link",
+                       "click_link_template" "http://example.com/{{count}}",
+                       "graph.dimensions" ["CREATED_AT"],
+                       "graph.metrics" ["count"],
+                       "graph.show_values" true})
+        dashcard-vis (json/generate-string
+                      {"click" "link",
+                       "click_link_template"
+                       "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
+                       "graph.dimensions" ["CREATED_AT" "CATEGORY"],
+                       "graph.metrics" ["count"]})]
     (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                     Card          [{card-id :id} {:visualization_settings card-vis}]
                     DashboardCard [{dashcard-id :id} {:dashboard_id           dashboard-id
