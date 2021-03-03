@@ -28,6 +28,12 @@
     <Logger name="metabase.server.middleware" level="DEBUG"/>
     <Logger name="metabase.query-processor.async" level="DEBUG"/>
     <Logger name="com.mchange" level="ERROR"/>
+    <!--
+    <Logger name="org.quartz" level="DEBUG"/>
+    <Logger name="org.quartz.core.QuartzSchedulerThread" level="INFO"/>
+    <Logger name="org.quartz.impl.jdbcjobstore" level="INFO"/>
+    <Logger name="metabase.task.sync-databases" level="DEBUG"/>
+    -->
 
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>
