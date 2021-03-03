@@ -32,28 +32,23 @@ describe.skip("scenarios > public", () => {
     signInAsAdmin();
 
     // setup parameterized question
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "sql param",
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "select count(*) from products where {{c}}",
-          "template-tags": {
-            c: {
-              id: "e126f242-fbaa-1feb-7331-21ac59f021cc",
-              name: "c",
-              "display-name": "Category",
-              type: "dimension",
-              dimension: ["field-id", PRODUCTS.CATEGORY],
-              default: null,
-              "widget-type": "category",
-            },
+      native: {
+        query: "select count(*) from products where {{c}}",
+        "template-tags": {
+          c: {
+            id: "e126f242-fbaa-1feb-7331-21ac59f021cc",
+            name: "c",
+            "display-name": "Category",
+            type: "dimension",
+            dimension: ["field-id", PRODUCTS.CATEGORY],
+            default: null,
+            "widget-type": "category",
           },
         },
-        database: 1,
       },
       display: "scalar",
-      visualization_settings: {},
     }).then(({ body }) => {
       questionId = body.id;
     });

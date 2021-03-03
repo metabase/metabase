@@ -12,19 +12,14 @@ describe("scenarios > visualizations > rows", () => {
     "should not collapse rows when last value is 0 (metabase#14285)",
     { browser: "firefox" },
     () => {
-      cy.request("POST", "/api/card", {
+      cy.createNativeQuestion({
         name: "14285",
-        dataset_query: {
-          type: "native",
-          native: {
-            query:
-              "with temp as (\n select 'a' col1, 25 col2\n union all \n select 'b', 10\n union all \n select 'c', 15\n union all \n select 'd', 0\n union all\n select 'e', 30\n union all \n select 'f', 35\n)\nselect * from temp\norder by 2 desc",
-            "template-tags": {},
-          },
-          database: 1,
+        native: {
+          query:
+            "with temp as (\n select 'a' col1, 25 col2\n union all \n select 'b', 10\n union all \n select 'c', 15\n union all \n select 'd', 0\n union all\n select 'e', 30\n union all \n select 'f', 35\n)\nselect * from temp\norder by 2 desc",
+          "template-tags": {},
         },
         display: "row",
-        visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.visit(`/question/${QUESTION_ID}`);
       });
