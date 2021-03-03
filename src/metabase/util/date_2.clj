@@ -140,7 +140,7 @@
 (defn- week-fields
   "Create a new instance of a `WeekFields`, which is used for localized day-of-week, week-of-month, and week-of-year.
 
-    (week-fields :monday) ; -> #object[java.time.temporal.WeekFields \"WeekFields[TUESDAY,1]\"]"
+    (week-fields :monday) ; -> #object[java.time.temporal.WeekFields \"WeekFields[MONDAY,1]\"]"
   (^WeekFields [first-day-of-week]
    ;; TODO -- ISO weeks only consider a week to be in a year if it has 4+ days in that year... `:week-of-year`
    ;; extraction is liable to be off for people who expect that definition of "week of year". We should probably make
@@ -243,7 +243,6 @@
      :hour        (t/truncate-to t :hours)
      :day         (t/truncate-to t :days)
      :week        (-> (.with t (adjuster :first-day-of-week))     (t/truncate-to :days))
-     ;; TODO -- we should remove this now that `:week` respects the `start-of-week` Setting.
      :month       (-> (t/adjust t :first-day-of-month)            (t/truncate-to :days))
      :quarter     (-> (.with t (adjuster :first-day-of-quarter))  (t/truncate-to :days))
      :year        (-> (t/adjust t :first-day-of-year)             (t/truncate-to :days)))))

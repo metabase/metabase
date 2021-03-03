@@ -400,13 +400,13 @@
 
 (deftest comparison-range-start-of-week-test
   (testing "`comparison-range` for week should respect the `start-of-week` Setting (#14294)"
-    (doseq [[first-day-of-week expected] {"sunday" {:start #t "2021-02-21", :end #t "2021-02-27"}
-                                          "monday" {:start #t "2021-02-22", :end #t "2021-02-28"}
-                                          #_       "tuesday"   #_ [9 "Tuesday"]
-                                          #_       "wednesday" #_ [10 "Wednesday"]
-                                          #_       "thursday"  #_ [11 "Thursday"]
-                                          #_       "friday"    #_ [12 "Friday"]
-                                          #_       "saturday"  #_ [13 "Saturday"]}]
+    (doseq [[first-day-of-week expected] {"sunday"    {:start #t "2021-02-21", :end #t "2021-02-27"}
+                                          "monday"    {:start #t "2021-02-22", :end #t "2021-02-28"}
+                                          "tuesday"   {:start #t "2021-02-23", :end #t "2021-03-01"}
+                                          "wednesday" {:start #t "2021-02-17", :end #t "2021-02-23"}
+                                          "thursday"  {:start #t "2021-02-18", :end #t "2021-02-24"}
+                                          "friday"    {:start #t "2021-02-19", :end #t "2021-02-25"}
+                                          "saturday"  {:start #t "2021-02-20", :end #t "2021-02-26"}}]
       (mt/with-temporary-setting-values [start-of-week first-day-of-week]
         (let [t #t "2021-02-23"]
           (is (= expected
