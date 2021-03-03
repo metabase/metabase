@@ -24,27 +24,34 @@ export const USERS = {
     last_name: "Tableton",
     email: "normal@metabase.com",
     password: "12341234",
+    group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP],
   },
   nodata: {
     first_name: "No Data",
     last_name: "Tableton",
     email: "nodata@metabase.com",
     password: "12341234",
+    group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
   },
   nocollection: {
     first_name: "No Collection",
     last_name: "Tableton",
     email: "nocollection@metabase.com",
     password: "12341234",
+    group_ids: [ALL_USERS_GROUP, DATA_GROUP],
   },
   none: {
     first_name: "None",
     last_name: "Tableton",
     email: "none@metabase.com",
     password: "12341234",
+    group_ids: [ALL_USERS_GROUP],
   },
 };
 
+export function createUser(user = {}) {
+  return cy.request("POST", "/api/user", user);
+}
 
 export function signIn(user = "admin") {
   const { email: username, password } = USERS[user];

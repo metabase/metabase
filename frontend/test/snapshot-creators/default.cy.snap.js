@@ -5,7 +5,11 @@ import {
   USER_GROUPS,
   withSampleDataset,
   signInAsAdmin,
+  createUser,
 } from "__support__/cypress";
+
+const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
+const { admin, normal, nodata, nocollection, none } = USERS;
 
 describe("snapshots", () => {
   describe("default", () => {
@@ -27,22 +31,12 @@ describe("snapshots", () => {
     });
   });
 
-  function makeUserObject(name, groupIds) {
-    return {
-      first_name: USERS[name].first_name,
-      last_name: USERS[name].last_name,
-      email: USERS[name].email,
-      password: USERS[name].password,
-      group_ids: groupIds,
-    };
-  }
-
   function setup() {
     cy.request("GET", "/api/session/properties").then(
       ({ body: properties }) => {
         cy.request("POST", "/api/setup", {
           token: properties["setup-token"],
-          user: makeUserObject("admin"),
+          user: admin,
           prefs: {
             site_name: "Epic Team",
             allow_tracking: false,
@@ -68,30 +62,16 @@ describe("snapshots", () => {
     });
   }
 
-  const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
-
   function addUsersAndGroups() {
     // groups
     cy.request("POST", "/api/permissions/group", { name: "collection" }); // 4
     cy.request("POST", "/api/permissions/group", { name: "data" }); // 5
 
     // additional users
-    cy.request(
-      "POST",
-      "/api/user",
-      makeUserObject("normal", [ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP]),
-    );
-    cy.request(
-      "POST",
-      "/api/user",
-      makeUserObject("nodata", [ALL_USERS_GROUP, COLLECTION_GROUP]),
-    );
-    cy.request(
-      "POST",
-      "/api/user",
-      makeUserObject("nocollection", [ALL_USERS_GROUP, DATA_GROUP]),
-    );
-    cy.request("POST", "/api/user", makeUserObject("none", [ALL_USERS_GROUP]));
+    createUser(normal);
+    createUser(nodata);
+    createUser(nocollection);
+    createUser(none);
 
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
