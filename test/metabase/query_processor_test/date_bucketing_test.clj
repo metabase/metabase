@@ -858,11 +858,24 @@
 (defn- dataset-def-with-timestamps [interval-seconds]
   (TimestampDatasetDef. interval-seconds))
 
-(def ^:private checkins:4-per-minute (dataset-def-with-timestamps 15))
-(def ^:private checkins:4-per-hour   (dataset-def-with-timestamps (u/minutes->seconds 15)))
-(def ^:private checkins:1-per-day    (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
+(def ^:private checkins:4-per-minute
+  "Dynamically generated dataset with 30 checkins spaced 15 seconds apart, from 3 mins 45 seconds ago to 3 minutes 30
+  seconds in the future."
+  (dataset-def-with-timestamps 15))
 
-(defn- checkins-db-is-old? [max-age-seconds]
+(def ^:private checkins:4-per-hour
+  "Dynamically generated dataset with 30 checkins spaced 15 minutes apart, from 3 hours 45 minutes ago to 3 hours 30
+  minutes in the future."
+  (dataset-def-with-timestamps (u/minutes->seconds 15)))
+
+(def ^:private checkins:1-per-day
+  "Dynamically generated dataset with 30 checkins spaced 24 hours apart, from 15 days ago to 14 days in the future."
+  (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
+
+(defn- checkins-db-is-old?
+  "Determine whether we need to recreate one of the dynamically-generated datasets above, if the data has grown a little
+  stale."
+  [max-age-seconds]
   (u.date/greater-than-period-duration? (u.date/period-duration (:created_at (mt/db)) (t/zoned-date-time))
                                         (t/seconds max-age-seconds)))
 
@@ -1057,3 +1070,32 @@
              (mt/mbql-query checkins
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
+
+(deftest field-filter-start-of-week-test
+  (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
+    (mt/dataset checkins:1-per-day
+      (let [query (mt/native-query {:query         (str "SELECT id, dayname(\"TIMESTAMP\") as day "
+                                                        "FROM checkins "
+                                                        "[[WHERE {{date_range}}]] "
+                                                        "ORDER BY \"TIMESTAMP\" ASC "
+                                                        "LIMIT 1")
+                                    :template-tags {"date_range"
+                                                    {:name         "date_range"
+                                                     :display-name "Date Range"
+                                                     :type         :dimension
+                                                     :dimension    (mt/$ids $checkins.timestamp)}}
+                                    :parameters    [{:type   :date/range
+                                                     :name   "created_at"
+                                                     :target [:dimension [:template-tag "date_range"]]
+                                                     :value  "past1weeks"}]})]
+        (doseq [[first-day-of-week expected] {"sunday"    [7 "Sunday"]
+                                              "monday"    [8 "Monday"]
+                                              "tuesday"   [9 "Tuesday"]
+                                              "wednesday" [10 "Wednesday"]
+                                              "thursday"  [4 "Thursday"]
+                                              "friday"    [5 "Friday"]
+                                              "saturday"  [6 "Saturday"]}]
+          (mt/with-temporary-setting-values [start-of-week first-day-of-week]
+            (is (= expected
+                   (mt/first-row
+                     (qp/process-query query))))))))))
