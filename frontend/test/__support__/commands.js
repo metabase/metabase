@@ -53,32 +53,6 @@ Cypress.Commands.add(
   },
 );
 
-Cypress.Commands.add(
-  "sandbox",
-  ({
-    attribute_remappings = {},
-    card_id = null,
-    group_id = 4,
-    table_id = 2,
-  } = {}) => {
-    // Extract the name of the table
-    cy.request("GET", "/api/table").then(({ body: tables }) => {
-      const [{ name }] = tables.filter(table => {
-        return table.id === table_id;
-      });
-      const [attr] = Object.keys(attribute_remappings);
-
-      cy.log(`Sandbox "${name}" table on "${attr}" attribute`);
-      cy.request("POST", "/api/mt/gtap", {
-        attribute_remappings,
-        card_id,
-        group_id,
-        table_id,
-      });
-    });
-  },
-);
-
 /**
  * PERMISSIONS
  *
@@ -159,6 +133,32 @@ Cypress.Commands.add("updateCollectionGraph", (groupsCollectionObject = {}) => {
     },
   );
 });
+
+Cypress.Commands.add(
+  "sandboxTable",
+  ({
+    attribute_remappings = {},
+    card_id = null,
+    group_id = 4,
+    table_id = 2,
+  } = {}) => {
+    // Extract the name of the table
+    cy.request("GET", "/api/table").then(({ body: tables }) => {
+      const [{ name }] = tables.filter(table => {
+        return table.id === table_id;
+      });
+      const [attr] = Object.keys(attribute_remappings);
+
+      cy.log(`Sandbox "${name}" table on "${attr}" attribute`);
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings,
+        card_id,
+        group_id,
+        table_id,
+      });
+    });
+  },
+);
 
 /**
  * OVERWRITES

@@ -100,7 +100,7 @@ describeWithToken("formatting > sandboxes", () => {
       // Orders join Products
       createJoinedQuestion(QUESTION_NAME);
 
-      cy.sandbox({
+      cy.sandboxTable({
         table_id: ORDERS_ID,
         group_id: DATA_GROUP,
         attribute_remappings: {
@@ -124,7 +124,7 @@ describeWithToken("formatting > sandboxes", () => {
           },
         },
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.sandbox({
+        cy.sandboxTable({
           table_id: PEOPLE_ID,
           card_id: QUESTION_ID,
           group_id: DATA_GROUP,
@@ -211,7 +211,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
-      cy.sandbox({
+      cy.sandboxTable({
         table_id: PEOPLE_ID,
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", PEOPLE.ID]],
@@ -266,7 +266,7 @@ describeWithToken("formatting > sandboxes", () => {
       const QUESTION_NAME = "EE_548";
       const CC_NAME = "CC_548"; // Custom column
 
-      cy.sandbox({
+      cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
@@ -331,7 +331,7 @@ describeWithToken("formatting > sandboxes", () => {
           });
         }
 
-        cy.sandbox({
+        cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
             [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
@@ -400,7 +400,7 @@ describeWithToken("formatting > sandboxes", () => {
       const PRODUCTS_ALIAS = "Products";
       const QUESTION_NAME = "EE_535";
 
-      cy.sandbox({
+      cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
@@ -496,7 +496,7 @@ describeWithToken("formatting > sandboxes", () => {
             filter: [">", ["field-id", ORDERS.TOTAL], 10],
           },
         }).then(({ body: { id: CARD_ID } }) => {
-          cy.sandbox({
+          cy.sandboxTable({
             table_id: ORDERS_ID,
             card_id: CARD_ID,
             attribute_remappings: {
@@ -513,7 +513,7 @@ describeWithToken("formatting > sandboxes", () => {
             filter: [">", ["field-id", PRODUCTS.PRICE], 10],
           },
         }).then(({ body: { id: CARD_ID } }) => {
-          cy.sandbox({
+          cy.sandboxTable({
             table_id: PRODUCTS_ID,
             card_id: CARD_ID,
             attribute_remappings: {
@@ -588,7 +588,7 @@ describeWithToken("formatting > sandboxes", () => {
               ? runAndSaveQuestion({ question: CARD_ID, sandboxValue: "1" })
               : null;
 
-            cy.sandbox({
+            cy.sandboxTable({
               table_id: ORDERS_ID,
               card_id: CARD_ID,
               attribute_remappings: {
@@ -619,7 +619,7 @@ describeWithToken("formatting > sandboxes", () => {
                 })
               : null;
 
-            cy.sandbox({
+            cy.sandboxTable({
               table_id: PRODUCTS_ID,
               card_id: CARD_ID,
               attribute_remappings: {
@@ -681,7 +681,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.server();
         cy.route("POST", "/api/dataset").as("dataset");
 
-        cy.sandbox({
+        cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
             [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
@@ -723,14 +723,14 @@ describeWithToken("formatting > sandboxes", () => {
           });
         }
 
-        cy.sandbox({
+        cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
             user_id: ["dimension", ["field-id", ORDERS.USER_ID]],
           },
         });
 
-        cy.sandbox({
+        cy.sandboxTable({
           table_id: PRODUCTS_ID,
           attribute_remappings: {
             user_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
@@ -864,14 +864,14 @@ describeWithToken("formatting > sandboxes", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
-      cy.sandbox({
+      cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
       });
 
-      cy.sandbox({
+      cy.sandboxTable({
         table_id: PRODUCTS_ID,
         attribute_remappings: {
           [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
@@ -917,21 +917,21 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should work with pivot tables (metabase#14969)", () => {
-      cy.sandbox({
+      cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
       });
 
-      cy.sandbox({
+      cy.sandboxTable({
         table_id: PEOPLE_ID,
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", PEOPLE.ID]],
         },
       });
 
-      cy.sandbox({
+      cy.sandboxTable({
         table_id: PRODUCTS_ID,
         attribute_remappings: {
           [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],

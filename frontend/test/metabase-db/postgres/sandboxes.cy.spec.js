@@ -79,7 +79,7 @@ describeWithToken("postgres > user > query", () => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
-        cy.sandbox({
+        cy.sandboxTable({
           table_id: PEOPLE_ID,
           attribute_remappings: {
             user_id: ["dimension", ["field-id", PEOPLE.ID]],
