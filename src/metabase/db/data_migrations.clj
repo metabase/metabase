@@ -339,18 +339,18 @@
 (defn fix-click-through [{id :id card :card_visualization dashcard :dashcard_visualization}]
   (let [merged                   (merge dashcard card)
         top-level-click-behavior (when (contains? merged "click")
-                                   {"type"         (merged "click")
+                                   {"type"         (get merged "click")
                                     "linkType"     "url"
-                                    "linkTemplate" (merged "click_link_template")})
+                                    "linkTemplate" (get merged "click_link_template")})
         column-settings          (get merged "column_settings")
         updated-columns          (reduce-kv (fn [m col field-settings]
                                               (if (and (contains? field-settings "view_as")
                                                        (contains? field-settings "link_template"))
                                                 (assoc m col
-                                                       {"type"             (field-settings "view_as")
+                                                       {"type"             (get field-settings "view_as")
                                                         "linkType"         "url"
-                                                        "linkTemplate"     (field-settings "link_template")
-                                                        "linkTemplateText" (field-settings "link_text")} )
+                                                        "linkTemplate"     (get field-settings "link_template")
+                                                        "linkTemplateText" (get field-settings "link_text")} )
                                                 m))
                                             {}
                                             column-settings)]
@@ -368,7 +368,7 @@
             x
             ks)))
 
-(defmigration ^{:added "0.39.0"} migrate-click-through
+(defmigration ^{:author "dpsutton" :added "0.38.1"} migrate-click-through
   (transduce (comp (map (parse-to-json :card_visualization :dashcard_visualization))
                    (map fix-click-through)
                    (filter :visualization_settings))
