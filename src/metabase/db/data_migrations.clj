@@ -354,13 +354,15 @@
                                                 m))
                                             {}
                                             column-settings)]
-    {:id id
-     :visualization_settings
-     (merge dashcard
-            (when top-level-click-behavior
-              {"click_behavior" top-level-click-behavior})
-            (when (seq updated-columns)
-              {"column_settings" updated-columns}))}))
+    ;; don't return anything if we don't have new stuff
+    (when (or top-level-click-behavior (seq updated-columns))
+      {:id id
+       :visualization_settings
+       (merge dashcard
+              (when top-level-click-behavior
+                {"click_behavior" top-level-click-behavior})
+              (when (seq updated-columns)
+                {"column_settings" updated-columns}))})))
 
 (defn parse-to-json [& ks]
   (fn [x]
