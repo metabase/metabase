@@ -38,7 +38,7 @@
 (s/defn load
   "Load serialized metabase instance as created by `dump` command from directory `path`."
   [path context :- Context]
-  (plugins/load-plugins!)               ;
+  (plugins/load-plugins!)
   (mdb/setup-db!)
   (when-not (load/compatible? path)
     (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))

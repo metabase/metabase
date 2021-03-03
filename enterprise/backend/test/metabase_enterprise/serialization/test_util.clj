@@ -12,10 +12,10 @@
   `(tt/with-temp* [Database   [{~'db-id :id} (into {} (-> (data/id)
                                                           Database
                                                           (dissoc :id :features :name)))]
-                   Table      [{~'table-id :id :as ~'table} (-> (data/id :venues)
-                                                              Table
-                                                              (dissoc :id)
-                                                              (assoc :db_id ~'db-id))]
+                   Table      [{~'table-id :id} (-> (data/id :venues)
+                                                    Table
+                                                    (dissoc :id)
+                                                    (assoc :db_id ~'db-id))]
                    Field      [{~'numeric-field-id :id} (-> (data/id :venues :price)
                                                             Field
                                                             (dissoc :id)

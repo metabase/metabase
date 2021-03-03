@@ -131,11 +131,21 @@
 (defmulti ^:private path->context* (fn [_ model _]
                                      model))
 
+(defn- memoize-truthy
+  "Memoize only truthy values, so that null references are retried if they run a second time."
+  [f]
+  (let [mem (atom {})]
+    (fn [& args]
+      (if-let [e (find @mem args)]
+        (val e)
+        (let [ret (apply f args)]
+          (when ret
+            (swap! mem assoc args ret))
+          ret)))))
+
 (def ^:private ^{:arglists '([context model entity-name])} path->context
   "Extract entities from a logical path."
-  ;(memoize path->context*)
-   path->context*
-  )
+  (memoize-truthy path->context*))
 
 (defmethod path->context* "databases"
   [context _ db-name]
