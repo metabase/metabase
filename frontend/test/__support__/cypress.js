@@ -47,6 +47,17 @@ export const USERS = {
     password: "12341234",
     group_ids: [ALL_USERS_GROUP],
   },
+  sandboxed: {
+    first_name: "User",
+    last_name: "1",
+    email: "u1@metabase.test",
+    password: "12341234",
+    login_attributes: {
+      user_id: "1",
+      user_cat: "Widget",
+    },
+    group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
+  },
 };
 
 export function createUser(user = {}) {
