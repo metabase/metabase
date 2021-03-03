@@ -134,16 +134,6 @@ describeWithToken("formatting > sandboxes", () => {
         });
       });
 
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [ORDERS_ID]: { query: "segmented", read: "all" },
-            [PEOPLE_ID]: { query: "segmented", read: "all" },
-          },
-        },
-        user_group: DATA_GROUP,
-      });
-
       signOut();
       signInAsNormalUser();
     });
@@ -222,7 +212,6 @@ describeWithToken("formatting > sandboxes", () => {
         schemas: {
           PUBLIC: {
             [ORDERS_ID]: "all",
-            [PEOPLE_ID]: { query: "segmented", read: "all" },
             [PRODUCTS_ID]: "all",
             [REVIEWS_ID]: "all",
           },
@@ -270,14 +259,6 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: ORDERS_ID,
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-      });
-
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [ORDERS_ID]: { query: "segmented", read: "all" },
-          },
         },
       });
 
@@ -342,7 +323,6 @@ describeWithToken("formatting > sandboxes", () => {
           schemas: {
             PUBLIC: {
               [PRODUCTS_ID]: "all",
-              [ORDERS_ID]: { query: "segmented", read: "all" },
             },
           },
         });
@@ -411,7 +391,6 @@ describeWithToken("formatting > sandboxes", () => {
         schemas: {
           PUBLIC: {
             [PRODUCTS_ID]: "all",
-            [ORDERS_ID]: { query: "segmented", read: "all" },
           },
         },
       });
@@ -522,15 +501,6 @@ describeWithToken("formatting > sandboxes", () => {
           });
         });
 
-        cy.updatePermissionsSchemas({
-          schemas: {
-            PUBLIC: {
-              [PRODUCTS_ID]: { query: "segmented", read: "all" },
-              [ORDERS_ID]: { query: "segmented", read: "all" },
-            },
-          },
-        });
-
         signOut();
         signInAsSandboxedUser();
 
@@ -628,15 +598,6 @@ describeWithToken("formatting > sandboxes", () => {
             });
           });
 
-          cy.updatePermissionsSchemas({
-            schemas: {
-              PUBLIC: {
-                [PRODUCTS_ID]: { query: "segmented", read: "all" },
-                [ORDERS_ID]: { query: "segmented", read: "all" },
-              },
-            },
-          });
-
           signOut();
           signInAsSandboxedUser();
 
@@ -691,7 +652,6 @@ describeWithToken("formatting > sandboxes", () => {
         cy.updatePermissionsSchemas({
           schemas: {
             PUBLIC: {
-              [ORDERS_ID]: { query: "segmented", read: "all" },
               [PRODUCTS_ID]: "all",
             },
           },
@@ -736,17 +696,6 @@ describeWithToken("formatting > sandboxes", () => {
             user_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
           },
         });
-
-        cy.updatePermissionsSchemas({
-          schemas: {
-            PUBLIC: {
-              [PRODUCTS_ID]: { query: "segmented", read: "all" },
-              [ORDERS_ID]: { query: "segmented", read: "all" },
-            },
-          },
-        });
-
-        cy.log("Create question with joins");
 
         cy.createQuestion({
           name: QUESTION_NAME,
@@ -878,15 +827,6 @@ describeWithToken("formatting > sandboxes", () => {
         },
       });
 
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [PRODUCTS_ID]: { query: "segmented", read: "all" },
-            [ORDERS_ID]: { query: "segmented", read: "all" },
-          },
-        },
-      });
-
       signOut();
       signInAsSandboxedUser();
       createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
@@ -935,16 +875,6 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: PRODUCTS_ID,
         attribute_remappings: {
           [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
-        },
-      });
-
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [PRODUCTS_ID]: { query: "segmented", read: "all" },
-            [ORDERS_ID]: { query: "segmented", read: "all" },
-            [PEOPLE_ID]: { query: "segmented", read: "all" },
-          },
         },
       });
 
@@ -1001,23 +931,13 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it.skip("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
-      cy.log("Sandbox `Orders` table");
-      cy.request("POST", "/api/mt/gtap", {
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
-        card_id: null,
-        table_id: ORDERS_ID,
-        group_id: COLLECTION_GROUP,
       });
 
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [ORDERS_ID]: { query: "segmented", read: "all" },
-          },
-        },
-      });
       signInAsSandboxedUser();
       cy.visit("/dashboard/1");
       cy.icon("share").click();

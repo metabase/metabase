@@ -86,15 +86,6 @@ describeWithToken("postgres > user > query", () => {
           },
         });
 
-        cy.updatePermissionsSchemas({
-          database_id: PG_DB_ID,
-          schemas: {
-            public: {
-              [PEOPLE_ID]: { query: "segmented", read: "all" },
-            },
-          },
-        });
-
         signOut();
         signInAsSandboxedUser();
         cy.visit(`/question/${QUESTION_ID}`);

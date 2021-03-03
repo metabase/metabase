@@ -94,7 +94,6 @@ Cypress.Commands.add(
       throw new Error("`schemas` must be an object!");
     }
 
-    cy.log("Fetch permissions graph");
     cy.request("GET", "/api/permissions/graph").then(
       ({ body: { groups, revision } }) => {
         const UPDATED_GROUPS = Object.assign(groups, {
@@ -142,9 +141,9 @@ Cypress.Commands.add(
     group_id = 4,
     table_id = 2,
   } = {}) => {
-    // Extract the name of the table
+    // Extract the name of the table, as well as `schema` and `db_id` that we'll need later on for `cy.updatePermissionsSchemas()`
     cy.request("GET", "/api/table").then(({ body: tables }) => {
-      const [{ name }] = tables.filter(table => {
+      const [{ name, schema, db_id }] = tables.filter(table => {
         return table.id === table_id;
       });
       const [attr] = Object.keys(attribute_remappings);
@@ -155,6 +154,16 @@ Cypress.Commands.add(
         card_id,
         group_id,
         table_id,
+      });
+
+      cy.updatePermissionsSchemas({
+        schemas: {
+          [schema]: {
+            [table_id]: { query: "segmented", read: "all" },
+          },
+        },
+        user_group: group_id,
+        database_id: db_id,
       });
     });
   },
