@@ -231,15 +231,23 @@
              "column_settings"
              ;; note none of this keywordizes keys in json parsing since these structures are gross as keywords
              {"[\"ref\",[\"field-id\",2]]"
-              {"type" "link",
-               "linkType" "url",
-               "linkTemplate" "http://example.com/{{ID}}",
-               "linkTemplateText" "here's an id: {{ID}}"},
+              {"view_as" "link",
+               "link_template" "http://example.com/{{ID}}",
+               "link_text" "here's an id: {{ID}}"
+               "click_behavior"
+               {"type" "link",
+                "linkType" "url",
+                "linkTemplate" "http://example.com/{{ID}}",
+                "linkTemplateText" "here's an id: {{ID}}"}},
               "[\"ref\",[\"field-id\",6]]"
-              {"type" "link",
-               "linkType" "url",
-               "linkTemplate" "http://example.com//{{id}}",
-               "linkTemplateText" "here is my id: {{id}}"}}}}
+              {"view_as" "link",
+               "link_template" "http://example.com//{{id}}",
+               "link_text" "here is my id: {{id}}"
+               "click_behavior"
+               {"type" "link",
+                "linkType" "url",
+                "linkTemplate" "http://example.com//{{id}}",
+                "linkTemplateText" "here is my id: {{id}}"}}}}}
            fixed))
     (testing "won't fix if fix is already applied"
       ;; a customer got a custom script from flamber (for which this is making that fix available for everyone. See
@@ -290,15 +298,23 @@
                                  :column_settings
                                  ;; the model keywordizes the json parsing yielding this monstrosity below
                                  {(keyword "[\"ref\",[\"field-id\",2]]")
-                                  {:type             "link",
-                                   :linkType         "url",
-                                   :linkTemplate     "http://example.com/{{ID}}",
-                                   :linkTemplateText "here's an id: {{ID}}"},
+                                  {:view_as       "link",
+                                   :link_template "http://example.com/{{ID}}",
+                                   :link_text     "here's an id: {{ID}}"
+                                   :click_behavior
+                                   {:type             "link",
+                                    :linkType         "url",
+                                    :linkTemplate     "http://example.com/{{ID}}",
+                                    :linkTemplateText "here's an id: {{ID}}"}},
                                   (keyword "[\"ref\",[\"field-id\",6]]")
-                                  {:type             "link",
-                                   :linkType         "url",
-                                   :linkTemplate     "http://example.com//{{id}}",
-                                   :linkTemplateText "here is my id: {{id}}"}}}
+                                  {:view_as       "link",
+                                   :link_template "http://example.com//{{id}}",
+                                   :link_text     "here is my id: {{id}}"
+                                   :click_behavior
+                                   {:type             "link",
+                                    :linkType         "url",
+                                    :linkTemplate     "http://example.com//{{id}}",
+                                    :linkTemplateText "here is my id: {{id}}"}}}}
               get-settings!     #(:visualization_settings (db/select-one DashboardCard :id dashcard-id))]
           (#'migrations/migrate-click-through)
           (is (= expected-settings (get-settings!)))

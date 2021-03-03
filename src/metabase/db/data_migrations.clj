@@ -389,10 +389,13 @@
                                               (if (and (contains? field-settings "view_as")
                                                        (contains? field-settings "link_template"))
                                                 (assoc m col
-                                                       {"type"             (get field-settings "view_as")
-                                                        "linkType"         "url"
-                                                        "linkTemplate"     (get field-settings "link_template")
-                                                        "linkTemplateText" (get field-settings "link_text")} )
+                                                       (merge
+                                                        field-settings
+                                                        {"click_behavior"
+                                                         {"type"             (get field-settings "view_as")
+                                                          "linkType"         "url"
+                                                          "linkTemplate"     (get field-settings "link_template")
+                                                          "linkTemplateText" (get field-settings "link_text")}}) )
                                                 m))
                                             {}
                                             column-settings)]
