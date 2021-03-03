@@ -337,13 +337,53 @@
         :collection_id (u/get-id new-collection)))))
 
 (defn- fix-click-through
-  "Updates the dashboard card by pulling and renaming column behavior from the card."
+  "Computes the visualization settings for a dashboard card based on existing card and dashboard card linked by
+  card ([:= :dashcard.card_id :card.id]).
+
+  Updates from the old style of click through to new style (#15014). Primarily moving top level `click` and
+  `click_link_template` keys to a new map under `click_behavior` with slightly renamed keys. Similarly, under
+  `column_settings` its renaming keys from `view_as` -> `type` etc.
+
+  Before (viewing them as merged card and dashboardcard visualization_settings)
+  {...
+   click: \"link\"
+   click_link_template: \"http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}\"
+   column_settings {
+    [ref [field-id 6]] {
+      {view_as \"link\"
+       link_template \"http://example.com/{{ID}}\"
+       link_text \"here's an id: {{ID}}\"
+      }
+    }
+  ...
+  }
+
+  after:
+  {...
+   click_behavior {
+      type: \"link\"
+      linkType: \"url\"
+      linkTemplate: \"http://example.com/{{ID}}\"
+      linkTemplateText \"here's an id: {{ID}}\"
+    }
+  column_settings {
+    [ref [field-id 6]] {
+      type:
+      linkType:
+      linkTemplate:
+      linkTemplateText:
+    }
+  ...
+  }"
   [{id :id card :card_visualization dashcard :dashcard_visualization}]
   (let [merged                   (merge dashcard card)
         top-level-click-behavior (when (contains? merged "click")
                                    {"type"         (get merged "click")
                                     "linkType"     "url"
                                     "linkTemplate" (get merged "click_link_template")})
+        already-migrated?        (and top-level-click-behavior
+                                      (= top-level-click-behavior
+                                         (get dashcard "click_behavior")))
         column-settings          (get merged "column_settings")
         updated-columns          (reduce-kv (fn [m col field-settings]
                                               (if (and (contains? field-settings "view_as")
@@ -356,8 +396,11 @@
                                                 m))
                                             {}
                                             column-settings)]
-    ;; don't return anything if we don't have new stuff
-    (when (or top-level-click-behavior (seq updated-columns))
+    ;; don't return anything if we don't have new stuff or if we think the migration has already run since at least
+    ;; one company has already manually done this
+    (when (and (or top-level-click-behavior
+                   (seq updated-columns))
+               (not already-migrated?))
       {:id id
        :visualization_settings
        (merge dashcard
@@ -380,6 +423,8 @@
               (fn [_ {:keys [id visualization_settings]}]
                 (db/update! DashboardCard id :visualization_settings visualization_settings)))
              nil
+             ;; flamber wrote a manual postgres migration that this faithfully recreates: see
+             ;; https://github.com/metabase/metabase/issues/15014
              (db/query {:select    [:dashcard.id
                                     [:card.visualization_settings :card_visualization]
                                     [:dashcard.visualization_settings :dashcard_visualization]]
