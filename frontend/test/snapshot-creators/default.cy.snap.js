@@ -146,11 +146,6 @@ describe("snapshots", () => {
         });
       },
     );
-
-    // dismiss the "it's ok to play around" modal
-    Object.values(USERS).map((_, index) =>
-      cy.request("PUT", `/api/user/${index + 1}/qbnewb`, {}),
-    );
   }
 
   // TODO: It'd be nice to have one file per snapshot.
