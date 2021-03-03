@@ -388,17 +388,16 @@
                                          (get dashcard "click_behavior")))
         column-settings          (get merged "column_settings")
         updated-columns          (reduce-kv (fn [m col field-settings]
-                                              (if (and (contains? field-settings "view_as")
-                                                       (contains? field-settings "link_template"))
-                                                (assoc m col
-                                                       (merge
-                                                        field-settings
+                                              (assoc m col
+                                                     (merge
+                                                      field-settings
+                                                      (when (and (contains? field-settings "view_as")
+                                                                 (contains? field-settings "link_template"))
                                                         {"click_behavior"
                                                          {"type"             (get field-settings "view_as")
                                                           "linkType"         "url"
                                                           "linkTemplate"     (get field-settings "link_template")
-                                                          "linkTemplateText" (get field-settings "link_text")}}) )
-                                                m))
+                                                          "linkTemplateText" (get field-settings "link_text")}})) ))
                                             {}
                                             column-settings)]
     ;; don't return anything if we don't have new stuff or if we think the migration has already run since at least
