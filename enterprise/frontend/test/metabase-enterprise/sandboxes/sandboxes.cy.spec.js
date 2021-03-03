@@ -8,6 +8,7 @@ import {
   signInAsAdmin,
   signInAsNormalUser,
   signOut,
+  USERS,
   USER_GROUPS,
   remapDisplayValueToFK,
   sidebar,
@@ -26,27 +27,9 @@ const {
 } = SAMPLE_DATASET;
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+const { sandboxed } = USERS;
 
-// TODO: If we ever have the need to use this user across multiple tests, extract it to `__support__/cypress`
-const sandboxed_user = {
-  first_name: "User",
-  last_name: "1",
-  email: "u1@metabase.test",
-  password: "12341234",
-  login_attributes: {
-    user_id: "1",
-    user_cat: "Widget",
-  },
-  // Because of the specific restrictions and the way testing dataset was set up,
-  // this user needs to also have access to "collections" (group_id: 4) in order to see saved questions
-  group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
-};
-
-const [ATTR_UID, ATTR_CAT] = Object.keys(sandboxed_user.login_attributes);
-
-function createUser(user) {
-  return cy.request("POST", "/api/user", user);
-}
+const [ATTR_UID, ATTR_CAT] = Object.keys(sandboxed.login_attributes);
 
 describeWithToken("formatting > sandboxes", () => {
   describe("admin", () => {
@@ -69,10 +52,10 @@ describeWithToken("formatting > sandboxes", () => {
 
     it("should add key attributes to a new user", () => {
       cy.findByText("Add someone").click();
-      cy.findByPlaceholderText("Johnny").type(sandboxed_user.first_name);
-      cy.findByPlaceholderText("Appleseed").type(sandboxed_user.last_name);
+      cy.findByPlaceholderText("Johnny").type(sandboxed.first_name);
+      cy.findByPlaceholderText("Appleseed").type(sandboxed.last_name);
       cy.findByPlaceholderText("youlooknicetoday@email.com").type(
-        sandboxed_user.email,
+        sandboxed.email,
       );
       cy.findByText("Add an attribute").click();
       cy.findByPlaceholderText("Key").type("User ID");
@@ -194,10 +177,7 @@ describeWithToken("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       signInAsAdmin();
-      createUser(sandboxed_user).then(({ body: { id: USER_ID } }) => {
-        cy.log("Dismiss `it's ok to play around` modal for new users");
-        cy.request("PUT", `/api/user/${USER_ID}/qbnewb`, {});
-      });
+      createUser(sandboxed);
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
@@ -979,8 +959,8 @@ describeWithToken("formatting > sandboxes", () => {
 function signInAsSandboxedUser() {
   cy.log("Logging in as sandboxed user");
   cy.request("POST", "/api/session", {
-    username: sandboxed_user.email,
-    password: sandboxed_user.password,
+    username: sandboxed.email,
+    password: sandboxed.password,
   });
 }
 
