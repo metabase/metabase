@@ -16,39 +16,40 @@ export const USERS = {
   admin: {
     first_name: "Bobby",
     last_name: "Tables",
-    username: "admin@metabase.com",
+    email: "admin@metabase.com",
     password: "12341234",
   },
   normal: {
     first_name: "Robert",
     last_name: "Tableton",
-    username: "normal@metabase.com",
+    email: "normal@metabase.com",
     password: "12341234",
   },
   nodata: {
     first_name: "No Data",
     last_name: "Tableton",
-    username: "nodata@metabase.com",
+    email: "nodata@metabase.com",
     password: "12341234",
   },
   nocollection: {
     first_name: "No Collection",
     last_name: "Tableton",
-    username: "nocollection@metabase.com",
+    email: "nocollection@metabase.com",
     password: "12341234",
   },
   none: {
     first_name: "None",
     last_name: "Tableton",
-    username: "none@metabase.com",
+    email: "none@metabase.com",
     password: "12341234",
   },
 };
 
 
 export function signIn(user = "admin") {
+  const { email: username, password } = USERS[user];
   cy.log(`Logging in as ${user}`);
-  cy.request("POST", "/api/session", USERS[user]);
+  cy.request("POST", "/api/session", { username, password });
 }
 
 export function signOut() {

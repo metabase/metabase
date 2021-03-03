@@ -31,7 +31,7 @@ describe("snapshots", () => {
     return {
       first_name: USERS[name].first_name,
       last_name: USERS[name].last_name,
-      email: USERS[name].username,
+      email: USERS[name].email,
       password: USERS[name].password,
       group_ids: groupIds,
     };
