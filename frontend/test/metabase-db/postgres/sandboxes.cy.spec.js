@@ -79,22 +79,10 @@ describeWithToken("postgres > user > query", () => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
-        cy.log("Sandbox `People` table");
-        cy.request("POST", "/api/mt/gtap", {
+        cy.sandboxTable({
+          table_id: PEOPLE_ID,
           attribute_remappings: {
             user_id: ["dimension", ["field-id", PEOPLE.ID]],
-          },
-          card_id: null,
-          table_id: PEOPLE_ID,
-          group_id: COLLECTION_GROUP,
-        });
-
-        cy.updatePermissionsSchemas({
-          database_id: PG_DB_ID,
-          schemas: {
-            public: {
-              [PEOPLE_ID]: { query: "segmented", read: "all" },
-            },
           },
         });
 
