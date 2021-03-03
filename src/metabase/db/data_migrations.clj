@@ -368,10 +368,12 @@
     }
   column_settings {
     [ref [field-id 6]] {
-      type:
-      linkType:
-      linkTemplate:
-      linkTemplateText:
+      click_behavior {
+        type:
+        linkType:
+        linkTemplate:
+        linkTemplateText:
+      }
     }
   ...
   }"
