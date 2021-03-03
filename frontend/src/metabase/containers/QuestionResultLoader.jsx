@@ -20,7 +20,7 @@ type OnLoadCallback = (results: ?(Dataset[])) => void;
 
 type Props = {
   question: ?Question,
-  children?: (props: ChildProps) => React$Element<any>,
+  children?: (props: ChildProps) => React.Element,
   onLoad?: OnLoadCallback,
 };
 

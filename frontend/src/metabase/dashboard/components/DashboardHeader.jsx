@@ -46,7 +46,7 @@ type Props = {
   refreshPeriod: ?number,
   setRefreshElapsedHook: Function,
 
-  parametersWidget: React$Element<*>,
+  parametersWidget: React.Element,
 
   addCardToDashboard: ({ dashId: DashCardId, cardId: CardId }) => void,
   addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,

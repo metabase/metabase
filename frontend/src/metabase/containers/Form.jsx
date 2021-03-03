@@ -76,7 +76,7 @@ type Props = {
   initialValues?: ?FormValues,
   formName?: string,
   onSubmit: (values: FormValues) => Promise<any>,
-  formComponent?: React$Component<any, any, any>,
+  formComponent?: React.Component,
 };
 
 type State = {

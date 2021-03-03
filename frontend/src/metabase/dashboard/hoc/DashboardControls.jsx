@@ -31,7 +31,7 @@ const TICK_PERIOD = 1; // seconds
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?
  */
-export default (ComposedComponent: ReactClass<any>) =>
+export default (ComposedComponent: React.Class) =>
   connect(
     null,
     { replace },

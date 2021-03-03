@@ -29,8 +29,8 @@ type Value = any;
 type Option = any;
 
 export type LayoutRendererProps = {
-  valuesList: React$Element<any>,
-  optionsList: ?React$Element<any>,
+  valuesList: React.Element,
+  optionsList: ?React.Element,
   isFocused: boolean,
   isAllSelected: boolean,
   onClose: () => void,
@@ -66,9 +66,9 @@ type Props = {
   // or returns null to indicate an invalid value
   parseFreeformValue: (value: string) => ?Value,
 
-  valueRenderer: (value: Value) => React$Element<any>,
-  optionRenderer: (option: Option) => React$Element<any>,
-  layoutRenderer: (props: LayoutRendererProps) => React$Element<any>,
+  valueRenderer: (value: Value) => React.Element,
+  optionRenderer: (option: Option) => React.Element,
+  layoutRenderer: (props: LayoutRendererProps) => React.Element,
 
   style?: any,
   className?: string,

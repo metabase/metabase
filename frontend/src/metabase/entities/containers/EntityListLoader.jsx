@@ -16,7 +16,7 @@ export type Props = {
   debounced?: boolean,
   loadingAndErrorWrapper: boolean,
   selectorName?: string,
-  children: (props: RenderProps) => ?React$Element<any>,
+  children: (props: RenderProps) => ?React.Element,
 };
 
 export type RenderProps = {

@@ -24,7 +24,7 @@ export type Props = {
   // selectorName overrides the default getObject selector
   selectorName?: string,
   // Children render prop
-  children?: (props: RenderProps) => ?React$Element<any>,
+  children?: (props: RenderProps) => ?React.Element,
 };
 
 export type RenderProps = {

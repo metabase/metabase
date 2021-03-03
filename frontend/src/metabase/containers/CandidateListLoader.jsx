@@ -7,7 +7,7 @@ import type { DatabaseCandidates } from "metabase-types/types/Auto";
 
 type Props = {
   databaseId: number,
-  children: (props: RenderProps) => ?React$Element<any>,
+  children: (props: RenderProps) => ?React.Element,
 };
 
 type RenderProps = {

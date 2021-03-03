@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
 
 export default (entityType?: string) => (
-  ComposedComponent: Class<React$Component<*, *, *>>,
+  ComposedComponent: React.ComponentClass,
 ) => {
   const mapStateToProps = (state, props) => ({
     entityDef:

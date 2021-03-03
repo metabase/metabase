@@ -1,6 +1,8 @@
 import _ from "underscore";
 import { t } from "ttag";
 
+import * as React from 'react';
+
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
 import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
@@ -30,7 +32,7 @@ type NestedSettingDef = SettingDef & {
   getInheritedSettingsForObject?: (
     object: NestedObject,
   ) => { [key: string]: any },
-  component: Class<React$Component<any, any, any>>,
+  component: React.ComponentClass,
   id?: SettingId,
 };
 

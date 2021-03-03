@@ -11,7 +11,7 @@ type ChildProps = QuestionLoaderChildProps & QuestionResultLoaderChildProps;
 type Props = {
   questionId?: ?number,
   questionHash?: ?string,
-  children?: (props: ChildProps) => React$Element<any>,
+  children?: (props: ChildProps) => React.Element,
 };
 
 /*

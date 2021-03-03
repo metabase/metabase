@@ -16,10 +16,10 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
 
 export type FilterRenderer = ({
-  field?: ?React$Element<any>,
+  field?: React.Element,
   operator: ?string,
-  values: (React$Element<any> | string)[],
-}) => React$Element<any>;
+  values: (React.Element | string)[],
+}) => React.Element;
 
 type Props = {
   filter: FilterObject | FilterWrapper,

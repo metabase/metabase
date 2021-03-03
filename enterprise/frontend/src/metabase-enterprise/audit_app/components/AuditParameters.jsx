@@ -11,7 +11,7 @@ type AuditParameter = {
 
 type Props = {
   parameters: AuditParameter[],
-  children?: (committedValues: { [key: string]: string }) => React$Element<any>,
+  children?: (committedValues: { [key: string]: string }) => React.Element,
 };
 
 type State = {
