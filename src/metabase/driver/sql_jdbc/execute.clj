@@ -14,13 +14,14 @@
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin :as p])
   (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -383,10 +384,15 @@
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
-   (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-               stmt (doto (prepared-statement* driver conn sql params (context/canceled-chan context))
-                      (.setMaxRows max-rows))
-               rs   (execute-query! driver stmt)]
+   (with-open [conn          (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
+               stmt          (doto (prepared-statement* driver conn sql params (context/canceled-chan context))
+                               (.setMaxRows max-rows))
+               ^ResultSet rs (try
+                               (execute-query! driver stmt)
+                               (catch Throwable e
+                                 (throw (ex-info (tru "Error executing query")
+                                                 {:sql sql, :params params, :type qp.error-type/driver}
+                                                 e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))

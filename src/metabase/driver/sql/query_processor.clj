@@ -116,15 +116,22 @@
                                   (- offset) :day)
       (truncate-fn expr))))
 
-(defn adjust-day-of-week
+(s/defn adjust-day-of-week
   "Adjust day of week wrt start of week setting."
   ([driver day-of-week]
    (adjust-day-of-week driver day-of-week (driver.common/start-of-week-offset driver)))
+
   ([driver day-of-week offset]
+   (adjust-day-of-week driver day-of-week offset hx/mod))
+
+  ([driver
+    day-of-week
+    offset :- s/Int
+    mod-fn :- (s/pred fn?)]
    (if (not= offset 0)
      (hsql/call :case
-       (hsql/call := (hx/mod (hx/+ day-of-week offset) 7) 0) 7
-       :else                                                 (hx/mod (hx/+ day-of-week offset) 7))
+       (hsql/call := (mod-fn (hx/+ day-of-week offset) 7) 0) 7
+       :else                                                 (mod-fn (hx/+ day-of-week offset) 7))
      day-of-week)))
 
 (defmulti field->identifier

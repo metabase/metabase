@@ -136,7 +136,7 @@
             (sync!)
             (is (= [["Bird Hat"]]
                    (mt/rows (qp/process-query
-                              {:database (u/get-id database)
+                              {:database (u/the-id database)
                                :type     :query
                                :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}}))))))))))
 
@@ -232,7 +232,7 @@
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
             (is (= [{:name "angry_birds", :active true}]
                    (map (partial into {})
-                        (db/select [Table :name :active] :db_id (u/get-id database), :name "angry_birds"))))))))))
+                        (db/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
 
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
@@ -429,7 +429,7 @@
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"
-          (let [table-id (db/select-one-id Table :db_id (u/get-id db), :name "birds")]
+          (let [table-id (db/select-one-id Table :db_id (u/the-id db), :name "birds")]
             (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                      {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                      {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
@@ -437,7 +437,7 @@
                              (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
         (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-          (let [table-id           (db/select-one-id Table :db_id (u/get-id db), :name "birds")
+          (let [table-id           (db/select-one-id Table :db_id (u/the-id db), :name "birds")
                 bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
             (is (= {:rows        [["Rasta" "good bird" "toucan"]]
                     :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
@@ -448,10 +448,10 @@
                                                "LIMIT 10")
                                   :params nil}}
                    (-> (qp/process-query
-                        {:database (u/get-id db)
+                        {:database (u/the-id db)
                          :type     :query
                          :query    {:source-table table-id
-                                    :filter       [:= [:field-id (u/get-id bird-type-field-id)] "toucan"]
+                                    :filter       [:= [:field-id (u/the-id bird-type-field-id)] "toucan"]
                                     :limit        10}})
                        :data
                        (select-keys [:rows :native_form]))))))))))
@@ -511,7 +511,7 @@
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
                  (db/select-field->field :name :fingerprint Field
-                   :table_id (db/select-one-id Table :db_id (u/get-id database))))))))))
+                   :table_id (db/select-one-id Table :db_id (u/the-id database))))))))))
 
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
@@ -521,12 +521,20 @@
     (testing (str "If the DB throws an exception, is it properly returned by the query processor? Is it status "
                   ":failed? (#9942)")
       (is (thrown-with-msg?
-           org.postgresql.util.PSQLException
-           #"ERROR: column \"adsasdasd\" does not exist\s+Position: 20"
+           clojure.lang.ExceptionInfo
+           #"Error executing query"
            (qp/process-query
             {:database (mt/id)
              :type     :native
-             :native   {:query "SELECT adsasdasd;"}}))))))
+             :native   {:query "SELECT adsasdasd;"}})))
+      (try
+        (qp/process-query
+         {:database (mt/id)
+          :type     :native
+          :native   {:query "SELECT adsasdasd;"}})
+        (catch Throwable e
+          (is (= "ERROR: column \"adsasdasd\" does not exist\n  Position: 20"
+                 (.. e getCause getMessage))))))))
 
 (deftest pgobject-test
   (mt/test-driver :postgres

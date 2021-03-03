@@ -210,17 +210,20 @@
   (string->boolean (get-string setting-definition-or-name)))
 
 (defn get-integer
-  "Get integer value of (presumably `:integer`) `setting-definition-or-name`. This is the default getter for `:integer` settings."
+  "Get integer value of (presumably `:integer`) `setting-definition-or-name`. This is the default getter for `:integer`
+  settings."
   ^Integer [setting-definition-or-name]
   (some-> (get-string setting-definition-or-name) Integer/parseInt))
 
 (defn get-double
-  "Get double value of (presumably `:double`) `setting-definition-or-name`. This is the default getter for `:double` settings."
+  "Get double value of (presumably `:double`) `setting-definition-or-name`. This is the default getter for `:double`
+  settings."
   ^Double [setting-definition-or-name]
   (some-> (get-string setting-definition-or-name) Double/parseDouble))
 
 (defn get-keyword
-  "Get value of (presumably `:string`) `setting-definition-or-name` as keyword. This is the default getter for `:keyword` settings."
+  "Get value of (presumably `:string`) `setting-definition-or-name` as keyword. This is the default getter for
+  `:keyword` settings."
   ^clojure.lang.Keyword [setting-definition-or-name]
   (some-> setting-definition-or-name get-string keyword))
 
@@ -230,7 +233,8 @@
   (json/parse-string (get-string setting-definition-or-name) keyword))
 
 (defn get-timestamp
-  "Get the string value of `setting-definition-or-name` and parse it as an ISO-8601-formatted string, returning a Timestamp."
+  "Get the string value of `setting-definition-or-name` and parse it as an ISO-8601-formatted string, returning a
+  Timestamp."
   [setting-definition-or-name]
   (u.date/parse (get-string setting-definition-or-name)))
 
@@ -337,6 +341,11 @@
         ;; Now return the `new-value`.
         new-value))))
 
+(defn set-keyword!
+  "Set the value of a keyword `setting-definition-or-name` `new-value` can be `nil`, a string, or a keyword."
+  [setting-definition-or-name new-value]
+  (set-string! setting-definition-or-name (u/qualified-name new-value)))
+
 (defn set-boolean!
   "Set the value of boolean `setting-definition-or-name`. `new-value` can be nil, a boolean, or a string representation of one,
   such as `\"true\"` or `\"false\"` (these strings are case-insensitive)."
@@ -399,7 +408,7 @@
 
 (def ^:private default-setter-for-type
   {:string    set-string!
-   :keyword   set-string!
+   :keyword   set-keyword!
    :boolean   set-boolean!
    :integer   set-integer!
    :json      set-json!
