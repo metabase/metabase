@@ -311,3 +311,23 @@
                 :limit       3
                 :order-by    [[:asc $id]]})))
         "Make sure an expression with a / in its name works")))
+
+(deftest string-operations-from-subquery
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+    (testing "regex-match-first and replace work when evaluated against a subquery (#14873)"
+      (mt/dataset test-data
+        (let [r-word  "r_word"
+              no-sp   "no_spaces"
+              id      (mt/id :venues :id)
+              results (mt/run-mbql-query venues
+                        {:expressions  {r-word [:regex-match-first [:field-id (mt/id :venues :name)] "^R[^ ]+"]
+                                        no-sp  [:replace [:field-id (mt/id :venues :name)] " " ""]}
+                         :source-query {:source-table $$venues}
+                         :fields       [$name [:expression r-word] [:expression no-sp]]
+                         :filter       [:= $id 1 95]
+                         :order-by     [[:asc $id]]})]
+          (is (= ["Name" r-word no-sp]
+                 (map :display_name (mt/cols results))))
+          (is (= [["Red Medicine" "Red" "RedMedicine"]
+                  ["Rush Street" "Rush" "RushStreet"]]
+                 (mt/formatted-rows [str str str] results))))))))
