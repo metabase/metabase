@@ -1088,13 +1088,13 @@
                                                      :name   "created_at"
                                                      :target [:dimension [:template-tag "date_range"]]
                                                      :value  "past1weeks"}]})]
-        (doseq [[first-day-of-week expected] {"sunday"    [7 "Sunday"]
-                                              "monday"    [8 "Monday"]
-                                              "tuesday"   [9 "Tuesday"]
-                                              "wednesday" [10 "Wednesday"]
-                                              "thursday"  [4 "Thursday"]
-                                              "friday"    [5 "Friday"]
-                                              "saturday"  [6 "Saturday"]}]
+        (doseq [[first-day-of-week expected] {"sunday"    [6 "Sunday"]
+                                              "monday"    [7 "Monday"]
+                                              "tuesday"   [8 "Tuesday"]
+                                              "wednesday" [9 "Wednesday"]
+                                              "thursday"  [3 "Thursday"]
+                                              "friday"    [4 "Friday"]
+                                              "saturday"  [5 "Saturday"]}]
           (mt/with-temporary-setting-values [start-of-week first-day-of-week]
             (is (= expected
                    (mt/first-row

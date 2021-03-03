@@ -168,9 +168,6 @@
     (testing "adjust temporal value to first day of week (Sunday)"
       (is (= (t/zoned-date-time "2019-12-08T17:17-08:00[US/Pacific]")
              (t/adjust now (u.date/adjuster :first-day-of-week)))))
-    (testing "adjust temporal value to first day of ISO week (Monday)"
-      (is (= (t/zoned-date-time "2019-12-09T17:17-08:00[US/Pacific]")
-             (t/adjust now (u.date/adjuster :first-day-of-iso-week)))))
     (testing "adjust temporal value to first day of first week of year (previous or same Sunday as first day of year)"
       (is (= (t/zoned-date-time "2018-12-30T17:17-08:00[US/Pacific]")
              (t/adjust now (u.date/adjuster :first-week-of-year))
