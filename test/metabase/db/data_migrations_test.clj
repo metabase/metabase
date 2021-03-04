@@ -227,7 +227,7 @@
              "click_behavior"
              {"type" "link",
               "linkType" "url",
-              "linkTemplate" "http://example.com/{{count}}"},
+              "linkTemplate" "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
              "column_settings"
              ;; note none of this keywordizes keys in json parsing since these structures are gross as keywords
              {"[\"ref\",[\"field-id\",2]]"
@@ -254,7 +254,24 @@
       ;; #15014)
       (is (= nil (#'migrations/fix-click-through {:id 1
                                                   :card_visualization card-vis
-                                                  :dashcard_visualization (:visualization_settings fixed)}))))))
+                                                  :dashcard_visualization (:visualization_settings fixed)})))))
+  (testing "puts dashcard on top of card visualization settings"
+    (let [card-viz {:column_settings
+                    {[:ref [:field-id 2]]
+                     {:view_as "link",
+                      :link_template "card",
+                      :link_text "here's an id: {{ID}}"}}}
+          dash-viz {:column_settings
+                    {[:ref [:field-id 2]]
+                     {:view_as "link",
+                      :link_template "dash",
+                      :link_text "here's an id: {{ID}}"}}}
+          f #(-> % json/generate-string json/parse-string)]
+      (is (= "dash"
+             (get-in (#'migrations/fix-click-through {:id 1
+                                                      :card_visualization (f card-viz)
+                                                      :dashcard_visualization (f dash-viz)})
+                     [:visualization_settings "column_settings" "[:ref [:field-id 2]]" "click_behavior" "linkTemplate"]))))))
 
 (deftest migrate-click-through-test
   (testing "Migrate old style click through behavior to new (#15014)"

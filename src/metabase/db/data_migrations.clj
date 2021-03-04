@@ -378,7 +378,7 @@
   ...
   }"
   [{id :id card :card_visualization dashcard :dashcard_visualization}]
-  (let [merged                   (merge dashcard card)
+  (let [merged                   (merge card dashcard)
         top-level-click-behavior (when (contains? merged "click")
                                    {"type"         (get merged "click")
                                     "linkType"     "url"
