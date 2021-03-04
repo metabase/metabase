@@ -21,7 +21,7 @@ describe("scenarios > pulse", () => {
   it("should be able get to the new pulse page from the nav bar", () => {
     cy.visit("/");
 
-    cy.get(".Icon-add").click();
+    cy.icon("add").click();
     cy.contains("New pulse").click();
 
     cy.url().should("match", /\/pulse\/create$/);

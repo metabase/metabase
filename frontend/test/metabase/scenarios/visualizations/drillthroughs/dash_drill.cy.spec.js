@@ -32,7 +32,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       });
 
       it("should result in a correct query result", () => {
-        cy.log("**Assert that the url is correct**");
+        cy.log("Assert that the url is correct");
         cy.location("pathname").should("eq", `/question/${Q2.id}`);
 
         cy.contains("18,760");
@@ -129,7 +129,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       it("should respect visualization type when entering a question from a dashboard (metabase#13415)", () => {
         const QUESTION_NAME = "13415";
 
-        cy.log("**--1. Create a question--**");
+        cy.log("Create a question");
         cy.request("POST", "/api/card", {
           name: QUESTION_NAME,
           dataset_query: {
@@ -154,14 +154,12 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             "table.cell_column": "count",
           },
         }).then(({ body: { id: QUESTION_ID } }) => {
-          cy.log("**--2. Create a dashboard--**");
+          cy.log("Create a dashboard");
 
           cy.request("POST", "/api/dashboard", {
             name: "13415D",
           }).then(({ body: { id: DASHBOARD_ID } }) => {
-            cy.log(
-              "**--3. Add filter with the default value to the dashboard--**",
-            );
+            cy.log("Add filter with the default value to the dashboard");
 
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
               parameters: [
@@ -175,14 +173,12 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               ],
             });
 
-            cy.log(
-              "**--4. Add previously created question to the dashboard--**",
-            );
+            cy.log("Add previously created question to the dashboard");
 
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cardId: QUESTION_ID,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log("**--5. Connect filter to that question--**");
+              cy.log("Connect filter to that question");
 
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
                 cards: [

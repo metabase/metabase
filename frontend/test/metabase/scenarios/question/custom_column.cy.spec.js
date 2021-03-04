@@ -30,7 +30,7 @@ describe("scenarios > question > custom columns", () => {
   it("can create a custom column (metabase#13241)", () => {
     const columnName = "Simple Math";
     openOrdersTable({ mode: "notebook" });
-    cy.get(".Icon-add_data").click();
+    cy.icon("add_data").click();
 
     popover().within(() => {
       _typeUsingGet("[contenteditable='true']", "1 + 1");
@@ -51,7 +51,7 @@ describe("scenarios > question > custom columns", () => {
   it("can create a custom column with an existing column name", () => {
     customFormulas.forEach(({ customFormula, columnName }) => {
       openOrdersTable({ mode: "notebook" });
-      cy.get(".Icon-add_data").click();
+      cy.icon("add_data").click();
 
       popover().within(() => {
         _typeUsingGet("[contenteditable='true']", customFormula);
@@ -81,7 +81,7 @@ describe("scenarios > question > custom columns", () => {
 
     // TODO: There isn't a single unique parent that can be used to scope this icon within
     // (a good candidate would be `.NotebookCell`)
-    cy.get(".Icon-add")
+    cy.icon("add")
       .last() // This is brittle.
       .click();
 
@@ -140,7 +140,7 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText(columnName).click();
     });
 
-    cy.get(".Icon-add")
+    cy.icon("add")
       .last()
       .click();
 
@@ -190,7 +190,7 @@ describe("scenarios > question > custom columns", () => {
     cy.log(
       "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
     );
-    cy.log("**Works in 0.35.3**");
+    cy.log("Works in 0.35.3");
     // ID should be "1" but it is picking the product ID and is showing "14"
     cy.get(".TableInteractive-cellWrapper--firstColumn")
       .eq(1) // the second cell from the top in the first column (the first one is a header cell)
@@ -237,7 +237,7 @@ describe("scenarios > question > custom columns", () => {
 
       cy.visit(`/question/${QUESTION_ID}`);
 
-      cy.log("**Reported failing v0.34.3 through v0.37.2**");
+      cy.log("Reported failing v0.34.3 through v0.37.2");
       cy.wait("@cardQuery").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
@@ -276,7 +276,7 @@ describe("scenarios > question > custom columns", () => {
 
       cy.visit(`/question/${QUESTION_ID}`);
 
-      cy.log("**Regression since v0.37.1 - it works on v0.37.0**");
+      cy.log("Regression since v0.37.1 - it works on v0.37.0");
       cy.wait("@cardQuery").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
@@ -309,7 +309,7 @@ describe("scenarios > question > custom columns", () => {
       cy.visit(`/question/${questionId}`);
       cy.findByText("13634");
 
-      cy.log("**Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2**");
+      cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
       cy.findByText("Foo Bar");
       cy.findAllByText("57911");
     });
@@ -347,7 +347,7 @@ describe("scenarios > question > custom columns", () => {
       cy.visit(`/question/${QUESTION_ID}`);
 
       // Test displays collapsed filter - click on number 1 to expand and show the filter name
-      cy.get(".Icon-filter")
+      cy.icon("filter")
         .parent()
         .contains("1")
         .click();
@@ -435,7 +435,7 @@ describe("scenarios > question > custom columns", () => {
       .click({ force: true }); // x is hidden and hover doesn't work so we have to force it
     cy.findByText("Join data").should("not.exist");
 
-    cy.log("**Reported failing on 0.38.1-SNAPSHOT (6d77f099)**");
+    cy.log("Reported failing on 0.38.1-SNAPSHOT (6d77f099)");
     cy.get("[class*=NotebookCellItem]")
       .contains(CE_NAME)
       .should("not.exist");

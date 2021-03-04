@@ -13,14 +13,14 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should not allow creation if there are no dashboard cards", () => {
-    cy.log("**Create fresh new dashboard**");
+    cy.log("Create fresh new dashboard");
     cy.request("POST", "/api/dashboard", {
       name: "Empty Dashboard",
     }).then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
     // It would be great if we can use either aria-attributes or better class naming to suggest when icons are disabled
-    cy.get(".Icon-share")
+    cy.icon("share")
       .closest("a")
       .should("have.class", "cursor-default");
   });
@@ -131,12 +131,21 @@ describe("scenarios > dashboard > subscriptions", () => {
         },
       });
       openDashboardSubscriptions();
+      cy.findByText("Send it to Slack").click();
+      cy.findByText("Send this dashboard to Slack");
     });
 
     it("should not enable 'Done' button before channel is selected (metabase#14494)", () => {
-      cy.findByText("Send it to Slack").click();
-      cy.findByText("Send this dashboard to Slack");
       cy.findAllByRole("button", { name: "Done" }).should("be.disabled");
+      cy.findByText("Pick a user or channel...").click();
+      cy.findByText("#work").click();
+      cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
+    });
+
+    it.skip("should have 'Send to Slack now' button (metabase#14515)", () => {
+      cy.findAllByRole("button", { name: "Send to Slack now" }).should(
+        "be.disabled",
+      );
       cy.findByText("Pick a user or channel...").click();
       cy.findByText("#work").click();
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
@@ -148,7 +157,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = 1) {
   // Orders in a dashboard
   cy.visit(`/dashboard/${dashboard_id}`);
-  cy.get(".Icon-share").click();
+  cy.icon("share").click();
   cy.findByText("Dashboard subscriptions").click();
 }
 

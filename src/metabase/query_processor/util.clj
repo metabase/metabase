@@ -38,15 +38,15 @@
 
 (defmulti query->remark
   "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query
-  being executed. See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386)
+  being executed. See documentation for `mbql->native` and #2386.
   for more information."
-  {:arglists '(^String [driver data])}
+  {:arglists '(^String [driver query])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod query->remark :default
-  [_ params]
-  (default-query->remark params))
+  [_ query]
+  (default-query->remark query))
 
 
 ;;; ------------------------------------------------- Normalization --------------------------------------------------

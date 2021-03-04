@@ -9,7 +9,8 @@
             [metabase.models.permissions-group :as group]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.query-processor.middleware.permissions :as qp.perms])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest variable-value-test
@@ -252,10 +253,10 @@
       (mt/with-temp-copy-of-db
         (perms/revoke-permissions! (group/all-users) (mt/id))
         (mt/with-temp* [Collection [collection]
-                        Card       [{card-1-id :id, :as card-1} {:collection_id (u/get-id collection)
+                        Card       [{card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
                                                                  :dataset_query (mt/mbql-query venues
                                                                                   {:order-by [[:asc $id]], :limit 2})}]
-                        Card       [card-2 {:collection_id (u/get-id collection)
+                        Card       [card-2 {:collection_id (u/the-id collection)
                                             :dataset_query (mt/native-query
                                                              {:query         "SELECT * FROM {{card}}"
                                                               :template-tags {"card" {:name         "card"
@@ -264,12 +265,11 @@
                                                                                       :card-id      card-1-id}}})}]]
           (perms/grant-collection-read-permissions! (group/all-users) collection)
           (mt/with-test-user :rasta
-            (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
-                    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
-                   (mt/rows
-                     (qp/process-userland-query (assoc (:dataset_query card-2)
-                                                       :info {:executed-by (mt/user->id :rasta)
-                                                              :card-id     (u/get-id card-2)})))))))))))
+            (binding [qp.perms/*card-id* (u/the-id card-2)]
+              (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                     (mt/rows
+                       (qp/process-query (:dataset_query card-2))))))))))))
 
 (deftest card-query-errors-test
   (testing "error conditions for :card parameters"

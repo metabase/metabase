@@ -9,7 +9,7 @@ describe("scenarios > admin > permissions", () => {
   it("should display error on failed save", () => {
     // revoke some permissions
     cy.visit("/admin/permissions/databases");
-    cy.get(".Icon-sql")
+    cy.icon("sql")
       .last()
       .click();
     cy.contains("Revoke access").click();

@@ -9,8 +9,8 @@ describe("scenarios > dashboard > nested cards", () => {
   it("should show fields on nested cards", () => {
     createDashboardWithNestedCard(dashId => {
       cy.visit(`/dashboard/${dashId}`);
-      cy.get(".Icon-pencil").click();
-      cy.get(".Icon-filter").click();
+      cy.icon("pencil").click();
+      cy.icon("filter").click();
       popover()
         .contains("Time")
         .click();
