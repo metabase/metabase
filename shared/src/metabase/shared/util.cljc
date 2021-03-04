@@ -7,7 +7,8 @@
      (u/qualified-name :type/FK) -> \"type/FK\""
   [k]
   (when (some? k)
-    (if-let [namespac (when (keyword? k)
+    (if-let [namespac (when #?(:clj (instance? clojure.lang.Named k)
+                               :cljs (keyword? k))
                         (namespace k))]
       (str namespac "/" (name k))
       (name k))))

@@ -7,7 +7,6 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore :as metastore]
-            [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as password]

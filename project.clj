@@ -398,8 +398,8 @@
    [:test-common
     {:dependencies [[camsaul/cloverage "1.2.1.1" :exclusions [riddley]]]
      :plugins      [[camsaul/lein-cloverage  "1.2.1.1"]]
-     :source-paths ^:replace ["src" "backend/mbql/src" "enterprise/backend/src"]
-     :test-paths   ^:replace ["test" "backend/mbql/test" "enterprise/backend/test"]
+     :source-paths ^:replace ["src" "backend/mbql/src" "enterprise/backend/src" "shared/src"]
+     :test-paths   ^:replace ["test" "backend/mbql/test" "enterprise/backend/test" "shared/test"]
      :cloverage    {:fail-threshold 69
                     :exclude-call
                     [;; don't instrument logging forms, since they won't get executed as part of tests anyway
