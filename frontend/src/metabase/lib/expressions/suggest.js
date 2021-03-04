@@ -21,8 +21,9 @@ import {
 import {
   AdditiveOperator,
   AggregationFunctionName,
-  BooleanOperatorBinary,
   BooleanOperatorUnary,
+  LogicalAndOperator,
+  LogicalOrOperator,
   CLAUSE_TOKENS,
   Case,
   Comma,
@@ -137,14 +138,14 @@ export function suggest({
       // fields, metrics, segments
       const parentRule = ruleStack.slice(-2, -1)[0];
       const isDimension =
-        parentRule === "dimensionExpression" &&
+        parentRule === "identifierExpression" &&
         (isExpressionType(expectedType, "expression") ||
           isExpressionType(expectedType, "boolean"));
       const isSegment =
-        parentRule === "segmentExpression" &&
+        parentRule === "identifierExpression" &&
         isExpressionType(expectedType, "boolean");
       const isMetric =
-        parentRule === "metricExpression" &&
+        parentRule === "identifierExpression" &&
         isExpressionType(expectedType, "aggregation");
 
       if (isDimension) {
@@ -226,7 +227,8 @@ export function suggest({
       }
     } else if (
       nextTokenType === BooleanOperatorUnary ||
-      nextTokenType === BooleanOperatorBinary ||
+      nextTokenType === LogicalAndOperator ||
+      nextTokenType === LogicalOrOperator ||
       nextTokenType === FilterOperator
     ) {
       if (isExpressionType(expectedType, "boolean")) {
@@ -280,6 +282,17 @@ export function suggest({
           .filter(clause => database.hasFeature(clause.requiresFeature))
           .map(clause => functionSuggestion("functions", clause.name)),
       );
+      if (nextTokenType === Case) {
+        const caseSuggestion = {
+          type: "functions",
+          name: "case",
+          text: "case(",
+          postfixText: ")",
+          prefixTrim: /\w+$/,
+          postfixTrim: /^\w+(\(\)?|$)/,
+        };
+        finalSuggestions.push(caseSuggestion);
+      }
     } else if (nextTokenType === LParen) {
       finalSuggestions.push({
         type: "other",
@@ -525,9 +538,7 @@ const ALL_RULES = [
   "multiplicationExpression",
   "functionExpression",
   "caseExpression",
-  "metricExpression",
-  "segmentExpression",
-  "dimensionExpression",
+  "identifierExpression",
   "identifier",
   "identifierString",
   "stringLiteral",
@@ -535,8 +546,11 @@ const ALL_RULES = [
   "atomicExpression",
   "parenthesisExpression",
   "booleanExpression",
-  "comparisonExpression",
   "booleanUnaryExpression",
+  "relationalExpression",
+  "logicalAndExpression",
+  "logicalOrExpression",
+  "logicalNotExpression",
 ];
 
 const TYPE_RULES = new Set([
@@ -570,7 +584,7 @@ for (const rule of ALL_RULES) {
     // this just visits every child
     for (const type in ctx) {
       for (const child of ctx[type]) {
-        if (!child.tokenType) {
+        if (!child.tokenType && child.name) {
           const match = this.visit(child, currentContext);
           if (match) {
             return match;

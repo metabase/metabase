@@ -41,7 +41,7 @@ export default class PermissionsApp extends Component {
       confirmed: false,
     };
   }
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.initialize(this.props.load, this.props.save);
     this.props.router.setRouteLeaveHook(this.props.route, this.routerWillLeave);
   }

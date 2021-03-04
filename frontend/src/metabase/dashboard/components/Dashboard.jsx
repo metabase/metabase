@@ -175,7 +175,7 @@ export default class Dashboard extends Component {
     this.loadDashboard(this.props.dashboardId);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (this.props.dashboardId !== nextProps.dashboardId) {
       this.loadDashboard(nextProps.dashboardId);
     } else if (
@@ -400,7 +400,10 @@ function Sidebars(props) {
       <ParameterSidebar
         parameter={parameter}
         otherParameters={otherParameters}
-        remove={() => removeParameter(editingParameterId)}
+        remove={() => {
+          setEditingParameter(null);
+          removeParameter(editingParameterId);
+        }}
         done={() => setEditingParameter(null)}
         showAddParameterPopover={showAddParameterPopover}
         setParameter={setParameter}

@@ -102,7 +102,7 @@
    [dk.ative/docjure "1.13.0"]                                        ; Excel export
    [environ "1.2.0"]                                                  ; easy environment management
    [hiccup "1.0.5"]                                                   ; HTML templating
-   [honeysql "0.9.5" :exclusions [org.clojure/clojurescript]]         ; Transform Clojure data structures to SQL
+   [honeysql "1.0.461" :exclusions [org.clojure/clojurescript]]       ; Transform Clojure data structures to SQL
    [instaparse "1.4.10"]                                              ; Make your own parser
    [io.forward/yaml "1.0.9"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
     :exclusions [org.clojure/clojure
@@ -147,7 +147,7 @@
    [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.15.1" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
+   [toucan "1.15.3" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
                                  org.clojure/tools.namespace
                                  honeysql]]
@@ -367,7 +367,7 @@
                            #_:unused-locals]
       :exclude-linters    [    ; Turn this off temporarily until we finish removing self-deprecated functions & macros
                            :deprecations
-                           ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
+                           ;; this has a fit in libs that use Potemkin `import-vars` such as `java-time`
                            :implicit-dependencies
                            ;; too many false positives for now
                            :unused-ret-vals]}}]

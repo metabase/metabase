@@ -20,7 +20,7 @@
 
 (defsetting ldap-sync-user-attributes
   (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
-  :type :boolean
+  :type    :boolean
   :default true)
 
 ;; TODO - maybe we want to add a csv setting type?
@@ -28,6 +28,11 @@
   (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
   :default "userPassword,dn,distinguishedName"
   :type    :csv)
+
+(defsetting ldap-sync-admin-group
+  (deferred-tru "Sync the admin group?")
+  :type    :boolean
+  :default false)
 
 (defn- syncable-user-attributes [m]
   (when (ldap-sync-user-attributes)
@@ -63,7 +68,7 @@
     (u/prog1 user
       (when sync-groups?
         (let [group-ids (default-impl/ldap-groups->mb-group-ids groups settings)]
-          (integrations.common/sync-group-memberships! user group-ids))))))
+          (integrations.common/sync-group-memberships! user group-ids (ldap-sync-admin-group)))))))
 
 (def ^:private impl
   (reify

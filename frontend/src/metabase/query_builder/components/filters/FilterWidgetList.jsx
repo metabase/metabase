@@ -37,7 +37,7 @@ export default class FilterWidgetList extends React.Component {
       : null;
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     // only scroll when a filter is added
     if (nextProps.filters.length > this.props.filters.length) {
       this.setState({ shouldScroll: true });

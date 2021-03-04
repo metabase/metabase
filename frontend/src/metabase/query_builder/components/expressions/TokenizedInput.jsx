@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
+import ReactDOMServer from "react-dom/server";
 
 import TokenizedExpression from "./TokenizedExpression";
 
@@ -145,17 +146,12 @@ export default class TokenizedInput extends Component {
     const inputNode = ReactDOM.findDOMNode(this);
     const restore = saveSelection(inputNode);
 
-    ReactDOM.unmountComponentAtNode(inputNode);
-    while (inputNode.firstChild) {
-      inputNode.removeChild(inputNode.firstChild);
-    }
-    ReactDOM.render(
+    inputNode.innerHTML = ReactDOMServer.renderToStaticMarkup(
       <TokenizedExpression
         source={this._getValue()}
         syntaxTree={this.props.syntaxTree}
         parserOptions={this.props.parserOptions}
       />,
-      inputNode,
     );
 
     if (document.activeElement === inputNode) {

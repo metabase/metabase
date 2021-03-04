@@ -11,7 +11,7 @@ export default class PreviewPane extends Component {
     };
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (nextProps.previewUrl !== this.props.previewUrl) {
       this.setState({ loading: true });
     }

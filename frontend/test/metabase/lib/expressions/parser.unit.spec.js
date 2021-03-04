@@ -13,7 +13,7 @@ describe("metabase/lib/expressions/parser", () => {
     it("should handle a conditional aggregation", () => {
       expect(() => parseAggregation("CountIf( [Discount] > 0 )")).not.toThrow();
     });
-    it.skip("should handle a complex conditional aggregation", () => {
+    it("should handle a complex conditional aggregation", () => {
       expect(() =>
         parseAggregation("CountIf( ( [Subtotal] + [Tax] ) > 100 )"),
       ).not.toThrow();
@@ -31,7 +31,7 @@ describe("metabase/lib/expressions/parser", () => {
         parseExpression("Case( [Discount] > 0, 'Sale', 'Normal' )"),
       ).not.toThrow();
     });
-    it.skip("should handle a complex conditional using CASE", () => {
+    it("should handle a complex conditional using CASE", () => {
       expect(() =>
         parseExpression("Case( [Price]-[Discount] > 50, 'Deal', 'Regular' )"),
       ).not.toThrow();

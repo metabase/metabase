@@ -114,8 +114,7 @@ export default class FieldApp extends React.Component {
     params: any,
   };
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       databaseId,
       tableId,

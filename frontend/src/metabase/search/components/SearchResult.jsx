@@ -19,6 +19,7 @@ const IconWrapper = styled.div`
   background-color: #ddecfa;
   color: ${color("brand")};
   margin-right: 10px;
+  flex-shrink: 0;
 `;
 
 const ResultLink = styled(Link)`
@@ -39,6 +40,11 @@ const ResultLink = styled(Link)`
     h3 {
       color: ${color("brand")};
     }
+  }
+
+  h3 {
+    line-height: 1.2em;
+    word-wrap: break-word;
   }
 
   .Icon-info {
@@ -103,16 +109,9 @@ const Title = styled("h3")`
   margin-bottom: 4px;
 `;
 
-function Score({ score }) {
+function Score({ scores }) {
   return (
-    <pre className="hide search-score">
-      {`\n\n
-      Pinned:    ${score[0]}
-      Dashboard: ${score[1]}
-      Text:      ${score[2]}
-      Model:     ${score[3]}
-      Raw:       ${score && score.join(", ")}`}
-    </pre>
+    <pre className="hide search-score">{JSON.stringify(scores, null, 2)}</pre>
   );
 }
 
@@ -123,7 +122,7 @@ function CollectionResult({ collection }) {
       <Flex align="center">
         <ItemIcon item={collection} />
         <Title>{collection.name}</Title>
-        <Score score={collection.score} />
+        <Score scores={collection.scores} />
       </Flex>
     </ResultLink>
   );
@@ -162,7 +161,7 @@ function DashboardResult({ dashboard, options }) {
         <Box>
           <Title>{dashboard.name}</Title>
           {formatCollection(dashboard.getCollection())}
-          <Score score={dashboard.score} />
+          <Score scores={dashboard.scores} />
         </Box>
       </Flex>
       {formatContext(dashboard.context, options.compact)}
@@ -178,7 +177,7 @@ function QuestionResult({ question, options }) {
         <Box>
           <Title>{question.name}</Title>
           {formatCollection(question.getCollection())}
-          <Score score={question.score} />
+          <Score scores={question.scores} />
         </Box>
         {question.description && (
           <Box ml="auto">
@@ -198,9 +197,11 @@ function DefaultResult({ result, options }) {
     <ResultLink to={result.getUrl()}>
       <Flex align="center">
         <ItemIcon item={result} />
-        <Title>{result.name}</Title>
-        {formatCollection(result.getCollection())}
-        <Score score={result.score} />
+        <Box>
+          <Title>{result.name}</Title>
+          {formatCollection(result.getCollection())}
+          <Score scores={result.scores} />
+        </Box>
       </Flex>
       {formatContext(result.context, options.compact)}
     </ResultLink>

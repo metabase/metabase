@@ -1,5 +1,6 @@
 (ns metabase-enterprise.enhancements.integrations.ldap-test
   (:require [clojure.test :refer :all]
+            [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings.metastore :as metastore]
@@ -70,7 +71,7 @@
 
       (testing "ignored attributes should not be returned"
         (mt/with-temporary-setting-values [ldap-sync-user-attributes-blacklist
-                                           (cons "title" (ldap/ldap-sync-user-attributes-blacklist))]
+                                           (cons "title" (ldap-ee/ldap-sync-user-attributes-blacklist))]
           (is (= {:dn         "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
                   :first-name "Lucky"
                   :last-name  "Pigeon"

@@ -26,7 +26,8 @@
    :dataset_query       nil
    :table_schema        nil
    :table_name          nil
-   :table_description   nil})
+   :table_description   nil
+   :updated_at          true})
 
 (defn- table-search-results
   "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
@@ -52,9 +53,9 @@
 (defn- default-search-results []
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
-    (make-result "collection test collection", :model "collection", :collection {:id true, :name true})
+    (make-result "collection test collection", :model "collection", :collection {:id true, :name true}, :updated_at false)
     (make-result "card test card", :model "card", :favorite false, :dataset_query "{}", :dashboardcard_count 0)
-    (make-result "pulse test pulse", :model "pulse", :archived nil)
+    (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -128,8 +129,8 @@
           (-> result
               mt/boolean-ids-and-timestamps
               (update-in [:collection :name] #(some-> % string?))
-              ;; `:score` is just used for debugging and would be a pain to match against
-              (dissoc :score))))))))
+              ;; `:scores` is just used for debugging and would be a pain to match against.
+              (dissoc :scores))))))))
 
 (defn- search-request
   [& args]
