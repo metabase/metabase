@@ -414,11 +414,18 @@ export function parameterToMBQLFilter(
 }
 
 export function getParameterIconName(parameterType: ?ParameterType) {
-  if (/^date\//.test(parameterType || "")) {
-    return "calendar";
-  } else if (/^location\//.test(parameterType || "")) {
-    return "location";
-  } else {
-    return "label";
+  const [type] = parameterType ? parameterType.split("/") : [];
+  switch (type) {
+    case "date":
+      return "calendar";
+    case "location":
+      return "location";
+    case "category":
+      return "string";
+    case "number":
+      return "number";
+    case "id":
+    default:
+      return "label";
   }
 }

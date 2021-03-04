@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";
+import Icon from "metabase/components/Icon";
+import { getParameterIconName } from "metabase/meta/Parameter";
 
 import type {
   Parameter,
@@ -68,7 +70,11 @@ export const ParameterOptionsSection = ({
   onClick: () => any,
 }) => (
   <li onClick={onClick} className="p1 px3 cursor-pointer brand-hover">
-    <div className="text-brand text-bold" style={{ marginBottom: 4 }}>
+    <div
+      className="text-brand text-bold flex align-center"
+      style={{ marginBottom: 4 }}
+    >
+      <Icon size="16" name={getParameterIconName(section.id)} className="mr1" />
       {section.name}
     </div>
     <div className="text-medium">{section.description}</div>
