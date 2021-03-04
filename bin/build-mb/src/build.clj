@@ -32,13 +32,22 @@
             (u/announce "CI run: enforce the lockfile")
             (u/sh {:dir u/project-root-directory} "yarn" "--frozen-lockfile"))
           (u/sh {:dir u/project-root-directory} "yarn")))
+      ;; TODO -- I don't know why it doesn't work if we try to combine the two steps below by calling `yarn build`,
+      ;; which does the same thing.
+      (u/step "Build frontend (ClojureScript)"
+        (u/sh {:dir u/project-root-directory
+               :env {"PATH"       (env/env :path)
+                     "HOME"       (env/env :user-home)
+                     "NODE_ENV"   "production"
+                     "MB_EDITION" mb-edition}}
+              "./node_modules/.bin/shadow-cljs" "release" "app"))
       (u/step "Run 'webpack' with NODE_ENV=production to assemble and minify frontend assets"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "NODE_ENV"   "production"
                      "MB_EDITION" mb-edition}}
-              "yarn" "build"))
+              "./node_modules/.bin/webpack" "--bail"))
       (u/announce "Frontend built successfully."))))
 
 (def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
