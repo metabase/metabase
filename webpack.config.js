@@ -119,9 +119,9 @@ const config = (module.exports = {
       icepick: __dirname + "/node_modules/icepick/icepick.min",
       // conditionally load either the EE plugins file or a empty file in the CE code tree
       "ee-plugins":
-           process.env.MB_EDITION === "ee"
-         ? ENTERPRISE_SRC_PATH + "/plugins"
-         : SRC_PATH + "/lib/noop",
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/plugins"
+          : SRC_PATH + "/lib/noop",
     },
   },
 
