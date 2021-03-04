@@ -7,14 +7,14 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as error-type]
-            [metabase.query-processor.middleware.permissions :refer [check-query-permissions]]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s])
   (:import clojure.lang.ExceptionInfo))
 
 (defn- check-perms [query]
-  (:pre (mt/test-qp-middleware check-query-permissions query)))
+  (:pre (mt/test-qp-middleware qp.perms/check-query-permissions query)))
 
 (defn- do-with-rasta
   "Call `f` with Rasta as the current user."
@@ -252,32 +252,28 @@
                           (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
                                           [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
                             (testing "Should be able to run Card 1 directly"
-                              (is (= expected
-                                     (mt/rows
-                                       (qp/process-userland-query (assoc (:dataset_query card-1)
-                                                                         :info {:executed-by (mt/user->id :rasta)
-                                                                                :card-id     card-1-id}))))))
+                              (binding [qp.perms/*card-id* (u/the-id card-1)]
+                                (is (= expected
+                                       (mt/rows
+                                         (qp/process-query (:dataset_query card-1)))))))
 
                             (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
-                              (is (= expected
-                                     (mt/rows
-                                       (qp/process-userland-query (assoc (:dataset_query card-2)
-                                                                         :info {:executed-by (mt/user->id :rasta)
-                                                                                :card-id     (u/the-id card-2)}))))))
+                              (binding [qp.perms/*card-id* (u/the-id card-2)]
+                                (is (= expected
+                                       (mt/rows
+                                         (qp/process-query (:dataset_query card-2)))))))
 
                             (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
                               (is (= expected
                                      (mt/rows
-                                       (qp/process-userland-query (assoc (mt/mbql-query nil
-                                                                           {:source-table (format "card__%d" card-1-id)})
-                                                                         :info {:executed-by (mt/user->id :rasta)}))))))
+                                       (qp/process-query (mt/mbql-query nil
+                                                           {:source-table (format "card__%d" card-1-id)}))))))
 
                             (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                               (is (= expected
                                      (mt/rows
-                                       (qp/process-userland-query (assoc (mt/mbql-query nil
-                                                                           {:source-table (format "card__%d" (u/the-id card-2))})
-                                                                         :info {:executed-by (mt/user->id :rasta)}))))))))))))))))))))
+                                       (qp/process-userland-query (mt/mbql-query nil
+                                                                    {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
