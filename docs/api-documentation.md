@@ -1818,14 +1818,17 @@ Update an existing `NativeQuerySnippet`.
 
 Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single `Table`.
+  This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/operations-guide/environment-variables.html#mb_api_key)
 
 ##### PARAMS:
 
-*  **`id`** 
+*  **`id`**: the id of the data source
 
-*  **`table_id`** 
+*  **`table_id`**: the id of the table
 
-*  **`table_name`** 
+*  **`table_name`**: the name of the table
+
+*  **`scan`**: can be `full` (full sync) or `schema` (schema sync).
 
 
 ## `DELETE /api/permissions/group/:group-id`
