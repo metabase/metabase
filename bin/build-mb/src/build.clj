@@ -38,7 +38,7 @@
                      "HOME"       (env/env :user-home)
                      "NODE_ENV"   "production"
                      "MB_EDITION" mb-edition}}
-              "./node_modules/.bin/webpack" "--bail"))
+              "yarn" "build"))
       (u/announce "Frontend built successfully."))))
 
 (def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
