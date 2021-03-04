@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import PropTypes from "prop-types";
 
@@ -78,7 +76,7 @@ type Props = {
   initialValues?: ?FormValues,
   formName?: string,
   onSubmit: (values: FormValues) => Promise<any>,
-  formComponent?: React$Component<any, any, any>,
+  formComponent?: React.Component,
 };
 
 type State = {

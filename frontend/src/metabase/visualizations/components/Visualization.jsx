@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";

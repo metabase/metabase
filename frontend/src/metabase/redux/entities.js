@@ -1,5 +1,3 @@
-/* @flow */
-
 import { combineEntities } from "metabase/lib/entities";
 import type { Entity, Reducer } from "metabase/lib/entities";
 

@@ -1,5 +1,3 @@
-/* eslint-disable flowtype/require-valid-file-annotation */
-
 import { drillFilter } from "metabase/modes/lib/actions";
 import { ORDERS } from "__support__/sample_dataset_fixture";
 

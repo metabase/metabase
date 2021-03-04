@@ -1,5 +1,3 @@
-/* @flow weak */
-
 // Database Edit
 export const getEditingDatabase = state =>
   state.admin.databases.editingDatabase;

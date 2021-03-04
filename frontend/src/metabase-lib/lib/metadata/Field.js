@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import Base from "./Base";
 import Table from "./Table";
 

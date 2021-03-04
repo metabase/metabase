@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { DateSeparator } from "metabase/lib/formatting";
 
 import type { DatetimeUnit } from "metabase-types/types/Query";

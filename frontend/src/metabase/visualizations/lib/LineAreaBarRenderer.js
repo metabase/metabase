@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";

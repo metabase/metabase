@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 import { t } from "ttag";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";

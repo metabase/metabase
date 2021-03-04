@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 import { chain, assoc, dissoc, assocIn } from "icepick";
 
@@ -55,7 +53,7 @@ import type {
   Card as CardObject,
   VisualizationSettings,
 } from "metabase-types/types/Card";
-import type { Dataset } from "metabase-types/types/Dataset";
+import type { Dataset, Value } from "metabase-types/types/Dataset";
 import type { TableId } from "metabase-types/types/Table";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { ClickObject } from "metabase-types/types/Visualization";
@@ -155,7 +153,7 @@ export default class Question {
     dataset_query?: DatasetQuery,
   } = {}) {
     // $FlowFixMe
-    let card: Card = {
+    let card: CardObject = {
       name,
       display,
       visualization_settings,

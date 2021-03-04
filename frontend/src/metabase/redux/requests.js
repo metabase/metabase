@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import { handleActions, createAction } from "metabase/lib/redux";
 import { updateIn, assoc } from "icepick";
 

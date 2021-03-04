@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { connect } from "react-redux";
 
@@ -22,7 +20,7 @@ type ChildProps = {
 
 type Props = {
   questionId: ?number,
-  children?: (props: ChildProps) => React$Element<any>,
+  children?: (props: ChildProps) => React.Element,
   // provided by redux
   loadMetadataForCard: (card: Card) => Promise<void>,
   metadata: Metadata,

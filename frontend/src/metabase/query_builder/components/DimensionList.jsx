@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 import _ from "underscore";
 import { t } from "ttag";

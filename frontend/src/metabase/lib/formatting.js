@@ -1,5 +1,3 @@
-/* @flow */
-
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment-timezone";
@@ -105,7 +103,7 @@ export type FormattingOptions = {
   markdown_template?: string,
 };
 
-type FormattedString = string | React$Element<any>;
+type FormattedString = string | React.Element;
 
 export const FK_SYMBOL = "→";
 

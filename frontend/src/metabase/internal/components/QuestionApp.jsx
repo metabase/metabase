@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { Route } from "react-router";
 
@@ -18,7 +16,7 @@ type Props = {
 export default class QuestionApp extends React.Component {
   props: Props;
 
-  static routes: ?[React$Element<Route>];
+  static routes: ?[React.Element];
 
   render() {
     const { location, params } = this.props;

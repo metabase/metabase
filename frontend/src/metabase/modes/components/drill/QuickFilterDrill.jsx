@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { jt } from "ttag";
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";

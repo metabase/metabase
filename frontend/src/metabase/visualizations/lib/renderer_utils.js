@@ -19,6 +19,8 @@ import { computeNumericDataInverval, dimensionIsNumeric } from "./numeric";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
 
+import type { Value } from "metabase-types/types/Dataset";
+
 export function initChart(chart, element) {
   // set the bounds
   chart.width(getAvailableCanvasWidth(element));

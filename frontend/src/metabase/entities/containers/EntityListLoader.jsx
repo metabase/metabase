@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -18,7 +16,7 @@ export type Props = {
   debounced?: boolean,
   loadingAndErrorWrapper: boolean,
   selectorName?: string,
-  children: (props: RenderProps) => ?React$Element<any>,
+  children: (props: RenderProps) => ?React.Element,
 };
 
 export type RenderProps = {
