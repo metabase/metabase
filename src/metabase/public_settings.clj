@@ -323,18 +323,6 @@
   :setter     :none
   :getter     driver.u/available-drivers-info)
 
-(defsetting types
-  "Field types"
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (types/types->parents :type/*)))
-
-(defsetting entities
-  "Entity types"
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (types/types->parents :entity/*)))
-
 (defsetting has-sample-dataset?
   "Whether this instance has a Sample Dataset database"
   :visibility :authenticated

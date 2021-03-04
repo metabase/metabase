@@ -3,7 +3,8 @@
    which in turn derive from their own parents. This makes it possible to add new types without needing to add
    corresponding mappings in the frontend or other places. For example, a Database may want a type called something
    like `:type/CaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
-   continue to treat it as such until further notice.")
+   continue to treat it as such until further notice."
+  (:require [metabase.shared.util :as shared.u]))
 
 ;; NOTE: be sure to update frontend/test/metabase-bootstrap.js when updating this
 
@@ -210,7 +211,7 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(defn types->parents
+(defn- types->parents
   "Return a map of various types to their parent types.
 
   This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of
@@ -220,9 +221,33 @@
    (into {} (for [t (descendants root)]
               {t (parents t)}))))
 
+(defn types
+  "Field types"
+  []
+  (types->parents :type/*))
+
+(defn entities
+  "Entity types"
+  []
+  (types->parents :entity/*))
+
 (defn temporal-field?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
   relating to a moment in time."
   {:arglists '([field])}
   [{base-type :base_type, semantic-type :semantic_type}]
   (some #(isa? % :type/Temporal) [base-type semantic-type]))
+
+#?(:cljs
+   (defn isa
+     "Is `x` the same as, or a descendant type of, `y`?"
+     [x y]
+     (isa? (keyword x) (keyword y))))
+
+#?(:cljs
+   (def TYPE
+     "A map of Type name (as string, without `:type/` namespace) -> qualified type name as string
+
+         {\"Temporal\" \"type/Temporal\", ...}"
+     (clj->js (into {} (for [tyype (descendants :type/*)]
+                         [(name tyype) (shared.u/qualified-name tyype)])))))
