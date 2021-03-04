@@ -311,7 +311,7 @@
                                  :click_behavior
                                  {:type         "link",
                                   :linkType     "url",
-                                  :linkTemplate "http://example.com/{{count}}"},
+                                  :linkTemplate "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
                                  :column_settings
                                  ;; the model keywordizes the json parsing yielding this monstrosity below
                                  {(keyword "[\"ref\",[\"field-id\",2]]")

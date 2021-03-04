@@ -363,7 +363,7 @@
    click_behavior {
       type: \"link\"
       linkType: \"url\"
-      linkTemplate: \"http://example.com/{{ID}}\"
+      linkTemplate: \"http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}\"
       linkTextTemplate \"here's an id: {{ID}}\"
     }
   column_settings {
