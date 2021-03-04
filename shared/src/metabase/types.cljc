@@ -221,16 +221,6 @@
    (into {} (for [t (descendants root)]
               {t (parents t)}))))
 
-(defn types
-  "Field types"
-  []
-  (types->parents :type/*))
-
-(defn entities
-  "Entity types"
-  []
-  (types->parents :entity/*))
-
 (defn temporal-field?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
   relating to a moment in time."
@@ -239,13 +229,13 @@
   (some #(isa? % :type/Temporal) [base-type semantic-type]))
 
 #?(:cljs
-   (defn isa
+   (defn ^:export isa
      "Is `x` the same as, or a descendant type of, `y`?"
      [x y]
      (isa? (keyword x) (keyword y))))
 
 #?(:cljs
-   (def TYPE
+   (def ^:export TYPE
      "A map of Type name (as string, without `:type/` namespace) -> qualified type name as string
 
          {\"Temporal\" \"type/Temporal\", ...}"
