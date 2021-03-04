@@ -63,20 +63,8 @@ export const PARAMETER_OPTIONS: ParameterOption[] = [
     description: t`Contains all of the above`,
   },
   {
-    type: "location/city",
-    name: t`City`,
-  },
-  {
-    type: "location/state",
-    name: t`State`,
-  },
-  {
-    type: "location/zip_code",
-    name: t`ZIP or Postal Code`,
-  },
-  {
-    type: "location/country",
-    name: t`Country`,
+    type: "location",
+    name: t`Location`,
   },
   {
     type: "id",
@@ -103,18 +91,14 @@ function fieldFilterForParameterType(
       return (field: Field) => field.isID();
     case "category":
       return (field: Field) => field.isCategory();
+    case "location":
+      return (field: Field) =>
+        field.isCity() ||
+        field.isState() ||
+        field.isZipCode() ||
+        field.isCountry();
   }
 
-  switch (parameterType) {
-    case "location/city":
-      return (field: Field) => field.isCity();
-    case "location/state":
-      return (field: Field) => field.isState();
-    case "location/zip_code":
-      return (field: Field) => field.isZipCode();
-    case "location/country":
-      return (field: Field) => field.isCountry();
-  }
   return (field: Field) => false;
 }
 
