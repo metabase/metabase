@@ -1,4 +1,4 @@
-import { isa, TYPE } from "cljs/metabase.types";
+import { isa, TYPE } from "goog:cljs/metabase.types";
 
 export { isa, TYPE };
 
