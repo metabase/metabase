@@ -238,7 +238,7 @@
                {"type" "link",
                 "linkType" "url",
                 "linkTemplate" "http://example.com/{{ID}}",
-                "linkTemplateText" "here's an id: {{ID}}"}},
+                "linkTextTemplate" "here's an id: {{ID}}"}},
               "[\"ref\",[\"field-id\",6]]"
               {"view_as" "link",
                "link_template" "http://example.com//{{id}}",
@@ -247,7 +247,7 @@
                {"type" "link",
                 "linkType" "url",
                 "linkTemplate" "http://example.com//{{id}}",
-                "linkTemplateText" "here is my id: {{id}}"}}}}}
+                "linkTextTemplate" "here is my id: {{id}}"}}}}}
            fixed))
     (testing "won't fix if fix is already applied"
       ;; a customer got a custom script from flamber (for which this is making that fix available for everyone. See
@@ -305,7 +305,7 @@
                                    {:type             "link",
                                     :linkType         "url",
                                     :linkTemplate     "http://example.com/{{ID}}",
-                                    :linkTemplateText "here's an id: {{ID}}"}},
+                                    :linkTextTemplate "here's an id: {{ID}}"}},
                                   (keyword "[\"ref\",[\"field-id\",6]]")
                                   {:view_as       "link",
                                    :link_template "http://example.com//{{id}}",
@@ -314,7 +314,7 @@
                                    {:type             "link",
                                     :linkType         "url",
                                     :linkTemplate     "http://example.com//{{id}}",
-                                    :linkTemplateText "here is my id: {{id}}"}}}}
+                                    :linkTextTemplate "here is my id: {{id}}"}}}}
               get-settings!     #(:visualization_settings (db/select-one DashboardCard :id dashcard-id))]
           (#'migrations/migrate-click-through)
           (is (= expected-settings (get-settings!)))

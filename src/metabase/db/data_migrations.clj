@@ -364,7 +364,7 @@
       type: \"link\"
       linkType: \"url\"
       linkTemplate: \"http://example.com/{{ID}}\"
-      linkTemplateText \"here's an id: {{ID}}\"
+      linkTextTemplate \"here's an id: {{ID}}\"
     }
   column_settings {
     [ref [field-id 6]] {
@@ -372,7 +372,7 @@
         type:
         linkType:
         linkTemplate:
-        linkTemplateText:
+        linkTextTemplate:
       }
     }
   ...
@@ -397,7 +397,7 @@
                                                          {"type"             (get field-settings "view_as")
                                                           "linkType"         "url"
                                                           "linkTemplate"     (get field-settings "link_template")
-                                                          "linkTemplateText" (get field-settings "link_text")}})) ))
+                                                          "linkTextTemplate" (get field-settings "link_text")}})) ))
                                             {}
                                             column-settings)]
     ;; don't return anything if we don't have new stuff or if we think the migration has already run since at least
