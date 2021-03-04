@@ -143,7 +143,11 @@ export default class SearchBar extends React.Component {
           {active && (
             <div className="absolute left right text-dark" style={{ top: 60 }}>
               {searchText.length > 0 ? (
-                <Card className="overflow-y-auto" style={{ maxHeight: 400 }}>
+                <Card
+                  className="overflow-y-auto"
+                  style={{ maxHeight: 400 }}
+                  py={1}
+                >
                   <Search.ListLoader
                     query={{ q: searchText }}
                     wrapped

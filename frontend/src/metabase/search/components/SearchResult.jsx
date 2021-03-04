@@ -28,11 +28,11 @@ const ResultLink = styled(Link)`
   justify-content: center;
   background-color: transparent;
   border-radius: 6px;
-  min-height: 54px;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 8px;
-  padding-right: 8px;
+  min-height: ${props => (props.compact ? "36px" : "54px")};
+  padding-top: ${props => (props.compact ? "6px" : "8px")};
+  padding-bottom: ${props => (props.compact ? "6px" : "8px")};
+  padding-left: 14px;
+  padding-right: ${props => (props.compact ? "20px" : "32px")};
 
   &:hover {
     background-color: #fafafa;
@@ -43,6 +43,7 @@ const ResultLink = styled(Link)`
   }
 
   h3 {
+    font-size: ${props => (props.compact ? "14px" : "16px")};
     line-height: 1.2em;
     word-wrap: break-word;
   }
@@ -131,19 +132,25 @@ function CollectionResult({ collection }) {
 function contextText(context) {
   return context.map(function({ is_match, text }) {
     if (is_match) {
-      return <strong> {text}</strong>;
+      return <strong style={{ color: color("brand") }}> {text}</strong>;
     } else {
       return <span> {text}</span>;
     }
   });
 }
 
+const Context = styled("p")`
+  line-height: 1.4em;
+  color: ${color("text-medium")};
+  margin-top: 0;
+`;
+
 function formatContext(context, compact) {
   return (
     !compact &&
     context && (
-      <Box ml="42px" mt="12px">
-        {contextText(context)}
+      <Box ml="42px" mt="12px" style={{ maxWidth: 620 }}>
+        <Context>{contextText(context)}</Context>
       </Box>
     )
   );
@@ -155,7 +162,7 @@ function formatCollection(collection) {
 
 function DashboardResult({ dashboard, options }) {
   return (
-    <ResultLink to={dashboard.getUrl()}>
+    <ResultLink to={dashboard.getUrl()} compact={options.compact}>
       <Flex align="center">
         <ItemIcon item={dashboard} />
         <Box>
@@ -171,7 +178,7 @@ function DashboardResult({ dashboard, options }) {
 
 function QuestionResult({ question, options }) {
   return (
-    <ResultLink to={question.getUrl()}>
+    <ResultLink to={question.getUrl()} compact={options.compact}>
       <Flex align="center">
         <ItemIcon item={question} />
         <Box>
@@ -194,7 +201,7 @@ function QuestionResult({ question, options }) {
 
 function DefaultResult({ result, options }) {
   return (
-    <ResultLink to={result.getUrl()}>
+    <ResultLink to={result.getUrl()} compact={options.compact}>
       <Flex align="center">
         <ItemIcon item={result} />
         <Box>
