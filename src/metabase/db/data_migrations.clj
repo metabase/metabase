@@ -383,28 +383,28 @@
                                    {"type"         (get merged "click")
                                     "linkType"     "url"
                                     "linkTemplate" (get merged "click_link_template")})
-        already-migrated?        (and top-level-click-behavior
-                                      (= top-level-click-behavior
-                                         (get dashcard "click_behavior")))
+        has-click-behavior?      (get dashcard "click_behavior")
         column-settings          (get merged "column_settings")
         updated-columns          (reduce-kv (fn [m col field-settings]
-                                              (assoc m col
-                                                     (merge
-                                                      field-settings
-                                                      (when (and (contains? field-settings "view_as")
-                                                                 (contains? field-settings "link_template"))
-                                                        {"click_behavior"
-                                                         {"type"             (get field-settings "view_as")
-                                                          "linkType"         "url"
-                                                          "linkTemplate"     (get field-settings "link_template")
-                                                          "linkTextTemplate" (get field-settings "link_text")}})) ))
+                                              (if (and (contains? field-settings "view_as")
+                                                       ;; if view_as is null we don't want it
+                                                       (get field-settings "view_as")
+                                                       (contains? field-settings "link_template"))
+                                                (assoc m col
+                                                       (merge field-settings
+                                                              {"click_behavior"
+                                                               {"type"             (get field-settings "view_as")
+                                                                "linkType"         "url"
+                                                                "linkTemplate"     (get field-settings "link_template")
+                                                                "linkTextTemplate" (get field-settings "link_text")}}))
+                                                m))
                                             {}
                                             column-settings)]
     ;; don't return anything if we don't have new stuff or if we think the migration has already run since at least
     ;; one company has already manually done this
     (when (and (or top-level-click-behavior
                    (seq updated-columns))
-               (not already-migrated?))
+               (not has-click-behavior?))
       {:id id
        :visualization_settings
        (merge dashcard
@@ -429,20 +429,20 @@
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
-             (db/query {:select    [:dashcard.id
-                                    [:card.visualization_settings :card_visualization]
-                                    [:dashcard.visualization_settings :dashcard_visualization]]
-                        :from      [[:report_dashboardcard :dashcard]]
-                        :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]]
-                        :where     [:or
-                                    [:like
-                                     :card.visualization_settings "%\"link_template\":%"]
-                                    [:like
-                                     :card.visualization_settings "%\"click_link_template\":%"]
-                                    [:like
-                                     :dashcard.visualization_settings "%\"link_template\":%"]
-                                    [:like
-                                     :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
+             (db/query {:select [:dashcard.id
+                                 [:card.visualization_settings :card_visualization]
+                                 [:dashcard.visualization_settings :dashcard_visualization]]
+                        :from   [[:report_dashboardcard :dashcard]]
+                        :join   [[:report_card :card] [:= :dashcard.card_id :card.id]]
+                        :where  [:or
+                                 [:like
+                                  :card.visualization_settings "%\"link_template\":%"]
+                                 [:like
+                                  :card.visualization_settings "%\"click_link_template\":%"]
+                                 [:like
+                                  :dashcard.visualization_settings "%\"link_template\":%"]
+                                 [:like
+                                  :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

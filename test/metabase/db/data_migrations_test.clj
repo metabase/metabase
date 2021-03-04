@@ -271,7 +271,29 @@
              (get-in (#'migrations/fix-click-through {:id 1
                                                       :card_visualization (f card-viz)
                                                       :dashcard_visualization (f dash-viz)})
-                     [:visualization_settings "column_settings" "[:ref [:field-id 2]]" "click_behavior" "linkTemplate"]))))))
+                     [:visualization_settings "column_settings" "[:ref [:field-id 2]]" "click_behavior" "linkTemplate"])))))
+  (testing "ignores columns when `view_as` is null"
+    (let [card-viz {:column_settings
+                    {[:ref [:field-id 2]]
+                     {:view_as "link",
+                      :link_template "card",
+                      :link_text "here's an id: {{ID}}"}}}
+          dash-viz {:column_settings
+                    {:normal
+                     {:view_as "link",
+                      :link_template "dash",
+                      :link_text "here's an id: {{ID}}"}
+                     :null-view-as
+                     {:view_as nil
+                      :link_template "i should not be present",
+                      :link_text "i should not be present"}}}
+          f #(-> % json/generate-string json/parse-string)]
+      (is (= ["normal"]
+             (keys (get-in
+                    (#'migrations/fix-click-through {:id 1
+                                                     :card_visualization (f card-viz)
+                                                     :dashcard_visualization (f dash-viz)})
+                    [:visualization_settings "column_settings"])))))))
 
 (deftest migrate-click-through-test
   (testing "Migrate old style click through behavior to new (#15014)"
