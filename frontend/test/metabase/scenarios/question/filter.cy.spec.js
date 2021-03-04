@@ -3,6 +3,7 @@ import {
   restore,
   openOrdersTable,
   openProductsTable,
+  openReviewsTable,
   popover,
   visitQuestionAdhoc,
 } from "__support__/cypress";
@@ -721,6 +722,19 @@ describe("scenarios > question > filter", () => {
     });
   });
 
+  it("should offer case expression in the auto-complete suggestions", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    popover().contains(/case/i);
+
+    // "case" is still there after typing a bit
+    cy.get("[contenteditable='true']")
+      .click()
+      .type("c");
+    popover().contains(/case/i);
+  });
+
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.request("POST", "/api/card", {
@@ -778,6 +792,110 @@ describe("scenarios > question > filter", () => {
     });
     cy.wait("@cardQuery");
     cy.findByText("Rye").should("not.exist");
+  });
+
+  it("should filter using IsNull() and IsEmpty()", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsNull([Rating])", { delay: 50 });
+    cy.findAllByRole("button")
+      .contains("Done")
+      .should("not.be.disabled")
+      .click();
+
+    cy.get(".QueryBuilder .Icon-add").click();
+
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+    cy.findAllByRole("button")
+      .contains("Done")
+      .should("not.be.disabled")
+      .click();
+
+    // check that filter is applied and rows displayed
+    cy.findByText("Visualize").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
+    openReviewsTable();
+    cy.contains("Reviewer").click();
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Is").click();
+    cy.findByText("Is empty").click();
+    cy.findByText("Update filter").click();
+
+    // filter out everything
+    cy.contains("Showing 0 rows");
+
+    // change the corresponding custom expression
+    cy.findByText("Reviewer is empty").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains("isempty([Reviewer])");
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+    cy.findByText("Done").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert 'is empty' on a numeric column to a custom expression using IsNull()", () => {
+    openReviewsTable();
+    cy.contains("Rating").click();
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Equal to").click();
+    cy.findByText("Is empty").click();
+    cy.findByText("Update filter").click();
+
+    // filter out everything
+    cy.contains("Showing 0 rows");
+
+    // change the corresponding custom expression
+    cy.findByText("Rating is empty").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains("isnull([Rating])");
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsNull([Rating])", { delay: 50 });
+    cy.findByText("Done").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert negative filter to custom expression (metabase#14880)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          filter: [
+            "does-not-contain",
+            ["field", PRODUCTS.TITLE, null],
+            "Wallet",
+            { "case-sensitive": false },
+          ],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+    cy.findByText("Title does not contain Wallet").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains(
+      'NOT contains([Title], "Wallet")',
+    );
   });
 
   it.skip("should handle multi-level aggregations with filter is the last position (metabase#14872)", () => {
