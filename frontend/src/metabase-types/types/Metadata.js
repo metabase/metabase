@@ -1,5 +1,3 @@
-/* @flow */
-
 // Legacy "tableMetadata" etc
 
 import type { Database, DatabaseId } from "metabase-types/types/Database";

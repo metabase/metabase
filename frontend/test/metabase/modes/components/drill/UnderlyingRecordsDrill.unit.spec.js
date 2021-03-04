@@ -1,5 +1,3 @@
-/* eslint-disable flowtype/require-valid-file-annotation */
-
 import { ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
 
 import { assocIn } from "icepick";

@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -47,7 +45,7 @@ import type {
   ClickObject,
 } from "metabase-types/types/Visualization";
 import type { VisualizationSettings } from "metabase-types/types/Card";
-import type { DatasetData } from "metabase-types/types/Dataset";
+import type { DatasetData, Value } from "metabase-types/types/Dataset";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];

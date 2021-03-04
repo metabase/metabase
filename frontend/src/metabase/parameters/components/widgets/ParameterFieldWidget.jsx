@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
@@ -45,7 +43,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   props: Props;
   state: State;
 
-  _unfocusedElement: React$Component<any, any, any>;
+  _unfocusedElement: React.Component;
 
   constructor(props: Props) {
     super(props);

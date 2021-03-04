@@ -1,4 +1,3 @@
-/*@flow weak*/
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 declare var ace: any;

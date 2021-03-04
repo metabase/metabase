@@ -1,5 +1,3 @@
-/* @flow */
-
 export const viewsByTime = (dashboardId: number) => ({
   card: {
     name: "Views per day",

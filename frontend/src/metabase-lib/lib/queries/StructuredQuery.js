@@ -1,5 +1,3 @@
-/* @flow weak */
-
 /**
  * Represents a structured MBQL query.
  */

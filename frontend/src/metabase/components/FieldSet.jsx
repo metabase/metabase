@@ -6,7 +6,7 @@ type Props = {
   className: string,
   legend: string,
   noPadding?: boolean,
-  children: React$Element<any>,
+  children: React.Element,
 };
 
 export default function FieldSet({

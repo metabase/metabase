@@ -1,5 +1,3 @@
-/* @flow */
-
 import Question from "metabase-lib/lib/Question";
 
 import type Metadata from "metabase-lib/lib/metadata/Metadata";

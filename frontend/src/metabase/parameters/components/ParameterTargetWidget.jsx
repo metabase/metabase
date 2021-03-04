@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -19,7 +17,7 @@ type Props = {
   onChange: (target: ?ParameterTarget) => void,
   mappingOptions: ParameterMappingUIOption[],
   placeholder?: string,
-  children?: React$Element<any> | (any => React$Element<any>),
+  children?: React.Element | (any => React.Element),
 };
 
 export default class ParameterTargetWidget extends React.Component {

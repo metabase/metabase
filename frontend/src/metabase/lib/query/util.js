@@ -1,5 +1,3 @@
-/* @flow */
-
 import _ from "underscore";
 
 // determines whether 2 field IDs are equal. This is needed rather than

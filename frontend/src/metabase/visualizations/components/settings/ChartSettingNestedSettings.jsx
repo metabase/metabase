@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
@@ -31,9 +29,7 @@ export type NestedSettingComponentProps = {
   settings: Settings,
   allComputedSettings: Settings,
 };
-type NestedSettingComponent = Class<
-  React$Component<NestedSettingComponentProps, *, *>,
->;
+type NestedSettingComponent = React.ComponentClass;
 
 type SettingsByObjectKey = { [key: NestedObjectKey]: Settings };
 

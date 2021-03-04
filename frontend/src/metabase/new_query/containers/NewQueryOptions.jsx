@@ -22,6 +22,16 @@ import {
 
 import Database from "metabase/entities/databases";
 
+import type { NestedObjectKey } from "metabase/visualizations/lib/settings/nested";
+
+type Props = {
+  hasDataAccess: Boolean,
+  hasNativeWrite: Boolean,
+  prefetchTables: any,
+  prefetchDatabases: any,
+  initialKey?: NestedObjectKey,
+};
+
 const mapStateToProps = state => ({
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),

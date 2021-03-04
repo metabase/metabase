@@ -5,6 +5,7 @@ import { FieldDimension } from "metabase-lib/lib/Dimension";
 import * as Table from "./table";
 
 import { TYPE } from "metabase/lib/types";
+import type { FieldId, FieldReference } from "metabase-types/types/Query";
 
 export function isLocalField(field: FieldReference): boolean {
   return Array.isArray(field) && field[0] === "field";

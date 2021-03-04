@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 

@@ -16,8 +16,6 @@
     "react/no-did-mount-set-state": 0,
     "react/no-did-update-set-state": 0,
     "react/no-find-dom-node": 0,
-    "flowtype/define-flow-type": 1,
-    "flowtype/use-flow-type": 1,
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0
   },
@@ -34,7 +32,7 @@
     "jest": true
   },
   "parser": "babel-eslint",
-  "plugins": ["react", "flowtype"],
+  "plugins": ["react"],
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
