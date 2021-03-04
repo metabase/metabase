@@ -1,4 +1,5 @@
 import "@testing-library/cypress/add-commands";
+import "./commands";
 
 export const version = require("../../../version.json");
 

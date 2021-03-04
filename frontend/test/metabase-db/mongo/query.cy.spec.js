@@ -65,7 +65,7 @@ describe("mongodb > user > query", () => {
       cy.findByText("Number of distinct values of ...").click();
       cy.findByText("City").click();
       cy.get("[class*=NotebookCell]").within(() => {
-        cy.get(".Icon-add").click();
+        cy.icon("add").click();
       });
       cy.findByText("Number of distinct values of ...").click();
       cy.findByText("State").click();

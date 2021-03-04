@@ -34,7 +34,7 @@ describe("scenarios > dashboard", () => {
   it("should create new dashboard", () => {
     // Create dashboard
     cy.visit("/");
-    cy.get(".Icon-add").click();
+    cy.icon("add").click();
     cy.findByText("New dashboard").click();
     cy.findByLabelText("Name").type("Test Dash");
     cy.findByLabelText("Description").type("Desc");
@@ -49,7 +49,7 @@ describe("scenarios > dashboard", () => {
 
   it("should update title and description", () => {
     cy.visit("/dashboard/1");
-    cy.get(".Icon-ellipsis").click();
+    cy.icon("ellipsis").click();
     cy.findByText("Change title and description").click();
     cy.findByLabelText("Name")
       .click()
@@ -62,14 +62,14 @@ describe("scenarios > dashboard", () => {
 
     cy.findByText("Update").click();
     cy.findByText("Test Title");
-    cy.get(".Icon-info").click();
+    cy.icon("info").click();
     cy.findByText("Test description");
   });
 
   it("should add a filter", () => {
     cy.visit("/dashboard/1");
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-filter").click();
+    cy.icon("pencil").click();
+    cy.icon("filter").click();
     // Adding location/state doesn't make much sense for this case,
     // but we're testing just that the filter is added to the dashboard
     cy.findByText("Location").click();
@@ -79,7 +79,7 @@ describe("scenarios > dashboard", () => {
     popover().within(() => {
       cy.findByText("State").click();
     });
-    cy.get(".Icon-close");
+    cy.icon("close");
     cy.get(".Button--primary")
       .contains("Done")
       .click();
@@ -87,13 +87,13 @@ describe("scenarios > dashboard", () => {
     saveDashboard();
 
     cy.log("**Assert that the selected filter is present in the dashboard**");
-    cy.get(".Icon-location");
+    cy.icon("location");
     cy.findByText("State");
   });
 
   it("should add a question", () => {
     cy.visit("/dashboard/1");
-    cy.get(".Icon-pencil").click();
+    cy.icon("pencil").click();
     cy.get(".QueryBuilder-section .Icon-add").click();
     cy.findByText("Orders, Count").click();
     saveDashboard();
@@ -104,7 +104,7 @@ describe("scenarios > dashboard", () => {
   it("should duplicate a dashboard", () => {
     cy.visit("/dashboard/1");
     cy.findByText("Orders in a dashboard");
-    cy.get(".Icon-ellipsis").click();
+    cy.icon("ellipsis").click();
     cy.findByText("Duplicate").click();
     cy.findByLabelText("Name")
       .click()
@@ -151,14 +151,14 @@ describe("scenarios > dashboard", () => {
     cy.findByText("dash:11007").click();
     cy.findByText("This dashboard is looking empty.");
     // add previously created question to it
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-add")
+    cy.icon("pencil").click();
+    cy.icon("add")
       .last()
       .click();
     cy.findByText("11007").click();
 
     // add first filter
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Time").click();
       cy.findByText("All Options").click();
@@ -167,7 +167,7 @@ describe("scenarios > dashboard", () => {
     selectDashboardFilter(cy.get(".DashCard"), "Created At");
 
     // add second filter
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("ID").click();
     });
@@ -175,7 +175,7 @@ describe("scenarios > dashboard", () => {
     selectDashboardFilter(cy.get(".DashCard"), "Product ID");
 
     // add third filter
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Other Categories").click();
     });
@@ -316,7 +316,7 @@ describe("scenarios > dashboard", () => {
     });
 
     // Add cross-filter click behavior manually
-    cy.get(".Icon-pencil").click();
+    cy.icon("pencil").click();
     cy.get(".DashCard .Icon-click").click({ force: true });
     cy.findByText("COUNT(*)").click();
     cy.findByText("Update a dashboard filter").click();
@@ -592,7 +592,7 @@ describe("scenarios > dashboard", () => {
   describe("revisions screen", () => {
     it("should open and close", () => {
       cy.visit("/dashboard/1");
-      cy.get(".Icon-ellipsis").click();
+      cy.icon("ellipsis").click();
       cy.findByText("Revision history").click();
 
       cy.get(".Modal").within(() => {
@@ -620,8 +620,8 @@ describe("scenarios > dashboard", () => {
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
     cy.visit("/dashboard/1");
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-filter").click();
+    cy.icon("pencil").click();
+    cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Time").click();
       cy.findByText("All Options").click();

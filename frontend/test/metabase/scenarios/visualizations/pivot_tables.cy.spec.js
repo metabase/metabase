@@ -52,7 +52,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     // Switch to "ordinary" table
     cy.findByText("Visualization").click();
-    cy.get(".Icon-table")
+    cy.icon("table")
       .should("be.visible")
       .click();
 
@@ -301,12 +301,12 @@ describe("scenarios > visualizations > pivot tables", () => {
       .click();
 
     cy.log("**-- Collapse the options panel --**");
-    cy.get(".Icon-chevronup").click();
+    cy.icon("chevronup").click();
     cy.findByText(/Formatting/).should("not.exist");
     cy.findByText(/See options/).should("not.exist");
 
     cy.log("**-- Expand it again --**");
-    cy.get(".Icon-chevrondown")
+    cy.icon("chevrondown")
       .first()
       .click();
     cy.findByText(/Formatting/);
@@ -417,12 +417,12 @@ describe("scenarios > visualizations > pivot tables", () => {
       .click();
 
     // sort descending
-    cy.get(".Icon-arrow_down").click();
+    cy.icon("arrow_down").click();
     cy.findByText("158 – 160");
     cy.findByText("8 – 10").should("not.exist");
 
     // sort ascending
-    cy.get(".Icon-arrow_up").click();
+    cy.icon("arrow_up").click();
     cy.findByText("8 – 10");
     cy.findByText("158 – 160").should("not.exist");
   });
@@ -620,7 +620,7 @@ describe("scenarios > visualizations > pivot tables", () => {
         beforeEach(() => {
           cy.visit("collection/root");
           cy.findByText(test.subject).click();
-          cy.get(".Icon-share").click();
+          cy.icon("share").click();
           if (test.case === "dashboard") {
             cy.findByText("Sharing and embedding").click();
           }
@@ -666,7 +666,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should open the download popover (metabase#14750)", () => {
     createAndVisitTestQuestion();
-    cy.get(".Icon-download").click();
+    cy.icon("download").click();
     popover().within(() => cy.findByText("Download full results"));
   });
 });

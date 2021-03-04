@@ -57,7 +57,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.get(".Icon-ellipsis")
+      cy.icon("ellipsis")
         .last()
         .click();
       cy.findByText("Edit user").click();
@@ -177,7 +177,7 @@ describeWithToken("formatting > sandboxes", () => {
         );
 
         cy.log("**--2. Add filter to a question--**");
-        cy.get(".Icon-notebook").click();
+        cy.icon("notebook").click();
         cy.findByText("Filter").click();
         popover().within(() => {
           cy.findByText("Total").click();
@@ -924,7 +924,7 @@ describeWithToken("formatting > sandboxes", () => {
       // |                | All users | collection |
       // |--------------- |:---------:|:----------:|
       // | Orders         |   X (0)   |    X (1)   |
-      cy.get(".Icon-close")
+      cy.icon("close")
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();
       cy.findByText("Grant sandboxed access").click();
@@ -1016,7 +1016,7 @@ describeWithToken("formatting > sandboxes", () => {
         });
       cy.findAllByRole("button", { name: "Done" }).click();
       // Rerun the query
-      cy.get(".Icon-play")
+      cy.icon("play")
         .last()
         .click();
 

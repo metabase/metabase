@@ -30,7 +30,7 @@ describe("scenarios > question > custom columns", () => {
   it("can create a custom column (metabase#13241)", () => {
     const columnName = "Simple Math";
     openOrdersTable({ mode: "notebook" });
-    cy.get(".Icon-add_data").click();
+    cy.icon("add_data").click();
 
     popover().within(() => {
       _typeUsingGet("[contenteditable='true']", "1 + 1");
@@ -51,7 +51,7 @@ describe("scenarios > question > custom columns", () => {
   it("can create a custom column with an existing column name", () => {
     customFormulas.forEach(({ customFormula, columnName }) => {
       openOrdersTable({ mode: "notebook" });
-      cy.get(".Icon-add_data").click();
+      cy.icon("add_data").click();
 
       popover().within(() => {
         _typeUsingGet("[contenteditable='true']", customFormula);
@@ -81,7 +81,7 @@ describe("scenarios > question > custom columns", () => {
 
     // TODO: There isn't a single unique parent that can be used to scope this icon within
     // (a good candidate would be `.NotebookCell`)
-    cy.get(".Icon-add")
+    cy.icon("add")
       .last() // This is brittle.
       .click();
 
@@ -140,7 +140,7 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText(columnName).click();
     });
 
-    cy.get(".Icon-add")
+    cy.icon("add")
       .last()
       .click();
 
@@ -347,7 +347,7 @@ describe("scenarios > question > custom columns", () => {
       cy.visit(`/question/${QUESTION_ID}`);
 
       // Test displays collapsed filter - click on number 1 to expand and show the filter name
-      cy.get(".Icon-filter")
+      cy.icon("filter")
         .parent()
         .contains("1")
         .click();

@@ -232,14 +232,14 @@ describe("scenarios > question > nested", () => {
     });
 
     // Add Q2 to that dashboard
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-add")
+    cy.icon("pencil").click();
+    cy.icon("add")
       .last()
       .click();
     cy.findByText("13816_Q2").click();
 
     // Add filter to the dashboard...
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     cy.findByText("Other Categories").click();
     // ...and try to connect it to the question
     cy.findByText("Select…").click();
@@ -455,7 +455,7 @@ describe("scenarios > question > nested", () => {
 
     // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
     // It can potentially fail at two more places. See [1] and [2]
-    cy.get(".Icon-notebook").click();
+    cy.icon("notebook").click();
     cy.get("[class*=NotebookCellItem]")
       .contains(/^Products → Category$/) /* [1] */
       .click();

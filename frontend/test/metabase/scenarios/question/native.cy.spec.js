@@ -200,7 +200,7 @@ describe("scenarios > question > native", () => {
     cy.get(".ace_content").type("select * from people where false");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("No results!");
-    cy.get(".Icon-contract").click();
+    cy.icon("contract").click();
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -356,7 +356,7 @@ describe("scenarios > question > native", () => {
     });
 
     cy.reload();
-    cy.get(".Icon-pencil").click();
+    cy.icon("pencil").click();
     cy.findByText(/View revision history/i).click();
     cy.findByText(/Revert/i).click(); // Revert to the first revision
     cy.findByText(/Open Editor/i).click();

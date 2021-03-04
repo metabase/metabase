@@ -211,7 +211,7 @@ describe("scenarios > question > null", () => {
       cy.wait("@dataset");
       cy.contains("Summarize").click();
       // remove pre-selected "Count"
-      cy.get(".Icon-close").click();
+      cy.icon("close").click();
       // dropdown immediately opens with the new set of metrics to choose from
       popover().within(() => {
         cy.findByText("Cumulative sum of ...").click();

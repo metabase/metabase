@@ -37,7 +37,7 @@ describe("scenarios > question > notebook", () => {
       .click();
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
-    cy.get(".Icon-notebook").click();
+    cy.icon("notebook").click();
     cy.findByText("Visualize").click();
 
     // there were no changes to the question, so we shouldn't have the option to "Save"
@@ -60,9 +60,9 @@ describe("scenarios > question > notebook", () => {
     popover().within(() => {
       cy.contains("User ID").click();
     });
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     popover().within(() => {
-      cy.get(".Icon-int").click();
+      cy.icon("int").click();
       cy.get("input").type("46");
       cy.contains("Add filter").click();
     });
@@ -101,7 +101,7 @@ describe("scenarios > question > notebook", () => {
       cy.contains("Orders").click();
 
       // join to Reviews on orders.product_id = reviews.product_id
-      cy.get(".Icon-join_left_outer").click();
+      cy.icon("join_left_outer").click();
       popover()
         .contains("Reviews")
         .click();
@@ -136,7 +136,7 @@ describe("scenarios > question > notebook", () => {
       cy.contains("Orders").click();
 
       cy.log("join to People table using default settings");
-      cy.get(".Icon-join_left_outer ").click();
+      cy.icon("join_left_outer ").click();
       cy.contains("People").click();
       cy.contains("Orders + People");
       cy.contains("Visualize").click();
@@ -164,7 +164,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("question a").click();
 
       // join to question b
-      cy.get(".Icon-join_left_outer").click();
+      cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Sample Dataset").click();
         cy.findByText("Saved Questions").click();
@@ -226,7 +226,7 @@ describe("scenarios > question > notebook", () => {
     it("should show correct column title with foreign keys (metabase#11452)", () => {
       // (Orders join Reviews on Product ID)
       openOrdersTable();
-      cy.get(".Icon-notebook").click();
+      cy.icon("notebook").click();
       cy.findByText("Join data").click();
       cy.findByText("Reviews").click();
       cy.findByText("Product ID").click();
@@ -245,7 +245,7 @@ describe("scenarios > question > notebook", () => {
       //      the actual svg icon with the class `.Icon-join_left_outer`
       //    h3.List-section-title with the text content we're actually testing
       popover().within(() => {
-        cy.get(".Icon-join_left_outer")
+        cy.icon("join_left_outer")
           .parent()
           .next()
           // NOTE from Flamber's warning:
@@ -336,7 +336,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Custom question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("12928_Q1").click();
-      cy.get(".Icon-join_left_outer").click();
+      cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Sample Dataset").click();
         cy.findByText("Saved Questions").click();
@@ -553,7 +553,7 @@ describe("scenarios > question > notebook", () => {
 
       cy.findByText("Not now").click();
 
-      cy.get(".Icon-notebook").click();
+      cy.icon("notebook").click();
 
       cy.reload();
 
@@ -569,7 +569,7 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should work on custom column with `case`", () => {
-      cy.get(".Icon-add_data").click();
+      cy.icon("add_data").click();
       cy.get("[contenteditable='true']")
         .click()
         .clear()
@@ -697,7 +697,7 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
         cy.wait("@cardQuery");
 
         cy.log("**Reported in v0.36.0**");
-        cy.get(".Icon-notebook").click();
+        cy.icon("notebook").click();
         cy.url().should("contain", "/notebook");
         cy.findByText("Visualize").should("exist");
       });

@@ -20,8 +20,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createDashboardWithQuestion({}, dashboardId =>
       cy.visit(`/dashboard/${dashboardId}`),
     );
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-click").click({ force: true });
+    cy.icon("pencil").click();
+    cy.icon("click").click({ force: true });
 
     // configure a URL click through on the  "MY_NUMBER" column
     cy.findByText("On-click behavior for each column")
@@ -137,8 +137,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createDashboardWithQuestion({}, dashboardId =>
       cy.visit(`/dashboard/${dashboardId}`),
     );
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-click").click({ force: true });
+    cy.icon("pencil").click();
+    cy.icon("click").click({ force: true });
 
     // configure a dashboard target for the "MY_NUMBER" column
     cy.findByText("On-click behavior for each column")
@@ -188,8 +188,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
         },
       );
     });
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-click").click({ force: true });
+    cy.icon("pencil").click();
+    cy.icon("click").click({ force: true });
 
     // configure clicks on "MY_NUMBER to update the param
     cy.findByText("On-click behavior for each column")
@@ -230,8 +230,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createDashboardWithQuestion({}, dashboardId =>
       cy.visit(`/dashboard/${dashboardId}`),
     );
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-click").click({ force: true });
+    cy.icon("pencil").click();
+    cy.icon("click").click({ force: true });
 
     // configure clicks on "MY_NUMBER to update the param
     cy.findByText("On-click behavior for each column")

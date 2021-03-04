@@ -125,10 +125,10 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
         cy.visit("/dashboard/1");
       // start editing
-      cy.get(".Icon-pencil").click();
+      cy.icon("pencil").click();
 
       // add a state filter
-      cy.get(".Icon-filter").click();
+      cy.icon("filter").click();
       popover().within(() => {
         cy.findByText("Location").click();
         cy.findByText("State").click();

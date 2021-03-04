@@ -531,7 +531,7 @@ describe("scenarios > question > filter", () => {
       // Remove default filter (category)
       cy.get("fieldset .Icon-close").click();
 
-      cy.get(".Icon-play")
+      cy.icon("play")
         .first()
         .should("be.visible")
         .as("rerunQuestion");
@@ -582,7 +582,7 @@ describe("scenarios > question > filter", () => {
     });
 
     // Test shows two filter collapsed - click on number 2 to expand and show filter names
-    cy.get(".Icon-filter")
+    cy.icon("filter")
       .parent()
       .contains("2")
       .click();
@@ -630,7 +630,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Previous").click();
     cy.findByText("Before").click();
     // Collapse the calendar view
-    cy.get(".Icon-calendar").click();
+    cy.icon("calendar").click();
     cy.findByText("Add filter")
       .closest(".Button")
       .should("not.be.disabled")
@@ -778,5 +778,75 @@ describe("scenarios > question > filter", () => {
     });
     cy.wait("@cardQuery");
     cy.findByText("Rye").should("not.exist");
+  });
+
+  it.skip("should handle multi-level aggregations with filter is the last position (metabase#14872)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-query": {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              filter: ["=", ["field-id", ORDERS.USER_ID], 1],
+              aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+              breakout: [
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+                [
+                  "fk->",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["field-id", PRODUCTS.TITLE],
+                ],
+                [
+                  "fk->",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["field-id", PRODUCTS.CATEGORY],
+                ],
+              ],
+            },
+            filter: [">", ["field-literal", "sum", "type/Float"], 100],
+            aggregation: [["sum", ["field-literal", "sum", "type/Float"]]],
+            breakout: [["field-literal", "TITLE", "type/Text"]],
+          },
+          filter: [">", ["field-literal", "sum", "type/Float"], 100],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+
+    cy.findByText(/Sum of Sum of Total/i);
+    cy.findByText("Awesome Bronze Plate");
+  });
+
+  it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          filter: [
+            "does-not-contain",
+            ["field-id", PRODUCTS.TITLE],
+            "Wallet",
+            { "case-sensitive": false },
+          ],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+    cy.findByText("Title does not contain Wallet").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
+    cy.get("[contenteditable='true']");
   });
 });
