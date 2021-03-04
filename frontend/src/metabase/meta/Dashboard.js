@@ -46,6 +46,12 @@ export const PARAMETER_SECTIONS: ParameterSection[] = [
     options: [],
   },
   {
+    id: "number",
+    name: t`Number`,
+    description: t`Subtotal, Age, Price, Quantity, etc.`,
+    options: [],
+  },
+  {
     id: "category",
     name: t`Other Categories`,
     description: t`Category, Type, Model, Rating, etc.`,

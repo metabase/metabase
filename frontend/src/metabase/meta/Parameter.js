@@ -30,6 +30,68 @@ type TemplateTagFilter = (tag: TemplateTag) => boolean;
 type FieldPredicate = (field: Field) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 
+export const PARAMETER_OPERATOR_TYPES = {
+  number: [
+    {
+      operator: "=",
+      name: t`Equal to`,
+    },
+    {
+      operator: "!=",
+      name: t`Not equal to`,
+    },
+    {
+      operator: "between",
+      name: t`Between`,
+    },
+    {
+      operator: ">=",
+      name: t`Greater than or equal to`,
+    },
+    {
+      operator: "<=",
+      name: t`Less than or equal to`,
+    },
+    // {
+    //   operator: "all-options",
+    //   name: t`All options`,
+    //   description: t`Contains all of the above`,
+    // },
+  ],
+  string: [
+    {
+      operator: "=",
+      name: t`Matches exactly`,
+      description: t`Use a dropdown or search box to pick one or more exact matches.`,
+    },
+    {
+      operator: "contains",
+      name: t`Contains`,
+      description: t`Match values that contain the entered text.`,
+    },
+    {
+      operator: "does-not-contain",
+      name: t`Does not contain`,
+      description: t`Filter out values that contain the entered text.`,
+    },
+    {
+      operator: "starts-with",
+      name: t`Starts with`,
+      description: t`Match values that begin with the entered text.`,
+    },
+    {
+      operator: "ends-with",
+      name: t`Ends with`,
+      description: t`Match values that end with the entered text.`,
+    },
+    // {
+    //   operator: "all-options",
+    //   name: t`All options`,
+    //   description: t`Users can pick from any of the above`,
+    // },
+  ],
+};
+
 export const PARAMETER_OPTIONS: ParameterOption[] = [
   {
     type: "date/month-year",
@@ -63,18 +125,20 @@ export const PARAMETER_OPTIONS: ParameterOption[] = [
     description: t`Contains all of the above`,
   },
   {
-    type: "location",
-    name: t`Location`,
-  },
-  {
     type: "id",
     name: t`ID`,
   },
-  {
-    type: "category",
-    name: t`Category`,
-  },
+  ...buildOperatorSubtypeOptions("location", "string"),
+  ...buildOperatorSubtypeOptions("category", "string"),
+  ...buildOperatorSubtypeOptions("number", "number"),
 ];
+
+function buildOperatorSubtypeOptions(section, operatorType) {
+  return PARAMETER_OPERATOR_TYPES[operatorType].map(option => ({
+    ...option,
+    type: `${section}/${option.operator}`,
+  }));
+}
 
 function fieldFilterForParameter(parameter: Parameter) {
   return fieldFilterForParameterType(parameter.type);
@@ -97,6 +161,8 @@ function fieldFilterForParameterType(
         field.isState() ||
         field.isZipCode() ||
         field.isCountry();
+    case "number":
+      return (field: Field) => field.isNumber();
   }
 
   return (field: Field) => false;
