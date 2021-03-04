@@ -37,7 +37,7 @@ describe("scenarios > question > notebook", () => {
       .click();
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
-    cy.get(".Icon-notebook").click();
+    cy.icon("notebook").click();
     cy.findByText("Visualize").click();
 
     // there were no changes to the question, so we shouldn't have the option to "Save"
@@ -60,9 +60,9 @@ describe("scenarios > question > notebook", () => {
     popover().within(() => {
       cy.contains("User ID").click();
     });
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     popover().within(() => {
-      cy.get(".Icon-int").click();
+      cy.icon("int").click();
       cy.get("input").type("46");
       cy.contains("Add filter").click();
     });
@@ -115,7 +115,7 @@ describe("scenarios > question > notebook", () => {
       cy.contains("Orders").click();
 
       // join to Reviews on orders.product_id = reviews.product_id
-      cy.get(".Icon-join_left_outer").click();
+      cy.icon("join_left_outer").click();
       popover()
         .contains("Reviews")
         .click();
@@ -143,20 +143,20 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should allow post-join filters (metabase#12221)", () => {
-      cy.log("start a custom question with Orders");
+      cy.log("Start a custom question with Orders");
       cy.visit("/question/new");
       cy.contains("Custom question").click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
 
-      cy.log("join to People table using default settings");
-      cy.get(".Icon-join_left_outer ").click();
+      cy.log("Join to People table using default settings");
+      cy.icon("join_left_outer ").click();
       cy.contains("People").click();
       cy.contains("Orders + People");
       cy.contains("Visualize").click();
       cy.contains("Showing first 2,000");
 
-      cy.log("attempt to filter on the joined table");
+      cy.log("Attempt to filter on the joined table");
       cy.contains("Filter").click();
       cy.contains("Email").click();
       cy.contains("People – Email");
@@ -178,7 +178,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("question a").click();
 
       // join to question b
-      cy.get(".Icon-join_left_outer").click();
+      cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Sample Dataset").click();
         cy.findByText("Saved Questions").click();
@@ -240,7 +240,7 @@ describe("scenarios > question > notebook", () => {
     it("should show correct column title with foreign keys (metabase#11452)", () => {
       // (Orders join Reviews on Product ID)
       openOrdersTable();
-      cy.get(".Icon-notebook").click();
+      cy.icon("notebook").click();
       cy.findByText("Join data").click();
       cy.findByText("Reviews").click();
       cy.findByText("Product ID").click();
@@ -248,7 +248,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Product ID").click();
       });
 
-      cy.log("**It shouldn't use FK for a column title**");
+      cy.log("It shouldn't use FK for a column title");
       cy.findByText("Summarize").click();
       cy.findByText("Pick a column to group by").click();
 
@@ -259,7 +259,7 @@ describe("scenarios > question > notebook", () => {
       //      the actual svg icon with the class `.Icon-join_left_outer`
       //    h3.List-section-title with the text content we're actually testing
       popover().within(() => {
-        cy.get(".Icon-join_left_outer")
+        cy.icon("join_left_outer")
           .parent()
           .next()
           // NOTE from Flamber's warning:
@@ -350,7 +350,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Custom question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("12928_Q1").click();
-      cy.get(".Icon-join_left_outer").click();
+      cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Sample Dataset").click();
         cy.findByText("Saved Questions").click();
@@ -363,7 +363,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Visualize").click();
 
       cy.findByText("12928_Q1 + 12928_Q2");
-      cy.log("**Reported failing in v1.35.4.1 and `master` on July, 16 2020**");
+      cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2020");
       // TODO: Add a positive assertion once this issue is fixed
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
@@ -429,8 +429,8 @@ describe("scenarios > question > notebook", () => {
           cy.visit(`/question/${joinedQuestionId}`);
           cy.findByText("13744_joined");
 
-          cy.log("**Reported failing on v0.34.3 - v0.37.0.2**");
-          cy.log("**Reported error log: 'No aggregation at index: 0'**");
+          cy.log("Reported failing on v0.34.3 - v0.37.0.2");
+          cy.log("Reported error log: 'No aggregation at index: 0'");
           // assert directly on XHR instead of relying on UI
           cy.wait("@cardQuery").then(xhr => {
             expect(xhr.response.body.error).not.to.exist;
@@ -483,7 +483,7 @@ describe("scenarios > question > notebook", () => {
     it.skip("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
-      cy.route("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
+      cy.route("GET", "/api/automagic-dashboards/adhoc/").as("xray");
 
       visitQuestionAdhoc({
         dataset_query: {
@@ -567,7 +567,7 @@ describe("scenarios > question > notebook", () => {
 
       cy.findByText("Not now").click();
 
-      cy.get(".Icon-notebook").click();
+      cy.icon("notebook").click();
 
       cy.reload();
 
@@ -582,7 +582,7 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should work on custom column with `case`", () => {
-      cy.get(".Icon-add_data").click();
+      cy.icon("add_data").click();
       cy.get("[contenteditable='true']")
         .click()
         .clear()
@@ -659,7 +659,7 @@ describe("scenarios > question > notebook", () => {
 function joinTwoSavedQuestions(ALIAS = "Joined Question") {
   cy.server();
 
-  cy.log("**-- Prepare Question 1 --**");
+  cy.log("Prepare Question 1");
   cy.request("POST", "/api/card", {
     name: "Q1",
     dataset_query: {
@@ -674,7 +674,7 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
     display: "table",
     visualization_settings: {},
   }).then(({ body: { id: Q1_ID } }) => {
-    cy.log("**-- Prepare Question 2 --**");
+    cy.log("Prepare Question 2");
     cy.request("POST", "/api/card", {
       name: "Q2",
       dataset_query: {
@@ -689,9 +689,7 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
       display: "table",
       visualization_settings: {},
     }).then(({ body: { id: Q2_ID } }) => {
-      cy.log(
-        "**-- Create Question 3 based on 2 previously saved questions --**",
-      );
+      cy.log("Create Question 3 based on 2 previously saved questions");
       cy.request("POST", "/api/card", {
         name: "Q3",
         dataset_query: {
@@ -725,8 +723,8 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
 
         cy.wait("@cardQuery");
 
-        cy.log("**Reported in v0.36.0**");
-        cy.get(".Icon-notebook").click();
+        cy.log("Reported in v0.36.0");
+        cy.icon("notebook").click();
         cy.url().should("contain", "/notebook");
         cy.findByText("Visualize").should("exist");
       });

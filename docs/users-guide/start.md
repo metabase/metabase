@@ -21,6 +21,7 @@
 - [Adding filters to dashboards](08-dashboard-filters.md)
 - [Making dashboards interactive](interactive-dashboards.md)
 - [Creating dashboard charts with multiple series](09-multi-series-charting.md)
+- [Setting up dashboard subscriptions](dashboard-subscriptions.md)
 - [Using Pulses for daily emails](10-pulses.md)
 - [Get answers in Slack with Metabot](11-metabot.md)
 

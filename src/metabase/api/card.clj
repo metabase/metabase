@@ -25,6 +25,7 @@
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.streaming :as qp.streaming]
@@ -275,7 +276,6 @@
             (api/column-will-change? :embedding_params card-before-updates card-updates))
     (api/check-embedding-enabled)
     (api/check-superuser)))
-
 
 (defn- result-metadata-for-updating-async
   "If `card`'s query is being updated, return the value that should be saved for `result_metadata`. This *should* be
@@ -604,7 +604,8 @@
              ;; customize the `context` passed to the QP
              run         (^:once fn* [query info]
                           (qp.streaming/streaming-response [context export-format]
-                            (qp-runner query info context)))}}]
+                            (binding [qp.perms/*card-id* card-id]
+                              (qp-runner query info context))))}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)

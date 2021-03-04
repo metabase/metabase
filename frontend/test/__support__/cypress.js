@@ -1,4 +1,5 @@
 import "@testing-library/cypress/add-commands";
+import "./commands";
 
 export const version = require("../../../version.json");
 
@@ -43,12 +44,12 @@ export const USER_GROUPS = {
 };
 
 export function signIn(user = "admin") {
-  cy.log(`**--- Logging in as ${user} ---**`);
+  cy.log(`Logging in as ${user}`);
   cy.request("POST", "/api/session", USERS[user]);
 }
 
 export function signOut() {
-  cy.log(`**--- Signing out ---**`);
+  cy.log("Signing out");
   cy.clearCookie("metabase.SESSION");
 }
 
@@ -65,7 +66,7 @@ export function snapshot(name) {
 }
 
 export function restore(name = "default") {
-  cy.log(`**--- Restore Data Set ---**`);
+  cy.log("Restore Data Set");
   cy.request("POST", `/api/testing/restore/${name}`);
 }
 
@@ -246,7 +247,7 @@ export function createBasicAlert({ firstAlert, includeNormal } = {}) {
 }
 
 export function setupDummySMTP() {
-  cy.log("**Set up dummy SMTP server**");
+  cy.log("Set up dummy SMTP server");
   cy.request("PUT", "/api/setting", {
     "email-smtp-host": "smtp.foo.test",
     "email-smtp-port": "587",

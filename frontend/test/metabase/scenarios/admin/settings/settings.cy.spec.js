@@ -51,7 +51,7 @@ describe("scenarios > admin > settings", () => {
 
     // NOTE: This test is not concerned with HOW we style the error message - only that there is one.
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
-    cy.log("**Making sure we display an error message in UI**");
+    cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
     cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
   });
@@ -297,6 +297,34 @@ describe("scenarios > admin > settings", () => {
       });
     });
   }
+
+  it("'General' admin settings should handle setup via `MB_SITE_ULR` environment variable (metabase#14900)", () => {
+    cy.server();
+    // 1. Get the array of ALL available settings
+    cy.request("GET", "/api/setting").then(({ body }) => {
+      // 2. Create a stubbed version of that array by passing modified "site-url" settings
+      const STUBBED_BODY = body.map(setting => {
+        if (setting.key === "site-url") {
+          const STUBBED_SITE_URL = Object.assign({}, setting, {
+            is_env_setting: true,
+            value: null,
+          });
+
+          return STUBBED_SITE_URL;
+        }
+        return setting;
+      });
+
+      // 3. Stub the whole response
+      cy.route("GET", "/api/setting", STUBBED_BODY).as("appSettings");
+    });
+    cy.visit("/admin/settings/general");
+
+    cy.wait("@appSettings");
+    cy.findByText("We're a little lost...").should("not.exist");
+    cy.findByText(/Site name/i);
+    cy.findByText(/Site URL/i);
+  });
 
   describe(" > email settings", () => {
     it("should be able to save email settings", () => {

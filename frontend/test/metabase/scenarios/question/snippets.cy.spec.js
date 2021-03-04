@@ -34,7 +34,7 @@ describe("scenarios > question > snippets", () => {
     );
 
     // Add a snippet of that text
-    cy.get(".Icon-snippet").click();
+    cy.icon("snippet").click();
     cy.contains("Create a snippet").click();
 
     modal().within(() => {
@@ -65,11 +65,11 @@ describe("scenarios > question > snippets", () => {
     cy.get(".ace_content").as("editor");
     cy.get("@editor").type("select ");
     // 2. snippet
-    cy.get(".Icon-snippet").click();
+    cy.icon("snippet").click();
     cy.findByText("stuff-snippet").click();
 
     // Open the snippet edit modal
-    cy.get(".Icon-chevrondown").click({ force: true });
+    cy.icon("chevrondown").click({ force: true });
     cy.findByText("Edit").click();
 
     // Update the name and content

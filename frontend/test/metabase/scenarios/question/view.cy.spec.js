@@ -98,7 +98,7 @@ describe("scenarios > question > view", () => {
     beforeEach(() => {
       // All users upgraded to collection view access
       cy.visit("/admin/permissions/collections");
-      cy.get(".Icon-close")
+      cy.icon("close")
         .first()
         .click();
       cy.findByText("View collection").click();

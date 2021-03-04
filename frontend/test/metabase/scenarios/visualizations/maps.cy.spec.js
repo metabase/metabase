@@ -27,7 +27,7 @@ describe("scenarios > visualizations > maps", () => {
 
     // switch to a pin map visualization
     cy.contains("Visualization").click();
-    cy.get(".Icon-pinmap").click();
+    cy.icon("pinmap").click();
 
     cy.contains("Map type")
       .next()
@@ -95,7 +95,7 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get("@vizSidebar").within(() => {
       // There should be a unique class for "selected" viz type
-      cy.get(".Icon-pinmap")
+      cy.icon("pinmap")
         .parent()
         .should("have.class", "text-white");
 
@@ -140,7 +140,7 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@texas").click();
     cy.findByText(/View these People/i).click();
 
-    cy.log("**Reported as a regression since v0.37.0**");
+    cy.log("Reported as a regression since v0.37.0");
     cy.wait("@dataset").then(xhr => {
       expect(xhr.request.body.query.filter).not.to.contain("Texas");
     });

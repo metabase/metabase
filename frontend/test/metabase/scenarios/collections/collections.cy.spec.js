@@ -44,7 +44,7 @@ describe("scenarios > collection_defaults", () => {
 
     describe("new collections", () => {
       beforeEach(() => {
-        cy.log("**--Create new collection--**");
+        cy.log("Create new collection");
         cy.request("POST", "/api/collection", {
           name: collection.name,
           color: "#ff9a9a",
@@ -71,7 +71,7 @@ describe("scenarios > collection_defaults", () => {
       describe("a new sub-collection", () => {
         beforeEach(() => {
           cy.log(
-            "**--Create a sub collection within previously created collection--**",
+            "Create a sub collection within previously created collection",
           );
           cy.request("POST", "/api/collection", {
             name: sub_collection.name,
@@ -147,7 +147,7 @@ describe("scenarios > collection_defaults", () => {
               "Third collection",
             );
 
-            cy.log("**-- Create two more nested collections --**");
+            cy.log("Create two more nested collections");
             [
               "Fourth collection",
               "Fifth collection with a very long name",
@@ -223,15 +223,15 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Orders")
           .closest("a")
           .within(() => {
-            cy.get(".Icon-table").trigger("mouseover");
+            cy.icon("table").trigger("mouseover");
             cy.findByRole("checkbox")
               .should("be.visible")
               .click();
           });
 
         cy.findByText("1 item selected").should("be.visible");
-        cy.get(".Icon-dash").click();
-        cy.get(".Icon-dash").should("not.exist");
+        cy.icon("dash").click();
+        cy.icon("dash").should("not.exist");
         cy.findByText("4 items selected");
       });
     });
@@ -249,7 +249,7 @@ describe("scenarios > collection_defaults", () => {
         // Check for pulse in root collection
         cy.visit("/collection/root");
         cy.findByText("My personal collection").then(() => {
-          cy.get(".Icon-pulse");
+          cy.icon("pulse");
         });
 
         // cy.request("/api/pulse").then((response) => {
@@ -290,7 +290,7 @@ describe("scenarios > collection_defaults", () => {
         // Check for pulse in root collection
         cy.visit("/collection/root");
         cy.findByText("My personal collection");
-        cy.get(".Icon-pulse");
+        cy.icon("pulse");
       });
     });
 
@@ -370,7 +370,7 @@ describe("scenarios > collection_defaults", () => {
           cy.findByText(/Our analytics/i);
           cy.findByText(/My personal collection/i);
           cy.findByText("Parent").should("not.exist");
-          cy.log("**Reported failing from v0.34.3**");
+          cy.log("Reported failing from v0.34.3");
           cy.findByText("Child");
         });
       });
@@ -423,7 +423,7 @@ describe("scenarios > collection_defaults", () => {
       cy.visit("/collection/root");
       cy.findByText(NEW_COLLECTION);
       cy.findByText("First collection").click();
-      cy.get(".Icon-pencil").click();
+      cy.icon("pencil").click();
       cy.findByText("Edit this collection").click();
       modal().within(() => {
         // Open the select dropdown menu
@@ -458,17 +458,17 @@ describe("scenarios > collection_defaults", () => {
       // cy.findByText(NEW_COLLECTION)
       //   .closest("a")
       //   .within(() => {
-      //     cy.get(".Icon-chevrondown");
+      //     cy.icon("chevrondown");
       //     cy.findByText("First collection");
       //   });
     });
 
     it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
       cy.visit("/collection/root");
-      cy.log("**Move 'Second collection' to the root");
+      cy.log("Move 'Second collection' to the root");
       openDropdownFor("First collection");
       cy.findByText("Second collection").click();
-      cy.get(".Icon-pencil").click();
+      cy.icon("pencil").click();
       cy.findByText("Edit this collection").click();
       modal().within(() => {
         // Open the select dropdown menu
@@ -489,7 +489,7 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("Update").should("not.exist");
 
       // This click is a weird "hack" that simply gives time for an UI to update - nothing else worked (not even waiting for XHR)
-      cy.get(".Icon-info").click();
+      cy.icon("info").click();
 
       cy.get("[class*=CollectionSidebar]")
         .as("sidebar")
@@ -528,6 +528,28 @@ describe("scenarios > collection_defaults", () => {
         .parent()
         .find(".Icon-chevronright")
         .should("not.exist");
+    });
+
+    it.skip("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
+      cy.request("GET", "/api/collection").then(({ body }) => {
+        // Get "Second collection's" id dynamically instead of hard-coding it
+        const SECOND_COLLECTION = body.filter(collection => {
+          return collection.slug === "second_collection";
+        });
+        const [{ id }] = SECOND_COLLECTION;
+
+        // Move first question in a DB snapshot ("Orders") inside "Second collection"
+        cy.request("PUT", "/api/card/1", {
+          collection_id: id,
+        });
+      });
+
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Everything Else");
+      cy.findByText("Second Collection").should("not.exist");
+      cy.findByText("First Collection");
     });
   });
 });

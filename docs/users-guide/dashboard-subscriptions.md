@@ -50,3 +50,9 @@ You can specify how often Metabase sends a Slack message (hourly, daily, weekly,
 
 - [Setting up email](https://www.metabase.com/docs/latest/administration-guide/02-setting-up-email.html)
 - [Setting up Slack](https://www.metabase.com/docs/latest/administration-guide/09-setting-up-slack.html)
+
+---
+
+## Next: Getting reports with Pulses
+
+Pulses let you send out a group of saved questions on a schedule via email or Slack. [Get started with Pulses](10-pulses.md).
