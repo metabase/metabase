@@ -24,8 +24,6 @@
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
 
-(driver/register! :oracle-ssl, :parent :oracle)
-
 (deftest connection-details->spec-test
   (doseq [[message expected-spec details]
           [["You should be able to connect with an SID"

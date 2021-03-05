@@ -27,15 +27,6 @@ driver:
     - user
     - password
     - ssl
-#    - name: ssl-truststore-path
-#      display-name: Trust Store File Path
-#      placeholder: "/path/to/truststore.jks"
-#    - name: ssl-truststore-type
-#      display-name: Trust Store File Type
-#      default: "JKS"
-#    - name: ssl-truststore-password
-#      display-name: Trust Store File Password
-#      placeholder: "changeit"
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace

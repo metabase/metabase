@@ -74,21 +74,14 @@
                               (str "/" service-name)))))
 
 (defn- ssl-spec [spec host port sid service-name]
-  (println (u/format-color 'yellow-bg "Connecting to Oracle with SSL"))
+  ;; TODO: remove output after confirming in CI
+  (println (u/format-color 'yellow "Connecting to Oracle with SSL"))
   (assoc spec :subname
               (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
                       host
                       port
                       (if sid (str "(SID=" sid ")") "")
                       (if service-name (str "(SERVICE_NAME=" service-name ")") ""))))
-      ;(set/rename-keys {:ssl-truststore-path     "javax.net.ssl.trustStore"
-      ;                  :ssl-truststore-type     "javax.net.ssl.trustStoreType"
-      ;                  :ssl-truststore-password "javax.net.ssl.trustStorePassword"})))
-
-;;(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=servername)(PORT=2484))(CONNECT_DATA=(SERVICE_NAME=servicename)))
-;;host:port:sid/service-name
-
-;;jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=oracle-ci-test-db.ce4kuivej1tq.us-east-1.rds.amazonaws.com)(PORT=1521))(CONNECT_DATA=(SID=ORCL)))
 
 (defmethod sql-jdbc.conn/connection-details->spec :oracle
   [_ {:keys [host port sid service-name]
