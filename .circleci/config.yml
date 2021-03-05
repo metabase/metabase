@@ -1333,7 +1333,7 @@ workflows:
           <<: *Matrix
 
       - fe-tests-cypress:
-          name: fe-tests-cypres-mysql-8-<< matrix.edition >>
+          name: fe-tests-cypress-mysql-8-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
           e: fe-mysql-8
