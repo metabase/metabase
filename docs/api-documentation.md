@@ -2,7 +2,7 @@
 
 _This file was generated from source comments by `lein run api-documentation`_.
 
-Check out an introduction to the [Metabase API](https://www.metabase.com/blog/metabase-api/index.html).
+Check out an introduction to the [Metabase API](https://www.metabase.com/learn/developing-applications/advanced-metabase/metabase-api.html).
 
 ## `GET /api/activity/`
 
@@ -49,7 +49,7 @@ Create a new Alert.
 
 *  **`alert_condition`** value must be one of: `goal`, `rows`.
 
-*  **`card`** value must be a map with the keys `id`, `include_csv`, and `include_xls`.
+*  **`card`** value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
 
@@ -70,7 +70,7 @@ Update a `Alert` with ID.
 
 *  **`alert_condition`** value may be nil, or if non-nil, value must be one of: `goal`, `rows`.
 
-*  **`card`** value may be nil, or if non-nil, value must be a map with the keys `id`, `include_csv`, and `include_xls`.
+*  **`card`** value may be nil, or if non-nil, value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.
 
 *  **`channels`** value may be nil, or if non-nil, value must be an array. Each value must be a map. The array cannot be empty.
 
@@ -415,6 +415,19 @@ Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS i
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
+## `POST /api/card/pivot/:card-id/query`
+
+Run the query associated with a Card.
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+*  **`parameters`** 
+
+*  **`ignore_cache`** value may be nil, or if non-nil, value must be a boolean.
+
+
 ## `POST /api/card/related`
 
 Return related entities for an ad-hoc query.
@@ -542,6 +555,20 @@ Fetch objects that the current user should see at their root level. As mentioned
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+
+
+## `GET /api/collection/tree`
+
+Similar to `GET /`, but returns Collections in a tree structure, e.g.
+
+    [{:name     "A"
+      :children [{:name "B"}
+                 {:name     "C"
+                  :children [{:name     "D"
+                              :children [{:name "E"}]}
+                             {:name     "F"
+                              :children [{:name "G"}]}]}]}
+     {:name "H"}]
 
 
 ## `POST /api/collection/`
@@ -1165,6 +1192,8 @@ You must be a superuser to do this.
 
 *  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
 
+*  **`refingerprint`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
 
 *  **`description`** value may be nil, or if non-nil, value must be a string.
@@ -1190,7 +1219,9 @@ Execute a query and retrieve the results in the usual format.
 
 ##### PARAMS:
 
-*  **`database`** value must be an integer.
+*  **`database`** value may be nil, or if non-nil, value must be an integer.
+
+*  **`query-type`** 
 
 *  **`query`** 
 
@@ -1222,6 +1253,19 @@ Get historical query execution duration.
 Fetch a native version of an MBQL query.
 
 ##### PARAMS:
+
+*  **`query`** 
+
+
+## `POST /api/dataset/pivot`
+
+Generate a pivoted dataset for an ad-hoc query
+
+##### PARAMS:
+
+*  **`database`** value may be nil, or if non-nil, value must be an integer.
+
+*  **`query-type`** 
 
 *  **`query`** 
 
@@ -1460,6 +1504,42 @@ Embedded version of chain filter values endpoint.
 *  **`query-params`** 
 
 
+## `GET /api/embed/pivot/card/:token/query`
+
+Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}
+      :params   <parameters>}
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+
+Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
+  `embedding-secret-key`
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`dashcard-id`** 
+
+*  **`card-id`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
 ## `DELETE /api/field/:id/dimension`
 
 Remove the dimension associated to field at ID
@@ -1648,6 +1728,12 @@ You must be a superuser to do this.
 *  **`settings`** value must be a map.
 
 
+## `GET /api/metastore/token/status`
+
+Fetch info about the current MetaStore premium features token including whether it is `valid`, a `trial` token, its
+  `features`, and when it is `valid_thru`.
+
+
 ## `DELETE /api/metric/:id`
 
 Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)
@@ -1817,18 +1903,21 @@ Update an existing `NativeQuerySnippet`.
 ## `POST /api/notify/db/:id`
 
 Notification about a potential schema change to one of our `Databases`.
-  Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single `Table`.
-  This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/operations-guide/environment-variables.html#mb_api_key)
+  Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
+  `Table`. Optional Parameter `:scan` can be `"full" or "schema" for a full sync or a schema sync, available
+  regardless if a `:table_id` or `:table_name` is passed.
+  This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in 
+  the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/operations-guide/environment-variables.html#mb_api_key)
 
 ##### PARAMS:
 
-*  **`id`**: the id of the data source
+*  **`id`** 
 
-*  **`table_id`**: the id of the table
+*  **`table_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`table_name`**: the name of the table
+*  **`table_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`scan`**: can be `full` (full sync) or `schema` (schema sync).
+*  **`scan`** value may be nil, or if non-nil, value must be one of: `full`, `schema`.
 
 
 ## `DELETE /api/permissions/group/:group-id`
@@ -1976,6 +2065,36 @@ Fetch a Dashboard you're considering embedding by passing a JWT `token`.
 
 
 ## `GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+
+Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`dashcard-id`** 
+
+*  **`card-id`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/preview-embed/pivot/card/:token/query`
+
+Fetch the query results for a Card you're considering embedding by passing a JWT `token`.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/preview-embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
 Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`.
 
@@ -2141,6 +2260,8 @@ Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard
 
 ## `GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix`
 
+Fetch filter values for dashboard parameter `param-key`, with specified `prefix`.
+
 ##### PARAMS:
 
 *  **`uuid`** 
@@ -2153,6 +2274,8 @@ Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard
 
 
 ## `GET /api/public/dashboard/:uuid/params/:param-key/values`
+
+Fetch filter values for dashboard parameter `param-key`.
 
 ##### PARAMS:
 
@@ -2176,6 +2299,32 @@ oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase
 *  **`maxheight`** value may be nil, or if non-nil, value must be a valid integer.
 
 *  **`maxwidth`** value may be nil, or if non-nil, value must be a valid integer.
+
+
+## `GET /api/public/pivot/card/:uuid/query`
+
+Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
+   credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/pivot/dashboard/:uuid/card/:card-id`
+
+Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
+   sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`card-id`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 
 ## `DELETE /api/pulse/:id`
@@ -2203,6 +2352,8 @@ Fetch all Pulses
 ##### PARAMS:
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
+*  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
 ## `GET /api/pulse/:id`
@@ -2254,7 +2405,7 @@ Create a new `Pulse`.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`cards`** value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name)` 2) value must be a map with the keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.
+*  **`cards`** value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
 
@@ -2263,6 +2414,8 @@ Create a new `Pulse`.
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
 ## `POST /api/pulse/test`
@@ -2273,7 +2426,7 @@ Test send an unsaved pulse.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`cards`** value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name)` 2) value must be a map with the keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.
+*  **`cards`** value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
 
@@ -2282,6 +2435,8 @@ Test send an unsaved pulse.
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
 ## `PUT /api/pulse/:id`
@@ -2294,7 +2449,7 @@ Update a Pulse with `id`.
 
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`cards`** value may be nil, or if non-nil, value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name)` 2) value must be a map with the keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.
+*  **`cards`** value may be nil, or if non-nil, value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
 
 *  **`channels`** value may be nil, or if non-nil, value must be an array. Each value must be a map. The array cannot be empty.
 
@@ -2863,7 +3018,7 @@ You must be a superuser to do this.
 
 Fetch a list of `Users` for the admin People page or for Pulses. By default returns only active users. If
   `include_deactivated` is true, return all Users (active and inactive). (Using `include_deactivated` requires
-  superuser permissions.)
+  superuser permissions.). For users with segmented permissions, return only themselves.
 
 ##### PARAMS:
 
