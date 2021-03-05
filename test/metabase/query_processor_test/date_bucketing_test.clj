@@ -1074,7 +1074,7 @@
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
     (mt/dataset checkins:1-per-day
-      (let [query (mt/native-query {:query         (str "SELECT id, dayname(\"TIMESTAMP\") as day "
+      (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as day "
                                                         "FROM checkins "
                                                         "[[WHERE {{date_range}}]] "
                                                         "ORDER BY \"TIMESTAMP\" ASC "
@@ -1088,13 +1088,13 @@
                                                      :name   "created_at"
                                                      :target [:dimension [:template-tag "date_range"]]
                                                      :value  "past1weeks"}]})]
-        (doseq [[first-day-of-week expected] {"sunday"    [6 "Sunday"]
-                                              "monday"    [7 "Monday"]
-                                              "tuesday"   [8 "Tuesday"]
-                                              "wednesday" [9 "Wednesday"]
-                                              "thursday"  [3 "Thursday"]
-                                              "friday"    [4 "Friday"]
-                                              "saturday"  [5 "Saturday"]}]
+        (doseq [[first-day-of-week expected] {"sunday"    ["Sunday"]
+                                              "monday"    ["Monday"]
+                                              "tuesday"   ["Tuesday"]
+                                              "wednesday" ["Wednesday"]
+                                              "thursday"  ["Thursday"]
+                                              "friday"    ["Friday"]
+                                              "saturday"  ["Saturday"]}]
           (mt/with-temporary-setting-values [start-of-week first-day-of-week]
             (is (= expected
                    (mt/first-row
