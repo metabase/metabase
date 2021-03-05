@@ -492,11 +492,11 @@ jobs:
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
-          find-args: ". -type f -name '*.clj' -or -name '*.java' -or -name '*.edn' -or -name '*.yaml' -or -name sample-dataset.db.mv.db"
+          find-args: ". -type f -name '*.clj' -or -name '*.cljc' -or -name '*.java' -or -name '*.edn' -or -name '*.yaml' -or -name sample-dataset.db.mv.db"
       # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
-          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db"
+          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name '*.cljc' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db"
       # .MODULES-CHECKSUMS is every Clojure source file in the modules/ directory as well as plugin manifests
       - create-checksum-file:
           filename: .MODULES-CHECKSUMS

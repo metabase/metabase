@@ -13,6 +13,7 @@ on:
       - '**'
     paths:
     - 'frontend/**'
+    - 'shared/**'
     - 'enterprise/frontend/**'
     - 'docs/**'
     - '**/package.lock'
