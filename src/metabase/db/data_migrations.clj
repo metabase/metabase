@@ -10,6 +10,7 @@
             [cheshire.core :as json]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.db.util :as mdb.u]
@@ -401,14 +402,27 @@
                                                         (m/filter-vals not-empty)
                                                         not-empty)})
                          ["click_behavior" "column_settings"])
-        fixed-dashcard (m/deep-merge card-click-info ;; deep merge card links underneath the fixed dashcard
-                                     (cond-> (fix-top-level dashcard) ;; fix toplevel
-                                       ;; if we have column settings, fix them
-                                       (contains? dashcard "column_settings")
-                                       (update "column_settings" update-cols-fn)))]
+        fixed-dashcard (->> (cond-> (fix-top-level dashcard) ;; fix toplevel
+                              ;; if we have column settings, fix them
+                              (contains? dashcard "column_settings")
+                              (update "column_settings" update-cols-fn))
+                            ;; deep merge card links underneath the fixed dashcard
+                            (m/deep-merge card-click-info)
+                            ;; remove nils _AFTER_ deep merging so that the shapes are uniform. otherwise risk not
+                            ;; fully clobbering an underlying form if the one going on top doesn't have link text
+                            (walk/postwalk (fn [form]
+                                             (if (map? form)
+                                               (into {} (for [[k v] form
+                                                              :when (if (seqable? v)
+                                                                      ;; remove keys with empty maps. must be postwalk
+                                                                      (seq v)
+                                                                      ;; remove nils
+                                                                      (some? v))]
+                                                          [k v]))
+                                               form))))]
     (when (not= fixed-dashcard dashcard)
       {:id id
-       :visualization_settings (m/deep-merge card-click-info fixed-dashcard)})))
+       :visualization_settings fixed-dashcard})))
 
 (defn- parse-to-json [& ks]
   (fn [x]

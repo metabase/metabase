@@ -248,7 +248,41 @@
                   "click_behavior" {"type"         "link"
                                     "linkType"     "url"
                                     "linkTemplate" "http://example.com/{{other_col_name}}"}}]
-        (is (nil? (migrate card dash))))))
+        (is (nil? (migrate card dash)))))
+    (testing "Manually updated to new behavior on Column"
+      (let [card {"some_setting" {"foo" 123},
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",1]]"
+                   {"view_as" "link"
+                    "link_template" "http://example.com/{{id}}"
+                    "other_special_formatting" "currency"}
+                   "[\"ref\",[\"field-id\",2]]"
+                   {"view_as" "link",
+                    "link_template" "http://example.com/{{something_else}}",
+                    "other_fun_formatting" 0}}}
+            dash {"other_setting" {"bar" 123}
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",1]]"
+                   {"click_behavior"
+                    {"type" "link"
+                     "linkType" "url"
+                     "linkTemplate" "http://example.com/{{id}}"}}
+                   "[\"ref\",[\"field-id\",2]]"
+                   {"other_fun_formatting" 123}}}]
+        (is (= {"other_setting" {"bar" 123}
+                "column_settings"
+                {"[\"ref\",[\"field-id\",1]]"
+                 {"click_behavior"
+                  {"type" "link",
+                   "linkType" "url",
+                   "linkTemplate" "http://example.com/{{id}}"}}
+                 "[\"ref\",[\"field-id\",2]]"
+                 {"other_fun_formatting" 123,
+                  "click_behavior"
+                  {"type" "link",
+                   "linkType" "url",
+                   "linkTemplate" "http://example.com/{{something_else}}"}}}}
+               (migrate card dash))))))
   (let [card-vis              {"column_settings"
                                {"[\"ref\",[\"field-id\",2]]"
                                 {"view_as"       "link",
