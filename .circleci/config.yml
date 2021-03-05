@@ -665,8 +665,18 @@ jobs:
       description:
         type: string
         default: ""
-      extra-env:
-        default: []
+      extra-env-1-key:
+        type: string
+        default: ""
+      extra-env-1-value:
+        type: string
+        default: ""
+      extra-env-2-key:
+        type: string
+        default: ""
+      extra-env-2-value:
+        type: string
+        default: ""
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -680,7 +690,8 @@ jobs:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: << parameters.driver >>
-                  <<: parameters.extra-env
+                  << parameters.extra-env-1-key >>: << parameters.extra-env-1-value >>
+                  << parameters.extra-env-2-key >>: << parameters.extra-env-2-value >>
                 command: lein with-profile +ci,+junit,+ee test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
@@ -1132,9 +1143,10 @@ workflows:
                 source: ORACLE_JDBC_JAR
                 dest: ojdbc8.jar
           driver: oracle
-          extra-env:
-            MB_DB_PORT: 2484
-            JAVA_OPTS: "-Djavax.net.ssl.trustStore=resources/certificates/rds_root_ca_truststore.jks -Djavax.net.ssl.trustStoreType=JKS -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
+          extra-env-1-key: "MB_DB_PORT"
+          extra-env-1-value: "2484"
+          extra-env-2-key: "JAVA_OPTS"
+          extra-env-2-value: "-Djavax.net.ssl.trustStore=resources/certificates/rds_root_ca_truststore.jks -Djavax.net.ssl.trustStoreType=JKS -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
 
       - test-driver:
           name: be-tests-postgres-ee
