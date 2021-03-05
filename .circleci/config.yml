@@ -280,14 +280,6 @@ commands:
           name: Restore cached frontend dependencies
           <<: *CacheKeyFrontendDeps
 
-  print-env:
-    steps:
-      - run:
-          name: Print environment
-          command: |
-            echo "Printing full environment before running $DRIVERS tests"
-            env
-
   # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
   # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
   # files -- use a checksum! It works like this:
@@ -409,7 +401,6 @@ commands:
       <<: *Params
     steps:
       - restore-be-deps-cache
-      - print-env
       - steps: << parameters.before-steps >>
       - run:
           name: lein << parameters.lein-command >>
@@ -674,6 +665,9 @@ jobs:
       description:
         type: string
         default: ""
+      test-selector:
+        type: string
+        default: ":all"
       extra-env-1-key:
         type: string
         default: ""
@@ -708,7 +702,7 @@ jobs:
                   << parameters.extra-env-1-key >>: << parameters.extra-env-1-value >>
                   << parameters.extra-env-2-key >>: << parameters.extra-env-2-value >>
                   << parameters.extra-env-3-key >>: << parameters.extra-env-3-value >>
-                command: lein with-profile +ci,+junit,+ee test
+                command: lein with-profile +ci,+junit,+ee test << parameters.test-selector >>
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/junit
@@ -1159,6 +1153,7 @@ workflows:
                 source: ORACLE_JDBC_JAR
                 dest: ojdbc8.jar
           driver: oracle
+          test-selector: ":only metabase.driver.oracle-test"
           extra-env-1-key: "MB_ORACLE_TEST_SSL"
           extra-env-1-value: "true"
           extra-env-2-key: "MB_ORACLE_TEST_PORT"
