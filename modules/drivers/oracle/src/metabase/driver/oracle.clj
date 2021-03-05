@@ -1,6 +1,5 @@
 (ns metabase.driver.oracle
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
