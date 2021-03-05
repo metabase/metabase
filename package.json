@@ -172,7 +172,7 @@
     "build-watch:js": "yarn && webpack --watch",
     "build-hot:js": "yarn && NODE_ENV=hot webpack-dev-server --progress",
     "build:cljs": "yarn && shadow-cljs release app",
-    "build-quick:cljs": "yarn && shadow-cljs compile app",
+    "build-quick:cljs": "yarn build:cljs",
     "build-watch:cljs": "yarn && shadow-cljs watch app",
     "build-hot:cljs": "yarn && shadow-cljs watch app",
     "build": "yarn build:cljs && yarn build:js",
