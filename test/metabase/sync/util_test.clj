@@ -8,6 +8,7 @@
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.sync :as sync]
             [metabase.sync.util :as sync-util :refer :all]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -188,3 +189,34 @@
         (testing "has-step-duration?"
           (is (= true
                  (str/includes? results "4.0 s"))))))))
+
+(deftest error-handling-test
+  (testing "A ConnectException will cause sync to stop"
+    (mt/dataset sample-dataset
+      (is (thrown?
+           java.io.IOException
+           (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+             (sync-util/run-sync-operation
+              "sync"
+              (mt/db)
+              [(sync-util/create-sync-step "failure-step"
+                                           (fn [_]
+                                             (throw (java.io.IOException.
+                                                     "outer"
+                                                     (java.net.ConnectException.
+                                                      "inner, this one triggers the failure"
+                                                      (java.lang.IllegalStateException.
+                                                       "root exception"))))))]))))))
+
+  (testing "Other errors will not cause sync to stop"
+    (let [expected-result (java.io.IOException.
+                           "outer"
+                           (java.net.SocketException. "inner, this one doesn't trigger"))]
+      (is (= expected-result
+             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+                                       (sync-util/run-sync-operation
+                                        "sync"
+                                        (mt/db)
+                                        [(sync-util/create-sync-step "failure-step"
+                                                                     (fn [_]
+                                                                       (throw expected-result)))])))))))
