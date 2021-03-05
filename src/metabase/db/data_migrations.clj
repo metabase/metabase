@@ -382,18 +382,22 @@
                                       field-settings)))
                            {}
                            column-settings)))
-        card-click-info (not-empty
+        card-click-info (u/select-non-nil-keys
+                         ;; we look in top level and column settings for click behavior but we want nothing other than
+                         ;; click stuff thus selecting non-nil-keys click_behavior and column_settings (non-nil so we
+                         ;; don't introduce `:column_settings {}` if the card doesn't have any and the dashcard
+                         ;; doesn't either.
                          (merge (when-not (contains? dashcard "click")
                                   ;; if dashcard has click: menu we don't want to clobber this even though it won't
                                   ;; get moved to the new shape
-                                  (select-keys (fix-top-level card) ["click_behavior"]))
-                                (when-let [col-click-info (->> (get card "column_settings")
-                                                               update-cols-fn
-                                                               ;; only interested in click behavior from the card
-                                                               (m/map-vals #(select-keys % ["click_behavior"]))
-                                                               (m/filter-vals not-empty)
-                                                               not-empty)]
-                                  {"column_settings" col-click-info})))
+                                  (fix-top-level card))
+                                {"column_settings" (->> (get card "column_settings")
+                                                        update-cols-fn
+                                                        ;; only interested in click behavior from the card
+                                                        (m/map-vals #(select-keys % ["click_behavior"]))
+                                                        (m/filter-vals not-empty)
+                                                        not-empty)})
+                         ["click_behavior" "column_settings"])
         fixed-dashcard (m/deep-merge card-click-info ;; deep merge card links underneath the fixed dashcard
                                      (cond-> (fix-top-level dashcard) ;; fix toplevel
                                        ;; if we have column settings, fix them
