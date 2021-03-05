@@ -231,7 +231,7 @@
         (delete-task! database ti)
         (log/info
          (u/format-color 'green "Scheduling %s for database %d: trigger: %s"
-                         description (u/get-id database) (.. trigger getKey getName)))
+                         description (u/get-id database) (.. ^org.quartz.Trigger trigger getKey getName)))
         ;; now (re)schedule the task
         (task/add-trigger! trigger)))))
 
