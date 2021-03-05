@@ -283,60 +283,61 @@
                    "linkType" "url",
                    "linkTemplate" "http://example.com/{{something_else}}"}}}}
                (migrate card dash))))))
-  (let [card-vis              {"column_settings"
-                               {"[\"ref\",[\"field-id\",2]]"
-                                {"view_as"       "link",
-                                 "link_template" "http://example.com/{{ID}}",
-                                 "link_text"     "here's an id: {{ID}}"},
-                                "[\"ref\",[\"field-id\",6]]"
-                                {"view_as"       "link",
-                                 "link_template" "http://example.com//{{id}}",
-                                 "link_text"     "here is my id: {{id}}"}},
-                               "table.pivot_column"  "QUANTITY",
-                               "table.cell_column"   "DISCOUNT",
-                               "click"               "link",
-                               "click_link_template" "http://example.com/{{count}}",
-                               "graph.dimensions"    ["CREATED_AT"],
-                               "graph.metrics"       ["count"],
-                               "graph.show_values"   true}
-        original-dashcard-vis {"click"            "link",
-                               "click_link_template"
-                               "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
-                               "graph.dimensions" ["CREATED_AT" "CATEGORY"],
-                               "graph.metrics"    ["count"]}
-        fixed                 (#'migrations/fix-click-through {:id                     1,
-                                                               :card_visualization     card-vis
-                                                               :dashcard_visualization original-dashcard-vis})]
-    (is (= {:id 1,
-            :visualization_settings
-            {"graph.dimensions" ["CREATED_AT" "CATEGORY"],
-             "graph.metrics"    ["count"],
-             "click_behavior"
-             {"type"         "link",
-              "linkType"     "url",
-              "linkTemplate" "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
-             "column_settings"
-             ;; note none of this keywordizes keys in json parsing since these structures are gross as keywords
-             {"[\"ref\",[\"field-id\",2]]"
-              {"click_behavior"
-               {"type"             "link",
-                "linkType"         "url",
-                "linkTemplate"     "http://example.com/{{ID}}",
-                "linkTextTemplate" "here's an id: {{ID}}"}},
-              "[\"ref\",[\"field-id\",6]]"
-              {"click_behavior"
-               {"type"             "link",
-                "linkType"         "url",
-                "linkTemplate"     "http://example.com//{{id}}",
-                "linkTextTemplate" "here is my id: {{id}}"}}}}}
-           fixed))
-    (testing "won't fix if fix is already applied"
-      ;; a customer got a custom script from flamber (for which this is making that fix available for everyone. See
-      ;; #15014)
-      (is (= nil (#'migrations/fix-click-through
-                  {:id                     1
-                   :card_visualization     card-vis
-                   :dashcard_visualization (:visualization_settings fixed)})))))
+  (testing "general case"
+    (let [card-vis              {"column_settings"
+                                 {"[\"ref\",[\"field-id\",2]]"
+                                  {"view_as"       "link",
+                                   "link_template" "http://example.com/{{ID}}",
+                                   "link_text"     "here's an id: {{ID}}"},
+                                  "[\"ref\",[\"field-id\",6]]"
+                                  {"view_as"       "link",
+                                   "link_template" "http://example.com//{{id}}",
+                                   "link_text"     "here is my id: {{id}}"}},
+                                 "table.pivot_column"  "QUANTITY",
+                                 "table.cell_column"   "DISCOUNT",
+                                 "click"               "link",
+                                 "click_link_template" "http://example.com/{{count}}",
+                                 "graph.dimensions"    ["CREATED_AT"],
+                                 "graph.metrics"       ["count"],
+                                 "graph.show_values"   true}
+          original-dashcard-vis {"click"            "link",
+                                 "click_link_template"
+                                 "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
+                                 "graph.dimensions" ["CREATED_AT" "CATEGORY"],
+                                 "graph.metrics"    ["count"]}
+          fixed                 (#'migrations/fix-click-through {:id                     1,
+                                                                 :card_visualization     card-vis
+                                                                 :dashcard_visualization original-dashcard-vis})]
+      (is (= {:id 1,
+              :visualization_settings
+              {"graph.dimensions" ["CREATED_AT" "CATEGORY"],
+               "graph.metrics"    ["count"],
+               "click_behavior"
+               {"type"         "link",
+                "linkType"     "url",
+                "linkTemplate" "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
+               "column_settings"
+               ;; note none of this keywordizes keys in json parsing since these structures are gross as keywords
+               {"[\"ref\",[\"field-id\",2]]"
+                {"click_behavior"
+                 {"type"             "link",
+                  "linkType"         "url",
+                  "linkTemplate"     "http://example.com/{{ID}}",
+                  "linkTextTemplate" "here's an id: {{ID}}"}},
+                "[\"ref\",[\"field-id\",6]]"
+                {"click_behavior"
+                 {"type"             "link",
+                  "linkType"         "url",
+                  "linkTemplate"     "http://example.com//{{id}}",
+                  "linkTextTemplate" "here is my id: {{id}}"}}}}}
+             fixed))
+      (testing "won't fix if fix is already applied"
+        ;; a customer got a custom script from flamber (for which this is making that fix available for everyone. See
+        ;; #15014)
+        (is (= nil (#'migrations/fix-click-through
+                    {:id                     1
+                     :card_visualization     card-vis
+                     :dashcard_visualization (:visualization_settings fixed)}))))))
   (testing "ignores columns when `view_as` is null"
     (let [card-viz {"column_settings"
                     {"normal"

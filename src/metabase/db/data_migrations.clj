@@ -365,27 +365,26 @@
                               "linkTemplate" (get toplevel "click_link_template")}})
                            toplevel))
         update-cols-fn (fn [column-settings]
-                         (not-empty
-                          (reduce-kv
-                           (fn [m col field-settings]
-                             (assoc m col
-                                    ;; add the click stuff under the new click_behavior entry or keep the
-                                    ;; field settings as is
-                                    (if (and (= (get field-settings "view_as") "link")
-                                             (contains? field-settings "link_template"))
-                                      ;; remove old shape and add new shape under click_behavior
-                                      (merge (dissoc field-settings
-                                                     "view_as"
-                                                     "link_template"
-                                                     "link_text")
-                                             {"click_behavior"
-                                              {"type"             (get field-settings "view_as")
-                                               "linkType"         "url"
-                                               "linkTemplate"     (get field-settings "link_template")
-                                               "linkTextTemplate" (get field-settings "link_text")}})
-                                      field-settings)))
-                           {}
-                           column-settings)))
+                         (reduce-kv
+                          (fn [m col field-settings]
+                            (assoc m col
+                                   ;; add the click stuff under the new click_behavior entry or keep the
+                                   ;; field settings as is
+                                   (if (and (= (get field-settings "view_as") "link")
+                                            (contains? field-settings "link_template"))
+                                     ;; remove old shape and add new shape under click_behavior
+                                     (merge (dissoc field-settings
+                                                    "view_as"
+                                                    "link_template"
+                                                    "link_text")
+                                            {"click_behavior"
+                                             {"type"             (get field-settings "view_as")
+                                              "linkType"         "url"
+                                              "linkTemplate"     (get field-settings "link_template")
+                                              "linkTextTemplate" (get field-settings "link_text")}})
+                                     field-settings)))
+                          {}
+                          column-settings))
         card-click-info (u/select-non-nil-keys
                          ;; we look in top level and column settings for click behavior but we want nothing other than
                          ;; click stuff thus selecting non-nil-keys click_behavior and column_settings (non-nil so we
@@ -398,18 +397,15 @@
                                 {"column_settings" (->> (get card "column_settings")
                                                         update-cols-fn
                                                         ;; only interested in click behavior from the card
-                                                        (m/map-vals #(select-keys % ["click_behavior"]))
-                                                        (m/filter-vals not-empty)
-                                                        not-empty)})
+                                                        (m/map-vals #(select-keys % ["click_behavior"])))})
                          ["click_behavior" "column_settings"])
-        fixed-dashcard (->> (cond-> (fix-top-level dashcard) ;; fix toplevel
-                              ;; if we have column settings, fix them
-                              (contains? dashcard "column_settings")
-                              (update "column_settings" update-cols-fn))
-                            ;; deep merge card links underneath the fixed dashcard
+        fixed-dashcard (->> (update (fix-top-level dashcard) "column_settings" update-cols-fn) ;; clean up shape in dashcard
+                            ;; deep merge card links underneath the fixed dashcard. beware of nils in the
+                            ;; dashcard. they clobber maps in the dashcard as they are a value not an empty map.
                             (m/deep-merge card-click-info)
-                            ;; remove nils _AFTER_ deep merging so that the shapes are uniform. otherwise risk not
-                            ;; fully clobbering an underlying form if the one going on top doesn't have link text
+                            ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
+                            ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
+                            ;; doesn't have link text
                             (walk/postwalk (fn [form]
                                              (if (map? form)
                                                (into {} (for [[k v] form
