@@ -135,6 +135,12 @@
     (driver/sync-in-context (driver.u/database->driver database) database
       f)))
 
+(def ^:private exception-classes-not-to-retry
+  [java.net.ConnectException])
+
+(defn- ^:private flatten-exception-causes
+  [e]
+  (when e (mapv #(:type %) (:via (Throwable->map e)))))
 
 (defn do-with-error-handling
   "Internal implementation of `with-error-handling`; use that instead of calling this directly."
@@ -144,13 +150,28 @@
   ([message f]
    (try
      (f)
-     (catch Throwable e
-       (log/error e message)
-       e))))
+     (catch Throwable t
+       (let [exception-classes (flatten-exception-causes t)
+             should-not-retry  (some true? (for [ex      exception-classes
+                                                 test-ex exception-classes-not-to-retry]
+                                             ;; TODO: `(:via)` `:type` fields on an `Exception` return `clojure.lang.Symbol`
+                                             ;; but `exception-classes-not-to-retry` contains `java.lang.Class`
+                                             ;; there's gotta be a better way to do this test?
+                                             (= (name ex) (.getName test-ex))))]
+         (if should-not-retry
+           (do
+             (log/warn "Aborting sync because of unrecoverable exception, will try again at next sync interval")
+             (throw t))
+           (do
+             (log/warn t message)
+             t)))))))
 
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
-  `message` to help provide information about what failed for the log message."
+  `message` to help provide information about what failed for the log message.
+
+  The exception classes in `exception-classes-not-to-retry` are a list of classes tested against exceptions thrown.
+  If there is a match found, the sync is aborted as that error is not considered recoverable for this sync run."
   {:style/indent 1}
   [message & body]
   `(do-with-error-handling ~message (fn [] ~@body)))

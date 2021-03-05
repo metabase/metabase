@@ -14,7 +14,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.matchers :as qm]
             [clojurewerkz.quartzite.scheduler :as qs]
             [metabase.db :as mdb]
             [metabase.plugins.classloader :as classloader]
