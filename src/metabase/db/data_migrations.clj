@@ -10,6 +10,7 @@
             [cheshire.core :as json]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.config :as config]
             [metabase.db.util :as mdb.u]
             [metabase.mbql.schema :as mbql.s]
@@ -337,81 +338,66 @@
         :collection_id (u/get-id new-collection)))))
 
 (defn- fix-click-through
-  "Computes the visualization settings for a dashboard card based on existing card and dashboard card linked by
-  card ([:= :dashcard.card_id :card.id]).
+  "Fixes click behavior settings on dashcards. Format changed from:
 
-  Updates from the old style of click through to new style (#15014). Primarily moving top level `click` and
-  `click_link_template` keys to a new map under `click_behavior` with slightly renamed keys. Similarly, under
-  `column_settings` its renaming keys from `view_as` -> `type` etc.
+  `{... click click_link_template ...}` to `{... click_behavior { type linkType linkTemplate } ...}`
 
-  Before (viewing them as merged card and dashboardcard visualization_settings)
-  {...
-   click: \"link\"
-   click_link_template: \"http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}\"
-   column_settings {
-    [ref [field-id 6]] {
-      {view_as \"link\"
-       link_template \"http://example.com/{{ID}}\"
-       link_text \"here's an id: {{ID}}\"
-      }
-    }
-  ...
-  }
+  at the top level and
+  {... view_as link_template link_text ...} to `{ ... click_behavior { type linkType linkTemplate linkTextTemplate } ...}`
 
-  after:
-  {...
-   click_behavior {
-      type: \"link\"
-      linkType: \"url\"
-      linkTemplate: \"http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}\"
-      linkTextTemplate \"here's an id: {{ID}}\"
-    }
-  column_settings {
-    [ref [field-id 6]] {
-      click_behavior {
-        type:
-        linkType:
-        linkTemplate:
-        linkTextTemplate:
-      }
-    }
-  ...
-  }"
+  at the column_settings level. Scours the card to find all click behavior, reshapes it, and deep merges it into the
+  reshapen dashcard.  scour for all links in the card, fixup the dashcard and then merge in any new click_behaviors
+  from the card. See extensive tests for different scenarios."
   [{id :id card :card_visualization dashcard :dashcard_visualization}]
-  (let [merged                   (merge card dashcard)
-        top-level-click-behavior (when (contains? merged "click")
-                                   {"type"         (get merged "click")
-                                    "linkType"     "url"
-                                    "linkTemplate" (get merged "click_link_template")})
-        has-click-behavior?      (get dashcard "click_behavior")
-        column-settings          (get merged "column_settings")
-        updated-columns          (reduce-kv (fn [m col field-settings]
-                                              (if (and (contains? field-settings "view_as")
-                                                       ;; if view_as is null we don't want it
-                                                       (get field-settings "view_as")
-                                                       (contains? field-settings "link_template"))
-                                                (assoc m col
-                                                       (merge field-settings
-                                                              {"click_behavior"
-                                                               {"type"             (get field-settings "view_as")
-                                                                "linkType"         "url"
-                                                                "linkTemplate"     (get field-settings "link_template")
-                                                                "linkTextTemplate" (get field-settings "link_text")}}))
-                                                m))
-                                            {}
-                                            column-settings)]
-    ;; don't return anything if we don't have new stuff or if we think the migration has already run since at least
-    ;; one company has already manually done this
-    (when (and (or top-level-click-behavior
-                   (seq updated-columns))
-               (not has-click-behavior?))
+  (let [fix-top-level  (fn [toplevel]
+                         (if (= (get toplevel "click") "link")
+                           (merge
+                            (dissoc toplevel "click" "click_link_template")
+                            {"click_behavior"
+                             {"type"         (get toplevel "click")
+                              "linkType"     "url"
+                              "linkTemplate" (get toplevel "click_link_template")}})
+                           toplevel))
+        update-cols-fn (fn [column-settings]
+                         (not-empty
+                          (reduce-kv
+                           (fn [m col field-settings]
+                             (assoc m col
+                                    ;; add the click stuff under the new click_behavior entry or keep the
+                                    ;; field settings as is
+                                    (if (and (= (get field-settings "view_as") "link")
+                                             (contains? field-settings "link_template"))
+                                      (merge (dissoc field-settings
+                                                     "view_as"
+                                                     "link_template"
+                                                     "link_text")
+                                             {"click_behavior"
+                                              {"type"             (get field-settings "view_as")
+                                               "linkType"         "url"
+                                               "linkTemplate"     (get field-settings "link_template")
+                                               "linkTextTemplate" (get field-settings "link_text")}})
+                                      field-settings)))
+                           {}
+                           column-settings)))
+        card-click-info (not-empty
+                         (merge (when-not (contains? dashcard "click")
+                                  ;; if dashcard has click: menu we don't want to clobber this even though it won't
+                                  ;; get moved to the new shape
+                                  (select-keys (fix-top-level card) ["click_behavior"]))
+                                (when-let [col-click-info (->> (get card "column_settings")
+                                                               update-cols-fn
+                                                               ;; only interested in click behavior from the card
+                                                               (m/map-vals #(select-keys % ["click_behavior"]))
+                                                               (m/filter-vals not-empty)
+                                                               not-empty)]
+                                  {"column_settings" col-click-info})))
+        fixed-dashcard (cond-> (fix-top-level dashcard)
+                         (contains? dashcard "column_settings")
+                         (update "column_settings" update-cols-fn))]
+    (when (or card-click-info
+              (not= fixed-dashcard dashcard))
       {:id id
-       :visualization_settings
-       (merge dashcard
-              (when top-level-click-behavior
-                {"click_behavior" top-level-click-behavior})
-              (when (seq updated-columns)
-                {"column_settings" updated-columns}))})))
+       :visualization_settings (m/deep-merge card-click-info fixed-dashcard)})))
 
 (defn- parse-to-json [& ks]
   (fn [x]

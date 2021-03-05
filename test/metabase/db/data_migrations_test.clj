@@ -193,106 +193,136 @@
                  (perms group))))))))
 
 (deftest fix-click-through-test
-  (let [card-vis {"column_settings"
-                  {"[\"ref\",[\"field-id\",2]]"
-                   {"view_as" "link",
-                    "link_template" "http://example.com/{{ID}}",
-                    "link_text" "here's an id: {{ID}}"},
-                   "[\"ref\",[\"field-id\",6]]"
-                   {"view_as" "link",
-                    "link_template" "http://example.com//{{id}}",
-                    "link_text" "here is my id: {{id}}"}},
-                  "table.pivot_column" "QUANTITY",
-                  "table.cell_column" "DISCOUNT",
-                  "click" "link",
-                  "click_link_template" "http://example.com/{{count}}",
-                  "graph.dimensions" ["CREATED_AT"],
-                  "graph.metrics" ["count"],
-                  "graph.show_values" true}
-        original-dashcard-vis {"click" "link",
+  (let [migrate (fn [card dash]
+                  (:visualization_settings
+                   (#'migrations/fix-click-through {:id                     1
+                                                    :dashcard_visualization dash
+                                                    :card_visualization     card})))]
+    (testing "toplevel"
+      (let [card {"some_setting:"       {"foo" 123}
+                  "click_link_template" "http://example.com/{{col_name}}"
+                  "click"               "link"}
+            dash {"other_setting" {"bar" 123}}]
+        (is (= {"other_setting"  {"bar" 123}
+                "click_behavior" {"type"         "link"
+                                  "linkType"     "url"
+                                  "linkTemplate" "http://example.com/{{col_name}}"}}
+               (migrate card dash)))))
+
+    (testing "top level disabled"
+      (let [card {"some_setting:"       {"foo" 123}
+                  "click_link_template" "http://example.com/{{col_name}}"
+                  "click"               "link"}
+            dash {"other_setting" {"bar" 123}
+                  "click_link_template" "http://example.com/{{col_name}}"
+                  "click"               "menu"}]
+        ;;click: "menu" turned off the custom drill through so it's not migrated. Dropping click and click_link_template would be fine but isn't needed.
+        (is (nil? (migrate card dash)))))
+    (testing "column settings"
+      (let [card {"some_setting" {"foo" 123}
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",1]]"
+                   {"view_as" "link"
+                    "link_template" "http://example.com/{{id}}"
+                    "link_text" "here is my id: {{id}}"}}}
+            dash {"other_setting" {"bar" 123}
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",1]]" {"fun_formatting" "foo"}
+                   "[\"ref\",[\"field-id\",2]]" {"other_fun_formatting" 123}}}]
+        (is (= {"other_setting" {"bar" 123}
+                "column_settings"
+                {"[\"ref\",[\"field-id\",1]]"
+                 {"fun_formatting" "foo"
+                  "click_behavior" {"type" "link"
+                                    "linkType" "url"
+                                    "linkTemplate" "http://example.com/{{id}}"
+                                    "linkTextTemplate" "here is my id: {{id}}"}}
+                 "[\"ref\",[\"field-id\",2]]"
+                 {"other_fun_formatting" 123}}}
+               (migrate card dash)))))
+    (testing "manually updated new behavior"
+      (let [card {"some_setting"        {"foo" 123}
+                  "click_link_template" "http://example.com/{{col_name}}"
+                  "click"              "link"}
+            dash {"other_setting"  {"bar" 123}
+                  "click_behavior" {"type"         "link"
+                                    "linkType"     "url"
+                                    "linkTemplate" "http://example.com/{{other_col_name}}"}}]
+        (is (= {"other_setting"  {"bar" 123},
+                "click_behavior" {"type"         "link",
+                                  "linkType"     "url",
+                                  "linkTemplate" "http://example.com/{{other_col_name}}"}}
+               (migrate card dash))))))
+  (let [card-vis              {"column_settings"
+                               {"[\"ref\",[\"field-id\",2]]"
+                                {"view_as"       "link",
+                                 "link_template" "http://example.com/{{ID}}",
+                                 "link_text"     "here's an id: {{ID}}"},
+                                "[\"ref\",[\"field-id\",6]]"
+                                {"view_as"       "link",
+                                 "link_template" "http://example.com//{{id}}",
+                                 "link_text"     "here is my id: {{id}}"}},
+                               "table.pivot_column"  "QUANTITY",
+                               "table.cell_column"   "DISCOUNT",
+                               "click"               "link",
+                               "click_link_template" "http://example.com/{{count}}",
+                               "graph.dimensions"    ["CREATED_AT"],
+                               "graph.metrics"       ["count"],
+                               "graph.show_values"   true}
+        original-dashcard-vis {"click"            "link",
                                "click_link_template"
                                "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
                                "graph.dimensions" ["CREATED_AT" "CATEGORY"],
-                               "graph.metrics" ["count"]}
-        fixed (#'migrations/fix-click-through {:id 1,
-                                               :card_visualization card-vis
-                                               :dashcard_visualization original-dashcard-vis})]
+                               "graph.metrics"    ["count"]}
+        fixed                 (#'migrations/fix-click-through {:id                     1,
+                                                               :card_visualization     card-vis
+                                                               :dashcard_visualization original-dashcard-vis})]
     (is (= {:id 1,
             :visualization_settings
-            {"click" "link",
-             "click_link_template"
-             "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
-             "graph.dimensions" ["CREATED_AT" "CATEGORY"],
-             "graph.metrics" ["count"],
+            {"graph.dimensions" ["CREATED_AT" "CATEGORY"],
+             "graph.metrics"    ["count"],
              "click_behavior"
-             {"type" "link",
-              "linkType" "url",
+             {"type"         "link",
+              "linkType"     "url",
               "linkTemplate" "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
              "column_settings"
              ;; note none of this keywordizes keys in json parsing since these structures are gross as keywords
              {"[\"ref\",[\"field-id\",2]]"
-              {"view_as" "link",
-               "link_template" "http://example.com/{{ID}}",
-               "link_text" "here's an id: {{ID}}"
-               "click_behavior"
-               {"type" "link",
-                "linkType" "url",
-                "linkTemplate" "http://example.com/{{ID}}",
+              {"click_behavior"
+               {"type"             "link",
+                "linkType"         "url",
+                "linkTemplate"     "http://example.com/{{ID}}",
                 "linkTextTemplate" "here's an id: {{ID}}"}},
               "[\"ref\",[\"field-id\",6]]"
-              {"view_as" "link",
-               "link_template" "http://example.com//{{id}}",
-               "link_text" "here is my id: {{id}}"
-               "click_behavior"
-               {"type" "link",
-                "linkType" "url",
-                "linkTemplate" "http://example.com//{{id}}",
+              {"click_behavior"
+               {"type"             "link",
+                "linkType"         "url",
+                "linkTemplate"     "http://example.com//{{id}}",
                 "linkTextTemplate" "here is my id: {{id}}"}}}}}
            fixed))
     (testing "won't fix if fix is already applied"
       ;; a customer got a custom script from flamber (for which this is making that fix available for everyone. See
       ;; #15014)
-      (is (= nil (#'migrations/fix-click-through {:id 1
-                                                  :card_visualization card-vis
+      (is (= nil (#'migrations/fix-click-through {:id                     1
+                                                  :card_visualization     card-vis
                                                   :dashcard_visualization (:visualization_settings fixed)})))))
-  (testing "puts dashcard on top of card visualization settings"
-    (let [card-viz {:column_settings
-                    {[:ref [:field-id 2]]
-                     {:view_as "link",
-                      :link_template "card",
-                      :link_text "here's an id: {{ID}}"}}}
-          dash-viz {:column_settings
-                    {[:ref [:field-id 2]]
-                     {:view_as "link",
-                      :link_template "dash",
-                      :link_text "here's an id: {{ID}}"}}}
-          f #(-> % json/generate-string json/parse-string)]
-      (is (= "dash"
-             (get-in (#'migrations/fix-click-through {:id 1
-                                                      :card_visualization (f card-viz)
-                                                      :dashcard_visualization (f dash-viz)})
-                     [:visualization_settings "column_settings" "[:ref [:field-id 2]]" "click_behavior" "linkTemplate"])))))
   (testing "ignores columns when `view_as` is null"
-    (let [card-viz {:column_settings
-                    {[:ref [:field-id 2]]
-                     {:view_as "link",
-                      :link_template "card",
-                      :link_text "here's an id: {{ID}}"}}}
-          dash-viz {:column_settings
-                    {:normal
-                     {:view_as "link",
-                      :link_template "dash",
-                      :link_text "here's an id: {{ID}}"}
-                     :null-view-as
-                     {:view_as nil
-                      :link_template "i should not be present",
-                      :link_text "i should not be present"}}}
-          f #(-> % json/generate-string json/parse-string)]
+    (let [card-viz {"column_settings"
+                    {"normal"
+                     ;; this one is view_as link so we should get it
+                     {"view_as"       "link",
+                      "link_template" "dash",
+                      "link_text"     "here's an id: {{ID}}"}
+                     "null-view-as"
+                     {"view_as"       nil
+                      "link_template" "i should not be present",
+                      "link_text"     "i should not be present"}}}
+          dash-viz {}]
       (is (= ["normal"]
              (keys (get-in
-                    (#'migrations/fix-click-through {:id 1
-                                                     :card_visualization (f card-viz)
-                                                     :dashcard_visualization (f dash-viz)})
+                    (#'migrations/fix-click-through {:id                     1
+                                                     :card_visualization     card-viz
+                                                     :dashcard_visualization dash-viz})
                     [:visualization_settings "column_settings"])))))))
 
 (deftest migrate-click-through-test
