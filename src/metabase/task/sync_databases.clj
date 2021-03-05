@@ -226,14 +226,14 @@
               :ti                field-values-task-info
               :trigger           fv-trigger
               :description       "field-values"}]]
-     (when (or (not existing-trigger)
-               (not= (:schedule existing-trigger) existing-schedule))
-       (delete-task! database ti)
-       (log/info
-        (u/format-color 'green "Scheduling %s for database %d: trigger: %s"
-                        description (u/get-id database) (.getName (.getKey trigger))))
-      ;; now (re)schedule the task
-       (task/add-trigger! trigger)))))
+      (when (or (not existing-trigger)
+                (not= (:schedule existing-trigger) existing-schedule))
+        (delete-task! database ti)
+        (log/info
+         (u/format-color 'green "Scheduling %s for database %d: trigger: %s"
+                         description (u/get-id database) (.. trigger getKey getName)))
+        ;; now (re)schedule the task
+        (task/add-trigger! trigger)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
