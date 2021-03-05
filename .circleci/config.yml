@@ -280,6 +280,14 @@ commands:
           name: Restore cached frontend dependencies
           <<: *CacheKeyFrontendDeps
 
+  print-env:
+    steps:
+      - run:
+          name: Print environment
+          command: |
+            echo "Printing full environment before running $DRIVERS tests"
+            env
+
   # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
   # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
   # files -- use a checksum! It works like this:
@@ -401,6 +409,7 @@ commands:
       <<: *Params
     steps:
       - restore-be-deps-cache
+      - print-env
       - steps: << parameters.before-steps >>
       - run:
           name: lein << parameters.lein-command >>
