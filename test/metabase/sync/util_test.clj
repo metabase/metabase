@@ -193,18 +193,18 @@
 (deftest error-handling-test
   (testing "A ConnectException will cause sync to stop"
     (mt/dataset sample-dataset
-                (is (thrown?
-                     java.io.IOException
-                     (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
-                                               (sync-util/run-sync-operation
-                                                "sync"
-                                                (mt/db)
-                                                [(sync-util/create-sync-step "failure-step"
-                                                                             (fn [_]
-                                                                               (throw (java.io.IOException.
-                                                                                       "outer"
-                                                                                       (java.net.ConnectException.
-                                                                                        "inner, this one triggers the failure")))))]))))))
+      (is (thrown?
+           java.io.IOException
+           (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+             (sync-util/run-sync-operation
+              "sync"
+              (mt/db)
+              [(sync-util/create-sync-step "failure-step"
+                                           (fn [_]
+                                             (throw (java.io.IOException.
+                                                     "outer"
+                                                     (java.net.ConnectException.
+                                                      "inner, this one triggers the failure")))))]))))))
 
   (doseq [ex [(java.io.IOException.
                "outer, does not trigger"
@@ -220,9 +220,9 @@
       (let [expected-result ex]
         (is (= expected-result
                (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
-                                         (sync-util/run-sync-operation
-                                          "sync"
-                                          (mt/db)
-                                          [(sync-util/create-sync-step "failure-step"
-                                                                       (fn [_]
-                                                                         (throw expected-result)))]))))))))
+                 (sync-util/run-sync-operation
+                  "sync"
+                  (mt/db)
+                  [(sync-util/create-sync-step "failure-step"
+                                               (fn [_]
+                                                 (throw expected-result)))]))))))))

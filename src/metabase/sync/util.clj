@@ -138,10 +138,6 @@
 (def ^:private exception-classes-not-to-retry
   [java.net.ConnectException])
 
-(defn- ^:private flatten-exception-causes
-  [e]
-  (when e (mapv #(:type %) (:via (Throwable->map e)))))
-
 (defn do-with-error-handling
   "Internal implementation of `with-error-handling`; use that instead of calling this directly."
   ([f]
@@ -151,13 +147,10 @@
    (try
      (f)
      (catch Throwable t
-       (let [exception-classes (flatten-exception-causes t)
+       (let [exception-classes (u/full-exception-chain t)
              should-not-retry  (some true? (for [ex      exception-classes
                                                  test-ex exception-classes-not-to-retry]
-                                             ;; TODO: `(:via)` `:type` fields on an `Exception` return `clojure.lang.Symbol`
-                                             ;; but `exception-classes-not-to-retry` contains `java.lang.Class`
-                                             ;; there's gotta be a better way to do this test?
-                                             (= (name ex) (.getName ^Class test-ex))))]
+                                             (= (.. ex getClass getName) (.. test-ex getName))))]
          (if (true? should-not-retry)
            (do
              (log/warn "Aborting sync because of unrecoverable exception, will try again at next sync interval")
