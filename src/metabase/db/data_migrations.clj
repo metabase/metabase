@@ -352,7 +352,9 @@
   (let [fix-top-level  (fn [toplevel]
                          (if (= (get toplevel "click") "link")
                            (merge
+                            ;; remove old shape
                             (dissoc toplevel "click" "click_link_template")
+                            ;; add new shape top level
                             {"click_behavior"
                              {"type"         (get toplevel "click")
                               "linkType"     "url"
@@ -367,6 +369,7 @@
                                     ;; field settings as is
                                     (if (and (= (get field-settings "view_as") "link")
                                              (contains? field-settings "link_template"))
+                                      ;; remove old shape and add new shape under click_behavior
                                       (merge (dissoc field-settings
                                                      "view_as"
                                                      "link_template"
@@ -391,11 +394,12 @@
                                                                (m/filter-vals not-empty)
                                                                not-empty)]
                                   {"column_settings" col-click-info})))
-        fixed-dashcard (cond-> (fix-top-level dashcard)
-                         (contains? dashcard "column_settings")
-                         (update "column_settings" update-cols-fn))]
-    (when (or card-click-info
-              (not= fixed-dashcard dashcard))
+        fixed-dashcard (m/deep-merge card-click-info ;; deep merge card links underneath the fixed dashcard
+                                     (cond-> (fix-top-level dashcard) ;; fix toplevel
+                                       ;; if we have column settings, fix them
+                                       (contains? dashcard "column_settings")
+                                       (update "column_settings" update-cols-fn)))]
+    (when (not= fixed-dashcard dashcard)
       {:id id
        :visualization_settings (m/deep-merge card-click-info fixed-dashcard)})))
 

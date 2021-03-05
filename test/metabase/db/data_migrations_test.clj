@@ -248,11 +248,7 @@
                   "click_behavior" {"type"         "link"
                                     "linkType"     "url"
                                     "linkTemplate" "http://example.com/{{other_col_name}}"}}]
-        (is (= {"other_setting"  {"bar" 123},
-                "click_behavior" {"type"         "link",
-                                  "linkType"     "url",
-                                  "linkTemplate" "http://example.com/{{other_col_name}}"}}
-               (migrate card dash))))))
+        (is (nil? (migrate card dash))))))
   (let [card-vis              {"column_settings"
                                {"[\"ref\",[\"field-id\",2]]"
                                 {"view_as"       "link",
@@ -303,9 +299,10 @@
     (testing "won't fix if fix is already applied"
       ;; a customer got a custom script from flamber (for which this is making that fix available for everyone. See
       ;; #15014)
-      (is (= nil (#'migrations/fix-click-through {:id                     1
-                                                  :card_visualization     card-vis
-                                                  :dashcard_visualization (:visualization_settings fixed)})))))
+      (is (= nil (#'migrations/fix-click-through
+                  {:id                     1
+                   :card_visualization     card-vis
+                   :dashcard_visualization (:visualization_settings fixed)})))))
   (testing "ignores columns when `view_as` is null"
     (let [card-viz {"column_settings"
                     {"normal"
