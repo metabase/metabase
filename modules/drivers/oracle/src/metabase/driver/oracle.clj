@@ -17,7 +17,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.ssh :as ssh]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common])
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.util :as u])
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection ResultSet Types]
            [java.time Instant OffsetDateTime ZonedDateTime]
@@ -73,6 +74,7 @@
                               (str "/" service-name)))))
 
 (defn- ssl-spec [spec host port sid service-name]
+  (println (u/format-color 'yellow-bg "Connecting to Oracle with SSL"))
   (assoc spec :subname
               (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
                       host
