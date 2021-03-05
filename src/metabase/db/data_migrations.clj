@@ -338,7 +338,7 @@
         :collection_id (u/get-id new-collection)))))
 
 (defn- fix-click-through
-  "Fixes click behavior settings on dashcards. Format changed from:
+  "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:
 
   `{... click click_link_template ...}` to `{... click_behavior { type linkType linkTemplate } ...}`
 
@@ -347,7 +347,10 @@
 
   at the column_settings level. Scours the card to find all click behavior, reshapes it, and deep merges it into the
   reshapen dashcard.  scour for all links in the card, fixup the dashcard and then merge in any new click_behaviors
-  from the card. See extensive tests for different scenarios."
+  from the card. See extensive tests for different scenarios.
+
+  We are in a migration so this returns nil if there is nothing to do so that it is filtered and we aren't running sql
+  statements that are replacing data for no purpose."
   [{id :id card :card_visualization dashcard :dashcard_visualization}]
   (let [fix-top-level  (fn [toplevel]
                          (if (= (get toplevel "click") "link")
