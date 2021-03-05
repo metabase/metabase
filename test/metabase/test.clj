@@ -129,7 +129,8 @@
   normal-drivers-with-feature
   normal-drivers-without-feature
   rows
-  rows+column-names]
+  rows+column-names
+  with-bigquery-fks]
 
  [qp.test-util
   store-contents

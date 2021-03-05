@@ -13,12 +13,11 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should not allow creation if there are no dashboard cards", () => {
-    cy.log("Create fresh new dashboard");
-    cy.request("POST", "/api/dashboard", {
-      name: "Empty Dashboard",
-    }).then(({ body: { id: DASHBOARD_ID } }) => {
-      cy.visit(`/dashboard/${DASHBOARD_ID}`);
-    });
+    cy.createDashboard("Empty Dashboard").then(
+      ({ body: { id: DASHBOARD_ID } }) => {
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      },
+    );
     // It would be great if we can use either aria-attributes or better class naming to suggest when icons are disabled
     cy.icon("share")
       .closest("a")

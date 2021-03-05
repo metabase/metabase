@@ -148,16 +148,16 @@
   "Callback to execute when a new page is retrieved, used for testing"
   nil)
 
-(defprotocol GetJobComplete
+(defprotocol ^:private GetJobComplete
   "A Clojure protocol for the .getJobComplete method on disparate Google BigQuery results"
-  (get-job-complete [this] "Call .getJobComplete on a BigQuery API response"))
+  (^:private job-complete? [this] "Call .getJobComplete on a BigQuery API response"))
 
 (extend-protocol GetJobComplete
   com.google.api.services.bigquery.model.QueryResponse
-  (get-job-complete [this] (.getJobComplete ^QueryResponse this))
+  (job-complete? [this] (.getJobComplete ^QueryResponse this))
 
   com.google.api.services.bigquery.model.GetQueryResultsResponse
-  (get-job-complete [this] (.getJobComplete ^GetQueryResultsResponse this)))
+  (job-complete? [this] (.getJobComplete ^GetQueryResultsResponse this)))
 
 (defn do-with-finished-response
   "Impl for `with-finished-response`."
@@ -167,7 +167,7 @@
   ;; wait a few seconds for the job to finish.
   (loop [remaining-timeout (double query-timeout-seconds)]
     (cond
-      (get-job-complete response)
+      (job-complete? response)
       (f response)
 
       (pos? remaining-timeout)
@@ -208,11 +208,11 @@
    {:pre [client (seq project-id) (seq sql)]}
    (try
      (let [request        (doto (QueryRequest.)
-                     (.setTimeoutMs (* query-timeout-seconds 1000))
-                     ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                     (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
-                     (.setQuery sql)
-                     (bigquery.params/set-parameters! parameters))
+                            (.setTimeoutMs (* query-timeout-seconds 1000))
+                            ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+                            (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
+                            (.setQuery sql)
+                            (bigquery.params/set-parameters! parameters))
            query-response ^QueryResponse (google/execute (.query (.jobs client) project-id request))
            job-ref        (.getJobReference query-response)
            location       (.getLocation job-ref)
@@ -222,7 +222,8 @@
          (get-query-results client proj-id job-id location nil)))
      (catch Throwable e
        (throw (ex-info (tru "Error executing query")
-                       {:type error-type/invalid-query, :sql sql, :parameters parameters}))))))
+                       {:type error-type/invalid-query, :sql sql, :parameters parameters}
+                       e))))))
 
 (defn- post-process-native
   "Parse results of a BigQuery query. `respond` is the same function passed to
@@ -277,8 +278,9 @@
     (try
       (thunk)
       (catch Throwable e
-        (when-not (error-type/client-error? (:type (u/all-ex-data e)))
-          (thunk))))))
+        (if-not (error-type/client-error? (:type (u/all-ex-data e)))
+          (thunk)
+          (throw e))))))
 
 (defn- effective-query-timezone-id [database]
   (if (get-in database [:details :use-jvm-timezone])

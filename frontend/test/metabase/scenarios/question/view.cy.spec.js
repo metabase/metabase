@@ -106,9 +106,7 @@ describe("scenarios > question > view", () => {
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
-      cy.request("POST", "/api/dashboard", {
-        name: "Dashboard",
-      });
+      cy.createDashboard("Dashboard");
 
       cy.request("POST", "/api/card", {
         name: "Question",

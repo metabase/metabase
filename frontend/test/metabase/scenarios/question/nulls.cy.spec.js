@@ -70,10 +70,7 @@ describe("scenarios > question > null", () => {
       display: "pie",
       visualization_settings: {},
     }).then(({ body: { id: questionId } }) => {
-      // 2. create a dashboard
-      cy.request("POST", "/api/dashboard", {
-        name: "13626D",
-      }).then(({ body: { id: dashboardId } }) => {
+      cy.createDashboard("13626D").then(({ body: { id: dashboardId } }) => {
         // add filter (ID) to the dashboard
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           parameters: [
@@ -154,11 +151,7 @@ describe("scenarios > question > null", () => {
         display: "scalar",
         visualization_settings: {},
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.log("Create Dashboard");
-
-        cy.request("POST", "/api/dashboard", {
-          name: "13801D",
-        }).then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.createDashboard("13801D").then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add both previously created questions to the dashboard");
 
           [Q1_ID, Q2_ID].forEach((questionId, index) => {
