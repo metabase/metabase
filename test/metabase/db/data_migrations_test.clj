@@ -355,10 +355,7 @@
                       DashboardCard [{dashcard-id :id} {:dashboard_id           dashboard-id
                                                         :card_id                card-id
                                                         :visualization_settings dashcard-vis}]]
-        (let [expected-settings {:click            "link",
-                                 :click_link_template
-                                 "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
-                                 :graph.dimensions ["CREATED_AT" "CATEGORY"],
+        (let [expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
                                  :graph.metrics    ["count"],
                                  :click_behavior
                                  {:type         "link",
@@ -367,19 +364,13 @@
                                  :column_settings
                                  ;; the model keywordizes the json parsing yielding this monstrosity below
                                  {(keyword "[\"ref\",[\"field-id\",2]]")
-                                  {:view_as       "link",
-                                   :link_template "http://example.com/{{ID}}",
-                                   :link_text     "here's an id: {{ID}}"
-                                   :click_behavior
+                                  {:click_behavior
                                    {:type             "link",
                                     :linkType         "url",
                                     :linkTemplate     "http://example.com/{{ID}}",
                                     :linkTextTemplate "here's an id: {{ID}}"}},
                                   (keyword "[\"ref\",[\"field-id\",6]]")
-                                  {:view_as       "link",
-                                   :link_template "http://example.com//{{id}}",
-                                   :link_text     "here is my id: {{id}}"
-                                   :click_behavior
+                                  {:click_behavior
                                    {:type             "link",
                                     :linkType         "url",
                                     :linkTemplate     "http://example.com//{{id}}",
