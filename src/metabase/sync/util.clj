@@ -157,7 +157,7 @@
                                              ;; TODO: `(:via)` `:type` fields on an `Exception` return `clojure.lang.Symbol`
                                              ;; but `exception-classes-not-to-retry` contains `java.lang.Class`
                                              ;; there's gotta be a better way to do this test?
-                                             (= (name ex) (.getName test-ex))))]
+                                             (= (name ex) (.getName ^Class test-ex))))]
          (if should-not-retry
            (do
              (log/warn "Aborting sync because of unrecoverable exception, will try again at next sync interval")
