@@ -193,30 +193,36 @@
 (deftest error-handling-test
   (testing "A ConnectException will cause sync to stop"
     (mt/dataset sample-dataset
-      (is (thrown?
-           java.io.IOException
-           (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
-             (sync-util/run-sync-operation
-              "sync"
-              (mt/db)
-              [(sync-util/create-sync-step "failure-step"
-                                           (fn [_]
-                                             (throw (java.io.IOException.
-                                                     "outer"
-                                                     (java.net.ConnectException.
-                                                      "inner, this one triggers the failure"
-                                                      (java.lang.IllegalStateException.
-                                                       "root exception"))))))]))))))
+                (is (thrown?
+                     java.io.IOException
+                     (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+                                               (sync-util/run-sync-operation
+                                                "sync"
+                                                (mt/db)
+                                                [(sync-util/create-sync-step "failure-step"
+                                                                             (fn [_]
+                                                                               (throw (java.io.IOException.
+                                                                                       "outer"
+                                                                                       (java.net.ConnectException.
+                                                                                        "inner, this one triggers the failure")))))]))))))
 
-  (testing "Other errors will not cause sync to stop"
-    (let [expected-result (java.io.IOException.
-                           "outer"
-                           (java.net.SocketException. "inner, this one doesn't trigger"))]
-      (is (= expected-result
-             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
-                                       (sync-util/run-sync-operation
-                                        "sync"
-                                        (mt/db)
-                                        [(sync-util/create-sync-step "failure-step"
-                                                                     (fn [_]
-                                                                       (throw expected-result)))])))))))
+  (doseq [ex [(java.io.IOException.
+               "outer, does not trigger"
+               (java.net.SocketException. "inner, this one does not trigger"))
+              (java.lang.IllegalArgumentException. "standalone, does not trigger")
+              (java.sql.SQLException.
+               "outer, does not trigger"
+               (java.sql.SQLException.
+                "inner, does not trigger"
+                (java.lang.IllegalArgumentException.
+                 "third level, does not trigger")))]]
+    (testing "Other errors will not cause sync to stop"
+      (let [expected-result ex]
+        (is (= expected-result
+               (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+                                         (sync-util/run-sync-operation
+                                          "sync"
+                                          (mt/db)
+                                          [(sync-util/create-sync-step "failure-step"
+                                                                       (fn [_]
+                                                                         (throw expected-result)))]))))))))
