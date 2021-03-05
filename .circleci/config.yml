@@ -680,7 +680,7 @@ jobs:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: << parameters.driver >>
-                  << parameters.extra-env >>
+                  <<: parameters.extra-env
                 command: lein with-profile +ci,+junit,+ee test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
