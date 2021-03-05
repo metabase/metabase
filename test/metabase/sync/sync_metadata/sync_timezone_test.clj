@@ -53,7 +53,7 @@
         ;; use `with-temp-vals-in-db` to make sure the test data DB timezone gets reset to whatever it was before the test
         ;; ran if we accidentally end up setting it in the `:after` part
         (mt/with-temp-vals-in-db Database (mt/db) {:timezone (db-timezone (mt/db))}
-          (is (thrown? Exception (sync-tz/sync-timezone! (mt/db))))
+          (sync-tz/sync-timezone! (mt/db))
           (testing "before"
             (is (= "UTC"
                    (db-timezone (mt/db)))))
