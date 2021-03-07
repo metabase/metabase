@@ -181,7 +181,7 @@
     "test-timezones": "yarn && ./frontend/test/__runner__/run_timezone_tests",
     "build": "yarn && webpack --bail",
     "build-watch": "yarn && webpack --watch",
-    "build-hot": "yarn && NODE_ENV=hot webpack-dev-server --progress",
+    "build-hot": "yarn && NODE_ENV=hot webpack-dev-server --progress --host 0.0.0.0",
     "build-stats": "yarn && webpack --json > stats.json",
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "start": "yarn build && lein ring server",
