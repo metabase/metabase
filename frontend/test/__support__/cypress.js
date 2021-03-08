@@ -53,8 +53,8 @@ export const USERS = {
     email: "u1@metabase.test",
     password: "12341234",
     login_attributes: {
-      user_id: "1",
-      user_cat: "Widget",
+      attr_uid: "1",
+      attr_cat: "Widget",
     },
     group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
   },

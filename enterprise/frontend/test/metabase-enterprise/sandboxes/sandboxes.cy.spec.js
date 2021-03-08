@@ -31,8 +31,6 @@ const {
 const { DATA_GROUP } = USER_GROUPS;
 const { sandboxed } = USERS;
 
-const [ATTR_UID, ATTR_CAT] = Object.keys(sandboxed.login_attributes);
-
 describeWithToken("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
@@ -186,7 +184,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: PEOPLE_ID,
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", PEOPLE.ID]],
+          attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
         },
       });
 
@@ -240,7 +238,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
       });
 
@@ -297,7 +295,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+            attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
           },
         });
 
@@ -365,7 +363,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
       });
 
@@ -461,7 +459,7 @@ describeWithToken("formatting > sandboxes", () => {
             table_id: ORDERS_ID,
             card_id: CARD_ID,
             attribute_remappings: {
-              [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+              attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
             },
           });
         });
@@ -478,7 +476,7 @@ describeWithToken("formatting > sandboxes", () => {
             table_id: PRODUCTS_ID,
             card_id: CARD_ID,
             attribute_remappings: {
-              [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+              attr_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
             },
           });
         });
@@ -544,7 +542,7 @@ describeWithToken("formatting > sandboxes", () => {
               table_id: ORDERS_ID,
               card_id: CARD_ID,
               attribute_remappings: {
-                [ATTR_UID]: ["variable", ["template-tag", "sandbox"]],
+                attr_uid: ["variable", ["template-tag", "sandbox"]],
               },
             });
           });
@@ -575,7 +573,7 @@ describeWithToken("formatting > sandboxes", () => {
               table_id: PRODUCTS_ID,
               card_id: CARD_ID,
               attribute_remappings: {
-                [ATTR_CAT]: ["variable", ["template-tag", "sandbox"]],
+                attr_cat: ["variable", ["template-tag", "sandbox"]],
               },
             });
           });
@@ -627,7 +625,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+            attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
           },
         });
 
@@ -668,14 +666,14 @@ describeWithToken("formatting > sandboxes", () => {
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
-            user_id: ["dimension", ["field-id", ORDERS.USER_ID]],
+            attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
           },
         });
 
         cy.sandboxTable({
           table_id: PRODUCTS_ID,
           attribute_remappings: {
-            user_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+            attr_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
           },
         });
 
@@ -798,14 +796,14 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
       });
 
       cy.sandboxTable({
         table_id: PRODUCTS_ID,
         attribute_remappings: {
-          [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+          attr_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
         },
       });
 
@@ -842,21 +840,21 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
       });
 
       cy.sandboxTable({
         table_id: PEOPLE_ID,
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", PEOPLE.ID]],
+          attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
         },
       });
 
       cy.sandboxTable({
         table_id: PRODUCTS_ID,
         attribute_remappings: {
-          [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+          attr_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
         },
       });
 
@@ -916,7 +914,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
       });
 
@@ -939,7 +937,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
       });
 
