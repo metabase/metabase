@@ -13,6 +13,7 @@ import {
   remapDisplayValueToFK,
   sidebar,
   signInAsSandboxedUser,
+  createUser,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -27,7 +28,7 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATASET;
 
-const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+const { DATA_GROUP } = USER_GROUPS;
 const { sandboxed } = USERS;
 
 const [ATTR_UID, ATTR_CAT] = Object.keys(sandboxed.login_attributes);
