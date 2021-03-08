@@ -947,6 +947,32 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findAllByRole("link", { name: "set up email" });
       cy.findAllByRole("link", { name: "configure Slack" });
     });
+
+    it.skip("sandboxed user should be able to send pulses to Slack (metabase#14844)", () => {
+      cy.viewport(1400, 1000);
+
+      cy.server();
+      cy.route("GET", "/api/collection/*").as("collection");
+
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+        },
+      });
+
+      signOut();
+      signInAsSandboxedUser();
+
+      cy.visit("/pulse/create");
+      cy.wait("@collection");
+      cy.findByText("Where should this data go?")
+        .parent()
+        .within(() => {
+          cy.findByText("Email");
+          cy.findByText("Slack");
+        });
+    });
   });
 });
 
