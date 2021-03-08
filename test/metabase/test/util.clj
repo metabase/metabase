@@ -26,10 +26,10 @@
             [toucan.db :as db]
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
-  (:import java.util.concurrent.TimeoutException
+  (:import java.net.ServerSocket
+           java.util.concurrent.TimeoutException
            java.util.Locale
-           [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]
-           (java.net ServerSocket)))
+           [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (comment tu.log/keep-me)
 
