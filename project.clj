@@ -142,6 +142,7 @@
    [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
+   [reifyhealth/specmonstah "2.0.0"]                                  ; Generate fixtures to test huge databases
    [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
    [ring/ring-core "1.8.0"]
    [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
