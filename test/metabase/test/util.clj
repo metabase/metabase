@@ -28,7 +28,8 @@
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale
-           [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+           [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]
+           (java.net ServerSocket)))
 
 (comment tu.log/keep-me)
 
@@ -659,7 +660,7 @@
   `(do-with-non-admin-groups-no-collection-perms
     (assoc collection/root-collection
            :namespace (name ~collection-namespace))
-    (fn [] ~@body) ))
+    (fn [] ~@body)))
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
@@ -786,3 +787,10 @@
            cols)
     (fn []
       ~@body)))
+
+(defn find-free-port
+  "Finds and returns an available port number on the current host. Does so by briefly creating a ServerSocket, which
+  is closed when returning."
+  []
+  (with-open [socket (ServerSocket. 0)]
+    (.getLocalPort socket)))
