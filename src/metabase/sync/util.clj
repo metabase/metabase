@@ -136,7 +136,7 @@
       f)))
 
 (def ^:private exception-classes-not-to-retry
-  [java.net.ConnectException])
+  [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException])
 
 (defn do-with-error-handling
   "Internal implementation of `with-error-handling`; use that instead of calling this directly."
