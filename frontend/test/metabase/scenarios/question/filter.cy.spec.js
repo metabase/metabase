@@ -686,7 +686,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Rye").should("not.exist");
   });
 
-  it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
+  it("shuld convert negative filter to custom expression (metabase#14880)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
