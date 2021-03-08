@@ -75,6 +75,9 @@
 (defn- ssl-spec [spec host port sid service-name]
   ;; TODO: remove output after confirming in CI
   (println (u/format-color 'yellow "Connecting to Oracle with SSL"))
+  (println (u/format-color 'yellow "trust store: %s, password: %s"
+                           (java.lang.System/getProperty "javax.net.ssl.trustStore")
+                           (java.lang.System/getProperty "javax.net.ssl.trustStorePassword")))
   (assoc spec :subname
               (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
                       host
