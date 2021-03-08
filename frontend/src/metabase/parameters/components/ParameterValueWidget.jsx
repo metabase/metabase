@@ -285,6 +285,11 @@ function Widget({
     );
   }
 }
+Widget.propTypes = {
+  ...ParameterValueWidget.propTypes,
+  onPopoverClose: PropTypes.func.isRequired,
+  onFocusChanged: PropTypes.func.isRequired,
+};
 
 function getWidgetDefinition(metadata, parameter) {
   if (DATE_WIDGETS[parameter.type]) {
@@ -308,6 +313,10 @@ function ParameterTypeIcon({ parameter }) {
     />
   );
 }
+
+ParameterTypeIcon.propTypes = {
+  parameter: PropTypes.object.isRequired,
+};
 
 function WidgetStatusIcon({
   isFullscreen,
@@ -363,3 +372,12 @@ function WidgetStatusIcon({
 
   return null;
 }
+
+WidgetStatusIcon.propTypes = {
+  isFullscreen: PropTypes.bool.isRequired,
+  hasValue: PropTypes.bool.isRequired,
+  noReset: PropTypes.bool.isRequired,
+  noPopover: PropTypes.bool.isRequired,
+  isFocused: PropTypes.bool.isRequired,
+  setValue: PropTypes.func.isRequired,
+};
