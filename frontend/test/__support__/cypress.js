@@ -60,8 +60,9 @@ export const USERS = {
   },
 };
 
-export function createUser(user = {}) {
-  return cy.request("POST", "/api/user", user).then(({ body }) => {
+export function createUser(user) {
+  cy.log(`Create ${user} user`);
+  return cy.request("POST", "/api/user", USERS[user]).then(({ body }) => {
     // Dismiss `it's ok to play around` modal for the created user
     cy.request("PUT", `/api/user/${body.id}/qbnewb`, {});
   });

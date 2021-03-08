@@ -179,7 +179,7 @@ describeWithToken("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       signInAsAdmin();
-      createUser(sandboxed);
+      createUser("sandboxed");
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {

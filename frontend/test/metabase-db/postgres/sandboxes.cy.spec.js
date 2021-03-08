@@ -4,7 +4,6 @@ import {
   restore,
   addPostgresDatabase,
   withDatabase,
-  USERS,
   USER_GROUPS,
   describeWithToken,
   createUser,
@@ -15,14 +14,13 @@ const PG_DB_NAME = "QA Postgres12";
 const PG_DB_ID = 2;
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { sandboxed } = USERS;
 
 describeWithToken("postgres > user > query", () => {
   beforeEach(() => {
     restore();
     signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
-    createUser(sandboxed);
+    createUser("sandboxed");
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {

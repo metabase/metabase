@@ -9,7 +9,7 @@ import {
 } from "__support__/cypress";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
-const { admin, normal, nodata, nocollection, none } = USERS;
+const { admin } = USERS;
 
 describe("snapshots", () => {
   describe("default", () => {
@@ -45,6 +45,8 @@ describe("snapshots", () => {
         });
       },
     );
+    // Dismiss `it's ok to play around` modal for admin
+    cy.request("PUT", `/api/user/1/qbnewb`, {});
   }
 
   function updateSettings() {
@@ -68,10 +70,10 @@ describe("snapshots", () => {
     cy.request("POST", "/api/permissions/group", { name: "data" }); // 5
 
     // additional users
-    createUser(normal);
-    createUser(nodata);
-    createUser(nocollection);
-    createUser(none);
+    createUser("normal");
+    createUser("nodata");
+    createUser("nocollection");
+    createUser("none");
 
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
