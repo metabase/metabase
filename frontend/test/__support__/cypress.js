@@ -86,7 +86,7 @@ export function signInAsNormalUser() {
   signIn("normal");
 }
 
-export function signInAsSandboxedlUser() {
+export function signInAsSandboxedUser() {
   signIn("sandboxed");
 }
 
