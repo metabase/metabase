@@ -7,17 +7,17 @@
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as sql]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
-            [metabase.util.ssh :as ssh]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.util :as u])
+            [metabase.util.ssh :as ssh])
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection ResultSet Types]
            [java.time Instant OffsetDateTime ZonedDateTime]
