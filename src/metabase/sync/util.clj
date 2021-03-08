@@ -136,6 +136,8 @@
       f)))
 
 (def ^:private exception-classes-not-to-retry
+  ;;TODO: future, expand this to `driver` level, where the drivers themselves can add to the
+  ;; list of exception classes (like, driver-specific exceptions)
   [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException])
 
 (defn do-with-error-handling
@@ -153,7 +155,7 @@
                                              (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
          (if (true? should-not-retry)
            (do
-             (log/warn "Aborting sync because of unrecoverable exception, will try again at next sync interval")
+             (log/warn t "Aborting sync because of unrecoverable exception, will try again at next sync interval")
              (throw t))
            (do
              (log/warn t message)
