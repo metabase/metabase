@@ -4,7 +4,7 @@
             [clojure.test.check.generators :as gen]
             [metabase.models :refer [Activity Card Dashboard DashboardCard User Collection Pulse PulseCard Database
                                      Table Field Metric FieldValues Dimension MetricImportantField PermissionsGroup
-                                     Permissions PermissionsGroupMembership DashboardCardSeries]]
+                                     Permissions PermissionsGroupMembership DashboardCardSeries NativeQuerySnippet]]
             [metabase.test :as mt]
             [reifyhealth.specmonstah.core :as rs]
             [reifyhealth.specmonstah.spec-gen :as rsg]
@@ -78,6 +78,8 @@
 ;; * table
 (s/def ::active boolean?)
 
+;; * native-query-snippet
+(s/def ::content ::not-empty-string)
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
 (s/def ::collection (s/keys :req-un [::id ::name ::color ]))
 (s/def ::activity (s/keys :req-un [::id ::topic ::details ::timestamp]))
@@ -90,8 +92,10 @@
 
 (s/def ::field (s/keys :req-un [::id ::name ::base_type ::database_type ::position]))
 
-(s/def ::table  (s/keys :req-un [::id ::active ::name ]))
 (s/def ::metric (s/keys :req-un [::id ::name ::definition ::description]))
+(s/def ::table  (s/keys :req-un [::id ::active ::name ]))
+
+(s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))
 
 ;(gen/generate (s/gen ::activity))
 
@@ -151,9 +155,13 @@
                                   :relations {:db_id [:database :id]}
                                   ;; :constraints {:name #{:uniq}} ;
                                   }
-
-   ;; :native-query-snippet {}
-   ;; :pulse-card {}
+   :native-query-snippet {:prefix :nqs
+                          :spec ::native-query-snippet
+                          :insert! {:model NativeQuerySnippet}
+                          :relations {:creator_id [:core-user :id]
+                                      :collection_id [:collection :id]} ;; optional
+                          }
+   ;; :pulse-card { }
    ;; :pulse-channel {}
    ;; :revision {}
    ;; :segment {}
