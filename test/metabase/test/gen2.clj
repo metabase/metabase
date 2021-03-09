@@ -10,7 +10,8 @@
             [reifyhealth.specmonstah.spec-gen :as rsg]
             [toucan.db :as tdb]
 
-            [java-time :as t]))
+            [java-time :as t]
+            [manifold.deferred :as d]))
 
 
 
@@ -58,7 +59,7 @@
 
 ;; * card
 (s/def ::display #{:table})
-(s/def ::visualization_settings string?)
+(s/def ::visualization_settings #{"{}"})
 (s/def ::dataset_query string?)
 
 ;; * dashboardcard_series
@@ -80,6 +81,10 @@
 
 ;; * native-query-snippet
 (s/def ::content ::not-empty-string)
+
+
+(s/def ::parameters #{[{:id "a"}]})
+
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
 (s/def ::collection (s/keys :req-un [::id ::name ::color ]))
 (s/def ::activity (s/keys :req-un [::id ::topic ::details ::timestamp]))
@@ -96,6 +101,17 @@
 (s/def ::table  (s/keys :req-un [::id ::active ::name ]))
 
 (s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))
+
+
+(s/def ::dashboard (s/keys :req-un [::id ::name ::description ::parameters]))
+
+(s/def ::row pos-int?)
+(s/def ::col pos-int?)
+(s/def ::col pos-int?)
+(s/def ::sizeX pos-int?)
+(s/def ::sizeY pos-int?)
+(s/def ::parameter_mappings #{[{}]})
+(s/def ::dashboard-card (s/keys :req-un [::id ::sizeX ::sizeY ::row ::col ::parameter_mappings ::visualization_settings ]))
 
 ;(gen/generate (s/gen ::activity))
 
@@ -133,6 +149,18 @@
                                   :insert!   {:model Card}
                                   :relations {:creator_id  [:core-user :id]
                                               :database_id [:database :id]}}
+   :dashboard                    {:prefix    :d
+                                  :spec      ::dashboard
+                                  :insert!   {:model Dashboard}
+                                  :relations {:creator_id    [:core-user :id]
+                                              :collection_id [:collection :id] ;; optional
+                                              }}
+   :dashboard-card               {:prefix    :dc
+                                  :spec      ::dashboard-card
+                                  :insert!   {:model DashboardCard}
+                                  :relations {:card_id      [:card :id]
+                                              :dashboard_id [:dashboard :id]}
+                                  }
    :dashboard-card-series        {:prefix  :dcs
                                   :spec    ::dashboard_card_series
                                   :insert! {:model DashboardCardSeries}}
@@ -155,12 +183,13 @@
                                   :relations {:db_id [:database :id]}
                                   ;; :constraints {:name #{:uniq}} ;
                                   }
-   :native-query-snippet {:prefix :nqs
-                          :spec ::native-query-snippet
-                          :insert! {:model NativeQuerySnippet}
-                          :relations {:creator_id [:core-user :id]
-                                      :collection_id [:collection :id]} ;; optional
-                          }
+
+   :native-query-snippet         {:prefix    :nqs
+                                  :spec      ::native-query-snippet
+                                  :insert!   {:model NativeQuerySnippet}
+                                  :relations {:creator_id    [:core-user :id]
+                                              :collection_id [:collection :id]} ;; optional
+                                  }
    ;; :pulse-card { }
    ;; :pulse-channel {}
    ;; :revision {}
@@ -170,19 +199,6 @@
    })
 
 ;; * inserters
-(def mock-db (atom {}))
-(defn insert*
-  [{:keys [data] :as db} {:keys [ent-type spec-gen]}]
-  (swap! mock-db conj [ent-type spec-gen]))
-
-(defn insert [query]
-  (reset! id-seq 0)
-  (reset! mock-db [])
-  (-> (rsg/ent-db-spec-gen {:schema schema} query)
-      (rs/visit-ents-once :inserted-data insert*))
-  nil)
-
-;; * gen
 (defn generate []
   (let [entities [Card Dashboard DashboardCard Collection Pulse Database Table Field PulseCard Metric
                   FieldValues Dimension MetricImportantField Activity]]
@@ -200,7 +216,6 @@
   ;; some fields have to be semantically correct, or db correct. fields have position, and they do have to be unique.
   ;; In the table-field-position, for now it's just incrementing forever, without scoping by table_id (which would be
   ;; cool)
-  ;;
   (cond
     (= :field ent-type)
     (assoc visit-val :position (swap! table-field-position inc))
@@ -230,4 +245,6 @@
                     )))
       (rs/attr-map :insert!)))
 
-;; (rs/attr-map (rsg/ent-db-spec-gen {:schema schema} {:core-user [[1]]}) :spec-gen)
+;; (insert! {:collection [[1000 {:refs {:personal_owner_id ::rs/omit}}]]})
+;; (insert! {:collection [[1000 {:refs {:personal_owner_id ::rs/omit}}]]})
+;; (insert! {:field [[2 {:refs {:table_id :t0}}]]})
