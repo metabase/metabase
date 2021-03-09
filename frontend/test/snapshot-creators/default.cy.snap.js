@@ -1,12 +1,12 @@
 import {
   snapshot,
   restore,
-  USERS,
-  USER_GROUPS,
   withSampleDataset,
   signInAsAdmin,
   createUser,
 } from "__support__/cypress";
+
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 const { admin } = USERS;

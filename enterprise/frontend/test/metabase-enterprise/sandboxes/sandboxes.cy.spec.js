@@ -8,13 +8,12 @@ import {
   signInAsAdmin,
   signInAsNormalUser,
   signOut,
-  USERS,
-  USER_GROUPS,
   remapDisplayValueToFK,
   sidebar,
   signInAsSandboxedUser,
   createUser,
 } from "__support__/cypress";
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 

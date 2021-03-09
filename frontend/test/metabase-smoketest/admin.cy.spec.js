@@ -1,11 +1,6 @@
 import path from "path";
-import {
-  USERS,
-  restore,
-  signInAsAdmin,
-  signOut,
-  sidebar,
-} from "__support__/cypress";
+import { restore, signInAsAdmin, signOut, sidebar } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 
 const { admin } = USERS;
 const new_user = {

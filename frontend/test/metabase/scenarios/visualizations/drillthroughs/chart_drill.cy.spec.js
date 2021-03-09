@@ -6,9 +6,8 @@ import {
   openOrdersTable,
   popover,
   sidebar,
-  USER_GROUPS,
 } from "__support__/cypress";
-
+import { USER_GROUPS } from "__support__/cypress_data";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;

@@ -1,9 +1,5 @@
-import {
-  restore,
-  signInAsAdmin,
-  setupDummySMTP,
-  USERS,
-} from "__support__/cypress";
+import { restore, signInAsAdmin, setupDummySMTP } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 const { admin } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {

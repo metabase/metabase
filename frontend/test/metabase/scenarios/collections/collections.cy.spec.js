@@ -7,11 +7,9 @@ import {
   signOut,
   modal,
   popover,
-  USERS,
-  USER_GROUPS,
   openOrdersTable,
 } from "__support__/cypress";
-// Ported from initial_collection.e2e.spec.js
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;

@@ -2,9 +2,9 @@ import {
   restore,
   signIn,
   signInAsAdmin,
-  USERS,
   describeWithToken,
 } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 import _ from "underscore";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { normal } = USERS;

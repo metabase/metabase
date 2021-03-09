@@ -5,11 +5,9 @@ import {
   signInAsAdmin,
   restore,
   popover,
-  USERS,
-  USER_GROUPS,
   setupDummySMTP,
 } from "__support__/cypress";
-
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 

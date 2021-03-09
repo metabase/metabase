@@ -4,11 +4,11 @@ import {
   restore,
   addPostgresDatabase,
   withDatabase,
-  USER_GROUPS,
   describeWithToken,
   createUser,
   signInAsSandboxedUser,
 } from "__support__/cypress";
+import { USER_GROUPS } from "__support__/cypress_data";
 
 const PG_DB_NAME = "QA Postgres12";
 const PG_DB_ID = 2;

@@ -7,8 +7,8 @@ import {
   signInAsAdmin,
   signInAsNormalUser,
   signOut,
-  USERS,
 } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 
 const { admin, normal, nocollection, nodata } = USERS;
 const new_user = {
