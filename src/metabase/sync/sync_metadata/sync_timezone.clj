@@ -12,7 +12,7 @@
   (-> dt .getChronology .getZone .getID))
 
 (s/defn sync-timezone!
-  "Query `database` for it's current time to determine its timezone. The results of this function are used by the sync
+  "Query `database` for its current time to determine its timezone. The results of this function are used by the sync
   process to update the timezone if it's different."
   [database :- i/DatabaseInstance]
   (let [driver  (driver.u/database->driver database)
