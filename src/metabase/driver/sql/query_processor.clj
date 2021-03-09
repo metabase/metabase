@@ -347,10 +347,8 @@
   (binding [*field-options* options]
     (if (:join-alias options)
       (compile-field-with-join-aliases driver field-clause)
-      (let [field         (when (integer? field-id-or-name)
-                            (qp.store/field field-id-or-name))
-            honeysql-form (if field
-                            (->honeysql driver field)
+      (let [honeysql-form (if (integer? field-id-or-name)
+                            (->honeysql driver (qp.store/field field-id-or-name))
                             (->honeysql driver (hx/identifier :field *table-alias* field-id-or-name)))]
         (cond->> honeysql-form
           (:temporal-unit options) (apply-temporal-bucketing driver options)
