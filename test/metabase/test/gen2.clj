@@ -4,7 +4,8 @@
             [clojure.test.check.generators :as gen]
             [metabase.models :refer [Activity Card Dashboard DashboardCard User Collection Pulse PulseCard Database
                                      Table Field Metric FieldValues Dimension MetricImportantField PermissionsGroup
-                                     Permissions PermissionsGroupMembership DashboardCardSeries NativeQuerySnippet]]
+                                     Permissions PermissionsGroupMembership DashboardCardSeries NativeQuerySnippet
+                                     PulseChannel]]
             [metabase.test :as mt]
             [reifyhealth.specmonstah.core :as rs]
             [reifyhealth.specmonstah.spec-gen :as rsg]
@@ -112,6 +113,13 @@
 (s/def ::sizeY pos-int?)
 (s/def ::parameter_mappings #{[{}]})
 (s/def ::dashboard-card (s/keys :req-un [::id ::sizeX ::sizeY ::row ::col ::parameter_mappings ::visualization_settings ]))
+(s/def ::pulse-card (s/keys :req-un [::id ::position]))
+
+
+(s/def ::channel_type ::not-empty-string)
+(s/def ::schedule_type ::not-empty-string)
+
+(s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 
 ;(gen/generate (s/gen ::activity))
 
@@ -184,14 +192,22 @@
                                   ;; :constraints {:name #{:uniq}} ;
                                   }
 
-   :native-query-snippet         {:prefix    :nqs
-                                  :spec      ::native-query-snippet
-                                  :insert!   {:model NativeQuerySnippet}
-                                  :relations {:creator_id    [:core-user :id]
-                                              :collection_id [:collection :id]} ;; optional
-                                  }
-   ;; :pulse-card { }
-   ;; :pulse-channel {}
+   :native-query-snippet {:prefix    :nqs
+                          :spec      ::native-query-snippet
+                          :insert!   {:model NativeQuerySnippet}
+                          :relations {:creator_id [:core-user :id]
+                                      :collection_id [:collection :id]} ;; optional
+                          }
+   :pulse-card           {:prefix    :pulse-card
+                          :spec      ::pulse-card
+                          :insert!   {:model PulseCard}
+                          :relations {:pulse_id [:pulse :id]
+                                      :card_id  [:card :id]}}
+
+   :pulse-channel {:prefix :pulse-channel
+                   :spec ::pulse-channel
+                   :insert! {:model PulseChannel}
+                   :relations {:pulse_id [:pulse :id]}}
    ;; :revision {}
    ;; :segment {}
    ;; :task-history {}
