@@ -1,5 +1,6 @@
 (ns metabase.driver.h2-test
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.db.spec :as db.spec]
@@ -122,3 +123,21 @@
                :parameters [{:type :date/all-options
                              :target [:dimension [:template-tag "date"]]
                              :value "past30years"}]}))))))
+
+(defn- pretty-sql [s]
+  (-> s
+      (str/replace #"\"" "")
+      (str/replace #"PUBLIC\." "")))
+
+(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+  (mt/test-driver :h2
+    (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!day.date]})]
+          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, count(*) AS count "
+                      "FROM ATTEMPTS "
+                      "GROUP BY ATTEMPTS.DATE "
+                      "ORDER BY ATTEMPTS.DATE ASC")
+                 (some-> (qp/query->native query) :query pretty-sql))))))))

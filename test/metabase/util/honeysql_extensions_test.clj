@@ -109,3 +109,55 @@
                 "division operation. The double itself should get converted to a numeric literal")
     (is (= ["SELECT 0.1 AS one_tenth"]
            (hsql/format {:select [[(/ 1 10) :one_tenth]]})))))
+
+(deftest maybe-cast-test
+  (testing "maybe-cast should only cast things that need to be cast"
+    (letfn [(maybe-cast [expr]
+              (hsql/format {:select [(hx/maybe-cast "text" expr)]}))]
+      (is (= ["SELECT CAST(field AS text)"]
+             (maybe-cast :field)))
+      (testing "cast should return a typed form"
+        (is (= ["SELECT CAST(field AS text)"]
+               (maybe-cast (hx/cast "text" :field)))))
+      (testing "should not cast something that's already typed"
+        (is (= ["SELECT field"]
+               (maybe-cast (hx/with-type-info :field {:database-type "text"}))))
+        (testing "multiple calls to maybe-cast should only cast at most once"
+          (is (= ["SELECT CAST(field AS text)"]
+                 (maybe-cast (hx/maybe-cast "text" :field)))))))))
+
+(deftest typed-honeysql-form-test
+  (testing "TypedHoneySQLForm"
+    (let [typed-form (hx/with-type-info :field {:database-type "text"})]
+      (testing "should generate readable output"
+        (is (= (pr-str `(hx/with-type-info :field {:database-type "text"}))
+               (pr-str typed-form))))
+      (testing "should let you get info"
+        (is (= {:database-type "text"}
+               (hx/type-info typed-form)))
+        (is (= nil
+               (hx/type-info :field)
+               (hx/type-info nil))))
+      (testing "should let you update info"
+        (is (= (hx/with-type-info :field {:database-type "date"})
+               (hx/with-type-info typed-form {:database-type "date"}))))
+      (testing "`is-of-type?`"
+        (mt/are+ [expr tyype expected] (= expected (hx/is-of-type? expr tyype))
+          typed-form     "text" true
+          typed-form     "TEXT" true
+          typed-form     :text  true
+          typed-form     :TEXT  true
+          typed-form     :te/xt false
+          typed-form     "date" false
+          typed-form     nil    false
+          nil            "date" false
+          :%current_date "date" false
+          ;; I guess this behavior makes sense? I guess untyped = "is of type nil"
+          nil            nil    true
+          :%current_date nil    true))
+      (testing "should be able to unwrap"
+        (is (= :field
+               (hx/unwrap-typed-honeysql-form typed-form)
+               (hx/unwrap-typed-honeysql-form :field)))
+        (is (= nil
+               (hx/unwrap-typed-honeysql-form nil)))))))

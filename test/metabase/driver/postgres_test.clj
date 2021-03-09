@@ -1,6 +1,7 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
@@ -593,3 +594,21 @@
                                           (mt/native-query)
                                           (qp/process-query)
                                           (mt/rows))))))))))
+
+(defn- pretty-sql [s]
+  (-> s
+      (str/replace #"\"" "")
+      (str/replace #"public\." "")))
+
+(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+  (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!day.date]})]
+          (is (= (str "SELECT attempts.date AS date, count(*) AS count "
+                      "FROM attempts "
+                      "GROUP BY attempts.date "
+                      "ORDER BY attempts.date ASC")
+                 (some-> (qp/query->native query) :query pretty-sql))))))))
