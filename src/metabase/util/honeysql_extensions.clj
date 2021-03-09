@@ -142,6 +142,7 @@
 (defn dec "Subtract 1 from `x`." [x] (- x 1))
 
 (p.types/defprotocol+ TypedHoneySQL
+  "Protocol for a HoneySQL form that has type information such as `:database-type`. See #15115 for background."
   (type-info [honeysql-form]
     "Return type information associated with `honeysql-form`, if any (i.e., if it is a `TypedHoneySQLForm`); otherwise
     returns `nil`.")
