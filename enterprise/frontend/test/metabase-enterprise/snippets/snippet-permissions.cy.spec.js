@@ -1,5 +1,4 @@
 import {
-  signInAsNormalUser,
   restore,
   modal,
   popover,
@@ -36,7 +35,7 @@ describeWithToken("scenarios > question > snippets", () => {
     // users have to be granted explicit access.
     // See metabase-enterprise#543 for more details
 
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
 
     cy.request({
       method: "POST",
@@ -90,7 +89,7 @@ describeWithToken("scenarios > question > snippets", () => {
       .contains("Save")
       .click();
     // Now the user should be able to create a snippet
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
 
     cy.request({
       method: "POST",

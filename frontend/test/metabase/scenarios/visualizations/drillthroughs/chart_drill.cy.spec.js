@@ -1,5 +1,4 @@
 import {
-  signInAsNormalUser,
   restore,
   openProductsTable,
   openOrdersTable,
@@ -347,7 +346,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.route("POST", "/api/dataset").as("dataset");
 
         // Switch to the normal user who has restricted SQL access
-        signInAsNormalUser();
+        cy.signInAsNormalUser();
         cy.visit(`/question/${QUESTION_ID}`);
 
         // Initial visualization has rendered and we can now drill-through

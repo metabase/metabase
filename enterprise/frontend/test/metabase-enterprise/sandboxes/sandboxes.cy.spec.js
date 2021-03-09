@@ -5,7 +5,6 @@ import {
   popover,
   modal,
   restore,
-  signInAsNormalUser,
   signOut,
   remapDisplayValueToFK,
   sidebar,
@@ -115,7 +114,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       signOut();
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
     });
 
     describe("table sandboxed on a user attribute", () => {

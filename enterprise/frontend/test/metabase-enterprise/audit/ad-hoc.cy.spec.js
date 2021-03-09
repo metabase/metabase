@@ -1,8 +1,4 @@
-import {
-  restore,
-  signInAsNormalUser,
-  describeWithToken,
-} from "__support__/cypress";
+import { restore, describeWithToken } from "__support__/cypress";
 
 describeWithToken("audit > ad-hoc", () => {
   describe("native query with JOIN", () => {
@@ -10,7 +6,7 @@ describeWithToken("audit > ad-hoc", () => {
       restore();
 
       cy.log("Run ad hoc native query as normal user");
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/question/new");
       cy.findByText("Native query").click();
       cy.get(".ace_content").type("SELECT 123");

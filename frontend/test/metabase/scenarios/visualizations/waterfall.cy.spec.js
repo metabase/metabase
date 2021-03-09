@@ -1,13 +1,9 @@
-import {
-  openOrdersTable,
-  signInAsNormalUser,
-  restore,
-} from "__support__/cypress";
+import { openOrdersTable, restore } from "__support__/cypress";
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
@@ -111,7 +107,7 @@ describe("scenarios > visualizations > waterfall", () => {
   describe("scenarios > visualizations > waterfall settings", () => {
     beforeEach(() => {
       restore();
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/question/new");
       cy.contains("Native query").click();
       cy.get(".ace_content").type("select 'A' as X, -4.56 as Y");

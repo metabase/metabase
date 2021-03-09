@@ -1,4 +1,4 @@
-import { signInAsNormalUser, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > home > overworld", () => {
   beforeEach(restore);
@@ -39,7 +39,7 @@ describe("scenarios > home > overworld", () => {
       });
     });
     describe("as regular folk", () => {
-      beforeEach(signInAsNormalUser);
+      beforeEach(cy.signInAsNormalUser);
       it("should not be possible for them to see the controls", () => {
         cy.visit("/");
         cy.contains("Our data")

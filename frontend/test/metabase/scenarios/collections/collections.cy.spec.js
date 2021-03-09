@@ -1,7 +1,6 @@
 import {
   restore,
   setupLocalHostEmail,
-  signInAsNormalUser,
   signOut,
   modal,
   popover,
@@ -269,7 +268,7 @@ describe("scenarios > collection_defaults", () => {
   describe("for users", () => {
     beforeEach(() => {
       restore();
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
     });
 
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)

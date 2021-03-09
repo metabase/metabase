@@ -3,7 +3,6 @@ import {
   popover,
   restore,
   setupLocalHostEmail,
-  signInAsNormalUser,
   signOut,
 } from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
@@ -255,7 +254,7 @@ describe("smoketest > admin_setup", () => {
     it("should check table and question names as user", () => {
       // Log out as admin and sign in as user
       signOut();
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/");
 
       // Check names
@@ -527,7 +526,7 @@ describe("smoketest > admin_setup", () => {
 
     it("should see changes to visibility, formatting, and foreign key mapping as user", () => {
       signOut();
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/");
 
       // Check table names and visibility
@@ -581,7 +580,7 @@ describe("smoketest > admin_setup", () => {
   });
 
   describe("permission changes reflected", () => {
-    beforeEach(signInAsNormalUser);
+    beforeEach(cy.signInAsNormalUser);
 
     it("should check current permissions as users", () => {
       // Access to all tables as user
@@ -838,7 +837,7 @@ describe("smoketest > admin_setup", () => {
       // *** Problem: Normal user still sees these changes
 
       signOut();
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/question/1");
 
       // cy.findByText("Product ID");

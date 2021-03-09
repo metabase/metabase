@@ -1,6 +1,5 @@
 import {
   restore,
-  signInAsNormalUser,
   popover,
   _typeUsingGet,
   _typeUsingPlaceholder,
@@ -23,7 +22,7 @@ const customFormulas = [
 describe("scenarios > question > custom columns", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it("can create a custom column (metabase#13241)", () => {

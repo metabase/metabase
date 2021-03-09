@@ -1,7 +1,6 @@
 import {
   restore,
   setupLocalHostEmail,
-  signInAsNormalUser,
   createBasicAlert,
   popover,
   openPeopleTable,
@@ -41,7 +40,7 @@ describe("scenarios > alert", () => {
     });
 
     it("should say to non-admins that admin must add email credentials", () => {
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/question/1");
       cy.icon("bell").click();
       cy.findByText(

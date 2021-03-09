@@ -8,10 +8,6 @@ export function signOut() {
   cy.clearCookie("metabase.SESSION");
 }
 
-export function signInAsNormalUser() {
-  cy.signIn("normal");
-}
-
 export function signInAsSandboxedUser() {
   cy.signIn("sandboxed");
 }

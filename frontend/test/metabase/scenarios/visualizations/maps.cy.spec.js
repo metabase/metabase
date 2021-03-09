@@ -1,9 +1,4 @@
-import {
-  signInAsNormalUser,
-  restore,
-  popover,
-  visitQuestionAdhoc,
-} from "__support__/cypress";
+import { restore, popover, visitQuestionAdhoc } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
@@ -15,7 +10,7 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should display a pin map for a native query", () => {
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
     // create a native query with lng/lat fields
     cy.visit("/question/new");
     cy.contains("Native query").click();

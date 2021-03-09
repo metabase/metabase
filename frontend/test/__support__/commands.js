@@ -18,6 +18,10 @@ Cypress.Commands.add("signInAsAdmin", () => {
   cy.signIn("admin");
 });
 
+Cypress.Commands.add("signInAsNormalUser", () => {
+  cy.signIn("normal");
+});
+
 Cypress.Commands.add("icon", icon_name => {
   cy.get(`.Icon-${icon_name}`);
 });

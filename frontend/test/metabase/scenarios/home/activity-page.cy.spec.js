@@ -1,10 +1,5 @@
-import {
-  restore,
-  openProductsTable,
-  signInAsNormalUser,
-  popover,
-} from "__support__/cypress";
 //Replaces HomepageApp.e2e.spec.js
+import { restore, openProductsTable, popover } from "__support__/cypress";
 
 describe("metabase > scenarios > home > activity-page", () => {
   beforeEach(() => {
@@ -20,7 +15,7 @@ describe("metabase > scenarios > home > activity-page", () => {
   });
 
   it("should show new activity", () => {
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
 
     // Make and a save new question
     openProductsTable();

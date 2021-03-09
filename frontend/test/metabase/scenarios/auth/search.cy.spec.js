@@ -1,4 +1,4 @@
-import { restore, signInAsNormalUser } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > auth > search", () => {
   beforeEach(restore);
@@ -12,7 +12,7 @@ describe("scenarios > auth > search", () => {
     });
 
     it("should work for user with permissions (metabase#12332)", () => {
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
       cy.findByText("PRODUCTS");

@@ -1,7 +1,6 @@
 import {
   restore,
   signOut,
-  signInAsNormalUser,
   openOrdersTable,
   describeWithToken,
 } from "__support__/cypress";
@@ -118,7 +117,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.findByText(`Sign in to ${COMPANY_NAME}`);
 
       cy.log("New company should show up for a normal user");
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/activity");
       cy.findByText(`${COMPANY_NAME} is up and running.`);
       cy.findByText("Metabase is up and running.").should("not.exist");
@@ -164,7 +163,7 @@ describeWithToken("formatting > whitelabel", () => {
       );
 
       cy.log("Normal users should have a green header");
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/");
       cy.get(".Nav").should(
         "have.css",
@@ -192,7 +191,7 @@ describeWithToken("formatting > whitelabel", () => {
 
     it.skip("should show color changes reflected in q visualizations (metabase-enterprise #470)", () => {
       // *** Test should pass when issue #470 is resolved
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       openOrdersTable();
       cy.findAllByText("Summarize")
         .first()
@@ -230,7 +229,7 @@ describeWithToken("formatting > whitelabel", () => {
     });
 
     it("changes should reflect on user's dashboard", () => {
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/");
       checkLogo();
     });
@@ -251,7 +250,7 @@ describeWithToken("formatting > whitelabel", () => {
       checkFavicon();
     });
     it("should show up in user's HTML", () => {
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/");
       cy.get('head link[rel="icon"]')
         .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')

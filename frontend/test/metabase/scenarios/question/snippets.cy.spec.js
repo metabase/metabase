@@ -16,7 +16,7 @@ function _clearAndIterativelyTypeUsingLabel(label, string) {
 //       - Normal users don't have permission to create/edit snippets in `ee` version.
 //       - CI runs this test twice (both contexts), so it fails on `ee`.
 //       - There is a related issue: https://github.com/metabase/metabase-enterprise/issues/543
-// TODO: Once the above issue is (re)solved, change back to `signInAsNormalUser`
+// TODO: Once the above issue is (re)solved, change back to `cy.signInAsNormalUser`
 describe("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
