@@ -134,19 +134,19 @@
   (mt/test-driver :bigquery
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
                   "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
-                  "different  what other SQL databases do. (#4218)"))
-    (is (= (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
-                " count(*) AS `count` "
-                "FROM `v3_test_data.venues` "
-                "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
-                " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
-                "GROUP BY `categories__via__category_id__name` "
-                "ORDER BY `categories__via__category_id__name` ASC")
-           (mt/with-bigquery-fks
-             (let [results (mt/run-mbql-query venues
-                                              {:aggregation [:count]
-                                               :breakout    [$category_id->categories.name]})]
-               (get-in results [:data :native_form :query] results)))))))
+                  "different  what other SQL databases do. (#4218)")
+      (mt/with-bigquery-fks
+        (let [results (mt/run-mbql-query venues
+                        {:aggregation [:count]
+                         :breakout    [$category_id->categories.name]})]
+          (is (= (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
+                      " count(*) AS `count` "
+                      "FROM `v3_test_data.venues` "
+                      "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
+                      " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
+                      "GROUP BY `categories__via__category_id__name` "
+                      "ORDER BY `categories__via__category_id__name` ASC")
+                 (get-in results [:data :native_form :query] results))))))))
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query

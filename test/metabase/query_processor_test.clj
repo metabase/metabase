@@ -415,16 +415,22 @@
                                        (if (= [driver feature] [:bigquery :foreign-keys])
                                          true
                                          (supports? driver feature)))]
-        (tu/with-temp-vals-in-db Field (data/id :checkins :user_id) {:fk_target_field_id (data/id :users :id)
-                                                                     :special_type       "type/FK"}
-          (tu/with-temp-vals-in-db Field (data/id :checkins :venue_id) {:fk_target_field_id (data/id :venues :id)
-                                                                        :special_type       "type/FK"}
-            (f)))))))
+        (let [thunk (reduce
+                     (fn [thunk [source dest]]
+                       (fn []
+                         (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
+                                                                                :semantic_type      "type/FK"}
+                           (thunk))))
+                     f
+                     {[:checkins :user_id]   [:users :id]
+                      [:checkins :venue_id]  [:venues :id]
+                      [:venues :category_id] [:categories :id]})]
+          (thunk))))))
 
 (defmacro with-bigquery-fks
-  "Execute `body` with test-data `checkins.user_id` and `checkins.venue_id` marked as foreign keys and with
-  `:foreign-keys` a supported feature when testing against BigQuery. BigQuery does not support Foreign Key
-  constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody has
-  manually marked FK relationships for BigQuery."
+  "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` marked as foreign
+  keys and with `:foreign-keys` a supported feature when testing against BigQuery. BigQuery does not support Foreign
+  Key constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody
+  has manually marked FK relationships for BigQuery."
   [& body]
   `(do-with-bigquery-fks (fn [] ~@body)))
