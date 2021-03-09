@@ -283,29 +283,98 @@
                    "linkType"     "url",
                    "linkTemplate" "http://example.com/{{something_else}}"}}}}
                (migrate card dash)))))
-    (testing "If there is migration eligible on dash but new style on card, card wins"
+    (testing "If there is migration eligible on dash but also new style on dash, new style wins"
       (let [dash {"column_settings"
                   {"[\"ref\",[\"field-id\",4]]"
                    {"view_as"       "link"
-                    "link_template" "http://from/dash"
-                    "link_text"     "from dash"
-                    "column_title"  "column title from dash"}}}
-            card {"column_settings"
-                  {"[\"ref\",[\"field-id\",4]]"
-                   {"click_behavior"
-                    {"type"             "link",
-                     "linkType"         "url",
-                     "linkTemplate"     "http://from/card",
-                     "linkTextTemplate" "from card"}
-                    "column_title" "column title from card"}}}]
+                    "link_template" "http://old"  ;; this stuff could be migrated
+                    "link_text"     "old"
+                    "column_title"  "column title"
+                    "click_behavior"
+                    {"type" "link",
+                     "linkType" "url",            ;; but there is already a new style and it wins
+                     "linkTemplate" "http://new",
+                     "linkTextTemplate" "new"}}}}]
         (is (= {"column_settings"
                 {"[\"ref\",[\"field-id\",4]]"
                  {"click_behavior"
                   {"type" "link",
                    "linkType" "url",
-                   "linkTemplate" "http://from/card",
-                   "linkTextTemplate" "from card"},
-                  "column_title" "column title from dash"}}}
+                   "linkTemplate" "http://new",
+                   "linkTextTemplate" "new"},
+                  "column_title" "column title"}}}
+               (migrate nil dash)))))
+    (testing "flamber case"
+      (let [card {"column_settings"
+                  {"[\"ref\",[\"field-id\",4]]"
+                   {"view_as" "link"
+                    "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                    "link_text" "MyQCDT {{CATEGORY}}"
+                    "column_title" "QCDT Category"}
+                   "[\"ref\",[\"field-id\",6]]"
+                   {"view_as" "link"
+                    "column_title" "QCDT Rating"
+                    "link_text" "Rating {{RATING}}"
+                    "link_template" "http//localhost/?QCDT&{{RATING}}"
+                    "prefix" "prefix-"
+                    "suffix" "-suffix"}
+                   "[\"ref\",[\"field-id\",5]]"
+                   {"view_as" nil
+                    "link_text" "QCDT was disabled"
+                    "link_template" "http//localhost/?QCDT&{{TITLE}}"
+                    "column_title" "(QCDT disabled) Title"}}
+                  "table.pivot_column" "CATEGORY"
+                  "table.cell_column""PRICE"}
+            dash {"table.cell_column" "PRICE"
+                  "table.pivot_column" "CATEGORY"
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",5]]"
+                   {"view_as" nil
+                    "link_text" "QCDT was disabled"
+                    "link_template" "http//localhost/?QCDT&{{TITLE}}"
+                    "column_title" "(QCDT disabled) Title"}
+                   "[\"ref\",[\"field-id\",4]]"
+                   {"view_as" "link"
+                    "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                    "link_text" "MyQCDT {{CATEGORY}}"
+                    "column_title" "QCDT Category"
+                    "click_behavior"
+                    {"type" "link"
+                     "linkType" "url"
+                     "linkTemplate" "http//localhost/?CB&{{CATEGORY}}"
+                     "linkTextTemplate" "MyCB {{CATEGORY}}"}}
+                   "[\"ref\",[\"field-id\",6]]"
+                   {"view_as" "link"
+                    "column_title" "QCDT Rating"
+                    "link_text" "Rating {{RATING}}"
+                    "link_template" "http//localhost/?QCDT&{{RATING}}"
+                    "prefix" "prefix-"
+                    "suffix" "-suffix"}}
+                  "card.title" "Table with QCDT - MANUALLY ADDED CB 37"}]
+        (is (= {"card.title" "Table with QCDT - MANUALLY ADDED CB 37"
+                "column_settings"
+                {"[\"ref\",[\"field-id\",4]]"
+                 {"column_title" "QCDT Category"
+                  "click_behavior"
+                  {"type" "link"
+                   "linkType" "url"
+                   "linkTemplate" "http//localhost/?CB&{{CATEGORY}}"
+                   "linkTextTemplate" "MyCB {{CATEGORY}}"}}
+                 "[\"ref\",[\"field-id\",5]]"
+                 {"link_text" "QCDT was disabled"
+                  "column_title" "(QCDT disabled) Title"
+                  "link_template" "http//localhost/?QCDT&{{TITLE}}"}
+                 "[\"ref\",[\"field-id\",6]]"
+                 {"prefix" "prefix-"
+                  "suffix" "-suffix"
+                  "column_title" "QCDT Rating"
+                  "click_behavior"
+                  {"type" "link"
+                   "linkType" "url"
+                   "linkTemplate" "http//localhost/?QCDT&{{RATING}}"
+                   "linkTextTemplate" "Rating {{RATING}}"}}}
+                "table.cell_column" "PRICE"
+                "table.pivot_column" "CATEGORY"}
                (migrate card dash))))))
   (testing "general case"
     (let [card-vis              {"column_settings"

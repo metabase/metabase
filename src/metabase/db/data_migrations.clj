@@ -356,7 +356,6 @@
   Merging the following click behaviors in order (later merges on top of earlier):
   - fixed card click behavior
   - fixed dash click behavior
-  - existing new style card click behavior
   - existing new style dash click behavior"
   [{id :id card :card_visualization dashcard :dashcard_visualization}]
   (let [existing-fixed (fn [settings]
@@ -408,7 +407,7 @@
                                                                ;; the settings tree
                            existing-fixed)
         fixed-dashcard (update (fix-top-level dashcard) "column_settings" fix-cols)
-        final-settings (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed card) (existing-fixed dashcard))
+        final-settings (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
                             ;; doesn't have link text
