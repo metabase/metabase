@@ -13,7 +13,7 @@ import {
 const new_user = {
   first_name: "Barb",
   last_name: "Tabley",
-  username: "new@metabase.com",
+  email: "new@metabase.com",
 };
 
 describe("smoketest > admin_setup", () => {
@@ -130,7 +130,7 @@ describe("smoketest > admin_setup", () => {
       ).click();
       cy.findByText("Add").click();
 
-      cy.findByText(USERS.nocollection.username);
+      cy.findByText(USERS.nocollection.email);
       cy.findByText("A group is only as good as its members.").should(
         "not.exist",
       );
@@ -144,7 +144,7 @@ describe("smoketest > admin_setup", () => {
       ).click();
       cy.findByText("Add").click();
 
-      cy.findByText(USERS.admin.username);
+      cy.findByText(USERS.admin.email);
 
       // Check member count
 
@@ -175,7 +175,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Add someone").click();
       cy.findByLabelText("First name").type(new_user.first_name);
       cy.findByLabelText("Last name").type(new_user.last_name);
-      cy.findByLabelText("Email").type(new_user.username);
+      cy.findByLabelText("Email").type(new_user.email);
       cy.findAllByText("Default")
         .last()
         .click();
@@ -208,8 +208,8 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Marketing").click();
 
-      cy.findByText(new_user.username);
-      cy.findByText(USERS.nodata.username).should("not.exist");
+      cy.findByText(new_user.email);
+      cy.findByText(USERS.nodata.email).should("not.exist");
     });
 
     it("should set up custom maps", () => {
@@ -962,7 +962,7 @@ describe("smoketest > admin_setup", () => {
 
       signOut();
       cy.visit("/");
-      cy.findByLabelText("Email address").type(USERS.normal.username);
+      cy.findByLabelText("Email address").type(USERS.normal.email);
       cy.findByLabelText("Password").type(USERS.normal.password);
       cy.findByText("Sign in").click();
 

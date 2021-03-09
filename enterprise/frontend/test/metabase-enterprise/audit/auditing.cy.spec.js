@@ -5,7 +5,7 @@ import {
   USERS,
   describeWithToken,
 } from "__support__/cypress";
-
+import _ from "underscore";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PRODUCTS } = SAMPLE_DATASET;
@@ -106,7 +106,8 @@ describeWithToken("audit > auditing", () => {
     it("should load the All Members tab", () => {
       cy.visit("/admin/audit/members/all");
 
-      Object.values(USERS).forEach(({ first_name, last_name }) => {
+      const CREATED_USERS = _.omit(USERS, "sandboxed");
+      Object.values(CREATED_USERS).forEach(({ first_name, last_name }) => {
         cy.findByText(`${first_name} ${last_name}`);
       });
 

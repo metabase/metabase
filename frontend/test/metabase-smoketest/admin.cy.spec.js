@@ -11,7 +11,7 @@ const admin = USERS.admin;
 const new_user = {
   first_name: "Barb",
   last_name: "Tabley",
-  username: "new@metabase.com",
+  email: "new@metabase.com",
 };
 
 describe("metabase-smoketest > admin", () => {
@@ -37,7 +37,7 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByLabelText("First name").type(admin.first_name);
       cy.findByLabelText("Last name").type(admin.last_name);
-      cy.findByLabelText("Email").type(admin.username);
+      cy.findByLabelText("Email").type(admin.email);
       cy.findByLabelText("Your company or team name").type("Epic Team");
 
       cy.findByLabelText("Create a password")
@@ -281,7 +281,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Add someone").click();
       cy.findByLabelText("First name").type(new_user.first_name);
       cy.findByLabelText("Last name").type(new_user.last_name);
-      cy.findByLabelText("Email").type(new_user.username);
+      cy.findByLabelText("Email").type(new_user.email);
       cy.findByText("Create").click();
 
       cy.wait("@createUser").then(xhr => {
@@ -292,7 +292,7 @@ describe("metabase-smoketest > admin", () => {
       cy.contains("has been added");
       cy.findByText("Done").click();
 
-      cy.findByText(new_user.username);
+      cy.findByText(new_user.email);
 
       // ==============
       // == NEW USER ==
@@ -301,7 +301,7 @@ describe("metabase-smoketest > admin", () => {
       signOut();
       cy.get("@password").then(pass => {
         cy.visit("/");
-        cy.findByLabelText("Email address").type(new_user.username);
+        cy.findByLabelText("Email address").type(new_user.email);
         cy.findByLabelText("Password").type(pass);
         cy.findByText("Sign in").click();
         cy.contains(new_user.first_name);

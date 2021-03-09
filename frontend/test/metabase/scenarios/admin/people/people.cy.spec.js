@@ -92,7 +92,7 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should disallow admin to create new users with case mutation of existing user", () => {
-      const { first_name, last_name, username: email } = normal;
+      const { first_name, last_name, email } = normal;
       cy.visit("/admin/people");
       clickButton("Add someone");
 

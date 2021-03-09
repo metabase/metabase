@@ -1,6 +1,6 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
 import { restore, signInAsNormalUser, USERS } from "__support__/cypress";
-const { first_name, last_name, username: email } = USERS.normal;
+const { first_name, last_name, email } = USERS.normal;
 
 const requestsCount = alias =>
   cy.state("requests").filter(a => a.alias === alias);
