@@ -351,9 +351,24 @@
   from the card. See extensive tests for different scenarios.
 
   We are in a migration so this returns nil if there is nothing to do so that it is filtered and we aren't running sql
-  statements that are replacing data for no purpose."
+  statements that are replacing data for no purpose.
+
+  Merging the following click behaviors in order (later merges on top of earlier):
+  - fixed card click behavior
+  - fixed dash click behavior
+  - existing new style card click behavior
+  - existing new style dash click behavior"
   [{id :id card :card_visualization dashcard :dashcard_visualization}]
-  (let [fix-top-level  (fn [toplevel]
+  (let [existing-fixed (fn [settings]
+                         (-> settings
+                             (m/update-existing "column_settings"
+                                                (fn [column_settings]
+                                                  (m/map-vals
+                                                   #(select-keys % ["click_behavior"])
+                                                   column_settings)))
+                             ;; select click behavior top level and in column settings
+                             (u/select-non-nil-keys ["column_settings" "click_behavior"])))
+        fix-top-level  (fn [toplevel]
                          (if (= (get toplevel "click") "link")
                            (merge
                             ;; remove old shape
@@ -364,7 +379,7 @@
                               "linkType"     "url"
                               "linkTemplate" (get toplevel "click_link_template")}})
                            toplevel))
-        update-cols-fn (fn [column-settings]
+        fix-cols       (fn [column-settings]
                          (reduce-kv
                           (fn [m col field-settings]
                             (assoc m col
@@ -385,24 +400,15 @@
                                      field-settings)))
                           {}
                           column-settings))
-        card-click-info (u/select-non-nil-keys
-                         ;; we look in top level and column settings for click behavior but we want nothing other than
-                         ;; click stuff thus selecting non-nil-keys click_behavior and column_settings (non-nil so we
-                         ;; don't introduce `:column_settings {}` if the card doesn't have any and the dashcard
-                         ;; doesn't either.
-                         (merge (when-not (contains? dashcard "click")
-                                  ;; if dashcard has click: menu we don't want to clobber this even though it won't
-                                  ;; get moved to the new shape
-                                  (fix-top-level card))
-                                {"column_settings" (->> (get card "column_settings")
-                                                        update-cols-fn
-                                                        ;; only interested in click behavior from the card
-                                                        (m/map-vals #(select-keys % ["click_behavior"])))})
-                         ["click_behavior" "column_settings"])
-        fixed-dashcard (->> (update (fix-top-level dashcard) "column_settings" update-cols-fn) ;; clean up shape in dashcard
-                            ;; deep merge card links underneath the fixed dashcard. beware of nils in the
-                            ;; dashcard. they clobber maps in the dashcard as they are a value not an empty map.
-                            (m/deep-merge card-click-info)
+        fixed-card     (-> (if (contains? dashcard "click")
+                             (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
+                                                            ;; behavior added
+                             (fix-top-level card))
+                           (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
+                                                               ;; the settings tree
+                           existing-fixed)
+        fixed-dashcard (update (fix-top-level dashcard) "column_settings" fix-cols)
+        final-settings (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed card) (existing-fixed dashcard))
                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
                             ;; doesn't have link text
@@ -416,9 +422,9 @@
                                                                       (some? v))]
                                                           [k v]))
                                                form))))]
-    (when (not= fixed-dashcard dashcard)
-      {:id id
-       :visualization_settings fixed-dashcard})))
+    (when (not= final-settings dashcard)
+      {:id                     id
+       :visualization_settings final-settings})))
 
 (defn- parse-to-json [& ks]
   (fn [x]

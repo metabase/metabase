@@ -213,7 +213,7 @@
       (let [card {"some_setting:"       {"foo" 123}
                   "click_link_template" "http://example.com/{{col_name}}"
                   "click"               "link"}
-            dash {"other_setting" {"bar" 123}
+            dash {"other_setting"       {"bar" 123}
                   "click_link_template" "http://example.com/{{col_name}}"
                   "click"               "menu"}]
         ;;click: "menu" turned off the custom drill through so it's not migrated. Dropping click and click_link_template would be fine but isn't needed.
@@ -222,9 +222,9 @@
       (let [card {"some_setting" {"foo" 123}
                   "column_settings"
                   {"[\"ref\",[\"field-id\",1]]"
-                   {"view_as" "link"
+                   {"view_as"       "link"
                     "link_template" "http://example.com/{{id}}"
-                    "link_text" "here is my id: {{id}}"}}}
+                    "link_text"     "here is my id: {{id}}"}}}
             dash {"other_setting" {"bar" 123}
                   "column_settings"
                   {"[\"ref\",[\"field-id\",1]]" {"fun_formatting" "foo"}
@@ -233,9 +233,9 @@
                 "column_settings"
                 {"[\"ref\",[\"field-id\",1]]"
                  {"fun_formatting" "foo"
-                  "click_behavior" {"type" "link"
-                                    "linkType" "url"
-                                    "linkTemplate" "http://example.com/{{id}}"
+                  "click_behavior" {"type"             "link"
+                                    "linkType"         "url"
+                                    "linkTemplate"     "http://example.com/{{id}}"
                                     "linkTextTemplate" "here is my id: {{id}}"}}
                  "[\"ref\",[\"field-id\",2]]"
                  {"other_fun_formatting" 123}}}
@@ -243,7 +243,7 @@
     (testing "manually updated new behavior"
       (let [card {"some_setting"        {"foo" 123}
                   "click_link_template" "http://example.com/{{col_name}}"
-                  "click"              "link"}
+                  "click"               "link"}
             dash {"other_setting"  {"bar" 123}
                   "click_behavior" {"type"         "link"
                                     "linkType"     "url"
@@ -253,19 +253,19 @@
       (let [card {"some_setting" {"foo" 123},
                   "column_settings"
                   {"[\"ref\",[\"field-id\",1]]"
-                   {"view_as" "link"
-                    "link_template" "http://example.com/{{id}}"
+                   {"view_as"                  "link"
+                    "link_template"            "http://example.com/{{id}}"
                     "other_special_formatting" "currency"}
                    "[\"ref\",[\"field-id\",2]]"
-                   {"view_as" "link",
-                    "link_template" "http://example.com/{{something_else}}",
+                   {"view_as"              "link",
+                    "link_template"        "http://example.com/{{something_else}}",
                     "other_fun_formatting" 0}}}
             dash {"other_setting" {"bar" 123}
                   "column_settings"
                   {"[\"ref\",[\"field-id\",1]]"
                    {"click_behavior"
-                    {"type" "link"
-                     "linkType" "url"
+                    {"type"         "link"
+                     "linkType"     "url"
                      "linkTemplate" "http://example.com/{{id}}"}}
                    "[\"ref\",[\"field-id\",2]]"
                    {"other_fun_formatting" 123}}}]
@@ -273,15 +273,39 @@
                 "column_settings"
                 {"[\"ref\",[\"field-id\",1]]"
                  {"click_behavior"
-                  {"type" "link",
-                   "linkType" "url",
+                  {"type"         "link",
+                   "linkType"     "url",
                    "linkTemplate" "http://example.com/{{id}}"}}
                  "[\"ref\",[\"field-id\",2]]"
                  {"other_fun_formatting" 123,
                   "click_behavior"
+                  {"type"         "link",
+                   "linkType"     "url",
+                   "linkTemplate" "http://example.com/{{something_else}}"}}}}
+               (migrate card dash)))))
+    (testing "If there is migration eligible on dash but new style on card, card wins"
+      (let [dash {"column_settings"
+                  {"[\"ref\",[\"field-id\",4]]"
+                   {"view_as"       "link"
+                    "link_template" "http://from/dash"
+                    "link_text"     "from dash"
+                    "column_title"  "column title from dash"}}}
+            card {"column_settings"
+                  {"[\"ref\",[\"field-id\",4]]"
+                   {"click_behavior"
+                    {"type"             "link",
+                     "linkType"         "url",
+                     "linkTemplate"     "http://from/card",
+                     "linkTextTemplate" "from card"}
+                    "column_title" "column title from card"}}}]
+        (is (= {"column_settings"
+                {"[\"ref\",[\"field-id\",4]]"
+                 {"click_behavior"
                   {"type" "link",
                    "linkType" "url",
-                   "linkTemplate" "http://example.com/{{something_else}}"}}}}
+                   "linkTemplate" "http://from/card",
+                   "linkTextTemplate" "from card"},
+                  "column_title" "column title from dash"}}}
                (migrate card dash))))))
   (testing "general case"
     (let [card-vis              {"column_settings"
