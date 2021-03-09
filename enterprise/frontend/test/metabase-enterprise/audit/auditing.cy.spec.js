@@ -7,7 +7,7 @@ import {
 } from "__support__/cypress";
 import _ from "underscore";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
-
+const { normal } = USERS;
 const { PRODUCTS } = SAMPLE_DATASET;
 
 const year = new Date().getFullYear();
@@ -38,15 +38,15 @@ function generateDashboards(user) {
 }
 
 describeWithToken("audit > auditing", () => {
-  const [admin, normal] = Object.keys(USERS);
-  const ADMIN_QUESTION = `${admin} question`;
-  const ADMIN_DASHBOARD = `${admin} dashboard`;
-  const NORMAL_QUESTION = `${normal} question`;
-  const NORMAL_DASHBOARD = `${normal} dashboard`;
+  // const [admin, normal] = Object.keys(USERS);
+  const ADMIN_QUESTION = `admin question`;
+  const ADMIN_DASHBOARD = `admin dashboard`;
+  const NORMAL_QUESTION = `normal question`;
+  const NORMAL_DASHBOARD = `normal dashboard`;
 
   before(() => {
     restore();
-    [admin, normal].forEach(user => {
+    ["admin", "normal"].forEach(user => {
       signIn(user);
       generateQuestions(user);
       generateDashboards(user);
@@ -59,7 +59,7 @@ describeWithToken("audit > auditing", () => {
 
     signIn("nodata");
 
-    cy.log(`View ${normal}'s dashboard`);
+    cy.log(`View normal's dashboard`);
     cy.visit("/collection/root?type=dashboard");
     cy.findByText(NORMAL_DASHBOARD).click();
     cy.findByText("This dashboard is looking empty.");
@@ -69,7 +69,7 @@ describeWithToken("audit > auditing", () => {
     cy.visit("/question/2");
     cy.findByText("18,760");
 
-    cy.log(`View newly created ${admin}'s question`);
+    cy.log(`View newly created admin's question`);
     cy.visit("/collection/root?type");
     cy.findByText(ADMIN_QUESTION).click();
     cy.findByPlaceholderText(/ID/i);
@@ -222,7 +222,7 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/dashboards/all");
       cy.findByPlaceholderText("Dashboard name");
       cy.findByText(ADMIN_DASHBOARD);
-      cy.findByText(USERS.normal.first_name + " " + USERS.normal.last_name);
+      cy.findByText(normal.first_name + " " + normal.last_name);
       cy.get("tr")
         .eq(1)
         .children()
@@ -236,7 +236,7 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/downloads/overview");
       cy.findByText("No results!").should("not.exist");
       cy.findByText("Largest downloads in the last 30 days");
-      cy.findByText(USERS.normal.first_name + " " + USERS.normal.last_name);
+      cy.findByText(normal.first_name + " " + normal.last_name);
 
       // All downloads tab
       cy.visit("/admin/audit/downloads/all");

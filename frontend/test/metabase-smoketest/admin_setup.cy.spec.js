@@ -10,6 +10,7 @@ import {
   USERS,
 } from "__support__/cypress";
 
+const { admin, normal, nocollection, nodata } = USERS;
 const new_user = {
   first_name: "Barb",
   last_name: "Tabley",
@@ -126,11 +127,11 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Add members").click();
       cy.get("input").type("T");
       cy.findByText(
-        USERS.nocollection.first_name + " " + USERS.nocollection.last_name,
+        nocollection.first_name + " " + nocollection.last_name,
       ).click();
       cy.findByText("Add").click();
 
-      cy.findByText(USERS.nocollection.email);
+      cy.findByText(nocollection.email);
       cy.findByText("A group is only as good as its members.").should(
         "not.exist",
       );
@@ -139,12 +140,10 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Add members").click();
       cy.get("input").type("T");
-      cy.findByText(
-        USERS.admin.first_name + " " + USERS.admin.last_name,
-      ).click();
+      cy.findByText(admin.first_name + " " + admin.last_name).click();
       cy.findByText("Add").click();
 
-      cy.findByText(USERS.admin.email);
+      cy.findByText(admin.email);
 
       // Check member count
 
@@ -209,7 +208,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Marketing").click();
 
       cy.findByText(new_user.email);
-      cy.findByText(USERS.nodata.email).should("not.exist");
+      cy.findByText(nodata.email).should("not.exist");
     });
 
     it("should set up custom maps", () => {
@@ -307,7 +306,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Admin").click();
 
       cy.findByText("Getting set up");
-      cy.findByText(USERS.admin.first_name).should("not.exist");
+      cy.findByText(admin.first_name).should("not.exist");
 
       cy.findByText("Data Model").click();
       cy.findByText("Orders").click();
@@ -503,7 +502,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.visit("/");
 
-      cy.contains(", " + USERS.admin.first_name);
+      cy.contains(", " + admin.first_name);
       cy.contains("A look at your People table");
       cy.contains("A look at your Reviews table").should("not.exist");
 
@@ -953,20 +952,20 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Deactivate").click();
 
-      cy.findByText(
-        USERS.normal.first_name + " " + USERS.normal.last_name,
-      ).should("not.exist");
+      cy.findByText(normal.first_name + " " + normal.last_name).should(
+        "not.exist",
+      );
       cy.findByText(new_user.first_name + " " + new_user.last_name);
 
       // User tries to log in
 
       signOut();
       cy.visit("/");
-      cy.findByLabelText("Email address").type(USERS.normal.email);
-      cy.findByLabelText("Password").type(USERS.normal.password);
+      cy.findByLabelText("Email address").type(normal.email);
+      cy.findByLabelText("Password").type(normal.password);
       cy.findByText("Sign in").click();
 
-      cy.contains(USERS.normal.first_name).should("not.exist");
+      cy.contains(normal.first_name).should("not.exist");
       cy.findByText("Our Analytics").should("not.exist");
       cy.findByText("Failed");
       cy.contains("Password : did not match stored password");

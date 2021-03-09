@@ -7,7 +7,7 @@ import {
   sidebar,
 } from "__support__/cypress";
 
-const admin = USERS.admin;
+const { admin } = USERS;
 const new_user = {
   first_name: "Barb",
   last_name: "Tabley",
