@@ -38,11 +38,10 @@ function generateDashboards(user) {
 }
 
 describeWithToken("audit > auditing", () => {
-  // const [admin, normal] = Object.keys(USERS);
-  const ADMIN_QUESTION = `admin question`;
-  const ADMIN_DASHBOARD = `admin dashboard`;
-  const NORMAL_QUESTION = `normal question`;
-  const NORMAL_DASHBOARD = `normal dashboard`;
+  const ADMIN_QUESTION = "admin question";
+  const ADMIN_DASHBOARD = "admin dashboard";
+  const NORMAL_QUESTION = "normal question";
+  const NORMAL_DASHBOARD = "normal dashboard";
 
   before(() => {
     restore();
@@ -59,7 +58,7 @@ describeWithToken("audit > auditing", () => {
 
     signIn("nodata");
 
-    cy.log(`View normal's dashboard`);
+    cy.log("View normal user's dashboard");
     cy.visit("/collection/root?type=dashboard");
     cy.findByText(NORMAL_DASHBOARD).click();
     cy.findByText("This dashboard is looking empty.");
@@ -69,7 +68,7 @@ describeWithToken("audit > auditing", () => {
     cy.visit("/question/2");
     cy.findByText("18,760");
 
-    cy.log(`View newly created admin's question`);
+    cy.log("View newly created admin's question");
     cy.visit("/collection/root?type");
     cy.findByText(ADMIN_QUESTION).click();
     cy.findByPlaceholderText(/ID/i);
