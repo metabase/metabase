@@ -3,7 +3,6 @@ import {
   restore,
   withSampleDataset,
   signInAsAdmin,
-  createUser,
 } from "__support__/cypress";
 
 import { USERS, USER_GROUPS } from "__support__/cypress_data";
@@ -70,10 +69,10 @@ describe("snapshots", () => {
     cy.request("POST", "/api/permissions/group", { name: "data" }); // 5
 
     // additional users
-    createUser("normal");
-    createUser("nodata");
-    createUser("nocollection");
-    createUser("none");
+    cy.createUser("normal");
+    cy.createUser("nodata");
+    cy.createUser("nocollection");
+    cy.createUser("none");
 
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");

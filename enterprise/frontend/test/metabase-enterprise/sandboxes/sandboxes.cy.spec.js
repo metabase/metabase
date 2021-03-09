@@ -11,7 +11,6 @@ import {
   remapDisplayValueToFK,
   sidebar,
   signInAsSandboxedUser,
-  createUser,
 } from "__support__/cypress";
 import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
@@ -176,7 +175,7 @@ describeWithToken("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       signInAsAdmin();
-      createUser("sandboxed");
+      cy.createUser("sandboxed");
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {

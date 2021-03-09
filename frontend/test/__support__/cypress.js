@@ -1,17 +1,8 @@
-import { USERS, USER_GROUPS } from "__support__/cypress_data";
+import { USERS } from "__support__/cypress_data";
 import "@testing-library/cypress/add-commands";
 import "./commands";
 
 export const version = require("../../../version.json");
-
-
-export function createUser(user) {
-  cy.log(`Create ${user} user`);
-  return cy.request("POST", "/api/user", USERS[user]).then(({ body }) => {
-    // Dismiss `it's ok to play around` modal for the created user
-    cy.request("PUT", `/api/user/${body.id}/qbnewb`, {});
-  });
-}
 
 export function signIn(user = "admin") {
   const { email: username, password } = USERS[user];

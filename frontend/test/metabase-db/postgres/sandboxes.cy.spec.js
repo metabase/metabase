@@ -5,7 +5,6 @@ import {
   addPostgresDatabase,
   withDatabase,
   describeWithToken,
-  createUser,
   signInAsSandboxedUser,
 } from "__support__/cypress";
 import { USER_GROUPS } from "__support__/cypress_data";
@@ -20,7 +19,7 @@ describeWithToken("postgres > user > query", () => {
     restore();
     signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
-    createUser("sandboxed");
+    cy.createUser("sandboxed");
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
