@@ -308,8 +308,7 @@
 (defn- use-statement? [driver params]
   (and (statement-supported? driver) (empty? params)))
 
-(defn- statement*
-  ^Statement [driver conn canceled-chan]
+(defn- statement* ^Statement [driver conn canceled-chan]
   ;; if canceled-chan gets a message, cancel the Statement
   (let [^Statement stmt (statement driver conn)]
     (a/go
@@ -319,23 +318,23 @@
          (.cancel stmt))))
     stmt))
 
-(defn- ^Statement statement-or-prepared-statement [driver conn sql params canceled-chan]
+(defn- statement-or-prepared-statement ^Statement [driver conn sql params canceled-chan]
   (if (use-statement? driver params)
     (statement* driver conn canceled-chan)
     (prepared-statement* driver conn sql params canceled-chan)))
 
-(defmethod ^ResultSet execute-prepared-statement! :sql-jdbc
+(defmethod execute-prepared-statement! :sql-jdbc
   [_ ^PreparedStatement stmt]
   (.executeQuery stmt))
 
-(defmethod ^ResultSet execute-statement! :sql-jdbc
+(defmethod execute-statement! :sql-jdbc
   [driver ^Statement stmt ^String sql]
   (if (.execute stmt sql)
     (.getResultSet stmt)
     (throw (ex-info (str (tru "Select statement did not produce a ResultSet for native query"))
                     {:sql sql :driver driver}))))
 
-(defn- ^ResultSet execute-statement-or-prepared-statement [driver ^Statement stmt max-rows params sql]
+(defn- execute-statement-or-prepared-statement! ^ResultSet [driver ^Statement stmt max-rows params sql]
   (let [st (doto stmt (.setMaxRows max-rows))]
     (if (use-statement? driver params)
       (execute-statement! driver st sql)
@@ -463,7 +462,7 @@
   ([driver sql params max-rows context respond]
    (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
                stmt (statement-or-prepared-statement driver conn sql params (context/canceled-chan context))
-               rs   (execute-statement-or-prepared-statement driver stmt max-rows params sql)]
+               rs   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))
