@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   popover,
   createNativeQuestion,
@@ -14,7 +13,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 describe("scenarios > question > nested (metabase#12568)", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // Create a simple question of orders by week
     cy.createQuestion({
@@ -130,7 +129,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
 describe("scenarios > question > nested", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {

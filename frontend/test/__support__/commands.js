@@ -14,6 +14,10 @@ Cypress.Commands.add("signIn", (user = "admin") => {
   cy.request("POST", "/api/session", { username, password });
 });
 
+Cypress.Commands.add("signInAsAdmin", () => {
+  cy.signIn("admin");
+});
+
 Cypress.Commands.add("icon", icon_name => {
   cy.get(`.Icon-${icon_name}`);
 });

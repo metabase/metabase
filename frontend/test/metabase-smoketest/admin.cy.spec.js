@@ -1,5 +1,5 @@
 import path from "path";
-import { restore, signInAsAdmin, signOut, sidebar } from "__support__/cypress";
+import { restore, signOut, sidebar } from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
 
 const { admin } = USERS;
@@ -76,7 +76,7 @@ describe("metabase-smoketest > admin", () => {
   });
 
   describe("Admin has basic functionality", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     it.skip("should add a simple summarized question as admin", () => {
       cy.visit("/");

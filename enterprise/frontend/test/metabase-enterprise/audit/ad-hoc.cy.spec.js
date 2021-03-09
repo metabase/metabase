@@ -1,6 +1,5 @@
 import {
   restore,
-  signInAsAdmin,
   signInAsNormalUser,
   describeWithToken,
 } from "__support__/cypress";
@@ -23,7 +22,7 @@ describeWithToken("audit > ad-hoc", () => {
       cy.get(".ScalarValue").contains("123");
 
       // Sign in as admin to be able to access audit logs in tests
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     it.skip("should appear in audit log (metabase-enterprise#486)", () => {

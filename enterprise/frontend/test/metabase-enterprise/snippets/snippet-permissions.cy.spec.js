@@ -1,6 +1,5 @@
 import {
   signInAsNormalUser,
-  signInAsAdmin,
   restore,
   modal,
   popover,
@@ -11,7 +10,7 @@ import {
 describeWithToken("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("can create a snippet", () => {

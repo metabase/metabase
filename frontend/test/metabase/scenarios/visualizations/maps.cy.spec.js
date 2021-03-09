@@ -1,6 +1,5 @@
 import {
   signInAsNormalUser,
-  signInAsAdmin,
   restore,
   popover,
   visitQuestionAdhoc,
@@ -12,7 +11,7 @@ const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 describe("scenarios > visualizations > maps", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should display a pin map for a native query", () => {

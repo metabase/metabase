@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   signOut,
   restore,
   addPostgresDatabase,
@@ -17,7 +16,7 @@ const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 describeWithToken("postgres > user > query", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
     cy.createUser("sandboxed");
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")

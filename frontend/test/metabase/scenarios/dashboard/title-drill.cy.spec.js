@@ -1,9 +1,9 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > title drill", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should let you click through the title to the query builder", () => {

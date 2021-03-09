@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   modal,
   signInAsNormalUser,
@@ -11,7 +10,7 @@ const MYSQL_DB_NAME = "QA MySQL8";
 describe("mysql > user > query", () => {
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addMySQLDatabase(MYSQL_DB_NAME);
   });
 

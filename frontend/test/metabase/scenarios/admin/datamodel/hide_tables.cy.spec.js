@@ -1,8 +1,4 @@
-import {
-  restore,
-  signInAsNormalUser,
-  signInAsAdmin,
-} from "__support__/cypress";
+import { restore, signInAsNormalUser } from "__support__/cypress";
 
 const ORDERS_URL = "/admin/datamodel/database/1/table/2";
 
@@ -14,7 +10,7 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
     cy.route("PUT", "/api/table/*").as("tableUpdate");
 
     // Toggle the table to be hidden as admin user
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.visit(ORDERS_URL);
     cy.contains(/^Hidden$/).click();
     cy.wait("@tableUpdate");
@@ -36,7 +32,7 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
     cy.route("PUT", "/api/table/*").as("tableUpdate");
 
     // Toggle the table to be hidden as admin user
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.visit(ORDERS_URL);
     cy.contains(/^Hidden$/).click();
     cy.wait("@tableUpdate");

@@ -1,4 +1,4 @@
-import { signInAsAdmin, signOut, restore, popover } from "__support__/cypress";
+import { signOut, restore, popover } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -21,7 +21,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
 
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     cy.request("POST", `/api/field/${ORDERS.USER_ID}/dimension`, {
       type: "external",
@@ -74,7 +74,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   });
 
   describe("private question", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     sharedParametersTests(() => {
       cy.visit(`/question/${questionId}`);
@@ -124,7 +124,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   });
 
   describe("private dashboard", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     sharedParametersTests(() => {
       cy.visit(`/dashboard/${dashboardId}`);

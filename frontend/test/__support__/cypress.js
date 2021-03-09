@@ -8,10 +8,6 @@ export function signOut() {
   cy.clearCookie("metabase.SESSION");
 }
 
-export function signInAsAdmin() {
-  cy.signIn("admin");
-}
-
 export function signInAsNormalUser() {
   cy.signIn("normal");
 }

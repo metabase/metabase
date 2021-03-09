@@ -1,6 +1,5 @@
 import {
   restore,
-  signInAsAdmin,
   setupLocalHostEmail,
   signInAsNormalUser,
   signOut,
@@ -36,7 +35,7 @@ describe("scenarios > collection_defaults", () => {
   describe("for admins", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     describe("new collections", () => {
@@ -117,7 +116,7 @@ describe("scenarios > collection_defaults", () => {
     describe("sidebar behavior", () => {
       beforeEach(() => {
         restore();
-        signInAsAdmin();
+        cy.signInAsAdmin();
       });
 
       it("should allow a user to expand a collection without navigating to it", () => {
@@ -305,7 +304,7 @@ describe("scenarios > collection_defaults", () => {
   describe("Collection related issues reproductions", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     describe("nested collections with revoked parent access", () => {

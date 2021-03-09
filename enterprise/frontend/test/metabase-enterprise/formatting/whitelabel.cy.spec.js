@@ -1,6 +1,5 @@
 import {
   restore,
-  signInAsAdmin,
   signOut,
   signInAsNormalUser,
   openOrdersTable,
@@ -47,7 +46,7 @@ function checkLogo() {
 describeWithToken("formatting > whitelabel", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("admin", () => {
@@ -176,7 +175,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.log(
         "Admin users should also have a green header, but yellow in the admin panel",
       );
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/");
       cy.get(".Nav").should(
         "have.css",

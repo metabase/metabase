@@ -1,10 +1,4 @@
-import {
-  signInAsAdmin,
-  signOut,
-  restore,
-  popover,
-  modal,
-} from "__support__/cypress";
+import { signOut, restore, popover, modal } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -16,7 +10,7 @@ const COUNT_DOOHICKEY = "42";
 const PUBLIC_URL_REGEX = /\/public\/(question|dashboard)\/[0-9a-f-]+$/;
 
 const USERS = {
-  "admin user": () => signInAsAdmin(),
+  "admin user": () => cy.signInAsAdmin(),
   "user with no permissions": () => cy.signIn("none"),
   "anonymous user": () => signOut(),
 };
@@ -28,7 +22,7 @@ describe.skip("scenarios > public", () => {
   let questionId;
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // setup parameterized question
     cy.createNativeQuestion({
@@ -54,7 +48,7 @@ describe.skip("scenarios > public", () => {
   });
 
   beforeEach(() => {
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.server();
   });
 

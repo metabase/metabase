@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { assoc } from "icepick";
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
@@ -9,7 +9,7 @@ describe("scenarios > dashboard > permissions", () => {
     restore();
     // This first test creates a dashboard with two questions.
     // One is in Our Analytics the other is in a more locked down collection.
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // The setup is a bunch of nested API calls to create the questions, dashboard, dashcards, collections and link them all up together.
     let firstQuestionId, secondQuestionId;

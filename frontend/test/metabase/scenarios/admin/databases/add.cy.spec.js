@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/cypress";
 
 function typeField(label, value) {
   cy.findByLabelText(label)
@@ -17,7 +17,7 @@ function toggleFieldWithDisplayName(displayName) {
 describe("scenarios > admin > databases > add", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.server();
   });
 

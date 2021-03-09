@@ -5,7 +5,6 @@ import {
   popover,
   modal,
   restore,
-  signInAsAdmin,
   signInAsNormalUser,
   signOut,
   remapDisplayValueToFK,
@@ -33,7 +32,7 @@ describeWithToken("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/people");
     });
 
@@ -71,7 +70,7 @@ describeWithToken("formatting > sandboxes", () => {
 
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
 
       // Add user attribute to existing ("normal" / id:2) user
       cy.request("PUT", "/api/user/2", {
@@ -174,7 +173,7 @@ describeWithToken("formatting > sandboxes", () => {
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.createUser("sandboxed");
     });
 

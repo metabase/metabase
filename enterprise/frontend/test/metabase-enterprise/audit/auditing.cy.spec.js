@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin, describeWithToken } from "__support__/cypress";
+import { restore, describeWithToken } from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
 import _ from "underscore";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -69,7 +69,7 @@ describeWithToken("audit > auditing", () => {
     cy.findByPlaceholderText(/ID/i);
   });
 
-  beforeEach(signInAsAdmin);
+  beforeEach(cy.signInAsAdmin);
 
   describe("See expected info on team member pages", () => {
     it("should load the Overview tab", () => {

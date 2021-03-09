@@ -1,14 +1,9 @@
-import {
-  restore,
-  signOut,
-  signInAsAdmin,
-  describeWithToken,
-} from "__support__/cypress";
+import { restore, signOut, describeWithToken } from "__support__/cypress";
 
 describeWithToken("scenarios > auth > signin > SSO", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     // Set fake Google client ID
     cy.request("PUT", "/api/setting/google-auth-client-id", {
       value: "123",

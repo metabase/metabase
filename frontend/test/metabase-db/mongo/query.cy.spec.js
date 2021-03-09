@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   modal,
   signInAsNormalUser,
@@ -11,7 +10,7 @@ const MONGO_DB_NAME = "QA Mongo4";
 describe("mongodb > user > query", () => {
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addMongoDatabase(MONGO_DB_NAME);
   });
 

@@ -3,7 +3,6 @@ import {
   popover,
   restore,
   setupLocalHostEmail,
-  signInAsAdmin,
   signInAsNormalUser,
   signOut,
 } from "__support__/cypress";
@@ -20,7 +19,7 @@ describe("smoketest > admin_setup", () => {
   before(restore);
 
   describe("successful setup by admin", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     it("should add a new database", () => {
       // *** Need faux databases to hook up to
@@ -250,7 +249,7 @@ describe("smoketest > admin_setup", () => {
   describe("data model changes by admin reflected with user", () => {
     beforeEach(() => {
       signOut();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     it("should check table and question names as user", () => {
@@ -616,7 +615,7 @@ describe("smoketest > admin_setup", () => {
       // *** Need multible databases to test their permissions.
 
       signOut();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/");
 
       cy.icon("gear").click();
@@ -686,7 +685,7 @@ describe("smoketest > admin_setup", () => {
       const subCollectionName = "test sub-collection";
 
       signOut();
-      signInAsAdmin();
+      cy.signInAsAdmin();
 
       cy.visit("/collection/root");
 
@@ -739,7 +738,7 @@ describe("smoketest > admin_setup", () => {
 
     it.skip("should modify Collection permissions for top-level collections and sub-collections as admin", () => {
       signOut();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/permissions/databases");
 
       // Modify permissions for top-level collection
@@ -938,7 +937,7 @@ describe("smoketest > admin_setup", () => {
       // Admin deactiviates user
 
       signOut();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/settings/setup");
 
       cy.findByText("People").click();

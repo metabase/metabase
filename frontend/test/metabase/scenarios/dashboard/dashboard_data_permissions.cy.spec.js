@@ -1,9 +1,4 @@
-import {
-  signInAsAdmin,
-  restore,
-  popover,
-  selectDashboardFilter,
-} from "__support__/cypress";
+import { restore, popover, selectDashboardFilter } from "__support__/cypress";
 
 function filterDashboard(suggests = true) {
   cy.visit("/dashboard/1");
@@ -27,7 +22,7 @@ function filterDashboard(suggests = true) {
 describe("support > permissions (metabase#8472)", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // Setup a dashboard with a text filter
     cy.visit("/dashboard/1");

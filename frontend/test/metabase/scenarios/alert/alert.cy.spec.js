@@ -1,6 +1,5 @@
 import {
   restore,
-  signInAsAdmin,
   setupLocalHostEmail,
   signInAsNormalUser,
   createBasicAlert,
@@ -30,7 +29,7 @@ describe("scenarios > alert", () => {
   describe("with nothing set", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     it("should prompt you to add email/slack credentials", () => {
@@ -55,7 +54,7 @@ describe("scenarios > alert", () => {
   describe.skip("educational screen", () => {
     before(() => {
       // NOTE: Must run `python -m smtpd -n -c DebuggingServer localhost:1025` before these tests
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/settings/email");
       setupLocalHostEmail();
       cy.server();
@@ -84,7 +83,7 @@ describe("scenarios > alert", () => {
   describe.skip("types of alerts", () => {
     before(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/settings/email");
       setupLocalHostEmail();
     });
@@ -148,7 +147,7 @@ describe("scenarios > alert", () => {
   describe.skip("time-multiseries questions with a set goal", () => {
     before(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/settings/email");
       setupLocalHostEmail();
     });

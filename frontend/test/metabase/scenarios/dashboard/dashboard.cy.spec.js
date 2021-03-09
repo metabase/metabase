@@ -3,7 +3,6 @@
 import {
   popover,
   restore,
-  signInAsAdmin,
   selectDashboardFilter,
   expectedRouteCalls,
 } from "__support__/cypress";
@@ -27,7 +26,7 @@ function saveDashboard() {
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should create new dashboard", () => {

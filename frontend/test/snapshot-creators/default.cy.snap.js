@@ -1,10 +1,4 @@
-import {
-  snapshot,
-  restore,
-  withSampleDataset,
-  signInAsAdmin,
-} from "__support__/cypress";
-
+import { snapshot, restore, withSampleDataset } from "__support__/cypress";
 import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -154,7 +148,7 @@ describe("snapshots", () => {
   describe("withSqlite", () => {
     it("withSqlite", () => {
       restore("default");
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.request("POST", "/api/database", {
         engine: "sqlite",
         name: "sqlite",

@@ -1,10 +1,4 @@
-import {
-  signInAsAdmin,
-  restore,
-  openOrdersTable,
-  popover,
-} from "__support__/cypress";
-
+import { restore, openOrdersTable, popover } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PRODUCTS } = SAMPLE_DATASET;
@@ -12,7 +6,7 @@ const { PRODUCTS } = SAMPLE_DATASET;
 describe("scenarios > question > view", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("summarize sidebar", () => {

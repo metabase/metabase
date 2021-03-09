@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   signInAsNormalUser,
   restore,
   openProductsTable,
@@ -16,7 +15,7 @@ const { DATA_GROUP } = USER_GROUPS;
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should allow brush date filter", () => {

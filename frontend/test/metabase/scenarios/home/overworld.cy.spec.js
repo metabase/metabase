@@ -1,8 +1,4 @@
-import {
-  signInAsAdmin,
-  signInAsNormalUser,
-  restore,
-} from "__support__/cypress";
+import { signInAsNormalUser, restore } from "__support__/cypress";
 
 describe("scenarios > home > overworld", () => {
   beforeEach(restore);
@@ -10,7 +6,7 @@ describe("scenarios > home > overworld", () => {
   describe("content management", () => {
     describe("as admin", () => {
       beforeEach(() => {
-        signInAsAdmin();
+        cy.signInAsAdmin();
         cy.request("PUT", "api/setting/show-homepage-data", { value: true });
         cy.request("PUT", "api/setting/show-homepage-xrays", { value: true });
       });

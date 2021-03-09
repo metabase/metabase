@@ -1,15 +1,11 @@
-import {
-  restore,
-  signInAsAdmin,
-  signInAsNormalUser,
-} from "__support__/cypress";
+import { restore, signInAsNormalUser } from "__support__/cypress";
 
 describe("scenarios > auth > search", () => {
   beforeEach(restore);
 
   describe("universal search", () => {
     it("should work for admin", () => {
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
       cy.findByText("PRODUCTS");

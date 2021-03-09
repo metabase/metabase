@@ -1,6 +1,5 @@
 import {
   restore,
-  signInAsAdmin,
   signInAsNormalUser,
   setupLocalHostEmail,
   createBasicAlert,
@@ -13,11 +12,11 @@ import {
 describe.skip("scenarios > alert > auth for alerts", () => {
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // Setup email
     // NOTE: Must run `python -m smtpd -n -c DebuggingServer localhost:1025` before these tests
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.visit("/admin/settings/email");
     setupLocalHostEmail();
 
@@ -36,7 +35,7 @@ describe.skip("scenarios > alert > auth for alerts", () => {
   });
 
   describe("as an admin", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     it("should let you see all created alerts", () => {
       cy.request("/api/alert").then(response => {

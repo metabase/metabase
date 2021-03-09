@@ -1,9 +1,9 @@
-import { signInAsAdmin, restore, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/cypress";
 
 describe("scenarios > dashboard > nested cards", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should show fields on nested cards", () => {

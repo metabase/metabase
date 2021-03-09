@@ -1,6 +1,5 @@
 import {
   restore,
-  signInAsAdmin,
   openProductsTable,
   signInAsNormalUser,
   popover,
@@ -10,7 +9,7 @@ import {
 describe("metabase > scenarios > home > activity-page", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should show test startup activity ", () => {
@@ -46,7 +45,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     cy.get(".Card").should("have.length", 1);
 
     // See activity on activity page
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.visit("/activity");
 
     cy.findAllByText("joined!").should("have.length", 2);

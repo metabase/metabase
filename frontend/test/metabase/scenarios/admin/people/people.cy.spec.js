@@ -1,12 +1,7 @@
 // Includes migrations from integration tests:
 // https://github.com/metabase/metabase/pull/14174
 
-import {
-  signInAsAdmin,
-  restore,
-  popover,
-  setupDummySMTP,
-} from "__support__/cypress";
+import { restore, popover, setupDummySMTP } from "__support__/cypress";
 import { USERS, USER_GROUPS } from "__support__/cypress_data";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -14,7 +9,7 @@ const { DATA_GROUP } = USER_GROUPS;
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   const TEST_USER = {
