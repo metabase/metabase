@@ -1,5 +1,4 @@
 import {
-  signOut,
   restore,
   addPostgresDatabase,
   withDatabase,
@@ -64,7 +63,7 @@ describeWithToken("postgres > user > query", () => {
           },
         });
 
-        signOut();
+        cy.signOut();
         cy.signInAsSandboxedUser();
         cy.visit(`/question/${QUESTION_ID}`);
 

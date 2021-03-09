@@ -1,4 +1,4 @@
-import { signOut, restore, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -90,7 +90,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.request("POST", `/api/card/${questionId}/public_link`).then(
         res => (uuid = res.body.uuid),
       );
-      signOut();
+      cy.signOut();
     });
 
     sharedParametersTests(() => {
@@ -112,7 +112,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
         },
         enable_embedding: true,
       });
-      signOut();
+      cy.signOut();
     });
 
     sharedParametersTests(() => {
@@ -140,7 +140,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
         res => (uuid = res.body.uuid),
       );
-      signOut();
+      cy.signOut();
     });
 
     sharedParametersTests(() => {
@@ -162,7 +162,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
         },
         enable_embedding: true,
       });
-      signOut();
+      cy.signOut();
     });
 
     sharedParametersTests(() => {

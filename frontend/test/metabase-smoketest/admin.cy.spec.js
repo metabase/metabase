@@ -1,5 +1,5 @@
 import path from "path";
-import { restore, signOut, sidebar } from "__support__/cypress";
+import { restore, sidebar } from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
 
 const { admin } = USERS;
@@ -293,7 +293,7 @@ describe("metabase-smoketest > admin", () => {
       // == NEW USER ==
       // ==============
 
-      signOut();
+      cy.signOut();
       cy.get("@password").then(pass => {
         cy.visit("/");
         cy.findByLabelText("Email address").type(new_user.email);

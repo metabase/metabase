@@ -1,4 +1,4 @@
-import { browse, restore, signOut } from "__support__/cypress";
+import { browse, restore } from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
 
 const sizes = [[1280, 800], [640, 360]];
@@ -7,7 +7,7 @@ const { admin } = USERS;
 describe("scenarios > auth > signin", () => {
   beforeEach(() => {
     restore();
-    signOut();
+    cy.signOut();
   });
 
   it("should redirect to  /auth/login", () => {
@@ -59,7 +59,7 @@ describe("scenarios > auth > signin", () => {
     cy.contains("37.65");
 
     // signout and reload page with question hash in url
-    signOut();
+    cy.signOut();
     cy.reload();
 
     cy.contains("Sign in to Metabase");

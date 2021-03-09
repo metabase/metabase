@@ -1,4 +1,4 @@
-import { restore, signOut, describeWithToken } from "__support__/cypress";
+import { restore, describeWithToken } from "__support__/cypress";
 
 describeWithToken("scenarios > auth > signin > SSO", () => {
   beforeEach(() => {
@@ -12,7 +12,7 @@ describeWithToken("scenarios > auth > signin > SSO", () => {
     cy.request("PUT", "api/setting/enable-password-login", {
       value: false,
     });
-    signOut();
+    cy.signOut();
   });
 
   it("should show the SSO button without an option to use password", () => {

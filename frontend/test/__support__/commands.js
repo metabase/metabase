@@ -26,6 +26,11 @@ Cypress.Commands.add("signInAsSandboxedUser", () => {
   cy.signIn("sandboxed");
 });
 
+Cypress.Commands.add("signOut", () => {
+  cy.log("Signing out");
+  cy.clearCookie("metabase.SESSION");
+});
+
 Cypress.Commands.add("icon", icon_name => {
   cy.get(`.Icon-${icon_name}`);
 });

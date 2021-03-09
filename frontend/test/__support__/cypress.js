@@ -3,11 +3,6 @@ import "./commands";
 
 export const version = require("../../../version.json");
 
-export function signOut() {
-  cy.log("Signing out");
-  cy.clearCookie("metabase.SESSION");
-}
-
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }

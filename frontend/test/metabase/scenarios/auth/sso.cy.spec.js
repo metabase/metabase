@@ -1,4 +1,4 @@
-import { restore, signOut } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > auth > signin > SSO", () => {
   beforeEach(() => {
@@ -8,7 +8,7 @@ describe("scenarios > auth > signin > SSO", () => {
     cy.request("PUT", "/api/setting/google-auth-client-id", {
       value: "123",
     });
-    signOut();
+    cy.signOut();
   });
 
   it("should show SSO button", () => {

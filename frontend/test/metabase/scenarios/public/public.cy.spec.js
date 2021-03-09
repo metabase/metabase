@@ -1,4 +1,4 @@
-import { signOut, restore, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -12,7 +12,7 @@ const PUBLIC_URL_REGEX = /\/public\/(question|dashboard)\/[0-9a-f-]+$/;
 const USERS = {
   "admin user": () => cy.signInAsAdmin(),
   "user with no permissions": () => cy.signIn("none"),
-  "anonymous user": () => signOut(),
+  "anonymous user": () => cy.signOut(),
 };
 
 // [quarantine]: failing almost consistently in CI

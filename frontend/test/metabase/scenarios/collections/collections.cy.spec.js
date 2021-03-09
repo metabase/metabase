@@ -1,7 +1,6 @@
 import {
   restore,
   setupLocalHostEmail,
-  signOut,
   modal,
   popover,
   openOrdersTable,
@@ -339,7 +338,7 @@ describe("scenarios > collection_defaults", () => {
           });
         });
 
-        signOut();
+        cy.signOut();
         cy.signIn("nocollection");
       });
 

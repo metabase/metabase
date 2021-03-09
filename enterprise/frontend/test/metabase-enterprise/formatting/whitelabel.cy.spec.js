@@ -1,6 +1,5 @@
 import {
   restore,
-  signOut,
   openOrdersTable,
   describeWithToken,
 } from "__support__/cypress";
@@ -112,7 +111,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.findByText("Metabase is up and running.").should("not.exist");
 
       cy.log("New company should show up when logged out");
-      signOut();
+      cy.signOut();
       cy.visit("/");
       cy.findByText(`Sign in to ${COMPANY_NAME}`);
 
@@ -142,7 +141,7 @@ describeWithToken("formatting > whitelabel", () => {
     });
 
     it("should reflect color changes", () => {
-      signOut();
+      cy.signOut();
       cy.visit("/");
 
       // Note that if we have modified the logo, the entire background turns the brand color.
@@ -223,7 +222,7 @@ describeWithToken("formatting > whitelabel", () => {
     });
 
     it("changes should reflect while signed out", () => {
-      signOut();
+      cy.signOut();
       cy.visit("/");
       checkLogo();
     });
