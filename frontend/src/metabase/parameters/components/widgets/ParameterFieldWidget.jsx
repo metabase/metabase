@@ -12,6 +12,9 @@ import Field from "metabase-lib/lib/metadata/Field";
 
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
+import type { FilterOperator } from "metabase-types/types/Metadata";
+import cx from "classnames";
+import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 type Props = {
   value: any,
@@ -20,6 +23,7 @@ type Props = {
   isEditing: boolean,
 
   fields: Field[],
+  operator: FilterOperator,
   parentFocusChanged: boolean => void,
 
   dashboard?: DashboardWithCards,
@@ -91,8 +95,17 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   }
 
   render() {
-    const { setValue, isEditing, fields, parentFocusChanged } = this.props;
-    const { isFocused } = this.state;
+    const {
+      setValue,
+      isEditing,
+      fields,
+      parentFocusChanged,
+      operator,
+      parameter,
+      parameters,
+      dashboard,
+    } = this.props;
+    const { isFocused, widgetWidth } = this.state;
 
     const savedValue = normalizeValue(this.props.value);
     const unsavedValue = normalizeValue(this.state.value);
@@ -127,6 +140,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
         </div>
       );
     } else {
+      const operatorFields = operator.fields || [];
       return (
         <Popover
           horizontalAttachments={["left", "right"]}
@@ -138,42 +152,67 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           hasArrow={false}
           onClose={() => focusChanged(false)}
         >
-          <FieldValuesWidget
-            value={unsavedValue}
-            parameter={this.props.parameter}
-            parameters={this.props.parameters}
-            dashboard={this.props.dashboard}
-            onChange={value => {
-              this.setState({ value });
-            }}
-            placeholder={placeholder}
-            fields={fields}
-            multi
-            autoFocus
-            color="brand"
-            style={{
-              borderWidth: BORDER_WIDTH,
-              minWidth: this.state.widgetWidth
-                ? this.state.widgetWidth + BORDER_WIDTH * 2
-                : null,
-            }}
-            className="border-bottom"
-            minWidth={400}
-            maxWidth={400}
-          />
-          {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
-          <div className="flex p1">
-            <Button
-              primary
-              className="ml-auto"
-              disabled={savedValue.length === 0 && unsavedValue.length === 0}
-              onClick={() => {
-                setValue(unsavedValue.length > 0 ? unsavedValue : null);
-                focusChanged(false);
-              }}
-            >
-              {savedValue.length > 0 ? "Update filter" : "Add filter"}
-            </Button>
+          <div className="p2">
+            <div className="text-bold mb1">{operator.verboseName}...</div>
+
+            {operatorFields.map((operatorField, index) => {
+              const value = operator.multi
+                ? unsavedValue
+                : [unsavedValue[index]];
+              const onValueChange = operator.multi
+                ? newValues => this.setState({ value: newValues })
+                : ([value]) => {
+                    const newValues = [...unsavedValue];
+                    newValues[index] = value;
+                    this.setState({ value: newValues });
+                  };
+              return (
+                <FieldValuesWidget
+                  key={index}
+                  className={cx(
+                    "input",
+                    operatorFields.length - 1 !== index && "mb1",
+                  )}
+                  value={value}
+                  parameter={parameter}
+                  parameters={parameters}
+                  dashboard={dashboard}
+                  onChange={onValueChange}
+                  placeholder={placeholder}
+                  fields={fields}
+                  multi={operator.multi}
+                  alwaysShowOptions={operator.fields.length === 1}
+                  autoFocus={index === 0}
+                  color="brand"
+                  formatOptions={getFilterArgumentFormatOptions(
+                    operator,
+                    index,
+                  )}
+                  style={{
+                    borderWidth: BORDER_WIDTH,
+                    minWidth: widgetWidth
+                      ? widgetWidth + BORDER_WIDTH * 2
+                      : null,
+                  }}
+                  minWidth={300}
+                  maxWidth={400}
+                />
+              );
+            })}
+            {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
+            <div className="flex mt1">
+              <Button
+                primary
+                className="ml-auto"
+                disabled={savedValue.length === 0 && unsavedValue.length === 0}
+                onClick={() => {
+                  setValue(unsavedValue.length > 0 ? unsavedValue : null);
+                  focusChanged(false);
+                }}
+              >
+                {savedValue.length > 0 ? "Update filter" : "Add filter"}
+              </Button>
+            </div>
           </div>
         </Popover>
       );

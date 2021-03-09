@@ -251,6 +251,8 @@ function Widget({
 }) {
   const DateWidget = DATE_WIDGETS[parameter.type];
   const fields = getFields(metadata, parameter);
+  const operator = getFieldOperator(parameter.type, fields);
+
   if (DateWidget) {
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
@@ -269,6 +271,7 @@ function Widget({
         isEditing={isEditing}
         commitImmediately={commitImmediately}
         focusChanged={onFocusChanged}
+        operator={operator}
       />
     );
   } else {
@@ -290,6 +293,16 @@ Widget.propTypes = {
   onPopoverClose: PropTypes.func.isRequired,
   onFocusChanged: PropTypes.func.isRequired,
 };
+
+function getFieldOperator(parameterType, fields) {
+  const [, operatorType] = parameterType.split("/");
+  const [field] = fields;
+  const operators = field ? field.filterOperators() : [];
+  return (
+    _.findWhere(operators, { name: operatorType }) ||
+    _.findWhere(operators, { name: "=" })
+  );
+}
 
 function getWidgetDefinition(metadata, parameter) {
   if (DATE_WIDGETS[parameter.type]) {
