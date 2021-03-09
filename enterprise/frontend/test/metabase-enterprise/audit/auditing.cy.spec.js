@@ -39,9 +39,7 @@ function generateQuestions(user) {
 }
 
 function generateDashboards(user) {
-  cy.request("POST", "/api/dashboard", {
-    name: `${user} dashboard`,
-  });
+  cy.createDashboard(`${user} dashboard`);
 }
 
 describeWithToken("audit > auditing", () => {

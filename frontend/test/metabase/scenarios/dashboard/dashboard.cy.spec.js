@@ -141,10 +141,7 @@ describe("scenarios > dashboard", () => {
       visualization_settings: {},
     });
 
-    // create a dashboard
-    cy.request("POST", "/api/dashboard", {
-      name: "dash:11007",
-    });
+    cy.createDashboard("dash:11007");
 
     cy.visit("/collection/root");
     // enter newly created dashboard
@@ -201,10 +198,7 @@ describe("scenarios > dashboard", () => {
       display: "map",
       visualization_settings: {},
     }).then(({ body: { id: questionId } }) => {
-      // 2. create a dashboard
-      cy.request("POST", "/api/dashboard", {
-        name: "13597D",
-      }).then(({ body: { id: dashboardId } }) => {
+      cy.createDashboard("13597D").then(({ body: { id: dashboardId } }) => {
         // add filter (ID) to the dashboard
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           parameters: [
@@ -280,11 +274,7 @@ describe("scenarios > dashboard", () => {
       display: "table",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("Create a dashboard");
-
-      cy.request("POST", "/api/dashboard", {
-        name: "14473D",
-      }).then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard("14473D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add 4 filters to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
@@ -518,11 +508,7 @@ describe("scenarios > dashboard", () => {
       display: "table",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("Create a dashboard");
-
-      cy.request("POST", "/api/dashboard", {
-        name: "13150D",
-      }).then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard("13150D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add 3 filters to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
