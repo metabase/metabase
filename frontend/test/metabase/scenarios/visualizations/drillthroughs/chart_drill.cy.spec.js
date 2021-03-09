@@ -1,14 +1,11 @@
 import {
-  signInAsAdmin,
-  signInAsNormalUser,
   restore,
   openProductsTable,
   openOrdersTable,
   popover,
   sidebar,
-  USER_GROUPS,
 } from "__support__/cypress";
-
+import { USER_GROUPS } from "__support__/cypress_data";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
@@ -17,7 +14,7 @@ const { DATA_GROUP } = USER_GROUPS;
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should allow brush date filter", () => {
@@ -349,7 +346,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.route("POST", "/api/dataset").as("dataset");
 
         // Switch to the normal user who has restricted SQL access
-        signInAsNormalUser();
+        cy.signInAsNormalUser();
         cy.visit(`/question/${QUESTION_ID}`);
 
         // Initial visualization has rendered and we can now drill-through

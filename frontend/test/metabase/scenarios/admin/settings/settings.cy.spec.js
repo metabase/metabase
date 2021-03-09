@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   openOrdersTable,
   version,
@@ -11,7 +10,7 @@ import {
 describe("scenarios > admin > settings", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   itOpenSourceOnly(

@@ -1,15 +1,9 @@
-import {
-  restore,
-  signInAsNormalUser,
-  popover,
-  modal,
-  openOrdersTable,
-} from "__support__/cypress";
+import { restore, popover, modal, openOrdersTable } from "__support__/cypress";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {

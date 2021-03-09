@@ -3,12 +3,8 @@ import {
   popover,
   restore,
   setupLocalHostEmail,
-  signIn,
-  signInAsAdmin,
-  signInAsNormalUser,
-  signOut,
-  USERS,
 } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 
 const { admin, normal, nocollection, nodata } = USERS;
 const new_user = {
@@ -21,7 +17,7 @@ describe("smoketest > admin_setup", () => {
   before(restore);
 
   describe("successful setup by admin", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     it("should add a new database", () => {
       // *** Need faux databases to hook up to
@@ -250,14 +246,14 @@ describe("smoketest > admin_setup", () => {
 
   describe("data model changes by admin reflected with user", () => {
     beforeEach(() => {
-      signOut();
-      signInAsAdmin();
+      cy.signOut();
+      cy.signInAsAdmin();
     });
 
     it("should check table and question names as user", () => {
       // Log out as admin and sign in as user
-      signOut();
-      signInAsNormalUser();
+      cy.signOut();
+      cy.signInAsNormalUser();
       cy.visit("/");
 
       // Check names
@@ -528,8 +524,8 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should see changes to visibility, formatting, and foreign key mapping as user", () => {
-      signOut();
-      signInAsNormalUser();
+      cy.signOut();
+      cy.signInAsNormalUser();
       cy.visit("/");
 
       // Check table names and visibility
@@ -583,7 +579,7 @@ describe("smoketest > admin_setup", () => {
   });
 
   describe("permission changes reflected", () => {
-    beforeEach(signInAsNormalUser);
+    beforeEach(cy.signInAsNormalUser);
 
     it("should check current permissions as users", () => {
       // Access to all tables as user
@@ -599,8 +595,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Native query");
 
       // Cannot see Review table as no collection user
-      signOut();
-      signIn("nocollection");
+      cy.signOut();
+      cy.signIn("nocollection");
       cy.visit("/");
 
       cy.wait(2000).findByText("Try these x-rays based on your data.");
@@ -616,8 +612,8 @@ describe("smoketest > admin_setup", () => {
     it("should modify user permissions for data access and SQL queries, both on a database/schema level as well as at a table level as admin", () => {
       // *** Need multible databases to test their permissions.
 
-      signOut();
-      signInAsAdmin();
+      cy.signOut();
+      cy.signInAsAdmin();
       cy.visit("/");
 
       cy.icon("gear").click();
@@ -686,8 +682,8 @@ describe("smoketest > admin_setup", () => {
     it.skip("should add sub-collection and change its permissions as admin", () => {
       const subCollectionName = "test sub-collection";
 
-      signOut();
-      signInAsAdmin();
+      cy.signOut();
+      cy.signInAsAdmin();
 
       cy.visit("/collection/root");
 
@@ -739,8 +735,8 @@ describe("smoketest > admin_setup", () => {
     });
 
     it.skip("should modify Collection permissions for top-level collections and sub-collections as admin", () => {
-      signOut();
-      signInAsAdmin();
+      cy.signOut();
+      cy.signInAsAdmin();
       cy.visit("/admin/permissions/databases");
 
       // Modify permissions for top-level collection
@@ -796,8 +792,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Simple question");
       cy.findByText("Native query").should("not.exist");
 
-      signOut();
-      signIn("nocollection");
+      cy.signOut();
+      cy.signIn("nocollection");
       cy.visit("/");
 
       // No collection user sees Test Table and People table
@@ -839,8 +835,8 @@ describe("smoketest > admin_setup", () => {
       // Normal user should not see changes that no collection user made
       // *** Problem: Normal user still sees these changes
 
-      signOut();
-      signInAsNormalUser();
+      cy.signOut();
+      cy.signInAsNormalUser();
       cy.visit("/question/1");
 
       // cy.findByText("Product ID");
@@ -913,7 +909,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check access as no collection user
 
-      signIn("nocollection");
+      cy.signIn("nocollection");
       cy.visit("/");
 
       cy.findByText("test sub-collection").should("not.exist");
@@ -928,7 +924,7 @@ describe("smoketest > admin_setup", () => {
 
     it.skip("should be unable to access question with URL (if access not permitted)", () => {
       // This test will fail whenever the previous test fails
-      signIn("nocollection");
+      cy.signIn("nocollection");
 
       cy.visit("/question/4");
       cy.contains("sub-collection question").should("not.exist");
@@ -938,8 +934,8 @@ describe("smoketest > admin_setup", () => {
     it("should deactivate a user admin and subsequently user should be unable to login", () => {
       // Admin deactiviates user
 
-      signOut();
-      signInAsAdmin();
+      cy.signOut();
+      cy.signInAsAdmin();
       cy.visit("/admin/settings/setup");
 
       cy.findByText("People").click();
@@ -959,7 +955,7 @@ describe("smoketest > admin_setup", () => {
 
       // User tries to log in
 
-      signOut();
+      cy.signOut();
       cy.visit("/");
       cy.findByLabelText("Email address").type(normal.email);
       cy.findByLabelText("Password").type(normal.password);

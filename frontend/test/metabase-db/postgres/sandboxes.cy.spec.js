@@ -1,14 +1,10 @@
 import {
-  signInAsAdmin,
-  signOut,
   restore,
   addPostgresDatabase,
   withDatabase,
-  USER_GROUPS,
   describeWithToken,
-  createUser,
-  signInAsSandboxedUser,
 } from "__support__/cypress";
+import { USER_GROUPS } from "__support__/cypress_data";
 
 const PG_DB_NAME = "QA Postgres12";
 const PG_DB_ID = 2;
@@ -18,9 +14,9 @@ const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 describeWithToken("postgres > user > query", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
-    createUser("sandboxed");
+    cy.createUser("sandboxed");
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -67,8 +63,8 @@ describeWithToken("postgres > user > query", () => {
           },
         });
 
-        signOut();
-        signInAsSandboxedUser();
+        cy.signOut();
+        cy.signInAsSandboxedUser();
         cy.visit(`/question/${QUESTION_ID}`);
 
         cy.wait("@cardQuery").then(xhr => {

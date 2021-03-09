@@ -1,6 +1,4 @@
 import {
-  signIn,
-  signInAsAdmin,
   restore,
   visitQuestionAdhoc,
   getIframeBody,
@@ -30,7 +28,7 @@ const TEST_CASES = [
 describe("scenarios > visualizations > pivot tables", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should be created from an ad-hoc question", () => {
@@ -692,7 +690,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       display: "pivot",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      signIn("nodata");
+      cy.signIn("nodata");
       cy.visit(`/question/${QUESTION_ID}`);
     });
 

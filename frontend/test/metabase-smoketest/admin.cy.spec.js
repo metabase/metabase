@@ -1,11 +1,6 @@
 import path from "path";
-import {
-  USERS,
-  restore,
-  signInAsAdmin,
-  signOut,
-  sidebar,
-} from "__support__/cypress";
+import { restore, sidebar } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 
 const { admin } = USERS;
 const new_user = {
@@ -81,7 +76,7 @@ describe("metabase-smoketest > admin", () => {
   });
 
   describe("Admin has basic functionality", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     it.skip("should add a simple summarized question as admin", () => {
       cy.visit("/");
@@ -298,7 +293,7 @@ describe("metabase-smoketest > admin", () => {
       // == NEW USER ==
       // ==============
 
-      signOut();
+      cy.signOut();
       cy.get("@password").then(pass => {
         cy.visit("/");
         cy.findByLabelText("Email address").type(new_user.email);
