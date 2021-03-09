@@ -110,16 +110,16 @@
   x)
 
 (defmethod ->rvalue (class Field)
-  [{semantic-type :semantic_type, :as field}]
+  [{coercion :coercion_strategy, :as field}]
   (let [field-name (str \$ (field->name field "."))]
     (cond
-      (isa? semantic-type :type/UNIXTimestampMicroseconds)
+      (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970}}
 
-      (isa? semantic-type :type/UNIXTimestampMilliseconds)
+      (isa? coercion :Coercion/UNIXMilliSeconds->DateTime)
       {:$dateFromParts {:millisecond field-name, :year 1970}}
 
-      (isa? semantic-type :type/UNIXTimestampSeconds)
+      (isa? coercion :Coercion/UNIXSeconds->DateTime)
       {:$dateFromParts {:second field-name, :year 1970}}
 
       :else field-name)))
