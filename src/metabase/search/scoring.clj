@@ -62,6 +62,18 @@
           (count search-tokens)))
        fs))
 
+(defn- tokens->string
+  [tokens abbreviate?]
+  (let [->string (partial str/join " ")
+        context  search-config/surrounding-match-context]
+    (if (or (not abbreviate?)
+            (<= (count tokens) (* 2 context)))
+      (->string tokens)
+      (str
+       (->string (take context tokens))
+       "…"
+       (->string (take-last context tokens))))))
+
 (defn- match-context
   "Breaks the matched-text into match/no-match chunks and returns a seq of them in order. Each chunk is a map with keys
   `is_match` (true/false) and `text`"
@@ -71,10 +83,11 @@
               {:text match-token
                :is_match (boolean (some #(matches? % match-token) query-tokens))}))
        (partition-by :is_match)
-       (map (fn [matches-or-misses-map]
-              {:is_match (:is_match (first matches-or-misses-map))
-               :text     (str/join " "
-                                   (map :text matches-or-misses-map))}))))
+       (map (fn [matches-or-misses-maps]
+              (let [is-match    (:is_match (first matches-or-misses-maps))
+                    text-tokens (map :text matches-or-misses-maps)]
+                {:is_match is-match
+                 :text     (tokens->string text-tokens (not is-match))})))))
 
 (def ^:const text-score-max
   "The maximum text score that could be achieved without normalization. This value is then used to normalize it down to the interval [0, 1]"
