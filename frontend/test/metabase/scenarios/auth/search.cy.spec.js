@@ -2,7 +2,6 @@ import {
   restore,
   signInAsAdmin,
   signInAsNormalUser,
-  signIn,
 } from "__support__/cypress";
 
 describe("scenarios > auth > search", () => {
@@ -24,7 +23,7 @@ describe("scenarios > auth > search", () => {
     });
 
     it("should not work for user without permissions", () => {
-      signIn("nodata");
+      cy.signIn("nodata");
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
       cy.findByText("PRODUCTS").should("not.exist");

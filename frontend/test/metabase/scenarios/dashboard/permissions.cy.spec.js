@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { assoc } from "icepick";
-import { signInAsAdmin, signIn, restore } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
@@ -104,7 +104,7 @@ describe("scenarios > dashboard > permissions", () => {
   });
 
   it("should display dashboards with some cards locked down", () => {
-    signIn("nodata");
+    cy.signIn("nodata");
     cy.visit(`/dashboard/${dashboardId}`);
     cy.findByText("Sorry, you don't have permission to see this card.");
     cy.findByText("Second Question");
@@ -112,7 +112,7 @@ describe("scenarios > dashboard > permissions", () => {
   });
 
   it("should display an error if they don't have perms for the dashboard", () => {
-    signIn("nocollection");
+    cy.signIn("nocollection");
     cy.visit(`/dashboard/${dashboardId}`);
     cy.findByText("Sorry, you don’t have permission to see that.");
   });

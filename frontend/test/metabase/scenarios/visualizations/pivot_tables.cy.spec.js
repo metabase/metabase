@@ -1,5 +1,4 @@
 import {
-  signIn,
   signInAsAdmin,
   restore,
   visitQuestionAdhoc,
@@ -692,7 +691,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       display: "pivot",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      signIn("nodata");
+      cy.signIn("nodata");
       cy.visit(`/question/${QUESTION_ID}`);
     });
 

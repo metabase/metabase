@@ -3,7 +3,6 @@ import {
   signInAsAdmin,
   setupLocalHostEmail,
   signInAsNormalUser,
-  signIn,
   signOut,
   modal,
   popover,
@@ -343,7 +342,7 @@ describe("scenarios > collection_defaults", () => {
         });
 
         signOut();
-        signIn("nocollection");
+        cy.signIn("nocollection");
       });
 
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {

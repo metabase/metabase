@@ -1,4 +1,4 @@
-import { signIn, restore, popover } from "__support__/cypress";
+import { signInAsAdmin, restore, popover } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PEOPLE } = SAMPLE_DATASET;
@@ -110,7 +110,7 @@ function createDashboard({ dashboardName, questionId }, callback) {
 describe("scenarios > dashboard > chained filter", () => {
   beforeEach(() => {
     restore();
-    signIn();
+    signInAsAdmin();
   });
 
   for (const has_field_values of ["search", "list"]) {

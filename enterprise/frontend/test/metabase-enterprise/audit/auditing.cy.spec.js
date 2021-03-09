@@ -1,9 +1,4 @@
-import {
-  restore,
-  signIn,
-  signInAsAdmin,
-  describeWithToken,
-} from "__support__/cypress";
+import { restore, signInAsAdmin, describeWithToken } from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
 import _ from "underscore";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -46,7 +41,7 @@ describeWithToken("audit > auditing", () => {
   before(() => {
     restore();
     ["admin", "normal"].forEach(user => {
-      signIn(user);
+      cy.signIn(user);
       generateQuestions(user);
       generateDashboards(user);
     });
@@ -56,7 +51,7 @@ describeWithToken("audit > auditing", () => {
     cy.icon("download").click();
     cy.request("POST", "/api/card/1/query/json");
 
-    signIn("nodata");
+    cy.signIn("nodata");
 
     cy.log("View normal user's dashboard");
     cy.visit("/collection/root?type=dashboard");

@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore, signIn } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
@@ -42,7 +42,7 @@ describe("scenarios > question > native subquery", () => {
       });
 
     // Now sign in as a user w/no data access
-    signIn("nodata");
+    cy.signIn("nodata");
 
     // They should be able to access both questions
     cy.get("@nestedQuestionId").then(nestedQuestionId => {

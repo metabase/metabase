@@ -8,6 +8,12 @@ Cypress.Commands.add("createUser", user => {
   });
 });
 
+Cypress.Commands.add("signIn", (user = "admin") => {
+  const { email: username, password } = USERS[user];
+  cy.log(`Logging in as ${user}`);
+  cy.request("POST", "/api/session", { username, password });
+});
+
 Cypress.Commands.add("icon", icon_name => {
   cy.get(`.Icon-${icon_name}`);
 });

@@ -3,7 +3,6 @@ import {
   popover,
   restore,
   setupLocalHostEmail,
-  signIn,
   signInAsAdmin,
   signInAsNormalUser,
   signOut,
@@ -600,7 +599,7 @@ describe("smoketest > admin_setup", () => {
 
       // Cannot see Review table as no collection user
       signOut();
-      signIn("nocollection");
+      cy.signIn("nocollection");
       cy.visit("/");
 
       cy.wait(2000).findByText("Try these x-rays based on your data.");
@@ -797,7 +796,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Native query").should("not.exist");
 
       signOut();
-      signIn("nocollection");
+      cy.signIn("nocollection");
       cy.visit("/");
 
       // No collection user sees Test Table and People table
@@ -913,7 +912,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check access as no collection user
 
-      signIn("nocollection");
+      cy.signIn("nocollection");
       cy.visit("/");
 
       cy.findByText("test sub-collection").should("not.exist");
@@ -928,7 +927,7 @@ describe("smoketest > admin_setup", () => {
 
     it.skip("should be unable to access question with URL (if access not permitted)", () => {
       // This test will fail whenever the previous test fails
-      signIn("nocollection");
+      cy.signIn("nocollection");
 
       cy.visit("/question/4");
       cy.contains("sub-collection question").should("not.exist");

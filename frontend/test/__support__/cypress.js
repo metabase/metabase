@@ -1,14 +1,7 @@
-import { USERS } from "__support__/cypress_data";
 import "@testing-library/cypress/add-commands";
 import "./commands";
 
 export const version = require("../../../version.json");
-
-export function signIn(user = "admin") {
-  const { email: username, password } = USERS[user];
-  cy.log(`Logging in as ${user}`);
-  cy.request("POST", "/api/session", { username, password });
-}
 
 export function signOut() {
   cy.log("Signing out");
@@ -16,15 +9,15 @@ export function signOut() {
 }
 
 export function signInAsAdmin() {
-  signIn("admin");
+  cy.signIn("admin");
 }
 
 export function signInAsNormalUser() {
-  signIn("normal");
+  cy.signIn("normal");
 }
 
 export function signInAsSandboxedUser() {
-  signIn("sandboxed");
+  cy.signIn("sandboxed");
 }
 
 export function snapshot(name) {

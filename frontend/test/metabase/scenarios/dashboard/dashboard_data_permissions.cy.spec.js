@@ -1,5 +1,5 @@
 import {
-  signIn,
+  signInAsAdmin,
   restore,
   popover,
   selectDashboardFilter,
@@ -27,7 +27,7 @@ function filterDashboard(suggests = true) {
 describe("support > permissions (metabase#8472)", () => {
   beforeEach(() => {
     restore();
-    signIn("admin");
+    signInAsAdmin();
 
     // Setup a dashboard with a text filter
     cy.visit("/dashboard/1");
@@ -58,7 +58,7 @@ describe("support > permissions (metabase#8472)", () => {
       "/api/dashboard/1/params/*/search/Aerodynamic Bronze Hat",
     ).as("search");
 
-    signIn("nodata");
+    cy.signIn("nodata");
     filterDashboard(false);
   });
 });

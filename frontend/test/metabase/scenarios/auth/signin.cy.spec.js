@@ -1,4 +1,4 @@
-import { browse, restore, signIn, signOut } from "__support__/cypress";
+import { browse, restore, signInAsAdmin, signOut } from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
 
 const sizes = [[1280, 800], [640, 360]];
@@ -50,7 +50,7 @@ describe("scenarios > auth > signin", () => {
   });
 
   it("should redirect to a unsaved question after login", () => {
-    signIn();
+    signInAsAdmin();
     cy.visit("/");
     // Browse data moved to an icon
     browse().click();

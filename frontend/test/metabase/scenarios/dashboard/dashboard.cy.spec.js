@@ -3,7 +3,6 @@
 import {
   popover,
   restore,
-  signIn,
   signInAsAdmin,
   selectDashboardFilter,
   expectedRouteCalls,
@@ -393,7 +392,7 @@ describe("scenarios > dashboard", () => {
     cy.server();
     cy.route("POST", "/api/card/*/query").as("cardQuery");
 
-    signIn("nodata");
+    cy.signIn("nodata");
 
     clickThrough("12720_SQL");
     clickThrough("Orders");

@@ -1,6 +1,5 @@
 import {
   signInAsAdmin,
-  signIn,
   signOut,
   restore,
   popover,
@@ -18,7 +17,7 @@ const PUBLIC_URL_REGEX = /\/public\/(question|dashboard)\/[0-9a-f-]+$/;
 
 const USERS = {
   "admin user": () => signInAsAdmin(),
-  "user with no permissions": () => signIn("none"),
+  "user with no permissions": () => cy.signIn("none"),
   "anonymous user": () => signOut(),
 };
 
