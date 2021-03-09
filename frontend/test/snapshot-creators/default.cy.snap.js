@@ -59,8 +59,16 @@ describe("snapshots", () => {
 
   function addUsersAndGroups() {
     // groups
-    cy.request("POST", "/api/permissions/group", { name: "collection" }); // 4
-    cy.request("POST", "/api/permissions/group", { name: "data" }); // 5
+    cy.request("POST", "/api/permissions/group", { name: "collection" }).then(
+      ({ body }) => {
+        expect(body.id).to.eq(COLLECTION_GROUP); // 4
+      },
+    );
+    cy.request("POST", "/api/permissions/group", { name: "data" }).then(
+      ({ body }) => {
+        expect(body.id).to.eq(DATA_GROUP); // 5
+      },
+    );
 
     // additional users
     cy.createUser("normal");
