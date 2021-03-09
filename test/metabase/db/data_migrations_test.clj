@@ -287,93 +287,92 @@
       (let [dash {"column_settings"
                   {"[\"ref\",[\"field-id\",4]]"
                    {"view_as"       "link"
-                    "link_template" "http://old"  ;; this stuff could be migrated
+                    "link_template" "http://old" ;; this stuff could be migrated
                     "link_text"     "old"
                     "column_title"  "column title"
                     "click_behavior"
-                    {"type" "link",
-                     "linkType" "url",            ;; but there is already a new style and it wins
-                     "linkTemplate" "http://new",
+                    {"type"             "link",
+                     "linkType"         "url", ;; but there is already a new style and it wins
+                     "linkTemplate"     "http://new",
                      "linkTextTemplate" "new"}}}}]
-        (is (= {"column_settings"
-                {"[\"ref\",[\"field-id\",4]]"
-                 {"click_behavior"
-                  {"type" "link",
-                   "linkType" "url",
-                   "linkTemplate" "http://new",
-                   "linkTextTemplate" "new"},
-                  "column_title" "column title"}}}
-               (migrate nil dash)))))
+        ;; no change
+        (is (nil? (migrate nil dash)))))
     (testing "flamber case"
       (let [card {"column_settings"
                   {"[\"ref\",[\"field-id\",4]]"
-                   {"view_as" "link"
+                   {"view_as"       "link"
                     "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
-                    "link_text" "MyQCDT {{CATEGORY}}"
-                    "column_title" "QCDT Category"}
+                    "link_text"     "MyQCDT {{CATEGORY}}"
+                    "column_title"  "QCDT Category"}
                    "[\"ref\",[\"field-id\",6]]"
-                   {"view_as" "link"
-                    "column_title" "QCDT Rating"
-                    "link_text" "Rating {{RATING}}"
+                   {"view_as"       "link"
+                    "column_title"  "QCDT Rating"
+                    "link_text"     "Rating {{RATING}}"
                     "link_template" "http//localhost/?QCDT&{{RATING}}"
-                    "prefix" "prefix-"
-                    "suffix" "-suffix"}
+                    "prefix"        "prefix-"
+                    "suffix"        "-suffix"}
                    "[\"ref\",[\"field-id\",5]]"
-                   {"view_as" nil
-                    "link_text" "QCDT was disabled"
+                   {"view_as"       nil
+                    "link_text"     "QCDT was disabled"
                     "link_template" "http//localhost/?QCDT&{{TITLE}}"
-                    "column_title" "(QCDT disabled) Title"}}
+                    "column_title"  "(QCDT disabled) Title"}}
                   "table.pivot_column" "CATEGORY"
-                  "table.cell_column""PRICE"}
-            dash {"table.cell_column" "PRICE"
+                  "table.cell_column"  "PRICE"}
+            dash {"table.cell_column"  "PRICE"
                   "table.pivot_column" "CATEGORY"
                   "column_settings"
                   {"[\"ref\",[\"field-id\",5]]"
-                   {"view_as" nil
-                    "link_text" "QCDT was disabled"
+                   {"view_as"       nil
+                    "link_text"     "QCDT was disabled"
                     "link_template" "http//localhost/?QCDT&{{TITLE}}"
-                    "column_title" "(QCDT disabled) Title"}
+                    "column_title"  "(QCDT disabled) Title"}
                    "[\"ref\",[\"field-id\",4]]"
-                   {"view_as" "link"
+                   {"view_as"       "link"
                     "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
-                    "link_text" "MyQCDT {{CATEGORY}}"
-                    "column_title" "QCDT Category"
+                    "link_text"     "MyQCDT {{CATEGORY}}"
+                    "column_title"  "QCDT Category"
                     "click_behavior"
-                    {"type" "link"
-                     "linkType" "url"
-                     "linkTemplate" "http//localhost/?CB&{{CATEGORY}}"
+                    {"type"             "link"
+                     "linkType"         "url"
+                     "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
                      "linkTextTemplate" "MyCB {{CATEGORY}}"}}
                    "[\"ref\",[\"field-id\",6]]"
-                   {"view_as" "link"
-                    "column_title" "QCDT Rating"
-                    "link_text" "Rating {{RATING}}"
+                   {"view_as"       "link"
+                    "column_title"  "QCDT Rating"
+                    "link_text"     "Rating {{RATING}}"
                     "link_template" "http//localhost/?QCDT&{{RATING}}"
-                    "prefix" "prefix-"
-                    "suffix" "-suffix"}}
-                  "card.title" "Table with QCDT - MANUALLY ADDED CB 37"}]
-        (is (= {"card.title" "Table with QCDT - MANUALLY ADDED CB 37"
+                    "prefix"        "prefix-"
+                    "suffix"        "-suffix"}}
+                  "card.title"         "Table with QCDT - MANUALLY ADDED CB 37"}]
+        (is (= {"card.title"         "Table with QCDT - MANUALLY ADDED CB 37"
                 "column_settings"
                 {"[\"ref\",[\"field-id\",4]]"
-                 {"column_title" "QCDT Category"
+                 {"column_title"  "QCDT Category"
+                  "view_as"       "link"
+                  "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                  "link_text"     "MyQCDT {{CATEGORY}}"
                   "click_behavior"
-                  {"type" "link"
-                   "linkType" "url"
-                   "linkTemplate" "http//localhost/?CB&{{CATEGORY}}"
+                  {"type"             "link"
+                   "linkType"         "url"
+                   "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
                    "linkTextTemplate" "MyCB {{CATEGORY}}"}}
                  "[\"ref\",[\"field-id\",5]]"
-                 {"link_text" "QCDT was disabled"
-                  "column_title" "(QCDT disabled) Title"
+                 {"link_text"     "QCDT was disabled"
+                  "column_title"  "(QCDT disabled) Title"
                   "link_template" "http//localhost/?QCDT&{{TITLE}}"}
                  "[\"ref\",[\"field-id\",6]]"
-                 {"prefix" "prefix-"
-                  "suffix" "-suffix"
-                  "column_title" "QCDT Rating"
+                 {"prefix"        "prefix-"
+                  "suffix"        "-suffix"
+                  "column_title"  "QCDT Rating"
+                  "view_as"       "link"
+                  "link_text"     "Rating {{RATING}}"
+                  "link_template" "http//localhost/?QCDT&{{RATING}}"
                   "click_behavior"
-                  {"type" "link"
-                   "linkType" "url"
-                   "linkTemplate" "http//localhost/?QCDT&{{RATING}}"
+                  {"type"             "link"
+                   "linkType"         "url"
+                   "linkTemplate"     "http//localhost/?QCDT&{{RATING}}"
                    "linkTextTemplate" "Rating {{RATING}}"}}}
-                "table.cell_column" "PRICE"
+                "table.cell_column"  "PRICE"
                 "table.pivot_column" "CATEGORY"}
                (migrate card dash))))))
   (testing "general case"
@@ -403,8 +402,10 @@
                                                                  :dashcard_visualization original-dashcard-vis})]
       (is (= {:id 1,
               :visualization_settings
-              {"graph.dimensions" ["CREATED_AT" "CATEGORY"],
-               "graph.metrics"    ["count"],
+              {"graph.dimensions"    ["CREATED_AT" "CATEGORY"],
+               "graph.metrics"       ["count"],
+               "click"               "link",
+               "click_link_template" "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
                "click_behavior"
                {"type"         "link",
                 "linkType"     "url",

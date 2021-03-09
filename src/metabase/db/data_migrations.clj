@@ -369,14 +369,12 @@
                              (u/select-non-nil-keys ["column_settings" "click_behavior"])))
         fix-top-level  (fn [toplevel]
                          (if (= (get toplevel "click") "link")
-                           (merge
-                            ;; remove old shape
-                            (dissoc toplevel "click" "click_link_template")
-                            ;; add new shape top level
-                            {"click_behavior"
-                             {"type"         (get toplevel "click")
-                              "linkType"     "url"
-                              "linkTemplate" (get toplevel "click_link_template")}})
+                           (assoc toplevel
+                                  ;; add new shape top level
+                                  "click_behavior"
+                                  {"type"         (get toplevel "click")
+                                   "linkType"     "url"
+                                   "linkTemplate" (get toplevel "click_link_template")})
                            toplevel))
         fix-cols       (fn [column-settings]
                          (reduce-kv
@@ -387,24 +385,21 @@
                                    (if (and (= (get field-settings "view_as") "link")
                                             (contains? field-settings "link_template"))
                                      ;; remove old shape and add new shape under click_behavior
-                                     (merge (dissoc field-settings
-                                                    "view_as"
-                                                    "link_template"
-                                                    "link_text")
-                                            {"click_behavior"
-                                             {"type"             (get field-settings "view_as")
-                                              "linkType"         "url"
-                                              "linkTemplate"     (get field-settings "link_template")
-                                              "linkTextTemplate" (get field-settings "link_text")}})
+                                     (assoc field-settings
+                                            "click_behavior"
+                                            {"type"             (get field-settings "view_as")
+                                             "linkType"         "url"
+                                             "linkTemplate"     (get field-settings "link_template")
+                                             "linkTextTemplate" (get field-settings "link_text")})
                                      field-settings)))
                           {}
                           column-settings))
         fixed-card     (-> (if (contains? dashcard "click")
                              (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
-                                                            ;; behavior added
+                             ;; behavior added
                              (fix-top-level card))
                            (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
-                                                               ;; the settings tree
+                           ;; the settings tree
                            existing-fixed)
         fixed-dashcard (update (fix-top-level dashcard) "column_settings" fix-cols)
         final-settings (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
