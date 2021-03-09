@@ -8,7 +8,6 @@ import {
   signOut,
   remapDisplayValueToFK,
   sidebar,
-  signInAsSandboxedUser,
 } from "__support__/cypress";
 import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
@@ -195,7 +194,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       signOut();
-      signInAsSandboxedUser();
+      cy.signInAsSandboxedUser();
 
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
@@ -257,7 +256,7 @@ describeWithToken("formatting > sandboxes", () => {
         },
       }).then(({ body: { id: QUESTION_ID } }) => {
         signOut();
-        signInAsSandboxedUser();
+        cy.signInAsSandboxedUser();
 
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
@@ -323,7 +322,7 @@ describeWithToken("formatting > sandboxes", () => {
         });
 
         signOut();
-        signInAsSandboxedUser();
+        cy.signInAsSandboxedUser();
 
         cy.server();
         cy.route("POST", "/api/card/*/query").as("cardQuery");
@@ -399,7 +398,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       signOut();
-      signInAsSandboxedUser();
+      cy.signInAsSandboxedUser();
 
       cy.server();
       cy.route("POST", "/api/card/*/query").as("cardQuery");
@@ -478,7 +477,7 @@ describeWithToken("formatting > sandboxes", () => {
         });
 
         signOut();
-        signInAsSandboxedUser();
+        cy.signInAsSandboxedUser();
 
         openOrdersTable();
 
@@ -575,7 +574,7 @@ describeWithToken("formatting > sandboxes", () => {
           });
 
           signOut();
-          signInAsSandboxedUser();
+          cy.signInAsSandboxedUser();
 
           openOrdersTable();
 
@@ -634,7 +633,7 @@ describeWithToken("formatting > sandboxes", () => {
         });
 
         signOut();
-        signInAsSandboxedUser();
+        cy.signInAsSandboxedUser();
         openOrdersTable();
 
         cy.wait("@dataset").then(xhr => {
@@ -698,7 +697,7 @@ describeWithToken("formatting > sandboxes", () => {
         });
 
         signOut();
-        signInAsSandboxedUser();
+        cy.signInAsSandboxedUser();
 
         cy.server();
         cy.route("POST", "/api/card/*/query").as("cardQuery");
@@ -804,7 +803,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       signOut();
-      signInAsSandboxedUser();
+      cy.signInAsSandboxedUser();
       createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
         cy.visit(`/question/${QUESTION_ID}`);
       });
@@ -893,7 +892,7 @@ describeWithToken("formatting > sandboxes", () => {
         );
 
         signOut();
-        signInAsSandboxedUser();
+        cy.signInAsSandboxedUser();
 
         cy.visit(`/question/${QUESTION_ID}`);
 
@@ -914,7 +913,7 @@ describeWithToken("formatting > sandboxes", () => {
         },
       });
 
-      signInAsSandboxedUser();
+      cy.signInAsSandboxedUser();
       cy.visit("/dashboard/1");
       cy.icon("share").click();
       cy.findByText("Dashboard subscriptions").click();
@@ -938,7 +937,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       signOut();
-      signInAsSandboxedUser();
+      cy.signInAsSandboxedUser();
 
       cy.visit("/pulse/create");
       cy.wait("@collection");

@@ -22,6 +22,10 @@ Cypress.Commands.add("signInAsNormalUser", () => {
   cy.signIn("normal");
 });
 
+Cypress.Commands.add("signInAsSandboxedUser", () => {
+  cy.signIn("sandboxed");
+});
+
 Cypress.Commands.add("icon", icon_name => {
   cy.get(`.Icon-${icon_name}`);
 });

@@ -8,10 +8,6 @@ export function signOut() {
   cy.clearCookie("metabase.SESSION");
 }
 
-export function signInAsSandboxedUser() {
-  cy.signIn("sandboxed");
-}
-
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }

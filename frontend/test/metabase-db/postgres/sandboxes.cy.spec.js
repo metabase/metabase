@@ -4,7 +4,6 @@ import {
   addPostgresDatabase,
   withDatabase,
   describeWithToken,
-  signInAsSandboxedUser,
 } from "__support__/cypress";
 import { USER_GROUPS } from "__support__/cypress_data";
 
@@ -66,7 +65,7 @@ describeWithToken("postgres > user > query", () => {
         });
 
         signOut();
-        signInAsSandboxedUser();
+        cy.signInAsSandboxedUser();
         cy.visit(`/question/${QUESTION_ID}`);
 
         cy.wait("@cardQuery").then(xhr => {
