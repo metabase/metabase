@@ -483,6 +483,9 @@
                                                         :visualization_settings dashcard-vis}]]
         (let [expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
                                  :graph.metrics    ["count"],
+                                 :click            "link",
+                                 :click_link_template
+                                 "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"
                                  :click_behavior
                                  {:type         "link",
                                   :linkType     "url",
