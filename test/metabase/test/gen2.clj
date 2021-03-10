@@ -212,21 +212,26 @@
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
 
-(def table-field-position (atom 0))
+(defn- coin-toss
+  ([] (coin-toss 0.5))
+  ([p] (< (rand) p)))
+
+(def field-positions (atom {:table-fields {}}))
 (defn adjust
   "Some fields have to be semantically correct, or db correct. fields have position, and they do have to be unique.
   in the table-field-position, for now it's just incrementing forever, without scoping by table_id (which would be
   cool)."
   [sm-db {:keys [schema-opts attrs ent-type visit-val] :as visit-opts}]
-  (cond
+  (cond-> visit-val
+    ;; Fields have a unique position per table. Keep a counter of the number of fields per table and update it, giving
+    ;; the new value to the current field. Defaults to 1.
     (= :field ent-type)
-    (assoc visit-val :position (swap! table-field-position inc))
-    ;; tables have a name and a db_id. it has to be unique also
-    :else
-    visit-val
-    ;; (swap! table-field-position update (:table_id (:spec-gen attrs)) inc)
-    ;; (update-in visit-opts [:attrs :spec-gen :position] (get @table-field-position (:table_id (:spec-gen attrs))))
-    ))
+    (assoc :position
+           (-> (swap! field-positions update-in [:table-fields (:table_id visit-val)] (fnil inc 0))
+               (get-in [:table-fields (:table_id visit-val)])))
+
+    (and (:description visit-val) (coin-toss 0.2))
+    (dissoc :description)))
 
 (defn remove-ids [_ {:keys [visit-val] :as visit-opts}]
   (dissoc visit-val :id))
