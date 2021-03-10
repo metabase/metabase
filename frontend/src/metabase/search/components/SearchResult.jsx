@@ -1,13 +1,29 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
+import { t, jt } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
+import Text from "metabase/components/type/Text";
 import Tooltip from "metabase/components/Tooltip";
+
+import Database from "metabase/entities/databases";
+
+function colorForType(props) {
+  if (props.item.collection_position) {
+    return color("warning");
+  }
+  switch (props.type) {
+    case "collection":
+      return lighten("brand", 0.35);
+    default:
+      return color("brand");
+  }
+}
 
 const IconWrapper = styled.div`
   display: flex;
@@ -15,8 +31,7 @@ const IconWrapper = styled.div`
   justify-content: center;
   width: 32px;
   height: 32px;
-  color: ${props =>
-    props.item.collection_position ? color("warning") : color("brand")};
+  color: ${colorForType};
   margin-right: 10px;
   flex-shrink: 0;
 `;
@@ -28,8 +43,8 @@ const ResultLink = styled(Link)`
   background-color: transparent;
   border-radius: 6px;
   min-height: ${props => (props.compact ? "36px" : "54px")};
-  padding-top: ${props => (props.compact ? "6px" : "8px")};
-  padding-bottom: ${props => (props.compact ? "6px" : "8px")};
+  padding-top: 8px;
+  padding-bottom: 8px;
   padding-left: 14px;
   padding-right: ${props => (props.compact ? "20px" : "32px")};
 
@@ -41,10 +56,17 @@ const ResultLink = styled(Link)`
     }
   }
 
+  ${Text} {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 13px;
+  }
+
   h3 {
     font-size: ${props => (props.compact ? "14px" : "16px")};
     line-height: 1.2em;
     word-wrap: break-word;
+    margin-bottom: 0;
   }
 
   .Icon-info {
@@ -52,10 +74,14 @@ const ResultLink = styled(Link)`
   }
 `;
 
-function ItemIcon({ item }) {
+function ItemIcon({ item, type }) {
   return (
-    <IconWrapper item={item}>
-      <Icon name={item.getIcon()} />
+    <IconWrapper item={item} type={type}>
+      {type === "table" ? (
+        <Icon name="database" />
+      ) : (
+        <Icon name={item.getIcon()} />
+      )}
     </IconWrapper>
   );
 }
@@ -69,37 +95,49 @@ export default function SearchResult(props) {
       return <CollectionResult collection={result} options={props} />;
     case "dashboard":
       return <DashboardResult dashboard={result} options={props} />;
+    case "table":
+      return <TableResult table={result} options={props} />;
     default:
       // metric, segment, and table deliberately included here
       return <DefaultResult result={result} options={props} />;
   }
 }
 
+function TableResult({ table, options }) {
+  return (
+    <ResultLink to={table.getUrl()} compact={options.compact}>
+      <Flex align="center">
+        <ItemIcon item={table} type="table" />
+        <Box>
+          <Title>{table.name}</Title>
+          <Text>
+            Table in &nbsp;
+            <span>
+              <Database.Name id={table.database_id} />{" "}
+              {table.table_schema && (
+                <span>
+                  <Icon name="chevronright" mx="4px" size={10} />
+                  {table.table_schema}
+                </span>
+              )}
+            </span>
+          </Text>
+        </Box>
+      </Flex>
+    </ResultLink>
+  );
+}
+
 const CollectionLink = styled(Link)`
-  display: flex;
-  align-items: center;
-
-  font-size: 12px;
-  line-height: 12px;
-  font-weight: bold;
-  color: ${color("text-medium")};
-
-  .Icon {
-    color: ${color("text-light")};
-  }
-
+  text-decoration: dashed;
   &:hover {
     color: ${color("brand")};
-    .Icon {
-      color: ${color("brand")};
-    }
   }
 `;
 
 function CollectionBadge({ collection }) {
   return (
     <CollectionLink to={Urls.collection(collection.id)}>
-      <Icon name="folder" size={12} mr="4px" />
       {collection.name}
     </CollectionLink>
   );
@@ -116,12 +154,15 @@ function Score({ scores }) {
 }
 
 // Generally these should be at the bottom of the list I'd hope
-function CollectionResult({ collection }) {
+function CollectionResult({ collection, options }) {
   return (
-    <ResultLink to={Urls.collection(collection.id)}>
+    <ResultLink to={Urls.collection(collection.id)} compact={options.compact}>
       <Flex align="center">
-        <ItemIcon item={collection} />
-        <Title>{collection.name}</Title>
+        <ItemIcon item={collection} type="collection" />
+        <Box>
+          <Title>{collection.name}</Title>
+          <Text>{t`Collection in COLLECTION_NAME`}</Text>
+        </Box>
         <Score scores={collection.scores} />
       </Flex>
     </ResultLink>
@@ -163,10 +204,12 @@ function DashboardResult({ dashboard, options }) {
   return (
     <ResultLink to={dashboard.getUrl()} compact={options.compact}>
       <Flex align="center">
-        <ItemIcon item={dashboard} />
+        <ItemIcon item={dashboard} type="dashboard" />
         <Box>
           <Title>{dashboard.name}</Title>
-          {formatCollection(dashboard.getCollection())}
+          <Text>{jt`Dashboard in ${formatCollection(
+            dashboard.getCollection(),
+          )}`}</Text>
           <Score scores={dashboard.scores} />
         </Box>
       </Flex>
@@ -179,10 +222,12 @@ function QuestionResult({ question, options }) {
   return (
     <ResultLink to={question.getUrl()} compact={options.compact}>
       <Flex align="center">
-        <ItemIcon item={question} />
+        <ItemIcon item={question} type="question" />
         <Box>
           <Title>{question.name}</Title>
-          {formatCollection(question.getCollection())}
+          <Text>{jt`Question in ${formatCollection(
+            question.getCollection(),
+          )}`}</Text>
           <Score scores={question.scores} />
         </Box>
         {question.description && (
