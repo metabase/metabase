@@ -16,57 +16,57 @@
    :type     :query
    :query    {:source-table 1000
               :filter       filter-clause
-              :breakout     [[:field-id 17]]}})
+              :breakout     [[:field 17 nil]]}})
 
 (defn- query-with-parameters [& parameters]
   {:database   1
    :type       :query
    :query      {:source-table 1000
-                :breakout     [[:field-id 17]]}
+                :breakout     [[:field 17 nil]]}
    :parameters (vec parameters)})
 
 (deftest basic-test
   (testing "adding a simple parameter"
     (is (= (expanded-query-with-filter
-            [:= [:field-id (mt/id :venues :name)] "Cam's Toucannery"])
+            [:= [:field (mt/id :venues :name) nil] "Cam's Toucannery"])
            (expand-parameters
             (query-with-parameters
              {:hash   "abc123"
               :name   "foo"
               :type   "id"
-              :target [:dimension [:field-id (mt/id :venues :name)]]
+              :target [:dimension [:field (mt/id :venues :name) nil]]
               :value  "Cam's Toucannery"}))))))
 
 (deftest multiple-filters-test
   (testing "multiple filters are conjoined by an :and"
     (is (= (expanded-query-with-filter
             [:and
-             [:= [:field-id (mt/id :venues :id)] 12]
-             [:= [:field-id (mt/id :venues :name)] "Cam's Toucannery"]
-             [:= [:field-id (mt/id :venues :id)] 999]])
+             [:= [:field (mt/id :venues :id) nil] 12]
+             [:= [:field (mt/id :venues :name) nil] "Cam's Toucannery"]
+             [:= [:field (mt/id :venues :id) nil] 999]])
            (expand-parameters
             (-> (query-with-parameters
                  {:hash   "abc123"
                   :name   "foo"
                   :type   :id
-                  :target [:dimension [:field-id (mt/id :venues :name)]]
+                  :target [:dimension [:field (mt/id :venues :name) nil]]
                   :value  "Cam's Toucannery"}
                  {:hash   "def456"
                   :name   "bar"
                   :type   :category
-                  :target [:dimension [:field-id (mt/id :venues :id)]]
+                  :target [:dimension [:field (mt/id :venues :id) nil]]
                   :value  999})
-                (assoc-in [:query :filter] [:and [:= [:field-id (mt/id :venues :id)] 12]])))))))
+                (assoc-in [:query :filter] [:and [:= [:field (mt/id :venues :id) nil] 12]])))))))
 
 (deftest date-range-parameters-test
   (testing "date range parameters"
     (doseq [[value expected-filter-clause]
-            {"past30days"            [:time-interval [:field-id (mt/id :users :last_login)] -30 :day {:include-current false}]
-             "past30days~"           [:time-interval [:field-id (mt/id :users :last_login)] -30 :day {:include-current true}]
+            {"past30days"            [:time-interval [:field (mt/id :users :last_login) nil] -30 :day {:include-current false}]
+             "past30days~"           [:time-interval [:field (mt/id :users :last_login) nil] -30 :day {:include-current true}]
              "yesterday"             [:=
-                                      [:datetime-field [:field-id (mt/id :users :last_login)] :day]
+                                      [:field (mt/id :users :last_login) {:temporal-unit :day}]
                                       [:relative-datetime -1 :day]]
-             "2014-05-10~2014-05-16" [:between [:datetime-field [:field-id (mt/id :users :last_login)] :day]
+             "2014-05-10~2014-05-16" [:between [:field (mt/id :users :last_login) {:temporal-unit :day}]
                                       "2014-05-10"
                                       "2014-05-16"]}]
       (testing (format "value = %s" (pr-str value))
@@ -76,7 +76,7 @@
                  {:hash   "abc123"
                   :name   "foo"
                   :type   :date
-                  :target [:dimension [:field-id (mt/id :users :last_login)]]
+                  :target [:dimension [:field (mt/id :users :last_login) nil]]
                   :value  value}))))))))
 
 
@@ -256,7 +256,7 @@
                                 :aggregation  [[:count]]}
                    :parameters [(merge
                                  {:type   :category
-                                  :target [:dimension [:field-id (mt/id :venues :price)]]}
+                                  :target [:dimension [:field (mt/id :venues :price) nil]]}
                                  param)]}))))]
       (doseq [[price expected] {1 22
                                 2 59}]

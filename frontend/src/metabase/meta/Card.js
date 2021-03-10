@@ -1,5 +1,3 @@
-/* @flow */
-
 import {
   getTemplateTagParameters,
   getParameterTargetFieldId,

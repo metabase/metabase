@@ -1,5 +1,3 @@
-/* @flow */
-
 import { t, ngettext, msgid } from "ttag";
 // NOTE: extending Error with Babel requires babel-plugin-transform-builtin-extend
 

@@ -38,7 +38,7 @@ describe("scenarios > admin > databases > table", () => {
       cy.findAllByText("Foreign Key");
 
       cy.get("input[value='Tax']");
-      cy.findAllByText("No special type");
+      cy.findAllByText("No semantic type");
 
       cy.get("input[value='Discount']");
       cy.findByText("Discount");

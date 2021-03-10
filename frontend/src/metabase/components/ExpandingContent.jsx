@@ -18,7 +18,7 @@ class ExpandingContent extends Component {
     animateOpacity: true,
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setOpen(nextProps.isOpen);
   }
   componentDidMount() {

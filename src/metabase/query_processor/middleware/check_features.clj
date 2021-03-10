@@ -22,9 +22,7 @@
     :stddev
     :standard-deviation-aggregations
 
-    ;; `:fk->` is normally replaced by `:joined-field` already but the middleware that does the replacement won't run
-    ;; if the driver doesn't support foreign keys, meaning the clauses can leak thru
-    #{:joined-field :fk->}
+    [:field _ (_ :guard (some-fn :source-field :join-alias))]
     :foreign-keys))
 
 (defn- check-features* [{query-type :type, :as query}]

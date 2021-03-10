@@ -29,7 +29,7 @@ export default class GridLayout extends Component {
     );
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     const { dragging, resizing } = this.state;
     if (!dragging && !resizing && this.state.layout !== newProps.layout) {
       this.setState({ layout: newProps.layout });

@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
@@ -156,8 +154,7 @@ export default class Table extends Component {
     },
     // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
     //   { name: "COLUMN_NAME", enabled: true }
-    //   { fieldRef: ["fk->", 1, 2], enabled: true }
-    //   { fieldRef: ["fk->", ["field-id", 1], ["field-id", 2]], enabled: true }
+    //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
     "table.columns": {
       section: t`Columns`,
       title: t`Visible columns`,
@@ -248,19 +245,19 @@ export default class Table extends Component {
       const options: { name: string, value: null | string }[] = [
         { name: t`Off`, value: null },
       ];
-      if (!column.special_type || isURL(column)) {
+      if (!column.semantic_type || isURL(column)) {
         defaultValue = "link";
         options.push({ name: t`Link`, value: "link" });
       }
-      if (!column.special_type || isEmail(column)) {
+      if (!column.semantic_type || isEmail(column)) {
         defaultValue = "email_link";
         options.push({ name: t`Email link`, value: "email_link" });
       }
-      if (!column.special_type || isImageURL(column) || isAvatarURL(column)) {
+      if (!column.semantic_type || isImageURL(column) || isAvatarURL(column)) {
         defaultValue = isAvatarURL(column) ? "image" : "link";
         options.push({ name: t`Image`, value: "image" });
       }
-      if (!column.special_type) {
+      if (!column.semantic_type) {
         defaultValue = "auto";
         options.push({ name: t`Automatic`, value: "auto" });
       }
@@ -297,11 +294,11 @@ export default class Table extends Component {
     };
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateData(this.props);
   }
 
-  componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps: Props) {
     if (
       newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)

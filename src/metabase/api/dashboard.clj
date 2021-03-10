@@ -512,8 +512,8 @@
   (set (for [param parameter-mappings
              :let  [field-clause (params/param-target->field-clause (:target param) (:dashcard param))]
              :when field-clause
-             :let  [field-id (mbql.u/field-clause->id-or-literal field-clause)]
-             :when (integer? field-id)]
+             :let  [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+             :when field-id]
          field-id)))
 
 (defn- param-key->field-ids

@@ -93,23 +93,23 @@
    :id
    :name
    :parent_id
+   :semantic_type
    :settings
-   :special_type
    :table_id
    :visibility_type])
 
 (def ^:private FieldInstanceWithRequiredStorekeys
   (s/both
    (class Field)
-   {:name          su/NonBlankString
-    :display_name  su/NonBlankString
-    :description   (s/maybe s/Str)
-    :database_type su/NonBlankString
-    :base_type     su/FieldType
-    :special_type  (s/maybe su/FieldType)
-    :fingerprint   (s/maybe su/Map)
-    :parent_id     (s/maybe su/IntGreaterThanZero)
-    s/Any          s/Any}))
+   {:name              su/NonBlankString
+    :display_name      su/NonBlankString
+    :description       (s/maybe s/Str)
+    :database_type     su/NonBlankString
+    :base_type         su/FieldType
+    :semantic_type     (s/maybe su/FieldType)
+    :fingerprint       (s/maybe su/Map)
+    :parent_id         (s/maybe su/IntGreaterThanZero)
+    s/Any              s/Any}))
 
 
 ;;; ------------------------------------------ Saving objects in the Store -------------------------------------------

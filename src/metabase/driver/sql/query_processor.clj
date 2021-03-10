@@ -79,7 +79,7 @@
   [driver]
   :%now)
 
-;; TODO - rename this to `date-bucket` or something that better describes what it actually does
+;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
   component."
@@ -178,13 +178,13 @@
 
 (defmulti cast-temporal-string
   "Cast a string representing "
-  {:arglists '([driver special_type expr]), :added "0.38.0"}
-  (fn [driver special_type _] [(driver/dispatch-on-initialized-driver driver) special_type])
+  {:arglists '([driver semantic_type expr]), :added "0.38.0"}
+  (fn [driver semantic_type _] [(driver/dispatch-on-initialized-driver driver) semantic_type])
   :hierarchy #'driver/hierarchy)
 
 (defmethod cast-temporal-string :default
-  [driver special_type _expr]
-  (throw (Exception. (tru "Driver {0} does not support {1}" driver special_type))))
+  [driver semantic_type _expr]
+  (throw (Exception. (tru "Driver {0} does not support {1}" driver semantic_type))))
 
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
@@ -216,7 +216,7 @@
 
 (def ^:dynamic *table-alias*
   "The alias, if any, that should be used to qualify Fields when building the HoneySQL form, instead of defaulting to
-  schema + Table name. Used to implement things like `:joined-field`s."
+  schema + Table name. Used to implement things like joined `:field`s."
   nil)
 
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
@@ -228,26 +228,26 @@
   [driver [_ expression-name]]
   (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
 
-(defn special-type->unix-timestamp-unit
+(defn semantic-type->unix-timestamp-unit
   "Translates types like `:type/UNIXTimestampSeconds` to the corresponding unit of time to use in
   `unix-timestamp->honeysql`.  Throws an AssertionError if the argument does not descend from `:type/UNIXTimestamp`
   and an exception if the type does not have an associated unit."
-  [special-type]
-  (assert (isa? special-type :type/UNIXTimestamp) "Special type must be a UNIXTimestamp")
+  [semantic-type]
+  (assert (isa? semantic-type :type/UNIXTimestamp) "Semantic type must be a UNIXTimestamp")
   (or (get {:type/UNIXTimestampMicroseconds :microseconds
             :type/UNIXTimestampMilliseconds :milliseconds
             :type/UNIXTimestampSeconds      :seconds}
-           special-type)
-      (throw (Exception. (tru "No magnitude known for {0}" special-type)))))
+           semantic-type)
+      (throw (Exception. (tru "No magnitude known for {0}" semantic-type)))))
 
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
-  (match [(:base_type field) (:special_type field)]
+  (match [(:base_type field) (:semantic_type field)]
     [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql driver
-                                                                                    (special-type->unix-timestamp-unit (:special_type field))
+                                                                                    (semantic-type->unix-timestamp-unit (:semantic_type field))
                                                                                     field-identifier)
-    [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:special_type field) field-identifier)
+    [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:semantic_type field) field-identifier)
     :else field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
@@ -255,6 +255,7 @@
   [_ identifier]
   identifier)
 
+;; TODO -- we should remove this and record this information directly in the relevant `:field` clauses.
 (def ^:dynamic ^:private *joined-field?*
   "Are we inside a joined field whose join is at the current level of the query?"
   false)
@@ -272,87 +273,87 @@
   (str prefix "__" field-alias))
 
 (s/defn ^:private unambiguous-field-alias :- su/NonBlankString
-  [driver field-clause :- (s/pred #(mbql.u/match-one % :field-id)
-                                  "field-id clause or something wrapping one")]
-  (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
-        alias    (field->alias driver (qp.store/field field-id))
-        col-info (when *query* (annotate/col-info-for-field-clause *query* field-clause))
-        prefix   (:source_alias col-info)]
-    (if (and prefix alias
-             (not= prefix *table-alias*)
+  [driver [_ field-id {:keys [join-alias]}] :- mbql.s/field:id]
+  (let [field-alias (field->alias driver (qp.store/field field-id))]
+    (if (and join-alias field-alias
+             (not= join-alias *table-alias*)
              (not *joined-field?*))
-      (prefix-field-alias driver prefix alias)
-      alias)))
+      (prefix-field-alias driver join-alias field-alias)
+      field-alias)))
 
 (defmethod ->honeysql [:sql (class Field)]
   [driver {field-name :name, table-id :table_id, :as field}]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
   (->> (if *table-alias*
-         [*table-alias* (unambiguous-field-alias driver [:field-id (:id field)])]
+         [*table-alias* (unambiguous-field-alias driver [:field (:id field) nil])]
          (let [{schema :schema, table-name :name} (qp.store/table table-id)]
            [schema table-name field-name]))
        (apply hx/identifier :field)
        (->honeysql driver)
        (cast-field-if-needed driver field)))
 
-(defmethod ->honeysql [:sql :field-id]
-  [driver [_ field-id]]
-  (->honeysql driver (qp.store/field field-id)))
-
-(defmethod ->honeysql [:sql :field-literal]
-  [driver [_ field-name]]
-  (->honeysql driver (hx/identifier :field *table-alias* field-name)))
-
-(defmethod ->honeysql [:sql :joined-field]
-  [driver [_ alias wrapped-field-clause :as joined-field-clause]]
-  (let [join-is-at-current-level?  (some #(= (:alias %) alias) (:joins *query*))]
-    ;; suppose we have a `joined-field` clause like `[:joined-field "Products" [:field-id 1]]`
+(defn compile-field-with-join-aliases
+  "Compile `field-clause` to HoneySQL using the `:join-alias` from the `:field` clause options."
+  [driver [_ id-or-name {:keys [join-alias], :as opts} :as field-clause]]
+  (let [join-is-at-current-level? (some #(= (:alias %) join-alias) (:joins *query*))]
+    ;; suppose we have a joined `:field` clause like `[:field 1 {:join-alias "Products"}]`
     ;; where Field `1` is `"EAN"`
     (if join-is-at-current-level?
-      ;; if `:joined-field` wrapping a `field-id` is referring to a join at the current level, we need to generate SQL
-      ;; like
+      ;; if joined `:field` is referring to a join at the current level, we need to generate SQL like
       ;;
       ;; ```
       ;; SELECT Products.EAN as Products__EAN
       ;; ```
-      (binding [*table-alias*   alias
+      (binding [*table-alias*   join-alias
                 *joined-field?* true]
-        (->honeysql driver wrapped-field-clause))
-      ;; if `:joined-field` is referring to a join in a nested source query (i.e., not the current level), we need to
+        (->honeysql driver [:field id-or-name (dissoc opts :join-alias)]))
+      ;; if joined `:field` is referring to a join in a nested source query (i.e., not the current level), we need to
       ;; generate SQL like
       ;;
       ;; ```
       ;; SELECT source.Products__EAN as Products__EAN
       ;; ```
       (binding [*joined-field?* false]
-        (->honeysql driver (hx/identifier
-                            :field
-                            *table-alias*
-                            (mbql.u/match-one wrapped-field-clause
-                              [:field-literal field-name _]
-                              field-name
+        (->honeysql
+         driver
+         [:field
+          (if (string? id-or-name)
+            id-or-name
+            (unambiguous-field-alias driver field-clause))
+          (dissoc opts :join-alias)])))))
 
-                              _
-                              (unambiguous-field-alias driver joined-field-clause))))))))
+(defn apply-temporal-bucketing
+  "Apply temporal bucketing for the `:temporal-unit` in the options of a `:field` clause; return a new HoneySQL form that
+  buckets `honeysql-form` appropriately."
+  [driver {:keys [temporal-unit]} honeysql-form]
+  (date driver temporal-unit honeysql-form))
 
-(defmethod ->honeysql [:sql :datetime-field]
-  [driver [_ field unit]]
-  (date driver unit (->honeysql driver field)))
+(defn apply-binning
+  "Apply `:binning` options from a `:field` clause; return a new HoneySQL form that bins `honeysql-form`
+  appropriately."
+  [{{:keys [bin-width min-value max-value]} :binning} honeysql-form]
+  ;;
+  ;; Equation is | (value - min) |
+  ;;             | ------------- | * bin-width + min-value
+  ;;             |_  bin-width  _|
+  ;;
+  (-> honeysql-form
+      (hx/- min-value)
+      (hx// bin-width)
+      hx/floor
+      (hx/* bin-width)
+      (hx/+ min-value)))
 
-(defmethod ->honeysql [:sql :binning-strategy]
-  [driver [_ field _ _ {:keys [bin-width min-value max-value]}]]
-  (let [honeysql-field-form (->honeysql driver field)]
-    ;;
-    ;; Equation is | (value - min) |
-    ;;             | ------------- | * bin-width + min-value
-    ;;             |_  bin-width  _|
-    ;;
-    (-> honeysql-field-form
-        (hx/- min-value)
-        (hx// bin-width)
-        hx/floor
-        (hx/* bin-width)
-        (hx/+ min-value))))
+(defmethod ->honeysql [:sql :field]
+  [driver [_ field-id-or-name options :as field-clause]]
+  (if (:join-alias options)
+    (compile-field-with-join-aliases driver field-clause)
+    (let [honeysql-form (if (integer? field-id-or-name)
+                          (->honeysql driver (qp.store/field field-id-or-name))
+                          (->honeysql driver (hx/identifier :field *table-alias* field-id-or-name)))]
+      (cond->> honeysql-form
+        (:temporal-unit options) (apply-temporal-bucketing driver options)
+        (:binning options)       (apply-binning options)))))
 
 
 (defmethod ->honeysql [:sql :count]
@@ -547,8 +548,8 @@
 
   ([driver field-clause unique-name-fn]
    (when-let [alias (or (mbql.u/match-one field-clause
-                          [:expression expression-name] expression-name
-                          [:field-literal field-name _] field-name)
+                          [:expression expression-name]          expression-name
+                          [:field (field-name :guard string?) _] field-name)
                         (unambiguous-field-alias driver field-clause))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
@@ -556,13 +557,13 @@
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
   HoneySQL representation of on `AS` clause is a tuple like `[<form> <alias>]`.
 
-  In some cases where the alias would be redundant, such as unwrapped field literals, this returns the form as-is.
+  In some cases where the alias would be redundant, such as plain field literals, this returns the form as-is.
 
-    (as [:field-literal \"x\" :type/Text])
+    (as [:field \"x\" {:base-type :type/Text}])
     ;; -> <compiled-form>
     ;; -> SELECT \"x\"
 
-    (as [:datetime-field [:field-literal \"x\" :type/Text] :month])
+    (as [:field \"x\" {:base-type :type/Text, :temporal-unit :month}])
     ;; -> [<compiled-form> :x]
     ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
 
@@ -671,8 +672,8 @@
 (defn- correct-null-behaviour
   [driver [op & args]]
   (let [field-arg (mbql.u/match-one args
-                    FieldInstance                             &match
-                    #{:joined-field :field-id :field-literal} &match)]
+                    FieldInstance &match
+                    :field        &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or (into [op] (map (partial ->honeysql driver)) args)
@@ -898,7 +899,7 @@
                  (->honeysql driver (hx/identifier :table-alias source-query-alias))]]))
 
 (defn- apply-clauses-with-aliased-source-query-table
-  "Bind `*table-alias*` which will cause `field-id` and the like to be compiled to SQL that is qualified by that alias
+  "Bind `*table-alias*` which will cause `field` and the like to be compiled to SQL that is qualified by that alias
   rather than their normal table."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
   (binding [*table-alias* source-query-alias]
@@ -923,15 +924,17 @@
   [query]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata :expressions])
-                      (assoc :fields (-> query
-                                         (dissoc :source-query :joins)
-                                         (mbql.u/match #{:field-literal :field-id :joined-field :expression})
+                      (assoc :fields (-> (mbql.u/match (dissoc query :source-query :joins)
+                                           ;; remove the bucketing/binning operations from the source query -- we'll
+                                           ;; do that at the parent level
+                                           [:field id-or-name opts]
+                                           [:field id-or-name (dissoc opts :temporal-unit :binning)]
+                                           :expression
+                                           &match)
                                          distinct)))]
-    (-> query
-        (mbql.u/replace [:expression expression-name] [:field-literal expression-name
-                                                       (->> &match
-                                                            (annotate/col-info-for-field-clause query)
-                                                            :base_type)])
+    (-> (mbql.u/replace query
+          [:expression expression-name]
+          [:field expression-name {:base-type (:base_type (annotate/infer-expression-type &match))}])
         (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
 

@@ -242,7 +242,7 @@
                                        :embedding_params       :json
                                        :query_type             :keyword
                                        :result_metadata        ::result-metadata
-                                       :visualization_settings :json})
+                                       :visualization_settings :visualization-settings})
           :properties     (constantly {:timestamped? true})
           ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
           ;; functions those fns call assume normalized queries

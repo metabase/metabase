@@ -66,7 +66,7 @@ describe("SaveQuestionModal", () => {
 
     const dirtyQuestion = originalQuestion
       .query()
-      .breakout(["field-id", ORDERS.TOTAL.id])
+      .breakout(["field", ORDERS.TOTAL.id, null])
       .question();
 
     // Use the count aggregation as an example case (this is equally valid for filters and groupings)
@@ -96,7 +96,7 @@ describe("SaveQuestionModal", () => {
 
     const dirtyQuestion = originalQuestion
       .query()
-      .breakout(["field-id", ORDERS.TOTAL.id])
+      .breakout(["field", ORDERS.TOTAL.id, null])
       .question();
 
     const { onSaveMock } = renderSaveQuestionModal(

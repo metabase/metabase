@@ -29,8 +29,8 @@
 
 (defn show-in-table?
   "Should this column be shown in a rendered table in a Pulse?"
-  [{:keys [special_type visibility_type] :as column}]
-  (and (not (isa? special_type :type/Description))
+  [{:keys [semantic_type visibility_type] :as column}]
+  (and (not (isa? semantic_type :type/Description))
        (not (contains? #{:details-only :retired :sensitive} visibility_type))))
 
 (defn- count-displayed-columns
@@ -79,15 +79,15 @@
   [remapping-lookup card cols include-bar?]
   {:row (for [maybe-remapped-col cols
               :when (show-in-table? maybe-remapped-col)
-              :let [{:keys [base_type special_type] :as col} (if (:remapped_to maybe-remapped-col)
-                                                               (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                                               maybe-remapped-col)
+              :let [{:keys [base_type semantic_type] :as col} (if (:remapped_to maybe-remapped-col)
+                                                                (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                                                maybe-remapped-col)
                     col-name (column-name card col)]
               ;; If this column is remapped from another, it's already
               ;; in the output and should be skipped
               :when (not (:remapped_from maybe-remapped-col))]
           (if (or (isa? base_type :type/Number)
-                  (isa? special_type :type/Number))
+                  (isa? semantic_type :type/Number))
             (common/->NumericWrapper col-name)
             col-name))
    :bar-width (when include-bar? 99)})

@@ -12,25 +12,25 @@
 
 (deftest wrap-fields-in-joined-field-test
   (is (= (mt/mbql-query checkins
-           {:filter [:!= [:joined-field "u" [:field-id (mt/id :users :name)]] nil]
+           {:filter [:!= [:field %users.name {:join-alias "u"}] nil]
             :joins  [{:source-table $$users
                       :alias        "u"
                       :condition    [:= $user_id &u.users.id]}]})
          (wrap-joined-fields
           (mt/mbql-query checkins
-            {:filter [:!= [:field-id (mt/id :users :name)] nil]
+            {:filter [:!= [:field %users.name nil] nil]
              :joins  [{:source-table $$users
                        :alias        "u"
                        :condition    [:= $user_id &u.users.id]}]}))))
   (testing "Do we correctly recurse into `:source-query`"
     (is (= (mt/mbql-query checkins
-             {:source-query {:filter [:!= [:joined-field "u" [:field-id (mt/id :users :name)]] nil]
+             {:source-query {:filter [:!= [:field %users.name {:join-alias "u"}] nil]
                              :joins  [{:source-table $$users
                                        :alias        "u"
                                        :condition    [:= $user_id &u.users.id]}]}})
            (wrap-joined-fields
             (mt/mbql-query checkins
-              {:source-query {:filter [:!= [:field-id (mt/id :users :name)] nil]
+              {:source-query {:filter [:!= [:field %users.name nil] nil]
                               :joins  [{:source-table $$users
                                         :alias        "u"
                                         :condition    [:= $user_id &u.users.id]}]}}))))))
@@ -38,16 +38,16 @@
 (deftest deduplicate-fields-test
   (testing "resolve-joined-fields should deduplicate :fields after resolving stuff"
     (is (= (mt/mbql-query checkins
-             {:fields [[:joined-field "u" [:field-id (mt/id :users :name)]]]
-              :filter [:!= [:joined-field "u" [:field-id (mt/id :users :name)]] nil]
+             {:fields [[:field %users.name {:join-alias "u"}]]
+              :filter [:!= [:field %users.name {:join-alias "u"}] nil]
               :joins  [{:source-table $$users
                         :alias        "u"
                         :condition    [:= $user_id &u.users.id]}]})
            (wrap-joined-fields
             (mt/mbql-query checkins
-              {:fields [[:field-id (mt/id :users :name)]
-                        [:joined-field "u" [:field-id (mt/id :users :name)]]]
-               :filter [:!= [:field-id (mt/id :users :name)] nil]
+              {:fields [[:field %users.name nil]
+                        [:field %users.name {:join-alias "u"}]]
+               :filter [:!= [:field %users.name nil] nil]
                :joins  [{:source-table $$users
                          :alias        "u"
                          :condition    [:= $user_id &u.users.id]}]}))))))
@@ -62,10 +62,10 @@
                        :filter       [:= $products.category "Widget"]
                        :joins        [{:strategy     :left-join
                                        :source-query {:source-table $$products}
-                                       :condition    [:= $orders.product_id [:joined-field "products" $products.id]]
+                                       :condition    [:= $orders.product_id [:field %products.id {:join-alias "products"}]]
                                        :alias        "products"}]})]
           (testing (str "\n" (u/pprint-to-str query))
-            (is (= (assoc-in query [:query :filter] (mt/$ids [:= [:joined-field "products" $products.category] "Widget"]))
+            (is (= (assoc-in query [:query :filter] (mt/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
                    (wrap-joined-fields query))))))
 
       (testing "nested query"
@@ -75,12 +75,12 @@
                                              :filter       [:= $products.category "Widget"]
                                              :joins        [{:strategy     :left-join
                                                              :source-query {:source-table $$products}
-                                                             :condition    [:= $orders.product_id [:joined-field "products" $products.id]]
+                                                             :condition    [:= $orders.product_id [:field %products.id {:join-alias "products"}]]
                                                              :alias        "products"}]}})]
           (testing (str "\n" (u/pprint-to-str nested-query))
             (is (= (assoc-in nested-query
                              [:query :source-query :filter]
-                             (mt/$ids [:= [:joined-field "products" $products.category] "Widget"]))
+                             (mt/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
                    (wrap-joined-fields nested-query))))))
 
       (testing "joins in joins query"
@@ -94,14 +94,14 @@
                                                                 :source-table $$products
                                                                 :condition    [:=
                                                                                $orders.product_id
-                                                                               [:joined-field "products" $products.id]]
+                                                                               [:field %products.id {:join-alias "products"}]]
                                                                 :alias        "products"}]}
                                  :alias        "orders"
-                                 :condition    [:= $products.id [:joined-field "orders" $orders.product_id]]}]})]
+                                 :condition    [:= $products.id [:field %orders.product_id {:join-alias "orders"}]]}]})]
           (testing (str "\n" (u/pprint-to-str joins-in-joins-query))
             (is (= (assoc-in joins-in-joins-query
                              [:query :joins 0 :source-query :filter]
-                             (mt/$ids [:= [:joined-field "products" $products.category] "Widget"]))
+                             (mt/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
                    (wrap-joined-fields joins-in-joins-query)))
             (testing "Can we actually run the join-in-joins query?"
               (is (schema= {:status    (s/eq :completed)
@@ -120,10 +120,10 @@
                                                                 :source-table $$products
                                                                 :condition    [:=
                                                                                $orders.product_id
-                                                                               [:joined-field "products" $products.id]]
+                                                                               [:field %products.id {:join-alias "products"}]]
                                                                 :alias        "products"}]}
                                  :alias        "orders"
-                                 :condition    [:= $products.id [:joined-field "orders" $orders.product_id]]}
+                                 :condition    [:= $products.id [:field %orders.product_id {:join-alias "orders"}]]}
                                 {:strategy     :left-join
                                  :source-query {:source-table $$orders
                                                 :filter       [:= $products.category "Widget"]
@@ -131,16 +131,16 @@
                                                                 :source-table $$products
                                                                 :condition    [:=
                                                                                $orders.product_id
-                                                                               [:joined-field "products-2" $products.id]]
+                                                                               [:field %products.id {:join-alias "products-2"}]]
                                                                 :alias        "products-2"}]}
                                  :alias        "orders-2"
-                                 :condition    [:= $products.id [:joined-field "orders-2" $orders.product_id]]}]})]
+                                 :condition    [:= $products.id [:field %orders.product_id {:join-alias "orders-2"}]]}]})]
           (testing (str "\n" (u/pprint-to-str joins-in-joins-query))
             (is (= (-> joins-in-joins-query
                        (assoc-in [:query :joins 0 :source-query :filter]
-                                 (mt/$ids [:= [:joined-field "products" $products.category] "Widget"]))
+                                 (mt/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
                        (assoc-in [:query :joins 1 :source-query :filter]
-                                 (mt/$ids [:= [:joined-field "products-2" $products.category] "Widget"])))
+                                 (mt/$ids [:= [:field %products.category {:join-alias "products-2"}] "Widget"])))
                    (wrap-joined-fields joins-in-joins-query)))))))))
 
 (deftest no-op-test
@@ -148,11 +148,11 @@
     (let [query (mt/mbql-query venues
                   {:source-query {:source-table $$venues
                                   :aggregation  [[:count]]
-                                  :breakout     [$name [:joined-field "c" $categories.name]]
+                                  :breakout     [$name [:field %categories.name {:join-alias "c"}]]
                                   :joins        [{:source-table $$categories
                                                   :alias        "c"
-                                                  :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}
-                   :filter       [:> [:field-literal "count" :type/Number] 0]
+                                                  :condition    [:= $category_id [:field %categories.id {:join-alias "c"}]]}]}
+                   :filter       [:> [:field "count" {:base-type :type/Number}] 0]
                    :limit        3})]
       (is (= query
              (wrap-joined-fields query))))))
@@ -164,7 +164,7 @@
                     {:filter [:= $products.category "Widget"]
                      :joins  [{:source-table $$products
                                :fields       :all
-                               :condition    [:= $product_id [:joined-field "products" $products.id]]
+                               :condition    [:= $product_id [:field %products.id {:join-alias "products"}]]
                                :alias        "products"}
                               {:source-table $$products
                                :alias        "PRODUCTS__via__PRODUCT_ID"
@@ -173,7 +173,7 @@
                                :fk-field-id  %product_id
                                :condition    [:=
                                               $product_id
-                                              [:joined-field "PRODUCTS__via__PRODUCT_ID" $products.id]]}]
+                                              [:field %products.id {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]}]
                      :limit  10
                      :fields [$id
                               $user_id
@@ -185,7 +185,7 @@
                               $created_at
                               $quantity
                               $products.title
-                              [:joined-field "PRODUCTS__via__PRODUCT_ID" $products.title]]})]
+                              [:field %products.title {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]})]
         (testing "Middleware should handle the query"
           (is (some? (wrap-joined-fields query))))
         (testing "Should be able tor run query end-to-end"

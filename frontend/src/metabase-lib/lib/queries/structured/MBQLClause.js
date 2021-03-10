@@ -1,5 +1,3 @@
-/* @flow */
-
 import type StructuredQuery from "../StructuredQuery";
 
 export default class MBQLArrayClause extends Array {

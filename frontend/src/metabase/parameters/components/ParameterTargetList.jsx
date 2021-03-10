@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import AccordionList from "metabase/components/AccordionList";

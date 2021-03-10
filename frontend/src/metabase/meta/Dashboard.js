@@ -1,5 +1,3 @@
-/* @flow */
-
 import Question from "metabase-lib/lib/Question";
 
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -13,10 +11,7 @@ import type {
   ParameterMappingUIOption,
 } from "metabase-types/types/Parameter";
 
-import Dimension, {
-  FKDimension,
-  JoinedDimension,
-} from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/lib/Dimension";
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
 import { t } from "ttag";
@@ -231,9 +226,7 @@ export function getParameterMappingOptions(
             name: dimension.displayName(),
             icon: dimension.icon(),
             target: ["dimension", dimension.mbql()],
-            isForeign:
-              dimension instanceof FKDimension ||
-              dimension instanceof JoinedDimension,
+            isForeign: !!(dimension.fk() || dimension.joinAlias()),
           })),
         ),
     );

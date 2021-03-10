@@ -25,20 +25,20 @@
            {:filter [:>
                      $id
                      [:value 50 {:base_type     :type/BigInteger
-                                 :special_type  :type/PK
+                                 :semantic_type :type/PK
                                  :database_type "BIGINT"
-                                 :name "ID"}]]})
+                                 :name          "ID"}]]})
          (wrap-value-literals
            (mt/mbql-query venues
              {:filter [:> $id 50]}))))
   (is (= (mt/mbql-query venues
            {:filter [:and
                      [:> $id [:value 50 {:base_type     :type/BigInteger
-                                         :special_type  :type/PK
+                                         :semantic_type :type/PK
                                          :database_type "BIGINT"
                                          :name "ID"}]]
                      [:< $price [:value 5 {:base_type     :type/Integer
-                                           :special_type  :type/Category
+                                           :semantic_type  :type/Category
                                            :database_type "INTEGER"
                                            :name "PRICE"}]]]})
          (wrap-value-literals
@@ -114,7 +114,7 @@
                 {:filter [:and
                           [:> !day.timestamp "2015-06-01"]
                           [:< !day.timestamp "2015-06-03"]]})))))
-      "should also apply if the Fields are UNIX timestamps or other things with special type of :type/Datetime")
+      "should also apply if the Fields are UNIX timestamps or other things with semantic type of :type/Datetime")
 
   (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
     (is (= (:query
@@ -137,7 +137,7 @@
              {:filter [:starts-with
                        !month.date
                        [:value "2018-10-01" {:base_type     :type/Date
-                                             :special_type  nil
+                                             :semantic_type nil
                                              :database_type "DATE"
                                              :unit          :month
                                              :name          "DATE"}]]})
@@ -160,11 +160,23 @@
 
 (deftest other-clauses-test
   (testing "Make sure we apply the transformation to predicates in all parts of the query, not only `:filter`"
-    (is (= (mt/dataset sad-toucan-incidents
-             (mt/mbql-query incidents
+    (mt/dataset sad-toucan-incidents
+      (is (= (mt/mbql-query incidents
                {:aggregation [[:share
-                               [:> !day.timestamp [:absolute-datetime (t/zoned-date-time "2015-06-01T00:00Z[UTC]") :day]]]]}))
-           (mt/dataset sad-toucan-incidents
+                               [:> !day.timestamp [:absolute-datetime (t/zoned-date-time "2015-06-01T00:00Z[UTC]") :day]]]]})
              (wrap-value-literals
                (mt/mbql-query incidents
                  {:aggregation [[:share [:> !day.timestamp "2015-06-01"]]]})))))))
+
+(deftest base-type-test
+  (testing "Make sure base-type from `:field` w/ name is picked up correctly"
+    (is (= {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]]
+            :filter       [:not [:starts-with
+                                 [:field "A" {:base-type :type/Text}]
+                                 [:value "f" {:base_type :type/Text}]]]
+            :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
+           (#'wrap-value-literals/wrap-value-literals-in-mbql-query
+            {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]],
+             :filter       [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]],
+             :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
+            nil)))))

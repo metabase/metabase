@@ -81,7 +81,7 @@
 
 (defmethod driver/can-connect? :oracle
   [driver details]
-  (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel details))]
+  (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel! details))]
     (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
 
 (defmethod driver/db-start-of-week :oracle
@@ -190,11 +190,11 @@
         (num-to-ds-interval :second field-or-value)))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateTimeString]
-  [_driver _special_type expr]
+  [_driver _semantic_type expr]
   (hsql/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateString]
-  [_driver _special_type expr]
+  [_driver _semantic_type expr]
   (hsql/call :to_date expr "YYYY-MM-DD"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
@@ -359,6 +359,22 @@
       (catch Throwable e
         (.close stmt)
         (throw e)))))
+
+;; similar rationale to prepared-statement above
+(defmethod sql-jdbc.execute/statement :oracle
+   [_ ^Connection conn]
+   (let [stmt (.createStatement conn
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+        (try
+          (try
+            (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+            (catch Throwable e
+              (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          stmt
+          (catch Throwable e
+            (.close stmt)
+            (throw e)))))
 
 ;; instead of returning a CLOB object, return the String. (#9026)
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle Types/CLOB]

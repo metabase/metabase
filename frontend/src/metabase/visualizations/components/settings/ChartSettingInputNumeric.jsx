@@ -10,7 +10,7 @@ export default class ChartSettingInputNumeric extends Component {
     };
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
       value: String(nextProps.value == null ? "" : nextProps.value),
     });

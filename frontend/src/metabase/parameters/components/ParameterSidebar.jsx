@@ -87,7 +87,7 @@ class ParameterSidebar extends React.Component {
                 className="mt2 block text-medium text-error-hover text-bold"
                 onClick={remove}
               >
-                Remove
+                {t`Remove`}
               </a>
             </div>
           ) : (

@@ -1,5 +1,3 @@
-/* @flow */
-
 /**
  * Settings editor for a single database field. Lets you change field type, visibility and display values / remappings.
  *
@@ -29,7 +27,7 @@ import SelectSeparator from "../components/SelectSeparator";
 
 import {
   FieldVisibilityPicker,
-  SpecialTypeAndTargetPicker,
+  SemanticTypeAndTargetPicker,
 } from "../components/database/ColumnItem";
 import FieldRemapping from "../components/FieldRemapping";
 import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
@@ -114,8 +112,7 @@ export default class FieldApp extends React.Component {
     params: any,
   };
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       databaseId,
       tableId,
@@ -307,7 +304,7 @@ const FieldGeneralPane = ({
 
     <Section>
       <SectionHeader title={t`Field Type`} />
-      <SpecialTypeAndTargetPicker
+      <SemanticTypeAndTargetPicker
         className="flex align-center"
         field={field}
         updateField={onUpdateFieldProperties}

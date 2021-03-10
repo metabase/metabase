@@ -41,12 +41,12 @@ function MainSeries(chartType, settings = {}, { key = "A", value = 1 } = {}) {
         StringColumn({
           display_name: "Category",
           source: "breakout",
-          field_ref: ["field-id", 1],
+          field_ref: ["field", 1, null],
         }),
         NumberColumn({
           display_name: "Sum",
           source: "aggregation",
-          field_ref: ["field-id", 2],
+          field_ref: ["field", 2, null],
         }),
       ],
       rows: [[key, value]],
@@ -62,12 +62,12 @@ function ExtraSeries(count = 2) {
         StringColumn({
           display_name: "Category",
           source: "breakout",
-          field_ref: ["field-id", 3],
+          field_ref: ["field", 3, null],
         }),
         NumberColumn({
           display_name: "Count",
           source: "aggregation",
-          field_ref: ["field-id", 4],
+          field_ref: ["field", 4, null],
         }),
       ],
       rows: [["A", count]],

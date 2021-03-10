@@ -2,10 +2,8 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
+            [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.pulse :as models.pulse]
@@ -160,7 +158,7 @@
 
 (deftest basic-timeseries-test
   (do-test
-   {:card  (checkins-query-card {:breakout [!hour.date]})
+   {:card  (checkins-query-card {:breakout [!day.date]})
     :pulse {:skip_if_empty false}
 
     :assert
@@ -245,7 +243,7 @@
 
 (deftest csv-test
   (tests {:pulse {:skip_if_empty false}
-          :card  (checkins-query-card {:breakout [!hour.date]})}
+          :card  (checkins-query-card {:breakout [!day.date]})}
     "alert with a CSV"
     {:pulse-card {:include_csv true}
 
@@ -253,7 +251,7 @@
      {:email
       (fn [_ _]
         (is (= (rasta-alert-email "Pulse: Pulse Name"
-                                  [test-card-result, png-attachment, csv-attachment])
+                                  [test-card-result png-attachment csv-attachment])
                (mt/summarize-multipart-email test-card-regex))))}}
 
     "With a \"rows\" type of pulse (table visualization) we should include the CSV by default"
@@ -287,7 +285,7 @@
 (deftest xls-test-2
   (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
     (do-test
-     {:card       (checkins-query-card {:breakout [!hour.date]})
+     {:card       (checkins-query-card {:breakout [!day.date]})
       :pulse-card {:include_xls true}
       :assert
       {:email
@@ -299,7 +297,7 @@
   (testing "card with CSV and XLS attachments, but no data. Should not include an attachment"
     (do-test
      {:card       (checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                        :breakout [!hour.date]})
+                                        :breakout [!day.date]})
       :pulse      {:skip_if_empty false}
       :pulse-card {:include_csv true
                    :include_xls true}
@@ -346,7 +344,7 @@
   (testing "Pulse should be sent to two recipients"
     (do-test
      {:card
-      (checkins-query-card {:breakout [!hour.date]})
+      (checkins-query-card {:breakout [!day.date]})
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
@@ -369,7 +367,7 @@
   (testing "1 pulse that has 2 cards, should contain two attachments"
     (do-test
      {:card
-      (assoc (checkins-query-card {:breakout [!hour.date]}) :name "card 1")
+      (assoc (checkins-query-card {:breakout [!day.date]}) :name "card 1")
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
@@ -391,7 +389,7 @@
 (deftest empty-results-test
   (testing "Pulse where the card has no results"
     (tests {:card (checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                        :breakout [!hour.date]})}
+                                        :breakout [!day.date]})}
       "skip if empty = false"
       {:pulse    {:skip_if_empty false}
        :assert {:email (fn [_ _]
@@ -409,7 +407,7 @@
     (tests {:pulse {:alert_condition "rows", :alert_first_only false}}
       "with data"
       {:card
-       (checkins-query-card {:breakout [!hour.date]})
+       (checkins-query-card {:breakout [!day.date]})
 
        :assert
        {:email
@@ -436,7 +434,7 @@
       "with no data"
       {:card
        (checkins-query-card {:filter   [:> $date "2017-10-24"]
-                             :breakout [!hour.date]})
+                             :breakout [!day.date]})
        :assert
        {:email
         (fn [_ _]
@@ -461,7 +459,7 @@
 
 
       "with data and a CSV + XLS attachment"
-      {:card       (checkins-query-card {:breakout [!hour.date]})
+      {:card       (checkins-query-card {:breakout [!day.date]})
        :pulse-card {:include_csv true, :include_xls true}
 
        :assert
@@ -475,7 +473,7 @@
   (tests {:pulse {:alert_condition "rows", :alert_first_only true}}
     "first run only with data"
     {:card
-     (checkins-query-card {:breakout [!hour.date]})
+     (checkins-query-card {:breakout [!day.date]})
 
      :assert
      {:email
@@ -491,7 +489,7 @@
     "first run alert with no data"
     {:card
      (checkins-query-card {:filter   [:> $date "2017-10-24"]
-                           :breakout [!hour.date]})
+                           :breakout [!day.date]})
 
      :assert
      {:email
@@ -614,7 +612,7 @@
 
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
-    (mt/with-temp* [Card         [{card-id-1 :id} (checkins-query-card {:breakout [!hour.date]})]
+    (mt/with-temp* [Card         [{card-id-1 :id} (checkins-query-card {:breakout [!day.date]})]
                     Card         [{card-id-2 :id} (-> {:breakout [[:datetime-field (mt/id :checkins :date) "minute"]]}
                                                       checkins-query-card
                                                       (assoc :name "Test card 2"))]
@@ -652,7 +650,7 @@
 
 (deftest multi-channel-test
   (testing "Test with a slack channel and an email"
-    (mt/with-temp Card [{card-id :id} (checkins-query-card {:breakout [!hour.date]})]
+    (mt/with-temp Card [{card-id :id} (checkins-query-card {:breakout [!day.date]})]
       ;; create a Pulse with an email channel
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:skip_if_empty false}}]
         ;; add additional Slack channel

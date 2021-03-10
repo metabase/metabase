@@ -32,11 +32,7 @@ describe("Mode", () => {
       it("returns `timeseries` mode with >=1 aggregations and date breakout", () => {
         const mode = rawDataQuery
           .aggregate(["count"])
-          .breakout([
-            "datetime-field",
-            ["field-id", ORDERS.CREATED_AT.id],
-            "day",
-          ])
+          .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }])
           .question()
           .mode();
         expect(mode && mode.name()).toEqual("timeseries");
@@ -44,15 +40,11 @@ describe("Mode", () => {
       it("returns `timeseries` mode with >=1 aggregations and date + category breakout", () => {
         const mode = rawDataQuery
           .aggregate(["count"])
+          .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }])
           .breakout([
-            "datetime-field",
-            ["field-id", ORDERS.CREATED_AT.id],
-            "day",
-          ])
-          .breakout([
-            "fk->",
-            ["field-id", ORDERS.PRODUCT_ID.id],
-            ["field-id", PRODUCTS.CATEGORY.id],
+            "field",
+            PRODUCTS.CATEGORY.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
           ])
           .question()
           .mode();
@@ -63,9 +55,9 @@ describe("Mode", () => {
         const mode = rawDataQuery
           .aggregate(["count"])
           .breakout([
-            "fk->",
-            ["field-id", ORDERS.USER_ID.id],
-            ["field-id", PEOPLE.STATE.id],
+            "field",
+            PEOPLE.STATE.id,
+            { "source-field": ORDERS.USER_ID.id },
           ])
           .question()
           .mode();
@@ -76,14 +68,14 @@ describe("Mode", () => {
         const mode = rawDataQuery
           .aggregate(["count"])
           .breakout([
-            "fk->",
-            ["field-id", ORDERS.PRODUCT_ID.id],
-            ["field-id", PRODUCTS.CATEGORY.id],
+            "field",
+            PRODUCTS.CATEGORY.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
           ])
           .breakout([
-            "fk->",
-            ["field-id", ORDERS.USER_ID.id],
-            ["field-id", PEOPLE.STATE.id],
+            "field",
+            PEOPLE.STATE.id,
+            { "source-field": ORDERS.USER_ID.id },
           ])
           .question()
           .mode();
@@ -92,7 +84,7 @@ describe("Mode", () => {
 
       it("returns `object` mode with pk filter", () => {
         const mode = rawDataQuery
-          .filter(["=", ["field-id", ORDERS.ID.id], 42])
+          .filter(["=", ["field", ORDERS.ID.id, null], 42])
           .question()
           .mode();
         expect(mode && mode.name()).toEqual("object");
@@ -101,20 +93,16 @@ describe("Mode", () => {
       it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {
         const mode = rawDataQuery
           .aggregate(["count"])
+          .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }])
           .breakout([
-            "datetime-field",
-            ["field-id", ORDERS.CREATED_AT.id],
-            "day",
+            "field",
+            PRODUCTS.CATEGORY.id,
+            { "source-field": ORDERS.PRODUCT_ID.id },
           ])
           .breakout([
-            "fk->",
-            ["field-id", ORDERS.PRODUCT_ID.id],
-            ["field-id", PRODUCTS.CATEGORY.id],
-          ])
-          .breakout([
-            "fk->",
-            ["field-id", ORDERS.USER_ID.id],
-            ["field-id", PEOPLE.STATE.id],
+            "field",
+            PEOPLE.STATE.id,
+            { "source-field": ORDERS.USER_ID.id },
           ])
           .question()
           .mode();
@@ -148,7 +136,7 @@ describe("Mode", () => {
       })
         .query()
         .aggregate(["count"])
-        .breakout(["datetime-field", ["field-id", 1], "day"])
+        .breakout(["field", 1, { "temporal-unit": "day" }])
         .question()
         .setDisplay("table")
         .mode();

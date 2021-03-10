@@ -164,6 +164,9 @@
         (.close stmt)
         (throw e)))))
 
+;; the current HiveConnection doesn't support .createStatement
+(defmethod sql-jdbc.execute/statement-supported? :sparksql [_] false)
+
 (doseq [feature [:basic-aggregations
                  :binning
                  :expression-aggregations

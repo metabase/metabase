@@ -5,7 +5,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Dimension Segment]]
+            [metabase.models :refer [Dimension Field Segment Table]]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as models]
@@ -17,7 +17,8 @@
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -66,11 +67,11 @@
           [4  6]]
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
             native-source?
-            (-> (assoc :field_ref [:field-literal "PRICE" :type/Integer])
+            (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}])
                 (dissoc :description :parent_id :visibility_type))
 
             (not has-source-metadata?)
-            (dissoc :id :special_type :settings :fingerprint :table_id))
+            (dissoc :id :semantic_type :settings :fingerprint :table_id))
           (qp.test/aggregate-col :count)]})
 
 (deftest mbql-source-query-breakout-aggregation-test
@@ -264,7 +265,7 @@
            {:database (mt/id)
             :type     :query
             :query    {:source-query {:source-table (mt/id :venues)}
-                       :filter       [:= [:field-literal :BIRD.ID :type/Integer] 1]
+                       :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
                        :limit        10}}))
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them"))
@@ -305,7 +306,7 @@
                               :order-by     [[[:aggregation 0] :descending]]}
                :aggregation  [[:avg *stddev/Integer]]}))))))
 
-(deftest handle-incorrectl-field-forms-gracefully-test
+(deftest handle-incorrect-field-forms-gracefully-test
   (testing "make sure that we handle [field-id [field-literal ...]] forms gracefully, despite that not making any sense"
     (is (= (honeysql->sql
             {:select   [[:source.category_id :category_id]]
@@ -316,7 +317,7 @@
            (qp/query->native
             (mt/mbql-query venues
               {:source-query {:source-table $$venues}
-               :breakout     [[:field-id [:field-literal "category_id" :type/Integer]]]
+               :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
                :limit        10}))))))
 
 (deftest filter-by-string-fields-test
@@ -336,7 +337,7 @@
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
                :limit        10
-               :filter       [:!= [:field-literal "text" :type/Text] "Coo"]}))))))
+               :filter       [:!= [:field "text" {:base-type :type/Text}] "Coo"]}))))))
 
 (deftest filter-by-number-fields-test
   (testing "Make sure we can filter by number fields form a source query"
@@ -394,11 +395,11 @@
 
   (testing "make sure nested queries return the right columns metadata for SQL source queries and datetime breakouts"
     (is (= [(-> (qp.test/breakout-col (qp.test/field-literal-col :checkins :date))
-                (assoc :field_ref [:datetime-field [:field-literal "DATE" :type/Date] :day]
+                (assoc :field_ref [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
                        :unit      :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
-                (dissoc :special_type :table_id :id :settings :fingerprint))
+                (dissoc :semantic_type :table_id :id :settings :fingerprint))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card {:dataset_query {:database (mt/id)
@@ -422,8 +423,8 @@
                                                  :data :cols)]
                                      (-> (into {} col)
                                          (assoc :source :fields)))]
-          (is (= [(assoc date-col  :field_ref [:field-id (mt/id :checkins :date)])
-                  (assoc count-col :field_ref [:field-literal "count" (:base_type count-col)])]
+          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil])
+                  (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
                  (mt/cols
                    (qp/process-query (query-with-source-card card))))))))))
 
@@ -445,7 +446,7 @@
 
 (deftest datetime-field-literals-in-filters-and-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-    (testing "make sure that wrapping a field literal in a datetime-field clause works correctly in filters & breakouts"
+    (testing "make sure that bucketing a `:field` w/ name works correctly in filters & breakouts"
       (mt/with-temp Card [card (mbql-card-def (mt/$ids {:source-table $$checkins}))]
         (is (= :completed
                (-> (query-with-source-card card
@@ -708,11 +709,11 @@
       (let [results (mt/run-mbql-query venues
                       {:source-query {:source-table $$venues
                                       :aggregation  [[:count]]
-                                      :breakout     [$name [:joined-field "c" $categories.name]]
+                                      :breakout     [$name &c.categories.name]
                                       :joins        [{:source-table $$categories
                                                       :alias        "c"
-                                                      :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}
-                       :filter       [:> [:field-literal "count" :type/Number] 0]
+                                                      :condition    [:= $category_id &c.categories.id]}]}
+                       :filter       [:> [:field "count" {:base-type :type/Number}] 0]
                        :limit        3})]
         (is (= [[ "20th Century Cafe" "Café" 1 ]
                 [ "25°" "Burger" 1 ]
@@ -732,7 +733,7 @@
                    :base_type    :type/Text}
                   {:name         "count"
                    :display_name "Count"
-                   :field_ref    [:field-literal "count" :type/BigInteger]
+                   :field_ref    [:field "count" {:base-type :type/BigInteger}]
                    :base_type    (:base_type (qp.test/aggregate-col :count))}])
                (for [col (mt/cols results)]
                  (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
@@ -777,7 +778,7 @@
                                 {:source-query {:source-table $$orders
                                                 :joins        [{:fields       :all
                                                                 :source-table $$products
-                                                                :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                                                :condition    [:= $product_id &Products.products.id]
                                                                 :alias        "Products"}]}
                                  :limit        10})]
                   (is (schema= {:status    (s/eq :completed)
@@ -808,14 +809,14 @@
                   (get-in result [:data :results_metadata :columns])
                   (u/key-by :name result)
                   (get result "EAN")
-                  (select-keys result [:name :display_name :base_type :special_type :id :field_ref])))]
+                  (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"
           (let [base-query (mt/mbql-query orders
                              {:source-table $$orders
-                              :fields       [$id [:joined-field "Products" $products.ean]]
-                              :joins        [{:fields       [[:joined-field "Products" $products.ean]]
+                              :fields       [$id &Products.products.ean]
+                              :joins        [{:fields       [&Products.products.ean]
                                               :source-table $$products
-                                              :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                              :condition    [:= $product_id &Products.products.id]
                                               :alias        "Products"}]
                               :limit        10})]
             (doseq [level (range 4)]
@@ -826,10 +827,15 @@
                              {:name         "EAN"
                               :display_name "Products → Ean"
                               :base_type    :type/Text
-                              :special_type nil
+                              :semantic_type nil
                               :id           %ean
-                              :field_ref    [:joined-field "Products" $ean]})
+                              :field_ref    &Products.ean})
                            (ean-metadata (qp/process-query query))))))))))))))
+
+(defn- field-id->name [field-id]
+  (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)
+        table-name                             (db/select-one-field :name Table :id table-id)]
+    (format "%s.%s" table-name field-name)))
 
 (deftest inception-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
@@ -841,7 +847,7 @@
                                       {:source-table $$orders
                                        :joins        [{:fields       :all
                                                        :source-table $$products
-                                                       :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                                       :condition    [:= $product_id &Products.products.id]
                                                        :alias        "Products"}]
                                        :order-by     [[:asc $id]]
                                        :limit        2})
@@ -863,9 +869,28 @@
                               :row_count (s/eq 2)
                               s/Keyword  s/Any}
                              result))
+                (is (=  ["ORDERS.ID"
+                         "ORDERS.USER_ID"
+                         "ORDERS.PRODUCT_ID"
+                         "ORDERS.SUBTOTAL"
+                         "ORDERS.TAX"
+                         "ORDERS.TOTAL"
+                         "ORDERS.DISCOUNT"
+                         "ORDERS.CREATED_AT"
+                         "ORDERS.QUANTITY"
+                         "PRODUCTS.TITLE"
+                         "PRODUCTS.ID"
+                         "PRODUCTS.EAN"
+                         "PRODUCTS.TITLE"
+                         "PRODUCTS.CATEGORY"
+                         "PRODUCTS.VENDOR"
+                         "PRODUCTS.PRICE"
+                         "PRODUCTS.RATING"
+                         "PRODUCTS.CREATED_AT"]
+                        (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
                 (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
-                        14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
-                        "2017-12-31T14:41:56.87Z"]
+                        14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman"
+                        25.1 4.0 "2017-12-31T14:41:56.87Z"]
                        (mt/first-row result)))))))))))
 
 (deftest handle-unwrapped-joined-fields-correctly-test
@@ -903,16 +928,16 @@
   (testing "duplicate column names in nested queries (#10511)"
     (mt/dataset sample-dataset
       (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
-              ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
-              ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
               ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
-              ["2016-08-01T00:00:00Z" "2016-07-01T00:00:00Z" 11]]
+              ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
+              ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
+              ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
              (mt/rows
                (mt/run-mbql-query orders
                  {:filter       [:> *count/Integer 5]
                   :source-query {:source-table $$orders
                                  :aggregation  [[:count]]
-                                 :breakout     [!month.created_at !month.product_id->created_at]}
+                                 :breakout     [!month.created_at !month.product_id->products.created_at]}
                   :limit        5})))))))
 
 (deftest nested-queries-with-joins-with-old-metadata-test
@@ -1013,7 +1038,7 @@
                                                                    :alias        "Products"}]}
                                     :limit        2}
                        :parameters [{:type   :category
-                                     :target [:dimension [:field-literal "CATEGORY" :type/Text]]
+                                     :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]
                                      :value  "Widget"}]})))))))
 
 (deftest nested-queries-with-expressions-and-joins-test

@@ -1,5 +1,3 @@
-/* @flow */
-
 import {
   compose,
   withAction,
@@ -19,6 +17,7 @@ import { POST, DELETE } from "metabase/lib/api";
 import {
   canonicalCollectionId,
   getCollectionType,
+  normalizedCollection,
 } from "metabase/entities/collections";
 
 const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
@@ -132,6 +131,8 @@ const Dashboards = createEntity({
     getFavorited: dashboard => dashboard && dashboard.favorite,
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
+    getCollection: dashboard =>
+      dashboard && normalizedCollection(dashboard.collection),
     getIcon: dashboard => "dashboard",
     getColor: () => color("dashboard"),
   },

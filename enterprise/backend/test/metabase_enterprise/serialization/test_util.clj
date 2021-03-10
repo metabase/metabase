@@ -29,12 +29,12 @@
                    Metric     [{~'metric-id :id} {:name "My Metric"
                                                   :table_id ~'table-id
                                                   :definition {:source-table ~'table-id
-                                                               :aggregation [:sum [:field-id ~'numeric-field-id]]}}]
+                                                               :aggregation [:sum [:field ~'numeric-field-id nil]]}}]
 
                    Segment    [{~'segment-id :id} {:name "My Segment"
                                                    :table_id ~'table-id
                                                    :definition {:source-table ~'table-id
-                                                                :filter [:!= [:field-id ~'category-field-id] nil]}}]
+                                                                :filter [:!= [:field ~'category-field-id nil] nil]}}]
                    Dashboard  [{~'dashboard-id :id} {:name "My Dashboard"
                                                      :collection_id ~'collection-id}]
                    Card       [{~'card-id :id}
@@ -44,8 +44,8 @@
                                 :dataset_query {:type :query
                                                 :database ~'db-id
                                                 :query {:source-table ~'table-id
-                                                        :aggregation [:sum [:field-id ~'numeric-field-id]]
-                                                        :breakout [[:field-id ~'category-field-id]]}}}]
+                                                        :aggregation [:sum [:field ~'numeric-field-id nil]]
+                                                        :breakout [[:field ~'category-field-id nil]]}}}]
                    Card       [{~'card-id-root :id}
                                {:table_id ~'table-id
                                 ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words

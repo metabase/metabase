@@ -13,7 +13,9 @@
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
+            [metabase.shared.util :as shared.u]
             [metabase.util.i18n :refer [trs tru]]
+            [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
   (:import [java.net InetAddress InetSocketAddress Socket]
@@ -22,6 +24,12 @@
            java.util.Locale
            javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
+
+(comment shared.u/keep-me)
+
+(p/import-vars
+ [shared.u
+  qualified-name])
 
 (defn format-bytes
   "Nicely format `num-bytes` as kilobytes/megabytes/etc.
@@ -38,9 +46,8 @@
 (when-not *compile-files*
   (log/info (trs "Maximum memory available to JVM: {0}" (format-bytes (.maxMemory (Runtime/getRuntime))))))
 
-;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
-;; for pprinting huge things like expanded queries
-(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 200))
+;; Set the default width for pprinting to 120 instead of 72. The default width is too narrow and wastes a lot of space
+(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 120))
 
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
@@ -463,18 +470,6 @@
   {:style/indent 1}
   [f coll]
   (into {} (map (juxt f identity)) coll))
-
-(defn qualified-name
-  "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well
-  (also unlike `name`).
-
-     (u/qualified-name :type/FK) -> \"type/FK\""
-  [k]
-  (when (some? k)
-    (if-let [namespac (when (instance? clojure.lang.Named k)
-                        (namespace k))]
-      (str namespac "/" (name k))
-      (name k))))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.

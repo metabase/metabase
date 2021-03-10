@@ -38,7 +38,7 @@ type Props = {
 export default class TagEditorParam extends Component {
   props: Props;
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
@@ -81,7 +81,7 @@ export default class TagEditorParam extends Component {
 
   setDimension(fieldId) {
     const { tag, onUpdate, metadata } = this.props;
-    const dimension = ["field-id", fieldId];
+    const dimension = ["field", fieldId, null];
     if (!_.isEqual(tag.dimension !== dimension)) {
       const field = metadata.field(dimension[1]);
       if (!field) {

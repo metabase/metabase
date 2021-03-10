@@ -145,13 +145,16 @@ describe("visualization_settings", () => {
       it("should include fieldRef in default table.columns", () => {
         const card = { visualization_settings: {} };
         const cols = [
-          NumberColumn({ name: "some number", field_ref: ["field-id", 123] }),
+          NumberColumn({
+            name: "some number",
+            field_ref: ["field", 123, null],
+          }),
         ];
         const {
           "table.columns": [setting],
         } = getComputedSettingsForSeries([{ card, data: { cols } }]);
 
-        expect(setting.fieldRef).toEqual(["field-id", 123]);
+        expect(setting.fieldRef).toEqual(["field", 123, null]);
       });
     });
   });
@@ -166,18 +169,6 @@ describe("visualization_settings", () => {
         { card: { visualization_settings: { foo: "bar" } } },
       ]);
       expect(settings).toEqual({ foo: "bar" });
-    });
-    it("should normalize stored columnSettings keys", () => {
-      const oldKey = `["ref",["fk->",1,2]]`;
-      const newKey = `["ref",["fk->",["field-id",1],["field-id",2]]]`;
-      const settings = getStoredSettingsForSeries([
-        {
-          card: {
-            visualization_settings: { column_settings: { [oldKey]: "blah" } },
-          },
-        },
-      ]);
-      expect(settings.column_settings).toEqual({ [newKey]: "blah" });
     });
   });
   describe("table.cell_column", () => {

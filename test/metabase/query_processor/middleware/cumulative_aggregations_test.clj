@@ -61,14 +61,14 @@
     (is (= {:database 1
             :type     :query
             :query    {:source-table 1
-                       :breakout     [[:field-id 1]]
-                       :aggregation  [[:sum [:field-id 1]]]}}
+                       :breakout     [[:field 1 nil]]
+                       :aggregation  [[:sum [:field 1 nil]]]}}
            (#'cumulative-aggregations/replace-cumulative-ags
             {:database 1
              :type     :query
              :query    {:source-table 1
-                        :breakout     [[:field-id 1]]
-                        :aggregation  [[:cum-sum [:field-id 1]]]}}))))
+                        :breakout     [[:field 1 nil]]
+                        :aggregation  [[:cum-sum [:field 1 nil]]]}}))))
   (testing "...even inside expression aggregations?"
     (is (= {:database 1
             :type     :query
@@ -97,8 +97,8 @@
             {:database 1
              :type     :query
              :query    {:source-table 1
-                        :breakout     [[:field-id 1]]
-                        :aggregation  [[:cum-sum [:field-id 1]]]}}))))
+                        :breakout     [[:field 1 nil]]
+                        :aggregation  [[:cum-sum [:field 1 nil]]]}}))))
   (testing "make sure we sum up cumulative aggregations inside expressions correctly"
     (testing "we shouldn't be doing anything special with the expressions, let the database figure that out. We will just SUM"
       (is (= [[1 1] [2 3] [3 6] [4 10] [5 15]]
@@ -106,5 +106,5 @@
               {:database 1
                :type     :query
                :query    {:source-table 1
-                          :breakout     [[:field-id 1]]
+                          :breakout     [[:field 1 nil]]
                           :aggregation  [[:+ [:cum-count] 1]]}}))))))

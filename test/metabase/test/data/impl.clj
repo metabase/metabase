@@ -62,7 +62,7 @@
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
                                                       (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
-      (doseq [{:keys [field-name visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
+      (doseq [{:keys [field-name visibility-type semantic-type], :as field-definition} (:field-definitions table-definition)]
         (let [field (delay (or (tx/metabase-instance field-definition @table)
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n"
                                                           field-name
@@ -70,9 +70,9 @@
           (when visibility-type
             (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
             (db/update! Field (:id @field) :visibility_type (name visibility-type)))
-          (when special-type
-            (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-            (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
+          (when semantic-type
+            (log/debug (format "SET SEMANTIC TYPE %s.%s -> %s" table-name field-name semantic-type))
+            (db/update! Field (:id @field) :semantic_type (u/qualified-name semantic-type))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."

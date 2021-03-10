@@ -12,7 +12,7 @@ describe("generateQueryDescription", () => {
     expect(
       generateQueryDescription(mockTableMetadata, {
         "source-table": ORDERS.id,
-        aggregation: [["count"], ["sum", ["field-id", 1]]],
+        aggregation: [["count"], ["sum", ["field", 1, null]]],
       }),
     ).toEqual("Orders, Count and Sum of Total");
   });
@@ -23,7 +23,7 @@ describe("generateQueryDescription", () => {
         aggregation: [
           [
             "aggregation-options",
-            ["sum", ["field-id", 1]],
+            ["sum", ["field", 1, null]],
             { "display-name": "Revenue" },
           ],
         ],
