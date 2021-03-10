@@ -161,12 +161,12 @@
                      result)))
 
 (defn- pinned-score
-  [{pos :collection_position}]
-  ;; low is better (top of the list), but nil or 0 should be at the bottom
-  (if (or (nil? pos)
-          (zero? pos))
-    0
-    (/ 1 pos)))
+  [{:keys [:collection_position]}]
+  ;; We experimented with favoring lower collection positions, but it wasn't good
+  ;; So instead, just give a bonus for items that are pinned at all
+  (if ((fnil pos? 0) collection_position)
+    1
+    0))
 
 (defn- dashboard-count-score
   [{:keys [dashboardcard_count]}]
