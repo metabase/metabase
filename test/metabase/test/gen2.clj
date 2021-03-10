@@ -14,8 +14,6 @@
             [java-time :as t]
             [manifold.deferred :as d]))
 
-
-
 ;; * items
 (def id-seq (atom 0))
 (s/def ::id (s/with-gen pos-int? #(gen/fmap (fn [_] (swap! id-seq inc)) (gen/return nil))))
@@ -25,25 +23,25 @@
 (s/def ::first_name ::not-empty-string)
 (s/def ::last_name ::not-empty-string)
 
-(s/def ::database (s/keys :req-un [::id ::engine ::name]))
+(s/def ::database (s/keys :req-un [::id ::engine ::name ::details]))
 (s/def ::color #{"#A00000" "#FFFFFF"})
 ;(s/def ::email (s/and ::not-empty-string #(str/starts-with? #"a@a." %)))
 (s/def ::password ::not-empty-string)
 (s/def ::str? (s/or :nil nil? :string string?))
 (s/def ::topic ::not-empty-string)
-(s/def ::details ::not-empty-string)
+(s/def ::details #{ "{}"})
 (s/def ::timestamp #{(t/instant)})
 
 (s/def ::user_id ::id)
 (s/def ::group_id ::id)
 
-(def non-blank-str?
-  (fn [s]
-    (not (clojure.string/blank? s))))
+;; (def non-blank-str?
+;;   (fn [s]
+;;     (not (str/blank? s))))
 
-(def str-with-gen (s/with-gen string?
-                        #(gen/such-that non-blank-str?
-                                        gen/string-alpha-numeric)))
+;; (def str-with-gen (s/with-gen string?
+;;                     #(gen/such-that non-blank-str?
+;;                                     gen/string-alpha-numeric)))
 
 (def email-gen
   "Generator for email addresses"
@@ -57,6 +55,7 @@
     #(re-matches #".+@.+\..+" %)
     (fn [] email-gen)))
 
+;; (s/def ::email (fn [_] (talltale.core/email)))
 
 ;; * card
 (s/def ::display #{:table})
@@ -83,7 +82,6 @@
 ;; * native-query-snippet
 (s/def ::content ::not-empty-string)
 
-
 (s/def ::parameters #{[{:id "a"}]})
 
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
@@ -96,10 +94,10 @@
 (s/def ::dashboard_card_series (s/keys :req-un [::id ::position]))
 (s/def ::dimension (s/keys :req-un [::id ::name ::type]))
 
-(s/def ::field (s/keys :req-un [::id ::name ::base_type ::database_type ::position]))
+(s/def ::field (s/keys :req-un [::id ::name ::base_type ::database_type ::position ::description]))
 
 (s/def ::metric (s/keys :req-un [::id ::name ::definition ::description]))
-(s/def ::table  (s/keys :req-un [::id ::active ::name ]))
+(s/def ::table  (s/keys :req-un [::id ::active ::name ::description]))
 
 (s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))
 
@@ -227,8 +225,8 @@
   (rsg/ent-db-spec-gen {:schema schema} query))
 
 (def table-field-position (atom 0))
-(defn adjust [sm-db {:keys [schema-opts attrs ent-type visit-val] :as visit-opts}]
 
+(defn adjust [sm-db {:keys [schema-opts attrs ent-type visit-val] :as visit-opts}]
   ;; some fields have to be semantically correct, or db correct. fields have position, and they do have to be unique.
   ;; In the table-field-position, for now it's just incrementing forever, without scoping by table_id (which would be
   ;; cool)
@@ -261,6 +259,11 @@
                     )))
       (rs/attr-map :insert!)))
 
-;; (insert! {:collection [[1000 {:refs {:personal_owner_id ::rs/omit}}]]})
-;; (insert! {:collection [[1000 {:refs {:personal_owner_id ::rs/omit}}]]})
+;(insert! {:core-user [[1 {:spec-gen {:email "awesome@awesome.com" :password "lazyfox1"}}]]})
+;;
+(insert! {:collection [[10000 {:refs {:personal_owner_id ::rs/omit}}]]})
+
 ;; (insert! {:field [[2 {:refs {:table_id :t0}}]]})
+
+(insert! {:activity [[1000]]})
+;;
