@@ -149,17 +149,8 @@
    (try
      (f)
      (catch Throwable t
-       (let [exception-classes (u/full-exception-chain t)
-             should-not-retry  (some true? (for [ex      exception-classes
-                                                 test-ex exception-classes-not-to-retry]
-                                             (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
-         (if (true? should-not-retry)
-           (do
-             (log/warn t "Aborting sync because of unrecoverable exception, will try again at next sync interval")
-             (throw t))
-           (do
-             (log/warn t message)
-             t)))))))
+       (log/warn t message)
+       t))))
 
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
@@ -355,7 +346,11 @@
         results    (with-start-and-finish-debug-logging (trs "step ''{0}'' for {1}"
                                                              step-name
                                                              (name-for-logging database))
-                     #(sync-fn database))
+                     (fn [& args]
+                       (try
+                         (apply sync-fn database args)
+                         (catch Throwable t
+                           {:throwable t}))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                  :start-time start-time
@@ -440,7 +435,25 @@
    database :- i/DatabaseInstance
    sync-steps :- [StepDefinition]]
   (let [start-time    (t/zoned-date-time)
-        step-metadata (mapv #(run-step-with-metadata database %) sync-steps)
+        step-metadata (loop [[step-defn & rest-defns] sync-steps
+                             result                   []]
+                        (let [[step-name r] (run-step-with-metadata database step-defn)
+                              new-result    (conj result [step-name r])
+                              no-more       (not (some? rest-defns))]
+                          (if (contains? r :throwable)
+                            (let [caught-exception  (:throwable r)
+                                  exception-classes (u/full-exception-chain caught-exception)
+                                  should-not-cont   (some true? (for [ex      exception-classes
+                                                                      test-ex exception-classes-not-to-retry]
+                                                                  (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
+                              (if (true? should-not-cont)
+                                new-result
+                                (if (true? no-more)
+                                  new-result
+                                  (recur rest-defns new-result))))
+                            (if (true? no-more)
+                              new-result
+                              (recur rest-defns new-result)))))
         end-time      (t/zoned-date-time)
         sync-metadata {:start-time start-time
                        :end-time   end-time
