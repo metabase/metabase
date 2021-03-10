@@ -49,52 +49,49 @@
   [driver identifier]
   ((get-method sql.qp/->honeysql [:sql Identifier]) driver (CustomIdentifier. identifier sql.qp/*table-alias*)))
 
-(defn- with-db-type [expr db-type]
-  (hx/with-type-info expr {:database-type db-type}))
-
 (deftest generate-honeysql-for-join-test
   (testing "Test that the correct HoneySQL gets generated for a query with a join, and that the correct identifiers are used"
     (mt/with-everything-store
-      (is (= {:select    [[(with-db-type (id :field "PUBLIC" "VENUES" "ID") "bigint")
+      (is (= {:select    [[(hx/with-database-type-info (id :field "PUBLIC" "VENUES" "ID") "bigint")
                            (id :field-alias "ID")]
-                          [(with-db-type (id :field "PUBLIC" "VENUES" "NAME") "varchar")
+                          [(hx/with-database-type-info (id :field "PUBLIC" "VENUES" "NAME") "varchar")
                            (id :field-alias "NAME")]
-                          [(with-db-type (id :field "PUBLIC" "VENUES" "CATEGORY_ID") "integer")
+                          [(hx/with-database-type-info (id :field "PUBLIC" "VENUES" "CATEGORY_ID") "integer")
                            (id :field-alias "CATEGORY_ID")]
-                          [(with-db-type (id :field "PUBLIC" "VENUES" "LATITUDE") "double")
+                          [(hx/with-database-type-info (id :field "PUBLIC" "VENUES" "LATITUDE") "double")
                            (id :field-alias "LATITUDE")]
-                          [(with-db-type (id :field "PUBLIC" "VENUES" "LONGITUDE") "double")
+                          [(hx/with-database-type-info (id :field "PUBLIC" "VENUES" "LONGITUDE") "double")
                            (id :field-alias "LONGITUDE")]
-                          [(with-db-type (id :field "PUBLIC" "VENUES" "PRICE") "integer")
+                          [(hx/with-database-type-info (id :field "PUBLIC" "VENUES" "PRICE") "integer")
                            (id :field-alias "PRICE")]]
               :from      [(id :table "PUBLIC" "VENUES")]
               :where     [:=
-                          (with-db-type (bound-alias "c" (id :field "c" "NAME")) "varchar")
+                          (hx/with-database-type-info (bound-alias "c" (id :field "c" "NAME")) "varchar")
                           "BBQ"]
               :left-join [[(id :table "PUBLIC" "CATEGORIES") (id :table-alias "c")]
                           [:=
-                           (with-db-type (id :field "PUBLIC" "VENUES" "CATEGORY_ID") "integer")
-                           (with-db-type (bound-alias "c" (id :field "c" "ID")) "bigint")]]
-              :order-by  [[(with-db-type (id :field "PUBLIC" "VENUES" "ID") "bigint") :asc]]
+                           (hx/with-database-type-info (id :field "PUBLIC" "VENUES" "CATEGORY_ID") "integer")
+                           (hx/with-database-type-info (bound-alias "c" (id :field "c" "ID")) "bigint")]]
+              :order-by  [[(hx/with-database-type-info (id :field "PUBLIC" "VENUES" "ID") "bigint") :asc]]
               :limit     100}
              (#'sql.qp/mbql->honeysql
               ::id-swap
               (mt/mbql-query venues
-                {:source-table $$venues
-                 :order-by     [[:asc $id]]
-                 :filter       [:=
-                                &c.categories.name
-                                [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
-                 :fields       [$id $name $category_id $latitude $longitude $price]
-                 :limit        100
-                 :joins        [{:source-table $$categories
-                                 :alias        "c",
-                                 :strategy     :left-join
-                                 :condition    [:=
-                                                $category_id
-                                                &c.categories.id]
-                                 :fk-field-id  (mt/id :venues :category_id)
-                                 :fields       :none}]})))))))
+                             {:source-table $$venues
+                              :order-by     [[:asc $id]]
+                              :filter       [:=
+                                             &c.categories.name
+                                             [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
+                              :fields       [$id $name $category_id $latitude $longitude $price]
+                              :limit        100
+                              :joins        [{:source-table $$categories
+                                              :alias        "c",
+                                              :strategy     :left-join
+                                              :condition    [:=
+                                                             $category_id
+                                                             &c.categories.id]
+                                              :fk-field-id  (mt/id :venues :category_id)
+                                              :fields       :none}]})))))))
 
 (deftest correct-identifiers-test
   (testing "This HAIRY query tests that the correct identifiers and aliases are used with both a nested query and JOIN in play."
@@ -103,79 +100,79 @@
     ;; be qualifying aliases with aliases things still work the right way.
     (mt/with-everything-store
       (driver/with-driver :h2
-        (is (= {:select    [[(with-db-type (bound-alias "v" (id :field "v" "NAME")) "varchar")
+        (is (= {:select    [[(hx/with-database-type-info (bound-alias "v" (id :field "v" "NAME")) "varchar")
                              (bound-alias "source" (id :field-alias "v__NAME"))]
                             [:%count.*
                              (bound-alias "source" (id :field-alias "count"))]]
-                :from      [[{:select [[(with-db-type (id :field "PUBLIC" "CHECKINS" "ID") "bigint")
+                :from      [[{:select [[(hx/with-database-type-info (id :field "PUBLIC" "CHECKINS" "ID") "bigint")
                                         (id :field-alias "ID")]
-                                       [(with-db-type (id :field "PUBLIC" "CHECKINS" "DATE") "date")
+                                       [(hx/with-database-type-info (id :field "PUBLIC" "CHECKINS" "DATE") "date")
                                         (id :field-alias "DATE")]
-                                       [(with-db-type (id :field "PUBLIC" "CHECKINS" "USER_ID") "integer")
+                                       [(hx/with-database-type-info (id :field "PUBLIC" "CHECKINS" "USER_ID") "integer")
                                         (id :field-alias "USER_ID")]
-                                       [(with-db-type (id :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
+                                       [(hx/with-database-type-info (id :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
                                         (id :field-alias "VENUE_ID")]]
                               :from   [(id :table "PUBLIC" "CHECKINS")]
                               :where  [:>
-                                       (with-db-type (id :field "PUBLIC" "CHECKINS" "DATE") "date")
+                                       (hx/with-database-type-info (id :field "PUBLIC" "CHECKINS" "DATE") "date")
                                        #t "2015-01-01T00:00:00.000-00:00"]}
                              (id :table-alias "source")]]
                 :left-join [[(id :table "PUBLIC" "VENUES") (bound-alias "source" (id :table-alias "v"))]
                             [:=
-                             (with-db-type (bound-alias "source" (id :field "source" "VENUE_ID")) "integer")
-                             (with-db-type (bound-alias "v" (id :field "v" "ID")) "bigint")]]
-                :group-by  [(with-db-type (bound-alias "v" (id :field "v" "NAME")) "varchar")]
+                             (hx/with-database-type-info (bound-alias "source" (id :field "source" "VENUE_ID")) "integer")
+                             (hx/with-database-type-info (bound-alias "v" (id :field "v" "ID")) "bigint")]]
+                :group-by  [(hx/with-database-type-info (bound-alias "v" (id :field "v" "NAME")) "varchar")]
                 :where     [:and
                             [:like
-                             (with-db-type (bound-alias "v" (id :field "v" "NAME")) "varchar")
+                             (hx/with-database-type-info (bound-alias "v" (id :field "v" "NAME")) "varchar")
                              "F%"]
                             [:> (bound-alias "source" (id :field "source" "user_id")) 0]],
-                :order-by  [[(with-db-type (bound-alias "v" (id :field "v" "NAME")) "varchar")
+                :order-by  [[(hx/with-database-type-info (bound-alias "v" (id :field "v" "NAME")) "varchar")
                              :asc]]}
                (#'sql.qp/mbql->honeysql
                 ::id-swap
                 (mt/mbql-query checkins
-                  {:source-query {:source-table $$checkins
-                                  :fields       [$id [:field %date {:temporal-unit :default}] $user_id $venue_id]
-                                  :filter       [:>
-                                                 $date
-                                                 [:absolute-datetime #t "2015-01-01T00:00:00.000000000-00:00" :default]]}
-                   :aggregation  [[:count]]
-                   :order-by     [[:asc &v.venues.name]]
-                   :breakout     [&v.venues.name]
-                   :filter       [:and
-                                  [:starts-with
-                                   &v.venues.name
-                                   [:value "F" {:base_type     :type/Text
-                                                :semantic_type :type/Name
-                                                :database_type "VARCHAR"}]]
-                                  [:> [:field "user_id" {:base-type :type/Integer}] 0]]
-                   :joins        [{:source-table $$venues
-                                   :alias        "v"
-                                   :strategy     :left-join
-                                   :condition    [:=
-                                                  $venue_id
-                                                  &v.venues.id]
-                                   :fk-field-id  (mt/id :checkins :venue_id)
-                                   :fields       :none}]}))))))))
+                               {:source-query {:source-table $$checkins
+                                               :fields       [$id [:field %date {:temporal-unit :default}] $user_id $venue_id]
+                                               :filter       [:>
+                                                              $date
+                                                              [:absolute-datetime #t "2015-01-01T00:00:00.000000000-00:00" :default]]}
+                                :aggregation  [[:count]]
+                                :order-by     [[:asc &v.venues.name]]
+                                :breakout     [&v.venues.name]
+                                :filter       [:and
+                                               [:starts-with
+                                                &v.venues.name
+                                                [:value "F" {:base_type     :type/Text
+                                                             :semantic_type :type/Name
+                                                             :database_type "VARCHAR"}]]
+                                               [:> [:field "user_id" {:base-type :type/Integer}] 0]]
+                                :joins        [{:source-table $$venues
+                                                :alias        "v"
+                                                :strategy     :left-join
+                                                :condition    [:=
+                                                               $venue_id
+                                                               &v.venues.id]
+                                                :fk-field-id  (mt/id :checkins :venue_id)
+                                                :fields       :none}]}))))))))
 
 (deftest handle-named-aggregations-test
   (testing "Check that named aggregations are handled correctly"
     (mt/with-everything-store
       (driver/with-driver :h2
-        (is (= {:select   [[(with-db-type (id :field "PUBLIC" "VENUES" "PRICE") "integer")
+        (is (= {:select   [[(hx/with-database-type-info (id :field "PUBLIC" "VENUES" "PRICE") "integer")
                             (id :field-alias "PRICE")]
-                           [(hsql/call :avg (with-db-type (id :field "PUBLIC" "VENUES" "CATEGORY_ID") "integer"))
+                           [(hsql/call :avg (hx/with-database-type-info (id :field "PUBLIC" "VENUES" "CATEGORY_ID") "integer"))
                             (id :field-alias "avg_2")]]
                 :from     [(id :table "PUBLIC" "VENUES")]
-                :group-by [(with-db-type (id :field "PUBLIC" "VENUES" "PRICE") "integer")]
+                :group-by [(hx/with-database-type-info (id :field "PUBLIC" "VENUES" "PRICE") "integer")]
                 :order-by [[(id :field-alias "avg_2") :asc]]}
                (#'sql.qp/mbql->honeysql
                 ::id-swap
                 (mt/mbql-query venues
-                  {:aggregation [[:aggregation-options [:avg $category_id] {:name "avg_2"}]]
-                   :breakout    [$price]
-                   :order-by    [[:asc [:aggregation 0]]]}))))))))
+                               {:aggregation [[:aggregation-options [:avg $category_id] {:name "avg_2"}]]
+                                :breakout    [$price]
+                                :order-by    [[:asc [:aggregation 0]]]}))))))))
 
 (deftest handle-source-query-params-test
   (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
@@ -195,14 +192,14 @@
         (is (= [[(sql.qp/->SQLSourceQuery "SELECT * FROM VENUES;" [])
                  (hx/identifier :table-alias "card")]
                 [:=
-                 (with-db-type (hx/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
+                 (hx/with-database-type-info (hx/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
                  (hx/identifier :field "id")]]
                (sql.qp/join->honeysql :h2
-                 (mt/$ids checkins
-                   {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                    :alias        "card"
-                    :strategy     :left-join
-                    :condition    [:= $venue_id &card.*id/Integer]}))))))))
+                                      (mt/$ids checkins
+                                               {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                                                :alias        "card"
+                                                :strategy     :left-join
+                                                :condition    [:= $venue_id &card.*id/Integer]}))))))))
 
 (deftest compile-honeysql-test
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
@@ -221,11 +218,11 @@
     (with-redefs [driver/db-start-of-week (constantly :monday)
                   setting/get-keyword     (constantly :sunday)]
       (is (= (hsql/call :dateadd
-               (hx/literal "day")
-               (with-db-type (hsql/call :cast -1 #sql/raw "long") "long")
-               (hsql/call :week (hsql/call :dateadd (hx/literal "day")
-                                  (with-db-type (hsql/call :cast 1 #sql/raw "long") "long")
-                                  :created_at)))
+                        (hx/literal "day")
+                        (hx/with-database-type-info (hsql/call :cast -1 #sql/raw "long") "long")
+                        (hsql/call :week (hsql/call :dateadd (hx/literal "day")
+                                                    (hx/with-database-type-info (hsql/call :cast 1 #sql/raw "long") "long")
+                                                    :created_at)))
              (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at))))
     (testing "Do we skip the adjustment if offset = 0"
       (with-redefs [driver/db-start-of-week (constantly :monday)

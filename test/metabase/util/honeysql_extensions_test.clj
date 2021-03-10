@@ -122,7 +122,7 @@
         (is (= ["SELECT CAST(field AS text)"]
                (maybe-cast (hx/cast "text" :field)))))
       (testing "should not cast something that's already typed"
-        (let [typed-expr (hx/with-type-info :field {:database-type "text"})]
+        (let [typed-expr (hx/with-type-info :field {::hx/database-type "text"})]
           (is (= ["SELECT field"]
                  (maybe-cast typed-expr)))
           (testing "should work with different string/keyword and case combos"
@@ -136,16 +136,16 @@
           (is (= ["SELECT CAST(field AS text)"]
                  (maybe-cast (hx/maybe-cast "text" :field)))))))))
 
-(def ^:private typed-form (hx/with-type-info :field {:database-type "text"}))
+(def ^:private typed-form (hx/with-type-info :field {::hx/database-type "text"}))
 
 (deftest TypedHoneySQLForm-test
   (testing "should generate readable output"
-    (is (= (pr-str `(hx/with-type-info :field {:database-type "text"}))
+    (is (= (pr-str `(hx/with-type-info :field {::hx/database-type "text"}))
            (pr-str typed-form)))))
 
 (deftest type-info-test
   (testing "should let you get info"
-    (is (= {:database-type "text"}
+    (is (= {::hx/database-type "text"}
            (hx/type-info typed-form)))
     (is (= nil
            (hx/type-info :field)
@@ -153,11 +153,23 @@
 
 (deftest with-type-info-test
   (testing "should let you update info"
-    (is (= (hx/with-type-info :field {:database-type "date"})
-           (hx/with-type-info typed-form {:database-type "date"})))
+    (is (= (hx/with-type-info :field {::hx/database-type "date"})
+           (hx/with-type-info typed-form {::hx/database-type "date"})))
     (testing "should normalize :database-type"
-      (is (= (hx/with-type-info :field {:database-type "date"})
-             (hx/with-type-info typed-form {:database-type "date"}))))))
+      (is (= (hx/with-type-info :field {::hx/database-type "date"})
+             (hx/with-type-info typed-form {::hx/database-type "date"}))))))
+
+(deftest with-database-type-info-test
+  (testing "should be the same as calling `with-type-info` with `::hx/database-type`"
+    (is (= (hx/with-type-info :field {::hx/database-type "date"})
+           (hx/with-database-type-info :field "date"))))
+  (testing "Passing `nil` should"
+    (testing "return untyped clause as-is"
+      (is (= :field
+             (hx/with-database-type-info :field nil))))
+    (testing "unwrap a typed clause"
+      (is (= :field
+             (hx/with-database-type-info (hx/with-database-type-info :field "date") nil))))))
 
 (deftest is-of-type?-test
   (mt/are+ [expr tyype expected] (= expected (hx/is-of-type? expr tyype))

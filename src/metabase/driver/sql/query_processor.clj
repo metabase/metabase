@@ -280,10 +280,10 @@
           [*table-alias* (unambiguous-field-alias driver [:field (:id field) nil])]
           (let [{schema :schema, table-name :name} (qp.store/table table-id)]
             [schema table-name field-name])) expr
-      (apply hx/identifier :field expr)
-      (->honeysql driver expr)
-      (cast-field-if-needed driver field expr)
-      (hx/with-type-info expr {:database-type database-type})))
+    (apply hx/identifier :field expr)
+    (->honeysql driver expr)
+    (cast-field-if-needed driver field expr)
+    (hx/with-database-type-info expr database-type)))
 
 (defn compile-field-with-join-aliases
   "Compile `field-clause` to HoneySQL using the `:join-alias` from the `:field` clause options."

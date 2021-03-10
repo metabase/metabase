@@ -195,13 +195,13 @@
   (if (hx/is-of-type? expr "date")
     expr
     (-> (hsql/call :date expr)
-        (hx/with-type-info {:database-type "date"}))))
+        (hx/with-database-type-info "date"))))
 
 (defn make-date
   "Create and return a date based on  a year and a number of days value."
   [year-expr number-of-days]
   (-> (hsql/call :makedate year-expr number-of-days)
-      (hx/with-type-info {:database-type "date"})))
+      (hx/with-database-type-info "date")))
 
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))

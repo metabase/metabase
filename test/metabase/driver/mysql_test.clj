@@ -326,4 +326,6 @@
       (is (= ["SELECT str_to_date(date_format(CAST(field AS datetime), '%Y'), '%Y')"]
              (hsql/format {:select [(#'mysql/trunc-with-format "%Y" :field)]})))
       (is (= ["SELECT str_to_date(date_format(field, '%Y'), '%Y')"]
-             (hsql/format {:select [(#'mysql/trunc-with-format "%Y" (hx/with-type-info :field {:database-type "datetime"}))]}))))))
+             (hsql/format {:select [(#'mysql/trunc-with-format
+                                     "%Y"
+                                     (hx/with-database-type-info :field "datetime"))]}))))))
