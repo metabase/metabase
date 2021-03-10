@@ -2,19 +2,19 @@
 import React from "react";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { t } from "ttag";
+import ExternalLink from "metabase/components/ExternalLink";
 
 const EmbeddingLegalese = ({ onChange }) => (
   <div className="bordered rounded text-measure p4">
     <h3 className="text-brand">{t`Using embedding`}</h3>
     <p className="text-medium" style={{ lineHeight: 1.48 }}>
       {t`By enabling embedding you're agreeing to the embedding license located at`}{" "}
-      <a
-        className="link"
+      <ExternalLink
         href="https://metabase.com/license/embedding"
         target="_blank"
       >
         metabase.com/license/embedding
-      </a>
+      </ExternalLink>
       .
     </p>
     <p className="text-medium" style={{ lineHeight: 1.48 }}>
