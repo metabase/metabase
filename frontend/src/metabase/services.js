@@ -1,4 +1,3 @@
-/* @flow */
 import _ from "underscore";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";

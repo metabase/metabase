@@ -264,14 +264,26 @@
   "Are we inside a joined field whose join is at the current level of the query?"
   false)
 
+(defmulti prefix-field-alias
+  "Create a Field alias by combining a `prefix` string with `field-alias` string (itself is the result of the
+  `field->alias` method). The default implementation just joins the two strings with `__` -- override this if you need
+  to do something different."
+  {:arglists '([driver prefix field]), :added "0.38.1"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod prefix-field-alias :sql
+  [_ prefix field-alias]
+  (str prefix "__" field-alias))
+
 (s/defn ^:private unambiguous-field-alias :- su/NonBlankString
   [driver [_ field-id {:keys [join-alias]}] :- mbql.s/field:id]
-  (let [alias (field->alias driver (qp.store/field field-id))]
-    (if (and join-alias alias
+  (let [field-alias (field->alias driver (qp.store/field field-id))]
+    (if (and join-alias field-alias
              (not= join-alias *table-alias*)
              (not *joined-field?*))
-      (str join-alias "__" alias)
-      alias)))
+      (prefix-field-alias driver join-alias field-alias)
+      field-alias)))
 
 (defmethod ->honeysql [:sql (class Field)]
   [driver {field-name :name, table-id :table_id, :as field}]
@@ -916,7 +928,7 @@
   [query]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata :expressions])
-                      (assoc :fields (-> (mbql.u/match (dissoc query :source-query)
+                      (assoc :fields (-> (mbql.u/match (dissoc query :source-query :joins)
                                            ;; remove the bucketing/binning operations from the source query -- we'll
                                            ;; do that at the parent level
                                            [:field id-or-name opts]

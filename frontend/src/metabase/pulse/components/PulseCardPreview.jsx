@@ -27,11 +27,11 @@ export default class PulseCardPreview extends Component {
     trackPulseEvent: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.fetchPulseCardPreview(this.props.card.id);
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // if we can't render this card as a pulse, set include_csv = true
     const unrenderablePulseCard =
       nextProps.cardPreview && nextProps.cardPreview.pulse_card_type == null;

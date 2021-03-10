@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React from "react";
 
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";

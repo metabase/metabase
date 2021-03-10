@@ -1,5 +1,3 @@
-/* @flow */
-
 import { createEntity, undo } from "metabase/lib/entities";
 
 import { color } from "metabase/lib/colors";

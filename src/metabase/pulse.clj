@@ -12,6 +12,7 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as session]
             [metabase.util :as u]
@@ -37,12 +38,13 @@
       (when-let [{query :dataset_query, :as card} (Card :id card-id, :archived false)]
         (let [query         (assoc query :async? false)
               process-query (fn []
-                              (qp/process-query-and-save-with-max-results-constraints!
-                               query
-                               (merge {:executed-by pulse-creator-id
-                                       :context     :pulse
-                                       :card-id     card-id}
-                                      options)))]
+                              (binding [qp.perms/*card-id* card-id]
+                                (qp/process-query-and-save-with-max-results-constraints!
+                                 query
+                                 (merge {:executed-by pulse-creator-id
+                                         :context     :pulse
+                                         :card-id     card-id}
+                                        options))))]
           (let [result (if pulse-creator-id
                      (session/with-current-user pulse-creator-id
                        (process-query))

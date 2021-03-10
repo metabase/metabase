@@ -1,5 +1,3 @@
-/* @flow */
-
 import { createEntity } from "metabase/lib/entities";
 
 const Groups = createEntity({

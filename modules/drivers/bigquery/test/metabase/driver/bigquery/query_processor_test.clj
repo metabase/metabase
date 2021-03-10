@@ -132,25 +132,21 @@
 
 (deftest join-alias-test
   (mt/test-driver :bigquery
-    (testing (str "make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
-                  "the right alias, e.g. something like `categories__via__category_id`, which is considerably different "
-                  "from what other SQL databases do. (#4218)")
-      (is (= (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
-                  " count(*) AS `count` "
-                  "FROM `v3_test_data.venues` "
-                  "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
-                  " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
-                  "GROUP BY `categories__via__category_id__name` "
-                  "ORDER BY `categories__via__category_id__name` ASC")
-             ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks
-             ;; that and make it return `true` so this test proceeds as expected
-             (with-redefs [driver/supports? (constantly true)]
-               (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:fk_target_field_id (mt/id :categories :id)
-                                                                            :semantic_type      "type/FK"}
-                 (let [results (mt/run-mbql-query venues
-                                 {:aggregation [:count]
-                                  :breakout    [$category_id->categories.name]})]
-                   (get-in results [:data :native_form :query] results)))))))))
+    (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
+                  "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
+                  "different  what other SQL databases do. (#4218)")
+      (mt/with-bigquery-fks
+        (let [results (mt/run-mbql-query venues
+                        {:aggregation [:count]
+                         :breakout    [$category_id->categories.name]})]
+          (is (= (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
+                      " count(*) AS `count` "
+                      "FROM `v3_test_data.venues` "
+                      "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
+                      " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
+                      "GROUP BY `categories__via__category_id__name` "
+                      "ORDER BY `categories__via__category_id__name` ASC")
+                 (get-in results [:data :native_form :query] results))))))))
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query
@@ -675,5 +671,52 @@
                (mt/formatted-rows [int]
                  (qp/process-query
                   (mt/native-query
-                    {:query  "SELECT count(*) AS `count` FROM `v3_test_data.venues` WHERE `v3_test_data.venues`.`name` = ?"
+                    {:query  (str "SELECT count(*) AS `count` "
+                                  "FROM `v3_test_data.venues` "
+                                  "WHERE `v3_test_data.venues`.`name` = ?")
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
+
+(deftest ->valid-field-identifier-test
+  (testing "`->valid-field-identifier` should generate valid field identifiers"
+    (testing "no need to change anything"
+      (is (= "abc"
+             (#'bigquery.qp/->valid-field-identifier "abc"))))
+    (testing "replace spaces with underscores"
+      (is (= "A_B_C_0ef78513"
+             (#'bigquery.qp/->valid-field-identifier "A B C"))))
+    (testing "trim spaces"
+      (is (= "A_B_61f5f1b3"
+             (#'bigquery.qp/->valid-field-identifier " A B "))))
+    (testing "diacritical marks"
+      (is (= "Organizacao_6c2736cd"
+             (#'bigquery.qp/->valid-field-identifier "Organização")))
+      (testing "we should generate unique suffixes for different strings that get normalized to the same thing"
+        (is (= "Organizacao_f3d24ea0"
+               (#'bigquery.qp/->valid-field-identifier "Organizacaó")))))
+    (testing "cannot start with a number"
+      (is (= "_123_202cb962"
+             (#'bigquery.qp/->valid-field-identifier "123"))))
+    (testing "replace non-letter characters with underscores"
+      (is (= "__02612e19"
+             (#'bigquery.qp/->valid-field-identifier "😍")))
+      (testing "we should generate unique suffixes for different strings that get normalized to the same thing"
+        (is (= "__e88ec744"
+               (#'bigquery.qp/->valid-field-identifier "🥰")))))
+    (testing "trim long strings"
+      (is (= (str (str/join (repeat 119 "a")) "_4e5475d1")
+             (#'bigquery.qp/->valid-field-identifier (str/join (repeat 300 "a"))))))))
+
+(deftest remove-diacriticals-from-field-aliases-test
+  (mt/test-driver :bigquery
+    (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
+      (mt/with-bigquery-fks
+        (let [query (mt/mbql-query checkins
+                      {:fields [$id $venue_id->venues.name]})]
+          (mt/with-temp-vals-in-db Table (mt/id :venues) {:name "Organização"}
+            (is (= (str "SELECT `v3_test_data.checkins`.`id` AS `id`,"
+                        " `Organização__via__venue_id`.`name` AS `Organizacao__via__venue_id__name_560a3449` "
+                        "FROM `v3_test_data.checkins` "
+                        "LEFT JOIN `v3_test_data.Organização` `Organização__via__venue_id`"
+                        " ON `v3_test_data.checkins`.`venue_id` = `Organização__via__venue_id`.`id` "
+                        "LIMIT 1048576")
+                   (:query (qp/query->native query))))))))))

@@ -96,22 +96,16 @@ describe("snapshots", () => {
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
 
-    // permissions
-    cy.request("PUT", "/api/permissions/graph", {
-      revision: 0,
-      groups: {
-        [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
-        [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
-        [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
-      },
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
+      [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
+      [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
     });
-    cy.request("PUT", "/api/collection/graph", {
-      revision: 0,
-      groups: {
-        [ALL_USERS_GROUP]: { root: "none" },
-        [DATA_GROUP]: { root: "none" },
-        [COLLECTION_GROUP]: { root: "write" },
-      },
+
+    cy.updateCollectionGraph({
+      [ALL_USERS_GROUP]: { root: "none" },
+      [DATA_GROUP]: { root: "none" },
+      [COLLECTION_GROUP]: { root: "write" },
     });
   }
 
@@ -175,7 +169,7 @@ describe("snapshots", () => {
     });
 
     // dashboard 1: Orders in a dashboard
-    cy.request("POST", "/api/dashboard", { name: "Orders in a dashboard" });
+    cy.createDashboard("Orders in a dashboard");
     cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
       ({ body: { id: dashCardId } }) => {
         cy.request("PUT", `/api/dashboard/1/cards`, {

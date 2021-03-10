@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 
 import { t } from "ttag";
@@ -73,7 +71,7 @@ export default class ViewFilterPopover extends Component {
     };
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     const { filter } = this.state;
     // HACK?: if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
     if (filter && this.props.query !== nextProps.query) {

@@ -129,7 +129,8 @@
   normal-drivers-with-feature
   normal-drivers-without-feature
   rows
-  rows+column-names]
+  rows+column-names
+  with-bigquery-fks]
 
  [qp.test-util
   store-contents
@@ -208,7 +209,8 @@
   get-dataset-definition
   has-questionable-timezone-support?
   has-test-extensions?
-  metabase-instance]
+  metabase-instance
+  sorts-nil-first?]
 
  [tx.env
   set-test-drivers!

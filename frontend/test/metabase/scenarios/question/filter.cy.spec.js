@@ -3,6 +3,7 @@ import {
   restore,
   openOrdersTable,
   openProductsTable,
+  openReviewsTable,
   popover,
   visitQuestionAdhoc,
 } from "__support__/cypress";
@@ -16,6 +17,8 @@ const {
   PRODUCTS_ID,
   PEOPLE,
   PEOPLE_ID,
+  REVIEWS,
+  REVIEWS_ID,
 } = SAMPLE_DATASET;
 
 describe("scenarios > question > filter", () => {
@@ -26,7 +29,7 @@ describe("scenarios > question > filter", () => {
 
   describe("dashboard filter dropdown/search (metabase#12985)", () => {
     it("Repro 1: should work for saved nested questions", () => {
-      cy.log("**-- 1. Create base card --**");
+      cy.log("Create base card");
 
       cy.request("POST", "/api/card", {
         name: "Q1",
@@ -38,7 +41,7 @@ describe("scenarios > question > filter", () => {
         display: "table",
         visualization_settings: {},
       }).then(({ body: { id: Q1_ID } }) => {
-        cy.log("**-- 2. Create nested card based on the first one --**");
+        cy.log("Create nested card based on the first one");
 
         cy.request("POST", "/api/card", {
           name: "Q2",
@@ -50,75 +53,71 @@ describe("scenarios > question > filter", () => {
           display: "table",
           visualization_settings: {},
         }).then(({ body: { id: Q2_ID } }) => {
-          cy.log("**-- 3. Create a dashboard --**");
+          cy.createDashboard("12985D").then(
+            ({ body: { id: DASHBOARD_ID } }) => {
+              cy.log("Add 2 filters to the dashboard");
 
-          cy.request("POST", "/api/dashboard", {
-            name: "12985D",
-          }).then(({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("**-- 4. Add 2 filters to the dashboard --**");
-
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-              parameters: [
-                {
-                  name: "Date Filter",
-                  slug: "date_filter",
-                  id: "78d4ba0b",
-                  type: "date/all-options",
-                },
-                {
-                  name: "Category",
-                  slug: "category",
-                  id: "20976cce",
-                  type: "category",
-                },
-              ],
-            });
-
-            cy.log("**-- 5. Add nested card to the dashboard --**");
-
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: Q2_ID,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log(
-                "**-- 6. Connect dashboard filters to the nested card --**",
-              );
-
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+                parameters: [
                   {
-                    id: DASH_CARD_ID,
-                    card_id: Q2_ID,
-                    row: 0,
-                    col: 0,
-                    sizeX: 10,
-                    sizeY: 8,
-                    series: [],
-                    visualization_settings: {},
-                    // Connect both filters and to the card
-                    parameter_mappings: [
-                      {
-                        parameter_id: "78d4ba0b",
-                        card_id: Q2_ID,
-                        target: [
-                          "dimension",
-                          ["field", PRODUCTS.CREATED_AT, null],
-                        ],
-                      },
-                      {
-                        parameter_id: "20976cce",
-                        card_id: Q2_ID,
-                        target: [
-                          "dimension",
-                          ["field", PRODUCTS.CATEGORY, null],
-                        ],
-                      },
-                    ],
+                    name: "Date Filter",
+                    slug: "date_filter",
+                    id: "78d4ba0b",
+                    type: "date/all-options",
+                  },
+                  {
+                    name: "Category",
+                    slug: "category",
+                    id: "20976cce",
+                    type: "category",
                   },
                 ],
               });
-            });
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
-          });
+
+              cy.log("Add nested card to the dashboard");
+
+              cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cardId: Q2_ID,
+              }).then(({ body: { id: DASH_CARD_ID } }) => {
+                cy.log("Connect dashboard filters to the nested card");
+
+                cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                  cards: [
+                    {
+                      id: DASH_CARD_ID,
+                      card_id: Q2_ID,
+                      row: 0,
+                      col: 0,
+                      sizeX: 10,
+                      sizeY: 8,
+                      series: [],
+                      visualization_settings: {},
+                      // Connect both filters and to the card
+                      parameter_mappings: [
+                        {
+                          parameter_id: "78d4ba0b",
+                          card_id: Q2_ID,
+                          target: [
+                            "dimension",
+                            ["field", PRODUCTS.CREATED_AT, null],
+                          ],
+                        },
+                        {
+                          parameter_id: "20976cce",
+                          card_id: Q2_ID,
+                          target: [
+                            "dimension",
+                            ["field", PRODUCTS.CATEGORY, null],
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                });
+              });
+              cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            },
+          );
         });
       });
 
@@ -127,7 +126,7 @@ describe("scenarios > question > filter", () => {
         .within(() => {
           cy.findByText("Category").click();
         });
-      cy.log("**Failing to show dropdown in v0.36.0 through v.0.37.0**");
+      cy.log("Failing to show dropdown in v0.36.0 through v.0.37.0");
       popover()
         .contains("Gadget")
         .click();
@@ -137,7 +136,7 @@ describe("scenarios > question > filter", () => {
     });
 
     it.skip("Repro 2: should work for aggregated questions", () => {
-      cy.log("**-- 1. Create question with aggregation --**");
+      cy.log("Create question with aggregation");
 
       cy.request("POST", "/api/card", {
         name: "12985-v2",
@@ -160,63 +159,57 @@ describe("scenarios > question > filter", () => {
         display: "table",
         visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.log("**-- 2. Create a dashboard --**");
+        cy.createDashboard("12985-v2D").then(
+          ({ body: { id: DASHBOARD_ID } }) => {
+            cy.log("Add a category filter to the dashboard");
 
-        cy.request("POST", "/api/dashboard", {
-          name: "12985-v2D",
-        }).then(({ body: { id: DASHBOARD_ID } }) => {
-          cy.log("**-- 3. Add a category filter to the dashboard --**");
-
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-            parameters: [
-              {
-                name: "Category",
-                slug: "category",
-                id: "7c4htcv8",
-                type: "category",
-              },
-            ],
-          });
-
-          cy.log(
-            "**-- 4. Add previously created question to the dashboard --**",
-          );
-
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            cy.log(
-              "**-- 5. Connect dashboard filter to the aggregated card --**",
-            );
-
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+              parameters: [
                 {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
-                  series: [],
-                  visualization_settings: {},
-                  // Connect filter to the card
-                  parameter_mappings: [
-                    {
-                      parameter_id: "7c4htcv8",
-                      card_id: QUESTION_ID,
-                      target: [
-                        "dimension",
-                        ["field", "CATEGORY", { "base-type": "type/Text" }],
-                      ],
-                    },
-                  ],
+                  name: "Category",
+                  slug: "category",
+                  id: "7c4htcv8",
+                  type: "category",
                 },
               ],
             });
-          });
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
-        });
+
+            cy.log("Add previously created question to the dashboard");
+
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: QUESTION_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              cy.log("Connect dashboard filter to the aggregated card");
+
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: QUESTION_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 8,
+                    sizeY: 6,
+                    series: [],
+                    visualization_settings: {},
+                    // Connect filter to the card
+                    parameter_mappings: [
+                      {
+                        parameter_id: "7c4htcv8",
+                        card_id: QUESTION_ID,
+                        target: [
+                          "dimension",
+                          ["field", "CATEGORY", { "base-type": "type/Text" }],
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              });
+            });
+            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+          },
+        );
       });
 
       cy.findByPlaceholderText("Category").click();
@@ -256,7 +249,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Visualize").click();
     // wait for results to load
     cy.get(".LoadingSpinner").should("not.exist");
-    cy.log("**The point of failure in 0.37.0-rc3**");
+    cy.log("The point of failure in 0.37.0-rc3");
     cy.contains("37.65");
     cy.findByText("There was a problem with your question").should("not.exist");
     // this is not the point of this repro, but additionally make sure the filter is working as intended on "Gizmo"
@@ -306,7 +299,7 @@ describe("scenarios > question > filter", () => {
     }).then(({ body: { id: questionId } }) => {
       cy.visit(`/question/${questionId}`);
       cy.findByText("12872");
-      cy.log("**At the moment of unfixed issue, it's showing '0'**");
+      cy.log("At the moment of unfixed issue, it's showing '0'");
       cy.get(".ScalarValue").contains("1");
     });
   });
@@ -334,7 +327,7 @@ describe("scenarios > question > filter", () => {
       .click();
     cy.findByText("Add filter").click();
 
-    cy.log("**Reported failing on v0.36.4 and v0.36.5.1**");
+    cy.log("Reported failing on v0.36.4 and v0.36.5.1");
     cy.get(".LoadingSpinner").should("not.exist");
     cy.findAllByText("148.23"); // one of the subtotals for this product
     cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
@@ -368,14 +361,14 @@ describe("scenarios > question > filter", () => {
       cy.visit(`/question/${questionId}`);
       cy.wait("@cardQuery");
 
-      cy.log("**Reported failing on v0.35.4**");
+      cy.log("Reported failing on v0.35.4");
       cy.log(`Error message: **Column 'source.${CE_NAME}' not found;**`);
       cy.findAllByText("Gizmo");
     });
   });
 
   it.skip("should not preserve cleared filter with the default value on refresh (metabase#13960)", () => {
-    cy.log("**--1. Create a question--**");
+    cy.log("Create a question");
 
     cy.request("POST", "/api/card", {
       name: "13960",
@@ -391,13 +384,9 @@ describe("scenarios > question > filter", () => {
       display: "pie",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.log("**--2. Create a dashboard--**");
-
-      cy.request("POST", "/api/dashboard", {
-        name: "13960D",
-      }).then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.createDashboard("13960D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log(
-          "**--3. Add filters to the dashboard and set the default value to the first one--**",
+          "Add filters to the dashboard and set the default value to the first one",
         );
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
@@ -414,12 +403,12 @@ describe("scenarios > question > filter", () => {
           ],
         });
 
-        cy.log("**--4. Add question to the dashboard--**");
+        cy.log("Add question to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
-          cy.log("**--5. Connect the filters to the card--**");
+          cy.log("Connect the filters to the card");
 
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cards: [
@@ -531,7 +520,7 @@ describe("scenarios > question > filter", () => {
       // Remove default filter (category)
       cy.get("fieldset .Icon-close").click();
 
-      cy.get(".Icon-play")
+      cy.icon("play")
         .first()
         .should("be.visible")
         .as("rerunQuestion");
@@ -544,8 +533,8 @@ describe("scenarios > question > filter", () => {
 
       cy.get("@rerunQuestion").click();
 
-      cy.log("**--Reported tested and failing on v0.34.3 through v0.37.3--**");
-      cy.log("**URL is correct at this point, but there are no results**");
+      cy.log("Reported tested and failing on v0.34.3 through v0.37.3");
+      cy.log("URL is correct at this point, but there are no results");
       cy.location("search").should("eq", `?${ID_FILTER.name}=1`);
       cy.findByText("Rustic Paper Wallet"); // Product ID 1, Gizmo
     });
@@ -582,7 +571,7 @@ describe("scenarios > question > filter", () => {
     });
 
     // Test shows two filter collapsed - click on number 2 to expand and show filter names
-    cy.get(".Icon-filter")
+    cy.icon("filter")
       .parent()
       .contains("2")
       .click();
@@ -606,13 +595,13 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     // This issue has two problematic parts. We're testing for both:
-    cy.log("**--1. Popover should display all custom expression options--**");
+    cy.log("Popover should display all custom expression options");
     // Popover shows up even without explicitly clicking the contenteditable field
     popover().within(() => {
       cy.findAllByRole("listitem").contains(/functions/i);
     });
 
-    cy.log("**--2. Should not display error prematurely--**");
+    cy.log("Should not display error prematurely");
     cy.get("[contenteditable='true']")
       .click()
       .type("contains(");
@@ -630,7 +619,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Previous").click();
     cy.findByText("Before").click();
     // Collapse the calendar view
-    cy.get(".Icon-calendar").click();
+    cy.icon("calendar").click();
     cy.findByText("Add filter")
       .closest(".Button")
       .should("not.be.disabled")
@@ -721,6 +710,19 @@ describe("scenarios > question > filter", () => {
     });
   });
 
+  it("should offer case expression in the auto-complete suggestions", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    popover().contains(/case/i);
+
+    // "case" is still there after typing a bit
+    cy.get("[contenteditable='true']")
+      .click()
+      .type("c");
+    popover().contains(/case/i);
+  });
+
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.request("POST", "/api/card", {
@@ -778,5 +780,168 @@ describe("scenarios > question > filter", () => {
     });
     cy.wait("@cardQuery");
     cy.findByText("Rye").should("not.exist");
+  });
+
+  it("should filter using IsNull() and IsEmpty()", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsNull([Rating])", { delay: 50 });
+    cy.findAllByRole("button")
+      .contains("Done")
+      .should("not.be.disabled")
+      .click();
+
+    cy.get(".QueryBuilder .Icon-add").click();
+
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+    cy.findAllByRole("button")
+      .contains("Done")
+      .should("not.be.disabled")
+      .click();
+
+    // check that filter is applied and rows displayed
+    cy.findByText("Visualize").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
+    openReviewsTable();
+    cy.contains("Reviewer").click();
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Is").click();
+    cy.findByText("Is empty").click();
+    cy.findByText("Update filter").click();
+
+    // filter out everything
+    cy.contains("Showing 0 rows");
+
+    // change the corresponding custom expression
+    cy.findByText("Reviewer is empty").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains("isempty([Reviewer])");
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+    cy.findByText("Done").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert 'is empty' on a numeric column to a custom expression using IsNull()", () => {
+    openReviewsTable();
+    cy.contains("Rating").click();
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Equal to").click();
+    cy.findByText("Is empty").click();
+    cy.findByText("Update filter").click();
+
+    // filter out everything
+    cy.contains("Showing 0 rows");
+
+    // change the corresponding custom expression
+    cy.findByText("Rating is empty").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains("isnull([Rating])");
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsNull([Rating])", { delay: 50 });
+    cy.findByText("Done").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert negative filter to custom expression (metabase#14880)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          filter: [
+            "does-not-contain",
+            ["field", PRODUCTS.TITLE, null],
+            "Wallet",
+            { "case-sensitive": false },
+          ],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+    cy.findByText("Title does not contain Wallet").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains(
+      'NOT contains([Title], "Wallet")',
+    );
+  });
+
+  it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          filter: [
+            "does-not-contain",
+            ["field", PRODUCTS.TITLE, null],
+            "Wallet",
+            { "case-sensitive": false },
+          ],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+    cy.findByText("Title does not contain Wallet").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
+    cy.get("[contenteditable='true']");
+  });
+
+  it.skip("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": REVIEWS_ID,
+          filter: [
+            "contains",
+            ["field", REVIEWS.REVIEWER, null],
+            "MULLER",
+            { "case-sensitive": false },
+          ],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+    cy.wait("@dataset");
+    cy.findByText("wilma-muller");
+    cy.findByText("Reviewer contains MULLER").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains(
+      'contains([Reviewer], "MULLER")',
+    );
+    cy.findByRole("button", { name: "Done" }).click();
+    cy.wait("@dataset.2").then(xhr => {
+      expect(xhr.response.body.data.rows).to.have.lengthOf(1);
+    });
+    cy.findByText("wilma-muller");
   });
 });

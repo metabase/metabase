@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -297,7 +295,7 @@ export const ChartClickAction = ({
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
   // navigateToNewCardFromDashboard to merge in parameters.,
-  // Also need to sort out proper logic in QueryBuilder's componentWillReceiveProps
+  // Also need to sort out proper logic in QueryBuilder's UNSAFE_componentWillReceiveProps
   // if (action.question) {
   //   return (
   //     <Link to={action.question().getUrl()} className={className}>

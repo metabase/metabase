@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { ISO8601Time } from ".";
 import type { TableId } from "./Table";
 import type { Value } from "./Dataset";

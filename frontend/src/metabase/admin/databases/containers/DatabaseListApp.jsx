@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -59,7 +57,7 @@ export default class DatabaseList extends Component {
     deletionError: PropTypes.object,
   };
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (!this.props.created && newProps.created) {
       this.refs.createdDatabaseModal.open();
     }

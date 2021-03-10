@@ -1,7 +1,10 @@
-import { signInAsNormalUser } from "__support__/cypress";
+import { restore, signInAsNormalUser } from "__support__/cypress";
 
 describe("scenarios > visualizations > object detail", () => {
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    signInAsNormalUser();
+  });
 
   it("should show orders/reviews connected to a product", () => {
     cy.visit("/browse/1");
@@ -15,5 +18,13 @@ describe("scenarios > visualizations > object detail", () => {
     cy.contains("Reviews")
       .parent()
       .contains("8");
+  });
+
+  it("should allow clicking the next arrow", () => {
+    cy.visit("/browse/1");
+    cy.findByText("Products").click();
+    cy.findByText("1").click();
+    cy.get(".Icon-arrow_right").click();
+    cy.findByText("Small Marble Shoes");
   });
 });

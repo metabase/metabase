@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 import _ from "underscore";
 import { t } from "ttag";
@@ -65,10 +63,10 @@ export default class DimensionList extends Component {
     sections: [],
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateSections(this.props.sections);
   }
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.sections !== nextProps.sections) {
       this._updateSections(nextProps.sections);
     }

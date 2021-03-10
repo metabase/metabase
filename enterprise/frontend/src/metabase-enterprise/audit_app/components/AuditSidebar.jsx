@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import { IndexLink } from "react-router";
@@ -9,7 +7,7 @@ import cx from "classnames";
 type Props = {
   className?: string,
   style?: { [key: string]: any },
-  children?: React$Element<any>,
+  children?: React.Element,
 };
 
 const AuditSidebarSection = ({ title, children }) => (

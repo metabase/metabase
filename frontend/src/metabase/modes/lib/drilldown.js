@@ -1,5 +1,3 @@
-/* @flow */
-
 import { isa, TYPE } from "metabase/lib/types";
 import { isLatitude, isLongitude, isDate } from "metabase/lib/schema_metadata";
 

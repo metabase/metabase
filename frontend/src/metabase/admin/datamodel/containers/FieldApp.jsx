@@ -1,5 +1,3 @@
-/* @flow */
-
 /**
  * Settings editor for a single database field. Lets you change field type, visibility and display values / remappings.
  *
@@ -114,8 +112,7 @@ export default class FieldApp extends React.Component {
     params: any,
   };
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       databaseId,
       tableId,

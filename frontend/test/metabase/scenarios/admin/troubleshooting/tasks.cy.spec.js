@@ -24,8 +24,8 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     });
 
     cy.findByText("Troubleshooting logs");
-    cy.get(".Icon-chevronleft").as("previous");
-    cy.get(".Icon-chevronright").as("next");
+    cy.icon("chevronleft").as("previous");
+    cy.icon("chevronright").as("next");
 
     cy.contains("1 - 50");
     shouldBeDisabled("@previous");

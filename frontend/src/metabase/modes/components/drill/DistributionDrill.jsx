@@ -1,5 +1,3 @@
-/* @flow */
-
 import { t } from "ttag";
 import { TYPE, isa } from "metabase/lib/types";
 import _ from "underscore";

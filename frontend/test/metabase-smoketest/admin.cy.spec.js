@@ -166,7 +166,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Orders").click();
 
       // Join tables
-      cy.get(".Icon-notebook").click();
+      cy.icon("notebook").click();
 
       cy.findByText("Data");
       cy.findByText("Showing").should("not.exist");
@@ -182,8 +182,8 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("State").click();
       cy.findByText("Done").click();
 
-      cy.get(".Icon-pinmap");
-      cy.get(".Icon-table").should("not.exist");
+      cy.icon("pinmap");
+      cy.icon("table").should("not.exist");
 
       // Save question (not to a dashboard)
       cy.findByText("Save").click();
@@ -219,7 +219,7 @@ describe("metabase-smoketest > admin", () => {
         .click();
       cy.findByText("Done").click();
 
-      cy.get(".Icon-line").should("have.length", 2);
+      cy.icon("line").should("have.length", 2);
 
       // Save question (not to a dashboard)
       cy.findByText("Save").click();
@@ -236,7 +236,7 @@ describe("metabase-smoketest > admin", () => {
     it.skip("should create a new dashboard with the previous questions as admin", () => {
       cy.visit("/");
       // New dashboard
-      cy.get(".Icon-add").click();
+      cy.icon("add").click();
       cy.findByText("New dashboard").click();
 
       cy.findByText("Which collection should this go in?");
@@ -267,7 +267,7 @@ describe("metabase-smoketest > admin", () => {
 
       // Navigates through admin pages
       cy.visit("/");
-      cy.get(".Icon-gear").click();
+      cy.icon("gear").click();
       cy.findByText("Admin").click();
 
       cy.findByText("Metabase Admin");
@@ -320,7 +320,7 @@ describe("metabase-smoketest > admin", () => {
 
         cy.findAllByText("Demo Dash 2").click();
 
-        cy.get(".Icon-move");
+        cy.icon("move");
         cy.findByText("Created At");
 
         cy.findByText("Orders Over Time").click();
@@ -330,7 +330,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Okay").click();
 
         cy.findByText("Orders Over Time");
-        cy.get(".Icon-line");
+        cy.icon("line");
         cy.findByText("Demo Dash 2").should("not.exist");
 
         // =================
@@ -353,13 +353,13 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Done").click();
 
         cy.contains("Auto binned");
-        cy.get(".Icon-bar");
+        cy.icon("bar");
 
         cy.findByText("Save").click();
         cy.findByLabelText("Name")
           .clear()
           .type("Number of Reviews by Range of Rating");
-        cy.get(".Icon-chevrondown").click();
+        cy.icon("chevrondown").click();
         cy.findAllByText("Our analytics")
           .last()
           .click();
@@ -373,7 +373,7 @@ describe("metabase-smoketest > admin", () => {
         // =================
         // should create my own dashboard as user
         // =================
-        cy.get(".Icon-add").click();
+        cy.icon("add").click();
         cy.findByText("New dashboard").click();
         cy.findByLabelText("Name").type("New User Demo Dash");
         cy.findByLabelText("Description").type("This is my own demo dash!");
@@ -389,7 +389,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("This dashboard is looking empty.");
         cy.contains("Number of").should("not.exist");
 
-        cy.get(".Icon-add")
+        cy.icon("add")
           .last()
           .click();
         cy.findByText("Number of Reviews by Range of Rating").click();

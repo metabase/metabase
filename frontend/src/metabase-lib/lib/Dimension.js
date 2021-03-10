@@ -5,7 +5,12 @@ import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 
 import Field from "./metadata/Field";
-import type Metadata from "./metadata/Metadata";
+import type {
+  AggregationOperator,
+  FilterOperator,
+  Metadata,
+  Query,
+} from "./metadata/Metadata";
 
 import type {
   ConcreteField,

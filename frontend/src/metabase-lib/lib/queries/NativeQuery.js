@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
@@ -226,7 +224,7 @@ export default class NativeQuery extends AtomicQuery {
       this._originalQuestion,
       updateIn(
         this._datasetQuery,
-        ["native", "template_tags"],
+        ["native", "template-tags"],
         templateTags => {
           const entries = Array.from(Object.entries(templateTags));
           const oldIndex = _.findIndex(entries, entry => entry[1].id === id);

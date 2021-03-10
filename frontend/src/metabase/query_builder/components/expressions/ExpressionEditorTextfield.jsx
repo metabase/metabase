@@ -124,11 +124,11 @@ export default class ExpressionEditorTextfield extends React.Component {
     };
   }
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     // we only refresh our state if we had no previous state OR if our expression changed
     if (!this.state || !_.isEqual(this.props.expression, newProps.expression)) {
       const parserOptions = this._getParserOptions(newProps);

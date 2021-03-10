@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -18,7 +16,7 @@ export type Props = {
   debounced?: boolean,
   loadingAndErrorWrapper: boolean,
   selectorName?: string,
-  children: (props: RenderProps) => ?React$Element<any>,
+  children: (props: RenderProps) => ?React.Element,
 };
 
 export type RenderProps = {
@@ -142,11 +140,11 @@ export default class EntityListLoader extends React.Component {
     250,
   );
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.fetchList(this.props, { reload: this.props.reload });
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (!_.isEqual(nextProps.entityQuery, this.props.entityQuery)) {
       // entityQuery changed, reload
       this.fetchList(nextProps, { reload: nextProps.reload });

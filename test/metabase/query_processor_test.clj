@@ -15,6 +15,7 @@
             [metabase.test.data :as data]
             [metabase.test.data.env :as tx.env]
             [metabase.test.data.interface :as tx]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]))
 
@@ -294,12 +295,12 @@
                (for [row rows]
                  (vec
                   (for [[f v] (partition 2 (interleave format-fns row))]
-                    (when (or v format-nil-values?)
+                    (when (or (some? v) format-nil-values?)
                       (try
                         (f v)
                         (catch Throwable e
                           (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
-                                   {:f f, :v v}
+                                   {:f f, :v v, :format-nil-values? format-nil-values?}
                                    e)))))))))
 
               :else
@@ -324,7 +325,7 @@
 
 (defn formatted-rows
   "Combines `rows` and `format-rows-by`."
-  {:style/indent 1}
+  {:style/indent :defn}
   ([format-fns response]
    (format-rows-by format-fns (rows response)))
 
@@ -406,3 +407,31 @@
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 1)))
     (is (= {:database 1, :type :query, :query {:source-query {:source-query {:native "wow"}}}}
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
+
+(defn do-with-bigquery-fks [f]
+  (if-not (= driver/*driver* :bigquery)
+    (f)
+    (let [supports? driver/supports?]
+      (with-redefs [driver/supports? (fn [driver feature]
+                                       (if (= [driver feature] [:bigquery :foreign-keys])
+                                         true
+                                         (supports? driver feature)))]
+        (let [thunk (reduce
+                     (fn [thunk [source dest]]
+                       (fn []
+                         (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
+                                                                                :semantic_type      "type/FK"}
+                           (thunk))))
+                     f
+                     {[:checkins :user_id]   [:users :id]
+                      [:checkins :venue_id]  [:venues :id]
+                      [:venues :category_id] [:categories :id]})]
+          (thunk))))))
+
+(defmacro with-bigquery-fks
+  "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` marked as foreign
+  keys and with `:foreign-keys` a supported feature when testing against BigQuery. BigQuery does not support Foreign
+  Key constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody
+  has manually marked FK relationships for BigQuery."
+  [& body]
+  `(do-with-bigquery-fks (fn [] ~@body)))

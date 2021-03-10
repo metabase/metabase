@@ -1,6 +1,6 @@
 info:
   name: Metabase Redshift Driver
-  version: 1.0.0-SNAPSHOT-1.2.43.1067
+  version: 1.1.0-SNAPSHOT-2.0.0.3
   description: Allows Metabase to connect to Redshift databases.
 driver:
   name: redshift
@@ -27,4 +27,4 @@ init:
   - step: load-namespace
     namespace: metabase.driver.redshift
   - step: register-jdbc-driver
-    class: com.amazon.redshift.jdbc.Driver
+    class: com.amazon.redshift.jdbc42.Driver

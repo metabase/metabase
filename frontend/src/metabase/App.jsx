@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
@@ -49,7 +47,7 @@ export default class App extends Component {
     hasError: false,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     initializeIframeResizer();
   }
 

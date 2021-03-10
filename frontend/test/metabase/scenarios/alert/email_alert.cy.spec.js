@@ -6,7 +6,7 @@ import {
 
 function setUpHourlyAlert(question_num) {
   cy.visit(`/question/${question_num}`);
-  cy.get(".Icon-bell").click();
+  cy.icon("bell").click();
   cy.findByText("Set up an alert").click();
   cy.findByText("Daily").click();
   cy.findByText("Hourly").click();

@@ -33,26 +33,33 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(api/defendpoint ^:streaming POST "/"
-  "Execute a query and retrieve the results in the usual format."
-  [:as {{:keys [database], query-type :type, :as query} :body}]
-  {database (s/maybe s/Int)}
-  ;; database is required unless this is an `internal` query.
-  ;; don't permissions check the 'database' if it's the virtual database. That database doesn't actually exist :-)
-  (when (and (not= query-type "internal")
+(defn- run-query-async
+  [{:keys [database], :as query}
+   & {:keys [context export-format qp-runner]
+      :or   {context       :ad-hoc
+             export-format :api
+             qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
+  (when (and (not= (:type query) "internal")
              (not= database mbql.s/saved-questions-virtual-database-id))
     (when-not database
-      (throw (Exception. (str (tru "`database` is required for all queries whose type is not `internal`.")))))
+      (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
+                      {:status-code 400, :query query})))
     (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         info           {:executed-by api/*current-user-id*
-                        :context     :ad-hoc
+                        :context     context
                         :card-id     source-card-id
-                        :nested?     (boolean source-card-id)}
-        query          (update query :middleware assoc :js-int-to-string? true)]
-    (qp.streaming/streaming-response [context :api]
-      (qp/process-query-and-save-with-max-results-constraints! query info context))))
+                        :nested?     (boolean source-card-id)}]
+    (binding [qp.perms/*card-id* source-card-id]
+      (qp.streaming/streaming-response [context export-format]
+        (qp-runner query info context)))))
+
+(api/defendpoint ^:streaming POST "/"
+  "Execute a query and retrieve the results in the usual format."
+  [:as {{:keys [database], query-type :type, :as query} :body}]
+  {database (s/maybe s/Int)}
+  (run-query-async (update query :middleware assoc :js-int-to-string? true)))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -61,9 +68,9 @@
   "Schema for valid export formats for downloading query results."
   (apply s/enum (map u/qualified-name (qp.streaming/export-formats))))
 
-(defn export-format->context
+(s/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
-  in `export-foramt`.
+  in `export-format`.
 
     (export-format->context :json) ;-> :json-download"
   [export-format]
@@ -82,8 +89,6 @@
   {query         su/JSONString
    export-format ExportFormat}
   (let [{:keys [database] :as query} (json/parse-string query keyword)]
-    (when-not (= database mbql.s/saved-questions-virtual-database-id)
-      (api/read-check Database database))
     (let [query (-> (assoc query :async? true)
                     (dissoc :constraints)
                     (update :middleware #(-> %
@@ -92,8 +97,11 @@
                                                     :format-rows? false))))
           info  {:executed-by api/*current-user-id*
                  :context     (export-format->context export-format)}]
-      (qp.streaming/streaming-response [context export-format]
-        (qp/process-query-and-save-execution! query info context)))))
+      (run-query-async
+       query
+       :export-format export-format
+       :context       (export-format->context export-format)
+       :qp-runner     qp/process-query-and-save-execution!))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
@@ -127,7 +135,7 @@
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check Database database)
   (let [info {:executed-by api/*current-user-id*
-              :context     (export-format->context :api)}]
+              :context     :ad-hoc}]
     (qp.streaming/streaming-response [context :api]
       (pivot/run-pivot-query (assoc query :async? true) info context))))
 

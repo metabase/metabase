@@ -360,6 +360,22 @@
         (.close stmt)
         (throw e)))))
 
+;; similar rationale to prepared-statement above
+(defmethod sql-jdbc.execute/statement :oracle
+   [_ ^Connection conn]
+   (let [stmt (.createStatement conn
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+        (try
+          (try
+            (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+            (catch Throwable e
+              (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          stmt
+          (catch Throwable e
+            (.close stmt)
+            (throw e)))))
+
 ;; instead of returning a CLOB object, return the String. (#9026)
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle Types/CLOB]
   [_ ^ResultSet rs _ ^Integer i]

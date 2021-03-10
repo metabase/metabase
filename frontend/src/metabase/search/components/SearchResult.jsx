@@ -28,11 +28,11 @@ const ResultLink = styled(Link)`
   justify-content: center;
   background-color: transparent;
   border-radius: 6px;
-  min-height: 54px;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 8px;
-  padding-right: 8px;
+  min-height: ${props => (props.compact ? "36px" : "54px")};
+  padding-top: ${props => (props.compact ? "6px" : "8px")};
+  padding-bottom: ${props => (props.compact ? "6px" : "8px")};
+  padding-left: 14px;
+  padding-right: ${props => (props.compact ? "20px" : "32px")};
 
   &:hover {
     background-color: #fafafa;
@@ -43,6 +43,7 @@ const ResultLink = styled(Link)`
   }
 
   h3 {
+    font-size: ${props => (props.compact ? "14px" : "16px")};
     line-height: 1.2em;
     word-wrap: break-word;
   }
@@ -109,16 +110,9 @@ const Title = styled("h3")`
   margin-bottom: 4px;
 `;
 
-function Score({ score }) {
+function Score({ scores }) {
   return (
-    <pre className="hide search-score">
-      {`\n\n
-      Pinned:    ${score[0]}
-      Dashboard: ${score[1]}
-      Text:      ${score[2]}
-      Model:     ${score[3]}
-      Raw:       ${score && score.join(", ")}`}
-    </pre>
+    <pre className="hide search-score">{JSON.stringify(scores, null, 2)}</pre>
   );
 }
 
@@ -129,7 +123,7 @@ function CollectionResult({ collection }) {
       <Flex align="center">
         <ItemIcon item={collection} />
         <Title>{collection.name}</Title>
-        <Score score={collection.score} />
+        <Score scores={collection.scores} />
       </Flex>
     </ResultLink>
   );
@@ -138,19 +132,25 @@ function CollectionResult({ collection }) {
 function contextText(context) {
   return context.map(function({ is_match, text }) {
     if (is_match) {
-      return <strong> {text}</strong>;
+      return <strong style={{ color: color("brand") }}> {text}</strong>;
     } else {
       return <span> {text}</span>;
     }
   });
 }
 
+const Context = styled("p")`
+  line-height: 1.4em;
+  color: ${color("text-medium")};
+  margin-top: 0;
+`;
+
 function formatContext(context, compact) {
   return (
     !compact &&
     context && (
-      <Box ml="42px" mt="12px">
-        {contextText(context)}
+      <Box ml="42px" mt="12px" style={{ maxWidth: 620 }}>
+        <Context>{contextText(context)}</Context>
       </Box>
     )
   );
@@ -162,13 +162,13 @@ function formatCollection(collection) {
 
 function DashboardResult({ dashboard, options }) {
   return (
-    <ResultLink to={dashboard.getUrl()}>
+    <ResultLink to={dashboard.getUrl()} compact={options.compact}>
       <Flex align="center">
         <ItemIcon item={dashboard} />
         <Box>
           <Title>{dashboard.name}</Title>
           {formatCollection(dashboard.getCollection())}
-          <Score score={dashboard.score} />
+          <Score scores={dashboard.scores} />
         </Box>
       </Flex>
       {formatContext(dashboard.context, options.compact)}
@@ -178,13 +178,13 @@ function DashboardResult({ dashboard, options }) {
 
 function QuestionResult({ question, options }) {
   return (
-    <ResultLink to={question.getUrl()}>
+    <ResultLink to={question.getUrl()} compact={options.compact}>
       <Flex align="center">
         <ItemIcon item={question} />
         <Box>
           <Title>{question.name}</Title>
           {formatCollection(question.getCollection())}
-          <Score score={question.score} />
+          <Score scores={question.scores} />
         </Box>
         {question.description && (
           <Box ml="auto">
@@ -201,13 +201,13 @@ function QuestionResult({ question, options }) {
 
 function DefaultResult({ result, options }) {
   return (
-    <ResultLink to={result.getUrl()}>
+    <ResultLink to={result.getUrl()} compact={options.compact}>
       <Flex align="center">
         <ItemIcon item={result} />
         <Box>
           <Title>{result.name}</Title>
           {formatCollection(result.getCollection())}
-          <Score score={result.score} />
+          <Score scores={result.scores} />
         </Box>
       </Flex>
       {formatContext(result.context, options.compact)}

@@ -1,5 +1,6 @@
 (ns metabase.search.scoring-test
   (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.search.config :as search-config]
             [metabase.search.scoring :as search]))
 
@@ -25,7 +26,8 @@
 
 (defn scorer->score
   [scorer]
-  (comp :text-score
+  (comp (fn [s] (when s (* s search/text-score-max)))
+        :text-score
         (partial #'search/text-score-with [scorer])))
 
 (deftest consecutivity-scorer-test
@@ -127,6 +129,7 @@
 
 (deftest match-context-test
   (let [context  #'search/match-context
+        tokens   (partial map str)
         match    (fn [text] {:text text :is_match true})
         no-match (fn [text] {:text text :is_match false})]
     (testing "it groups matches together"
@@ -143,7 +146,20 @@
       (is (= [(no-match "aviary stats")]
              (context
                  ["rasta" "toucan"]
-                 ["aviary" "stats"]))))))
+                 ["aviary" "stats"]))))
+    (testing "it abbreviates when necessary"
+      (is (= [(no-match "one two…eleven twelve")
+              (match "rasta toucan")
+              (no-match "alpha beta…the end")]
+             (context
+                 (tokens '(rasta toucan))
+                 (tokens '(one two
+                           this should not be included
+                           eleven twelve
+                           rasta toucan
+                           alpha beta
+                           some other noise
+                           the end))))))))
 
 (deftest test-largest-common-subseq-length
   (let [subseq-length (partial #'search/largest-common-subseq-length =)]
@@ -178,3 +194,51 @@
                   (sort-by score)
                   reverse
                   (map :collection_position)))))))
+
+(deftest recency-score-test
+  (let [score    #'search/recency-score
+        now      (t/offset-date-time)
+        item     (fn [id updated-at] {:id id :updated_at updated-at})
+        days-ago (fn [days] (t/minus now (t/days days)))]
+    (testing "it provides a sortable score"
+      (is (= [1 2 3 4]
+             (->> [(item 1 (days-ago 0))
+                   (item 2 (days-ago 1))
+                   (item 3 (days-ago 50))
+                   (item 4 nil)]
+                  shuffle
+                  (sort-by score)
+                  reverse
+                  (map :id)))))
+    (testing "it treats stale items as being equally old"
+      (let [stale search-config/stale-time-in-days]
+        (is (= [1 2 3 4]
+               (->> [(item 1 (days-ago (+ stale 1)))
+                     (item 2 (days-ago (+ stale 50)))
+                     (item 3 nil)
+                     (item 4 (days-ago stale))]
+                    (sort-by score)
+                    (map :id))))))))
+
+(deftest combined-test
+  (let [search-string     "custom expression examples"
+        labeled-results   {:a {:name "custom expression examples" :model "dashboard"}
+                           :b {:name "examples of custom expressions" :model "dashboard"}
+                           :c {:name "customer success stories"
+                               :dashboardcard_count 50
+                               :updated_at (t/offset-date-time)
+                               :collection_position 1
+                               :model "dashboard"}
+                           :d {:name "customer examples of bad sorting" :model "dashboard"}}
+        {:keys [a b c d]} labeled-results]
+    (is (= (map :name [a                ; exact text match
+                       b                ; good text match
+                       c                ; weak text match, but awesome other stuff
+                       d])              ; middling text match, no other signal
+           (->> labeled-results
+                vals
+                (map (partial search/score-and-result search-string))
+                (sort-by :score)
+                reverse
+                (map :result)
+                (map :name))))))
