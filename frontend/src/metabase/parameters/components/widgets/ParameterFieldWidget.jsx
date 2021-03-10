@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 import { t, ngettext, msgid } from "ttag";
+import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Popover from "metabase/components/Popover";
@@ -23,9 +24,9 @@ type Props = {
   isEditing: boolean,
 
   fields: Field[],
-  operator: FilterOperator,
   parentFocusChanged: boolean => void,
 
+  operator?: FilterOperator,
   dashboard?: DashboardWithCards,
   parameter?: Parameter,
   parameters?: Parameter[],
@@ -106,7 +107,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       dashboard,
     } = this.props;
     const { isFocused, widgetWidth } = this.state;
-
+    const { numFields = 1, multi = false, verboseName } = operator || {};
     const savedValue = normalizeValue(this.props.value);
     const unsavedValue = normalizeValue(this.state.value);
 
@@ -140,7 +141,6 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
         </div>
       );
     } else {
-      const operatorFields = operator.fields || [];
       return (
         <Popover
           horizontalAttachments={["left", "right"]}
@@ -153,13 +153,13 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           onClose={() => focusChanged(false)}
         >
           <div className="p2">
-            <div className="text-bold mb1">{operator.verboseName}...</div>
+            {verboseName && (
+              <div className="text-bold mb1">{verboseName}...</div>
+            )}
 
-            {operatorFields.map((operatorField, index) => {
-              const value = operator.multi
-                ? unsavedValue
-                : [unsavedValue[index]];
-              const onValueChange = operator.multi
+            {_.times(numFields, index => {
+              const value = multi ? unsavedValue : [unsavedValue[index]];
+              const onValueChange = multi
                 ? newValues => this.setState({ value: newValues })
                 : ([value]) => {
                     const newValues = [...unsavedValue];
@@ -169,10 +169,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
               return (
                 <FieldValuesWidget
                   key={index}
-                  className={cx(
-                    "input",
-                    operatorFields.length - 1 !== index && "mb1",
-                  )}
+                  className={cx("input", numFields - 1 !== index && "mb1")}
                   value={value}
                   parameter={parameter}
                   parameters={parameters}
@@ -180,14 +177,13 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                   onChange={onValueChange}
                   placeholder={placeholder}
                   fields={fields}
-                  multi={operator.multi}
-                  alwaysShowOptions={operator.fields.length === 1}
                   autoFocus={index === 0}
+                  multi={multi}
+                  alwaysShowOptions={numFields === 1}
+                  formatOptions={
+                    operator && getFilterArgumentFormatOptions(operator, index)
+                  }
                   color="brand"
-                  formatOptions={getFilterArgumentFormatOptions(
-                    operator,
-                    index,
-                  )}
                   style={{
                     borderWidth: BORDER_WIDTH,
                     minWidth: widgetWidth
