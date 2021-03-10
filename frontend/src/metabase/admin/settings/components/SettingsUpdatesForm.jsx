@@ -9,6 +9,7 @@ import SettingsSetting from "./SettingsSetting";
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
+import ExternalLink from "metabase/components/ExternalLink";
 
 export default class SettingsUpdatesForm extends Component {
   static propTypes = {
@@ -41,8 +42,8 @@ export default class SettingsUpdatesForm extends Component {
               {jt`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
               {jt`You're running ${formatVersion(currentVersion)}`}
             </span>
-            <a
-              data-metabase-event={
+            <ExternalLink
+              dataMetabaseEvent={
                 "Updates Settings; Update link clicked; " + latestVersion
               }
               className="Button Button--white Button--medium borderless"
@@ -50,7 +51,7 @@ export default class SettingsUpdatesForm extends Component {
               target="_blank"
             >
               {t`Update`}
-            </a>
+            </ExternalLink>
           </div>
 
           <div

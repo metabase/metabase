@@ -9,6 +9,7 @@ import { updateSlackSettings } from "../settings";
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
+import ExternalLink from "metabase/components/ExternalLink";
 
 import _ from "underscore";
 import { t, jt } from "ttag";
@@ -250,7 +251,7 @@ export default class SettingsSlackForm extends Component {
           <h3 className="text-light">{t`Answers sent right to your Slack #channels`}</h3>
 
           <div className="pt3">
-            <a
+            <ExternalLink
               href="https://my.slack.com/services/new/bot"
               target="_blank"
               className="Button Button--primary"
@@ -263,7 +264,7 @@ export default class SettingsSlackForm extends Component {
                 name="external"
                 size={18}
               />
-            </a>
+            </ExternalLink>
           </div>
           <div className="py2">
             {jt`Once you're there, give it a name and click ${(
