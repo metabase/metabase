@@ -396,3 +396,16 @@
           (is (= [["Red Medicine" "Red" "RedMedicine"]
                   ["Rush Street" "Rush" "RushStreet"]]
                  (mt/formatted-rows [str str str] results))))))))
+
+(deftest a-test
+  (mt/test-drivers (mt/normal-drivers)
+    (is (= [[1 "Red Medicine" 4 10.0646 -165.374 4]
+            [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+            [3 "The Apple Pan" 11 34.0406 -118.428 2]
+            [4 "Wurstküche" 29 33.9997 -118.465 2]
+            [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
+           (mt/rows (mt/run-mbql-query venues {:limit 5}))))))
+
+(deftest two-case-functions-test
+  (testing "We should support expressions with two case statements (#15107)"
+    (mt/normal-drivers-with-feature :expressions :regex)))
