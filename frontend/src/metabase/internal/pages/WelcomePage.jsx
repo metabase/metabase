@@ -21,9 +21,9 @@ const WelcomePage = () => {
 
       <Subhead>Documentation progress</Subhead>
       <Text>
-        Documenting our component library is an ongoing process. Here's what
-        percentage of the code in <code>metabase/components</code> has some form
-        of documentation so far.
+        Documenting our component library is an ongoing process. Here&apos;s
+        what percentage of the code in <code>metabase/components</code> has some
+        form of documentation so far.
       </Text>
 
       <Box mt={3}>
