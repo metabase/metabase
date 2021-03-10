@@ -470,6 +470,28 @@ const MORE_VERBOSE_NAMES = {
   "greater than or equal to": "is greater than or equal to",
 };
 
+export function doesOperatorExist(operatorName) {
+  return !!FIELD_FILTER_OPERATORS[operatorName];
+}
+
+export function getOperatorByTypeAndName(type, name) {
+  const typedNamedOperator = _.findWhere(
+    FILTER_OPERATORS_BY_TYPE_ORDERED[type],
+    {
+      name,
+    },
+  );
+  const namedOperator = FIELD_FILTER_OPERATORS[name];
+
+  return (
+    typedNamedOperator && {
+      ...typedNamedOperator,
+      ...namedOperator,
+      numFields: namedOperator.validArgumentsFilters.length,
+    }
+  );
+}
+
 export function getFilterOperators(field, table, selected) {
   const type = getFieldType(field) || UNKNOWN;
   return FILTER_OPERATORS_BY_TYPE_ORDERED[type]
