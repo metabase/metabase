@@ -15,8 +15,6 @@ const IconWrapper = styled.div`
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 99px;
-  background-color: #ddecfa;
   color: ${color("brand")};
   margin-right: 10px;
   flex-shrink: 0;
