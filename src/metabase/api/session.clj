@@ -3,6 +3,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
             [metabase.api.common :as api]
@@ -36,10 +37,12 @@
         description (or user-agent
                         (log/warn (trs "Login request is missing user-agent information")
                                   "\n" (u/pprint-to-str request)))
-        ip-address  (or x-forwarded-for
-                        remote-addr
-                        (log/warn (trs "Unable to determine login request IP address")
-                                  "\n" (u/pprint-to-str request)))]
+        ip-address  (some-> (or x-forwarded-for
+                                remote-addr
+                                (log/warn (trs "Unable to determine login request IP address")
+                                          "\n" (u/pprint-to-str request)))
+                            ;; strip out non-ip-address characters like square brackets which we get sometimes
+                            (str/replace #"[^0-9a-fA-F.:]" ""))]
     (when-not (and id description ip-address)
       (log/warn (str (tru "Error determining login history for request")
                      "\n" (u/pprint-to-str request))))

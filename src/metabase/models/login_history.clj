@@ -1,7 +1,12 @@
 (ns metabase.models.login-history
-  (:require [java-time :as t]
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
+            [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -38,10 +43,39 @@
     :pre-update  pre-update
     #_:post-insert #_post-insert}))
 
+(defn describe-location [{:keys [city region country organization]}]
+  (when (or city region country)
+    (format "%s (%s)"
+            (str/join ", " (filter some? [city region country]))
+            organization)))
+
+(defn- geocode-ip-address* [ip-address]
+  (try
+    (let [url           (format "https://get.geojs.io/v1/ip/geo/%s.json" ip-address)
+          parse-lat-lon (fn [s]
+                          (when (and s (not= s "nil"))
+                            (Double/parseDouble s)))
+          info          (-> (http/get url)
+                            :body
+                            (json/parse-string true)
+                            (select-keys [:country :region :city :organization :latitude :longitude])
+                            (update :latitude parse-lat-lon)
+                            (update :longitude parse-lat-lon))]
+      (assoc info :description (or (describe-location info)
+                                   ip-address)))
+    (catch Throwable e
+      (log/error e (trs "Error geocoding IP addresss"))
+      nil)))
+
+;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
+(def ^:private ^{:arglists '([ip-address])} geocode-ip-address
+  (memoize/ttl geocode-ip-address* :ttl/threshold (u/minutes->ms 5)))
+
 (defn recent-logins
   "Return recent logins (sorted by most-recent -> least-recent) for `user-or-id`"
   [user-or-id]
-  (db/select [LoginHistory :timestamp :session_id :device_id :device_description :ip_address]
-    :user_id (u/the-id user-or-id)
-    :timestamp [:> (t/minus (t/offset-date-time) (t/months 1))]
-    {:order-by [[:timestamp :desc]]}))
+  (for [history (db/select [LoginHistory :timestamp :session_id :device_id :device_description :ip_address]
+                  :user_id (u/the-id user-or-id)
+                  :timestamp [:> (t/minus (t/offset-date-time) (t/months 1))]
+                  {:order-by [[:timestamp :desc]]})]
+    (assoc history :location (geocode-ip-address (:ip_address history)))))
