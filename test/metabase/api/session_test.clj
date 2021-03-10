@@ -3,6 +3,7 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.test :refer :all]
+            [clojure.tools.reader.edn :as edn]
             [metabase.api.session :as session-api]
             [metabase.driver.h2 :as h2]
             [metabase.email-test :as et]
@@ -32,6 +33,13 @@
                       (doseq [throttler (vals @#'session-api/login-throttlers)]
                         (reset! (:attempts throttler) nil))
                       (thunk)))
+
+(deftest request-device-info-test
+  (let [request (edn/read-string (slurp "test/metabase/api/sample-request.edn"))]
+    (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+            :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+            :ip_address         "[0:0:0:0:0:0:0:1]"}
+           (#'session-api/request-device-info request)))))
 
 (def ^:private SessionResponse
   {:id (s/pred mt/is-uuid-string? "session")})

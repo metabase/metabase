@@ -10,6 +10,7 @@
             [metabase.email.messages :as email]
             [metabase.events :as events]
             [metabase.integrations.ldap :as ldap]
+            [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :as user :refer [User]]
@@ -26,6 +27,32 @@
   (:import com.unboundid.util.LDAPSDKException
            java.util.UUID))
 
+(s/defn ^:private request-device-info :- {:device_id          su/NonBlankString
+                                          :device_description su/NonBlankString
+                                          :ip_address         su/NonBlankString}
+  [{{:strs [user-agent x-forwarded-for]} :headers, :keys [remote-addr device-id], :as request}]
+  (let [id          (or device-id
+                        (log/warn (trs "Login in request is missing device ID information")))
+        description (or user-agent
+                        (log/warn (trs "Login request is missing user-agent information")
+                                  "\n" (u/pprint-to-str request)))
+        ip-address  (or x-forwarded-for
+                        remote-addr
+                        (log/warn (trs "Unable to determine login request IP address")
+                                  "\n" (u/pprint-to-str request)))]
+    (when-not (and id description ip-address)
+      (log/warn (str (tru "Error determining login history for request")
+                     "\n" (u/pprint-to-str request))))
+    {:device_id          (or id "unknown")
+     :device_description (or description "unknown")
+     :ip_address         (or ip-address "unknown")}))
+
+(s/defn ^:private record-login-history!
+  [session-id :- UUID user-id :- su/IntGreaterThanZero request :- su/Map]
+  (db/insert! LoginHistory (merge {:user_id    user-id
+                                   :session_id (str session-id)}
+                                  (request-device-info request))))
+
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
   `:sso` (for other login types). Returns the newly generated Session."
@@ -39,25 +66,26 @@
    s/Keyword   s/Any})
 
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
-  [_, user :- CreateSessionUserInfo]
+  [_ user :- CreateSessionUserInfo request]
   (let [session-uuid (UUID/randomUUID)
         session      (or
                       (db/insert! Session
                         :id      (str session-uuid)
-                        :user_id (u/get-id user))
+                        :user_id (u/the-id user))
                       ;; HACK !!! For some reason `db/insert~ doesn't seem to be working correctly for Session.
                       (t.models/post-insert (Session (str session-uuid))))]
     (assert (map? session))
     (events/publish-event! :user-login
-      {:user_id (u/get-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
+      {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
+    (record-login-history! session-uuid (u/the-id user) request)
     (assoc session :id session-uuid)))
 
 (s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
-  [session-type, user :- CreateSessionUserInfo]
+  [session-type user :- CreateSessionUserInfo request]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
   (when-not (public-settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
-  ((get-method create-session! :sso) session-type user))
+  ((get-method create-session! :sso) session-type user request))
 
 
 ;;; ## API Endpoints
@@ -76,7 +104,7 @@
 (s/defn ^:private ldap-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
-  [username password]
+  [username password request]
   (when (ldap/ldap-configured?)
     (try
       (when-let [user-info (ldap/find-user username)]
@@ -87,16 +115,16 @@
                    {:status-code 400
                     :errors      {:password password-fail-snippet}})))
         ;; password is ok, return new session
-        (create-session! :sso (ldap/fetch-or-create-user! user-info)))
+        (create-session! :sso (ldap/fetch-or-create-user! user-info) request))
       (catch LDAPSDKException e
         (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
 
 (s/defn ^:private email-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
-  [username password]
+  [username password request]
   (when-let [user (db/select-one [User :id :password_salt :password :last_login], :%lower.email (u/lower-case-en username), :is_active true)]
     (when (pass/verify-password password (:password_salt user) (:password user))
-      (create-session! :password user))))
+      (create-session! :password user request))))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
@@ -109,10 +137,10 @@
 (s/defn ^:private login :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
-  [username :- su/NonBlankString, password :- su/NonBlankString]
+  [username :- su/NonBlankString password :- su/NonBlankString request]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
-  (or (ldap-login username password)    ; First try LDAP if it's enabled
-      (email-login username password)   ; Then try local authentication
+  (or (ldap-login username password request)    ; First try LDAP if it's enabled
+      (email-login username password request)   ; Then try local authentication
       ;; If nothing succeeded complain about it
       ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw
@@ -145,7 +173,7 @@
    password su/NonBlankString}
   (let [request-source (source-address request)
         do-login (fn []
-                   (let [{session-uuid :id, :as session} (login username password)
+                   (let [{session-uuid :id, :as session} (login username password request)
                          response                        {:id (str session-uuid)}]
                      (mw.session/set-session-cookie request response session)))]
     (if throttling-disabled?

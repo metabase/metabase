@@ -33,6 +33,7 @@
             [metabase.models.table :as table]
             [metabase.models.task-history :as task-history]
             [metabase.models.user :as user]
+            [metabase.models.login-history :as login-history]
             [metabase.models.view-log :as view-log]
             [potemkin :as p]))
 
@@ -51,6 +52,7 @@
          dimension/keep-me
          field/keep-me
          field-values/keep-me
+         login-history/keep-me
          metric/keep-me
          metric-important-field/keep-me
          native-query-snippet/keep-me
@@ -88,6 +90,7 @@
  [dimension Dimension]
  [field Field]
  [field-values FieldValues]
+ [login-history LoginHistory]
  [metric Metric]
  [metric-important-field MetricImportantField]
  [native-query-snippet NativeQuerySnippet]

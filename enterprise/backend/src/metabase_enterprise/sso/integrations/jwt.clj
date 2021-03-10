@@ -60,7 +60,7 @@
         first-name   (get jwt-data (jwt-attribute-firstname) "Unknown")
         last-name    (get jwt-data (jwt-attribute-lastname) "Unknown")
         user         (fetch-or-create-user! first-name last-name email login-attrs)
-        session      (session/create-session! :sso user)
+        session      (session/create-session! :sso user request)
         redirect-url (or redirect (URLEncoder/encode "/"))]
     (sync-groups! user jwt-data)
     (mw.session/set-session-cookie request (resp/redirect redirect-url) session)))
