@@ -165,10 +165,12 @@
                                                              [:> $date [:absolute-datetime #t "2014-01-01T00:00Z[UTC]" :default]]
                                                              [:=
                                                               $user_id
-                                                              [:value 5 {:base_type     :type/Integer
-                                                                         :semantic_type :type/FK
-                                                                         :database_type "INTEGER"
-                                                                         :name          "USER_ID"}]]]
+                                                              [:value 5 {:base_type         :type/Integer
+                                                                         :effective_type    :type/Integer
+                                                                         :coercion_strategy nil
+                                                                         :semantic_type     :type/FK
+                                                                         :database_type     "INTEGER"
+                                                                         :name              "USER_ID"}]]]
                                               ::row-level-restrictions/gtap?        true}
                                :joins        [{:source-query
                                                {:source-table $$venues
@@ -176,10 +178,12 @@
                                                                $venues.latitude $venues.longitude $venues.price]
                                                 :filter       [:=
                                                                $venues.price
-                                                               [:value 1 {:base_type     :type/Integer
-                                                                          :semantic_type :type/Category
-                                                                          :database_type "INTEGER"
-                                                                          :name          "PRICE"}]]
+                                                               [:value 1 {:base_type         :type/Integer
+                                                                          :effective_type    :type/Integer
+                                                                          :coercion_strategy nil
+                                                                          :semantic_type     :type/Category
+                                                                          :database_type     "INTEGER"
+                                                                          :name              "PRICE"}]]
                                                 ::row-level-restrictions/gtap?        true}
                                                :alias     "v"
                                                :strategy  :left-join
@@ -792,6 +796,8 @@
                                 (is (= [:=
                                         [:field (mt/id :products :category) {:join-alias "products"}]
                                         [:value "Widget" {:base_type     :type/Text
+                                                          :effective_type :type/Text
+                                                          :coercion_strategy nil
                                                           :semantic_type  (db/select-one-field :semantic_type Field
                                                                            :id (mt/id :products :category))
                                                           :database_type "VARCHAR"
