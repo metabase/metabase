@@ -17,19 +17,14 @@ describe("scenarios > question > nested (metabase#12568)", () => {
     signInAsAdmin();
 
     // Create a simple question of orders by week
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "GH_12568: Simple",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
       },
       display: "line",
-      visualization_settings: {},
     });
 
     // Create a native question of orders by day
@@ -149,29 +144,23 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "10511",
-      dataset_query: {
-        database: 1,
-        query: {
-          filter: [">", ["field", "count", { "base-type": "type/Integer" }], 5],
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-              [
-                "field",
-                PRODUCTS.CREATED_AT,
-                { "temporal-unit": "month", "source-field": ORDERS.PRODUCT_ID },
-              ],
+      query: {
+        filter: [">", ["field", "count", { "base-type": "type/Integer" }], 5],
+        "source-query": {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "temporal-unit": "month", "source-field": ORDERS.PRODUCT_ID },
             ],
-          },
+          ],
         },
-        type: "query",
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: questionId } }) => {
       cy.visit(`/question/${questionId}`);
       cy.findByText("10511");
@@ -207,18 +196,11 @@ describe("scenarios > question > nested", () => {
     createNativeQuestion("13816_Q1", "SELECT * FROM PRODUCTS").then(
       ({ body: { id: Q1_ID } }) => {
         cy.log("Convert it to `query` and save as Q2");
-
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: "13816_Q2",
-          dataset_query: {
-            database: 1,
-            query: {
-              "source-table": `card__${Q1_ID}`,
-            },
-            type: "query",
+          query: {
+            "source-table": `card__${Q1_ID}`,
           },
-          display: "table",
-          visualization_settings: {},
         });
       },
     );
@@ -272,15 +254,10 @@ describe("scenarios > question > nested", () => {
         "source-table": ORDERS_ID,
       };
 
-      cy.log("Create new question which uses previously defined metric");
-
-      cy.request("POST", "/api/card", {
+      // Create new question which uses previously defined metric
+      cy.createQuestion({
         name: "Orders with discount applied",
-        dataset_query: {
-          database: 1,
-          query: ORIGINAL_QUERY,
-          type: "query",
-        },
+        query: ORIGINAL_QUERY,
         display: "bar",
         visualization_settings: {
           "graph.dimension": ["TOTAL"],
@@ -334,16 +311,9 @@ describe("scenarios > question > nested", () => {
       fk: PRODUCTS.TITLE,
     });
 
-    cy.log("Save simple 'Orders' table with remapped values");
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders (remapped)",
-      dataset_query: {
-        database: 1,
-        query: { "source-table": ORDERS_ID },
-        type: "query",
-      },
-      display: "table",
-      visualization_settings: {},
+      query: { "source-table": ORDERS_ID },
     });
 
     // Try to use saved question as a base for a new / nested question
@@ -396,15 +366,9 @@ describe("scenarios > question > nested", () => {
         // Use the original question qith joins, then save it again
         ordersJoinProducts(QUESTION_NAME).then(
           ({ body: { id: ORIGINAL_QUESTION_ID } }) => {
-            cy.request("POST", "/api/card", {
+            cy.createQuestion({
               name: SECOND_QUESTION_NAME,
-              dataset_query: {
-                database: 1,
-                query: { "source-table": `card__${ORIGINAL_QUESTION_ID}` },
-                type: "query",
-              },
-              display: "table",
-              visualization_settings: {},
+              query: { "source-table": `card__${ORIGINAL_QUESTION_ID}` },
             });
           },
         );
@@ -473,28 +437,22 @@ describe("scenarios > question > nested", () => {
 });
 
 function ordersJoinProducts(name) {
-  return cy.request("POST", "/api/card", {
+  return cy.createQuestion({
     name,
-    dataset_query: {
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-            ],
-            alias: "Products",
-          },
-        ],
-      },
-      database: 1,
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          fields: "all",
+          "source-table": PRODUCTS_ID,
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+          ],
+          alias: "Products",
+        },
+      ],
     },
-    display: "table",
-    visualization_settings: {},
   });
 }

@@ -205,32 +205,22 @@ describe("scenarios > question > custom columns", () => {
 
     signInAsAdmin();
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13857",
-      dataset_query: {
-        database: 1,
-        query: {
-          expressions: {
-            [CC_NAME]: [
-              "*",
-              ["field", CE_NAME, { "base-type": "type/Float" }],
-              1234,
-            ],
-          },
-          "source-query": {
-            aggregation: [
-              ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-            "source-table": ORDERS_ID,
-          },
+      query: {
+        expressions: {
+          [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
         },
-        type: "query",
+        "source-query": {
+          aggregation: [
+            ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
+          ],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+          "source-table": ORDERS_ID,
+        },
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
       cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
@@ -250,26 +240,25 @@ describe("scenarios > question > custom columns", () => {
     const CC_NAME = "OneisOne";
     signInAsAdmin();
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14080",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: { [CC_NAME]: ["*", 1, 1] },
-          aggregation: [
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: { [CC_NAME]: ["*", 1, 1] },
+        aggregation: [
+          [
+            "distinct",
             [
-              "distinct",
-              ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
+              "fk->",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", PRODUCTS.ID],
             ],
-            ["sum", ["expression", CC_NAME]],
           ],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-        type: "query",
+          ["sum", ["expression", CC_NAME]],
+        ],
+        breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"]],
       },
       display: "line",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
       cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
@@ -287,24 +276,18 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13634",
-      dataset_query: {
-        database: 1,
-        query: {
-          expressions: { "Foo Bar": ["+", 57910, 1] },
-          "source-query": {
-            aggregation: [["cum-count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-            "source-table": ORDERS_ID,
-          },
+      query: {
+        expressions: { "Foo Bar": ["+", 57910, 1] },
+        "source-query": {
+          aggregation: [["cum-count"]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+          "source-table": ORDERS_ID,
         },
-        type: "query",
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: questionId } }) => {
       cy.visit(`/question/${questionId}`);
       cy.findByText("13634");
@@ -318,31 +301,21 @@ describe("scenarios > question > custom columns", () => {
   it.skip("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
     const CC_NAME = "Double the fun";
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14193",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            filter: [">", ["field", ORDERS.SUBTOTAL, null], 0],
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          expressions: {
-            [CC_NAME]: [
-              "*",
-              ["field", "sum", { "base-type": "type/Float" }],
-              2,
-            ],
-          },
+      query: {
+        "source-query": {
+          "source-table": ORDERS_ID,
+          filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
+          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          ],
         },
-        database: 1,
+        expressions: {
+          [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+        },
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
 
@@ -365,22 +338,16 @@ describe("scenarios > question > custom columns", () => {
     // Uppercase is important for this reproduction on H2
     const CC_NAME = "CATEGORY";
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14255",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-          expressions: {
-            [CC_NAME]: ["concat", ["field", PRODUCTS.CATEGORY, null], "2"],
-          },
-          aggregation: [["count"]],
-          breakout: [["expression", CC_NAME]],
+      query: {
+        "source-table": PRODUCTS_ID,
+        expressions: {
+          [CC_NAME]: ["concat", ["field-id", PRODUCTS.CATEGORY], "2"],
         },
-        database: 1,
+        aggregation: [["count"]],
+        breakout: [["expression", CC_NAME]],
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
 
@@ -392,35 +359,29 @@ describe("scenarios > question > custom columns", () => {
   it.skip("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
     const CE_NAME = "Rounded price";
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14775",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                ["field", ORDERS.PRODUCT_ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-              ],
-              alias: "Products",
-            },
-          ],
-          expressions: {
-            [CE_NAME]: [
-              "ceil",
-              ["field", PRODUCTS.PRICE, { "join-alias": "Products" }],
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
             ],
+            alias: "Products",
           },
+        ],
+        expressions: {
+          [CE_NAME]: [
+            "ceil",
+            ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
+          ],
         },
-        type: "query",
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
