@@ -64,16 +64,19 @@ const QuestionLoader = ({
   children,
 }: Props) =>
   questionObject != null ? (
-    <AdHocQuestionLoader
-      questionHash={serializeCardForUrl(questionObject)}
-      children={children}
-    />
+    <AdHocQuestionLoader questionHash={serializeCardForUrl(questionObject)}>
+      {children}
+    </AdHocQuestionLoader>
   ) : // if there's a questionHash it means we're in ad-hoc land
   questionHash != null && questionHash !== "" ? (
-    <AdHocQuestionLoader questionHash={questionHash} children={children} />
+    <AdHocQuestionLoader questionHash={questionHash}>
+      {children}
+    </AdHocQuestionLoader>
   ) : // otherwise if there's a non-null questionId it means we're in saved land
   questionId != null ? (
-    <SavedQuestionLoader questionId={questionId} children={children} />
+    <SavedQuestionLoader questionId={questionId}>
+      {children}
+    </SavedQuestionLoader>
   ) : // finally, if neither is present, just don't do anything
   null;
 
