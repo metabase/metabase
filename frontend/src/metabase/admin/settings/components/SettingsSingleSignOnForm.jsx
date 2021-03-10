@@ -126,7 +126,7 @@ export default class SettingsSingleSignOnForm extends Component {
                 href="https://developers.google.com/identity/sign-in/web/devconsole-project"
                 target="_blank"
               >
-                here
+                {t`here`}
               </ExternalLink>
             )}.`}
           </p>
