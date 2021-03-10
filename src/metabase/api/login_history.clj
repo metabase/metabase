@@ -6,6 +6,6 @@
 (api/defendpoint GET "/current"
   "Fetch recent logins for the current user."
   []
-  (login-history/recent-logins api/*current-user-id*))
+  (login-history/login-history api/*current-user-id*))
 
 (api/define-routes)
