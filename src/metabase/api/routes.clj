@@ -35,6 +35,7 @@
             [metabase.api.tiles :as tiles]
             [metabase.api.transform :as transform]
             [metabase.api.user :as user]
+            [metabase.api.login-history :as login-history]
             [metabase.api.util :as util]
             [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
@@ -80,6 +81,7 @@
   (context "/field"                [] (+auth field/routes))
   (context "/geojson"              [] geojson/routes)
   (context "/ldap"                 [] (+auth ldap/routes))
+  (context "/login-history"        [] (+auth login-history/routes))
   (context "/metastore"            [] (+auth metastore/routes))
   (context "/metric"               [] (+auth metric/routes))
   (context "/native-query-snippet" [] (+auth native-query-snippet/routes))

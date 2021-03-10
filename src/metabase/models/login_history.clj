@@ -71,11 +71,11 @@
 (def ^:private ^{:arglists '([ip-address])} geocode-ip-address
   (memoize/ttl geocode-ip-address* :ttl/threshold (u/minutes->ms 5)))
 
-(defn recent-logins
-  "Return recent logins (sorted by most-recent -> least-recent) for `user-or-id`"
+(defn login-history
+  "Return login history (sorted by most-recent -> least-recent) for `user-or-id`"
   [user-or-id]
   (for [history (db/select [LoginHistory :timestamp :session_id :device_id :device_description :ip_address]
                   :user_id (u/the-id user-or-id)
-                  :timestamp [:> (t/minus (t/offset-date-time) (t/months 1))]
+                  #_:timestamp #_[:> (t/minus (t/offset-date-time) (t/months 1))]
                   {:order-by [[:timestamp :desc]]})]
     (assoc history :location (geocode-ip-address (:ip_address history)))))

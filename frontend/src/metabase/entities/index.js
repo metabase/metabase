@@ -14,6 +14,7 @@ export metrics from "./metrics";
 export segments from "./segments";
 export tasks from "./tasks";
 
+export loginHistory from "./loginHistory";
 export users from "./users";
 export groups from "./groups";
 
