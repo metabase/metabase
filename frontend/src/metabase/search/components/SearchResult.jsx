@@ -15,7 +15,8 @@ const IconWrapper = styled.div`
   justify-content: center;
   width: 32px;
   height: 32px;
-  color: ${color("brand")};
+  color: ${props =>
+    props.item.collection_position ? color("warning") : color("brand")};
   margin-right: 10px;
   flex-shrink: 0;
 `;
