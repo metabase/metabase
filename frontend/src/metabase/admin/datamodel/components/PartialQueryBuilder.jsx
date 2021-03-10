@@ -124,6 +124,7 @@ export default class PartialQueryBuilder extends Component {
             <a
               data-metabase-event={"Data Model;Preview Click"}
               target={window.OSX ? null : "_blank"}
+              rel="noopener noreferrer"
               className={cx("Button Button--primary")}
               href={previewUrl}
             >{t`Preview`}</a>
