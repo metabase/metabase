@@ -1,22 +1,15 @@
 // Includes migrations from integration tests:
 // https://github.com/metabase/metabase/pull/14174
 
-import {
-  signInAsAdmin,
-  restore,
-  popover,
-  USERS,
-  USER_GROUPS,
-  setupDummySMTP,
-} from "__support__/cypress";
-
+import { restore, popover, setupDummySMTP } from "__support__/cypress";
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   const TEST_USER = {
@@ -92,7 +85,7 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should disallow admin to create new users with case mutation of existing user", () => {
-      const { first_name, last_name, username: email } = normal;
+      const { first_name, last_name, email } = normal;
       cy.visit("/admin/people");
       clickButton("Add someone");
 

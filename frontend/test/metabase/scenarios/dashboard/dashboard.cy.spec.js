@@ -3,8 +3,6 @@
 import {
   popover,
   restore,
-  signIn,
-  signInAsAdmin,
   selectDashboardFilter,
   expectedRouteCalls,
 } from "__support__/cypress";
@@ -28,7 +26,7 @@ function saveDashboard() {
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should create new dashboard", () => {
@@ -385,7 +383,7 @@ describe("scenarios > dashboard", () => {
     cy.server();
     cy.route("POST", "/api/card/*/query").as("cardQuery");
 
-    signIn("nodata");
+    cy.signIn("nodata");
 
     clickThrough("12720_SQL");
     clickThrough("Orders");

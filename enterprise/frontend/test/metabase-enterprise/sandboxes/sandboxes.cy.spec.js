@@ -5,13 +5,10 @@ import {
   popover,
   modal,
   restore,
-  signInAsAdmin,
-  signInAsNormalUser,
-  signOut,
-  USER_GROUPS,
   remapDisplayValueToFK,
   sidebar,
 } from "__support__/cypress";
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -25,34 +22,14 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATASET;
 
-const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-
-// TODO: If we ever have the need to use this user across multiple tests, extract it to `__support__/cypress`
-const sandboxed_user = {
-  first_name: "User",
-  last_name: "1",
-  email: "u1@metabase.test",
-  password: "12341234",
-  login_attributes: {
-    user_id: "1",
-    user_cat: "Widget",
-  },
-  // Because of the specific restrictions and the way testing dataset was set up,
-  // this user needs to also have access to "collections" (group_id: 4) in order to see saved questions
-  group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
-};
-
-const [ATTR_UID, ATTR_CAT] = Object.keys(sandboxed_user.login_attributes);
-
-function createUser(user) {
-  return cy.request("POST", "/api/user", user);
-}
+const { DATA_GROUP } = USER_GROUPS;
+const { sandboxed } = USERS;
 
 describeWithToken("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/people");
     });
 
@@ -69,10 +46,10 @@ describeWithToken("formatting > sandboxes", () => {
 
     it("should add key attributes to a new user", () => {
       cy.findByText("Add someone").click();
-      cy.findByPlaceholderText("Johnny").type(sandboxed_user.first_name);
-      cy.findByPlaceholderText("Appleseed").type(sandboxed_user.last_name);
+      cy.findByPlaceholderText("Johnny").type(sandboxed.first_name);
+      cy.findByPlaceholderText("Appleseed").type(sandboxed.last_name);
       cy.findByPlaceholderText("youlooknicetoday@email.com").type(
-        sandboxed_user.email,
+        sandboxed.email,
       );
       cy.findByText("Add an attribute").click();
       cy.findByPlaceholderText("Key").type("User ID");
@@ -90,7 +67,7 @@ describeWithToken("formatting > sandboxes", () => {
 
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
 
       // Add user attribute to existing ("normal" / id:2) user
       cy.request("PUT", "/api/user/2", {
@@ -147,8 +124,8 @@ describeWithToken("formatting > sandboxes", () => {
         user_group: DATA_GROUP,
       });
 
-      signOut();
-      signInAsNormalUser();
+      cy.signOut();
+      cy.signInAsNormalUser();
     });
 
     describe("table sandboxed on a user attribute", () => {
@@ -206,11 +183,8 @@ describeWithToken("formatting > sandboxes", () => {
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
-      createUser(sandboxed_user).then(({ body: { id: USER_ID } }) => {
-        cy.log("Dismiss `it's ok to play around` modal for new users");
-        cy.request("PUT", `/api/user/${USER_ID}/qbnewb`, {});
-      });
+      cy.signInAsAdmin();
+      cy.createUser("sandboxed");
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
@@ -218,7 +192,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field", PEOPLE.ID, null]],
+          attr_uid: ["dimension", ["field", PEOPLE.ID, null]],
         },
         card_id: null,
         group_id: COLLECTION_GROUP,
@@ -236,8 +210,8 @@ describeWithToken("formatting > sandboxes", () => {
         },
       });
 
-      signOut();
-      signInAsSandboxedUser();
+      cy.signOut();
+      cy.signInAsSandboxedUser();
 
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
@@ -277,7 +251,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
+          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
         card_id: null,
         group_id: COLLECTION_GROUP,
@@ -311,8 +285,8 @@ describeWithToken("formatting > sandboxes", () => {
           "source-table": ORDERS_ID,
         },
       }).then(({ body: { id: QUESTION_ID } }) => {
-        signOut();
-        signInAsSandboxedUser();
+        cy.signOut();
+        cy.signInAsSandboxedUser();
 
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
@@ -347,7 +321,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.request("POST", "/api/mt/gtap", {
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
+            attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
           card_id: null,
           group_id: COLLECTION_GROUP,
@@ -382,8 +356,8 @@ describeWithToken("formatting > sandboxes", () => {
           display: "bar",
         });
 
-        signOut();
-        signInAsSandboxedUser();
+        cy.signOut();
+        cy.signInAsSandboxedUser();
 
         cy.server();
         cy.route("POST", "/api/card/*/query").as("cardQuery");
@@ -420,7 +394,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
+          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
         card_id: null,
         group_id: COLLECTION_GROUP,
@@ -463,8 +437,8 @@ describeWithToken("formatting > sandboxes", () => {
         display: "bar",
       });
 
-      signOut();
-      signInAsSandboxedUser();
+      cy.signOut();
+      cy.signInAsSandboxedUser();
 
       cy.server();
       cy.route("POST", "/api/card/*/query").as("cardQuery");
@@ -522,7 +496,7 @@ describeWithToken("formatting > sandboxes", () => {
 
           cy.request("POST", "/api/mt/gtap", {
             attribute_remappings: {
-              [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
+              attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
             },
             card_id: CARD_ID,
             group_id: COLLECTION_GROUP,
@@ -544,7 +518,7 @@ describeWithToken("formatting > sandboxes", () => {
 
           cy.request("POST", "/api/mt/gtap", {
             attribute_remappings: {
-              [ATTR_CAT]: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+              attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             },
             card_id: CARD_ID,
             group_id: COLLECTION_GROUP,
@@ -561,8 +535,8 @@ describeWithToken("formatting > sandboxes", () => {
           },
         });
 
-        signOut();
-        signInAsSandboxedUser();
+        cy.signOut();
+        cy.signInAsSandboxedUser();
 
         openOrdersTable();
 
@@ -622,7 +596,7 @@ describeWithToken("formatting > sandboxes", () => {
 
             cy.request("POST", "/api/mt/gtap", {
               attribute_remappings: {
-                [ATTR_UID]: ["variable", ["template-tag", "sandbox"]],
+                attr_uid: ["variable", ["template-tag", "sandbox"]],
               },
               card_id: CARD_ID,
               group_id: COLLECTION_GROUP,
@@ -656,7 +630,7 @@ describeWithToken("formatting > sandboxes", () => {
 
             cy.request("POST", "/api/mt/gtap", {
               attribute_remappings: {
-                [ATTR_CAT]: ["variable", ["template-tag", "sandbox"]],
+                attr_cat: ["variable", ["template-tag", "sandbox"]],
               },
               card_id: CARD_ID,
               group_id: COLLECTION_GROUP,
@@ -673,8 +647,8 @@ describeWithToken("formatting > sandboxes", () => {
             },
           });
 
-          signOut();
-          signInAsSandboxedUser();
+          cy.signOut();
+          cy.signInAsSandboxedUser();
 
           openOrdersTable();
 
@@ -724,7 +698,7 @@ describeWithToken("formatting > sandboxes", () => {
           group_id: COLLECTION_GROUP,
           card_id: null,
           attribute_remappings: {
-            [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
+            attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
         });
 
@@ -737,8 +711,8 @@ describeWithToken("formatting > sandboxes", () => {
           },
         });
 
-        signOut();
-        signInAsSandboxedUser();
+        cy.signOut();
+        cy.signInAsSandboxedUser();
         openOrdersTable();
 
         cy.wait("@dataset").then(xhr => {
@@ -820,8 +794,8 @@ describeWithToken("formatting > sandboxes", () => {
           display: "bar",
         });
 
-        signOut();
-        signInAsSandboxedUser();
+        cy.signOut();
+        cy.signInAsSandboxedUser();
 
         cy.server();
         cy.route("POST", "/api/card/*/query").as("cardQuery");
@@ -919,7 +893,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log("Sandbox `Orders` table");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field", ORDERS.USER_ID, null]],
+          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
         card_id: null,
         table_id: ORDERS_ID,
@@ -929,7 +903,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log("Sandbox `Products` table");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_CAT]: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+          attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         },
         card_id: null,
         table_id: PRODUCTS_ID,
@@ -945,8 +919,8 @@ describeWithToken("formatting > sandboxes", () => {
         },
       });
 
-      signOut();
-      signInAsSandboxedUser();
+      cy.signOut();
+      cy.signInAsSandboxedUser();
       createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
         cy.visit(`/question/${QUESTION_ID}`);
       });
@@ -978,7 +952,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log("Sandbox `Orders` table");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
         card_id: null,
         table_id: ORDERS_ID,
@@ -988,7 +962,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log("**-- 2. Sandbox `People` table --**");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", PEOPLE.ID]],
+          attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
         },
         card_id: null,
         table_id: PEOPLE_ID,
@@ -998,7 +972,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log("**-- 3. Sandbox `Products` table --**");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_CAT]: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+          attr_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
         },
         card_id: null,
         table_id: PRODUCTS_ID,
@@ -1053,8 +1027,8 @@ describeWithToken("formatting > sandboxes", () => {
           "cardQuery",
         );
 
-        signOut();
-        signInAsSandboxedUser();
+        cy.signOut();
+        cy.signInAsSandboxedUser();
 
         cy.visit(`/question/${QUESTION_ID}`);
 
@@ -1071,7 +1045,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log("Sandbox `Orders` table");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
-          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
         },
         card_id: null,
         table_id: ORDERS_ID,
@@ -1085,7 +1059,7 @@ describeWithToken("formatting > sandboxes", () => {
           },
         },
       });
-      signInAsSandboxedUser();
+      cy.signInAsSandboxedUser();
       cy.visit("/dashboard/1");
       cy.icon("share").click();
       cy.findByText("Dashboard subscriptions").click();
@@ -1094,16 +1068,34 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findAllByRole("link", { name: "set up email" });
       cy.findAllByRole("link", { name: "configure Slack" });
     });
+
+    it.skip("sandboxed user should be able to send pulses to Slack (metabase#14844)", () => {
+      cy.viewport(1400, 1000);
+
+      cy.server();
+      cy.route("GET", "/api/collection/*").as("collection");
+
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
+        },
+      });
+
+      cy.signOut();
+      cy.signInAsSandboxedUser();
+
+      cy.visit("/pulse/create");
+      cy.wait("@collection");
+      cy.findByText("Where should this data go?")
+        .parent()
+        .within(() => {
+          cy.findByText("Email");
+          cy.findByText("Slack");
+        });
+    });
   });
 });
-
-function signInAsSandboxedUser() {
-  cy.log("Logging in as sandboxed user");
-  cy.request("POST", "/api/session", {
-    username: sandboxed_user.email,
-    password: sandboxed_user.password,
-  });
-}
 
 function createJoinedQuestion(name) {
   return cy.createQuestion({

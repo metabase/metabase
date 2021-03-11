@@ -1,10 +1,4 @@
-import {
-  signInAsNormalUser,
-  restore,
-  popover,
-  modal,
-} from "__support__/cypress";
-
+import { restore, popover, modal } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS } = SAMPLE_DATASET;
@@ -12,7 +6,7 @@ const { ORDERS } = SAMPLE_DATASET;
 describe("scenarios > question > native", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it("lets you create and run a SQL question", () => {

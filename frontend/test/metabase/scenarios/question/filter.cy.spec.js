@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   openOrdersTable,
   openProductsTable,
@@ -24,7 +23,7 @@ const {
 describe("scenarios > question > filter", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("dashboard filter dropdown/search (metabase#12985)", () => {
