@@ -1,27 +1,31 @@
 (ns metabase.test.gen2
   (:require [clojure.spec.alpha :as s]
-            [clojure.string :as str]
             [clojure.test.check.generators :as gen]
-            [metabase.models :refer [Activity Card Dashboard DashboardCard User Collection Pulse PulseCard Database
-                                     Table Field Metric FieldValues Dimension MetricImportantField PermissionsGroup
-                                     Permissions PermissionsGroupMembership DashboardCardSeries NativeQuerySnippet
-                                     PulseChannel]]
+            [clojure.tools.reader.edn :as edn]
+            [java-time :as t]
+            [metabase.models
+             :refer
+             [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database Dimension Field
+              FieldValues Metric MetricImportantField NativeQuerySnippet PermissionsGroup PermissionsGroupMembership
+              Pulse PulseCard PulseChannel Table User]]
             [metabase.test :as mt]
+            [metabase.util.date-2.parse :as u.date]
             [reifyhealth.specmonstah.core :as rs]
             [reifyhealth.specmonstah.spec-gen :as rsg]
-            [toucan.db :as tdb]
+            [talltale.core :as tt]
+            [toucan.db :as tdb]))
 
-            [java-time :as t]
-            [manifold.deferred :as d]))
+(def ^:private edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
+
+(defonce ^:private sample-dataset
+  (edn/read-string {:eof nil, :readers {'t #'u.date/parse}}
+                   (slurp (str edn-definitions-dir "sample-dataset.edn"))))
 
 ;; * items
 (def id-seq (atom 0))
 (s/def ::id (s/with-gen pos-int? #(gen/fmap (fn [_] (swap! id-seq inc)) (gen/return nil))))
 (s/def ::engine #{:postgres :h2})
 (s/def ::not-empty-string (s/and string? not-empty #(< (count %) 10)))
-(s/def ::name ::not-empty-string)
-(s/def ::first_name ::not-empty-string)
-(s/def ::last_name ::not-empty-string)
 
 (s/def ::database (s/keys :req-un [::id ::engine ::name ::details]))
 (s/def ::color #{"#A00000" "#FFFFFF"})
@@ -34,24 +38,35 @@
 (s/def ::user_id ::id)
 (s/def ::group_id ::id)
 
-(def email-gen
-  "Generator for email addresses"
-  (gen/fmap
-    (fn [[name host tld]]
-      (str name "@" host "." tld))
-    (gen/tuple gen/string-alphanumeric gen/string-alphanumeric gen/string-alphanumeric)))
-
 (s/def ::email
-  (s/with-gen
-    #(re-matches #".+@.+\..+" %)
-    (fn [] email-gen)))
+  (s/with-gen string?
+    #(gen/fmap (fn [_] (talltale.core/email))
+               (gen/return nil))))
 
-;; (s/def ::email (fn [_] (talltale.core/email)))
+(s/def ::description
+  (s/with-gen string?
+    #(gen/fmap
+      (fn [_] (second (rand-nth (nth (first sample-dataset) 2))))
+      (gen/return nil))))
+
+(s/def ::first_name
+  (s/with-gen string?
+    #(gen/fmap
+      (fn [_] (talltale.core/first-name))
+      (gen/return nil))))
+
+(s/def ::last_name
+  (s/with-gen string?
+    #(gen/fmap
+      (fn [_] (talltale.core/last-name))
+      (gen/return nil))))
+
+(s/def ::name ::description)
 
 ;; * card
 (s/def ::display #{:table})
 (s/def ::visualization_settings #{"{}"})
-(s/def ::dataset_query string?)
+(s/def ::dataset_query #{""})
 
 ;; * dashboardcard_series
 (s/def ::position pos-int?)
@@ -65,7 +80,7 @@
 
 ;; * metric
 (s/def ::definition #{ {} })
-(s/def ::description string?)
+;; (s/def ::description string?)
 
 ;; * table
 (s/def ::active boolean?)
@@ -108,7 +123,7 @@
 
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 
-;(gen/generate (s/gen ::activity))
+;(gen/generate (s/gen ::collection))
 
 ;; * schema
 (def schema
@@ -255,11 +270,12 @@
                       (rsg/spec-gen-assoc-relations
                        sm-db
                        (assoc visit-opts :visit-val (:spec-gen attrs))))
-                    (catch Throwable e (println e))
-                    )))
+                    (catch Throwable e (println e)))))
       (rs/attr-map :insert!)))
 
-;(insert! {:core-user [[1 {:spec-gen {:email "awesome@awesome.com" :password "lazyfox1"}}]]})
-;; (insert! {:collection [[10000 {:refs {:personal_owner_id ::rs/omit}}]]})
-;; (insert! {:field [[2 {:refs {:table_id :t0}}]]})
-;; (insert! {:activity [[1000]]})
+(def ^:private horror-show {:collection [[1 {:refs {:personal_owner_id ::rs/omit}}]]
+                            :dashboard  [[5000]]
+                            :card       [[50000]]})
+
+(defn generate-horror-show []
+  (insert! horror-show))
