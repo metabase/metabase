@@ -9,9 +9,9 @@ import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
-import Tooltip from "metabase/components/Tooltip";
 
 import Database from "metabase/entities/databases";
+import Table from "metabase/entities/tables";
 
 function colorForType(props) {
   if (props.item.collection_position) {
@@ -67,6 +67,7 @@ const ResultLink = styled(Link)`
     margin-top: 0;
     margin-bottom: 0;
     font-size: 13px;
+    line-height: 19px;
   }
 
   h3 {
@@ -106,6 +107,8 @@ export default function SearchResult(props) {
       return <TableResult table={result} options={props} />;
     case "segment":
       return <SegmentResult segment={result} options={props} />;
+    case "metric":
+      return <MetricResult metric={result} options={props} />;
     default:
       // metric, segment, and table deliberately included here
       return <DefaultResult result={result} options={props} />;
@@ -276,10 +279,39 @@ function SegmentResult({ segment, options }) {
         <ItemIcon item={segment} />
         <Box>
           <Title>{segment.name}</Title>
+          <Text>{jt`Segment of ${(
+            <Link
+              to={Urls.tableRowsQuery(segment.database_id, segment.table_id)}
+            >
+              <Table.Name id={segment.table_id} />
+            </Link>
+          )}`}</Text>
           {segment.description && (
             <Description>{segment.description}</Description>
           )}
           <Score scores={segment.scores} />
+        </Box>
+      </Flex>
+    </ResultLink>
+  );
+}
+
+function MetricResult({ metric, options }) {
+  return (
+    <ResultLink to={metric.getUrl()} compact={options.compact}>
+      <Flex align="start">
+        <ItemIcon item={metric} />
+        <Box>
+          <Title>{metric.name}</Title>
+          <Text>{jt`Metric for ${(
+            <Link to={Urls.tableRowsQuery(metric.database_id, metric.table_id)}>
+              <Table.Name id={metric.table_id} />
+            </Link>
+          )}`}</Text>
+          {metric.description && (
+            <Description>{metric.description}</Description>
+          )}
+          <Score scores={metric.scores} />
         </Box>
       </Flex>
     </ResultLink>
@@ -293,6 +325,9 @@ function DefaultResult({ result, options }) {
         <ItemIcon item={result} />
         <Box>
           <Title>{result.name}</Title>
+          {result.description && (
+            <Description>{result.description}</Description>
+          )}
           {formatCollection(result.getCollection())}
           <Score scores={result.scores} />
         </Box>
