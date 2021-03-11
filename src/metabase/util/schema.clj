@@ -252,7 +252,7 @@
 
 (defn- boolean-string? ^Boolean [s]
   (boolean (when (string? s)
-             (let [s (str/lower-case s)]
+             (let [s (u/lower-case-en s)]
                (contains? #{"true" "false"} s)))))
 
 (def BooleanString
