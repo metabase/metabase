@@ -17,7 +17,8 @@
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.util.honeysql-extensions :as hx]))
 
 (defn- drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -403,7 +404,7 @@
 (deftest enums-test
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
-      (is (= (hsql/call :cast "toucan" (keyword "bird type"))
+      (is (= (hx/with-database-type-info (hsql/call :cast "toucan" (keyword "bird type")) "bird type")
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
 
     (do-with-enums-db

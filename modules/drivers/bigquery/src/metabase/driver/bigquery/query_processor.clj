@@ -252,7 +252,7 @@
         bigquery-type
         (do
           (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
-          (with-temporal-type (hx/cast bigquery-type (sql.qp/->honeysql :bigquery x)) target-type))
+          (with-temporal-type (hsql/call :cast (sql.qp/->honeysql :bigquery x) (hsql/raw (name bigquery-type))) target-type))
 
         :else
         x))))

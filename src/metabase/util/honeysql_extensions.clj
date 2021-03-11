@@ -218,6 +218,7 @@
 
     (with-database-type-info :field \"text\")
     ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
+  {:style/indent [:form]}
   [honeysql-form database-type :- (s/maybe su/KeywordOrString)]
   (if (some? database-type)
     (with-type-info honeysql-form {::database-type database-type})
