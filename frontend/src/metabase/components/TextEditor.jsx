@@ -19,11 +19,14 @@ export default class TextEditor extends Component {
     value: PropTypes.string,
     defaultValue: PropTypes.string,
     onChange: PropTypes.func,
+    onBlur: PropTypes.func,
+    aceAutocomplete: PropTypes.bool,
   };
 
   static defaultProps = {
     mode: "ace/mode/plain_text",
     theme: null,
+    aceAutocomplete: true,
   };
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -77,25 +80,32 @@ export default class TextEditor extends Component {
     }
   };
 
+  onBlur = () => {
+    this._update();
+    if (this.props.onBlur) {
+      this.props.onBlur();
+    }
+  };
+
   componentDidMount() {
     if (typeof ace === "undefined" || !ace || !ace.edit) {
       // fail gracefully-ish if ace isn't available, e.x. in integration tests
       return;
     }
-
     const element = ReactDOM.findDOMNode(this);
     this._editor = ace.edit(element);
 
     window.editor = this._editor;
 
-    // listen to onChange events
+    // listen to events
     this._editor.getSession().on("change", this.onChange);
+    this._editor.on("blur", this.onBlur);
 
     // misc options, copied from NativeQueryEditor
     this._editor.setOptions({
-      enableBasicAutocompletion: true,
+      enableBasicAutocompletion: this.props.aceAutocomplete,
       enableSnippets: true,
-      enableLiveAutocompletion: true,
+      enableLiveAutocompletion: this.props.aceAutocomplete,
       showPrintMargin: false,
       highlightActiveLine: false,
       highlightGutterLine: false,

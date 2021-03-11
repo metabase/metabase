@@ -1,0 +1,5 @@
+.ExpressionEditorTextField .ace_editor {
+  height: 100%;
+  background-color: var(--color-bg-light);
+  color: var(--color-text-dark);
+}
