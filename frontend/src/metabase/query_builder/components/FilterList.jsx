@@ -39,8 +39,9 @@ export default class FilterList extends Component {
             filter={filter}
             metadata={metadata}
             maxDisplayValues={this.props.maxDisplayValues}
-            children={filterRenderer}
-          />
+          >
+            {filterRenderer}
+          </Filter>
         ))}
       </div>
     );

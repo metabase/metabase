@@ -124,13 +124,9 @@ export default class Tooltip extends Component {
       <React.Fragment>
         {React.Children.only(this.props.children)}
         {tooltip && isEnabled && isOpen && (
-          <TooltipPopover
-            isOpen={true}
-            target={this}
-            hasArrow
-            {...this.props}
-            children={this.props.tooltip}
-          />
+          <TooltipPopover isOpen={true} target={this} hasArrow {...this.props}>
+            {this.props.tooltip}
+          </TooltipPopover>
         )}
       </React.Fragment>
     );
