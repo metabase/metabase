@@ -27,7 +27,7 @@
         (vreset! col-names (mapv (some-fn :display_name :name) cols))
         (.write writer "[\n"))
 
-      (write-row! [_ row row-num]
+      (write-row! [_ row row-num _]
         (when-not (zero? row-num)
           (.write writer ",\n"))
         (json/generate-stream (zipmap @col-names (map common/format-value row))
@@ -58,7 +58,7 @@
       (begin! [_ _]
         (.write writer "{\"data\":{\"rows\":[\n"))
 
-      (write-row! [_ row row-num]
+      (write-row! [_ row row-num _]
         (when-not (zero? row-num)
           (.write writer ",\n"))
         (json/generate-stream row writer)

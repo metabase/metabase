@@ -341,7 +341,8 @@
         (dorun
          (map-indexed
           (fn [i row]
-            (qp.streaming.i/write-row! w row i))
+            ;; TODO: figure out what metadata (last param) is here?
+            (qp.streaming.i/write-row! w row i nil))
           rows))
         (qp.streaming.i/finish! w results)))))
 

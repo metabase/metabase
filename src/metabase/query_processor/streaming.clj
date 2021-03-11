@@ -6,7 +6,9 @@
             [metabase.query-processor.streaming.interface :as i]
             [metabase.query-processor.streaming.json :as streaming.json]
             [metabase.query-processor.streaming.xlsx :as streaming.xlsx]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.visualization-settings :as viz]
+            [medley.core :as m])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            java.io.OutputStream
            metabase.async.streaming_response.StreamingResponse))
@@ -17,22 +19,34 @@
          streaming.json/keep-me
          streaming.xlsx/keep-me)
 
+(defn- indexed-col-vis-settings [{:keys [cols visualization_settings]}]
+  (mapv (partial viz/make-format-metadata visualization_settings) cols))
+
+(defn- indexed-col-title-overrides [{:keys [cols visualization_settings]}]
+  (mapv (partial viz/column-title-override visualization_settings) cols))
+
 (defn- streaming-rff [results-writer]
   (fn [initial-metadata]
-    (let [row-count (volatile! 0)]
+    (let [row-count    (volatile! 0)
+          viz-settings (indexed-col-vis-settings initial-metadata)
+          col-titles   (indexed-col-title-overrides initial-metadata)]
       (fn
         ([]
-         (u/prog1 {:data initial-metadata}
+         (u/prog1 {:data (assoc initial-metadata :indexed-column-title-overrides col-titles)}
            (i/begin! results-writer <>)))
 
         ([metadata]
-         (assoc metadata
-                :row_count @row-count
-                :status :completed))
+         (-> metadata
+             (assoc :row_count @row-count
+                    :status    :completed)
+             (m/dissoc-in [:data :visualization_settings]
+                          [:data :indexed-column-viz-settings]
+                          [:data :indexed-column-title-overrides])))
 
         ([metadata row]
-         (i/write-row! results-writer row (dec (vswap! row-count inc)))
-         metadata)))))
+         (let [md (assoc-in metadata [:data :indexed-column-viz-settings] viz-settings)]
+           (i/write-row! results-writer row (dec (vswap! row-count inc)) md)
+           metadata))))))
 
 (defn- streaming-reducedf [results-writer ^OutputStream os]
   (fn [_ final-metadata context]

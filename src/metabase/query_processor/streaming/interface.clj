@@ -14,7 +14,7 @@
     "Write anything needed before writing the first row. `initial-metadata` is incomplete metadata provided before
     rows begin reduction; some metadata such as insights won't be available until we finish.")
 
-  (write-row! [this row row-num]
+  (write-row! [this row row-num metadata]
     "Write a row. `row` is a sequence of values in the row. `row-num` is the zero-indexed row number.")
 
   (finish! [this final-metadata]

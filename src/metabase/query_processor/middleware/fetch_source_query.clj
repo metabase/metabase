@@ -28,6 +28,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.models.interface :as mi]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
@@ -272,3 +273,16 @@
         (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
           (qp query rff context))
         (qp query rff context)))))
+
+(defn add-card-visualization-settings
+  "Middleware that adds visualization settings for cards."
+  [qp]
+  (fn [query rff context]
+    (if-let [card-id (:card-id (:info query))]
+      (qp
+       query
+       (fn [metadata]
+         (rff (assoc metadata :visualization_settings
+                              (db/select-one-field :visualization_settings Card :id card-id))))
+       context)
+      (qp query rff context))))

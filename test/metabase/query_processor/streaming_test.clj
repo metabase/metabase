@@ -4,11 +4,17 @@
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
+            [metabase.async.streaming-response :as streaming-response]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.card-test :as card-test]
             [metabase.query-processor :as qp]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.util :as u])
   (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream
             InputStreamReader]))
 
@@ -267,3 +273,39 @@
                   :time           #inst "1899-12-31T00:23:18.000-00:00"
                   :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
                   :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
+
+(defn- make-col-settings [col-ref-to-settings]
+  (let [cs (reduce-kv (fn [acc k v]
+                        (assoc acc (json/generate-string k) v)) {} col-ref-to-settings)]
+    {:column_settings cs}))
+
+(deftest visualization-settings-in-export-test
+  ;; TODO: expand to the other formats here
+  (doseq [export-format [:csv]]
+    (testing export-format
+      (testing "A CSV export takes into account custom visualization settings"
+        (let [tbl-id (db/select-one-id Table :name "CHECKINS")
+              f1-id  (db/select-one-id Field :table_id tbl-id :name "ID")
+              f2-id  (db/select-one-id Field :table_id tbl-id :name "DATE")
+              cs-1   [:ref [:field f1-id nil]]
+              cs-2   [:ref [:field f2-id nil]]
+              cs-map {cs-1 {:column_title "Checkin ID"}
+                      cs-2 {:date_style      "YYYY/M/D"
+                            :date_abbreviate true
+                            :time_enabled    nil
+                            :time_style      nil}}]
+          (mt/with-temp Card [card (card-test/card-with-source-table
+                                    (mt/id :checkins)
+                                    :visualization_settings
+                                    (make-col-settings cs-map))]
+            (let [card-id     (u/the-id card)
+                  ds-query    (:dataset_query card)
+                  inner-query (assoc (:query ds-query) :source-table (str "card__" card-id)
+                                                       :limit 1
+                                                       :order-by [[:asc [:field f1-id]]])
+                  card-query  (assoc ds-query :query inner-query
+                                              :middleware {:format-rows? false})]
+              ;; the :column_title and the :date*/:time* viz settings should have been used to generate export
+              (is (= [["Checkin ID" "Date" "User ID" "Venue ID"]
+                      ["1" "2014/4/7" "5" "12"]]
+                     (basic-actual-results* :csv card-query))))))))))

@@ -394,7 +394,10 @@
                      (m/dissoc-in [:data :results_metadata :checksum]))
                  (-> (qp/process-query query)
                      (dissoc :updated_at)
-                     (m/dissoc-in [:data :results_metadata :checksum])))
+                     (m/dissoc-in [:data :results_metadata :checksum]
+                                  ;; col viz settings are cached with the metadata, so ignore it for the purpose of test
+                                  [:data :indexed-column-viz-settings]
+                                  [:data :indexed-column-title-overrides])))
               "Query should be cached and results should match those ran without cache"))))))
 
 (deftest caching-big-resultsets

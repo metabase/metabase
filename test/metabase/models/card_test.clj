@@ -104,7 +104,7 @@
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
-(defn- card-with-source-table
+(defn card-with-source-table
   "Generate values for a Card with `source-table` for use with `with-temp`."
   {:style/indent 1}
   [source-table & {:as kvs}]

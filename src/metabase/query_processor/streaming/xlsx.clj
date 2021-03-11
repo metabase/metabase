@@ -123,7 +123,7 @@
       (begin! [_ {{:keys [cols]} :data}]
         (spreadsheet/add-row! sheet (map (some-fn :display_name :name) cols)))
 
-      (write-row! [_ row _]
+      (write-row! [_ row _ _]
         (binding [*cell-styles* cell-styles]
           (spreadsheet/add-row! sheet row)))
 
