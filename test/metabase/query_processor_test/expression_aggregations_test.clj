@@ -302,3 +302,35 @@
                        [:cum-sum $product_id->products.rating]]
                       {:display-name "C4"}]]
                     :breakout [!year.created_at]}))))))))
+
+
+(deftest two-case-functions-test
+  (testing "We should support expressions with two case statements (#15107)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (mt/dataset sample-dataset
+        (is (= [[1
+                 "1018947080336"
+                 "Rustic Paper Wallet"
+                 "Gizmo"
+                 "Swaniawski, Casper and Hilll"
+                 29.46
+                 4.6
+                 "2017-07-19T19:44:56.582Z"
+                 1]
+                [2
+                 "7663515285824"
+                 "Small Marble Shoes"
+                 "Doohickey"
+                 "Balistreri-Ankunding"
+                 70.08
+                 0.0
+                 "2019-04-11T08:49:35.932Z"
+                 0]]
+               (mt/formatted-rows [int str str str str 2.0 2.0 str int]
+                 (mt/run-mbql-query products
+                   {:expressions
+                    {:TwoCases [:+
+                                [:case [[[:= $category "Widget"] 1]] {:default 0}]
+                                [:case [[[:> $rating 4] 1]] {:default 0}]]}
+                    :limit    2
+                    :order-by [[:asc $id]]}))))))))
