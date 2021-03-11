@@ -92,6 +92,24 @@ export const PARAMETER_OPERATOR_TYPES = {
   ],
 };
 
+const OPTIONS_WITH_OPERATOR_SUBTYPES = [
+  {
+    section: "location",
+    operatorType: "string",
+    sectionName: t`Location`,
+  },
+  {
+    section: "category",
+    operatorType: "string",
+    sectionName: t`Category`,
+  },
+  {
+    section: "number",
+    operatorType: "number",
+    sectionName: t`Number`,
+  },
+];
+
 export const PARAMETER_OPTIONS: ParameterOption[] = [
   {
     type: "date/month-year",
@@ -128,14 +146,15 @@ export const PARAMETER_OPTIONS: ParameterOption[] = [
     type: "id",
     name: t`ID`,
   },
-  ...buildOperatorSubtypeOptions("location", "string"),
-  ...buildOperatorSubtypeOptions("category", "string"),
-  ...buildOperatorSubtypeOptions("number", "number"),
-];
+  ...OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
+    buildOperatorSubtypeOptions(option),
+  ),
+].flat();
 
-function buildOperatorSubtypeOptions(section, operatorType) {
+function buildOperatorSubtypeOptions({ section, operatorType, sectionName }) {
   return PARAMETER_OPERATOR_TYPES[operatorType].map(option => ({
     ...option,
+    combinedName: `${sectionName} - ${option.name}`,
     type: `${section}/${option.operator}`,
   }));
 }
@@ -171,7 +190,12 @@ function fieldFilterForParameterType(
 export function parameterOptionsForField(field: Field): ParameterOption[] {
   return PARAMETER_OPTIONS.filter(option =>
     fieldFilterForParameterType(option.type)(field),
-  );
+  ).map(option => {
+    return {
+      ...option,
+      name: option.combinedName || option.name,
+    };
+  });
 }
 
 export function dimensionFilterForParameter(
