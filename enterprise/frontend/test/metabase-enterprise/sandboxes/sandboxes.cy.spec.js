@@ -875,6 +875,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.server();
       cy.route("POST", "/api/mt/gtap").as("sandboxTable");
+      cy.route("GET", "/api/permissions/group").as("tablePermissions");
 
       cy.log(
         "Create question that will have differently-typed columns than the sandboxed table",
@@ -895,6 +896,8 @@ describeWithToken("formatting > sandboxes", () => {
       // |                | All users | collection |
       // |--------------- |:---------:|:----------:|
       // | Orders         |   X (0)   |    X (1)   |
+
+      cy.wait("@tablePermissions");
       cy.icon("close")
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();
