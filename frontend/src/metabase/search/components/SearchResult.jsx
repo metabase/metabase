@@ -325,10 +325,12 @@ function DefaultResult({ result, options }) {
         <ItemIcon item={result} />
         <Box>
           <Title>{result.name}</Title>
+          <Text>{jt`${result.model} in ${formatCollection(
+            result.getCollection(),
+          )}`}</Text>
           {result.description && (
             <Description>{result.description}</Description>
           )}
-          {formatCollection(result.getCollection())}
           <Score scores={result.scores} />
         </Box>
       </Flex>
