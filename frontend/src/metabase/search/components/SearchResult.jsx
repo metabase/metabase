@@ -113,11 +113,21 @@ function TableResult({ table, options }) {
           <Text>
             Table in &nbsp;
             <span>
-              <Database.Name id={table.database_id} />{" "}
+              <Link to={Urls.browseDatabase({ id: table.database_id })}>
+                <Database.Name id={table.database_id} />{" "}
+              </Link>
               {table.table_schema && (
                 <span>
                   <Icon name="chevronright" mx="4px" size={10} />
-                  {table.table_schema}
+                  {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
+                  <Link
+                    to={Urls.browseSchema({
+                      db: { id: table.database_id },
+                      schema_name: table.table_schema,
+                    })}
+                  >
+                    {table.table_schema}
+                  </Link>
                 </span>
               )}
             </span>
