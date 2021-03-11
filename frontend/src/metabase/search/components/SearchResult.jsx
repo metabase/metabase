@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
-import { t, jt } from "ttag";
+import { jt } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import { color, lighten } from "metabase/lib/colors";
@@ -171,7 +171,9 @@ function CollectionResult({ collection, options }) {
         <ItemIcon item={collection} type="collection" />
         <Box>
           <Title>{collection.name}</Title>
-          <Text>{t`Collection in COLLECTION_NAME`}</Text>
+          <Text>{jt`Collection in ${formatCollection(
+            collection.getCollection(),
+          )}`}</Text>
         </Box>
         <Score scores={collection.scores} />
       </Flex>
@@ -235,7 +237,7 @@ function QuestionResult({ question, options }) {
         <ItemIcon item={question} type="question" />
         <Box>
           <Title>{question.name}</Title>
-          <Text>{jt`Question in ${formatCollection(
+          <Text>{jt`Saved question in ${formatCollection(
             question.getCollection(),
           )}`}</Text>
           <Score scores={question.scores} />
