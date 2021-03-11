@@ -21,6 +21,15 @@
   (edn/read-string {:eof nil, :readers {'t #'u.date/parse}}
                    (slurp (str edn-definitions-dir "sample-dataset.edn"))))
 
+(defn- random-desc
+  "Return a random name from sample-dataset"
+  []
+  (second (rand-nth (nth (first sample-dataset) 2))))
+
+(defn- coin-toss
+  ([] (coin-toss 0.5))
+  ([p] (< (rand) p)))
+
 ;; * items
 (def id-seq (atom 0))
 (s/def ::id (s/with-gen pos-int? #(gen/fmap (fn [_] (swap! id-seq inc)) (gen/return nil))))
@@ -43,11 +52,11 @@
     #(gen/fmap (fn [_] (talltale.core/email))
                (gen/return nil))))
 
-(s/def ::description
-  (s/with-gen string?
-    #(gen/fmap
-      (fn [_] (second (rand-nth (nth (first sample-dataset) 2))))
-      (gen/return nil))))
+;; (s/def ::description
+;;   (s/with-gen string?
+;;     #(gen/fmap
+;;       (fn [_] (random-desc))
+;;       (gen/return nil))))
 
 (s/def ::first_name
   (s/with-gen string?
@@ -61,7 +70,28 @@
       (fn [_] (talltale.core/last-name))
       (gen/return nil))))
 
-(s/def ::name ::description)
+(s/def ::weird-str
+  (let [reserved-words
+        ["true" "True" "false" "False" "null" "nil"
+         "NaN" "ARR" "Monthly" "Weekly" "updated"]]
+    (s/with-gen string?
+      #(gen/fmap
+        (fn [_]
+          (if (coin-toss 0.01)
+            (rand-nth reserved-words)
+            (cond-> (random-desc)
+              (coin-toss 0.1)
+              (str (rand-nth "áîëç£¢™🍒"))
+              (coin-toss 0.01)
+              (str (subs (talltale.core/lorem-ipsum) 1 200))
+              (coin-toss 0.01)
+              (-> first str)
+              )))
+        (gen/return nil)))))
+
+(s/def ::name ::weird-str)
+(s/def ::description ::weird-str)
+;;; (gen/generate (s/gen ::weird-str))
 
 ;; * card
 (s/def ::display #{:table})
@@ -126,7 +156,8 @@
 
 ;; * schema
 (def schema
-  {:permissions-group            {:prefix  :perm-g
+  {
+   :permissions-group            {:prefix  :perm-g
                                   :spec    ::permissions-group
                                   :insert! {:model PermissionsGroup}}
    :permissions-group-membership {:prefix    :perm-g-m
@@ -162,14 +193,12 @@
                                   :spec      ::dashboard
                                   :insert!   {:model Dashboard}
                                   :relations {:creator_id    [:core-user :id]
-                                              :collection_id [:collection :id] ;; optional
-                                              }}
+                                              :collection_id [:collection :id]}}
    :dashboard-card               {:prefix    :dc
                                   :spec      ::dashboard-card
                                   :insert!   {:model DashboardCard}
                                   :relations {:card_id      [:card :id]
-                                              :dashboard_id [:dashboard :id]}
-                                  }
+                                              :dashboard_id [:dashboard :id]}}
    :dashboard-card-series        {:prefix  :dcs
                                   :spec    ::dashboard_card_series
                                   :insert! {:model DashboardCardSeries}}
@@ -189,26 +218,22 @@
    :table                        {:prefix    :t
                                   :spec      ::table
                                   :insert!   {:model Table}
-                                  :relations {:db_id [:database :id]}
-                                  ;; :constraints {:name #{:uniq}} ;
-                                  }
+                                  :relations {:db_id [:database :id]}}
+   :native-query-snippet         {:prefix    :nqs
+                                  :spec      ::native-query-snippet
+                                  :insert!   {:model NativeQuerySnippet}
+                                  :relations {:creator_id    [:core-user :id]
+                                              :collection_id [:collection :id]}}
+   :pulse-card                   {:prefix    :pulse-card
+                                  :spec      ::pulse-card
+                                  :insert!   {:model PulseCard}
+                                  :relations {:pulse_id [:pulse :id]
+                                              :card_id  [:card :id]}}
+   :pulse-channel                {:prefix    :pulse-channel
+                                  :spec      ::pulse-channel
+                                  :insert!   {:model PulseChannel}
+                                  :relations {:pulse_id [:pulse :id]}}
 
-   :native-query-snippet {:prefix    :nqs
-                          :spec      ::native-query-snippet
-                          :insert!   {:model NativeQuerySnippet}
-                          :relations {:creator_id [:core-user :id]
-                                      :collection_id [:collection :id]} ;; optional
-                          }
-   :pulse-card           {:prefix    :pulse-card
-                          :spec      ::pulse-card
-                          :insert!   {:model PulseCard}
-                          :relations {:pulse_id [:pulse :id]
-                                      :card_id  [:card :id]}}
-
-   :pulse-channel {:prefix :pulse-channel
-                   :spec ::pulse-channel
-                   :insert! {:model PulseChannel}
-                   :relations {:pulse_id [:pulse :id]}}
    ;; :revision {}
    ;; :segment {}
    ;; :task-history {}
@@ -218,10 +243,6 @@
 (defn spec-gen
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
-
-(defn- coin-toss
-  ([] (coin-toss 0.5))
-  ([p] (< (rand) p)))
 
 (def field-positions (atom {:table-fields {}}))
 (defn adjust
@@ -267,6 +288,7 @@
 
 (defn generate-horror-show []
   (let [horror-show {:collection [[1 {:refs {:personal_owner_id ::rs/omit}}]]
-                     :dashboard  [[5000]]
-                     :card       [[50000]]}]
-   (insert! horror-show)))
+                     :dashboard  [[50000]]
+                     :card       [[5000]]}]
+    (insert! horror-show)
+    nil))
