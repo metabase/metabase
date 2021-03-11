@@ -37,11 +37,8 @@ const IconWrapper = styled.div`
 `;
 
 const ResultLink = styled(Link)`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  display: block;
   background-color: transparent;
-  border-radius: 6px;
   min-height: ${props => (props.compact ? "36px" : "54px")};
   padding-top: 8px;
   padding-bottom: 8px;
@@ -49,7 +46,7 @@ const ResultLink = styled(Link)`
   padding-right: ${props => (props.compact ? "20px" : "32px")};
 
   &:hover {
-    background-color: #fafafa;
+    background-color: ${lighten("brand", 0.63)};
 
     h3 {
       color: ${color("brand")};
@@ -90,7 +87,7 @@ function ItemIcon({ item, type }) {
       {type === "table" ? (
         <Icon name="database" />
       ) : (
-        <Icon name={item.getIcon()} />
+        <Icon name={item.getIcon()} size={20} />
       )}
     </IconWrapper>
   );
@@ -116,7 +113,7 @@ export default function SearchResult(props) {
 function TableResult({ table, options }) {
   return (
     <ResultLink to={table.getUrl()} compact={options.compact}>
-      <Flex align="center">
+      <Flex align="start">
         <ItemIcon item={table} type="table" />
         <Box>
           <Title>{table.name}</Title>
@@ -177,7 +174,7 @@ function Score({ scores }) {
 function CollectionResult({ collection, options }) {
   return (
     <ResultLink to={Urls.collection(collection.id)} compact={options.compact}>
-      <Flex align="center">
+      <Flex align="start">
         <ItemIcon item={collection} type="collection" />
         <Box>
           <Title>{collection.name}</Title>
@@ -222,16 +219,25 @@ function formatCollection(collection) {
   return collection.id && <CollectionBadge collection={collection} />;
 }
 
+const Description = styled(Text)`
+  padding-left: 8px;
+  margin-top: 6px !important;
+  border-left: 2px solid ${lighten("brand", 0.45)};
+`;
+
 function DashboardResult({ dashboard, options }) {
   return (
     <ResultLink to={dashboard.getUrl()} compact={options.compact}>
-      <Flex align="center">
+      <Flex align="start">
         <ItemIcon item={dashboard} type="dashboard" />
         <Box>
           <Title>{dashboard.name}</Title>
           <Text>{jt`Dashboard in ${formatCollection(
             dashboard.getCollection(),
           )}`}</Text>
+          {dashboard.description && (
+            <Description>{dashboard.description}</Description>
+          )}
           <Score scores={dashboard.scores} />
         </Box>
       </Flex>
@@ -243,22 +249,18 @@ function DashboardResult({ dashboard, options }) {
 function QuestionResult({ question, options }) {
   return (
     <ResultLink to={question.getUrl()} compact={options.compact}>
-      <Flex align="center">
+      <Flex align="start">
         <ItemIcon item={question} type="question" />
         <Box>
           <Title>{question.name}</Title>
           <Text>{jt`Saved question in ${formatCollection(
             question.getCollection(),
           )}`}</Text>
+          {question.description && (
+            <Description>{question.description}</Description>
+          )}
           <Score scores={question.scores} />
         </Box>
-        {question.description && (
-          <Box ml="auto">
-            <Tooltip tooltip={question.description}>
-              <Icon name="info" />
-            </Tooltip>
-          </Box>
-        )}
       </Flex>
       {formatContext(question.context, options.compact)}
     </ResultLink>
@@ -268,7 +270,7 @@ function QuestionResult({ question, options }) {
 function DefaultResult({ result, options }) {
   return (
     <ResultLink to={result.getUrl()} compact={options.compact}>
-      <Flex align="center">
+      <Flex align="start">
         <ItemIcon item={result} />
         <Box>
           <Title>{result.name}</Title>
