@@ -1,7 +1,6 @@
 import {
   browse,
   restore,
-  signInAsAdmin,
   popover,
   openOrdersTable,
   openReviewsTable,
@@ -16,7 +15,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > question > new", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("browse data", () => {

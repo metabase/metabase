@@ -1,13 +1,14 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
-import { restore, signInAsNormalUser, USERS } from "__support__/cypress";
-const { first_name, last_name, username: email } = USERS.normal;
+import { restore } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
+const { first_name, last_name, email } = USERS.normal;
 
 const requestsCount = alias =>
   cy.state("requests").filter(a => a.alias === alias);
 describe("user > settings", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it("should show user details", () => {

@@ -1,13 +1,8 @@
-import {
-  restore,
-  signIn,
-  signInAsAdmin,
-  USERS,
-  describeWithToken,
-} from "__support__/cypress";
-
+import { restore, describeWithToken } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
+import _ from "underscore";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
-
+const { normal } = USERS;
 const { PRODUCTS } = SAMPLE_DATASET;
 
 const year = new Date().getFullYear();
@@ -38,16 +33,15 @@ function generateDashboards(user) {
 }
 
 describeWithToken("audit > auditing", () => {
-  const [admin, normal] = Object.keys(USERS);
-  const ADMIN_QUESTION = `${admin} question`;
-  const ADMIN_DASHBOARD = `${admin} dashboard`;
-  const NORMAL_QUESTION = `${normal} question`;
-  const NORMAL_DASHBOARD = `${normal} dashboard`;
+  const ADMIN_QUESTION = "admin question";
+  const ADMIN_DASHBOARD = "admin dashboard";
+  const NORMAL_QUESTION = "normal question";
+  const NORMAL_DASHBOARD = "normal dashboard";
 
   before(() => {
     restore();
-    [admin, normal].forEach(user => {
-      signIn(user);
+    ["admin", "normal"].forEach(user => {
+      cy.signIn(user);
       generateQuestions(user);
       generateDashboards(user);
     });
@@ -57,9 +51,9 @@ describeWithToken("audit > auditing", () => {
     cy.icon("download").click();
     cy.request("POST", "/api/card/1/query/json");
 
-    signIn("nodata");
+    cy.signIn("nodata");
 
-    cy.log(`View ${normal}'s dashboard`);
+    cy.log("View normal user's dashboard");
     cy.visit("/collection/root?type=dashboard");
     cy.findByText(NORMAL_DASHBOARD).click();
     cy.findByText("This dashboard is looking empty.");
@@ -69,13 +63,13 @@ describeWithToken("audit > auditing", () => {
     cy.visit("/question/2");
     cy.findByText("18,760");
 
-    cy.log(`View newly created ${admin}'s question`);
+    cy.log("View newly created admin's question");
     cy.visit("/collection/root?type");
     cy.findByText(ADMIN_QUESTION).click();
     cy.findByPlaceholderText(/ID/i);
   });
 
-  beforeEach(signInAsAdmin);
+  beforeEach(cy.signInAsAdmin);
 
   describe("See expected info on team member pages", () => {
     it("should load the Overview tab", () => {
@@ -106,7 +100,8 @@ describeWithToken("audit > auditing", () => {
     it("should load the All Members tab", () => {
       cy.visit("/admin/audit/members/all");
 
-      Object.values(USERS).forEach(({ first_name, last_name }) => {
+      const CREATED_USERS = _.omit(USERS, "sandboxed");
+      Object.values(CREATED_USERS).forEach(({ first_name, last_name }) => {
         cy.findByText(`${first_name} ${last_name}`);
       });
 
@@ -221,7 +216,7 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/dashboards/all");
       cy.findByPlaceholderText("Dashboard name");
       cy.findByText(ADMIN_DASHBOARD);
-      cy.findByText(USERS.normal.first_name + " " + USERS.normal.last_name);
+      cy.findByText(normal.first_name + " " + normal.last_name);
       cy.get("tr")
         .eq(1)
         .children()
@@ -235,7 +230,7 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/downloads/overview");
       cy.findByText("No results!").should("not.exist");
       cy.findByText("Largest downloads in the last 30 days");
-      cy.findByText(USERS.normal.first_name + " " + USERS.normal.last_name);
+      cy.findByText(normal.first_name + " " + normal.last_name);
 
       // All downloads tab
       cy.visit("/admin/audit/downloads/all");

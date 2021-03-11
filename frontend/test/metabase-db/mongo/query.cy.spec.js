@@ -1,17 +1,11 @@
-import {
-  signInAsAdmin,
-  restore,
-  modal,
-  signInAsNormalUser,
-  addMongoDatabase,
-} from "__support__/cypress";
+import { restore, modal, addMongoDatabase } from "__support__/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
 describe("mongodb > user > query", () => {
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addMongoDatabase(MONGO_DB_NAME);
   });
 
@@ -23,7 +17,7 @@ describe("mongodb > user > query", () => {
 
   context("as a user", () => {
     beforeEach(() => {
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
     });
 
     it("can query a Mongo database", () => {

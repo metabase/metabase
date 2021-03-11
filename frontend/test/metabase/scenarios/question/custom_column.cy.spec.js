@@ -1,10 +1,8 @@
 import {
   restore,
-  signInAsNormalUser,
   popover,
   _typeUsingGet,
   _typeUsingPlaceholder,
-  signInAsAdmin,
   openOrdersTable,
   visitQuestionAdhoc,
 } from "__support__/cypress";
@@ -24,7 +22,7 @@ const customFormulas = [
 describe("scenarios > question > custom columns", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it("can create a custom column (metabase#13241)", () => {
@@ -203,7 +201,7 @@ describe("scenarios > question > custom columns", () => {
     const CE_NAME = "13857_CE";
     const CC_NAME = "13857_CC";
 
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     cy.createQuestion({
       name: "13857",
@@ -238,7 +236,7 @@ describe("scenarios > question > custom columns", () => {
 
   it("should work with implicit joins (metabase#14080)", () => {
     const CC_NAME = "OneisOne";
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     cy.createQuestion({
       name: "14080",

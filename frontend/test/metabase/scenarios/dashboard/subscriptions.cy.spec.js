@@ -1,15 +1,11 @@
-import {
-  restore,
-  signInAsAdmin,
-  setupDummySMTP,
-  USERS,
-} from "__support__/cypress";
+import { restore, setupDummySMTP } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 const { admin } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should not allow creation if there are no dashboard cards", () => {
