@@ -56,6 +56,16 @@ const ResultLink = styled(Link)`
     }
   }
 
+  ${Link} {
+    text-underline-position: under;
+    text-decoration: underline ${color("text-light")};
+    text-decoration-style: dashed;
+    &:hover {
+      color: ${color("brand")};
+      text-decoration-color: ${color("brand")};
+    }
+  }
+
   ${Text} {
     margin-top: 0;
     margin-bottom: 0;
