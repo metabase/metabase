@@ -180,6 +180,7 @@
      (u/step (format "Check whether %s will be the latest version" (version))
        (let [latest-gh-tag (most-recent-tag (recent-tags-from-github))]
          (u/announce "Latest %s version from GitHub is %s" (edition) latest-gh-tag)
-         (let [latest? (version-greater-than (version) latest-gh-tag)]
+         (let [latest? (when-not (pre-release-version?)
+                         (version-greater-than (version) latest-gh-tag))]
            (u/announce "%s %s be the new latest %s version." (version) (if latest? "will" "will NOT") (edition))
            latest?))))))
