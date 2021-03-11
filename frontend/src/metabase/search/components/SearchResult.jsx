@@ -104,6 +104,8 @@ export default function SearchResult(props) {
       return <DashboardResult dashboard={result} options={props} />;
     case "table":
       return <TableResult table={result} options={props} />;
+    case "segment":
+      return <SegmentResult segment={result} options={props} />;
     default:
       // metric, segment, and table deliberately included here
       return <DefaultResult result={result} options={props} />;
@@ -263,6 +265,23 @@ function QuestionResult({ question, options }) {
         </Box>
       </Flex>
       {formatContext(question.context, options.compact)}
+    </ResultLink>
+  );
+}
+
+function SegmentResult({ segment, options }) {
+  return (
+    <ResultLink to={segment.getUrl()} compact={options.compact}>
+      <Flex align="start">
+        <ItemIcon item={segment} />
+        <Box>
+          <Title>{segment.name}</Title>
+          {segment.description && (
+            <Description>{segment.description}</Description>
+          )}
+          <Score scores={segment.scores} />
+        </Box>
+      </Flex>
     </ResultLink>
   );
 }
