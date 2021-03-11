@@ -1007,34 +1007,6 @@ workflows:
           <<: *Matrix
 
       - lein:
-          name: be-linter-eastwood
-          requires:
-            - be-deps
-          lein-command: eastwood
-          skip-when-no-change: true
-
-      - lein:
-          name: be-linter-docstring-checker
-          requires:
-            - be-deps
-          lein-command: docstring-checker
-          skip-when-no-change: true
-
-      - lein:
-          name: be-linter-namespace-decls
-          requires:
-            - be-deps
-          lein-command: check-namespace-decls
-          skip-when-no-change: true
-
-      - lein:
-          name: be-linter-bikeshed
-          requires:
-            - be-deps
-          lein-command: bikeshed
-          skip-when-no-change: true
-
-      - lein:
           name: be-linter-cloverage
           requires:
             - be-deps
@@ -1044,10 +1016,6 @@ workflows:
                 name: Upload code coverage to codecov.io
                 command: bash <(curl -s https://codecov.io/bash)
           skip-when-no-change: true
-
-      - be-linter-reflection-warnings:
-          requires:
-            - be-deps
 
       - test-driver:
           name: be-tests-bigquery-ee
