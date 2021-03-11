@@ -525,34 +525,6 @@ jobs:
           paths:
             - metabase/metabase
 
-  verify-i18n-files:
-    executor: metabase-ci
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: .I18N-CHECKSUMS
-          find-args: "locales -type f -name '*.po'"
-      # In case the i18n scripts themselves change
-      - create-checksum-file:
-          filename: .I18N-SCRIPT-CHECKSUMS
-          find-args: "bin/i18n -type f"
-      - run-on-change:
-          checksum: '{{ checksum ".I18N-CHECKSUMS" }}-{{ checksum ".I18N-SCRIPT-CHECKSUMS" }}'
-          steps:
-            - restore-fe-deps-cache
-            - run:
-                name: Check i18n tags/make sure template can be built
-                # fix OOM when running -- see https://stackoverflow.com/a/59572966/1198455
-                # without this option, sometimes this step will fail with an OOM error.
-                environment:
-                  NODE_OPTIONS: '--max-old-space-size=2048'
-                command: ./bin/i18n/update-translation-template
-                no_output_timeout: 2m
-            - run:
-                name: Verify i18n translations (.po files)
-                command: ./bin/i18n/build-translation-resources
-                no_output_timeout: 2m
-
   check-migrations:
     executor:
       metabase-ci
@@ -976,10 +948,6 @@ workflows:
   build:
     jobs:
       - checkout
-
-      - verify-i18n-files:
-          requires:
-            - fe-deps
 
       - check-migrations:
           requires:
