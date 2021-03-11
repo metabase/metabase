@@ -139,7 +139,7 @@
                   PulseCard    [_ {:pulse_id (u/get-id p3), :card_id (u/get-id c), :include_csv true, :include_xls true}]
                   ;; ---------- Alerts ----------
                   Pulse        [a1 {:alert_condition "rows", :alert_first_only false}]
-                  Pulse        [a2 {:alert_condition "rows", :alert_first_only true }]
+                  Pulse        [a2 {:alert_condition "rows", :alert_first_only true}]
                   Pulse        [a3 {:alert_condition "goal", :alert_first_only false}]
                   Pulse        [a4 {:alert_condition "goal", :alert_first_only false, :alert_above_goal true}]
                   ;; Alert 1 is Email, Alert 2 is Email & Slack, Alert 3 is Slack-only

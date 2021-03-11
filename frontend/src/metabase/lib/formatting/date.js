@@ -2,6 +2,9 @@ import type { DateSeparator } from "metabase/lib/formatting";
 
 import type { DatetimeUnit } from "metabase-types/types/Query";
 
+/*
+ * WARNING: please update metabase.util.visualization-settings on the backend with any changes here
+ */
 export type DateStyle =
   | "M/D/YYYY"
   | "D/M/YYYY"
