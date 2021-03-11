@@ -2,6 +2,7 @@ import {
   describeWithToken,
   openOrdersTable,
   openPeopleTable,
+  openReviewsTable,
   popover,
   modal,
   restore,
@@ -17,6 +18,7 @@ const {
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
+  REVIEWS,
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
@@ -971,6 +973,61 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       cy.contains("37.65");
+    });
+
+    it.skip("(metabase#15106)", () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      remapDisplayValueToFK({
+        display_value: ORDERS.USER_ID,
+        name: "User ID",
+        fk: PEOPLE.NAME,
+      });
+
+      // Remap REVIEWS.PRODUCT_ID Field Type to ORDERS.ID
+      cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
+        table_id: REVIEWS_ID,
+        special_type: "type/FK",
+        name: "PRODUCT_ID",
+        fk_target_field_id: ORDERS.ID,
+        display_name: "Product ID",
+      });
+
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+        },
+      });
+
+      cy.sandboxTable({
+        table_id: PEOPLE_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
+        },
+      });
+
+      cy.sandboxTable({
+        table_id: REVIEWS_ID,
+        attribute_remappings: {
+          attr_uid: [
+            "dimension",
+            [
+              "fk->",
+              ["field-id", REVIEWS.PRODUCT_ID],
+              ["field-id", ORDERS.USER_ID],
+            ],
+          ],
+        },
+      });
+      cy.signOut();
+      cy.signInAsSandboxedUser();
+      openReviewsTable();
+
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
     });
   });
 });
