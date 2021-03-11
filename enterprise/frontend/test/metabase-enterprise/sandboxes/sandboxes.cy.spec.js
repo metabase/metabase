@@ -892,7 +892,8 @@ describeWithToken("formatting > sandboxes", () => {
         visualization_settings: {},
       });
 
-      cy.visit("/admin/permissions/databases/1/schemas/PUBLIC/tables");
+      cy.visit("/admin/permissions/databases/1/schemas");
+      cy.findByText("View tables").click();
       // |                | All users | collection |
       // |--------------- |:---------:|:----------:|
       // | Orders         |   X (0)   |    X (1)   |
