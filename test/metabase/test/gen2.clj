@@ -80,7 +80,6 @@
 
 ;; * metric
 (s/def ::definition #{ {} })
-;; (s/def ::description string?)
 
 ;; * table
 (s/def ::active boolean?)
@@ -123,7 +122,7 @@
 
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 
-;(gen/generate (s/gen ::collection))
+;; (gen/generate (s/gen ::collection))
 
 ;; * schema
 (def schema
@@ -216,13 +215,6 @@
    })
 
 ;; * inserters
-(defn generate []
-  (let [entities [Card Dashboard DashboardCard Collection Pulse Database Table Field PulseCard Metric
-                  FieldValues Dimension MetricImportantField Activity]]
-    (mt/with-model-cleanup entities
-      (-> (rsg/ent-db-spec-gen {:schema schema} {:collection [[1]]})
-          (rs/attr-map :spec-gen)))))
-
 (defn spec-gen
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
@@ -251,7 +243,7 @@
 (defn remove-ids [_ {:keys [visit-val] :as visit-opts}]
   (dissoc visit-val :id))
 
-(defn insert!
+(defn- insert!
   "Insert pseudorandom entities to the current database according to `query` specmonstah spec. The process follows
   several steps while building the entities:
 
@@ -273,9 +265,8 @@
                     (catch Throwable e (println e)))))
       (rs/attr-map :insert!)))
 
-(def ^:private horror-show {:collection [[1 {:refs {:personal_owner_id ::rs/omit}}]]
-                            :dashboard  [[5000]]
-                            :card       [[50000]]})
-
 (defn generate-horror-show []
-  (insert! horror-show))
+  (let [horror-show {:collection [[1 {:refs {:personal_owner_id ::rs/omit}}]]
+                     :dashboard  [[5000]]
+                     :card       [[50000]]}]
+   (insert! horror-show)))
