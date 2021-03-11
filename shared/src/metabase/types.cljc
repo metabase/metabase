@@ -240,6 +240,42 @@
   [{base-type :base_type, effective-type :effective_type}]
   (some #(isa? % :type/Temporal) [base-type effective-type]))
 
+(def coercions
+  ;; Decimal seems out of place but that's the type that oracle uses Number which we map to Decimal. Not sure if
+  ;; that's an intentional mapping or not. But it does mean that lots of extra columns will be offered a conversion
+  ;; (think Price being offerred to be interpreted as a date)
+  (let [numeric-types [:type/BigInteger :type/Integer :type/Decimal]]
+    (reduce #(assoc %1 %2 {:Coercion/UNIXMicroSeconds->DateTime :type/DateTime
+                           :Coercion/UNIXMilliSeconds->DateTime :type/DateTime
+                           :Coercion/UNIXSeconds->DateTime      :type/DateTime})
+            {:type/Text   {:Coercion/ISO8601->Date     :type/Date
+                           :Coercion/ISO8601->DateTime :type/DateTime
+                           :Coercion/ISO8601->Time     :type/Time}}
+            numeric-types)))
+
+(defn ^:export is_coerceable
+  [base-type]
+  (boolean (contains? coercions (keyword base-type))))
+
+(defn ^:export effective_type_for_coercion
+  [coercion]
+  (get {:Coercion/ISO8601->Date :type/Date
+        :Coercion/ISO8601->DateTime :type/DateTime
+        :Coercion/ISO8601->Time :type/Time
+        :Coercion/UNIXMicroSeconds->DateTime :type/DateTime
+        :Coercion/UNIXMilliSeconds->DateTime :type/DateTime
+        :Coercion/UNIXSeconds->DateTime :type/DateTime}
+       (keyword coercion)))
+
+(defn ^:export coercions_for_type
+   [base-type]
+   (let [applicable (keys (get coercions (keyword base-type)))]
+     #?(:cljs
+        (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
+                      applicable))
+        :clj
+        applicable)))
+
 #?(:cljs
    (defn ^:export isa
      "Is `x` the same as, or a descendant type of, `y`?"
