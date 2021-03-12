@@ -1,5 +1,4 @@
-import React, { Component } from "react";
-import ReactDOM from "react-dom";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
 import { t, ngettext, msgid } from "ttag";
 
@@ -27,156 +26,145 @@ type Props = {
   parameters?: Parameter[],
 };
 
-type State = {
-  value: any[],
-  isFocused: boolean,
-  widgetWidth: ?number,
-};
-
 const BORDER_WIDTH = 1;
 
 const normalizeValue = value =>
   Array.isArray(value) ? value : value != null ? [value] : [];
 
-// TODO: rename this something else since we're using it for more than searching and more than text
-export default class ParameterFieldWidget extends Component<*, Props, State> {
-  props: Props;
-  state: State;
+ParameterFieldWidget.noPopover = true;
+ParameterFieldWidget.format = format;
+function ParameterFieldWidget({
+  value,
+  setValue,
+  isEditing,
+  fields,
+  parentFocusChanged,
+  dashboard,
+  parameter,
+  parameters,
+}: Props) {
+  const [isFocused, setIsFocused] = useState(false);
+  const [unsavedValue, setUnsavedValue] = useState(normalizeValue(value));
+  const [widgetWidth, setWidgetWidth] = useState(null);
+  const unfocusedElRef = useRef();
 
-  _unfocusedElement: React.Component;
+  const savedValue = normalizeValue(value);
+  const defaultPlaceholder = isFocused
+    ? ""
+    : placeholder || t`Enter a value...`;
+  const placeholder = isEditing
+    ? "Enter a default value..."
+    : defaultPlaceholder;
 
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      isFocused: false,
-      value: props.value,
-      widgetWidth: null,
-    };
-  }
-
-  static noPopover = true;
-
-  static format(value, fields) {
-    value = normalizeValue(value);
-    if (value.length > 1) {
-      const n = value.length;
-      return ngettext(msgid`${n} selection`, `${n} selections`, n);
-    } else {
-      return (
-        <Value
-          // If there are multiple fields, turn off remapping since they might
-          // be remapped to different fields.
-          remap={fields.length === 1}
-          value={value[0]}
-          column={fields[0]}
-        />
-      );
+  const onFocus = useCallback(() => {
+    if (parentFocusChanged) {
+      parentFocusChanged(true);
     }
-  }
-
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    if (this.props.value !== nextProps.value) {
-      this.setState({ value: nextProps.value });
+    setIsFocused(true);
+  }, [parentFocusChanged]);
+  const onBlur = useCallback(() => {
+    if (parentFocusChanged) {
+      parentFocusChanged(false);
     }
-  }
+    setIsFocused(false);
+  }, [parentFocusChanged]);
 
-  componentDidUpdate() {
-    const element = ReactDOM.findDOMNode(this._unfocusedElement);
-    if (!this.state.isFocused && element) {
+  const addFilter = useCallback(() => {
+    setValue(unsavedValue.length > 0 ? unsavedValue : null);
+    onBlur();
+  }, [unsavedValue, setValue, onBlur]);
+
+  const onUnsavedValueChange = useCallback(value => {
+    setUnsavedValue(normalizeValue(value));
+  }, []);
+
+  useEffect(() => {
+    setUnsavedValue(normalizeValue(value));
+  }, [value]);
+
+  useEffect(() => {
+    const element = unfocusedElRef.current;
+    if (!isFocused && element) {
       const parameterWidgetElement = element.parentNode.parentNode.parentNode;
-      if (parameterWidgetElement.clientWidth !== this.state.widgetWidth) {
-        this.setState({ widgetWidth: parameterWidgetElement.clientWidth });
+      if (parameterWidgetElement.clientWidth !== widgetWidth) {
+        setWidgetWidth(parameterWidgetElement.clientWidth);
       }
     }
-  }
+  }, [isFocused, widgetWidth]);
 
-  render() {
-    const { setValue, isEditing, fields, parentFocusChanged } = this.props;
-    const { isFocused } = this.state;
-
-    const savedValue = normalizeValue(this.props.value);
-    const unsavedValue = normalizeValue(this.state.value);
-
-    const defaultPlaceholder = isFocused
-      ? ""
-      : this.props.placeholder || t`Enter a value...`;
-
-    const focusChanged = isFocused => {
-      if (parentFocusChanged) {
-        parentFocusChanged(isFocused);
-      }
-      this.setState({ isFocused });
-    };
-
-    const placeholder = isEditing
-      ? "Enter a default value..."
-      : defaultPlaceholder;
-
-    if (!isFocused) {
-      return (
-        <div
-          ref={_ => (this._unfocusedElement = _)}
-          className="flex-full cursor-pointer"
-          onClick={() => focusChanged(true)}
+  return isFocused ? (
+    <Popover
+      horizontalAttachments={["left", "right"]}
+      verticalAttachments={["top"]}
+      alignHorizontalEdge
+      alignVerticalEdge
+      targetOffsetY={-19}
+      targetOffsetX={33}
+      hasArrow={false}
+      onClose={onBlur}
+    >
+      <FieldValuesWidget
+        value={unsavedValue}
+        parameter={parameter}
+        parameters={parameters}
+        dashboard={dashboard}
+        onChange={onUnsavedValueChange}
+        placeholder={placeholder}
+        fields={fields}
+        multi
+        autoFocus
+        color="brand"
+        style={{
+          borderWidth: BORDER_WIDTH,
+          minWidth: widgetWidth ? widgetWidth + BORDER_WIDTH * 2 : null,
+        }}
+        className="border-bottom"
+        minWidth={400}
+        maxWidth={400}
+      />
+      {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
+      <div className="flex p1">
+        <Button
+          primary
+          className="ml-auto"
+          disabled={savedValue.length === 0 && unsavedValue.length === 0}
+          onClick={addFilter}
         >
-          {savedValue.length > 0 ? (
-            ParameterFieldWidget.format(savedValue, fields)
-          ) : (
-            <span>{placeholder}</span>
-          )}
-        </div>
-      );
-    } else {
-      return (
-        <Popover
-          horizontalAttachments={["left", "right"]}
-          verticalAttachments={["top"]}
-          alignHorizontalEdge
-          alignVerticalEdge
-          targetOffsetY={-19}
-          targetOffsetX={33}
-          hasArrow={false}
-          onClose={() => focusChanged(false)}
-        >
-          <FieldValuesWidget
-            value={unsavedValue}
-            parameter={this.props.parameter}
-            parameters={this.props.parameters}
-            dashboard={this.props.dashboard}
-            onChange={value => {
-              this.setState({ value });
-            }}
-            placeholder={placeholder}
-            fields={fields}
-            multi
-            autoFocus
-            color="brand"
-            style={{
-              borderWidth: BORDER_WIDTH,
-              minWidth: this.state.widgetWidth
-                ? this.state.widgetWidth + BORDER_WIDTH * 2
-                : null,
-            }}
-            className="border-bottom"
-            minWidth={400}
-            maxWidth={400}
-          />
-          {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
-          <div className="flex p1">
-            <Button
-              primary
-              className="ml-auto"
-              disabled={savedValue.length === 0 && unsavedValue.length === 0}
-              onClick={() => {
-                setValue(unsavedValue.length > 0 ? unsavedValue : null);
-                focusChanged(false);
-              }}
-            >
-              {savedValue.length > 0 ? "Update filter" : "Add filter"}
-            </Button>
-          </div>
-        </Popover>
-      );
-    }
+          {savedValue.length > 0 ? "Update filter" : "Add filter"}
+        </Button>
+      </div>
+    </Popover>
+  ) : (
+    <div
+      ref={unfocusedElRef}
+      className="flex-full cursor-pointer"
+      onClick={onFocus}
+    >
+      {savedValue.length > 0 ? (
+        format(savedValue, fields)
+      ) : (
+        <span>{placeholder}</span>
+      )}
+    </div>
+  );
+}
+
+function format(value, fields) {
+  value = normalizeValue(value);
+  if (value.length > 1) {
+    const n = value.length;
+    return ngettext(msgid`${n} selection`, `${n} selections`, n);
+  } else {
+    return (
+      <Value
+        // If there are multiple fields, turn off remapping since they might
+        // be remapped to different fields.
+        remap={fields.length === 1}
+        value={value[0]}
+        column={fields[0]}
+      />
+    );
   }
 }
+
+export default ParameterFieldWidget;
