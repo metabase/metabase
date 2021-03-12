@@ -104,6 +104,12 @@ describe("type-checker", () => {
     function filter(source) {
       return collect(source, "boolean");
     }
+    function validate(source) {
+      const { typeErrors } = parseSource(source, "boolean");
+      if (typeErrors.length > 0) {
+        throw new Error(typeErrors[0].message);
+      }
+    }
     it("should resolve segments correctly", () => {
       expect(filter("[Clearance]").segments).toEqual(["Clearance"]);
       expect(filter("NOT [Deal]").segments).toEqual(["Deal"]);
@@ -139,6 +145,13 @@ describe("type-checker", () => {
       expect(filter("T OR Between([R],0,9)").dimensions).toEqual(["R"]);
       expect(filter("NOT between(P, 3, 14) OR Q").dimensions).toEqual(["P"]);
       expect(filter("NOT between(P, 3, 14) OR Q").segments).toEqual(["Q"]);
+    });
+
+    it("should reject a number literal", () => {
+      expect(() => validate("3.14159")).toThrow();
+    });
+    it("should reject a string literal", () => {
+      expect(() => validate('"TheAnswer"')).toThrow();
     });
 
     it("should catch mismatched number of function parameters", () => {
