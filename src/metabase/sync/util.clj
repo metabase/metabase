@@ -138,7 +138,8 @@
 (def ^:private exception-classes-not-to-retry
   ;;TODO: future, expand this to `driver` level, where the drivers themselves can add to the
   ;; list of exception classes (like, driver-specific exceptions)
-  [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException])
+  [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException
+   com.mchange.v2.resourcepool.CannotAcquireResourceException])
 
 (defn do-with-error-handling
   "Internal implementation of `with-error-handling`; use that instead of calling this directly."
@@ -438,22 +439,18 @@
         step-metadata (loop [[step-defn & rest-defns] sync-steps
                              result                   []]
                         (let [[step-name r] (run-step-with-metadata database step-defn)
-                              new-result    (conj result [step-name r])
-                              no-more       (not (some? rest-defns))]
+                              new-result    (conj result [step-name r])]
                           (if (contains? r :throwable)
                             (let [caught-exception  (:throwable r)
                                   exception-classes (u/full-exception-chain caught-exception)
-                                  should-not-cont   (some true? (for [ex      exception-classes
+                                  abandon?          (some true? (for [ex      exception-classes
                                                                       test-ex exception-classes-not-to-retry]
-                                                                  (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
-                              (if (true? should-not-cont)
-                                new-result
-                                (if (true? no-more)
-                                  new-result
-                                  (recur rest-defns new-result))))
-                            (if (true? no-more)
-                              new-result
-                              (recur rest-defns new-result)))))
+                                                        (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
+                              (cond abandon? new-result
+                                    (not (seq rest-defns)) new-result
+                                    :else (recur rest-defns new-result)))
+                            (cond (not (seq rest-defns)) new-result
+                                  :else (recur rest-defns new-result)))))
         end-time      (t/zoned-date-time)
         sync-metadata {:start-time start-time
                        :end-time   end-time
