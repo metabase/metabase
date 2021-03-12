@@ -665,6 +665,12 @@ jobs:
       description:
         type: string
         default: ""
+      test-selector:
+        type: string
+        default: ":all"
+      extra-env:
+        type: string
+        default: ""
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -678,7 +684,7 @@ jobs:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: << parameters.driver >>
-                command: lein with-profile +ci,+junit,+ee test
+                command: << parameters.extra-env >> lein with-profile +ci,+junit,+ee test << parameters.test-selector >>
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/junit
@@ -1007,34 +1013,6 @@ workflows:
           <<: *Matrix
 
       - lein:
-          name: be-linter-eastwood
-          requires:
-            - be-deps
-          lein-command: eastwood
-          skip-when-no-change: true
-
-      - lein:
-          name: be-linter-docstring-checker
-          requires:
-            - be-deps
-          lein-command: docstring-checker
-          skip-when-no-change: true
-
-      - lein:
-          name: be-linter-namespace-decls
-          requires:
-            - be-deps
-          lein-command: check-namespace-decls
-          skip-when-no-change: true
-
-      - lein:
-          name: be-linter-bikeshed
-          requires:
-            - be-deps
-          lein-command: bikeshed
-          skip-when-no-change: true
-
-      - lein:
           name: be-linter-cloverage
           requires:
             - be-deps
@@ -1044,10 +1022,6 @@ workflows:
                 name: Upload code coverage to codecov.io
                 command: bash <(curl -s https://codecov.io/bash)
           skip-when-no-change: true
-
-      - be-linter-reflection-warnings:
-          requires:
-            - be-deps
 
       - test-driver:
           name: be-tests-bigquery-ee
@@ -1119,6 +1093,20 @@ workflows:
                 source: ORACLE_JDBC_JAR
                 dest: ojdbc8.jar
           driver: oracle
+
+      - test-driver:
+          name: be-tests-oracle-ssl-ee
+          requires:
+            - be-tests-ee
+          before-steps:
+            - fetch-jdbc-driver:
+                source: ORACLE_JDBC_JAR
+                dest: ojdbc8.jar
+          driver: oracle
+          test-selector: :only metabase.driver.oracle-test
+          extra-env: >
+            MB_ORACLE_TEST_SSL=true MB_ORACLE_TEST_PORT=2484
+            JVM_OPTS="-Djavax.net.ssl.trustStore=/home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks -Djavax.net.ssl.trustStoreType=JKS -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
 
       - test-driver:
           name: be-tests-postgres-ee

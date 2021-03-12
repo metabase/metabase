@@ -21,26 +21,21 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should allow brush date filter", () => {
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders by Product → Created At (month) and Product → Category",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              PRODUCTS.CREATED_AT,
-              { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
-            ],
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            PRODUCTS.CREATED_AT,
+            { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
           ],
-        },
-        type: "query",
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
       },
       display: "line",
-      visualization_settings: {},
     }).then(response => {
       cy.visit(`/question/${response.body.id}`);
 
@@ -69,42 +64,26 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it.skip("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
-    cy.log("Create the first question");
-
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13457_Q1",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
       display: "line",
-      visualization_settings: {},
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.log("Create the second question");
-
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: "13457_Q2",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["avg", ["field", ORDERS.DISCOUNT, null]],
-              ["avg", ["field", ORDERS.QUANTITY, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["avg", ["field", ORDERS.DISCOUNT, null]],
+            ["avg", ["field", ORDERS.QUANTITY, null]],
+          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
         display: "line",
-        visualization_settings: {},
       }).then(({ body: { id: Q2_ID } }) => {
         cy.createDashboard("13457D").then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add the first question to the dashboard");
@@ -172,19 +151,12 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    // save a question of people in CA
-    cy.request("POST", "/api/card", {
+    // People in CA
+    cy.createQuestion({
       name: "CA People",
-      display: "table",
-      visualization_settings: {},
-      dataset_query: {
-        database: 1,
-        query: { "source-table": PEOPLE_ID, limit: 5 },
-        type: "query",
-      },
+      query: { "source-table": PEOPLE_ID, limit: 5 },
     });
-
-    // build a new question off that grouping by City
+    // Build a new question off that grouping by City
     cy.visit("/question/new");
     cy.contains("Simple question").click();
     cy.contains("Saved Questions").click();
@@ -212,20 +184,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it.skip("should drill through a with date filter (metabase#12496)", () => {
-    // save a question of orders by week
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders by Created At: Week",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
       },
       display: "line",
-      visualization_settings: {},
     });
 
     // Load the question up
@@ -352,37 +318,32 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       const ALIAS = `Question ${SQL_ID}`;
 
       // Create a QB question and join it with the previously created native question
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: "14495",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": PEOPLE_ID,
-            joins: [
-              {
-                fields: "all",
-                "source-table": `card__${SQL_ID}`,
-                condition: [
-                  "=",
-                  ["field", PEOPLE.ID, null],
-                  [
-                    "field",
-                    "ID",
-                    { "base-type": "type/BigInteger", "join-alias": ALIAS },
-                  ],
+        query: {
+          "source-table": PEOPLE_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": `card__${SQL_ID}`,
+              condition: [
+                "=",
+                ["field", PEOPLE.ID, null],
+                [
+                  "field",
+                  "ID",
+                  { "base-type": "type/BigInteger", "join-alias": ALIAS },
                 ],
-                alias: ALIAS,
-              },
-            ],
-            aggregation: [["count"]],
-            breakout: [
-              ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          database: 1,
+              ],
+              alias: ALIAS,
+            },
+          ],
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
+          ],
         },
         display: "bar",
-        visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
         // Prepare to wait for certain imporatnt queries
         cy.server();

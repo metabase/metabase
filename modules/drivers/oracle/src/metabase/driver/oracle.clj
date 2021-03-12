@@ -3,17 +3,18 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as sql]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.ssh :as ssh])
@@ -63,21 +64,32 @@
   [_ column-type]
   (database-type->base-type column-type))
 
+(defn- non-ssl-spec [spec host port sid service-name]
+  (assoc spec :subname (str "@" host
+                            ":" port
+                            (when sid
+                              (str ":" sid))
+                            (when service-name
+                              (str "/" service-name)))))
+
+(defn- ssl-spec [spec host port sid service-name]
+  (assoc spec :subname
+              (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
+                      host
+                      port
+                      (if sid (str "(SID=" sid ")") "")
+                      (if service-name (str "(SERVICE_NAME=" service-name ")") ""))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :oracle
   [_ {:keys [host port sid service-name]
       :or   {host "localhost", port 1521}
       :as   details}]
   (assert (or sid service-name))
-  (merge
-   {:classname   "oracle.jdbc.OracleDriver"
-    :subprotocol "oracle:thin"
-    :subname     (str "@" host
-                      ":" port
-                      (when sid
-                        (str ":" sid))
-                      (when service-name
-                        (str "/" service-name)))}
-   (dissoc details :host :port :sid :service-name)))
+  (let [spec      {:classname "oracle.jdbc.OracleDriver" :subprotocol "oracle:thin"}
+        finish-fn (if (:ssl details) ssl-spec non-ssl-spec)]
+    (-> (merge spec details)
+        (dissoc :host :port :sid :service-name :ssl)
+        (finish-fn host port sid service-name))))
 
 (defmethod driver/can-connect? :oracle
   [driver details]

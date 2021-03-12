@@ -61,25 +61,20 @@ describeWithToken("postgres > user > query", () => {
     cy.route("POST", "/api/dataset/pivot").as("pivotDataset");
 
     withDatabase(PG_DB_ID, ({ PEOPLE, PEOPLE_ID }) => {
-      cy.log("Create question with custom column");
-      cy.request("POST", "/api/card", {
+      // Question with a custom column created with `regextract`
+      cy.createQuestion({
         name: "14873",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": PEOPLE_ID,
-            expressions: {
-              [CC_NAME]: [
-                "regex-match-first",
-                ["field-id", PEOPLE.NAME],
-                "^[A-Za-z]+",
-              ],
-            },
+        query: {
+          "source-table": PEOPLE_ID,
+          expressions: {
+            [CC_NAME]: [
+              "regex-match-first",
+              ["field-id", PEOPLE.NAME],
+              "^[A-Za-z]+",
+            ],
           },
-          database: PG_DB_ID,
         },
-        display: "table",
-        visualization_settings: {},
+        database: PG_DB_ID,
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");

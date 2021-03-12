@@ -348,16 +348,22 @@
       (hx/* bin-width)
       (hx/+ min-value)))
 
+(def ^:dynamic *field-options*
+  "Bound to the `options` part of a `:field` clause when that clause is being compiled to HoneySQL. Useful if you store
+  additional keys there and need to access them."
+  nil)
+
 (defmethod ->honeysql [:sql :field]
   [driver [_ field-id-or-name options :as field-clause]]
-  (if (:join-alias options)
-    (compile-field-with-join-aliases driver field-clause)
-    (let [honeysql-form (if (integer? field-id-or-name)
-                          (->honeysql driver (qp.store/field field-id-or-name))
-                          (->honeysql driver (hx/identifier :field *table-alias* field-id-or-name)))]
-      (cond->> honeysql-form
-        (:temporal-unit options) (apply-temporal-bucketing driver options)
-        (:binning options)       (apply-binning options)))))
+  (binding [*field-options* options]
+    (if (:join-alias options)
+      (compile-field-with-join-aliases driver field-clause)
+      (let [honeysql-form (if (integer? field-id-or-name)
+                            (->honeysql driver (qp.store/field field-id-or-name))
+                            (->honeysql driver (hx/identifier :field *table-alias* field-id-or-name)))]
+        (cond->> honeysql-form
+          (:temporal-unit options) (apply-temporal-bucketing driver options)
+          (:binning options)       (apply-binning options))))))
 
 
 (defmethod ->honeysql [:sql :count]

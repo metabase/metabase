@@ -31,6 +31,22 @@
  [shared.u
   qualified-name])
 
+(defn lower-case-en
+  "Locale-agnostic version of `clojure.string/lower-case`.
+  `clojure.string/lower-case` uses the default locale in conversions, turning
+  `ID` into `ıd`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toLowerCase (Locale/US))))
+
+(defn upper-case-en
+  "Locale-agnostic version of `clojure.string/upper-case`.
+  `clojure.string/upper-case` uses the default locale in conversions, turning
+  `id` into `İD`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toUpperCase (Locale/US))))
+
 (defn format-bytes
   "Nicely format `num-bytes` as kilobytes/megabytes/etc.
 
@@ -90,7 +106,7 @@
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (str/lower-case s)))))
+                         (lower-case-en s)))))
 
 (defn state?
   "Is `s` a state string?"
@@ -107,7 +123,7 @@
                    "ak" "al" "ar" "az" "ca" "co" "ct" "de" "fl" "ga" "hi" "ia" "id" "il" "in" "ks" "ky" "la"
                    "ma" "md" "me" "mi" "mn" "mo" "ms" "mt" "nc" "nd" "ne" "nh" "nj" "nm" "nv" "ny" "oh" "ok"
                    "or" "pa" "ri" "sc" "sd" "tn" "tx" "ut" "va" "vt" "wa" "wi" "wv" "wy"}
-                 (str/lower-case s)))))
+                 (lower-case-en s)))))
 
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
@@ -737,22 +753,6 @@
                                  [vertex (g vertex)]))
                           (concat independent sorted))))))
               g)))
-
-(defn lower-case-en
-  "Locale-agnostic version of `clojure.string/lower-case`.
-  `clojure.string/lower-case` uses the default locale in conversions, turning
-  `ID` into `ıd`, in the Turkish locale. This function always uses the
-  `Locale/US` locale."
-  [^CharSequence s]
-  (.. s toString (toLowerCase (Locale/US))))
-
-(defn upper-case-en
-  "Locale-agnostic version of `clojure.string/upper-case`.
-  `clojure.string/upper-case` uses the default locale in conversions, turning
-  `id` into `İD`, in the Turkish locale. This function always uses the
-  `Locale/US` locale."
-  [^CharSequence s]
-  (.. s toString (toUpperCase (Locale/US))))
 
 (defn lower-case-map-keys
   "Changes the keys of a given map to lower case."
