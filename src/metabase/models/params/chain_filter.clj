@@ -27,7 +27,7 @@
 
   ### A) Human-readable values remapping
 
-  If Field 1 has human-readable values, we find those values that match the prefix 'Cam' and then generate a query to
+  If Field 1 has human-readable values, we find those values that contain the string 'Cam' and then generate a query to
   restrict results to the matching original values. e.g. if Field 1 is \"venue.category_id\" and is
   human-readable-remapped with something like
 
@@ -371,7 +371,7 @@
                            :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
                           (when original-field-clause
                             { ;; don't return rows that don't have values for the original Field. e.g. if
-                             ;; venues.category_id is remapped to categories.name and we do a search with prefix 's',
+                             ;; venues.category_id is remapped to categories.name and we do a search with query 's',
                              ;; we only want to return [category_id name] tuples where [category_id] is not nil
                              ;;
                              ;; TODO -- would this be more efficient if we just did an INNER JOIN against the original
@@ -525,7 +525,7 @@
         (unremapped-chain-filter field-id constraints options)))))
 
 
-;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:prefix) -----------------
+;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
 
 ;; TODO -- if this validation succeeds, we can probably cache that success for a bit so we can avoid unneeded DB
 ;; calls every time this function is called.
@@ -547,18 +547,18 @@
 (s/defn ^:private unremapped-chain-filter-search
   [field-id    :- su/IntGreaterThanZero
    constraints :- (s/maybe ConstraintsMap)
-   prefix      :- su/NonBlankString
+   query       :- su/NonBlankString
    options     :- (s/maybe Options)]
   (check-valid-search-field field-id)
-  (let [prefix-constraint {field-id [:starts-with prefix {:case-sensitive false}]}
-        constraints       (merge constraints prefix-constraint)]
+  (let [query-constraint {field-id [:contains query {:case-sensitive false}]}
+        constraints      (merge constraints query-constraint)]
     (unremapped-chain-filter field-id constraints options)))
 
-(defn- matching-unremapped-values [prefix v->human-readable]
-  (let [prefix (str/lower-case prefix)]
+(defn- matching-unremapped-values [query v->human-readable]
+  (let [query (str/lower-case query)]
     (for [[orig remapped] v->human-readable
           :when           (and (string? remapped)
-                               (str/starts-with? (str/lower-case remapped) prefix))]
+                               (str/includes? (str/lower-case remapped) query))]
       orig)))
 
 (s/defn ^:private human-readable-values-remapped-chain-filter-search
@@ -568,11 +568,11 @@
   [field-id          :- su/IntGreaterThanZero
    v->human-readable :- HumanReadableRemappingMap
    constraints       :- (s/maybe ConstraintsMap)
-   prefix            :- su/NonBlankString
+   query             :- su/NonBlankString
    options           :- (s/maybe Options)]
-  (or (when-let [unremapped-values (not-empty (matching-unremapped-values prefix v->human-readable))]
-        (let [prefix-constraint {field-id (set unremapped-values)}
-              constraints       (merge constraints prefix-constraint)
+  (or (when-let [unremapped-values (not-empty (matching-unremapped-values query v->human-readable))]
+        (let [query-constraint  {field-id (set unremapped-values)}
+              constraints       (merge constraints query-constraint)
               values            (unremapped-chain-filter field-id constraints options)]
           (add-human-readable-values values v->human-readable)))
       []))
@@ -583,27 +583,27 @@
   [original-field-id :- su/IntGreaterThanZero
    remapped-field-id :- su/IntGreaterThanZero
    constraints       :- (s/maybe ConstraintsMap)
-   prefix            :- su/NonBlankString
+   query             :- su/NonBlankString
    options           :- (s/maybe Options)]
-  (unremapped-chain-filter-search remapped-field-id constraints prefix
+  (unremapped-chain-filter-search remapped-field-id constraints query
                                   (assoc options :original-field-id original-field-id)))
 
 (s/defn chain-filter-search
-  "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id` starting
-  with String `prefix`. Powers the `search/:prefix` version of the chain filter endpoint."
+  "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
+  containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
   [field-id          :- su/IntGreaterThanZero
    constraints       :- (s/maybe ConstraintsMap)
-   prefix            :- (s/maybe su/NonBlankString)
+   query             :- (s/maybe su/NonBlankString)
    & options]
   (assert (even? (count options)))
-  (if (str/blank? prefix)
+  (if (str/blank? query)
     (apply chain-filter field-id constraints options)
     (let [{:as options} options]
       (if-let [v->human-readable (human-readable-remapping-map field-id)]
-        (human-readable-values-remapped-chain-filter-search field-id v->human-readable constraints prefix options)
+        (human-readable-values-remapped-chain-filter-search field-id v->human-readable constraints query options)
         (if-let [remapped-field-id (remapped-field-id field-id)]
-          (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints prefix options)
-          (unremapped-chain-filter-search field-id constraints prefix options))))))
+          (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
+          (unremapped-chain-filter-search field-id constraints query options))))))
 
 
 ;;; ------------------ Filterable Field IDs (powers GET /api/dashboard/params/valid-filter-fields) -------------------
