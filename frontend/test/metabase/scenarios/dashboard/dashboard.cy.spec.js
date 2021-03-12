@@ -656,8 +656,14 @@ describe("scenarios > dashboard", () => {
         cy.get("fieldset")
           .contains("Category")
           .click();
-        cy.findByPlaceholderText("Search the list");
-        popover().findByText("Gizmo");
+
+        cy.findByPlaceholderText("Enter some text")
+          .click()
+          .type("Gizmo", { delay: 10 });
+        cy.findByRole("button", { name: "Add filter" })
+          .should("not.be.disabled")
+          .click();
+        cy.contains("Rustic Paper Wallet");
       });
     });
   });
