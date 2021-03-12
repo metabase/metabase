@@ -948,7 +948,7 @@ describeWithToken("formatting > sandboxes", () => {
         });
     });
 
-    it.skip("(metabase#15105)", () => {
+    it.skip("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
@@ -969,6 +969,8 @@ describeWithToken("formatting > sandboxes", () => {
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
+
+      cy.contains("37.65");
     });
   });
 });
