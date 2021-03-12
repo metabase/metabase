@@ -975,7 +975,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.contains("37.65");
     });
 
-    it.skip("(metabase#15106)", () => {
+    it.skip("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
@@ -1028,6 +1028,8 @@ describeWithToken("formatting > sandboxes", () => {
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
+
+      // Add positive assertion once this issue is fixed
     });
   });
 });
