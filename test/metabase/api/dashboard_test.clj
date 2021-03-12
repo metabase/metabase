@@ -1186,7 +1186,7 @@
       (seq query-params-str) (str "?" query-params-str))))
 
 (defn- chain-filter-values-url [dashboard-or-id param-key & query-params]
-  (add-query-params (format "dashboard/%d/params/%s/values" (u/get-id dashboard-or-id) (name param-key))
+  (add-query-params (format "dashboard/%d/params/%s/values" (u/the-id dashboard-or-id) (name param-key))
                     query-params))
 
 (defmacro ^:private let-url [[url-binding url] & body]
@@ -1195,10 +1195,10 @@
      (testing (str "\nGET /api/" url# "\n")
        ~@body)))
 
-(defn- chain-filter-search-url [dashboard-or-id param-key prefix & query-params]
+(defn- chain-filter-search-url [dashboard-or-id param-key query & query-params]
   {:pre [(some? param-key)]}
-  (add-query-params (str (format "dashboard/%d/params/%s/search/" (u/get-id dashboard-or-id) (name param-key))
-                         prefix)
+  (add-query-params (str (format "dashboard/%d/params/%s/search/" (u/the-id dashboard-or-id) (name param-key))
+                         query)
                     query-params))
 
 (deftest chain-filter-test
@@ -1250,25 +1250,25 @@
                  (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys))))))))))
 
 (deftest chain-filter-search-test
-  (testing "GET /api/dashboard/:id/params/:param-key/search/:prefix"
+  (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-      (let [url (chain-filter-search-url dashboard (:category-name param-keys) "s")]
+      (let [url (chain-filter-search-url dashboard (:category-name param-keys) "bar")]
         (testing (str "\n" url)
-          (testing "\nShow me names of categories that start with 's' (case-insensitive)"
-            (is (= ["Scandinavian" "Seafood" "South Pacific"]
+          (testing "\nShow me names of categories that include 'bar' (case-insensitive)"
+            (is (= ["Bar" "Gay Bar" "Juice Bar"]
                    (take 3 (mt/user-http-request :rasta :get 200 url)))))))
 
-      (let-url [url (chain-filter-search-url dashboard (:category-name param-keys) "s" (:price param-keys) 4)]
-        (testing "\nShow me names of categories that start with 's' that have expensive venues (price = 4)"
+      (let-url [url (chain-filter-search-url dashboard (:category-name param-keys) "house" (:price param-keys) 4)]
+        (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
           (is (= ["Steakhouse"]
                  (take 3 (mt/user-http-request :rasta :get 200 url))))))
 
-      (testing "Should require a non-empty prefix"
-        (doseq [prefix [nil
+      (testing "Should require a non-empty query"
+        (doseq [query [nil
                         ""
                         "   "
                         "\n"]]
-          (let-url [url (chain-filter-search-url dashboard (:category-name param-keys) prefix)]
+          (let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
             (is (= "API endpoint does not exist."
                    (mt/user-http-request :rasta :get 404 url)))))))
 
@@ -1305,8 +1305,8 @@
             (is (= [[40 "Japanese"]
                     [67 "Steakhouse"]]
                    (mt/user-http-request :rasta :get 200 url)))))
-        (testing "GET /api/dashboard/:id/params/:param-key/search/:prefix"
-          (let-url [url (chain-filter-search-url dashboard "_CATEGORY_ID_" "s" "_PRICE_" 4)]
+        (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
+          (let-url [url (chain-filter-search-url dashboard "_CATEGORY_ID_" "house" "_PRICE_" 4)]
             (is (= [[67 "Steakhouse"]]
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
@@ -1325,15 +1325,14 @@
                   [16 "Pacific Dining Car - Santa Monica"]]
                  (take 3 (mt/user-http-request :rasta :get 200 url))))))
 
-      (testing "GET /api/dashboard/:id/params/:param-key/search/:prefix"
-        (let-url [url (chain-filter-search-url dashboard "_ID_" "s")]
-          (is (= [[90 "Señor Fish"]
-                  [46 "Shanghai Dumpling King"]
-                  [65 "Slate"]]
+      (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
+        (let-url [url (chain-filter-search-url dashboard "_ID_" "fish")]
+          (is (= [[90 "Señor Fish"]]
                  (take 3 (mt/user-http-request :rasta :get 200 url)))))
-        (let-url [url (chain-filter-search-url dashboard "_ID_" "s" "_PRICE_" 4)]
+        (let-url [url (chain-filter-search-url dashboard "_ID_" "sushi" "_PRICE_" 4)]
           (is (= [[77 "Sushi Nakazawa"]
-                  [79 "Sushi Yasuda"]]
+                  [79 "Sushi Yasuda"]
+                  [81 "Tanoshi Sushi & Sake Bar"]]
                  (take 3 (mt/user-http-request :rasta :get 200 url)))))))))
 
 (deftest chain-filter-fk-field-to-field-remapping-test
@@ -1345,8 +1344,8 @@
             (is (= [[40 "Japanese"]
                     [67 "Steakhouse"]]
                    (mt/user-http-request :rasta :get 200 url)))))
-        (testing "GET /api/dashboard/:id/params/:param-key/search/:prefix"
-          (let-url [url (chain-filter-search-url dashboard "_CATEGORY_ID_" "s" "_PRICE_" 4)]
+        (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
+          (let-url [url (chain-filter-search-url dashboard "_CATEGORY_ID_" "house" "_PRICE_" 4)]
             (is (= [[67 "Steakhouse"]]
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
