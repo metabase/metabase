@@ -51,17 +51,8 @@ export default class App extends Component {
     initializeIframeResizer();
   }
 
-  componentDidCatch(error, info) {
-    console.error("Error caught in <App>", error, info);
-    this.setState({ hasError: true });
-  }
-
   render() {
     const { children, currentUser, location, errorPage } = this.props;
-
-    if (this.state.hasError) {
-      return <div>😢</div>;
-    }
 
     return (
       <ScrollToTop>
