@@ -288,7 +288,7 @@
 
 (defn generate-horror-show! []
   (let [horror-show {:collection [[1 {:refs {:personal_owner_id ::rs/omit}}]]
-                     :dashboard  [[50000]]
-                     :card       [[5000]]}]
+                     :dashboard  [[5000]]
+                     :card       [[50000]]}]
     (insert! horror-show)
     nil))
