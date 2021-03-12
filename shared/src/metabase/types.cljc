@@ -240,7 +240,13 @@
   [{base-type :base_type, effective-type :effective_type}]
   (some #(isa? % :type/Temporal) [base-type effective-type]))
 
-(def coercions
+(def ^:private coercions
+  "A map from types to maps of conversions to resulting effective types:
+
+  eg:
+  {:type/Text   {:Coercion/ISO8601->Date     :type/Date
+                 :Coercion/ISO8601->DateTime :type/DateTime
+                 :Coercion/ISO8601->Time     :type/Time}}"
   ;; Decimal seems out of place but that's the type that oracle uses Number which we map to Decimal. Not sure if
   ;; that's an intentional mapping or not. But it does mean that lots of extra columns will be offered a conversion
   ;; (think Price being offerred to be interpreted as a date)
@@ -254,11 +260,14 @@
             numeric-types)))
 
 (defn ^:export is_coerceable
+  "Returns a boolean of whether a field base-type has any coercion strategies available."
   [base-type]
   (boolean (contains? coercions (keyword base-type))))
 
 (defn ^:export effective_type_for_coercion
+  "The effective type resulting from a coercion."
   [coercion]
+  ;;todo: unify this with the coercions map above
   (get {:Coercion/ISO8601->Date :type/Date
         :Coercion/ISO8601->DateTime :type/DateTime
         :Coercion/ISO8601->Time :type/Time
@@ -268,6 +277,8 @@
        (keyword coercion)))
 
 (defn ^:export coercions_for_type
+  "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
+  clojure will return a sequence of keywords."
    [base-type]
    (let [applicable (keys (get coercions (keyword base-type)))]
      #?(:cljs
