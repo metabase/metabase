@@ -110,7 +110,6 @@ export default function SearchResult(props) {
     case "metric":
       return <MetricResult metric={result} options={props} />;
     default:
-      // metric, segment, and table deliberately included here
       return <DefaultResult result={result} options={props} />;
   }
 }
