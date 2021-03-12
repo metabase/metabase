@@ -947,6 +947,31 @@ describeWithToken("formatting > sandboxes", () => {
           cy.findByText("Slack");
         });
     });
+
+    it.skip("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          attr_uid: [
+            "dimension",
+            ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.ID]],
+          ],
+        },
+      });
+
+      cy.signOut();
+      cy.signInAsSandboxedUser();
+      openOrdersTable();
+
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+
+      cy.contains("37.65");
+    });
   });
 });
 
