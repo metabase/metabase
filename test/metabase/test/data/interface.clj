@@ -387,8 +387,7 @@
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
   ;; if definition uses a coercion strategy they need to provide the effective-type
-  (map->FieldDefinition (merge (when-not coercion-strategy {:effective-type base-type})
-                               field-definition-map)))
+  (map->FieldDefinition field-definition-map))
 
 (s/defn ^:private dataset-table-definition :- ValidTableDefinition
   "Parse a Table definition (from a `defdatset` form or EDN file) and return a TableDefinition instance for
