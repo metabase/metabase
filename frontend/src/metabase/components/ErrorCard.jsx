@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import BodyComponent from "metabase/components/BodyComponent";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
+import { t } from "ttag";
 
 function ErrorCard({ errorInfo }) {
   const [showError, setShowError] = useState(false);
@@ -18,7 +19,7 @@ function ErrorCard({ errorInfo }) {
       <div className="flex justify-between align-center mb1">
         <div className="text-error flex align-center">
           <Icon name="info_outline" mr={1} size="20" />
-          <h2>Something went wrong</h2>
+          <h2>{t`Something went wrong`}</h2>
         </div>
         <Icon
           name="close"
