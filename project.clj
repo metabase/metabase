@@ -405,7 +405,12 @@
                     [;; don't instrument logging forms, since they won't get executed as part of tests anyway
                      ;; log calls expand to these
                      clojure.tools.logging/logf
-                     clojure.tools.logging/logp]}}]
+                     clojure.tools.logging/logp]
+                    ;; don't instrument Postgres/MySQL driver namespaces, because we don't current run tests for them
+                    ;; as part of recording test coverage, which means they can give us false positives.
+                    :ns-exclude-regex
+                    [#"metabase\.driver\.mysql"
+                     #"metabase\.driver\.postgres"]}}]
 
    ;; build the uberjar with `lein uberjar`
    :uberjar

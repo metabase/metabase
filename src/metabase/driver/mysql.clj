@@ -183,26 +183,37 @@
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
-
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
 ;; explanation of format specifiers
 ;; this will generate a SQL statement casting the TIME to a DATETIME so date_format doesn't fail:
 ;; date_format(CAST(mytime AS DATETIME), '%Y-%m-%d %H') AS mytime
 (defn- trunc-with-format [format-str expr]
-  (str-to-date format-str (date-format format-str (hx/cast :DATETIME expr))))
+  (str-to-date format-str (date-format format-str (hx/->datetime expr))))
+
+(defn- ->date [expr]
+  (if (hx/is-of-type? expr "date")
+    expr
+    (-> (hsql/call :date expr)
+        (hx/with-database-type-info "date"))))
+
+(defn make-date
+  "Create and return a date based on  a year and a number of days value."
+  [year-expr number-of-days]
+  (-> (hsql/call :makedate year-expr number-of-days)
+      (hx/with-database-type-info "date")))
 
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))
 (defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (hx/minute expr))
 (defmethod sql.qp/date [:mysql :hour]            [_ _ expr] (trunc-with-format "%Y-%m-%d %H" expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (hx/hour expr))
-(defmethod sql.qp/date [:mysql :day]             [_ _ expr] (hsql/call :date expr))
+(defmethod sql.qp/date [:mysql :day]             [_ _ expr] (->date expr))
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] (hsql/call :dayofmonth expr))
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] (hsql/call :dayofyear expr))
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (hsql/call :makedate (hx/year expr) 1))
+(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (make-date (hx/year expr) 1))
 
 (defmethod sql.qp/date [:mysql :day-of-week]
   [_ _ expr]

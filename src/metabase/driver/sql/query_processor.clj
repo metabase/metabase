@@ -25,7 +25,7 @@
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
   (:import metabase.models.field.FieldInstance
-           metabase.util.honeysql_extensions.Identifier))
+           [metabase.util.honeysql_extensions Identifier TypedHoneySQLForm]))
 
 ;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic ^:private *query*
@@ -250,6 +250,10 @@
     [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:semantic_type field) field-identifier)
     :else field-identifier))
 
+(defmethod ->honeysql [:sql TypedHoneySQLForm]
+  [driver typed-form]
+  (->honeysql driver (hx/unwrap-typed-honeysql-form typed-form)))
+
 ;; default implmentation is a no-op; other drivers can override it as needed
 (defmethod ->honeysql [:sql Identifier]
   [_ identifier]
@@ -282,15 +286,16 @@
       field-alias)))
 
 (defmethod ->honeysql [:sql (class Field)]
-  [driver {field-name :name, table-id :table_id, :as field}]
+  [driver {field-name :name, table-id :table_id, database-type :database_type, :as field}]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
-  (->> (if *table-alias*
-         [*table-alias* (unambiguous-field-alias driver [:field (:id field) nil])]
-         (let [{schema :schema, table-name :name} (qp.store/table table-id)]
-           [schema table-name field-name]))
-       (apply hx/identifier :field)
-       (->honeysql driver)
-       (cast-field-if-needed driver field)))
+  (as-> (if *table-alias*
+          [*table-alias* (unambiguous-field-alias driver [:field (:id field) nil])]
+          (let [{schema :schema, table-name :name} (qp.store/table table-id)]
+            [schema table-name field-name])) expr
+    (apply hx/identifier :field expr)
+    (->honeysql driver expr)
+    (cast-field-if-needed driver field expr)
+    (hx/with-database-type-info expr database-type)))
 
 (defn compile-field-with-join-aliases
   "Compile `field-clause` to HoneySQL using the `:join-alias` from the `:field` clause options."
