@@ -6,6 +6,7 @@ import Navbar from "metabase/nav/containers/Navbar";
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import UndoListing from "metabase/containers/UndoListing";
+import ErrorCard from "metabase/components/ErrorCard";
 
 import {
   Archived,
@@ -44,15 +45,21 @@ const getErrorComponent = ({ status, data, context }) => {
 @connect(mapStateToProps)
 export default class App extends Component {
   state = {
-    hasError: false,
+    errorInfo: undefined,
   };
 
-  UNSAFE_componentWillMount() {
+  constructor(props) {
+    super(props);
     initializeIframeResizer();
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({ errorInfo });
   }
 
   render() {
     const { children, currentUser, location, errorPage } = this.props;
+    const { errorInfo } = this.state;
 
     return (
       <ScrollToTop>
@@ -61,6 +68,7 @@ export default class App extends Component {
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
         </div>
+        <ErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
     );
   }
