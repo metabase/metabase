@@ -240,12 +240,12 @@
    })
 
 ;; * inserters
-(defn spec-gen
+(defn- spec-gen
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
 
-(def field-positions (atom {:table-fields {}}))
-(defn adjust
+(def ^:private field-positions (atom {:table-fields {}}))
+(defn- adjust
   "Some fields have to be semantically correct, or db correct. fields have position, and they do have to be unique.
   in the table-field-position, for now it's just incrementing forever, without scoping by table_id (which would be
   cool)."
@@ -261,7 +261,7 @@
     (and (:description visit-val) (coin-toss 0.2))
     (dissoc :description)))
 
-(defn remove-ids [_ {:keys [visit-val] :as visit-opts}]
+(defn- remove-ids [_ {:keys [visit-val] :as visit-opts}]
   (dissoc visit-val :id))
 
 (defn- insert!
@@ -286,7 +286,7 @@
                     (catch Throwable e (println e)))))
       (rs/attr-map :insert!)))
 
-(defn generate-horror-show []
+(defn generate-horror-show! []
   (let [horror-show {:collection [[1 {:refs {:personal_owner_id ::rs/omit}}]]
                      :dashboard  [[50000]]
                      :card       [[5000]]}]
