@@ -17,7 +17,8 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]
-            [clojure.string :as str]))
+            [clojure.string :as str])
+  (:import (java.sql DatabaseMetaData)))
 
 (defn- drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -243,16 +244,8 @@
       (let [db-name "partitioned_table_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)
-            pg-ver  (-> {:query "SHOW SERVER_VERSION;"}
-                        (mt/native-query)
-                        (qp/process-query)
-                        (mt/first-row)
-                        (first))
-            major-v (let [[_ v] (re-matches #"^([\d.]+).*" pg-ver)]
-                      (-> v
-                          (str/split #"\.")
-                          (first)
-                          (Integer.)))]
+            major-v ((jdbc/with-db-metadata [metadata spec]
+                      #(.getDatabaseMajorVersion ^DatabaseMetaData metadata)))]
         (when (>= major-v 10)
           ;; create the postgres DB
           (drop-if-exists-and-create-db! db-name)
