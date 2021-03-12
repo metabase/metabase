@@ -243,29 +243,33 @@
                    synced properly (#15049")
       (let [db-name "partitioned_table_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)
-            major-v ((jdbc/with-db-metadata [metadata spec]
-                      #(.getDatabaseMajorVersion ^DatabaseMetaData metadata)))]
-        (when (>= major-v 10)
-          ;; create the postgres DB
-          (drop-if-exists-and-create-db! db-name)
-          ;; create the DB object
-          (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
-            (let [sync! #(sync/sync-database! database)]
-              ;; create a main partitioned table and two partitions for it
-              (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\")";"
-                           "CREATE TABLE part_vals_0 (val bigint NOT NULL);"
-                           "ALTER TABLE ONLY part_vals ATTACH PARTITION part_vals_0 FOR VALUES FROM (0) TO (1000);"
-                           "CREATE TABLE part_vals_1 (val bigint NOT NULL);"
-                           "ALTER TABLE ONLY part_vals ATTACH PARTITION part_vals_1 FOR VALUES FROM (1000) TO (2000);"
-                           "GRANT ALL ON part_vals to PUBLIC;"
-                           "GRANT ALL ON part_vals_0 to PUBLIC;"
-                           "GRANT ALL ON part_vals_1 to PUBLIC;"])
-              ;; now sync the DB
-              (sync!)
-              ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
-              (is (= {:tables (set (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"]))}
-                     (driver/describe-database :postgres database))))))))))
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        ;; create the postgres DB
+        (drop-if-exists-and-create-db! db-name)
+        (let [major-v ((jdbc/with-db-metadata [metadata spec]
+                         #(.getDatabaseMajorVersion ^DatabaseMetaData metadata)))]
+          (if (>= major-v 10)
+            ;; create the DB object
+            (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
+              (let [sync! #(sync/sync-database! database)]
+                ;; create a main partitioned table and two partitions for it
+                (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\")";"
+                             "CREATE TABLE part_vals_0 (val bigint NOT NULL);"
+                             "ALTER TABLE ONLY part_vals ATTACH PARTITION part_vals_0 FOR VALUES FROM (0) TO (1000);"
+                             "CREATE TABLE part_vals_1 (val bigint NOT NULL);"
+                             "ALTER TABLE ONLY part_vals ATTACH PARTITION part_vals_1 FOR VALUES FROM (1000) TO (2000);"
+                             "GRANT ALL ON part_vals to PUBLIC;"
+                             "GRANT ALL ON part_vals_0 to PUBLIC;"
+                             "GRANT ALL ON part_vals_1 to PUBLIC;"])
+                ;; now sync the DB
+                (sync!)
+                ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
+                (is (= {:tables (set (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"]))}
+                       (driver/describe-database :postgres database)))))
+            (println
+             (u/format-color
+              'yellow
+              "Skipping partitioned-table-test; Postgres major version %d doesn't support PARTITION BY" major-v))))))))
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
 
