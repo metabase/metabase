@@ -406,6 +406,11 @@
   (^String [s max-length]
    (str/join (take max-length (slugify s)))))
 
+(defn full-exception-chain
+  "Gather the full exception chain into a single vector."
+  [e]
+  (take-while some? (iterate #(.getCause ^Throwable %) e)))
+
 (defn all-ex-data
   "Like `ex-data`, but merges `ex-data` from causes. If duplicate keys exist, the keys from the highest level are
   preferred.
@@ -422,7 +427,7 @@
    (fn [data e]
      (merge (ex-data e) data))
    nil
-   (take-while some? (iterate #(.getCause ^Throwable %) e))))
+   (full-exception-chain e)))
 
 (defn do-with-auto-retries
   "Execute `f`, a function that takes no arguments, and return the results.
