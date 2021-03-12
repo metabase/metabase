@@ -1,9 +1,12 @@
 (ns metabase.util.visualization-settings
   "Utility functions for dealing with visualization settings on the backend."
-  (:require [clojure.string :as str]
+  (:require [clojure.spec.alpha :as spec]
+            [clojure.string :as str]
             [schema.core :as s]
             [metabase.util.schema :as su]
-            [metabase.query-processor.streaming.common :as common])
+            [metabase.query-processor.streaming.common :as common]
+            [metabase.shared.visualization :as mb.viz]
+            [clojure.set :as set])
   (:import (java.time.format DateTimeFormatter)
            (java.time.temporal TemporalAccessor)
            (java.text DecimalFormat)))
@@ -26,22 +29,6 @@
 ;;  :type {:type/Number {:min 8.93914247937167, :q1 51.34535490743823, :q3 110.29428389265787, :max 159.34900526552292,
 ;;                       :sd 34.26469575709948, :avg 80.35871658771228}}},
 ;;  :base_type :type/Float}
-
-(def Column (su/open-schema
-              {(s/optional-key :id) su/IntGreaterThanZero
-               (s/optional-key :expression_name) s/Str
-               (s/optional-key :name) s/Str}))
-
-(def ColSetting s/Any)
-
-;; the :column_settings map can look like this:
-;; {:["ref",["field",140,null]]           {:date_style "YYYY/M/D", :time_enabled "minutes", :time_style "k:mm"},
-;   :["ref",["field",145,null]]           {:column_title "Renamed_ID"},
-;   :["ref",["expression","negative_id"]] {:number_separators ", "}}}
-(def ColSettings {s/Keyword ColSetting})
-
-(def VizSettings (s/maybe (su/open-schema
-                            {(s/required-key :column_settings) ColSettings})))
 
 (defn- field-id-key [col]
   (format "[\"ref\",[\"field\",%d,null]]" (:id col)))
@@ -83,14 +70,13 @@
                    "minutes"      ""
                    "seconds"      ":ss"
                    "milliseconds" ":ss:SSS")
-        time-str (when (some? time_enabled)
-                   (case time_style
-                     nil      nil
-                     ;; 17:24 (with seconds/millis as per time-enabled)
-                     "k:mm"   (format "H:mm%s" sub-day)
-                     ;; 5:24 PM (with seconds/millis as per above)
-                     "h:mm A" (format "h:mm%s a" sub-day)
-                     "HH:mm" (format "H:mm%s" sub-day)))]
+        time-str (case time_style
+                   nil      nil
+                   ;; 17:24 (with seconds/millis as per time-enabled)
+                   "k:mm"   (format "H:mm%s" sub-day)
+                   ;; 5:24 PM (with seconds/millis as per above)
+                   "h:mm A" (format "h:mm%s a" sub-day)
+                   "HH:mm" (format "H:mm%s" sub-day))]
     (format "%s%s" dt-str (if (some? time-str) (str ", " time-str) ""))))
 
 (defn date-format-fn [{:keys [date_style date_abbreviate time_style time_enabled]}]
@@ -134,36 +120,37 @@
   [pred fmt-fn]
   (always-dispatch-on-first-val-pred pred fmt-fn common/format-value))
 
+(spec/def ::format-fn fn?)
+
+;; TODO: add spec fdef here for stuff in metabase.shared.visualization
 (defn make-format-metadata [visualization-settings col]
   ;; always provide a default format fn
-  (let [fmt-md {:format-fn common/format-value}]
+  (let [fmt-md {::format-fn common/format-value}]
     (if-some [col-settings (find-col-setting visualization-settings col)]
       (let [number-keys (select-keys col-settings [:decimals :number_separator :number_style])]
-        (-> (merge col-settings fmt-md) ; merge in col-settings with our format metadata
+        (-> (assoc fmt-md ::mb.viz/column-setting-v1-value col-settings) ; add in col-settings with our format metadata
             ;; if a date_style exists, add a date specific format fn
-            (cond-> (:date_style col-settings) (assoc :format-fn (fmt-fn-or-default
-                                                                  #(instance? TemporalAccessor %)
-                                                                  (date-format-fn col-settings))))
-            (cond-> (not-empty number-keys) (assoc :format-fn (fmt-fn-or-default
-                                                               #(instance? Number %)
-                                                               (number-format-fn col-settings))))))
+            (cond-> (:date_style col-settings) (assoc ::format-fn (fmt-fn-or-default
+                                                                   #(instance? TemporalAccessor %)
+                                                                   (date-format-fn col-settings))))
+            (cond-> (not-empty number-keys) (assoc ::format-fn (fmt-fn-or-default
+                                                                #(instance? Number %)
+                                                                (number-format-fn col-settings))))
+            (cond-> (:column_title col-settings) (assoc ::column-title (:column_title col-settings)))))
       fmt-md)))
 
 (defn column-title-override [visualization-settings col]
   (when-some [col-settings (find-col-setting visualization-settings col)]
     (:column_title col-settings)))
 
-(s/defn col-settings-key
-  "Gets the key that would be mapped under :column_settings for the given col (a Column domain object)."
-  [col :- Column]
-  (keyword (format "[\"ref\",[\"field\",%d,null]]" (:id col))))
+(spec/def ::id (spec/and int? #(> % 0)))
+(spec/def ::expression_name string?)
+(spec/def ::name string?)
+(spec/def ::column (spec/keys :opt-un [::id ::expression_name ::name]))
 
-(s/defn col-settings :- (s/maybe ColSetting)
-  "Gets the column_settings value mapped by the given col (a Column domain object) as a key (a Column domain object)."
-  [{:keys [column_settings] :as visualization-settings} :- VizSettings col :- Column]
-  (get column_settings (col-settings-key col)))
+(spec/def ::format-metadata (spec/keys :req [::format-fn] :opt [::mb.viz/column-setting-v1-value]))
 
-(s/defn date-format-from-col-settings [visualization-settings :- VizSettings col  :- Column] :- (s/maybe s/Str)
-  (let [settings (find-col-setting visualization-settings col)]
-    (if-let [date-style (:date_style settings)]
-      (str date-style (if-let [time-style (:time_style settings)] (str " " time-style) "")))))
+(spec/fdef make-format-metadata
+  :args (spec/cat :visualization-settings ::mb.viz/visualization-settings-v1 :col ::column)
+  :ret  ::format-metadata)
+

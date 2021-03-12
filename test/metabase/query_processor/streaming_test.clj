@@ -12,11 +12,14 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [toucan.db :as db])
   (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream
             InputStreamReader]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defmulti ^:private parse-result*
   {:arglists '([export-format ^InputStream input-stream column-names])}
@@ -284,9 +287,9 @@
   (doseq [export-format [:csv]]
     (testing export-format
       (testing "A CSV export takes into account custom visualization settings"
-        (let [tbl-id (db/select-one-id Table :name "CHECKINS")
-              f1-id  (db/select-one-id Field :table_id tbl-id :name "ID")
-              f2-id  (db/select-one-id Field :table_id tbl-id :name "DATE")
+        (let [tbl-id (mt/id :checkins)
+              f1-id  (mt/id :checkins :id)
+              f2-id  (mt/id :checkins :date)
               cs-1   [:ref [:field f1-id nil]]
               cs-2   [:ref [:field f2-id nil]]
               cs-map {cs-1 {:column_title "Checkin ID"}
@@ -295,7 +298,7 @@
                             :time_enabled    nil
                             :time_style      nil}}]
           (mt/with-temp Card [card (card-test/card-with-source-table
-                                    (mt/id :checkins)
+                                    tbl-id
                                     :visualization_settings
                                     (make-col-settings cs-map))]
             (let [card-id     (u/the-id card)

@@ -90,6 +90,7 @@
     :exclusions [org.slf4j/slf4j-api
                  it.unimi.dsi/fastutil]]
    [com.draines/postal "2.0.3"]                                       ; SMTP library
+   [com.gfredericks/test.chuck "0.2.10"]                              ; A utility library for test.check (including generator for regex)
    [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
@@ -163,8 +164,8 @@
                                  org.clojure/tools.namespace
                                  honeysql]]
    [user-agent "0.1.0"]                                               ; User-Agent string parser, for Login History page & elsewhere
-   [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
-   ]
+   [weavejester/dependency "0.2.1"]]                                   ; Dependency graphs and topological sorting
+
 
   :main ^:skip-aot metabase.core
 
@@ -220,8 +221,8 @@
      [pjstadig/humane-test-output "0.10.0"]
      [reifyhealth/specmonstah "2.0.0"]                                ; Generate fixtures to test huge databases
      [ring/ring-mock "0.4.0"]
-     [talltale "0.5.4"]                                               ; Generate realistic data for fixtures
-     ]
+     [talltale "0.5.4"]]                                               ; Generate realistic data for fixtures
+
 
     :plugins
     [[lein-environ "1.1.0"] ; easy access to environment variables
