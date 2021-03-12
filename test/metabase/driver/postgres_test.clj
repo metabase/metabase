@@ -16,7 +16,9 @@
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [clojure.string :as str])
+  (:import (java.sql DatabaseMetaData)))
 
 (defn- drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -32,6 +34,11 @@
                                  db-name db-name)]
                    {:transaction? false})))
 
+(defn- exec!
+  "Execute a sequence of statements against the database whose spec is passed as the first param."
+  [spec statements]
+  (doseq [statement statements]
+    (jdbc/execute! spec [statement])))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -121,18 +128,16 @@
            (mt/rows+column-names (mt/run-mbql-query objects.stuff)))))
     (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)
-            exec!   #(doseq [statement %]
-                       (jdbc/execute! spec [statement]))]
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "hyphen-names-test")
         ;; create the DB object
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
-            (exec! ["CREATE SCHEMA \"x-mas\";"
-                    "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
-                    "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
+            (exec! spec ["CREATE SCHEMA \"x-mas\";"
+                         "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
+                         "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
             (sync!)
             (is (= [["Bird Hat"]]
                    (mt/rows (qp/process-query
@@ -205,28 +210,26 @@
     (testing (str "make sure that if a view is dropped and recreated that the original Table object is marked active "
                   "rather than a new one being created (#3331)")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "dropped_views_test"})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)
-            exec!   #(doseq [statement %]
-                       (jdbc/execute! spec [statement]))]
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "dropped_views_test")
         ;; create the DB object
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
-            (exec! ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
-                    "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"
-                    "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
-                    "GRANT ALL ON angry_birds to PUBLIC;"])
+            (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
+                         "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"
+                         "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
+                         "GRANT ALL ON angry_birds to PUBLIC;"])
             ;; now sync the DB
             (sync!)
             ;; drop the view
-            (exec! ["DROP VIEW angry_birds;"])
+            (exec! spec ["DROP VIEW angry_birds;"])
             ;; sync again
             (sync!)
             ;; recreate the view
-            (exec! ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
-                    "GRANT ALL ON angry_birds to PUBLIC;"])
+            (exec! spec ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
+                         "GRANT ALL ON angry_birds to PUBLIC;"])
             ;; sync one last time
             (sync!)
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
@@ -234,6 +237,39 @@
                    (map (partial into {})
                         (db/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
 
+(deftest partitioned-table-test
+  (mt/test-driver :postgres
+    (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are
+                   synced properly (#15049")
+      (let [db-name "partitioned_table_test"
+            details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        ;; create the postgres DB
+        (drop-if-exists-and-create-db! db-name)
+        (let [major-v ((jdbc/with-db-metadata [metadata spec]
+                         #(.getDatabaseMajorVersion ^DatabaseMetaData metadata)))]
+          (if (>= major-v 10)
+            ;; create the DB object
+            (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
+              (let [sync! #(sync/sync-database! database)]
+                ;; create a main partitioned table and two partitions for it
+                (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\")";"
+                             "CREATE TABLE part_vals_0 (val bigint NOT NULL);"
+                             "ALTER TABLE ONLY part_vals ATTACH PARTITION part_vals_0 FOR VALUES FROM (0) TO (1000);"
+                             "CREATE TABLE part_vals_1 (val bigint NOT NULL);"
+                             "ALTER TABLE ONLY part_vals ATTACH PARTITION part_vals_1 FOR VALUES FROM (1000) TO (2000);"
+                             "GRANT ALL ON part_vals to PUBLIC;"
+                             "GRANT ALL ON part_vals_0 to PUBLIC;"
+                             "GRANT ALL ON part_vals_1 to PUBLIC;"])
+                ;; now sync the DB
+                (sync!)
+                ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
+                (is (= {:tables (set (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"]))}
+                       (driver/describe-database :postgres database)))))
+            (println
+             (u/format-color
+              'yellow
+              "Skipping partitioned-table-test; Postgres major version %d doesn't support PARTITION BY" major-v))))))))
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
 
