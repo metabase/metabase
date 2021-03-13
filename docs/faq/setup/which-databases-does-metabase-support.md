@@ -15,6 +15,7 @@ The following databases are officially supported by Metabase:
 - Spark SQL
 - SQLite
 - SQL Server
+- Trino
 - Vertica
 
 You may find some [community-built database drivers](../../developers-guide-drivers.md) for databases that we do not currently support - and you are always welcome to build your own!

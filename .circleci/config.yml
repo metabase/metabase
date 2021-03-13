@@ -815,6 +815,7 @@ jobs:
                   - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
                   - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
                   - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
+                  - /home/circleci/metabase/metabase/modules/drivers/trino/target
                   - /home/circleci/metabase/metabase/modules/drivers/vertica/target
 
   # Build the frontend client. parameters.edition determines whether we build the OSS or EE version.

@@ -38,6 +38,7 @@ For more information check out [metabase.com](https://metabase.com/)
 - SparkSQL
 - SQL Server
 - SQLite
+- Trino
 - Vertica
 
 Don't see your favorite database? Check the list of [community supported drivers](https://www.metabase.com/docs/latest/developers-guide-drivers.html#how-to-use-a-community-built-driver).
@@ -102,7 +103,7 @@ Metabase also allows you to hit our Query API directly from Javascript to integr
 
 # License
 
-This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the commercial edition of Metabase Enterprise, released under the Metabase Commercial Software License. 
+This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the commercial edition of Metabase Enterprise, released under the Metabase Commercial Software License.
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 
