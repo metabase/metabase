@@ -1,4 +1,11 @@
-import { openOrdersTable, restore } from "__support__/cypress";
+import {
+  openOrdersTable,
+  restore,
+  visitQuestionAdhoc,
+} from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
@@ -102,6 +109,33 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.get(".Visualization .axis.x").within(() => {
       cy.findByText("Total").should("not.exist");
     });
+  });
+
+  it.skip("should not be enabled for multi-series questions (metabase#15152)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          ],
+        },
+        database: 1,
+      },
+      display: "line",
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("Visualization").click();
+
+    cy.findByText("Waterfall")
+      .parent()
+      .should("not.have.css", "opacity", "1");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {
