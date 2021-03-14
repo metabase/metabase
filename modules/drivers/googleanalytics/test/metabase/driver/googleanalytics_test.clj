@@ -296,21 +296,24 @@
                          :status    :completed
                          :data      {:rows             [["Toucan Sighting" 1000]]
                                      :native_form      expected-ga-query
-                                     :cols             [{:description     "This is ga:eventLabel"
-                                                         :semantic_type   nil
-                                                         :name            "ga:eventLabel"
-                                                         :settings        nil
-                                                         :source          :breakout
-                                                         :parent_id       nil
-                                                         :visibility_type :normal
-                                                         :display_name    "ga:eventLabel"
-                                                         :fingerprint     nil
-                                                         :base_type       :type/Text}
+                                     :cols             [{:description       "This is ga:eventLabel"
+                                                         :semantic_type     nil
+                                                         :name              "ga:eventLabel"
+                                                         :settings          nil
+                                                         :source            :breakout
+                                                         :parent_id         nil
+                                                         :visibility_type   :normal
+                                                         :display_name      "ga:eventLabel"
+                                                         :fingerprint       nil
+                                                         :base_type         :type/Text
+                                                         :effective_type    :type/Text
+                                                         :coercion_strategy nil}
                                                         {:name         "metric"
                                                          :display_name "ga:totalEvents"
                                                          :source       :aggregation
                                                          :description  "This is ga:totalEvents"
-                                                         :base_type    :type/Text}]
+                                                         :base_type    :type/Text
+                                                         :effective_type    :type/Text}]
                                      :results_timezone system-timezone-id}}
                         (-> (tu/doall-recursive (qp query))
                             (update-in [:data :cols] #(for [col %]
