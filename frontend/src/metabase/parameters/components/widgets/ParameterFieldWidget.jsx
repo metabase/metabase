@@ -30,6 +30,7 @@ type Props = {
   dashboard?: DashboardWithCards,
   parameter?: Parameter,
   parameters?: Parameter[],
+  placeholder?: string,
 };
 
 type State = {
