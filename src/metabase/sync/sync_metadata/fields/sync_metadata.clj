@@ -50,6 +50,8 @@
         new-database-position?
         (not= old-database-position new-database-position)
 
+        ;; these fields are paired by by metabase.sync.sync-metadata.fields.common/canonical-name, so if they are
+        ;; different they have the same canonical representation (lower-casing at the moment).
         new-name? (not= old-database-name new-database-name)
 
         ;; calculate combined updates

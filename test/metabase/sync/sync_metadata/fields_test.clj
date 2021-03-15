@@ -57,7 +57,7 @@
        :after-drop  (f (data/db))})))
 
 (deftest renaming-fields-test
-  (testing "make sure we can identify case changes on a field"
+  (testing "make sure we can identify case changes on a field (#7923)"
     (let [db-state (with-test-db-before-and-after-altering
                      "ALTER TABLE \"birds\" RENAME COLUMN \"example_name\" to \"Example_Name\";"
                      (fn [database]
