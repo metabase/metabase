@@ -1,4 +1,4 @@
-(ns metabase.test.gen2
+(ns metabase.test.generate
   (:require [clojure.spec.alpha :as s]
             [clojure.test.check.generators :as gen]
             [clojure.tools.reader.edn :as edn]
@@ -48,6 +48,7 @@
 (s/def ::topic ::not-empty-string)
 (s/def ::details #{ "{}"})
 
+;(s/def ::timestamp #{(t/instant)})
 (s/def ::timestamp
   (s/with-gen #(instance? java.time.Instant %)
     #(gen/fmap (fn [x] (t/minus (t/instant) (t/seconds x)))
@@ -265,7 +266,7 @@
 (defn- remove-ids [_ {:keys [visit-val] :as visit-opts}]
   (dissoc visit-val :id))
 
-(defn- insert!
+(defn insert!
   "Insert pseudorandom entities to the current database according to `query` specmonstah spec. The process follows
   several steps while building the entities:
 
@@ -284,7 +285,8 @@
                       (rsg/spec-gen-assoc-relations
                        sm-db
                        (assoc visit-opts :visit-val (:spec-gen attrs))))
-                    (catch Throwable e (println e)))))
+                    (catch Throwable e
+                      (println e)))))
       (rs/attr-map :insert!)))
 
 (defn generate-horror-show! []
