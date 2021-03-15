@@ -14,7 +14,7 @@ import Text from "metabase/components/type/Text";
 import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
 
-function colorForType(props) {
+function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
     return color("warning");
   }
@@ -32,7 +32,7 @@ const IconWrapper = styled.div`
   justify-content: center;
   width: 32px;
   height: 32px;
-  color: ${colorForType};
+  color: ${getColorForIconWrapper};
   margin-right: 10px;
   flex-shrink: 0;
 `;
@@ -147,7 +147,7 @@ const Description = styled(Text)`
 `;
 
 function contextText(context) {
-  return context.map(function({ is_match, text }, i) {
+  return context.map(function ({ is_match, text }, i) {
     if (is_match) {
       return (
         <strong key={i} style={{ color: color("brand") }}>
@@ -196,15 +196,14 @@ function InfoText({ result }) {
       );
     case "segment":
     case "metric":
-      return jt`${
-        result.model === "segment" ? "Segment of" : "Metric for"
-      } of ${(
-        <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
-          <Table.Loader id={result.table_id}>
-            {({ table }) => <span>{table.display_name}</span>}
-          </Table.Loader>
-        </Link>
-      )}`;
+      return jt`${result.model === "segment" ? "Segment of" : "Metric for"
+        } of ${(
+          <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
+            <Table.Loader id={result.table_id}>
+              {({ table }) => <span>{table.display_name}</span>}
+            </Table.Loader>
+          </Link>
+        )}`;
     default:
       return jt`${capitalize(result.model)} in ${formatCollection(collection)}`;
   }
