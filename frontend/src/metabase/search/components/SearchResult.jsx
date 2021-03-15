@@ -5,6 +5,7 @@ import { t, jt } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import { color, lighten } from "metabase/lib/colors";
+import { capitalize } from "metabase/lib/formatting";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -205,8 +206,7 @@ export default function SearchResult({ result, compact }) {
       )}`;
       break;
     default:
-      info = jt`${result.model.charAt(0).toUpperCase() +
-        result.model.slice(1)} in ${formatCollection(collection)}`;
+      info = jt`${capitalize(result.model)} in ${formatCollection(collection)}`;
       break;
   }
   return (
