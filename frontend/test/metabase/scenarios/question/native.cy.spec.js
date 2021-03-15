@@ -457,6 +457,7 @@ describe("scenarios > question > native", () => {
           cy.wait("@dataset", { timeout: 5000 }).then(xhr => {
             expect(xhr.response.body.error).not.to.exist;
           });
+          cy.get(".ace_content").should("not.exist");
           cy.findByText("Showing 1 row");
         });
       });
