@@ -171,10 +171,11 @@
     0))
 
 (defn- dashboard-count-score
-  [{:keys [dashboardcard_count]}]
-  (min (/ (or dashboardcard_count 0)
-          search-config/dashboard-count-ceiling)
-       1))
+  [{:keys [model dashboardcard_count]}]
+  (when (= model "card")
+    (min (/ dashboardcard_count
+            search-config/dashboard-count-ceiling)
+         1)))
 
 (defn- recency-score
   [{:keys [updated_at]}]
@@ -237,6 +238,7 @@
   [hit]
   (->> hit
        weights-and-scores
+       (filter :score)
        (map (fn [{:keys [weight score] :as composite-score}]
               (assoc composite-score :weighted-score (* weight score))))))
 
@@ -264,7 +266,8 @@
   [raw-search-string result]
   (when-let [hit (text-score-with-match raw-search-string result)]
     (let [scores (weighted-scores hit)]
-      {:score      (reduce + (map :weighted-score scores))
+      {:score      (/ (reduce + (map :weighted-score scores))
+                      (reduce + (map :weight scores)))
        :result     (serialize hit scores)})))
 
 (defn top-results
