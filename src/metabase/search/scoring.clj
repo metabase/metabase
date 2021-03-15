@@ -42,24 +42,18 @@
 
 ;;; Scoring
 
-(defn- hits->ratio
-  [hits total]
-  (/ hits total))
-
 (defn- matches?
-  [search-term haystack]
-  (str/includes? haystack search-term))
+  [search-token match-token]
+  (str/includes? match-token search-token))
 
 (defn- matches-in?
-  [term haystack-tokens]
-  (some #(matches? term %) haystack-tokens))
+  [search-token match-tokens]
+  (some #(matches? search-token %) match-tokens))
 
 (defn- score-ratios
   [search-tokens result-tokens fs]
   (map (fn [f]
-         (hits->ratio
-          (f search-tokens result-tokens)
-          (count search-tokens)))
+         (f search-tokens result-tokens))
        fs))
 
 (defn- tokens->string
@@ -116,23 +110,42 @@
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
-  (largest-common-subseq-length
-   matches?
-   ;; See comment on largest-common-subseq-length re. its cache. This is a little conservative, but better to under- than over-estimate
-   (take 30 query-tokens)
-   (take 30 match-tokens)))
+  (/ (largest-common-subseq-length
+      matches?
+      ;; See comment on largest-common-subseq-length re. its cache. This is a little conservative, but better to under- than over-estimate
+      (take 30 query-tokens)
+      (take 30 match-tokens))
+     (count query-tokens)))
+
+(defn- occurrences
+  [query-tokens match-tokens token-matches?]
+  (reduce (fn [tally token]
+            (if (token-matches? token match-tokens)
+              (inc tally)
+              tally))
+          0
+          query-tokens))
 
 (defn- total-occurrences-scorer
-  [tokens haystack]
-  (->> tokens
-       (map #(if (matches-in? % haystack) 1 0))
-       (reduce +)))
+  "How many search tokens show up in the result?"
+  [query-tokens match-tokens]
+  (/ (occurrences query-tokens match-tokens matches-in?)
+     (count query-tokens)))
 
 (defn- exact-match-scorer
-  [tokens haystack]
-  (->> tokens
-       (map #(if (some (partial = %) haystack) 1 0))
-       (reduce +)))
+  "How many search tokens are exact matches (perfect string match, not `includes?`) in the result?"
+  [query-tokens match-tokens]
+  (/ (occurrences query-tokens match-tokens #(some (partial = %1) %2))
+     (count query-tokens)))
+
+(defn fullness-scorer
+  "How much of the *result* is covered by the search query?"
+  [query-tokens match-tokens]
+  (let [match-token-count (count match-tokens)]
+    (if (zero? match-token-count)
+      0
+      (/ (occurrences query-tokens match-tokens matches-in?)
+         match-token-count))))
 
 (defn- weigh-by
   [factor scorer]
@@ -142,6 +155,7 @@
   ;; If the below is modified, be sure to update `text-score-max`!
   [consecutivity-scorer
    total-occurrences-scorer
+   fullness-scorer
    (weigh-by 2 exact-match-scorer)])
 
 (def ^:private model->sort-position

@@ -90,6 +90,24 @@
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
+(deftest fullness-scorer-test
+  (let [score (scorer->score #'search/fullness-scorer)]
+    (testing "partial matches"
+      (is (= 1/8
+             (score ["rasta" "el" "tucan"]
+                    (result-row "Here is Rasta the hero of many lands")))))
+    (testing "full matches"
+      (is (= 1
+             (score ["rasta" "the" "toucan"]
+                    (result-row "Rasta the Toucan")))))
+    (testing "misses"
+      (is (nil?
+           (score ["rasta"]
+                  (result-row "just a straight-up imposter"))))
+      (is (nil?
+           (score ["rasta" "the" "toucan"]
+                  (result-row "")))))))
+
 (deftest exact-match-scorer-test
   (let [score (scorer->score #'search/exact-match-scorer)]
     (is (nil?
@@ -182,7 +200,8 @@
 
 (deftest pinned-score-test
   (let [score #'search/pinned-score
-        item (fn [collection-position] {:collection_position collection-position})]
+        item (fn [collection-position] {:collection_position collection-position
+                                        :model "card"})]
     (testing "it provides a sortable score, but doesn't favor magnitude"
       (let [result (->> [(item 0)
                          (item nil)
