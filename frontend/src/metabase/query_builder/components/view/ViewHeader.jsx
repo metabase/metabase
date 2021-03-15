@@ -5,6 +5,7 @@ import { Box } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
+import ViewButton from "metabase/query_builder/components/view/ViewButton"
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
@@ -276,7 +277,10 @@ export class ViewTitleHeader extends React.Component {
                 question.metadata(),
               ).getUrl()}
             >
-              <div className="Button Button--primary">Explore results</div>
+              <ViewButton className="flex align-center">
+                <Icon name="insight" mr="4px" />
+                {t`Explore results`}
+              </ViewButton>
             </Link>
           )}
           {isRunnable && !isNativeEditorOpen && (
@@ -298,7 +302,7 @@ export class ViewTitleHeader extends React.Component {
             />
           )}
         </div>
-      </ViewSection>
+      </ViewSection >
     );
   }
 }
