@@ -146,7 +146,7 @@ const Description = styled(Text)`
 `;
 
 function contextText(context) {
-  return context.map(function ({ is_match, text }) {
+  return context.map(function({ is_match, text }) {
     if (is_match) {
       return <strong style={{ color: color("brand") }}> {text}</strong>;
     } else {
@@ -194,14 +194,15 @@ export default function SearchResult({ result, compact }) {
       break;
     case "segment":
     case "metric":
-      info = jt`${result.model === "segment" ? "Segment of" : "Metric for"
-        } of ${(
-          <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
-            <Table.Loader id={result.table_id}>
-              {({ table }) => <span>{table.display_name}</span>}
-            </Table.Loader>
-          </Link>
-        )}`;
+      info = jt`${
+        result.model === "segment" ? "Segment of" : "Metric for"
+      } of ${(
+        <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
+          <Table.Loader id={result.table_id}>
+            {({ table }) => <span>{table.display_name}</span>}
+          </Table.Loader>
+        </Link>
+      )}`;
       break;
     default:
       info = jt`${result.model.charAt(0).toUpperCase() +
