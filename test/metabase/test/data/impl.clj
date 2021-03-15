@@ -71,7 +71,8 @@
             (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
             (db/update! Field (:id @field) :visibility_type (name visibility-type)))
           (when special-type
-            (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
+            (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name
+                               special-type))
             (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
 
 (def ^:private create-database-timeout-ms
