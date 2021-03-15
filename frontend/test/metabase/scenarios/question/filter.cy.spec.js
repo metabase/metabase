@@ -860,4 +860,32 @@ describe("scenarios > question > filter", () => {
     });
     cy.findByText("wilma-muller");
   });
+
+  it("should reject a number literal", () => {
+    openProductsTable();
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .type("3.14159");
+    cy.findAllByRole("button", { name: "Done" })
+      .should("not.be.disabled")
+      .click();
+    cy.findByText("Expecting boolean but found 3.14159");
+  });
+
+  it("should reject a string literal", () => {
+    openProductsTable();
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .type('"TheAnswer"');
+    cy.findAllByRole("button", { name: "Done" })
+      .should("not.be.disabled")
+      .click();
+    cy.findByText('Expecting boolean but found "TheAnswer"');
+  });
 });
