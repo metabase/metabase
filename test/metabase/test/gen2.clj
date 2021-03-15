@@ -47,7 +47,11 @@
 (s/def ::str? (s/or :nil nil? :string string?))
 (s/def ::topic ::not-empty-string)
 (s/def ::details #{ "{}"})
-(s/def ::timestamp #{(t/instant)})
+
+(s/def ::timestamp
+  (s/with-gen #(instance? java.time.Instant %)
+    #(gen/fmap (fn [x] (t/minus (t/instant) (t/seconds x)))
+               (gen/choose 0 (* 3600 24 365 3)))))  ;; 3 years in secs
 
 (s/def ::user_id ::id)
 (s/def ::group_id ::id)
