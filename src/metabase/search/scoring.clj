@@ -79,7 +79,7 @@
 
 (def ^:const text-score-max
   "The maximum text score that could be achieved without normalization. This value is then used to normalize it down to the interval [0, 1]"
-  4)
+  9/2)
 
 (defn- text-score-with
   [scoring-fns query-tokens search-result]
@@ -151,7 +151,7 @@
   ;; If the below is modified, be sure to update `text-score-max`!
   [consecutivity-scorer
    total-occurrences-scorer
-   fullness-scorer
+   (weigh-by 1/2 fullness-scorer)
    (weigh-by 2 exact-match-scorer)])
 
 (def ^:private model->sort-position
