@@ -147,11 +147,16 @@ const Description = styled(Text)`
 `;
 
 function contextText(context) {
-  return context.map(function({ is_match, text }) {
+  return context.map(function({ is_match, text }, i) {
     if (is_match) {
-      return <strong style={{ color: color("brand") }}> {text}</strong>;
+      return (
+        <strong key={i} style={{ color: color("brand") }}>
+          {" "}
+          {text}
+        </strong>
+      );
     } else {
-      return <span> {text}</span>;
+      return <span key={i}> {text}</span>;
     }
   });
 }
