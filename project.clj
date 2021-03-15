@@ -142,13 +142,11 @@
    [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
-   [reifyhealth/specmonstah "2.0.0"]                                  ; Generate fixtures to test huge databases
    [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
    [ring/ring-core "1.8.0"]
    [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [talltale "0.4.3"]                                                 ; Generate realistic data for fixtures
    [toucan "1.15.3" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
                                  org.clojure/tools.namespace
@@ -202,7 +200,10 @@
      [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.10.0"]
-     [ring/ring-mock "0.4.0"]]
+     [reifyhealth/specmonstah "2.0.0"]                                ; Generate fixtures to test huge databases
+     [ring/ring-mock "0.4.0"]
+     [talltale "0.5.4"]                                               ; Generate realistic data for fixtures
+     ]
 
     :plugins
     [[lein-environ "1.1.0"] ; easy access to environment variables

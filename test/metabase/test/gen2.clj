@@ -15,16 +15,21 @@
             [talltale.core :as tt]
             [toucan.db :as tdb]))
 
-(def ^:private edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
-
-(defonce ^:private sample-dataset
-  (edn/read-string {:eof nil, :readers {'t #'u.date/parse}}
-                   (slurp (str edn-definitions-dir "sample-dataset.edn"))))
+(def ^:private ^:const product-names
+  {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome,
+                Enormous, Mediocre, Synergistic, Heavy-Duty, Lightweight, Aerodynamic, Durable]
+   :material '[Steel, Wooden, Concrete, Plastic, Cotton, Granite, Rubber, Leather, Silk, Wool, Linen, Marble, Iron,
+               Bronze, Copper, Aluminum, Paper]
+   :product '[Chair, Car, Computer, Gloves, Pants, Shirt, Table, Shoes, Hat, Plate, Knife, Bottle, Coat, Lamp,
+              Keyboard, Bag, Bench, Clock, Watch, Wallet]})
 
 (defn- random-desc
-  "Return a random name from sample-dataset"
+  "Return a random product name."
   []
-  (second (rand-nth (nth (first sample-dataset) 2))))
+  (format "%s %s %s"
+          (rand-nth (product-names :adjective))
+          (rand-nth (product-names :material))
+          (rand-nth (product-names :product))))
 
 (defn- coin-toss
   ([] (coin-toss 0.5))
@@ -49,25 +54,19 @@
 
 (s/def ::email
   (s/with-gen string?
-    #(gen/fmap (fn [_] (talltale.core/email))
+    #(gen/fmap (fn [_] (tt/email))
                (gen/return nil))))
-
-;; (s/def ::description
-;;   (s/with-gen string?
-;;     #(gen/fmap
-;;       (fn [_] (random-desc))
-;;       (gen/return nil))))
 
 (s/def ::first_name
   (s/with-gen string?
     #(gen/fmap
-      (fn [_] (talltale.core/first-name))
+      (fn [_] (tt/first-name))
       (gen/return nil))))
 
 (s/def ::last_name
   (s/with-gen string?
     #(gen/fmap
-      (fn [_] (talltale.core/last-name))
+      (fn [_] (tt/last-name))
       (gen/return nil))))
 
 (s/def ::weird-str
@@ -83,15 +82,13 @@
               (coin-toss 0.1)
               (str (rand-nth "áîëç£¢™🍒"))
               (coin-toss 0.01)
-              (str (subs (talltale.core/lorem-ipsum) 1 200))
+              (str (subs (tt/lorem-ipsum) 1 200))
               (coin-toss 0.01)
-              (-> first str)
-              )))
+              (-> first str))))
         (gen/return nil)))))
 
 (s/def ::name ::weird-str)
 (s/def ::description ::weird-str)
-;;; (gen/generate (s/gen ::weird-str))
 
 ;; * card
 (s/def ::display #{:table})
