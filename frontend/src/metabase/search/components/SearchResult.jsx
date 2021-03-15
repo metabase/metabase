@@ -125,7 +125,7 @@ function TableResult({ table, options }) {
             Table in &nbsp;
             <span>
               <Link to={Urls.browseDatabase({ id: table.database_id })}>
-                <Database.Name id={table.database_id} />{" "}
+                <Database.Name id={table.database_id} />&nbsp;
               </Link>
               {table.table_schema && (
                 <span>
