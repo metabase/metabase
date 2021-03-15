@@ -53,8 +53,8 @@
       ;; ...and re-sync...
       (sync/sync-database! (data/db))
       ;; ...now let's see how (f) may have changed! Compare to original.
-      {:before-drop f-before
-       :after-drop  (f (data/db))})))
+      {:before-sync f-before
+       :after-sync  (f (data/db))})))
 
 (deftest renaming-fields-test
   (testing "make sure we can identify case changes on a field (#7923)"
@@ -65,9 +65,9 @@
                         (map (partial into {})
                              (db/select [Field :id :name :active]
                                         :table_id [:in (db/select-ids Table :db_id (u/get-id database))])))))]
-      (is (= {:before-drop #{{:name "species",      :active true}
+      (is (= {:before-sync #{{:name "species",      :active true}
                              {:name "example_name", :active true}}
-              :after-drop #{{:name "species",      :active true}
+              :after-sync #{{:name "species",      :active true}
                             {:name "Example_Name", :active true}}}
              (m/map-vals (fn [results] (into (empty results)
                                              (map #(dissoc % :id))
@@ -75,14 +75,14 @@
                          db-state)))
       (testing "It sees this as the same field and not a new field"
         (let [ids-of (fn [k] (->> db-state k (into #{} (map :id))))]
-          (is (= (ids-of :before-drop) (ids-of :after-drop))))))))
+          (is (= (ids-of :before-sync) (ids-of :after-sync))))))))
 
 
 (deftest dropping-fields-test
   (testing "make sure sync correctly marks a Field as active = false when it gets dropped from the DB"
-    (is (= {:before-drop #{{:name "species",      :active true}
+    (is (= {:before-sync #{{:name "species",      :active true}
                            {:name "example_name", :active true}}
-            :after-drop  #{{:name "species",      :active true}
+            :after-sync  #{{:name "species",      :active true}
                            {:name "example_name", :active false}}}
            (with-test-db-before-and-after-altering
              "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
@@ -92,8 +92,8 @@
                      (db/select [Field :name :active]
                                 :table_id [:in (db/select-ids Table :db_id (u/get-id database))]))))))))
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
-    (is (= {:before-drop #{"species" "example_name"}
-            :after-drop  #{"species"}}
+    (is (= {:before-sync #{"species" "example_name"}
+            :after-sync  #{"species"}}
            (with-test-db-before-and-after-altering
              "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
              (fn [database]
@@ -107,11 +107,11 @@
     ;; put in queries with implicit `:fields` clauses, but since this could be seen as covering both QP and sync (my and
     ;; others' assumption when first coming across bug #6146 was that this was a sync issue), this test can stay here for
     ;; now along with the other test we have testing sync after dropping a column.
-    (is (= {:before-drop (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\", "
+    (is (= {:before-sync (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\", "
                               "\"PUBLIC\".\"birds\".\"example_name\" AS \"example_name\" "
                               "FROM \"PUBLIC\".\"birds\" "
                               "LIMIT 1048576")
-            :after-drop  (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\" "
+            :after-sync  (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\" "
                               "FROM \"PUBLIC\".\"birds\" "
                               "LIMIT 1048576")}
            (with-test-db-before-and-after-altering
