@@ -28,13 +28,6 @@ describe("type-checker", () => {
     return { cst, typeErrors };
   }
 
-  function validate(source) {
-    const { typeErrors } = parseSource(source, "expression");
-    if (typeErrors.length > 0) {
-      throw new Error(typeErrors[0].message);
-    }
-  }
-
   function collect(source, startRule) {
     class Collector extends ExpressionVisitor {
       constructor() {
@@ -70,6 +63,13 @@ describe("type-checker", () => {
     function expr(source) {
       return collect(source, "expression");
     }
+    function validate(source) {
+      const { typeErrors } = parseSource(source, "expression");
+      if (typeErrors.length > 0) {
+        throw new Error(typeErrors[0].message);
+      }
+    }
+
     it("should resolve dimensions correctly", () => {
       expect(expr("[Price]+[Tax]").dimensions).toEqual(["Price", "Tax"]);
       expect(expr("ABS([Discount])").dimensions).toEqual(["Discount"]);
