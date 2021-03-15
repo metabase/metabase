@@ -48,12 +48,11 @@
 
                    ;; TIMEZONE FIXME -- the value of this changes based on whether we are in DST. This is B R O K E N
                    (qp.test/supports-report-timezone? driver/*driver*)
-                   (let [offset (t/zone-offset (t/zoned-date-time (t/local-date) (t/local-time) (t/zone-id "America/Los_Angeles")))]
-                     [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" (str "08:30:00" offset)]
-                      [2 "Felipinho Asklepios" "2014-12-05T00:00:00-08:00" (str "15:15:00" offset)]
-                      [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00-08:00" (str "16:15:00" offset)]
-                      [4 "Simcha Yan"          "2014-01-01T00:00:00-08:00" (str "08:30:00" offset)]
-                      [5 "Quentin Sören"       "2014-10-03T00:00:00-07:00" (str "17:30:00" offset)]])
+                   [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" "08:30:00-08:00"]
+                    [2 "Felipinho Asklepios" "2014-12-05T00:00:00-08:00" "15:15:00-08:00"]
+                    [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00-08:00" "16:15:00-08:00"]
+                    [4 "Simcha Yan"          "2014-01-01T00:00:00-08:00" "08:30:00-08:00"]
+                    [5 "Quentin Sören"       "2014-10-03T00:00:00-07:00" "17:30:00-08:00"]]
 
                    :else
                    [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
