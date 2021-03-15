@@ -50,12 +50,6 @@
   [search-token match-tokens]
   (some #(matches? search-token %) match-tokens))
 
-(defn- score-ratios
-  [search-tokens result-tokens fs]
-  (map (fn [f]
-         (f search-tokens result-tokens))
-       fs))
-
 (defn- tokens->string
   [tokens abbreviate?]
   (let [->string (partial str/join " ")
@@ -95,9 +89,11 @@
                                               (search-config/column->string (:model search-result) column))
                              match-tokens (some-> matched-text normalize tokenize)
                              score        (and matched-text
-                                               (reduce + (score-ratios query-tokens
-                                                                       match-tokens
-                                                                       scoring-fns)))]
+                                               (reduce (fn [tally f]
+                                                         (+ tally
+                                                            (f query-tokens match-tokens)))
+                                                       0
+                                                       scoring-fns))]
                      :when  (and matched-text
                                  (> score 0))]
                  {:text-score          (/ score text-score-max)
