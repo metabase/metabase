@@ -106,6 +106,18 @@ describe("scenarios > question > notebook", () => {
     cy.contains(/^Function contains expects 2 arguments/i);
   });
 
+  it("should show the correct number of CASE arguments in a custom expression", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']").type("CASE([Price]>0)");
+      cy.findByPlaceholderText("Something nice and descriptive")
+        .click()
+        .type("Sum Divide");
+      cy.contains(/^CASE expects 2 arguments or more/i);
+    });
+  });
+
   describe("joins", () => {
     it("should allow joins", () => {
       // start a custom question with orders
