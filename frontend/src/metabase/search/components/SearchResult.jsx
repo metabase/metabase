@@ -147,7 +147,7 @@ const Description = styled(Text)`
 `;
 
 function contextText(context) {
-  return context.map(function ({ is_match, text }, i) {
+  return context.map(function({ is_match, text }, i) {
     if (is_match) {
       return (
         <strong key={i} style={{ color: color("brand") }}>
@@ -196,14 +196,15 @@ function InfoText({ result }) {
       );
     case "segment":
     case "metric":
-      return jt`${result.model === "segment" ? "Segment of" : "Metric for"
-        } of ${(
-          <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
-            <Table.Loader id={result.table_id}>
-              {({ table }) => <span>{table.display_name}</span>}
-            </Table.Loader>
-          </Link>
-        )}`;
+      return jt`${
+        result.model === "segment" ? "Segment of" : "Metric for"
+      } of ${(
+        <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
+          <Table.Loader id={result.table_id}>
+            {({ table }) => <span>{table.display_name}</span>}
+          </Table.Loader>
+        </Link>
+      )}`;
     default:
       return jt`${capitalize(result.model)} in ${formatCollection(collection)}`;
   }
