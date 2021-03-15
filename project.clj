@@ -191,6 +191,12 @@
    {:source-paths ["enterprise/backend/src"]
     :test-paths   ["enterprise/backend/test"]}
 
+   :socket
+   {:dependencies
+    [[vlaaad/reveal "1.3.196"]]
+    :jvm-opts
+    ["-Dclojure.server.repl={:port 5555 :accept clojure.core.server/repl}"]}
+
    :dev
    {:source-paths ["dev/src" "local/src"]
     :test-paths   ["test" "backend/mbql/test" "shared/test"]
