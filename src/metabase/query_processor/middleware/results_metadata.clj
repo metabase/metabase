@@ -114,7 +114,7 @@
   (mapv
    (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
-      (select-keys final-col [:name :display_name :base_type :semantic_type :id :field_ref])
+      (select-keys final-col [:name :display_name :base_type :effective_type :coercion_strategy :semantic_type :id :field_ref])
       insights-col
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))

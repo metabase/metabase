@@ -250,7 +250,7 @@
   "Normalize source/results metadata for a single column."
   [metadata]
   {:pre [(map? metadata)]}
-  (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :semantic_type :visibility_type :source :unit])
+  (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
       (m/update-existing :field_ref (comp canonicalize-mbql-clauses normalize-tokens))
       (m/update-existing :fingerprint walk/keywordize-keys)))
 

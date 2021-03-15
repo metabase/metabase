@@ -162,7 +162,7 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))
 
-(defmethod sql.qp/cast-temporal-string [:mysql :type/ISO8601DateTimeString]
+(defmethod sql.qp/cast-temporal-string [:mysql :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
   (hx/->datetime expr))
 

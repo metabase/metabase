@@ -2,7 +2,8 @@
   "Middleware for automatically bucketing unbucketed `:type/Temporal` (but not `:type/Time`) Fields with `:day`
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
-  (:require [medley.core :as m]
+  (:require [clojure.set :as set]
+            [medley.core :as m]
             [metabase.mbql.predicates :as mbql.preds]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -34,9 +35,14 @@
               [id-or-name {:base-type base-type}]))
    ;; build map of field ID -> <info from DB>
    (when-let [field-ids (seq (filter integer? (map second unbucketed-fields)))]
-     (into {} (for [{id :id, base-type :base_type, semantic-type :semantic_type} (db/select [Field :id :base_type :semantic_type]
-                                                                                   :id [:in (set field-ids)])]
-                [id {:base-type base-type, :semantic-type semantic-type}])))))
+     (into {} (for [{id :id, :as field}
+                    (db/select [Field :id :base_type :effective_type :semantic_type]
+                      :id [:in (set field-ids)])]
+                [id (set/rename-keys (select-keys field
+                                                  [:base_type :effective_type :semantic_type])
+                                     {:base_type      :base-type
+                                      :effective_type :effective-type
+                                      :semantic_type  :semantic-type})])))))
 
 (defn- yyyy-MM-dd-date-string? [x]
   (and (string? x)
@@ -69,11 +75,11 @@
         (let [[_ _ opts] x]
           ((some-fn :temporal-unit :binning) opts)))))
 
-(defn- date-or-datetime-field? [{base-type :base-type, semantic-type :semantic-type}]
+(defn- date-or-datetime-field? [{base-type :base-type, effective-type :effective-type}]
   (some (fn [field-type]
           (some #(isa? field-type %)
                 [:type/Date :type/DateTime]))
-        [base-type semantic-type]))
+        [base-type effective-type]))
 
 (s/defn ^:private wrap-unbucketed-fields
   "Add `:temporal-unit` to `:field`s in breakouts and filters if appropriate; look at corresponing type information in

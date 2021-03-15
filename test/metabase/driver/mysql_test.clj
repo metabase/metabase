@@ -57,7 +57,7 @@
 (tx/defdataset ^:private tiny-int-ones
   [["number-of-cans"
      [{:field-name "thing",          :base-type :type/Text}
-      {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}}]
+      {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}, :effective-type :type/Integer}]
      [["Six Pack"              6]
       ["Toucan"                2]
       ["Empty Vending Machine" 0]]]])
@@ -89,7 +89,7 @@
 
 (tx/defdataset ^:private year-db
   [["years"
-    [{:field-name "year_column", :base-type {:native "YEAR"}}]
+    [{:field-name "year_column", :base-type {:native "YEAR"}, :effective-type :type/Date}]
     [[2001] [2002] [1999]]]])
 
 (deftest year-test

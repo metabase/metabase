@@ -12,6 +12,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.related :as related]
+            [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
@@ -26,6 +27,11 @@
   "Schema for a valid `Field` type."
   (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :type/*))
     "value must be a valid field type."))
+
+(def ^:private CoercionType
+  "Schema for a valid `Coercion` type."
+  (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :Coercion/*))
+    "value must be a valid coercion type."))
 
 (def ^:private FieldVisibilityType
   "Schema for a valid `Field` visibility type."
@@ -93,7 +99,7 @@
 (api/defendpoint PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
-                   visibility_type has_field_values settings]
+                   coercion_strategy visibility_type has_field_values settings]
             :as   body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
@@ -101,11 +107,14 @@
    fk_target_field_id (s/maybe su/IntGreaterThanZero)
    points_of_interest (s/maybe su/NonBlankString)
    semantic_type      (s/maybe FieldType)
+   coercion_strategy  (s/maybe CoercionType)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
+        effective-type     (or (types/effective_type_for_coercion coercion_strategy)
+                               (:base_type field))
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
@@ -123,8 +132,11 @@
           true)
         (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
         (db/update! Field id
-          (u/select-keys-when (assoc body :fk_target_field_id (when-not removed-fk? fk-target-field-id))
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+          (u/select-keys-when (assoc body
+                                     :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                                     :effective_type effective-type
+                                     :coercion_strategy coercion_strategy)
+            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type :coercion_strategy :effective_type
                        :has_field_values}
             :non-nil #{:display_name :settings})))))
     ;; return updated field

@@ -201,11 +201,11 @@
   (hx/+ (hsql/raw "timestamp '1970-01-01 00:00:00 UTC'")
         (num-to-ds-interval :second field-or-value)))
 
-(defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateTimeString]
+(defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
   (hsql/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
 
-(defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateString]
+(defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->Date]
   [_driver _semantic_type expr]
   (hsql/call :to_date expr "YYYY-MM-DD"))
 

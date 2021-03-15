@@ -23,7 +23,7 @@
 
 (mt/defdataset ^:private genetic-data
   [["genetic-data"
-    [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}}]
+    [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}, :effective-type :type/Text}]
     [[(a-gene)]]]])
 
 (deftest clobs-should-come-back-as-text-test

@@ -58,6 +58,7 @@
                  :visibility_type  "normal"
                  :database_type    "VARCHAR"
                  :base_type        "type/Text"
+                 :effective_type   "type/Text"
                  :has_field_values "list"
                  :dimensions       []
                  :name_field       nil})
