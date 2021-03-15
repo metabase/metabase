@@ -161,18 +161,15 @@ function contextText(context) {
   });
 }
 
-export default function SearchResult({ result, compact }) {
-  let info;
+function InfoText({ result }) {
   const collection = result.getCollection();
   switch (result.model) {
     case "card":
-      info = jt`Saved question in ${formatCollection(collection)}`;
-      break;
+      return jt`Saved question in ${formatCollection(collection)}`;
     case "collection":
-      info = t`Collection`;
-      break;
+      return t`Collection`;
     case "table":
-      info = (
+      return (
         <span>
           {jt`Table in ${(
             <span>
@@ -197,10 +194,9 @@ export default function SearchResult({ result, compact }) {
           )}`}
         </span>
       );
-      break;
     case "segment":
     case "metric":
-      info = jt`${
+      return jt`${
         result.model === "segment" ? "Segment of" : "Metric for"
       } of ${(
         <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
@@ -209,18 +205,21 @@ export default function SearchResult({ result, compact }) {
           </Table.Loader>
         </Link>
       )}`;
-      break;
     default:
-      info = jt`${capitalize(result.model)} in ${formatCollection(collection)}`;
-      break;
+      return jt`${capitalize(result.model)} in ${formatCollection(collection)}`;
   }
+}
+
+export default function SearchResult({ result, compact }) {
   return (
     <ResultLink to={result.getUrl()} compact={compact}>
       <Flex align="start">
         <ItemIcon item={result} type={result.model} />
         <Box>
           <Title>{result.name}</Title>
-          <Text>{info}</Text>
+          <Text>
+            <InfoText result={result} />
+          </Text>
           {result.description && (
             <Description>{result.description}</Description>
           )}
