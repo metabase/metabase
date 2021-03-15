@@ -99,11 +99,13 @@
                      :let   [matched-text (-> search-result
                                               (get column)
                                               (search-config/column->string (:model search-result) column))
-                             match-tokens (-> matched-text normalize tokenize)
-                             score        (reduce + (score-ratios query-tokens
-                                                                  match-tokens
-                                                                  scoring-fns))]
-                     :when  (> score 0)]
+                             match-tokens (some-> matched-text normalize tokenize)
+                             score        (and matched-text
+                                               (reduce + (score-ratios query-tokens
+                                                                       match-tokens
+                                                                       scoring-fns)))]
+                     :when  (and matched-text
+                                 (> score 0))]
                  {:text-score          (/ score text-score-max)
                   :match               matched-text
                   :match-context-thunk #(match-context query-tokens match-tokens)
