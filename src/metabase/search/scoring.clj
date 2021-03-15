@@ -163,12 +163,13 @@
                      result)))
 
 (defn- pinned-score
-  [{:keys [:collection_position]}]
+  [{:keys [model collection_position]}]
   ;; We experimented with favoring lower collection positions, but it wasn't good
   ;; So instead, just give a bonus for items that are pinned at all
-  (if ((fnil pos? 0) collection_position)
-    1
-    0))
+  (when (#{"card" "dashboard" "pulse"} model)
+    (if ((fnil pos? 0) collection_position)
+      1
+      0)))
 
 (defn- dashboard-count-score
   [{:keys [model dashboardcard_count]}]
