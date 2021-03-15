@@ -875,6 +875,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.server();
       cy.route("POST", "/api/mt/gtap").as("sandboxTable");
+      cy.route("GET", "/api/permissions/group").as("tablePermissions");
 
       cy.log(
         "Create question that will have differently-typed columns than the sandboxed table",
@@ -891,10 +892,13 @@ describeWithToken("formatting > sandboxes", () => {
         visualization_settings: {},
       });
 
-      cy.visit("/admin/permissions/databases/1/schemas/PUBLIC/tables");
+      cy.visit("/admin/permissions/databases/1/schemas");
+      cy.findByText("View tables").click();
       // |                | All users | collection |
       // |--------------- |:---------:|:----------:|
       // | Orders         |   X (0)   |    X (1)   |
+
+      cy.wait("@tablePermissions");
       cy.icon("close")
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();

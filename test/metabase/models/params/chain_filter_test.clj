@@ -161,11 +161,11 @@
                (chain-filter/filterable-field-ids %venues.price #{})))))))
 
 (deftest chain-filter-search-test
-  (testing "Show me categories starting with s (case-insensitive) that have expensive restaurants"
+  (testing "Show me categories containing 'eak' (case-insensitive) that have expensive restaurants"
     (is (= ["Steakhouse"]
-           (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "s")))))
-  (testing "Show me cheap restaurants starting with 'taco' (case-insensitive)"
-    (is (= ["Tacos Villa Corona"]
+           (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "eak")))))
+  (testing "Show me cheap restaurants including with 'taco' (case-insensitive)"
+    (is (= ["Tacos Villa Corona" "Tito's Tacos"]
            (mt/$ids (chain-filter/chain-filter-search %venues.name {%venues.price 1} "tAcO")))))
   (testing "search for something crazy = should return empty results"
     (is (= []
@@ -209,15 +209,15 @@
 
 (deftest human-readable-values-remapped-chain-filter-search-test
   (with-human-readable-values-remapping
-    (testing "Show me category IDs [whose name] starts with s"
+    (testing "Show me category IDs [whose name] contains 'bar'"
       (doseq [constraints [nil {}]]
         (testing (format "\nconstraints = %s" (pr-str constraints))
-          (is (= [[64 "Southern"]
-                  [67 "Steakhouse"]]
-                 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "s")))))))
-    (testing "Show me category IDs [whose name] starts with s that have expensive restaurants"
+          (is (= [[7 "Bar"]
+                  [74 "Wine Bar"]]
+                 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "bar")))))))
+    (testing "Show me category IDs [whose name] contains 'house' that have expensive restaurants"
       (is (= [[67 "Steakhouse"]]
-             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "s")))))
+             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "house")))))
     (testing "search for something crazy: should return empty results"
       (is (= []
              (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "zzzzz")))))))
@@ -241,15 +241,16 @@
 
 (deftest field-to-field-remapped-chain-filter-search-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
-    (testing "Show me venue IDs that [have a remapped name that] start with s"
-      (is (= [[90 "Señor Fish"]
-              [46 "Shanghai Dumpling King"]
-              [65 "Slate"]]
-             (take 3 (chain-filter/chain-filter-search (mt/id :venues :id) nil "s")))))
-    (testing "Show me venue IDs that [have a remapped name that] start with s that are expensive"
+    (testing "Show me venue IDs that [have a remapped name that] contains 'sushi'"
+      (is (= [[76 "Beyond Sushi"]
+              [80 "Blue Ribbon Sushi"]
+              [77 "Sushi Nakazawa"]]
+             (take 3 (chain-filter/chain-filter-search (mt/id :venues :id) nil "sushi")))))
+    (testing "Show me venue IDs that [have a remapped name that] contain 'sushi' that are expensive"
       (is (= [[77 "Sushi Nakazawa"]
-              [79 "Sushi Yasuda"]]
-             (mt/$ids (chain-filter/chain-filter-search %venues.id {%venues.price 4} "s")))))
+              [79 "Sushi Yasuda"]
+              [81 "Tanoshi Sushi & Sake Bar"]]
+             (mt/$ids (chain-filter/chain-filter-search %venues.id {%venues.price 4} "sushi")))))
     (testing "search for something crazy = should return empty results"
       (is (= []
              (mt/$ids (chain-filter/chain-filter-search %venues.id {%venues.price 4} "zzzzz")))))))
@@ -281,15 +282,16 @@
 
 (deftest fk-field-to-field-remapped-chain-filter-search-test
   (with-fk-field-to-field-remapping
-    (testing "Show me categories starting with s"
+    (testing "Show me categories containing 'ar'"
       (doseq [constraints [nil {}]]
         (testing (format "\nconstraints = %s" (pr-str constraints))
-          (is (= [[64 "Southern"]
-                  [67 "Steakhouse"]]
-                 (take 3 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "s"))))))))
-    (testing "Show me categories starting with s that have expensive restaurants"
+          (is (= [[3 "Artisan"]
+                  [7 "Bar"]
+                  [14 "Caribbean"]]
+                 (take 3 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "ar"))))))))
+    (testing "Show me categories containing 'house' that have expensive restaurants"
       (is (= [[67 "Steakhouse"]]
-             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "s")))))
+             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "house")))))
     (testing "search for something crazy = should return empty results"
       (is (= []
              (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "zzzzz")))))))

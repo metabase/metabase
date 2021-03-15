@@ -139,7 +139,7 @@ export const DashboardApi = {
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
-  parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:prefix"),
+  parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
 
   listPublic: GET("/api/dashboard/public"),
@@ -470,7 +470,7 @@ function setParamsEndpoints(prefix: string) {
     prefix + "/dashboard/:dashId/params/:paramId/values",
   );
   DashboardApi.parameterSearch = GET(
-    prefix + "/dashboard/:dashId/params/:paramId/search/:prefix",
+    prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
 
