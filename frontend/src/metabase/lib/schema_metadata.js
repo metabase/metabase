@@ -743,3 +743,7 @@ export function getFilterArgumentFormatOptions(filterOperator, index) {
     {}
   );
 }
+
+export function isEqualsOperator(operator) {
+  return !!operator && operator.name === "=";
+}

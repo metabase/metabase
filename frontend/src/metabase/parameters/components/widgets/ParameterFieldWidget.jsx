@@ -15,7 +15,10 @@ import type { Parameter } from "metabase-types/types/Parameter";
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 import type { FilterOperator } from "metabase-types/types/Metadata";
 import cx from "classnames";
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
+import {
+  getFilterArgumentFormatOptions,
+  isEqualsOperator,
+} from "metabase/lib/schema_metadata";
 
 type Props = {
   value: any,
@@ -111,6 +114,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     const { numFields = 1, multi = false, verboseName } = operator || {};
     const savedValue = normalizeValue(this.props.value);
     const unsavedValue = normalizeValue(this.state.value);
+    const isEqualsOp = isEqualsOperator(operator);
 
     const defaultPlaceholder = isFocused
       ? ""
@@ -153,8 +157,8 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           hasArrow={false}
           onClose={() => focusChanged(false)}
         >
-          <div className="p2">
-            {verboseName && (
+          <div className={cx(!isEqualsOp && "p2")}>
+            {verboseName && !isEqualsOp && (
               <div className="text-bold mb1">{verboseName}...</div>
             )}
 
@@ -197,7 +201,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
               );
             })}
             {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
-            <div className="flex mt1">
+            <div className={cx("flex mt1", isEqualsOp && "mr1 mb1")}>
               <Button
                 primary
                 className="ml-auto"
