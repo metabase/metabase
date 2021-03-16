@@ -18,8 +18,7 @@ RUN yarn install --frozen-lockfile
 # STAGE 1.2: builder backend
 ###################
 
-# Build currently doesn't work on > Java 11 (i18n utils are busted) so build on 8 until we fix this
-FROM adoptopenjdk/openjdk8:alpine as backend
+FROM adoptopenjdk/openjdk11:alpine as backend
 
 ARG MB_EDITION=oss
 
@@ -45,8 +44,7 @@ RUN lein deps
 # STAGE 1.3: main builder
 ###################
 
-# Build currently doesn't work on > Java 11 (i18n utils are busted) so build on 8 until we fix this
-FROM adoptopenjdk/openjdk8:alpine as builder
+FROM adoptopenjdk/openjdk11:alpine as builder
 
 ARG MB_EDITION=oss
 
