@@ -375,6 +375,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           onChange={e => this.onExpressionChange(e)}
           sizeToFit
           aceAutocomplete={false}
+          gutter={false}
         />
         <Errors compileError={displayCompileError} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />

@@ -21,12 +21,14 @@ export default class TextEditor extends Component {
     onChange: PropTypes.func,
     onBlur: PropTypes.func,
     aceAutocomplete: PropTypes.bool,
+    gutter: PropTypes.bool,
   };
 
   static defaultProps = {
     mode: "ace/mode/plain_text",
     theme: null,
     aceAutocomplete: true,
+    gutter: true,
   };
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -104,6 +106,7 @@ export default class TextEditor extends Component {
       // wrap: true
     });
     this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
+    this._editor.renderer.setShowGutter(this.props.gutter);
 
     // initialize the content
     this._editor.setValue(
