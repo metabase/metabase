@@ -52,18 +52,6 @@ describe("scenarios > dashboard > permissions", () => {
         dataset_query: {
           database: 1,
           type: "native",
-          native: { query: "select 'foo'" },
-        },
-        display: "table",
-        visualization_settings: {},
-        name: "First Question",
-        collection_id,
-      }).then(({ body: { id } }) => (firstQuestionId = id));
-
-      cy.request("POST", "/api/card", {
-        dataset_query: {
-          database: 1,
-          type: "native",
           native: { query: "select 'bar'" },
         },
         display: "table",

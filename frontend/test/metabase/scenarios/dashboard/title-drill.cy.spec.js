@@ -21,13 +21,9 @@ describe("scenarios > dashboard > title drill", () => {
 });
 
 function createDashboard(callback) {
-  cy.request("POST", "/api/card", {
+  cy.createNativeQuestion({
     name: "Q1",
-    dataset_query: {
-      type: "native",
-      native: { query: 'SELECT 1 as "foo", 2 as "bar"', "template-tags": {} },
-      database: 1,
-    },
+    native: { query: 'SELECT 1 as "foo", 2 as "bar"', "template-tags": {} },
     display: "bar",
     visualization_settings: {
       "graph.dimensions": ["foo"],
