@@ -40,7 +40,7 @@
 (defn with-api-error-message
   "Return `schema` with an additional `api-error-message` that will be used to explain the error if a parameter fails
   validation."
-  {:style/indent 1}
+  {:style/indent [:defn]}
   [schema api-error-message]
   (if-not (record? schema)
     ;; since this only works for record types, if `schema` isn't already one just wrap it in `s/named` to make it one
@@ -173,26 +173,26 @@
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
   (with-api-error-message
-      (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
+    (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
     (deferred-tru "value must be an integer greater than or equal to zero.")))
 
 ;; TODO - rename this to `PositiveInt`?
 (def IntGreaterThanZero
   "Schema representing an integer than must also be greater than zero."
   (with-api-error-message
-      (s/constrained s/Int (partial < 0) (deferred-tru "Integer greater than zero"))
+    (s/constrained s/Int (partial < 0) (deferred-tru "Integer greater than zero"))
     (deferred-tru "value must be an integer greater than zero.")))
 
 (def NonNegativeInt
   "Schema representing an integer 0 or greater"
   (with-api-error-message
-      (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
+    (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
     (deferred-tru "value must be an integer zero or greater.")))
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (with-api-error-message
-      (s/constrained s/Num (partial < 0) (deferred-tru "Number greater than zero"))
+    (s/constrained s/Num (partial < 0) (deferred-tru "Number greater than zero"))
     (deferred-tru "value must be a number greater than zero.")))
 
 (def KeywordOrString
@@ -220,7 +220,7 @@
 (def EntityTypeKeywordOrString
   "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
   (with-api-error-message (s/pred #(isa? (keyword %) :entity/*) (deferred-tru "Valid entity type (keyword or string)"))
-   (deferred-tru "value must be a valid entity type (keyword or string).")))
+    (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (def Map
   "Schema for a valid map."

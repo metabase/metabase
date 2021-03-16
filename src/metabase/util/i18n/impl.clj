@@ -66,7 +66,12 @@
     (when (seq (.getCountry a-locale))
       (locale (.getLanguage a-locale)))))
 
-(defn- locale-edn-resource ^java.net.URL [locale-or-name]
+(defn- locale-edn-resource
+  "The resource URL for the edn file containing translations for `locale-or-name`. These files are built by the
+  scripts in `bin/i18n` from `.po` files from POEditor.
+
+    (locale-edn-resources \"es\") ;-> #object[java.net.URL \"file:/home/cam/metabase/resources/metabase/es.edn\"]"
+  ^java.net.URL [locale-or-name]
   (when-let [a-locale (locale locale-or-name)]
     (let [locale-name (-> (normalized-locale-string (str a-locale))
                           (str/replace #"_" "-"))
@@ -78,6 +83,10 @@
     (edn/read-string (slurp resource))))
 
 (def ^:private ^{:arglists '([locale-or-name])} translations
+  "Fetch a map of original untranslated message format string -> translated message format string for `locale-or-name`
+  by reading the corresponding EDN resource file. Does not include translations for parent locale(s). Memoized.
+
+    (translations \"es\") ;-> {\"Username\" \"Nombre Usuario\", ...}"
   (comp (memoize translations*) locale))
 
 (defn- translated-format-string*
@@ -87,13 +96,12 @@
   (when (seq format-string)
     (when-let [locale (locale locale-or-name)]
       (when-let [translations (translations locale)]
-        (println "translations:" translations) ; NOCOMMIT
         (get translations format-string)))))
 
 (defn- translated-format-string
   "Find the translated version of `format-string` for `locale-or-name`, or `nil` if none can be found. Searches parent
   (language-only) translations if none exist for a language + country locale."
-  [locale-or-name format-string]
+  ^String [locale-or-name format-string]
   (when-let [a-locale (locale locale-or-name)]
     (or (when (= (.getLanguage a-locale) "en")
           format-string)
