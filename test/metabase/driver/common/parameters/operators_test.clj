@@ -57,4 +57,4 @@
                       :param-value (s/eq values)
                       :field-id s/Any
                       :type (s/eq qp.error-type/invalid-parameter)}
-                     (doto (f op values) tap>)))))))
+                     (f op values)))))))
