@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
+            [metabase.plugins.classloader :as classloader]
             [potemkin.types :as p.types])
   (:import java.text.MessageFormat
            java.util.Locale
@@ -70,7 +71,7 @@
     (let [locale-name (-> (normalized-locale-string (str a-locale))
                           (str/replace #"_" "-"))
           filename    (format "metabase/%s.edn" locale-name)]
-      (io/resource filename))))
+      (io/resource filename (classloader/the-classloader)))))
 
 (defn- translations* [a-locale]
   (when-let [resource (locale-edn-resource a-locale)]
