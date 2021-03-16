@@ -39,6 +39,10 @@ export function typeCheck(cst, rootType) {
     caseExpression(ctx) {
       const type = this.typeStack[0];
       const args = ctx.arguments || [];
+      if (args.length < 2) {
+        this.errors.push({ message: t`CASE expects 2 arguments or more` });
+        return [];
+      }
       return args.map((arg, index) => {
         // argument 0, 2, 4, ...(even) is always a boolean, ...
         const argType = index & 1 ? type : "boolean";
