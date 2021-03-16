@@ -146,7 +146,6 @@ export default class ParameterValueWidget extends Component {
       metadata,
       parameter,
       value,
-      values,
       setValue,
       isEditing,
       placeholder,
