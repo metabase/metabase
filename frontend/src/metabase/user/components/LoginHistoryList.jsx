@@ -2,28 +2,45 @@ import React, { Component } from "react";
 
 import LoginHistory from "metabase/entities/loginHistory";
 
-const LoginHistoryItem = (item) => {
-  console.log("item:", item); // NOCOMMIT
+const LoginHistoryItemRow = item => {
   return (
-    <li className="mx3 my3">
-    {item.timestamp}
-    {item.location.description}
-    </li>
+    <tr>
+      <td>
+        <tt>{item.timestamp}</tt>
+      </td>
+      <td>
+        {item.location && item.location.description}
+      </td>
+      <td>
+        <tt>{item.device_description}</tt>
+      </td>
+      <td>
+        {item.active ? "✅" : "❌"}
+      </td>
+    </tr>
   );
-}
+};
 
 @LoginHistory.loadList()
 export default class LoginHistoryList extends Component {
   render() {
-    console.log("this.props:", this.props); // NOCOMMIT
-    console.log("this.state:", this.state); // NOCOMMIT
-
     const { loginHistory } = this.props;
 
     return (
-      <div>
-        {(loginHistory || []).map(LoginHistoryItem)}
-      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Location</th>
+            <th>Device description</th>
+            <th>Active?</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {(loginHistory || []).map(LoginHistoryItemRow)}
+        </tbody>
+      </table>
     );
   }
 }

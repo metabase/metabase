@@ -4,7 +4,6 @@
             [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [java-time :as t]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
@@ -12,38 +11,23 @@
 
 (models/defmodel LoginHistory :login_history)
 
-#_(defn- first-log-in-for-user-with-device? [{user-id :user_id, device-id :device_id}]
-  (< (count (db/select [LoginHistory :id]
-              :user_id user-id
-              :device_id device-id
-              {:limit 2}))
-     2))
-
-(defn post-select [{session-id :session_id, :as login-history}]
-  ;; session ID is sensitive, so it's better if we don't even return it. Replace it with a more generic `active?` key.
+(defn- post-select [{session-id :session_id, :as login-history}]
+  ;; session ID is sensitive, so it's better if we don't even return it. Replace it with a more generic `active` key.
   (cond-> login-history
-    (:session_id login-history) (assoc :active? (boolean session-id))
+    (:session_id login-history) (assoc :active (boolean session-id))
     true                        (dissoc :session_id)))
 
-(defn pre-update [login-history]
+(defn- pre-update [login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
-
-#_(defn post-insert [login-history]
-  (println "RECORDED NEW =>" (u/pprint-to-str 'yellow login-history))
-  (println "FIRST LOGIN FOR USER WITH DEVICE?" (first-log-in-for-user-with-device? login-history))
-  login-history
-  ;; TODO -- email when logging in to a new device (#14313)
-  )
 
 (extend (class LoginHistory)
   models/IModel
   (merge
    models/IModelDefaults
    {:post-select post-select
-    :pre-update  pre-update
-    #_:post-insert #_post-insert}))
+    :pre-update  pre-update}))
 
-(defn describe-location [{:keys [city region country organization]}]
+(defn- describe-location [{:keys [city region country organization]}]
   (when (or city region country)
     (format "%s (%s)"
             (str/join ", " (filter some? [city region country]))
@@ -69,13 +53,15 @@
 
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
 (def ^:private ^{:arglists '([ip-address])} geocode-ip-address
-  (memoize/ttl geocode-ip-address* :ttl/threshold (u/minutes->ms 5)))
+  (memoize/ttl geocode-ip-address* :ttl/threshold (u/minutes->ms 30)))
 
 (defn login-history
-  "Return login history (sorted by most-recent -> least-recent) for `user-or-id`"
+  "Return complete login history (sorted by most-recent -> least-recent) for `user-or-id`"
   [user-or-id]
+  ;; TODO -- should this only return history in some window, e.g. last 3 months? I think for auditing purposes it's
+  ;; nice to be able to see every log in that's every happened with an account. Maybe we should page this, or page the
+  ;; API endpoint?
   (for [history (db/select [LoginHistory :timestamp :session_id :device_id :device_description :ip_address]
                   :user_id (u/the-id user-or-id)
-                  #_:timestamp #_[:> (t/minus (t/offset-date-time) (t/months 1))]
                   {:order-by [[:timestamp :desc]]})]
     (assoc history :location (geocode-ip-address (:ip_address history)))))

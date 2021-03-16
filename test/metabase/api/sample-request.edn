@@ -1,5 +1,5 @@
 {:ssl-client-cert nil,
- :device-id "129d39d1-6758-4d2c-a751-35b860007002",
+ :browser-id "129d39d1-6758-4d2c-a751-35b860007002",
  :protocol "HTTP/1.1",
  :cookies {"metabase.DEVICE" {:value "129d39d1-6758-4d2c-a751-35b860007002"}},
  :remote-addr "[0:0:0:0:0:0:0:1]",

@@ -102,5 +102,5 @@ export const generateSchemaId = (dbId, schemaName) =>
   `${dbId}:${schemaName || ""}`;
 
 export const LoginHistorySchema = new schema.Entity("loginHistory", undefined, {
-  idAttribute: ({ timestamp }) => `${timestamp}`
+  idAttribute: ({ timestamp }) => `${timestamp}`,
 });

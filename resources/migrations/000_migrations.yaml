@@ -8093,7 +8093,7 @@ databaseChangeLog:
                   type: varchar(254)
               - column:
                   name: device_id
-                  type: text
+                  type: char(36)
                   remarks: "Cookie-based unique identifier for the device/browser the user logged in from."
                   constraints:
                     nullable: false

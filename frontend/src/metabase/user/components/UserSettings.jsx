@@ -67,7 +67,7 @@ export default class UserSettings extends Component {
                   name: t`Password`,
                   value: "password",
                 },
-                { name: t`Login History`, value: "loginHistory"}
+                { name: t`Login History`, value: "loginHistory" },
               ]}
               onChange={tab => setTab(tab)}
             />
