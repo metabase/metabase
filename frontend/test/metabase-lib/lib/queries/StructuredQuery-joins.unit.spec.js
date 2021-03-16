@@ -5,8 +5,8 @@ const EXAMPLE_JOIN = {
   "source-table": PRODUCTS.id,
   condition: [
     "=",
-    ["field-id", ORDERS.PRODUCT_ID.id],
-    ["joined-field", "join0", ["field-id", PRODUCTS.ID.id]],
+    ["field", ORDERS.PRODUCT_ID.id, null],
+    ["field", PRODUCTS.ID.id, { "join-alias": "join0" }],
   ],
 };
 
@@ -17,8 +17,9 @@ describe("StructuredQuery nesting", () => {
         .join(EXAMPLE_JOIN)
         .joins()[0];
       expect(j.parentDimension().mbql()).toEqual([
-        "field-id",
+        "field",
         ORDERS.PRODUCT_ID.id,
+        null,
       ]);
     });
   });
@@ -28,9 +29,9 @@ describe("StructuredQuery nesting", () => {
         .join(EXAMPLE_JOIN)
         .joins()[0];
       expect(j.joinDimension().mbql()).toEqual([
-        "joined-field",
-        "join0",
-        ["field-id", PRODUCTS.ID.id],
+        "field",
+        PRODUCTS.ID.id,
+        { "join-alias": "join0" },
       ]);
     });
   });
@@ -41,7 +42,7 @@ describe("StructuredQuery nesting", () => {
         .joins()[0];
       const options = j.parentDimensionOptions();
       expect(options.count).toBe(7);
-      expect(options.dimensions[0].mbql()).toEqual(["field-id", 1]);
+      expect(options.dimensions[0].mbql()).toEqual(["field", 1, null]);
     });
     it("should return correct dimensions for a source-query", () => {
       const j = ORDERS.query()
@@ -51,9 +52,9 @@ describe("StructuredQuery nesting", () => {
       const options = j.parentDimensionOptions();
       expect(options.count).toBe(7);
       expect(options.dimensions[0].mbql()).toEqual([
-        "field-literal",
+        "field",
         "ID",
-        "type/BigInteger",
+        { "base-type": "type/BigInteger" },
       ]);
     });
   });
@@ -65,9 +66,9 @@ describe("StructuredQuery nesting", () => {
       const options = j.joinDimensionOptions();
       expect(options.count).toBe(7);
       expect(options.dimensions[0].mbql()).toEqual([
-        "joined-field",
-        "join0",
-        ["field-id", 1],
+        "field",
+        1,
+        { "join-alias": "join0" },
       ]);
     });
     it("should return correct dimensions with a source-query", () => {
@@ -80,9 +81,9 @@ describe("StructuredQuery nesting", () => {
       const options = j.joinDimensionOptions();
       expect(options.count).toBe(7);
       expect(options.dimensions[0].mbql()).toEqual([
-        "joined-field",
-        "join0",
-        ["field-id", 1],
+        "field",
+        1,
+        { "join-alias": "join0" },
       ]);
     });
   });

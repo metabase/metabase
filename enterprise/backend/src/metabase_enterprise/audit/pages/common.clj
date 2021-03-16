@@ -103,7 +103,7 @@
       (try
         (with-open [conn (jdbc/get-connection (db/connection))
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
-                    rs   (sql-jdbc.execute/execute-query! driver stmt)]
+                    rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (let [rsmeta   (.getMetaData rs)
                 cols     (sql-jdbc.execute/column-metadata driver rsmeta)
                 metadata {:cols cols}

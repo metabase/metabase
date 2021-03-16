@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 import cx from "classnames";
 
 import { getScrollX, getScrollY } from "metabase/lib/dom";
@@ -8,6 +7,7 @@ import { getScrollX, getScrollY } from "metabase/lib/dom";
 import { CSSTransitionGroup } from "react-transition-group";
 import { Motion, spring } from "react-motion";
 
+import SandboxedPortal from "metabase/components/SandboxedPortal";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import ModalContent from "./ModalContent";
 
@@ -35,32 +35,23 @@ export class WindowModal extends Component {
     backdropClassName: "Modal-backdrop",
   };
 
-  componentWillMount() {
-    this._modalElement = document.createElement("span");
+  constructor(props) {
+    super(props);
+
+    this._modalElement = document.createElement("div");
     this._modalElement.className = "ModalContainer";
-    document.querySelector("body").appendChild(this._modalElement);
-  }
-
-  componentDidMount() {
-    this._renderPopover();
-  }
-
-  componentDidUpdate() {
-    this._renderPopover();
+    document.body.appendChild(this._modalElement);
   }
 
   componentWillUnmount() {
-    ReactDOM.unmountComponentAtNode(this._modalElement);
-    if (this._modalElement.parentNode) {
-      this._modalElement.parentNode.removeChild(this._modalElement);
-    }
+    this._modalElement.parentNode.removeChild(this._modalElement);
   }
 
-  handleDismissal() {
+  handleDismissal = () => {
     if (this.props.onClose) {
       this.props.onClose();
     }
-  }
+  };
 
   _modalComponent() {
     const className = cx(
@@ -70,7 +61,7 @@ export class WindowModal extends Component {
         .map(type => `Modal--${type}`),
     );
     return (
-      <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
+      <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
         <div className={cx(className, "relative bg-white rounded")}>
           {getModalContent({
             ...this.props,
@@ -84,85 +75,91 @@ export class WindowModal extends Component {
     );
   }
 
-  _renderPopover() {
+  render() {
     const { backdropClassName, isOpen, style } = this.props;
     const backdropClassnames =
       "flex justify-center align-center fixed top left bottom right";
-    ReactDOM.unstable_renderSubtreeIntoContainer(
-      this,
-      <CSSTransitionGroup
-        transitionName="Modal"
-        transitionAppear={true}
-        transitionAppearTimeout={250}
-        transitionEnterTimeout={250}
-        transitionLeaveTimeout={250}
-      >
-        {isOpen && (
-          <div
-            key="modal"
-            className={cx(backdropClassName, backdropClassnames)}
-            style={style}
-          >
-            {this._modalComponent()}
-          </div>
-        )}
-      </CSSTransitionGroup>,
-      this._modalElement,
-    );
-  }
 
-  render() {
-    return null;
+    return (
+      <SandboxedPortal container={this._modalElement}>
+        <CSSTransitionGroup
+          transitionName="Modal"
+          transitionAppear={true}
+          transitionAppearTimeout={250}
+          transitionEnterTimeout={250}
+          transitionLeaveTimeout={250}
+        >
+          {isOpen && (
+            <div
+              key="modal"
+              className={cx(backdropClassName, backdropClassnames)}
+              style={style}
+            >
+              {this._modalComponent()}
+            </div>
+          )}
+        </CSSTransitionGroup>
+      </SandboxedPortal>
+    );
   }
 }
 
 import routeless from "metabase/hoc/Routeless";
 
 export class FullPageModal extends Component {
-  componentDidMount() {
+  constructor(props) {
+    super(props);
+    this.state = {
+      isOpen: true,
+    };
+
     this._modalElement = document.createElement("div");
     this._modalElement.className = "ModalContainer";
-    document.querySelector("body").appendChild(this._modalElement);
+    document.body.appendChild(this._modalElement);
 
     // save the scroll position, scroll to the top left, and disable scrolling
     this._scrollX = getScrollX();
     this._scrollY = getScrollY();
     window.scrollTo(0, 0);
     document.body.style.overflow = "hidden";
-
-    this.componentDidUpdate();
   }
 
-  componentDidUpdate() {
-    // set the top of the modal to the bottom of the nav
+  setTopOfModalToBottomOfNav() {
     const nav = document.body.querySelector(".Nav");
     if (nav) {
       this._modalElement.style.top = nav.getBoundingClientRect().bottom + "px";
     }
-    this._renderModal(true);
+  }
+
+  componentDidMount() {
+    this.setTopOfModalToBottomOfNav();
+  }
+
+  componentDidUpdate() {
+    this.setTopOfModalToBottomOfNav();
   }
 
   componentWillUnmount() {
-    this._renderModal(false);
+    this._modalElement.parentNode.removeChild(this._modalElement);
+  }
+
+  handleDismissal = () => {
+    this.setState({ isOpen: false });
 
     // restore scroll position and scrolling
     document.body.style.overflow = "";
-
     // On IE11 a timeout is required for the scroll to happen after the change of overflow setting
     setTimeout(() => {
       window.scrollTo(this._scrollX, this._scrollY);
     }, 0);
 
     // wait for animations to complete before unmounting
-    setTimeout(() => {
-      ReactDOM.unmountComponentAtNode(this._modalElement);
-      this._modalElement.parentNode.removeChild(this._modalElement);
-    }, 300);
-  }
+    setTimeout(() => this.props.onClose && this.props.onClose(), 300);
+  };
 
-  _renderModal(open) {
-    ReactDOM.unstable_renderSubtreeIntoContainer(
-      this,
+  render() {
+    const open = this.state.isOpen;
+    return (
       <Motion
         defaultStyle={{ opacity: 0, top: 20 }}
         style={
@@ -172,32 +169,30 @@ export class FullPageModal extends Component {
         }
       >
         {motionStyle => (
-          <div className="Modal--full">
-            {/* Using an OnClickOutsideWrapper is weird since this modal
+          <SandboxedPortal container={this._modalElement}>
+            <div className="Modal--full">
+              {/* Using an OnClickOutsideWrapper is weird since this modal
               occupies the entire screen. We do this to put this modal on top of
               the OnClickOutsideWrapper popover stack.  Otherwise, clicks within
               this modal might be seen as clicks outside another popover. */}
-            <OnClickOutsideWrapper>
-              <div
-                className="full-height relative scroll-y"
-                style={motionStyle}
-              >
-                {getModalContent({
-                  ...this.props,
-                  fullPageModal: true,
-                  formModal: !!this.props.form,
-                })}
-              </div>
-            </OnClickOutsideWrapper>
-          </div>
+              <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
+                <div
+                  className="full-height relative scroll-y"
+                  style={motionStyle}
+                >
+                  {getModalContent({
+                    ...this.props,
+                    fullPageModal: true,
+                    formModal: !!this.props.form,
+                    onClose: this.handleDismissal,
+                  })}
+                </div>
+              </OnClickOutsideWrapper>
+            </div>
+          </SandboxedPortal>
         )}
-      </Motion>,
-      this._modalElement,
+      </Motion>
     );
-  }
-
-  render() {
-    return null;
   }
 }
 

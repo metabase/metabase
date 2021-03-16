@@ -40,7 +40,7 @@
 
 (s/defn ^:private query->fields-ids :- (s/maybe [s/Int])
   [{{{:keys [fields]} :query} :dataset_query}]
-  (mbql.u/match fields [:field-id id] id))
+  (mbql.u/match fields [:field (id :guard integer?) _] id))
 
 (defn- maybe-filter-fields [table query-metadata-response]
   ;; If we have segmented permissions and the associated GTAP limits the fields returned, we need make sure the

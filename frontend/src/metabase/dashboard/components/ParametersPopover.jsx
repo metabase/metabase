@@ -1,4 +1,3 @@
-/* @flow */
 import React, { Component } from "react";
 import { t } from "ttag";
 import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";

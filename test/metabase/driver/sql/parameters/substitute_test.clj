@@ -476,7 +476,7 @@
     (apply assoc {:database (mt/id), :type :native} kvs)))
 
 (deftest e2e-basic-test
-  (datasets/test-drivers (sql-parameters-engines)
+  (mt/test-drivers (sql-parameters-engines)
     (is (= [29]
            (mt/first-row
              (mt/format-rows-by [int]
@@ -491,7 +491,7 @@
                                :value  "2015-04-01~2015-05-01"}])))))))
 
 (deftest e2e-no-parameter-test
-  (datasets/test-drivers (sql-parameters-engines)
+  (mt/test-drivers (sql-parameters-engines)
     (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
       (is (= [1000]
              (mt/first-row
@@ -505,7 +505,7 @@
                    :parameters []))))))))
 
 (deftest e2e-relative-dates-test
-  (datasets/test-drivers (sql-parameters-engines)
+  (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
                   "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters`, "
                   "which is fully-tested :D")
@@ -524,7 +524,7 @@
                                  :value  "thismonth"}]))))))))
 
 (deftest e2e-combine-multiple-filters-test
-  (datasets/test-drivers (sql-parameters-engines)
+  (mt/test-drivers (sql-parameters-engines)
     (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
       (is (= [4]
              (mt/first-row
@@ -544,7 +544,7 @@
                                  :value  "2015-07-01"}]))))))))
 
 (deftest e2e-parse-native-dates-test
-  (datasets/test-drivers (disj (sql-parameters-engines) :sqlite)
+  (mt/test-drivers (disj (sql-parameters-engines) :sqlite)
     (is (= [(cond
               (= driver/*driver* :presto)
               "2018-04-18"

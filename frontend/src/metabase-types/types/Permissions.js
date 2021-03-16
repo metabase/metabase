@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { SchemaName, TableId } from "metabase-types/types/Table";
 

@@ -21,11 +21,12 @@
            ["Dwight Gresham"]
            ["Broen Olujimi"]
            ["Rüstem Hebel"]]
-          :cols[{:display_name "NAME"
-                 :source       :native
-                 :field_ref    [:field-literal "NAME" :type/Text]
-                 :name         "NAME"
-                 :base_type    :type/Text}]}
+          :cols
+          [{:display_name "NAME"
+            :source       :native
+            :field_ref    [:field "NAME" {:base-type :type/Text}]
+            :name         "NAME"
+            :base_type    :type/Text}]}
          (qp.test/rows-and-cols
            (qp/process-query
             (mt/native-query

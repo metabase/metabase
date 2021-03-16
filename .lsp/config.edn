@@ -1,0 +1,4 @@
+{:keep-require-at-start?        true
+ :show-docs-arity-on-same-line? true
+ :project-specs                 [{:project-path "project.clj"
+                                  :classpath-cmd ["lein" "with-profile" "+ee" "classpath"]}]}

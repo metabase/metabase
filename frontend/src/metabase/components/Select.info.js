@@ -10,8 +10,8 @@ export const description = t`
 `;
 
 import _ from "underscore";
-import { field_special_types } from "metabase/lib/core";
-const EXAMPLE_SECTIONS = _.chain(field_special_types)
+import { field_semantic_types } from "metabase/lib/core";
+const EXAMPLE_SECTIONS = _.chain(field_semantic_types)
   .first(10)
   .groupBy("section")
   .pairs()

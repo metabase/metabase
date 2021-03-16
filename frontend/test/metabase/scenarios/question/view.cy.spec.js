@@ -118,7 +118,7 @@ describe("scenarios > question > view", () => {
               name: "category",
               "display-name": "CATEGORY",
               type: "dimension",
-              dimension: ["field-id", PRODUCTS.CATEGORY],
+              dimension: ["field", PRODUCTS.CATEGORY, null],
               "widget-type": "id",
             },
             vendor: {
@@ -126,7 +126,7 @@ describe("scenarios > question > view", () => {
               name: "vendor",
               "display-name": "VENDOR",
               type: "dimension",
-              dimension: ["field-id", PRODUCTS.VENDOR],
+              dimension: ["field", PRODUCTS.VENDOR, null],
               "widget-type": "id",
             },
           },

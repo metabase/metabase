@@ -2,7 +2,7 @@ import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 import Dimension from "metabase-lib/lib/Dimension";
 
-const FILTER = ["=", ["field-id", ORDERS.TOTAL.id], 42];
+const FILTER = ["=", ["field", ORDERS.TOTAL.id, null], 42];
 
 describe("StructuredQuery", () => {
   describe("hasFilters", () => {
@@ -25,7 +25,7 @@ describe("StructuredQuery", () => {
       it("should return the correct dimension", () => {
         const q = ORDERS.query().filter(FILTER);
         const f = q.filters()[0];
-        expect(f.dimension().mbql()).toEqual(["field-id", ORDERS.TOTAL.id]);
+        expect(f.dimension().mbql()).toEqual(["field", ORDERS.TOTAL.id, null]);
       });
     });
     describe("field()", () => {
@@ -68,17 +68,19 @@ describe("StructuredQuery", () => {
       it("should return true for the same dimension", () => {
         const q = ORDERS.query().filter(FILTER);
         const f = q.filters()[0];
-        expect(f.isDimension(["field-id", ORDERS.TOTAL.id])).toBe(true);
+        expect(f.isDimension(["field", ORDERS.TOTAL.id, null])).toBe(true);
         expect(
-          f.isDimension(Dimension.parseMBQL(["field-id", ORDERS.TOTAL.id])),
+          f.isDimension(Dimension.parseMBQL(["field", ORDERS.TOTAL.id, null])),
         ).toBe(true);
       });
       it("should return false for different dimensions", () => {
         const q = ORDERS.query().filter(FILTER);
         const f = q.filters()[0];
-        expect(f.isDimension(["field-id", PRODUCTS.TITLE.id])).toBe(false);
+        expect(f.isDimension(["field", PRODUCTS.TITLE.id, null])).toBe(false);
         expect(
-          f.isDimension(Dimension.parseMBQL(["field-id", PRODUCTS.TITLE.id])),
+          f.isDimension(
+            Dimension.parseMBQL(["field", PRODUCTS.TITLE.id, null]),
+          ),
         ).toBe(false);
       });
     });

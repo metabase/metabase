@@ -13,7 +13,9 @@
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
+            [metabase.shared.util :as shared.u]
             [metabase.util.i18n :refer [trs tru]]
+            [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
   (:import [java.net InetAddress InetSocketAddress Socket]
@@ -22,6 +24,28 @@
            java.util.Locale
            javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
+
+(comment shared.u/keep-me)
+
+(p/import-vars
+ [shared.u
+  qualified-name])
+
+(defn lower-case-en
+  "Locale-agnostic version of `clojure.string/lower-case`.
+  `clojure.string/lower-case` uses the default locale in conversions, turning
+  `ID` into `ıd`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toLowerCase (Locale/US))))
+
+(defn upper-case-en
+  "Locale-agnostic version of `clojure.string/upper-case`.
+  `clojure.string/upper-case` uses the default locale in conversions, turning
+  `id` into `İD`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toUpperCase (Locale/US))))
 
 (defn format-bytes
   "Nicely format `num-bytes` as kilobytes/megabytes/etc.
@@ -38,9 +62,8 @@
 (when-not *compile-files*
   (log/info (trs "Maximum memory available to JVM: {0}" (format-bytes (.maxMemory (Runtime/getRuntime))))))
 
-;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
-;; for pprinting huge things like expanded queries
-(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 200))
+;; Set the default width for pprinting to 120 instead of 72. The default width is too narrow and wastes a lot of space
+(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 120))
 
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
@@ -83,7 +106,7 @@
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (str/lower-case s)))))
+                         (lower-case-en s)))))
 
 (defn state?
   "Is `s` a state string?"
@@ -100,7 +123,7 @@
                    "ak" "al" "ar" "az" "ca" "co" "ct" "de" "fl" "ga" "hi" "ia" "id" "il" "in" "ks" "ky" "la"
                    "ma" "md" "me" "mi" "mn" "mo" "ms" "mt" "nc" "nd" "ne" "nh" "nj" "nm" "nv" "ny" "oh" "ok"
                    "or" "pa" "ri" "sc" "sd" "tn" "tx" "ut" "va" "vt" "wa" "wi" "wv" "wy"}
-                 (str/lower-case s)))))
+                 (lower-case-en s)))))
 
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
@@ -464,18 +487,6 @@
   [f coll]
   (into {} (map (juxt f identity)) coll))
 
-(defn qualified-name
-  "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well
-  (also unlike `name`).
-
-     (u/qualified-name :type/FK) -> \"type/FK\""
-  [k]
-  (when (some? k)
-    (if-let [namespac (when (instance? clojure.lang.Named k)
-                        (namespace k))]
-      (str namespac "/" (name k))
-      (name k))))
-
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
   Otherwise returns `nil`.
@@ -742,22 +753,6 @@
                                  [vertex (g vertex)]))
                           (concat independent sorted))))))
               g)))
-
-(defn lower-case-en
-  "Locale-agnostic version of `clojure.string/lower-case`.
-  `clojure.string/lower-case` uses the default locale in conversions, turning
-  `ID` into `ıd`, in the Turkish locale. This function always uses the
-  `Locale/US` locale."
-  [^CharSequence s]
-  (.. s toString (toLowerCase (Locale/US))))
-
-(defn upper-case-en
-  "Locale-agnostic version of `clojure.string/upper-case`.
-  `clojure.string/upper-case` uses the default locale in conversions, turning
-  `id` into `İD`, in the Turkish locale. This function always uses the
-  `Locale/US` locale."
-  [^CharSequence s]
-  (.. s toString (toUpperCase (Locale/US))))
 
 (defn lower-case-map-keys
   "Changes the keys of a given map to lower case."

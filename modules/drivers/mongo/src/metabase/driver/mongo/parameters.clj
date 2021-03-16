@@ -24,7 +24,7 @@
      t)))
 
 (defn- param-value->str
-  [{special-type :special_type, :as field} x]
+  [{coercion :coercion_strategy, :as field} x]
   (cond
     ;; sequences get converted to `$in`
     (sequential? x)
@@ -36,11 +36,11 @@
     (param-value->str field (u.date/parse (:s x)))
 
     (and (instance? Temporal x)
-         (isa? special-type :type/UNIXTimestampSeconds))
+         (isa? coercion :Coercion/UNIXSeconds->DateTime))
     (long (/ (t/to-millis-from-epoch (->utc-instant x)) 1000))
 
     (and (instance? Temporal x)
-         (isa? special-type :type/UNIXTimestampMilliseconds))
+         (isa? coercion :Coercion/UNIXMilliSeconds->DateTime))
     (t/to-millis-from-epoch (->utc-instant x))
 
     ;; convert temporal types to ISODate("2019-12-09T...") (etc.)

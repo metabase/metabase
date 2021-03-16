@@ -121,20 +121,20 @@
    ["Vegetarian / Vegan"]   ; 73
    ["Wine Bar"]             ; 74
    ["Winery"]]]             ; 75
- ["venues" [{:field-name   "name"
-             :base-type    :type/Text}
-            {:field-name   "category_id"
-             :base-type    :type/Integer
-             :fk           :categories}
-            {:field-name   "latitude"
-             :base-type    :type/Float
-             :special-type :type/Latitude}
-            {:field-name   "longitude"
-             :base-type    :type/Float
-             :special-type :type/Longitude}
-            {:field-name   "price"
-             :base-type    :type/Integer
-             :special-type :type/Category}]
+ ["venues" [{:field-name    "name"
+             :base-type     :type/Text}
+            {:field-name    "category_id"
+             :base-type     :type/Integer
+             :fk            :categories}
+            {:field-name    "latitude"
+             :base-type     :type/Float
+             :semantic-type :type/Latitude}
+            {:field-name    "longitude"
+             :base-type     :type/Float
+             :semantic-type :type/Longitude}
+            {:field-name    "price"
+             :base-type     :type/Integer
+             :semantic-type :type/Category}]
   [["Red Medicine" 4 10.0646 -165.374 3]                               ;   1
    ["Stout Burgers & Beers" 11 34.0996 -118.329 2]                     ;   2
    ["The Apple Pan" 11 34.0406 -118.428 2]                             ;   3

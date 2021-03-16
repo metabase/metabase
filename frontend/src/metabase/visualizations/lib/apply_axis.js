@@ -16,6 +16,8 @@ import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
+import type { SingleSeries } from "metabase-types/types/Visualization";
+
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;
 const Y_LABEL_PADDING = 22;

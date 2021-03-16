@@ -33,7 +33,7 @@ export class ViewTitleHeader extends React.Component {
     };
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     const query = this.props.question.query();
     const nextQuery = nextProps.question.query();
     const filtersCount =

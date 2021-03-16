@@ -1,4 +1,3 @@
-/* @flow weak */
 /* eslint-disable no-color-literals */
 
 /*

@@ -41,12 +41,12 @@ function MainSeries(settings, rows) {
         StringColumn({
           display_name: "Product",
           source: "breakout",
-          field_ref: ["field-id", 1],
+          field_ref: ["field", 1, null],
         }),
         NumberColumn({
           display_name: "Profit",
           source: "aggregation",
-          field_ref: ["field-id", 2],
+          field_ref: ["field", 2, null],
         }),
       ],
       rows,

@@ -23,7 +23,7 @@ function generateQuestions(user) {
           name: "ID",
           display_name: "ID",
           type: "dimension",
-          dimension: ["field-id", PRODUCTS.ID],
+          dimension: ["field", PRODUCTS.ID, null],
           "widget-type": "category",
           default: null,
         },

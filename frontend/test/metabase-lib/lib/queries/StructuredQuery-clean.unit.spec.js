@@ -9,8 +9,8 @@ const JOIN = {
   alias: "join1234",
   condition: [
     "=",
-    ["field-id", ORDERS.ID.id],
-    ["joined-field", "join1234", ["field-id", PRODUCTS.ID.id]],
+    ["field", ORDERS.ID.id, null],
+    ["field", PRODUCTS.ID.id, { "join-alias": "join1234" }],
   ],
   fields: "all",
 };
@@ -23,7 +23,7 @@ describe("StructuredQuery", () => {
     });
 
     describe("joins", () => {
-      it("should not remove join referencing valid field-id", () => {
+      it("should not remove join referencing valid field ID", () => {
         const q = ORDERS.query().join(JOIN);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
@@ -49,18 +49,18 @@ describe("StructuredQuery", () => {
     });
 
     describe("filters", () => {
-      it("should not remove filter referencing valid field-id", () => {
+      it("should not remove filter referencing valid field ID", () => {
         const q = ORDERS.query().filter([
           "=",
-          ["field-id", ORDERS.TOTAL.id],
+          ["field", ORDERS.TOTAL.id, null],
           42,
         ]);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
       });
 
-      it("should remove filters referencing invalid field-id", () => {
-        const q = ORDERS.query().filter(["=", ["field-id", 12345], 42]);
+      it("should remove filters referencing invalid field ID", () => {
+        const q = ORDERS.query().filter(["=", ["field", 12345, null], 42]);
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });
     });
@@ -72,16 +72,16 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        it("should not remove aggregation referencing valid field-id", () => {
+        it("should not remove aggregation referencing valid field ID", () => {
           const q = ORDERS.query().aggregate([
             "avg",
-            ["field-id", ORDERS.TOTAL.id],
+            ["field", ORDERS.TOTAL.id, null],
           ]);
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        it("should remove aggregations referencing invalid field-id", () => {
-          const q = ORDERS.query().aggregate(["avg", ["field-id", 12345]]);
+        it("should remove aggregations referencing invalid field ID", () => {
+          const q = ORDERS.query().aggregate(["avg", ["field", 12345, null]]);
           expect(q.clean().query()).toEqual({
             "source-table": ORDERS.id,
           });
@@ -130,18 +130,18 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        it("should not remove custom aggregation referencing valid field-id", () => {
+        it("should not remove custom aggregation referencing valid field ID", () => {
           const q = ORDERS.query().aggregate([
             "+",
-            ["avg", ["field-id", ORDERS.TOTAL.id]],
+            ["avg", ["field", ORDERS.TOTAL.id, null]],
             1,
           ]);
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        xit("should remove aggregations referencing invalid field-id", () => {
+        xit("should remove aggregations referencing invalid field ID", () => {
           const q = ORDERS.query().aggregate([
-            ["+", ["avg", ["field-id", 12345]], 1],
+            ["+", ["avg", ["field", 12345, null]], 1],
           ]);
           expect(q.clean().query()).toEqual({
             "source-table": ORDERS.id,
@@ -151,54 +151,53 @@ describe("StructuredQuery", () => {
     });
 
     describe("breakouts", () => {
-      it("should not remove breakout referencing valid field-id", () => {
-        const q = ORDERS.query().breakout(["field-id", ORDERS.TOTAL.id]);
+      it("should not remove breakout referencing valid field ID", () => {
+        const q = ORDERS.query().breakout(["field", ORDERS.TOTAL.id, null]);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
       });
       it("should not remove breakout referencing valid expressions", () => {
         const q = ORDERS.query()
-          .addExpression("foo", ["field-id", ORDERS.TOTAL.id])
+          .addExpression("foo", ["field", ORDERS.TOTAL.id, null])
           .breakout(["expression", "foo"]);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
       });
-      it("should not remove breakout referencing valid fk->", () => {
+      it("should not remove breakout referencing valid fk", () => {
         const q = ORDERS.query().breakout([
-          "fk->",
-          ["field-id", ORDERS.PRODUCT_ID.id],
-          ["field-id", PRODUCTS.TITLE.id],
+          "field",
+          PRODUCTS.TITLE.id,
+          { "source-field": ORDERS.PRODUCT_ID.id },
         ]);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
       });
 
-      it("should not remove breakout referencing valid joined-fields", () => {
+      it("should not remove breakout referencing valid joined fields", () => {
         const q = ORDERS.query()
           .join(JOIN)
-          .breakout([
-            "joined-field",
-            "join1234",
-            ["field-id", PRODUCTS.TITLE.id],
-          ]);
+          .breakout(["field", PRODUCTS.TITLE.id, { "join-alias": "join1234" }]);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
       });
-      it("should remove breakout referencing invalid field-id", () => {
-        const q = ORDERS.query().breakout(["field-id", 12345]);
+      it("should remove breakout referencing invalid field ID", () => {
+        const q = ORDERS.query().breakout(["field", 12345, null]);
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });
     });
 
     describe("sorts", () => {
-      it("should not remove sort referencing valid field-id", () => {
-        const q = ORDERS.query().sort(["asc", ["field-id", ORDERS.TOTAL.id]]);
+      it("should not remove sort referencing valid field ID", () => {
+        const q = ORDERS.query().sort([
+          "asc",
+          ["field", ORDERS.TOTAL.id, null],
+        ]);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
       });
 
-      xit("should remove sort referencing invalid field-id", () => {
-        const q = ORDERS.query().sort(["asc", ["field-id", 12345]]);
+      xit("should remove sort referencing invalid field ID", () => {
+        const q = ORDERS.query().sort(["asc", ["field", 12345, null]]);
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });
     });
@@ -207,9 +206,13 @@ describe("StructuredQuery", () => {
       it("shouldn't modify valid nested queries", () => {
         const q = ORDERS.query()
           .aggregate(["count"])
-          .breakout(["field-id", ORDERS.PRODUCT_ID.id])
+          .breakout(["field", ORDERS.PRODUCT_ID.id, null])
           .nest()
-          .filter(["=", ["field-literal", "count", "type/Integer"], 42]);
+          .filter([
+            "=",
+            ["field", "count", { "base-type": "type/Integer" }],
+            42,
+          ]);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
       });
@@ -226,11 +229,15 @@ describe("StructuredQuery", () => {
 
       it("should remove clauses dependent on removed clauses in the parent", () => {
         const q = ORDERS.query()
-          .breakout(["field-id", ORDERS.PRODUCT_ID.id])
+          .breakout(["field", ORDERS.PRODUCT_ID.id, null])
           .nest()
-          .filter(["=", ["field-literal", "count", "type/Integer"], 42]);
+          .filter([
+            "=",
+            ["field", "count", { "base-type": "type/Integer" }],
+            42,
+          ]);
         expect(q.clean().query()).toEqual({
-          breakout: [["field-id", ORDERS.PRODUCT_ID.id]],
+          breakout: [["field", ORDERS.PRODUCT_ID.id, null]],
           "source-table": ORDERS.id,
         });
       });

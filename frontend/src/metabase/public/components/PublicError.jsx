@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
