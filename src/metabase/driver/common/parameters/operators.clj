@@ -4,15 +4,16 @@
             [metabase.query-processor.error-type :as qp.error-type]
             [schema.core :as s]))
 
-(def unary {:string/=                :=
-            :string/starts-with      :starts-with
-            :string/ends-with        :ends-with
-            :string/contains         :contains
-            :string/does-not-contain :does-not-contain
-            :number/=                :=
-            :number/!=               :!=
-            :number/>=               :>=
-            :number/<=               :<=})
+(def ^:private unary {:string/=                :=
+                      :string/starts-with      :starts-with
+                      :string/ends-with        :ends-with
+                      :string/contains         :contains
+                      :string/does-not-contain :does-not-contain
+                      :number/=                :=
+                      :number/!=               :!=
+                      :number/>=               :>=
+                      :number/<=               :<=})
+
 (def ^:private binary {:number/between :between})
 
 (def ^:private all-ops (into #{} (mapcat keys [unary binary])))
