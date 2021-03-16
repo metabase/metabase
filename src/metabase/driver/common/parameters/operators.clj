@@ -2,7 +2,6 @@
   (:require [metabase.mbql.schema :as mbql.s]
             [metabase.models.params :as params]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def unary {:string/=                :=
@@ -14,11 +13,12 @@
             :number/!=               :!=
             :number/>=               :>=
             :number/<=               :<=})
-(def binary {:number/between :between})
+(def ^:private binary {:number/between :between})
 
-(def all-ops (into #{} (mapcat keys [unary binary])))
+(def ^:private all-ops (into #{} (mapcat keys [unary binary])))
 
 (s/defn operator? :- s/Bool
+  "Returns whether param-type is an \"operator\" type."
   [param-type]
   (contains? all-ops param-type))
 
@@ -41,6 +41,8 @@
                                                          :type        qp.error-type/invalid-parameter})))))
 
 (s/defn to-clause :- mbql.s/Filter
+  "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
+  `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [{param-type :type [a b :as param-value] :value [_ field :as _target] :target :as param}]
   (verify-type-and-arity field param-type param-value)
   (let [field' (params/wrap-field-id-if-needed field)]
