@@ -35,6 +35,8 @@
   ([] (coin-toss 0.5))
   ([p] (< (rand) p)))
 
+(def omit ::rs/omit)
+
 ;; * items
 (def id-seq (atom 0))
 (s/def ::id (s/with-gen pos-int? #(gen/fmap (fn [_] (swap! id-seq inc)) (gen/return nil))))
@@ -181,7 +183,7 @@
                                   :spec      ::collection
                                   :insert!   {:model Collection}
                                   :relations {:personal_owner_id [:core-user :id]}}
-   :pulse                        {:prefix    :pulse
+   :pulse                        {:prefix    :p
                                   :spec      ::pulse
                                   :insert!   {:model Pulse}
                                   :relations {:creator_id    [:core-user :id]
