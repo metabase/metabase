@@ -95,19 +95,40 @@ describe("metabase/meta/Parameter", () => {
   describe("stringParameterValueToMBQL", () => {
     describe("when given an array parameter value", () => {
       it("should flatten the array parameter values", () => {
-        expect(stringParameterValueToMBQL(["1", "2"], null)).toEqual([
-          "=",
-          null,
-          "1",
-          "2",
-        ]);
+        expect(
+          stringParameterValueToMBQL(
+            { type: "category/=", value: ["1", "2"] },
+            null,
+          ),
+        ).toEqual(["=", null, "1", "2"]);
       });
     });
 
     describe("when given a string parameter value", () => {
       it("should return the correct MBQL", () => {
-        expect(stringParameterValueToMBQL("1", null)).toEqual(["=", null, "1"]);
+        expect(
+          stringParameterValueToMBQL(
+            { type: "category/starts-with", value: "1" },
+            null,
+          ),
+        ).toEqual(["starts-with", null, "1"]);
       });
+    });
+
+    it("should default the operator to `=`", () => {
+      expect(
+        stringParameterValueToMBQL(
+          { type: "category", value: ["1", "2"] },
+          null,
+        ),
+      ).toEqual(["=", null, "1", "2"]);
+
+      expect(
+        stringParameterValueToMBQL(
+          { type: "location/city", value: ["1", "2"] },
+          null,
+        ),
+      ).toEqual(["=", null, "1", "2"]);
     });
   });
 });

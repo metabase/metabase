@@ -391,19 +391,26 @@ export function dateParameterValueToMBQL(
 }
 
 export function stringParameterValueToMBQL(
-  parameterValue: ParameterValueOrArray,
+  parameter: Parameter,
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
+  const parameterValue: ParameterValueOrArray = parameter.value;
+  const [, subtype] = parameter.type.split("/");
+  const operatorName = getParameterOperatorName(subtype);
   // $FlowFixMe: thinks we're returning a nested array which concat does not do
-  return ["=", fieldRef].concat(parameterValue);
+  return [operatorName, fieldRef].concat(parameterValue);
 }
 
 export function numberParameterValueToMBQL(
-  parameterValue: ParameterValue,
+  parameter: ParameterInstance,
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
+  const parameterValue: ParameterValue = parameter.value;
+  const [, subtype] = parameter.type.split("/");
+  const operatorName = subtype || "=";
+
   // $FlowFixMe: thinks we're returning a nested array which concat does not do
-  return ["=", fieldRef].concat(
+  return [operatorName, fieldRef].concat(
     [].concat(parameterValue).map(v => parseFloat(v)),
   );
 }
@@ -433,9 +440,9 @@ export function parameterToMBQLFilter(
     const field = metadata.field(fieldId);
     // if the field is numeric, parse the value as a number
     if (isNumericBaseType(field)) {
-      return numberParameterValueToMBQL(parameter.value, fieldRef);
+      return numberParameterValueToMBQL(parameter, fieldRef);
     } else {
-      return stringParameterValueToMBQL(parameter.value, fieldRef);
+      return stringParameterValueToMBQL(parameter, fieldRef);
     }
   }
 }
@@ -458,12 +465,16 @@ export function getParameterIconName(parameterType: ?ParameterType) {
 }
 
 export function mapParameterTypeToFieldType(parameter) {
-  const [fieldType, operatorType] = parameter.type.split("/");
+  const [fieldType, maybeOperatorName] = parameter.type.split("/");
   switch (fieldType) {
     case "location":
     case "category":
-      return `string/${doesOperatorExist(operatorType) ? operatorType : "="}`;
+      return `string/${getParameterOperatorName(maybeOperatorName)}`;
     default:
-      parameter.type;
+      return parameter.type;
   }
+}
+
+function getParameterOperatorName(maybeOperatorName) {
+  return doesOperatorExist(maybeOperatorName) ? maybeOperatorName : "=";
 }
