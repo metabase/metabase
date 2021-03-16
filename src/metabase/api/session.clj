@@ -31,8 +31,8 @@
 (s/defn ^:private request-device-info :- {:device_id          su/NonBlankString
                                           :device_description su/NonBlankString
                                           :ip_address         su/NonBlankString}
-  [{{:strs [user-agent x-forwarded-for]} :headers, :keys [remote-addr device-id], :as request}]
-  (let [id          (or device-id
+  [{{:strs [user-agent x-forwarded-for]} :headers, :keys [remote-addr browser-id], :as request}]
+  (let [id          (or browser-id
                         (log/warn (trs "Login in request is missing device ID information")))
         description (or user-agent
                         (log/warn (trs "Login request is missing user-agent information")
@@ -59,7 +59,7 @@
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
   `:sso` (for other login types). Returns the newly generated Session."
-  {:arglists '(^java.util.UUID [session-type user])}
+  {:arglists '(^java.util.UUID [session-type user request])}
   (fn [session-type & _]
     session-type))
 
@@ -254,7 +254,7 @@
         (when-not (:last_login user)
           (email/send-user-joined-admin-notification-email! (User user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
-        (let [{session-uuid :id, :as session} (create-session! :password user)
+        (let [{session-uuid :id, :as session} (create-session! :password user request)
               response                        {:success    true
                                                :session_id (str session-uuid)}]
           (mw.session/set-session-cookie request response session)))
@@ -340,12 +340,12 @@
   (user/create-new-google-auth-user! new-user))
 
 (s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
-  [first-name last-name email]
+  [first-name last-name email request]
   (when-let [user (or (db/select-one [User :id :last_login] :%lower.email (u/lower-case-en email))
                       (google-auth-create-new-user! {:first_name first-name
                                                      :last_name  last-name
                                                      :email      email}))]
-    (create-session! :sso user)))
+    (create-session! :sso user request)))
 
 (defn do-google-auth
   "Call to Google to perform an authentication"
@@ -354,7 +354,7 @@
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
     (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
     (let [{session-uuid :id, :as session} (api/check-500
-                                           (google-auth-fetch-or-create-user! given_name family_name email))
+                                           (google-auth-fetch-or-create-user! given_name family_name email request))
           response                        {:id (str session-uuid)}
           user                            (db/select-one [User :id :is_active], :email email)]
       (if (and user (:is_active user))

@@ -8082,6 +8082,7 @@ databaseChangeLog:
               - column:
                   name: user_id
                   type: int
+                  remarks: "ID of the User that logged in."
                   constraints:
                     foreignKeyName: fk_login_history_user_id
                     references: core_user(id)
@@ -8091,6 +8092,7 @@ databaseChangeLog:
               - column:
                   name: session_id
                   type: varchar(254)
+                  remarks: "ID of the Session created by this login if one is currently active. NULL if Session is no longer active."
               - column:
                   name: device_id
                   type: char(36)
