@@ -138,7 +138,7 @@
 
 (deftest operations-e2e-test
   (mt/test-drivers (params-test-drivers)
-    (testing "check that operations works correctly (passed in as strings, as the frontend is wont to do;"
+    (testing "check that operations works correctly"
       (let [f #(mt/formatted-rows [int]
                  (qp/process-query %))]
         (testing "binary numeric"
@@ -148,7 +148,7 @@
                        :parameters [{:name   "price"
                                      :type   :number/between
                                      :target $price
-                                     :value ["2" "5"]}]})))))
+                                     :value [2 5]}]})))))
         (testing "unary string"
           (is (= [(case driver/*driver*
                     ;; no idea why this count is off...
@@ -193,8 +193,7 @@
                      :parameters [{:name   "price"
                                    :type   :number/>=
                                    :target $price
-                                   ;; operations expect to always parse their inputs
-                                   :value  ["2"]}]})))))))))
+                                   :value  [2]}]})))))))))
 
 ;; Make sure that *multiple* values work. This feature was added in 0.28.0. You are now allowed to pass in an array of
 ;; parameter values instead of a single value, which should stick them together in a single MBQL `:=` clause, which
@@ -234,7 +233,7 @@
                    :parameters [{:name   "price"
                                  :type   :number/between
                                  :target $price
-                                 :value  ["3" "4"]}]})]
+                                 :value  [3 4]}]})]
       (mt/test-drivers (params-test-drivers)
         (is (= [[19]]
                (mt/formatted-rows [int]
@@ -251,7 +250,7 @@
                    :parameters [{:name   "price"
                                  :type   :number/between
                                  :target $price
-                                 :value  ["3" "4"]}]}))))))))
+                                 :value  [3 4]}]}))))))))
 
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
@@ -344,22 +343,3 @@
       (testing "Should prefer :value over :default"
         (is (= 59
                (venues-with-price {:default 1, :value 2})))))))
-
-(deftest parse-param-value-for-type-test
-  (testing "parses numeric types for operators"
-    (doseq [param-type [:number/= :number/!= :number/between :number/<= :number/>=]]
-      (doseq [[expected-type param-values] [['double ["3.14"]]
-                                            ['double ["3.0" "1.2"]]
-                                            ['long ["1" "2"]]
-                                            ['long ["3" "34567"]]]]
-        (let [actual (#'mbql-params/parse-param-value-for-type
-                      param-type param-values [:field 1 nil])
-              translate (case expected-type
-                          double #(Double/parseDouble %)
-                          long #(Long/parseLong %))]
-          (is (= (map translate param-values) actual)))))
-    (doseq [param-type [:string/= :string/starts-with :string/ends-with :string/contains
-                        :string/does-not-contain]]
-      (is (= ["a" "b"]
-             (#'mbql-params/parse-param-value-for-type
-              param-type ["a" "b"] [:field 1 nil]))))))

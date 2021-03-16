@@ -33,12 +33,6 @@
            (isa? base-type :type/Number)))
     (recur :number param-value field-clause)
 
-    (= (namespace param-type) "string")
-    param-value
-
-    (= (namespace param-type) "number")
-    (mapv to-numeric param-value)
-
     ;; no conversion needed if PARAM-TYPE isn't :number or PARAM-VALUE isn't a string
     (or (not= param-type :number)
         (not (string? param-value)))
@@ -51,8 +45,7 @@
   [{param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
     (ops/operator? param-type)
-    (ops/to-clause (assoc param :value (parse-param-value-for-type param-type param-value
-                                                                   (params/unwrap-field-clause field))))
+    (ops/to-clause param)
     ;; multipe values. Recursively handle them all and glue them all together with an OR clause
     (sequential? param-value)
     (mbql.u/simplify-compound-filter
