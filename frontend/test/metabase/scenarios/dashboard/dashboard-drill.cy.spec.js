@@ -250,7 +250,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .within(() => cy.findByText("foo"));
   });
 
-  it("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
+  it.only("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13062
     // 1. set "Rating" Field type to: "Category"
 

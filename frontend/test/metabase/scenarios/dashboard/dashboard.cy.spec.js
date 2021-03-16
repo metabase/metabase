@@ -71,7 +71,7 @@ describe("scenarios > dashboard", () => {
     // Adding location/state doesn't make much sense for this case,
     // but we're testing just that the filter is added to the dashboard
     cy.findByText("Location").click();
-    cy.findByText("State").click();
+    cy.findByText("Matches exactly").click();
     cy.findByText("Select…").click();
 
     popover().within(() => {
@@ -86,7 +86,7 @@ describe("scenarios > dashboard", () => {
 
     cy.log("Assert that the selected filter is present in the dashboard");
     cy.icon("location");
-    cy.findByText("State");
+    cy.findByText("Location - Matches exactly");
   });
 
   it("should add a question", () => {
@@ -173,6 +173,7 @@ describe("scenarios > dashboard", () => {
     cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Other Categories").click();
+      cy.findByText("Starts with").click();
     });
     // and connect it to the card
     selectDashboardFilter(cy.get(".DashCard"), "Category");

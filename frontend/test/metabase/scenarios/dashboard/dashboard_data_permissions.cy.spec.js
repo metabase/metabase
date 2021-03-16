@@ -14,7 +14,7 @@ function filterDashboard(suggests = true) {
       expect(xhr.status).to.equal(403);
     });
   }
-  cy.contains("Add filter").click();
+  cy.contains("Add filter").click({ force: true });
   cy.contains("Aerodynamic Bronze Hat");
   cy.contains(/Rows \d-\d of 96/);
 }
@@ -32,6 +32,10 @@ describe("support > permissions (metabase#8472)", () => {
     cy.icon("filter").click();
     popover()
       .contains("Other Categories")
+      .click();
+
+    popover()
+      .contains("Matches exactly")
       .click();
 
     // Filter the first card by product category

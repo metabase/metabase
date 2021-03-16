@@ -15,7 +15,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("pencil").click();
     cy.icon("filter").click();
     cy.findByText("Location").click();
-    cy.findByText("City").click();
+    cy.findByText("Matches exactly").click();
 
     // Link that filter to the card
     cy.findByText("Select…").click();
@@ -61,6 +61,7 @@ describe("scenarios > dashboard > parameters", () => {
     // add a category filter
     cy.icon("filter").click();
     cy.contains("Other Categories").click();
+    cy.findByText("Starts with").click();
 
     // connect it to people.name and product.category
     // (this doesn't make sense to do, but it illustrates the feature)
@@ -114,24 +115,25 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("pencil").click();
     cy.icon("filter").click();
     cy.contains("Other Categories").click();
+    cy.contains("Ends with").click();
     cy.findByText("Save").click();
 
     // Give value to the filter
-    cy.findByPlaceholderText("Category")
+    cy.findByPlaceholderText("Category - Ends with")
       .click()
-      .type("Gizmo{enter}");
+      .type("zmo{enter}");
 
     cy.log(
       "**URL is updated correctly with the given parameter at this point**",
     );
-    cy.url().should("include", "category=Gizmo");
+    cy.url().should("include", "category_-_ends_with=zmo");
 
     // Remove filter name
     cy.icon("pencil").click();
     cy.get(".Dashboard")
       .find(".Icon-gear")
       .click();
-    cy.findByDisplayValue("Category")
+    cy.findByDisplayValue("Category - Ends with")
       .click()
       .clear();
     cy.findByText("Save").click();
