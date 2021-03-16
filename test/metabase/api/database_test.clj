@@ -249,6 +249,7 @@
                                                       :display_name      "ID"
                                                       :database_type     "BIGINT"
                                                       :base_type         "type/BigInteger"
+                                                      :effective_type    "type/BigInteger"
                                                       :visibility_type   "normal"
                                                       :has_field_values  "none"
                                                       :database_position 0})
@@ -260,6 +261,7 @@
                                                       :display_name      "Name"
                                                       :database_type     "VARCHAR"
                                                       :base_type         "type/Text"
+                                                      :effective_type    "type/Text"
                                                       :visibility_type   "normal"
                                                       :has_field_values  "list"
                                                       :database_position 1})]

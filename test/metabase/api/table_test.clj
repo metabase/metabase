@@ -152,6 +152,7 @@
                                      :display_name     "ID"
                                      :database_type    "BIGINT"
                                      :base_type        "type/BigInteger"
+                                     :effective_type   "type/BigInteger"
                                      :visibility_type  "normal"
                                      :has_field_values "none")
                               (assoc (field-details (Field (mt/id :users :name)))
@@ -161,6 +162,7 @@
                                      :display_name             "Name"
                                      :database_type            "VARCHAR"
                                      :base_type                "type/Text"
+                                     :effective_type           "type/Text"
                                      :visibility_type          "normal"
                                      :dimension_options        []
                                      :default_dimension_option nil
@@ -173,6 +175,7 @@
                                      :display_name             "Last Login"
                                      :database_type            "TIMESTAMP"
                                      :base_type                "type/DateTime"
+                                     :effective_type           "type/DateTime"
                                      :visibility_type          "normal"
                                      :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                                      :default_dimension_option (var-get #'table-api/date-default-index)
@@ -186,6 +189,7 @@
                                      :display_name     "Password"
                                      :database_type    "VARCHAR"
                                      :base_type        "type/Text"
+                                     :effective_type   "type/Text"
                                      :visibility_type  "sensitive"
                                      :has_field_values "list"
                                      :position          3
@@ -211,6 +215,7 @@
                                      :display_name     "ID"
                                      :database_type    "BIGINT"
                                      :base_type        "type/BigInteger"
+                                     :effective_type   "type/BigInteger"
                                      :has_field_values "none")
                               (assoc (field-details (Field (mt/id :users :name)))
                                      :table_id         (mt/id :users)
@@ -219,6 +224,7 @@
                                      :display_name     "Name"
                                      :database_type    "VARCHAR"
                                      :base_type        "type/Text"
+                                     :effective_type   "type/Text"
                                      :has_field_values "list"
                                      :position          1
                                      :database_position 1)
@@ -228,6 +234,7 @@
                                      :display_name             "Last Login"
                                      :database_type            "TIMESTAMP"
                                      :base_type                "type/DateTime"
+                                     :effective_type           "type/DateTime"
                                      :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                                      :default_dimension_option (var-get #'table-api/date-default-index)
                                      :has_field_values         "none"
@@ -323,6 +330,7 @@
                                             :display_name  "User ID"
                                             :database_type "INTEGER"
                                             :base_type     "type/Integer"
+                                            :effective_type "type/Integer"
                                             :semantic_type  "type/FK"
                                             :database_position 2
                                             :position          2
@@ -340,6 +348,7 @@
                                             :name          "ID"
                                             :display_name  "ID"
                                             :base_type     "type/BigInteger"
+                                            :effective_type "type/BigInteger"
                                             :database_type "BIGINT"
                                             :semantic_type  "type/PK"
                                             :table         (merge
@@ -372,6 +381,7 @@
                               :display_name     "ID"
                               :database_type    "BIGINT"
                               :base_type        "type/BigInteger"
+                              :effective_type   "type/BigInteger"
                               :has_field_values "none"})
                             (merge
                              (field-details (Field (mt/id :categories :name)))
@@ -381,6 +391,7 @@
                               :display_name             "Name"
                               :database_type            "VARCHAR"
                               :base_type                "type/Text"
+                              :effective_type           "type/Text"
                               :dimension_options        []
                               :default_dimension_option nil
                               :has_field_values         "list"

@@ -25,6 +25,9 @@ import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import Section, { SectionHeader } from "../components/Section";
 import SelectSeparator from "../components/SelectSeparator";
 
+import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
+import { isFK } from "metabase/lib/types";
+
 import {
   FieldVisibilityPicker,
   SemanticTypeAndTargetPicker,
@@ -313,6 +316,35 @@ const FieldGeneralPane = ({
       />
     </Section>
 
+    {!isFK(field.semantic_type) && is_coerceable(field.base_type) && (
+      <Section>
+        <SectionHeader title={t`Coercion`} />
+        <Select
+          className="inline-block"
+          placeholder={t`Select a conversion`}
+          searchProp="name"
+          value={field.coercion_strategy}
+          onChange={({ target: { value } }) =>
+            onUpdateFieldProperties({
+              coercion_strategy: value,
+            })
+          }
+          options={[
+            ...coercions_for_type(field.base_type).map(c => ({
+              id: c,
+              name: c,
+            })),
+            {
+              id: null,
+              name: t`No coercion strategy`,
+            },
+          ]}
+          optionValueFn={field => field.id}
+          optionNameFn={field => field.name.replace("Coercion/", "")}
+          optionIconFn={field => null}
+        />
+      </Section>
+    )}
     <Section>
       <SectionHeader
         title={t`Filtering on this field`}

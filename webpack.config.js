@@ -294,7 +294,7 @@ if (NODE_ENV !== "production") {
     }),
   );
 } else {
-  config.plugins.push(new UglifyJSPlugin({ test: /\.jsx?($|\?)/i }));
+  config.plugins.push(new UglifyJSPlugin({ parallel: true, test: /\.jsx?($|\?)/i }));
 
   config.devtool = "source-map";
 }

@@ -86,9 +86,11 @@
   query results. Try to keep this set pared down to just what's needed by the QP and frontend, since it has to be done
   for every MBQL query."
   [:base_type
+   :coercion_strategy
    :database_type
    :description
    :display_name
+   :effective_type
    :fingerprint
    :id
    :name
@@ -101,15 +103,19 @@
 (def ^:private FieldInstanceWithRequiredStorekeys
   (s/both
    (class Field)
-   {:name              su/NonBlankString
-    :display_name      su/NonBlankString
-    :description       (s/maybe s/Str)
-    :database_type     su/NonBlankString
-    :base_type         su/FieldType
-    :semantic_type     (s/maybe su/FieldType)
-    :fingerprint       (s/maybe su/Map)
-    :parent_id         (s/maybe su/IntGreaterThanZero)
-    s/Any              s/Any}))
+   {:name                               su/NonBlankString
+    :display_name                       su/NonBlankString
+    :description                        (s/maybe s/Str)
+    :database_type                      su/NonBlankString
+    :base_type                          su/FieldType
+    ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
+    ;; would make everything just use base_type.
+    (s/optional-key :effective_type)    (s/maybe su/FieldType)
+    (s/optional-key :coercion_strategy) (s/maybe su/CoercionStrategy)
+    :semantic_type                      (s/maybe su/FieldType)
+    :fingerprint                        (s/maybe su/Map)
+    :parent_id                          (s/maybe su/IntGreaterThanZero)
+    s/Any                               s/Any}))
 
 
 ;;; ------------------------------------------ Saving objects in the Store -------------------------------------------

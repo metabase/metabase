@@ -1,0 +1,42 @@
+name: i18n
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - 'release**'
+      - 'feature**'
+    tags:
+      - '**'
+    paths:
+    - '**.clj'
+    - '**.js'
+    - '**.jsx'
+    - '.github/workflows/**'
+    - 'bin/**'
+
+jobs:
+
+  verify-i18n-files:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-i18n-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --frozen-lockfile --prefer-offline
+
+    - run: sudo apt install gettext
+
+    - run: ./bin/i18n/update-translation-template
+      name: Check i18n tags/make sure template can be built
+    - run: ./bin/i18n/build-translation-resources
+      name: Verify i18n translations (.po files)

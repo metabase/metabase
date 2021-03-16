@@ -18,45 +18,55 @@
     (is (= #{{:name              "id"
               :database-type     "SERIAL"
               :base-type         :type/Integer
+              :effective-type    :type/Integer
               :semantic-type     :type/PK
               :pk?               true}
              {:name              "buyer"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary
+              :effective-type    :type/Dictionary
               :pk?               false
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
+                                    :effective-type    :type/Text
                                     :pk?               false}
                                    {:name              "cc"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
+                                    :effective-type    :type/Text
                                     :pk?               false}}}
              {:name              "ts"
               :database-type     "BIGINT"
               :base-type         :type/BigInteger
+              :effective-type    :type/BigInteger
               :semantic-type     :type/UNIXTimestampMilliseconds
               :pk?               false}
              {:name              "toucan"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary
+              :effective-type    :type/Dictionary
               :pk?               false
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
+                                    :effective-type    :type/Text
                                     :pk?               false}
                                    {:name              "details"
                                     :database-type     "OBJECT"
                                     :base-type         :type/Dictionary
+                                    :effective-type    :type/Dictionary
                                     :pk?               false
                                     :nested-fields     #{{:name              "weight"
                                                           :database-type     "DECIMAL"
                                                           :base-type         :type/Decimal
+                                                          :effective-type    :type/Decimal
                                                           :semantic-type     :type/Category
                                                           :pk?               false}
                                                          {:name              "age"
                                                           :database-type     "INT"
                                                           :base-type         :type/Integer
+                                                          :effective-type    :type/Integer
                                                           :pk?               false}}}}}}
 
            (let [transactions-table-id   (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))

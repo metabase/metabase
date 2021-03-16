@@ -191,6 +191,12 @@
    {:source-paths ["enterprise/backend/src"]
     :test-paths   ["enterprise/backend/test"]}
 
+   :socket
+   {:dependencies
+    [[vlaaad/reveal "1.3.196"]]
+    :jvm-opts
+    ["-Dclojure.server.repl={:port 5555 :accept clojure.core.server/repl}"]}
+
    :dev
    {:source-paths ["dev/src" "local/src"]
     :test-paths   ["test" "backend/mbql/test" "shared/test"]
@@ -200,7 +206,10 @@
      [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.10.0"]
-     [ring/ring-mock "0.4.0"]]
+     [reifyhealth/specmonstah "2.0.0"]                                ; Generate fixtures to test huge databases
+     [ring/ring-mock "0.4.0"]
+     [talltale "0.5.4"]                                               ; Generate realistic data for fixtures
+     ]
 
     :plugins
     [[lein-environ "1.1.0"] ; easy access to environment variables
@@ -405,7 +414,12 @@
                     [;; don't instrument logging forms, since they won't get executed as part of tests anyway
                      ;; log calls expand to these
                      clojure.tools.logging/logf
-                     clojure.tools.logging/logp]}}]
+                     clojure.tools.logging/logp]
+                    ;; don't instrument Postgres/MySQL driver namespaces, because we don't current run tests for them
+                    ;; as part of recording test coverage, which means they can give us false positives.
+                    :ns-exclude-regex
+                    [#"metabase\.driver\.mysql"
+                     #"metabase\.driver\.postgres"]}}]
 
    ;; build the uberjar with `lein uberjar`
    :uberjar

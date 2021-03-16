@@ -1,6 +1,7 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
@@ -16,7 +17,8 @@
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.util.honeysql-extensions :as hx]))
 
 (defn- drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -242,7 +244,7 @@
     (testing "Verify that we identify JSON columns and mark metadata properly during sync"
       (mt/dataset (mt/dataset-definition "Postgres with a JSON Field"
                     ["venues"
-                     [{:field-name "address", :base-type {:native "json"}}]
+                     [{:field-name "address", :base-type {:native "json"}, :effective-type :type/Structured}]
                      [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
@@ -308,7 +310,7 @@
 
 (mt/defdataset ^:private ip-addresses
   [["addresses"
-    [{:field-name "ip", :base-type {:native "inet"}}]
+    [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
     [[(hsql/raw "'192.168.1.1'::inet")]
      [(hsql/raw "'10.4.4.15'::inet")]]]])
 
@@ -402,7 +404,7 @@
 (deftest enums-test
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
-      (is (= (hsql/call :cast "toucan" (keyword "bird type"))
+      (is (= (hx/with-database-type-info (hsql/call :cast "toucan" (keyword "bird type")) "bird type")
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
 
     (do-with-enums-db
@@ -593,3 +595,21 @@
                                           (mt/native-query)
                                           (qp/process-query)
                                           (mt/rows))))))))))
+
+(defn- pretty-sql [s]
+  (-> s
+      (str/replace #"\"" "")
+      (str/replace #"public\." "")))
+
+(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+  (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!day.date]})]
+          (is (= (str "SELECT attempts.date AS date, count(*) AS count "
+                      "FROM attempts "
+                      "GROUP BY attempts.date "
+                      "ORDER BY attempts.date ASC")
+                 (some-> (qp/query->native query) :query pretty-sql))))))))

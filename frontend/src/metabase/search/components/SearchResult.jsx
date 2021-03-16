@@ -1,13 +1,30 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
+import { t, jt } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
+import { capitalize } from "metabase/lib/formatting";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Tooltip from "metabase/components/Tooltip";
+import Text from "metabase/components/type/Text";
+
+import Database from "metabase/entities/databases";
+import Table from "metabase/entities/tables";
+
+function getColorForIconWrapper(props) {
+  if (props.item.collection_position) {
+    return color("warning");
+  }
+  switch (props.type) {
+    case "collection":
+      return lighten("brand", 0.35);
+    default:
+      return color("brand");
+  }
+}
 
 const IconWrapper = styled.div`
   display: flex;
@@ -15,37 +32,50 @@ const IconWrapper = styled.div`
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 99px;
-  background-color: #ddecfa;
-  color: ${color("brand")};
+  color: ${getColorForIconWrapper};
   margin-right: 10px;
   flex-shrink: 0;
 `;
 
 const ResultLink = styled(Link)`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  display: block;
   background-color: transparent;
-  border-radius: 6px;
   min-height: ${props => (props.compact ? "36px" : "54px")};
-  padding-top: ${props => (props.compact ? "6px" : "8px")};
-  padding-bottom: ${props => (props.compact ? "6px" : "8px")};
+  padding-top: 8px;
+  padding-bottom: 8px;
   padding-left: 14px;
   padding-right: ${props => (props.compact ? "20px" : "32px")};
 
   &:hover {
-    background-color: #fafafa;
+    background-color: ${lighten("brand", 0.63)};
 
     h3 {
       color: ${color("brand")};
     }
   }
 
+  ${Link} {
+    text-underline-position: under;
+    text-decoration: underline ${color("text-light")};
+    text-decoration-style: dashed;
+    &:hover {
+      color: ${color("brand")};
+      text-decoration-color: ${color("brand")};
+    }
+  }
+
+  ${Text} {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 13px;
+    line-height: 19px;
+  }
+
   h3 {
     font-size: ${props => (props.compact ? "14px" : "16px")};
     line-height: 1.2em;
     word-wrap: break-word;
+    margin-bottom: 0;
   }
 
   .Icon-info {
@@ -53,54 +83,28 @@ const ResultLink = styled(Link)`
   }
 `;
 
-function ItemIcon({ item }) {
+function ItemIcon({ item, type }) {
   return (
-    <IconWrapper item={item}>
-      <Icon name={item.getIcon()} />
+    <IconWrapper item={item} type={type}>
+      {type === "table" ? (
+        <Icon name="database" />
+      ) : (
+        <Icon name={item.getIcon()} size={20} />
+      )}
     </IconWrapper>
   );
 }
 
-export default function SearchResult(props) {
-  const { result } = props;
-  switch (result.model) {
-    case "card":
-      return <QuestionResult question={result} options={props} />;
-    case "collection":
-      return <CollectionResult collection={result} options={props} />;
-    case "dashboard":
-      return <DashboardResult dashboard={result} options={props} />;
-    default:
-      // metric, segment, and table deliberately included here
-      return <DefaultResult result={result} options={props} />;
-  }
-}
-
 const CollectionLink = styled(Link)`
-  display: flex;
-  align-items: center;
-
-  font-size: 12px;
-  line-height: 12px;
-  font-weight: bold;
-  color: ${color("text-medium")};
-
-  .Icon {
-    color: ${color("text-light")};
-  }
-
+  text-decoration: dashed;
   &:hover {
     color: ${color("brand")};
-    .Icon {
-      color: ${color("brand")};
-    }
   }
 `;
 
 function CollectionBadge({ collection }) {
   return (
     <CollectionLink to={Urls.collection(collection.id)}>
-      <Icon name="folder" size={12} mr="4px" />
       {collection.name}
     </CollectionLink>
   );
@@ -115,30 +119,6 @@ function Score({ scores }) {
     <pre className="hide search-score">{JSON.stringify(scores, null, 2)}</pre>
   );
 }
-
-// Generally these should be at the bottom of the list I'd hope
-function CollectionResult({ collection }) {
-  return (
-    <ResultLink to={Urls.collection(collection.id)}>
-      <Flex align="center">
-        <ItemIcon item={collection} />
-        <Title>{collection.name}</Title>
-        <Score scores={collection.scores} />
-      </Flex>
-    </ResultLink>
-  );
-}
-
-function contextText(context) {
-  return context.map(function({ is_match, text }) {
-    if (is_match) {
-      return <strong style={{ color: color("brand") }}> {text}</strong>;
-    } else {
-      return <span> {text}</span>;
-    }
-  });
-}
-
 const Context = styled("p")`
   line-height: 1.4em;
   color: ${color("text-medium")};
@@ -160,57 +140,93 @@ function formatCollection(collection) {
   return collection.id && <CollectionBadge collection={collection} />;
 }
 
-function DashboardResult({ dashboard, options }) {
-  return (
-    <ResultLink to={dashboard.getUrl()} compact={options.compact}>
-      <Flex align="center">
-        <ItemIcon item={dashboard} />
-        <Box>
-          <Title>{dashboard.name}</Title>
-          {formatCollection(dashboard.getCollection())}
-          <Score scores={dashboard.scores} />
-        </Box>
-      </Flex>
-      {formatContext(dashboard.context, options.compact)}
-    </ResultLink>
-  );
+const Description = styled(Text)`
+  padding-left: 8px;
+  margin-top: 6px !important;
+  border-left: 2px solid ${lighten("brand", 0.45)};
+`;
+
+function contextText(context) {
+  return context.map(function({ is_match, text }, i) {
+    if (is_match) {
+      return (
+        <strong key={i} style={{ color: color("brand") }}>
+          {" "}
+          {text}
+        </strong>
+      );
+    } else {
+      return <span key={i}> {text}</span>;
+    }
+  });
 }
 
-function QuestionResult({ question, options }) {
-  return (
-    <ResultLink to={question.getUrl()} compact={options.compact}>
-      <Flex align="center">
-        <ItemIcon item={question} />
-        <Box>
-          <Title>{question.name}</Title>
-          {formatCollection(question.getCollection())}
-          <Score scores={question.scores} />
-        </Box>
-        {question.description && (
-          <Box ml="auto">
-            <Tooltip tooltip={question.description}>
-              <Icon name="info" />
-            </Tooltip>
-          </Box>
-        )}
-      </Flex>
-      {formatContext(question.context, options.compact)}
-    </ResultLink>
-  );
+function InfoText({ result }) {
+  const collection = result.getCollection();
+  switch (result.model) {
+    case "card":
+      return jt`Saved question in ${formatCollection(collection)}`;
+    case "collection":
+      return t`Collection`;
+    case "table":
+      return (
+        <span>
+          {jt`Table in ${(
+            <span>
+              <Link to={Urls.browseDatabase({ id: result.database_id })}>
+                <Database.Name id={result.database_id} />{" "}
+              </Link>
+              {result.table_schema && (
+                <span>
+                  <Icon name="chevronright" mx="4px" size={10} />
+                  {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
+                  <Link
+                    to={Urls.browseSchema({
+                      db: { id: result.database_id },
+                      schema_name: result.table_schema,
+                    })}
+                  >
+                    {result.table_schema}
+                  </Link>
+                </span>
+              )}
+            </span>
+          )}`}
+        </span>
+      );
+    case "segment":
+    case "metric":
+      return jt`${
+        result.model === "segment" ? "Segment of" : "Metric for"
+      } of ${(
+        <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
+          <Table.Loader id={result.table_id}>
+            {({ table }) => <span>{table.display_name}</span>}
+          </Table.Loader>
+        </Link>
+      )}`;
+    default:
+      return jt`${capitalize(result.model)} in ${formatCollection(collection)}`;
+  }
 }
 
-function DefaultResult({ result, options }) {
+export default function SearchResult({ result, compact }) {
   return (
-    <ResultLink to={result.getUrl()} compact={options.compact}>
-      <Flex align="center">
-        <ItemIcon item={result} />
+    <ResultLink to={result.getUrl()} compact={compact}>
+      <Flex align="start">
+        <ItemIcon item={result} type={result.model} />
         <Box>
           <Title>{result.name}</Title>
-          {formatCollection(result.getCollection())}
+          <Text>
+            <InfoText result={result} />
+          </Text>
+          {result.description && (
+            <Description>{result.description}</Description>
+          )}
           <Score scores={result.scores} />
         </Box>
       </Flex>
-      {formatContext(result.context, options.compact)}
+      {formatContext(result.context, compact)}
     </ResultLink>
   );
 }

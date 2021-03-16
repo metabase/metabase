@@ -1085,14 +1085,14 @@
 (deftest compile-time-interval-test
   (testing "Make sure time-intervals work the way they're supposed to."
     (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
-      (is (= (str "SELECT CAST(CHECKINS.DATE AS date) AS DATE "
+      (is (= (str "SELECT CHECKINS.DATE AS DATE "
                   "FROM CHECKINS "
                   "WHERE ("
                   "CHECKINS.DATE >= parsedatetime(formatdatetime(dateadd('month', CAST(-4 AS long), now()), 'yyyyMM'), 'yyyyMM')"
                   " AND "
                   "CHECKINS.DATE < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM')) "
-                  "GROUP BY CAST(CHECKINS.DATE AS date) "
-                  "ORDER BY CAST(CHECKINS.DATE AS date) ASC "
+                  "GROUP BY CHECKINS.DATE "
+                  "ORDER BY CHECKINS.DATE ASC "
                   "LIMIT 1048576")
              (sql.qp.test/pretty-sql
               (:query

@@ -1,4 +1,5 @@
-import { ngettext, msgid } from "ttag";
+import { getIn } from "icepick";
+import { ngettext, msgid, t } from "ttag";
 import { ExpressionVisitor } from "./visitor";
 import { CLAUSE_TOKENS } from "./lexer";
 
@@ -38,6 +39,10 @@ export function typeCheck(cst, rootType) {
     caseExpression(ctx) {
       const type = this.typeStack[0];
       const args = ctx.arguments || [];
+      if (args.length < 2) {
+        this.errors.push({ message: t`CASE expects 2 arguments or more` });
+        return [];
+      }
       return args.map((arg, index) => {
         // argument 0, 2, 4, ...(even) is always a boolean, ...
         const argType = index & 1 ? type : "boolean";
@@ -91,6 +96,24 @@ export function typeCheck(cst, rootType) {
         }
       }
       return super.identifierExpression(ctx);
+    }
+
+    numberLiteral(ctx) {
+      const type = this.typeStack[0];
+      if (type === "boolean") {
+        const literal = getIn(ctx, ["NumberLiteral", 0, "image"]);
+        const message = t`Expecting boolean but found ${literal}`;
+        this.errors.push({ message });
+      }
+    }
+
+    stringLiteral(ctx) {
+      const type = this.typeStack[0];
+      if (type === "boolean") {
+        const literal = getIn(ctx, ["StringLiteral", 0, "image"]);
+        const message = t`Expecting boolean but found ${literal}`;
+        this.errors.push({ message });
+      }
     }
   }
   const checker = new TypeChecker();

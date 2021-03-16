@@ -123,7 +123,9 @@
               :id              (mt/id :extsales :buyerid)
               :visibility_type :normal
               :display_name    "Buyer ID"
-              :base_type       :type/Integer}
+              :base_type       :type/Integer
+              :effective_type  :type/Integer
+              :coercion_strategy nil}
              {:description     nil
               :table_id        (mt/id :extsales)
               :semantic_type    nil
@@ -135,7 +137,9 @@
               :id              (mt/id :extsales :salesid)
               :visibility_type :normal
               :display_name    "Sale Sid"
-              :base_type       :type/Integer}]
+              :base_type       :type/Integer
+              :effective_type  :type/Integer
+              :coercion_strategy nil}]
             ; in different Redshift instances, the fingerprint on these
             ; columns is different.
             (map #(dissoc % :fingerprint)

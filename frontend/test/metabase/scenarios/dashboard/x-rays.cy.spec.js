@@ -31,34 +31,29 @@ describe("scenarios > x-rays", () => {
   it.skip("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13112",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                ["field", ORDERS.PRODUCT_ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
-              ],
-              alias: PRODUCTS_ALIAS,
-            },
-          ],
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
-          ],
-        },
-        database: 1,
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
+            ],
+            alias: PRODUCTS_ALIAS,
+          },
+        ],
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
+        ],
       },
       display: "line",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
       cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");

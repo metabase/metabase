@@ -25,7 +25,7 @@
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
   (:import metabase.models.field.FieldInstance
-           metabase.util.honeysql_extensions.Identifier))
+           [metabase.util.honeysql_extensions Identifier TypedHoneySQLForm]))
 
 ;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic ^:private *query*
@@ -229,26 +229,34 @@
   (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
 
 (defn semantic-type->unix-timestamp-unit
-  "Translates types like `:type/UNIXTimestampSeconds` to the corresponding unit of time to use in
-  `unix-timestamp->honeysql`.  Throws an AssertionError if the argument does not descend from `:type/UNIXTimestamp`
+  "Translates coercion types like `:Coercion/UNIXSeconds->DateTime` to the corresponding unit of time to use in
+  `unix-timestamp->honeysql`.  Throws an AssertionError if the argument does not descend from `:UNIXTime->Temporal`
   and an exception if the type does not have an associated unit."
-  [semantic-type]
-  (assert (isa? semantic-type :type/UNIXTimestamp) "Semantic type must be a UNIXTimestamp")
-  (or (get {:type/UNIXTimestampMicroseconds :microseconds
-            :type/UNIXTimestampMilliseconds :milliseconds
-            :type/UNIXTimestampSeconds      :seconds}
-           semantic-type)
-      (throw (Exception. (tru "No magnitude known for {0}" semantic-type)))))
+  [coercion-type]
+  (assert (isa? coercion-type :Coercion/UNIXTime->Temporal) "Semantic type must be a UNIXTimestamp")
+  (or (get {:Coercion/UNIXMicroSeconds->DateTime :microseconds
+            :Coercion/UNIXMilliSeconds->DateTime :milliseconds
+            :Coercion/UNIXSeconds->DateTime      :seconds}
+           coercion-type)
+      (throw (Exception. (tru "No magnitude known for {0}" coercion-type)))))
 
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
-  (match [(:base_type field) (:semantic_type field)]
-    [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql driver
-                                                                                    (semantic-type->unix-timestamp-unit (:semantic_type field))
-                                                                                    field-identifier)
-    [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:semantic_type field) field-identifier)
+  (match [(:base_type field) (:coercion_strategy field)]
+    [(:isa? :type/Number)   (:isa? :Coercion/UNIXTime->Temporal)]
+    (unix-timestamp->honeysql driver
+                              (semantic-type->unix-timestamp-unit (:coercion_strategy field))
+                              field-identifier)
+
+    [:type/Text             (:isa? :Coercion/String->Temporal)  ]
+    (cast-temporal-string driver (:coercion_strategy field) field-identifier)
+
     :else field-identifier))
+
+(defmethod ->honeysql [:sql TypedHoneySQLForm]
+  [driver typed-form]
+  (->honeysql driver (hx/unwrap-typed-honeysql-form typed-form)))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
 (defmethod ->honeysql [:sql Identifier]
@@ -282,15 +290,16 @@
       field-alias)))
 
 (defmethod ->honeysql [:sql (class Field)]
-  [driver {field-name :name, table-id :table_id, :as field}]
+  [driver {field-name :name, table-id :table_id, database-type :database_type, :as field}]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
-  (->> (if *table-alias*
-         [*table-alias* (unambiguous-field-alias driver [:field (:id field) nil])]
-         (let [{schema :schema, table-name :name} (qp.store/table table-id)]
-           [schema table-name field-name]))
-       (apply hx/identifier :field)
-       (->honeysql driver)
-       (cast-field-if-needed driver field)))
+  (as-> (if *table-alias*
+          [*table-alias* (unambiguous-field-alias driver [:field (:id field) nil])]
+          (let [{schema :schema, table-name :name} (qp.store/table table-id)]
+            [schema table-name field-name])) expr
+    (apply hx/identifier :field expr)
+    (->honeysql driver expr)
+    (cast-field-if-needed driver field expr)
+    (hx/with-database-type-info expr database-type)))
 
 (defn compile-field-with-join-aliases
   "Compile `field-clause` to HoneySQL using the `:join-alias` from the `:field` clause options."
@@ -344,16 +353,22 @@
       (hx/* bin-width)
       (hx/+ min-value)))
 
+(def ^:dynamic *field-options*
+  "Bound to the `options` part of a `:field` clause when that clause is being compiled to HoneySQL. Useful if you store
+  additional keys there and need to access them."
+  nil)
+
 (defmethod ->honeysql [:sql :field]
   [driver [_ field-id-or-name options :as field-clause]]
-  (if (:join-alias options)
-    (compile-field-with-join-aliases driver field-clause)
-    (let [honeysql-form (if (integer? field-id-or-name)
-                          (->honeysql driver (qp.store/field field-id-or-name))
-                          (->honeysql driver (hx/identifier :field *table-alias* field-id-or-name)))]
-      (cond->> honeysql-form
-        (:temporal-unit options) (apply-temporal-bucketing driver options)
-        (:binning options)       (apply-binning options)))))
+  (binding [*field-options* options]
+    (if (:join-alias options)
+      (compile-field-with-join-aliases driver field-clause)
+      (let [honeysql-form (if (integer? field-id-or-name)
+                            (->honeysql driver (qp.store/field field-id-or-name))
+                            (->honeysql driver (hx/identifier :field *table-alias* field-id-or-name)))]
+        (cond->> honeysql-form
+          (:temporal-unit options) (apply-temporal-bucketing driver options)
+          (:binning options)       (apply-binning options))))))
 
 
 (defmethod ->honeysql [:sql :count]

@@ -110,28 +110,21 @@ describeWithToken("formatting > sandboxes", () => {
         },
       });
 
-      cy.log("Create parametrized SQL question");
-      cy.request("POST", "/api/card", {
+      cy.createNativeQuestion({
         name: "sql param",
-        dataset_query: {
-          type: "native",
-          native: {
-            query: `select id,name,address,email from people where {{${TTAG_NAME}}}`,
-            "template-tags": {
-              [TTAG_NAME]: {
-                id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
-                name: TTAG_NAME,
-                "display-name": "CID",
-                type: "dimension",
-                dimension: ["field", PEOPLE.ID, null],
-                "widget-type": "id",
-              },
+        native: {
+          query: `select id,name,address,email from people where {{${TTAG_NAME}}}`,
+          "template-tags": {
+            [TTAG_NAME]: {
+              id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+              name: TTAG_NAME,
+              "display-name": "CID",
+              type: "dimension",
+              dimension: ["field", PEOPLE.ID, null],
+              "widget-type": "id",
             },
           },
-          database: 1,
         },
-        display: "table",
-        visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
         // Sandbox `People` table based on previously created SQL question
         cy.request("POST", "/api/mt/gtap", {
@@ -299,31 +292,24 @@ describeWithToken("formatting > sandboxes", () => {
         },
       });
 
-      cy.log("Create and save a question");
-
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: QUESTION_NAME,
-        dataset_query: {
-          database: 1,
-          query: {
-            expressions: {
-              [CC_NAME]: [
-                "case",
+        query: {
+          expressions: {
+            [CC_NAME]: [
+              "case",
+              [
                 [
-                  [
-                    [">", ["field", ORDERS.DISCOUNT, null], 0],
-                    ["field", ORDERS.DISCOUNT, null],
-                  ],
+                  [">", ["field", ORDERS.DISCOUNT, null], 0],
+                  ["field", ORDERS.DISCOUNT],
+                  null,
                 ],
-                { default: ["field", ORDERS.TOTAL, null] },
               ],
-            },
-            "source-table": ORDERS_ID,
+              { default: ["field", ORDERS.TOTAL, null] },
+            ],
           },
-          type: "query",
+          "source-table": ORDERS_ID,
         },
-        display: "table",
-        visualization_settings: {},
       }).then(({ body: { id: QUESTION_ID } }) => {
         signOut();
         signInAsSandboxedUser();
@@ -380,25 +366,20 @@ describeWithToken("formatting > sandboxes", () => {
         cy.log(
           "Create question based on steps in [#13641](https://github.com/metabase/metabase/issues/13641)",
         );
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: QUESTION_NAME,
-          dataset_query: {
-            database: 1,
-            query: {
-              aggregation: [["count"]],
-              breakout: [
-                [
-                  "field",
-                  PRODUCTS.CATEGORY,
-                  { "source-field": ORDERS.PRODUCT_ID },
-                ],
+          query: {
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "source-field": ORDERS.PRODUCT_ID },
               ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+            ],
+            "source-table": ORDERS_ID,
           },
           display: "bar",
-          visualization_settings: {},
         });
 
         signOut();
@@ -458,33 +439,28 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log(
         "Create question based on steps in https://github.com/metabase/metabase-enterprise/issues/535",
       );
-      cy.request("POST", "/api/card", {
+      cy.createQuestion({
         name: QUESTION_NAME,
-        dataset_query: {
-          database: 1,
-          query: {
-            aggregation: [["count"]],
-            breakout: [
-              ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
-            ],
-            joins: [
-              {
-                alias: PRODUCTS_ALIAS,
-                condition: [
-                  "=",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
-                ],
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-              },
-            ],
-            "source-table": ORDERS_ID,
-          },
-          type: "query",
+        query: {
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
+          ],
+          joins: [
+            {
+              alias: PRODUCTS_ALIAS,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
+              ],
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+            },
+          ],
+          "source-table": ORDERS_ID,
         },
         display: "bar",
-        visualization_settings: {},
       });
 
       signOut();
@@ -533,19 +509,12 @@ describeWithToken("formatting > sandboxes", () => {
         cy.route("POST", "/api/dataset").as("dataset");
 
         cy.log("Create 'Orders'-based question using QB");
-
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: "520_Orders",
-          dataset_query: {
-            type: "query",
-            query: {
-              "source-table": ORDERS_ID,
-              filter: [">", ["field", ORDERS.TOTAL, null], 10],
-            },
-            database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field", ORDERS.TOTAL, null], 10],
           },
-          display: "table",
-          visualization_settings: {},
         }).then(({ body: { id: CARD_ID } }) => {
           cy.log(
             "Sandbox `Orders` table based on this QB question and user attribute",
@@ -562,18 +531,12 @@ describeWithToken("formatting > sandboxes", () => {
         });
 
         cy.log("Create 'Products'-based question using QB");
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: "520_Products",
-          dataset_query: {
-            type: "query",
-            query: {
-              "source-table": PRODUCTS_ID,
-              filter: [">", ["field", PRODUCTS.PRICE, null], 10],
-            },
-            database: 1,
+          query: {
+            "source-table": PRODUCTS_ID,
+            filter: [">", ["field", PRODUCTS.PRICE, null], 10],
           },
-          display: "table",
-          visualization_settings: {},
         }).then(({ body: { id: CARD_ID } }) => {
           cy.log(
             "Sandbox `Products` table based on this QB question and user attribute",
@@ -636,27 +599,20 @@ describeWithToken("formatting > sandboxes", () => {
           cy.route("POST", "/api/card/*/query").as("cardQuery");
           cy.route("PUT", "/api/card/*").as("questionUpdate");
 
-          cy.log("Create the first native question with a filter");
-          cy.request("POST", "/api/card", {
+          cy.createNativeQuestion({
             name: "EE_520_Q1",
-            dataset_query: {
-              database: 1,
-              native: {
-                query:
-                  "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL > 10",
-                "template-tags": {
-                  sandbox: {
-                    "display-name": "Sandbox",
-                    id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
-                    name: "sandbox",
-                    type: "number",
-                  },
+            native: {
+              query:
+                "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL > 10",
+              "template-tags": {
+                sandbox: {
+                  "display-name": "Sandbox",
+                  id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
+                  name: "sandbox",
+                  type: "number",
                 },
               },
-              type: "native",
             },
-            display: "table",
-            visualization_settings: {},
           }).then(({ body: { id: CARD_ID } }) => {
             test === "workaround"
               ? runAndSaveQuestion({ question: CARD_ID, sandboxValue: "1" })
@@ -673,28 +629,21 @@ describeWithToken("formatting > sandboxes", () => {
               table_id: ORDERS_ID,
             });
           });
-          cy.log("Create the second native question with a filter");
 
-          cy.request("POST", "/api/card", {
+          cy.createNativeQuestion({
             name: "EE_520_Q2",
-            dataset_query: {
-              database: 1,
-              native: {
-                query:
-                  "SELECT * FROM PRODUCTS WHERE CATEGORY={{sandbox}} AND PRICE > 10",
-                "template-tags": {
-                  sandbox: {
-                    "display-name": "Sandbox",
-                    id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
-                    name: "sandbox",
-                    type: "text",
-                  },
+            native: {
+              query:
+                "SELECT * FROM PRODUCTS WHERE CATEGORY={{sandbox}} AND PRICE > 10",
+              "template-tags": {
+                sandbox: {
+                  "display-name": "Sandbox",
+                  id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
+                  name: "sandbox",
+                  type: "text",
                 },
               },
-              type: "native",
             },
-            display: "table",
-            visualization_settings: {},
           }).then(({ body: { id: CARD_ID } }) => {
             test === "workaround"
               ? runAndSaveQuestion({
@@ -847,33 +796,28 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.log("Create question with joins");
 
-        cy.request("POST", "/api/card", {
+        cy.createQuestion({
           name: QUESTION_NAME,
-          dataset_query: {
-            database: 1,
-            query: {
-              aggregation: [["count"]],
-              breakout: [
-                ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
-              ],
-              joins: [
-                {
-                  fields: "all",
-                  "source-table": PRODUCTS_ID,
-                  condition: [
-                    "=",
-                    ["field", ORDERS.PRODUCT_ID, null],
-                    ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
-                  ],
-                  alias: PRODUCTS_ALIAS,
-                },
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+          query: {
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
+            ],
+            joins: [
+              {
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
+                ],
+                alias: PRODUCTS_ALIAS,
+              },
+            ],
+            "source-table": ORDERS_ID,
           },
           display: "bar",
-          visualization_settings: {},
         });
 
         signOut();
@@ -910,26 +854,21 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.server();
       cy.route("POST", "/api/mt/gtap").as("sandboxTable");
+      cy.route("GET", "/api/permissions/group").as("tablePermissions");
 
-      cy.log(
-        "Create question that will have differently-typed columns than the sandboxed table",
-      );
-
-      cy.request("POST", "/api/card", {
+      // Question with differently-typed columns than the sandboxed table
+      cy.createNativeQuestion({
         name: QUESTION_NAME,
-        dataset_query: {
-          database: 1,
-          type: "native",
-          native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
-        },
-        display: "table",
-        visualization_settings: {},
+        native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
 
-      cy.visit("/admin/permissions/databases/1/schemas/PUBLIC/tables");
+      cy.visit("/admin/permissions/databases/1/schemas");
+      cy.findByText("View tables").click();
       // |                | All users | collection |
       // |--------------- |:---------:|:----------:|
       // | Orders         |   X (0)   |    X (1)   |
+
+      cy.wait("@tablePermissions");
       cy.icon("close")
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();
@@ -1036,7 +975,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should work with pivot tables (metabase#14969)", () => {
-      cy.log("**-- 1. Sandbox `Orders` table --**");
+      cy.log("Sandbox `Orders` table");
       cy.request("POST", "/api/mt/gtap", {
         attribute_remappings: {
           [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
@@ -1127,6 +1066,34 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Twitter");
       cy.findByText("Row totals");
     });
+
+    it.skip("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
+      cy.log("Sandbox `Orders` table");
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings: {
+          [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+        },
+        card_id: null,
+        table_id: ORDERS_ID,
+        group_id: COLLECTION_GROUP,
+      });
+
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
+        },
+      });
+      signInAsSandboxedUser();
+      cy.visit("/dashboard/1");
+      cy.icon("share").click();
+      cy.findByText("Dashboard subscriptions").click();
+      // We're starting without email or Slack being set up so it's expected to see the following:
+      cy.findByText("Create a dashboard subscription");
+      cy.findAllByRole("link", { name: "set up email" });
+      cy.findAllByRole("link", { name: "configure Slack" });
+    });
   });
 });
 
@@ -1139,28 +1106,23 @@ function signInAsSandboxedUser() {
 }
 
 function createJoinedQuestion(name) {
-  return cy.request("POST", "/api/card", {
+  return cy.createQuestion({
     name,
-    dataset_query: {
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-            ],
-            alias: "Products",
-          },
-        ],
-      },
-      database: 1,
+
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          fields: "all",
+          "source-table": PRODUCTS_ID,
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+          ],
+          alias: "Products",
+        },
+      ],
     },
-    display: "table",
-    visualization_settings: {},
   });
 }

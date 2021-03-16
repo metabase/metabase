@@ -86,21 +86,15 @@ describe("scenarios > admin > datamodel > metadata", () => {
       semantic_type: null,
     });
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14124",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "hour-of-day" }],
-          ],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "hour-of-day" }],
+        ],
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
 

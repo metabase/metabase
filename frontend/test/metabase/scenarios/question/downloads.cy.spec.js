@@ -78,19 +78,13 @@ describe("scenarios > question > download", () => {
     let questionId;
 
     beforeEach(() => {
-      cy.request("POST", "/api/card", {
+      cy.createNativeQuestion({
         name: "10803",
-        dataset_query: {
-          type: "native",
-          native: {
-            query:
-              "SELECT PARSEDATETIME('2020-06-03', 'yyyy-MM-dd') AS \"birth_date\", PARSEDATETIME('2020-06-03 23:41:23', 'yyyy-MM-dd hh:mm:ss') AS \"created_at\"",
-            "template-tags": {},
-          },
-          database: 1,
+        native: {
+          query:
+            "SELECT PARSEDATETIME('2020-06-03', 'yyyy-MM-dd') AS \"birth_date\", PARSEDATETIME('2020-06-03 23:41:23', 'yyyy-MM-dd hh:mm:ss') AS \"created_at\"",
+          "template-tags": {},
         },
-        display: "table",
-        visualization_settings: {},
       }).then(({ body }) => {
         questionId = body.id;
       });
