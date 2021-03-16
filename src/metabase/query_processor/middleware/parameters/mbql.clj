@@ -1,12 +1,22 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
   (:require [metabase.driver.common.parameters.dates :as date-params]
+            [metabase.driver.common.parameters.operators :as ops]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.params :as params]
             [schema.core :as s]
             [toucan.db :as db]))
+
+(s/defn ^:private to-numeric :- s/Num
+  "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters
+  or arbitrary maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more
+  sensical number format exception."
+  [s]
+  (if (re-find #"\." s)
+    (Double/parseDouble s)
+    (Long/parseLong s)))
 
 (s/defn ^:private parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.
@@ -23,22 +33,26 @@
            (isa? base-type :type/Number)))
     (recur :number param-value field-clause)
 
+    (= (namespace param-type) "string")
+    param-value
+
+    (= (namespace param-type) "number")
+    (mapv to-numeric param-value)
+
     ;; no conversion needed if PARAM-TYPE isn't :number or PARAM-VALUE isn't a string
     (or (not= param-type :number)
         (not (string? param-value)))
     param-value
 
-    ;; if PARAM-VALUE contains a period then convert to a Double
-    (re-find #"\." param-value)
-    (Double/parseDouble param-value)
-
-    ;; otherwise convert to a Long
     :else
-    (Long/parseLong param-value)))
+    (to-numeric param-value)))
 
 (s/defn ^:private build-filter-clause :- (s/maybe mbql.s/Filter)
   [{param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
+    (ops/operator? param-type)
+    (ops/to-clause (assoc param :value (parse-param-value-for-type param-type param-value
+                                                                   (params/unwrap-field-clause field))))
     ;; multipe values. Recursively handle them all and glue them all together with an OR clause
     (sequential? param-value)
     (mbql.u/simplify-compound-filter
