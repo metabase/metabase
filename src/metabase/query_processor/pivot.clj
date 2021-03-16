@@ -7,9 +7,10 @@
             [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]))
+            [metabase.util.i18n :refer [trs tru]]))
 
 (defn powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
@@ -90,8 +91,6 @@
   "Add the grouping field and expression to the query"
   [query breakout bitmask]
   (as-> query query
-    ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
-    (update-in query [:query :fields] concat [[:expression "pivot-grouping"]])
     ;;TODO: replace this value with a bitmask or something to indicate the source better
     (update-in query [:query :expressions] assoc :pivot-grouping [:abs bitmask])
     ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
@@ -118,31 +117,36 @@
 
 (defn- process-query-append-results
   "Reduce the results of a single `query` using `rf` and initial value `init`."
-  [query rf init context]
+  [query rf init info context]
   (if (a/poll! (qp.context/canceled-chan context))
     (ensure-reduced init)
-    (qp/process-query-sync
-     query
-     {:canceled-chan (qp.context/canceled-chan context)
-      :rff           (fn [_]
-                       (fn
-                         ([]        init)
-                         ([acc]     acc)
-                         ([acc row] (rf acc ((:row-mapping-fn context) row context)))))})))
+    (let [context {:canceled-chan (qp.context/canceled-chan context)
+                   :rff           (fn [_]
+                                    (fn
+                                      ([]        init)
+                                      ([acc]     acc)
+                                      ([acc row] (rf acc ((:row-mapping-fn context) row context)))))}]
+      (try
+        (if info
+          (qp/process-userland-query-sync (assoc query :info info) context)
+          (qp/process-query-sync (dissoc query :info) context))
+        (catch Throwable e
+          (log/error e (trs "Error processing additional pivot table query"))
+          (throw e))))))
 
 (defn- process-queries-append-results
   "Reduce the results of a sequence of `queries` using `rf` and initial value `init`."
-  [queries rf init context]
+  [queries rf init info context]
   (reduce
    (fn [acc query]
-     (process-query-append-results query rf acc (assoc context
-                                                       :pivot-column-mapping ((:column-mapping-fn context) query))))
+     (process-query-append-results query rf acc info (assoc context
+                                                            :pivot-column-mapping ((:column-mapping-fn context) query))))
    init
    queries))
 
 (defn- append-queries-context
   "Update Query Processor `context` so it appends the rows fetched when running `more-queries`."
-  [context more-queries]
+  [info context more-queries]
   (cond-> context
     (seq more-queries)
     (update :rff (fn [rff]
@@ -150,13 +154,16 @@
                      (let [rf (rff metadata)]
                        (fn
                          ([]        (rf))
-                         ([acc]     (rf (process-queries-append-results more-queries rf acc context)))
+                         ([acc]     (rf (process-queries-append-results more-queries rf acc info context)))
                          ([acc row] (rf acc row)))))))))
 
 (defn process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"
-  [[first-query & more-queries] context]
-  (qp/process-query first-query (append-queries-context context more-queries)))
+  [[first-query & more-queries] info context]
+  (let [context (append-queries-context info context more-queries)]
+    (if info
+      (qp/process-query-and-save-with-max-results-constraints! first-query info context)
+      (qp/process-query (dissoc first-query :info) context))))
 
 (defn run-pivot-query
   "Run the pivot query. Unlike many query execution functions, this takes `context` as the first parameter to support
@@ -168,32 +175,33 @@
   ([query info]
    (run-pivot-query query info nil))
   ([query info context]
-   (qp.store/with-store
-     (let [context                 (merge (context.default/default-context) context)
-           query                   (mbql.normalize/normalize query)
-           main-breakout           (:breakout (:query query))
-           col-determination-query (add-grouping-field query main-breakout 0)
-           all-expected-cols       (qp/query->expected-cols col-determination-query)
-           all-queries             (generate-queries query)]
-       (process-multiple-queries
-        all-queries
-        (assoc context
-               :info (assoc info :context context)
-               ;; this function needs to be executed at the start of every new query to
-               ;; determine the mapping for maintaining query shape
-               :column-mapping-fn (fn [query]
-                                    (let [query-cols (map-indexed vector (qp/query->expected-cols query))]
-                                      (map (fn [item]
-                                             (some #(when (= (:name item) (:name (second %)))
-                                                      (first %)) query-cols))
-                                           all-expected-cols)))
-               ;; this function needs to be called for each row so that it can actually
-               ;; shape the row according to the `:column-mapping-fn` above
-               :row-mapping-fn (fn [row context]
-                                 ;; the first query doesn't need any special mapping, it already has all the columns
-                                 (if-let [col-mapping (:pivot-column-mapping context)]
-                                   (map (fn [mapping]
-                                          (when mapping
-                                            (nth row mapping)))
-                                        col-mapping)
-                                   row))))))))
+   (binding [qp.perms/*card-id* (get info :card-id)]
+     (qp.store/with-store
+       (let [context                 (merge (context.default/default-context) context)
+             query                   (mbql.normalize/normalize query)
+             main-breakout           (:breakout (:query query))
+             col-determination-query (add-grouping-field query main-breakout 0)
+             all-expected-cols       (qp/query->expected-cols col-determination-query)
+             all-queries             (generate-queries query)]
+         (process-multiple-queries
+          all-queries
+          info
+          (assoc context
+                 ;; this function needs to be executed at the start of every new query to
+                 ;; determine the mapping for maintaining query shape
+                 :column-mapping-fn (fn [query]
+                                      (let [query-cols (map-indexed vector (qp/query->expected-cols query))]
+                                        (map (fn [item]
+                                               (some #(when (= (:name item) (:name (second %)))
+                                                        (first %)) query-cols))
+                                             all-expected-cols)))
+                 ;; this function needs to be called for each row so that it can actually
+                 ;; shape the row according to the `:column-mapping-fn` above
+                 :row-mapping-fn (fn [row context]
+                                   ;; the first query doesn't need any special mapping, it already has all the columns
+                                   (if-let [col-mapping (:pivot-column-mapping context)]
+                                     (map (fn [mapping]
+                                            (when mapping
+                                              (nth row mapping)))
+                                          col-mapping)
+                                     row)))))))))

@@ -75,7 +75,7 @@ export default class Logs extends Component {
     this.setState({ logs: mergeLogs(this.state.logs, logs.reverse()) });
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.timer = setInterval(this.fetchLogs.bind(this), 1000);
   }
 

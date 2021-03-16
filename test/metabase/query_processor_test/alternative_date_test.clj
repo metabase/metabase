@@ -11,18 +11,19 @@
             [metabase.util :as u]))
 
 (deftest semantic-type->unix-timestamp-unit-test
-  (testing "every descendant of `:type/UNIXTimestamp` has a unit associated with it"
-    (doseq [semantic-type (descendants :type/UNIXTimestamp)]
+  (testing "every descendant of `:Coercion/UNIXTime->Temporal` has a unit associated with it"
+    (doseq [semantic-type (descendants :Coercion/UNIXTime->Temporal)]
       (is (sql.qp/semantic-type->unix-timestamp-unit semantic-type))))
-  (testing "throws if argument is not a descendant of `:type/UNIXTimestamp`"
+  (testing "throws if argument is not a descendant of `:Coercion/UNIXTime->Temporal`"
     (is (thrown? AssertionError (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
 
 (mt/defdataset toucan-microsecond-incidents
   [["incidents" [{:field-name "severity"
                   :base-type  :type/Integer}
-                 {:field-name   "timestamp"
-                  :base-type    :type/BigInteger
-                  :semantic-type :type/UNIXTimestampMicroseconds}]
+                 {:field-name        "timestamp"
+                  :base-type         :type/BigInteger
+                  :effective-type    :type/DateTime
+                  :coercion-strategy :Coercion/UNIXMicroSeconds->DateTime}]
     [[4 1433587200000000]
      [0 1433965860000000]]]])
 
@@ -134,33 +135,40 @@
 ;;; :type/ISO8601DateTimeString tests
 
 (mt/defdataset just-dates
-  [["just_dates" [{:field-name "name"
-                   :base-type :type/Text}
-                  {:field-name "ts"
-                   :base-type :type/Text
-                   :semantic-type :type/ISO8601DateTimeString}
-                  {:field-name "d"
-                   :base-type :type/Text
-                   :semantic-type :type/ISO8601DateString}]
+  [["just_dates" [{:field-name     "name"
+                   :base-type      :type/Text
+                   :effective-type :type/Text}
+                  {:field-name        "ts"
+                   :base-type         :type/Text
+                   :effective-type    :type/DateTime
+                   :coercion-strategy :Coercion/ISO8601->DateTime}
+                  {:field-name        "d"
+                   :base-type         :type/Text
+                   :effective-type    :type/Date
+                   :coercion-strategy :Coercion/ISO8601->Date}]
     [["foo" "2004-10-19 10:23:54" "2004-10-19"]
      ["bar" "2008-10-19 10:23:54" "2008-10-19"]
      ["baz" "2012-10-19 10:23:54" "2012-10-19"]]]])
 
 (mt/defdataset string-times
   [["times" [{:field-name "name"
-             :base-type :type/Text}
-            {:field-name "ts"
-             :base-type :type/Text
-             :semantic-type :type/ISO8601DateTimeString}
-            {:field-name "d"
-             :base-type :type/Text
-             :semantic-type :type/ISO8601DateString}
-            {:field-name "t"
-             :base-type :type/Text
-             :semantic-type :type/ISO8601TimeString}]
-  [["foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
-   ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
-   ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "ts"
+              :base-type :type/Text
+              :effective-type :type/DateTime
+              :coercion-strategy :Coercion/ISO8601->DateTime}
+             {:field-name "d"
+              :base-type :type/Text
+              :effective-type :type/Date
+              :coercion-strategy :Coercion/ISO8601->Date}
+             {:field-name "t"
+              :base-type :type/Text
+              :effective-type :type/Time
+              :coercion-strategy :Coercion/ISO8601->Time}]
+    [["foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
+     ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
+     ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
 
 (deftest iso-8601-text-fields
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import type { DatasetQuery } from "metabase-types/types/Card";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 

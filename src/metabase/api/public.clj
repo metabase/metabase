@@ -178,7 +178,7 @@
   "Get a sequence of all the `:parameter_mappings` for all the DashCards in this `dashboard-or-id`."
   [dashboard-or-id]
   (for [params (db/select-field :parameter_mappings DashboardCard
-                 :dashboard_id (u/get-id dashboard-or-id))
+                 :dashboard_id (u/the-id dashboard-or-id))
         param  params
         :when  (:parameter_id param)]
     param))
@@ -319,7 +319,7 @@
 (defn- query->referenced-field-ids
   "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (mbql.u/match (:query query) [:field-id id] id))
+  (mbql.u/match (:query query) [:field id _] id))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template
@@ -478,12 +478,12 @@
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (dashboard-api/chain-filter dashboard param-key query-params))))
 
-(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:prefix"
-  "Fetch filter values for dashboard parameter `param-key`, with specified `prefix`."
-  [uuid param-key prefix :as {:keys [query-params]}]
+(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
+  "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
+  [uuid param-key query :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (dashboard-api/chain-filter dashboard param-key query-params prefix))))
+      (dashboard-api/chain-filter dashboard param-key query-params query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

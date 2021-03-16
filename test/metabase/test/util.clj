@@ -26,7 +26,8 @@
             [toucan.db :as db]
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
-  (:import java.util.concurrent.TimeoutException
+  (:import java.net.ServerSocket
+           java.util.concurrent.TimeoutException
            java.util.Locale
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
@@ -263,19 +264,6 @@
   {:style/indent 0}
   [obj]
   (json/parse-string (json/generate-string obj) keyword))
-
-
-(defn mappify
-  "Walk `coll` and convert all record types to plain Clojure maps. Useful because expectations will consider an instance
-  of a record type to be different from a plain Clojure map, even if all keys & values are the same."
-  [coll]
-  {:style/indent 0}
-  (walk/postwalk (fn [x]
-                   (if (map? x)
-                     (into {} x)
-                     x))
-                 coll))
-
 
 (defn do-with-temporary-setting-value
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
@@ -672,7 +660,7 @@
   `(do-with-non-admin-groups-no-collection-perms
     (assoc collection/root-collection
            :namespace (name ~collection-namespace))
-    (fn [] ~@body) ))
+    (fn [] ~@body)))
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
@@ -799,3 +787,10 @@
            cols)
     (fn []
       ~@body)))
+
+(defn find-free-port
+  "Finds and returns an available port number on the current host. Does so by briefly creating a ServerSocket, which
+  is closed when returning."
+  []
+  (with-open [socket (ServerSocket. 0)]
+    (.getLocalPort socket)))

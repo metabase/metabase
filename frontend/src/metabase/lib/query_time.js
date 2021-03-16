@@ -5,6 +5,8 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 import { t, ngettext, msgid } from "ttag";
 
+import { FieldDimension } from "metabase-lib/lib/Dimension";
+
 export const DATETIME_UNITS = [
   // "default",
   "minute",
@@ -69,7 +71,10 @@ export function expandTimeIntervalFilter(filter) {
     n = 1;
   }
 
-  field = ["datetime-field", field, unit];
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    field = dimension.withTemporalUnit(unit).mbql();
+  }
 
   if (n < -1) {
     return [
@@ -234,59 +239,37 @@ export function absolute(date) {
   }
 }
 
+/**
+ * Return the temporal bucketing unit for a `:field` MBQL clause
+ */
 export function parseFieldBucketing(field, defaultUnit = null) {
-  if (Array.isArray(field)) {
-    if (field[0] === "datetime-field") {
-      if (field.length === 4) {
-        // Deprecated legacy format [datetime-field field "as" unit], see DatetimeFieldDimension for more info
-        return field[3];
-      } else {
-        // Current format [datetime-field field unit]
-        return field[2];
-      }
-    }
-    if (field[0] === "fk->" || field[0] === "field-id") {
-      return defaultUnit;
-    }
-    if (field[0] === "field-literal") {
-      return defaultUnit;
-    } else {
-      console.warn("Unknown field format", field);
-    }
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    return dimension.temporalUnit() || defaultUnit;
   }
   return defaultUnit;
 }
 
-// returns field with "datetime-field" removed
+// returns field with temporal bucketing removed
 export function parseFieldTarget(field) {
-  if (field[0] === "datetime-field") {
-    return field[1];
-  } else {
-    return field;
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    return dimension.withoutTemporalBucketing();
   }
+  return field;
 }
 
+/**
+ * Get the raw integer ID from a `field` clause, otherwise return the clause as-is. (TODO: Why would we want to
+ * return the clause as-is?)
+ */
 export function parseFieldTargetId(field) {
-  if (Number.isInteger(field)) {
-    return field;
-  }
-
-  if (Array.isArray(field)) {
-    if (field[0] === "field-id") {
-      return field[1];
-    }
-    if (field[0] === "fk->") {
-      return parseFieldTargetId(field[1]);
-    }
-    if (field[0] === "datetime-field") {
-      return parseFieldTargetId(field[1]);
-    }
-    if (field[0] === "field-literal") {
-      return field;
+  const dimension = FieldDimension.parseMBQLOrWarn(field);
+  if (dimension) {
+    if (dimension.isIntegerFieldId()) {
+      return dimension.fieldIdOrName();
     }
   }
-
-  console.warn("Unknown field format", field);
   return field;
 }
 

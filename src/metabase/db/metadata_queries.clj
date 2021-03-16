@@ -37,7 +37,7 @@
   [table]
   {:pre  [(map? table)]
    :post [(integer? %)]}
-  (let [results (qp-query (:db_id table) {:source-table (u/get-id table)
+  (let [results (qp-query (:db_id table) {:source-table (u/the-id table)
                                           :aggregation  [[:count]]})]
     (try (-> results first first long)
          (catch Throwable e
@@ -72,20 +72,20 @@
    (field-distinct-values field absolute-max-distinct-values-limit))
 
   ([field, max-results :- su/IntGreaterThanZero]
-   (mapv first (field-query field {:breakout [[:field-id (u/get-id field)]]
+   (mapv first (field-query field {:breakout [[:field (u/the-id field) nil]]
                                    :limit    max-results}))))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."
   [field & [limit]]
-  (-> (field-query field {:aggregation [[:distinct [:field-id (u/get-id field)]]]
+  (-> (field-query field {:aggregation [[:distinct [:field (u/the-id field) nil]]]
                           :limit       limit})
       first first int))
 
 (defn field-count
   "Return the count of `field`."
   [field]
-  (-> (field-query field {:aggregation [[:count [:field-id (u/get-id field)]]]})
+  (-> (field-query field {:aggregation [[:count [:field (u/the-id field) nil]]]})
       first first int))
 
 (def max-sample-rows
@@ -115,15 +115,15 @@
         field->expressions (when (and truncation-size (driver/supports? driver :expressions))
                              (into {} (for [field text-fields]
                                         [field [(str (gensym "substring"))
-                                                [:substring [:field-id (u/get-id field)] 1 truncation-size]]])))]
+                                                [:substring [:field (u/the-id field) nil] 1 truncation-size]]])))]
     {:database   (:db_id table)
      :type       :query
-     :query      {:source-table (u/get-id table)
+     :query      {:source-table (u/the-id table)
                   :expressions  (into {} (vals field->expressions))
                   :fields       (vec (for [field fields]
                                        (if-let [[expression-name _] (get field->expressions field)]
                                          [:expression expression-name]
-                                         [:field-id (u/get-id field)])))
+                                         [:field (u/the-id field) nil])))
                   :limit        max-sample-rows}
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))

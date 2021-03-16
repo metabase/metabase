@@ -14,10 +14,10 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
-(def test-bindings
+(def ^:private test-bindings
   (delay
    (with-test-domain-entity-specs
-     (let [table (m/find-first (comp #{(mt/id :venues)} u/get-id) (#'t/tableset (mt/id) "PUBLIC"))]
+     (let [table (m/find-first (comp #{(mt/id :venues)} u/the-id) (#'t/tableset (mt/id) "PUBLIC"))]
        {"Venues" {:dimensions (m/map-vals de/mbql-reference (get-in table [:domain_entity :dimensions]))
                   :entity     table}}))))
 
@@ -34,11 +34,11 @@
 
 (deftest mbql-reference->col-name-test
   (is (= "PRICE"
-         (#'t/mbql-reference->col-name [:field-id (mt/id :venues :price)])))
+         (#'t/mbql-reference->col-name [:field (mt/id :venues :price) nil])))
   (is (= "PRICE"
-         (#'t/mbql-reference->col-name [:field-literal "PRICE" :type/Integer])))
+         (#'t/mbql-reference->col-name [:field "PRICE" {:base-type :type/Integer}])))
   (is (= "PRICE"
-         (#'t/mbql-reference->col-name [{:foo [:field-id (mt/id :venues :price)]}]))))
+         (#'t/mbql-reference->col-name [{:foo [:field (mt/id :venues :price) nil]}]))))
 
 (deftest ->source-table-reference-test
   (testing "Can we turn a given entity into a format suitable for a query's `:source_table`?"
@@ -54,13 +54,13 @@
 (deftest tableset-test
   (testing "Can we get a tableset for a given schema?"
     (is (= (db/select-ids Table :db_id (mt/id))
-           (set (map u/get-id (#'t/tableset (mt/id) "PUBLIC")))))))
+           (set (map u/the-id (#'t/tableset (mt/id) "PUBLIC")))))))
 
 (deftest find-tables-with-domain-entity-test
   (with-test-domain-entity-specs
     (testing "Can we filter a tableset by domain entity?"
       (is (= [(mt/id :venues)]
-             (map u/get-id (#'t/find-tables-with-domain-entity (#'t/tableset (mt/id) "PUBLIC")
+             (map u/the-id (#'t/find-tables-with-domain-entity (#'t/tableset (mt/id) "PUBLIC")
                                                                (@de.specs/domain-entity-specs "Venues"))))))
     (testing "Gracefully handle no-match"
       (with-test-domain-entity-specs
@@ -72,7 +72,7 @@
   (testing "Can we extract results from the final bindings?"
     (with-test-transform-specs
       (is (= [(mt/id :venues)]
-             (map u/get-id (#'t/resulting-entities {"VenuesEnhanced" {:entity     (Table (mt/id :venues))
+             (map u/the-id (#'t/resulting-entities {"VenuesEnhanced" {:entity     (Table (mt/id :venues))
                                                                       :dimensions {"D1" [:field-id 1]}}}
                                                    (first @t.specs/transform-specs))))))))
 
@@ -81,14 +81,14 @@
     (with-test-transform-specs
       (with-test-domain-entity-specs
         (is (= [(mt/id :venues)]
-               (map u/get-id (#'t/tables-matching-requirements (#'t/tableset (mt/id) "PUBLIC")
+               (map u/the-id (#'t/tables-matching-requirements (#'t/tableset (mt/id) "PUBLIC")
                                                                (first @t.specs/transform-specs)))))))))
 
 (deftest tableset->bindings-test
   (testing "Can we turn a tableset into corresponding bindings?"
     (with-test-domain-entity-specs
       (is (= @test-bindings
-             (#'t/tableset->bindings (filter (comp #{(mt/id :venues)} u/get-id) (#'t/tableset (mt/id) "PUBLIC"))))))))
+             (#'t/tableset->bindings (filter (comp #{(mt/id :venues)} u/the-id) (#'t/tableset (mt/id) "PUBLIC"))))))))
 
 (deftest validation-test
   (with-test-domain-entity-specs
@@ -119,8 +119,7 @@
                    first
                    :dataset_query
                    qp/process-query
-                   :data
-                   :rows)))))))
+                   mt/rows)))))))
 
 (deftest correct-transforms-for-table-test
   (testing "Can we find the right transform(s) for a given table"

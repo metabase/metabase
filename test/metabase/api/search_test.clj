@@ -15,11 +15,11 @@
 (def ^:private default-search-row
   {:id                  true
    :description         nil
-   :display_name        nil
    :archived            false
-   :collection_id       false
+   :collection          {:id false :name nil}
    :collection_position nil
-   :collection_name     nil
+   :context             nil
+   :dashboardcard_count nil
    :favorite            nil
    :table_id            false
    :database_id         false
@@ -27,8 +27,7 @@
    :table_schema        nil
    :table_name          nil
    :table_description   nil
-   :matched_column      "display_name"
-   :matched_text        nil})
+   :updated_at          true})
 
 (defn- table-search-results
   "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
@@ -40,25 +39,29 @@
      :id (mt/id :checkins))))
 
 (defn- sorted-results [results]
-  (sort-by (juxt (comp (var-get #'metabase.search.scoring/model->sort-position) :model) :name) results))
+  (->> results
+       (sort-by (juxt (comp (var-get #'metabase.search.scoring/model->sort-position) :model)))
+       reverse))
+
+(defn- make-result
+  [name & kvs]
+  (merge
+   default-search-row
+   {:name name}
+   (apply array-map kvs)))
 
 (defn- default-search-results []
-  (letfn [(make-result [name & kvs]
-            (merge
-             default-search-row
-             {:name name :matched_text name :matched_column "name"}
-             (apply array-map kvs)))]
-    (sorted-results
-     [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
-      (make-result "collection test collection", :model "collection", :collection_id true, :collection_name true)
-      (make-result "card test card", :model "card", :favorite false, :dataset_query "{}")
-      (make-result "pulse test pulse", :model "pulse", :archived nil)
-      (merge
-       (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
-       (table-search-results))
-      (merge
-       (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry")
-       (table-search-results))])))
+  (sorted-results
+   [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
+    (make-result "collection test collection", :model "collection", :collection {:id true, :name true}, :updated_at false)
+    (make-result "card test card", :model "card", :favorite false, :dataset_query "{}", :dashboardcard_count 0)
+    (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
+    (merge
+     (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
+     (table-search-results))
+    (merge
+     (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry")
+     (table-search-results))]))
 
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
@@ -68,10 +71,6 @@
         :when (false? (:archived result))]
     (assoc result :archived true)))
 
-(defn- update-matched-text
-  [result]
-  (assoc result :matched_text (:name result)))
-
 (defn- on-search-types [model-set f coll]
   (for [search-item coll]
     (if (contains? model-set (:model search-item))
@@ -80,12 +79,12 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card"}
-                   #(assoc % :collection_id true, :collection_name true)
+                   #(assoc % :collection {:id true, :name true})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
   (let [data-map      (fn [instance-name]
-                        {:name (format instance-name search-string),})
+                        {:name (format instance-name search-string)})
         coll-data-map (fn [instance-name collection]
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
@@ -115,21 +114,31 @@
   Databases causing the tests to fail."
   mt/id)
 
-(defn- search-request [user-kwd & params]
-  (let [raw-results      (apply (mt/user->client user-kwd) :get 200 "search" params)
+(defn- search-request* [xf user-kwd & params]
+  (let [raw-results      (apply (partial mt/user-http-request user-kwd) :get 200 "search" params)
         keep-database-id (if (fn? *search-request-results-database-id*)
                            (*search-request-results-database-id*)
                            *search-request-results-database-id*)]
     (if (:error raw-results)
       raw-results
       (vec
-       (sorted-results
+       (xf
         (for [result raw-results
               ;; filter out any results not from the usual test data DB (e.g. results from other drivers)
               :when  (contains? #{keep-database-id nil} (:database_id result))]
           (-> result
               mt/boolean-ids-and-timestamps
-              (update :collection_name #(some-> % string?)))))))))
+              (update-in [:collection :name] #(some-> % string?))
+              ;; `:scores` is just used for debugging and would be a pain to match against.
+              (dissoc :scores))))))))
+
+(defn- search-request
+  [& args]
+  (apply search-request* sorted-results args))
+
+(defn- unsorted-search-request
+  [& args]
+  (apply search-request* identity args))
 
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
@@ -146,6 +155,31 @@
       (with-search-items-in-root-collection "something different"
         (is (= (default-search-results)
                (search-request :crowberto :q "test")))))))
+
+(def ^:private dashboard-count-results
+  (letfn [(make-card [dashboard-count]
+            (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
+                         :model "card", :favorite false, :dataset_query "{}"))]
+    [(make-card 5)
+     (make-card 3)
+     (make-card 0)]))
+
+(deftest dashboard-count-test
+  (testing "It sorts by dashboard count"
+    (mt/with-temp* [Card          [{card-id-3 :id} {:name "dashboard-count 3"}]
+                    Card          [{card-id-5 :id} {:name "dashboard-count 5"}]
+                    Card          [{card-id-0 :id} {:name "dashboard-count 0"}]
+                    Dashboard     [{dashboard-id :id}]
+                    DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
+                    DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]]
+      (is (= dashboard-count-results
+             (unsorted-search-request :rasta :q "dashboard-count" ))))))
 
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
@@ -172,11 +206,12 @@
                           PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-collection-read-permissions! group (u/the-id collection))
             (is (= (sorted-results
-                    (into
-                     (default-results-with-collection)
-                     (map #(merge default-search-row % (table-search-results))
-                          [{:name "metric test2 metric", :matched_text "metric test2 metric", :description "Lookin' for a blueberry", :model "metric", :matched_column "name"}
-                           {:name "segment test2 segment", :matched_text "segment test2 segment", :description "Lookin' for a blueberry", :model "segment", :matched_column "name"}])))
+                    (reverse ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
+                     (into
+                      (default-results-with-collection)
+                      (map #(merge default-search-row % (table-search-results))
+                           [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
+                            {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
                    (search-request :rasta :q "test"))))))))
 
   (testing (str "Users with root collection permissions should be able to search root collection data long with "
@@ -189,11 +224,11 @@
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (perms/grant-collection-read-permissions! group collection)
             (is (= (sorted-results
-                    (into
-                     (default-results-with-collection)
-                     (for [row  (map update-matched-text (default-search-results))
-                           :when (not= "collection" (:model row))]
-                       (update-matched-text
+                    (reverse
+                     (into
+                      (default-results-with-collection)
+                      (for [row  (default-search-results)
+                            :when (not= "collection" (:model row))]
                         (update row :name #(str/replace % "test" "test2"))))))
                    (search-request :rasta :q "test"))))))))
 
@@ -205,10 +240,11 @@
           (perms/grant-collection-read-permissions! group (u/the-id coll-1))
           (perms/grant-collection-read-permissions! group (u/the-id coll-2))
           (is (= (sorted-results
-                  (into
-                   (default-results-with-collection)
-                   (map (fn [row] (update-matched-text (update row :name #(str/replace % "test" "test2"))))
-                        (default-results-with-collection))))
+                  (reverse
+                   (into
+                    (default-results-with-collection)
+                    (map (fn [row] (update row :name #(str/replace % "test" "test2")))
+                         (default-results-with-collection)))))
                  (search-request :rasta :q "test")))))))
 
   (testing "User should only see results in the collection they have access to"
@@ -219,11 +255,12 @@
                           PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-collection-read-permissions! group (u/the-id coll-1))
             (is (= (sorted-results
-                    (into
-                     (default-results-with-collection)
-                     (map #(merge default-search-row % (table-search-results))
-                          [{:name "metric test2 metric", :matched_text "metric test2 metric", :description "Lookin' for a blueberry", :model "metric", :matched_column "name"}
-                           {:name "segment test2 segment", :matched_text "segment test2 segment", :description "Lookin' for a blueberry", :model "segment", :matched_column "name"}])))
+                    (reverse
+                     (into
+                      (default-results-with-collection)
+                      (map #(merge default-search-row % (table-search-results))
+                           [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
+                            {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
                    (search-request :rasta :q "test"))))))))
 
   (testing "Metrics on tables for which the user does not have access to should not show up in results"
@@ -308,9 +345,7 @@
   (merge
    default-search-row
    {:name         table-name
-    :display_name table-name
     :table_name   table-name
-    :matched_text table-name
     :table_id     true
     :archived     nil
     :model        "table"
@@ -332,7 +367,7 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp Table [table {:name "Round Table" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "Round Table") :display_name lancelot :matched_text lancelot)]
+          (is (= [(assoc (default-table-search-row "Round Table") :name lancelot)]
                  (search-request user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]

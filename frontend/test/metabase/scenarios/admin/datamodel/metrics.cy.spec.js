@@ -27,7 +27,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       });
       cy.findByText("Add filters to narrow your answer").click();
 
-      cy.log("**Fails in v0.36.0 and v0.36.3. It exists in v0.35.4**");
+      cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
       popover().within(() => {
         cy.findByText("Custom Expression");
       });
@@ -48,7 +48,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.request("POST", "/api/metric", {
         definition: {
           aggregation: ["count"],
-          filter: ["<", ["field-id", ORDERS.TOTAL], 100],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
           "source-table": ORDERS_ID,
         },
         name: "orders < 100",
@@ -175,8 +175,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
                 "sum",
                 [
                   "*",
-                  ["field-id", ORDERS.DISCOUNT],
-                  ["field-id", ORDERS.QUANTITY],
+                  ["field", ORDERS.DISCOUNT, null],
+                  ["field", ORDERS.QUANTITY, null],
                 ],
               ],
               { "display-name": "CE" },

@@ -29,19 +29,21 @@
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p.types/defrecord+ FieldDefinition [field-name base-type semantic-type visibility-type fk field-comment])
+(p.types/defrecord+ FieldDefinition [field-name base-type effective-type coercion-strategy semantic-type visibility-type fk field-comment])
 
 (p.types/defrecord+ TableDefinition [table-name field-definitions rows table-comment])
 
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions])
 
 (def ^:private FieldDefinitionSchema
-  {:field-name                       su/NonBlankString
-   :base-type                        (s/cond-pre {:native su/NonBlankString} su/FieldType)
-   (s/optional-key :semantic-type)   (s/maybe su/FieldType)
-   (s/optional-key :visibility-type) (s/maybe (apply s/enum field/visibility-types))
-   (s/optional-key :fk)              (s/maybe su/KeywordOrString)
-   (s/optional-key :field-comment)   (s/maybe su/NonBlankString)})
+  {:field-name                         su/NonBlankString
+   :base-type                          (s/cond-pre {:native su/NonBlankString} su/FieldType)
+   (s/optional-key :semantic-type)     (s/maybe su/FieldType)
+   (s/optional-key :effective-type)    (s/maybe su/FieldType)
+   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
+   (s/optional-key :visibility-type)   (s/maybe (apply s/enum field/visibility-types))
+   (s/optional-key :fk)                (s/maybe su/KeywordOrString)
+   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)})
 
 (def ^:private ValidFieldDefinition
   (s/constrained FieldDefinitionSchema (partial instance? FieldDefinition)))
@@ -381,9 +383,10 @@
 ;; TODO - not sure everything below belongs in this namespace
 
 (s/defn ^:private dataset-field-definition :- ValidFieldDefinition
-  [field-definition-map :- DatasetFieldDefinition]
+  [{:keys [coercion-strategy base-type] :as field-definition-map} :- DatasetFieldDefinition]
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
+  ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 
 (s/defn ^:private dataset-table-definition :- ValidTableDefinition

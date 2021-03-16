@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import cx from "classnames";
@@ -11,7 +9,7 @@ type Props = {
   value: Value,
   onChange: (value: Value) => void,
   options: Option[],
-  optionNameFn?: (o: Option) => string | React$Element<any>,
+  optionNameFn?: (o: Option) => string | React.Element,
   optionValueFn?: (o: Option) => Value,
   optionKeyFn?: (o: Option) => string,
   className?: string,

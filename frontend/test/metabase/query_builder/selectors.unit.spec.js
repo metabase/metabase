@@ -27,16 +27,16 @@ describe("getIsResultDirty", () => {
 
     it("should be dirty if the fields were changed", () => {
       const state = getState(
-        { "source-table": 1, fields: [["field-id", 1]] },
-        { "source-table": 1, fields: [["field-id", 2]] },
+        { "source-table": 1, fields: [["field", 1, null]] },
+        { "source-table": 1, fields: [["field", 2, null]] },
       );
       expect(getIsResultDirty(state)).toBe(true);
     });
 
     it("should not be dirty if the fields were reordered", () => {
       const state = getState(
-        { "source-table": 1, fields: [["field-id", 1], ["field-id", 2]] },
-        { "source-table": 1, fields: [["field-id", 2], ["field-id", 1]] },
+        { "source-table": 1, fields: [["field", 1, null], ["field", 2, null]] },
+        { "source-table": 1, fields: [["field", 2, null], ["field", 1, null]] },
       );
       expect(getIsResultDirty(state)).toBe(false);
     });
@@ -45,11 +45,11 @@ describe("getIsResultDirty", () => {
       const state = getState(
         {
           "source-table": 1,
-          fields: [["fk->", ["field-id", 1], ["field-id", 2]], ["field-id", 1]],
+          fields: [["field", 2, { "source-field": 1 }], ["field", 1, null]],
         },
         {
           "source-table": 1,
-          fields: [["field-id", 1], ["fk->", ["field-id", 1], ["field-id", 2]]],
+          fields: [["field", 1, null], ["field", 2, { "source-field": 1 }]],
         },
       );
       expect(getIsResultDirty(state)).toBe(false);
@@ -61,13 +61,13 @@ describe("getIsResultDirty", () => {
         {
           "source-table": 1,
           fields: [
-            ["field-id", 1],
-            ["field-id", 2],
-            ["field-id", 3],
-            ["field-id", 4],
-            ["field-id", 5],
-            ["field-id", 6],
-            ["field-id", 7],
+            ["field", 1, null],
+            ["field", 2, null],
+            ["field", 3, null],
+            ["field", 4, null],
+            ["field", 5, null],
+            ["field", 6, null],
+            ["field", 7, null],
           ],
         },
       );

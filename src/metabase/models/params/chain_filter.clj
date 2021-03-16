@@ -27,7 +27,7 @@
 
   ### A) Human-readable values remapping
 
-  If Field 1 has human-readable values, we find those values that match the prefix 'Cam' and then generate a query to
+  If Field 1 has human-readable values, we find those values that contain the string 'Cam' and then generate a query to
   restrict results to the matching original values. e.g. if Field 1 is \"venue.category_id\" and is
   human-readable-remapped with something like
 
@@ -107,11 +107,8 @@
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id field-id value]
   (let [field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
-                       (if (= this-field-table-id source-table-id)
-                         ;; field in the same table as the "primary" field
-                         [:field-id field-id]
-                         ;; field belonging to a different table
-                         [:joined-field (joined-table-alias this-field-table-id) [:field-id field-id]]))]
+                       [:field field-id (when-not (= this-field-table-id source-table-id)
+                                          {:join-alias (joined-table-alias this-field-table-id)})])]
     (cond
       ;; e.g. {$$venues.price [:between 2 3]} -> [:between $venues.price 2 3]
       ;; this is not really supported by the API directly
@@ -316,14 +313,9 @@
    (fn [query {{lhs-table-id :table, lhs-field-id :field} :lhs, {rhs-table-id :table, rhs-field-id :field} :rhs}]
      (let [join {:source-table rhs-table-id
                  :condition    [:=
-                                (if (= lhs-table-id source-table-id)
-                                  [:field-id lhs-field-id]
-                                  [:joined-field
-                                   (joined-table-alias lhs-table-id)
-                                   [:field-id lhs-field-id]])
-                                [:joined-field
-                                 (joined-table-alias rhs-table-id)
-                                 [:field-id rhs-field-id]]]
+                                [:field lhs-field-id (when-not (= lhs-table-id source-table-id)
+                                                       {:join-alias (joined-table-alias lhs-table-id)})]
+                                [:field rhs-field-id {:join-alias (joined-table-alias rhs-table-id)}]]
                  :alias        (joined-table-alias rhs-table-id)}]
        (log/tracef "Adding join against %s\n%s"
                    (name-for-logging Table rhs-table-id) (u/pprint-to-str join))
@@ -356,11 +348,10 @@
                    joined-table-ids      (set (map #(get-in % [:rhs :table]) joins))
                    original-field-clause (when original-field-id
                                            (let [original-table-id (field/field-id->table-id original-field-id)]
-                                             (if (= source-table-id original-table-id)
-                                               [:field-id original-field-id]
-                                               [:joined-field
-                                                (joined-table-alias original-table-id)
-                                                [:field-id original-field-id]])))]
+                                             [:field
+                                              original-field-id
+                                              (when-not (= source-table-id original-table-id)
+                                                {:join-alias (joined-table-alias original-table-id)})]))]
                (when original-field-id
                  (log/tracef "Finding values of %s, remapped from %s."
                              (name-for-logging Field field-id)
@@ -374,13 +365,13 @@
                            ;; original-field-id is used to power Field->Field breakouts. We include both remapped and
                            ;; original
                            :breakout     (if original-field-clause
-                                           [original-field-clause [:field-id field-id]]
-                                           [[:field-id field-id]])
+                                           [original-field-clause [:field field-id nil]]
+                                           [[:field field-id nil]])
                            ;; return the lesser of limit (if set) or max results
                            :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
                           (when original-field-clause
-                            {;; don't return rows that don't have values for the original Field. e.g. if
-                             ;; venues.category_id is remapped to categories.name and we do a search with prefix 's',
+                            { ;; don't return rows that don't have values for the original Field. e.g. if
+                             ;; venues.category_id is remapped to categories.name and we do a search with query 's',
                              ;; we only want to return [category_id name] tuples where [category_id] is not nil
                              ;;
                              ;; TODO -- would this be more efficient if we just did an INNER JOIN against the original
@@ -389,7 +380,7 @@
                              :filter    [:not-null original-field-clause]
                              ;; for Field->Field remapping we want to return pairs of [original-value remapped-value],
                              ;; but sort by [remapped-value]
-                             :order-by [[:asc [:field-id field-id]]]}))
+                             :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
                    (add-filters source-table-id joined-table-ids constraints)))})
 
@@ -534,7 +525,7 @@
         (unremapped-chain-filter field-id constraints options)))))
 
 
-;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:prefix) -----------------
+;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
 
 ;; TODO -- if this validation succeeds, we can probably cache that success for a bit so we can avoid unneeded DB
 ;; calls every time this function is called.
@@ -556,18 +547,18 @@
 (s/defn ^:private unremapped-chain-filter-search
   [field-id    :- su/IntGreaterThanZero
    constraints :- (s/maybe ConstraintsMap)
-   prefix      :- su/NonBlankString
+   query       :- su/NonBlankString
    options     :- (s/maybe Options)]
   (check-valid-search-field field-id)
-  (let [prefix-constraint {field-id [:starts-with prefix {:case-sensitive false}]}
-        constraints       (merge constraints prefix-constraint)]
+  (let [query-constraint {field-id [:contains query {:case-sensitive false}]}
+        constraints      (merge constraints query-constraint)]
     (unremapped-chain-filter field-id constraints options)))
 
-(defn- matching-unremapped-values [prefix v->human-readable]
-  (let [prefix (str/lower-case prefix)]
+(defn- matching-unremapped-values [query v->human-readable]
+  (let [query (str/lower-case query)]
     (for [[orig remapped] v->human-readable
           :when           (and (string? remapped)
-                               (str/starts-with? (str/lower-case remapped) prefix))]
+                               (str/includes? (str/lower-case remapped) query))]
       orig)))
 
 (s/defn ^:private human-readable-values-remapped-chain-filter-search
@@ -577,11 +568,11 @@
   [field-id          :- su/IntGreaterThanZero
    v->human-readable :- HumanReadableRemappingMap
    constraints       :- (s/maybe ConstraintsMap)
-   prefix            :- su/NonBlankString
+   query             :- su/NonBlankString
    options           :- (s/maybe Options)]
-  (or (when-let [unremapped-values (not-empty (matching-unremapped-values prefix v->human-readable))]
-        (let [prefix-constraint {field-id (set unremapped-values)}
-              constraints       (merge constraints prefix-constraint)
+  (or (when-let [unremapped-values (not-empty (matching-unremapped-values query v->human-readable))]
+        (let [query-constraint  {field-id (set unremapped-values)}
+              constraints       (merge constraints query-constraint)
               values            (unremapped-chain-filter field-id constraints options)]
           (add-human-readable-values values v->human-readable)))
       []))
@@ -592,34 +583,34 @@
   [original-field-id :- su/IntGreaterThanZero
    remapped-field-id :- su/IntGreaterThanZero
    constraints       :- (s/maybe ConstraintsMap)
-   prefix            :- su/NonBlankString
+   query             :- su/NonBlankString
    options           :- (s/maybe Options)]
-  (unremapped-chain-filter-search remapped-field-id constraints prefix
+  (unremapped-chain-filter-search remapped-field-id constraints query
                                   (assoc options :original-field-id original-field-id)))
 
 (s/defn chain-filter-search
-  "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id` starting
-  with String `prefix`. Powers the `search/:prefix` version of the chain filter endpoint."
+  "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
+  containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
   [field-id          :- su/IntGreaterThanZero
    constraints       :- (s/maybe ConstraintsMap)
-   prefix            :- (s/maybe su/NonBlankString)
+   query             :- (s/maybe su/NonBlankString)
    & options]
   (assert (even? (count options)))
-  (if (str/blank? prefix)
+  (if (str/blank? query)
     (apply chain-filter field-id constraints options)
     (let [{:as options} options]
       (if-let [v->human-readable (human-readable-remapping-map field-id)]
-        (human-readable-values-remapped-chain-filter-search field-id v->human-readable constraints prefix options)
+        (human-readable-values-remapped-chain-filter-search field-id v->human-readable constraints query options)
         (if-let [remapped-field-id (remapped-field-id field-id)]
-          (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints prefix options)
-          (unremapped-chain-filter-search field-id constraints prefix options))))))
+          (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
+          (unremapped-chain-filter-search field-id constraints query options))))))
 
 
 ;;; ------------------ Filterable Field IDs (powers GET /api/dashboard/params/valid-filter-fields) -------------------
 
 (s/defn filterable-field-ids
   "Return the subset of `filter-ids` we can actually use in a `chain-filter` query to fetch values of Field with
-  `field-id`.
+  `id`.
 
     ;; maybe we can't filter against Field 2 because there's no FK-> relationship
     (filterable-field-ids 1 #{2 3 4}) ; -> #{3 4}"
@@ -630,4 +621,4 @@
                                               (into {} (for [id filter-field-ids] [id nil]))
                                               nil)]
       (set (mbql.u/match (-> mbql-query :query :filter)
-             [:field-id id] id)))))
+             [:field (id :guard integer?) _] id)))))

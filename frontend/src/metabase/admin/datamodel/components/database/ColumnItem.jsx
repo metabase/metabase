@@ -134,7 +134,7 @@ export class SemanticTypeAndTargetPicker extends Component {
     field: Field,
     updateField: Field => void,
     className?: string,
-    selectSeparator?: React$Element<any>,
+    selectSeparator?: React.Element,
   };
 
   handleChangeSemanticType = async ({ target: { value: semantic_type } }) => {

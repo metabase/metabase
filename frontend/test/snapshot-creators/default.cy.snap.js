@@ -96,22 +96,16 @@ describe("snapshots", () => {
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
 
-    // permissions
-    cy.request("PUT", "/api/permissions/graph", {
-      revision: 0,
-      groups: {
-        [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
-        [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
-        [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
-      },
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
+      [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
+      [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
     });
-    cy.request("PUT", "/api/collection/graph", {
-      revision: 0,
-      groups: {
-        [ALL_USERS_GROUP]: { root: "none" },
-        [DATA_GROUP]: { root: "none" },
-        [COLLECTION_GROUP]: { root: "write" },
-      },
+
+    cy.updateCollectionGraph({
+      [ALL_USERS_GROUP]: { root: "none" },
+      [DATA_GROUP]: { root: "none" },
+      [COLLECTION_GROUP]: { root: "write" },
     });
   }
 
@@ -136,48 +130,26 @@ describe("snapshots", () => {
 
   function createQuestionAndDashboard({ ORDERS, ORDERS_ID }) {
     // question 1: Orders
-    cy.request("POST", "/api/card", {
-      name: "Orders",
-      display: "table",
-      visualization_settings: {},
-      dataset_query: {
-        database: 1,
-        query: { "source-table": ORDERS_ID },
-        type: "query",
-      },
-    });
+    cy.createQuestion({ name: "Orders", query: { "source-table": ORDERS_ID } });
 
     // question 2: Orders, Count
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders, Count",
-      display: "table",
-      visualization_settings: {},
-      dataset_query: {
-        database: 1,
-        query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-        type: "query",
-      },
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
     });
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders, Count, Grouped by Created At (year)",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
-        },
-        database: 1,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
       display: "line",
-      visualization_settings: {},
     });
 
     // dashboard 1: Orders in a dashboard
-    cy.request("POST", "/api/dashboard", { name: "Orders in a dashboard" });
+    cy.createDashboard("Orders in a dashboard");
     cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
       ({ body: { id: dashCardId } }) => {
         cy.request("PUT", `/api/dashboard/1/cards`, {

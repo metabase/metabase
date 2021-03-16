@@ -16,10 +16,7 @@ import SelectSeparator from "../components/SelectSeparator";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import Dimension, {
-  DatetimeFieldDimension,
-  FKDimension,
-} from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
 
 const MAP_OPTIONS = {
@@ -181,14 +178,14 @@ export default class FieldRemapping extends React.Component {
 
     // TODO Atte Keinänen 7/10/17: Use Dimension class when migrating to metabase-lib
     const dimension = Dimension.parseMBQL(foreignKeyClause);
-    if (dimension && dimension instanceof FKDimension) {
+    if (dimension && dimension instanceof FieldDimension && dimension.fk()) {
       MetabaseAnalytics.trackEvent("Data Model", "Update FK Remapping Target");
       await updateFieldDimension(
         { id: field.id },
         {
           type: "external",
           name: field.display_name,
-          human_readable_field_id: dimension.destination().field().id,
+          human_readable_field_id: dimension.field().id,
         },
       );
 
@@ -207,7 +204,10 @@ export default class FieldRemapping extends React.Component {
 
   // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
   isValidFKRemappingTarget = dimension =>
-    !(dimension.defaultDimension() instanceof DatetimeFieldDimension);
+    !(
+      dimension.defaultDimension() instanceof FieldDimension &&
+      dimension.temporalUnit()
+    );
 
   getForeignKeys = () => {
     const { table, field } = this.props;
@@ -326,7 +326,7 @@ export class ValueRemappings extends React.Component {
     editingRemappings: new Map(),
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateEditingRemappings(this.props.remappings);
   }
 

@@ -1,6 +1,7 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
@@ -16,7 +17,8 @@
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.util.honeysql-extensions :as hx]))
 
 (defn- drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -136,7 +138,7 @@
             (sync!)
             (is (= [["Bird Hat"]]
                    (mt/rows (qp/process-query
-                              {:database (u/get-id database)
+                              {:database (u/the-id database)
                                :type     :query
                                :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}}))))))))))
 
@@ -232,7 +234,7 @@
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
             (is (= [{:name "angry_birds", :active true}]
                    (map (partial into {})
-                        (db/select [Table :name :active] :db_id (u/get-id database), :name "angry_birds"))))))))))
+                        (db/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
 
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
@@ -242,7 +244,7 @@
     (testing "Verify that we identify JSON columns and mark metadata properly during sync"
       (mt/dataset (mt/dataset-definition "Postgres with a JSON Field"
                     ["venues"
-                     [{:field-name "address", :base-type {:native "json"}}]
+                     [{:field-name "address", :base-type {:native "json"}, :effective-type :type/Structured}]
                      [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
@@ -282,7 +284,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
-                                              :dimension    ["field-id" (mt/id :users :user_id)]}}})
+                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]
@@ -298,7 +300,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
-                                              :dimension    ["field-id" (mt/id :users :user_id)]}}})
+                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]
@@ -308,7 +310,7 @@
 
 (mt/defdataset ^:private ip-addresses
   [["addresses"
-    [{:field-name "ip", :base-type {:native "inet"}}]
+    [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
     [[(hsql/raw "'192.168.1.1'::inet")]
      [(hsql/raw "'10.4.4.15'::inet")]]]])
 
@@ -342,7 +344,7 @@
       (testing "It should be possible to return money column results (#3754)"
         (with-open [conn (sql-jdbc.execute/connection-with-timezone :postgres (mt/db) nil)
                     stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
-                    rs   (sql-jdbc.execute/execute-query! :postgres stmt)]
+                    rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
           (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
             (is (= [1000.00M]
                    (row-thunk))))))
@@ -402,7 +404,7 @@
 (deftest enums-test
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
-      (is (= (hsql/call :cast "toucan" (keyword "bird type"))
+      (is (= (hx/with-database-type-info (hsql/call :cast "toucan" (keyword "bird type")) "bird type")
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
 
     (do-with-enums-db
@@ -429,7 +431,7 @@
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"
-          (let [table-id (db/select-one-id Table :db_id (u/get-id db), :name "birds")]
+          (let [table-id (db/select-one-id Table :db_id (u/the-id db), :name "birds")]
             (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                      {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                      {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
@@ -437,7 +439,7 @@
                              (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
         (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-          (let [table-id           (db/select-one-id Table :db_id (u/get-id db), :name "birds")
+          (let [table-id           (db/select-one-id Table :db_id (u/the-id db), :name "birds")
                 bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
             (is (= {:rows        [["Rasta" "good bird" "toucan"]]
                     :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
@@ -448,10 +450,10 @@
                                                "LIMIT 10")
                                   :params nil}}
                    (-> (qp/process-query
-                        {:database (u/get-id db)
+                        {:database (u/the-id db)
                          :type     :query
                          :query    {:source-table table-id
-                                    :filter       [:= [:field-id (u/get-id bird-type-field-id)] "toucan"]
+                                    :filter       [:= [:field-id (u/the-id bird-type-field-id)] "toucan"]
                                     :limit        10}})
                        :data
                        (select-keys [:rows :native_form]))))))))))
@@ -511,7 +513,7 @@
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
                  (db/select-field->field :name :fingerprint Field
-                   :table_id (db/select-one-id Table :db_id (u/get-id database))))))))))
+                   :table_id (db/select-one-id Table :db_id (u/the-id database))))))))))
 
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
@@ -539,7 +541,7 @@
           (is (= [{:display_name "sleep"
                    :base_type    :type/Text
                    :source       :native
-                   :field_ref    [:field-literal "sleep" :type/Text]
+                   :field_ref    [:field "sleep" {:base-type :type/Text}]
                    :name         "sleep"}]
                  (mt/cols results))))))))
 
@@ -570,3 +572,44 @@
           (sync/sync-database! database)
           (is (= #{"table_with_perms"}
                  (db/select-field :name Table :db_id (:id database)))))))))
+
+(deftest json-operator-?-works
+  (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
+    (mt/test-driver :postgres
+      (drop-if-exists-and-create-db! "json-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
+                           "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
+                           "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}');"]]
+          (jdbc/execute! spec [statement])))
+      (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+            query           (str "SELECT json_val::jsonb ? 'a',"
+                                 "json_val::jsonb ?| array['c', 'd'],"
+                                 "json_val::jsonb ?& array['a', 'b']"
+                                 "FROM \"json_table\";")]
+        (mt/with-temp Database [database {:engine :postgres, :details json-db-details}]
+          (mt/with-db database (sync/sync-database! database)
+                               (is (= [[true false true]]
+                                      (-> {:query query}
+                                          (mt/native-query)
+                                          (qp/process-query)
+                                          (mt/rows))))))))))
+
+(defn- pretty-sql [s]
+  (-> s
+      (str/replace #"\"" "")
+      (str/replace #"public\." "")))
+
+(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+  (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!day.date]})]
+          (is (= (str "SELECT attempts.date AS date, count(*) AS count "
+                      "FROM attempts "
+                      "GROUP BY attempts.date "
+                      "ORDER BY attempts.date ASC")
+                 (some-> (qp/query->native query) :query pretty-sql))))))))

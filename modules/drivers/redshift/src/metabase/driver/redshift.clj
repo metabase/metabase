@@ -7,6 +7,7 @@
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
@@ -200,13 +201,15 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
   [_ {:keys [host port db], :as opts}]
-  (merge
-   {:classname                     "com.amazon.redshift.jdbc.Driver"
-    :subprotocol                   "redshift"
-    :subname                       (str "//" host ":" port "/" db)
-    :ssl                           true
-    :OpenSourceSubProtocolOverride false}
-   (dissoc opts :host :port :db)))
+  (sql-jdbc.common/handle-additional-options
+   (merge
+    {:classname                     "com.amazon.redshift.jdbc42.Driver"
+     :subprotocol                   "redshift"
+     :subname                       (str "//" host ":" port "/" db)
+     :ssl                           true
+     :OpenSourceSubProtocolOverride false
+     :additional-options            (str "defaultRowFetchSize=" (pubset/redshift-fetch-size))}
+    (dissoc opts :host :port :db))))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk
@@ -232,8 +235,9 @@
                   [(:name param) (:value param)]
 
                   (when-let [field-id (mbql.u/match-one param
-                                        [:field-id field-id] (when (contains? (set &parents) :dimension)
-                                                               field-id))]
+                                        [:field (field-id :guard integer?) _]
+                                        (when (contains? (set &parents) :dimension)
+                                          field-id))]
                     [(:name (qp.store/field field-id)) (:value param)]))))
         user-parameters))
 

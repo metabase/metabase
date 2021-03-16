@@ -395,7 +395,7 @@
       (mt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         ;; shouldn't actually need to run the query
-        (mt/throw-if-called sql-jdbc.execute/execute-query!
+        (mt/throw-if-called sql-jdbc.execute/execute-statement!
           (mt/with-model-cleanup [Card]
             ;; create a card with the metadata
             (mt/user-http-request :rasta :post 200 "card"
@@ -424,7 +424,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
             ;; should NOT need to run the query again
-            (mt/throw-if-called sql-jdbc.execute/execute-query!
+            (mt/throw-if-called sql-jdbc.execute/execute-statement!
               (mt/user-http-request :rasta :post 200 "card"
                                     (assoc (card-with-name-and-query card-name)
                                            :collection_id      (u/the-id collection)
@@ -451,13 +451,13 @@
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
-            ;; Rebind the `prepared-statement` function so that we can capture the generated SQL and inspect it
-            (let [orig       (var-get #'sql-jdbc.execute/prepared-statement)
+            ;; Rebind the `execute-statement!` function so that we can capture the generated SQL and inspect it
+            (let [orig       (var-get #'sql-jdbc.execute/execute-statement!)
                   sql-result (atom nil)]
-              (with-redefs [sql-jdbc.execute/prepared-statement
-                            (fn [driver conn sql params]
+              (with-redefs [sql-jdbc.execute/execute-statement!
+                            (fn [driver stmt sql]
                               (reset! sql-result sql)
-                              (orig driver conn sql params))
+                              (orig driver stmt sql))
                             ;; make `query->expected-cols` stop working so we're FORCED to run the query to get cols
                             ;; (as if this was a NATIVE query)
                             qp/query->expected-cols (fn [_] (throw (ex-info "OOPS" {})))]
@@ -655,7 +655,7 @@
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
-        (mt/throw-if-called sql-jdbc.execute/execute-query!
+        (mt/throw-if-called sql-jdbc.execute/execute-statement!
           (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                 {:dataset_query     (mbql-count-query)
                                  :result_metadata   metadata
@@ -963,22 +963,26 @@
                              :visualization_settings {:graph.goal_value 10}}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
+                              (mt/user-http-request
+                               :rasta :put 200 (str "card/" (u/the-id card))
+                               {:visualization_settings {:something "else"}}))}
            {:message        "Adding an additional breakout will cause the alert to be removed"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
                              :dataset_query          (assoc-in
                                                       (mbql-count-query (mt/id) (mt/id :checkins))
                                                       [:query :breakout]
-                                                      [["datetime-field"
+                                                      [[:field
                                                         (mt/id :checkins :date)
-                                                        "hour"]])}
+                                                        {:temporal-unit :day}]])}
             :expected-email "the question was edited by Crowberto Corv"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                                    {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
-                                                                                                  [:datetime-field (mt/id :checkins :date) "minute"]])}))}]]
+                                                    {:dataset_query
+                                                     (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                               [:query :breakout]
+                                                               [[:field (mt/id :checkins :date) {:temporal-unit :day}]
+                                                                [:field (mt/id :checkins :date) {:temporal-unit :week}]])}))}]]
     (testing message
       (mt/with-temp* [Card                  [card  card]
                       Pulse                 [pulse {:alert_condition  "rows"
@@ -999,13 +1003,13 @@
             (u/with-timeout 5000
               (mt/with-expected-messages 2
                 (f {:card card})))
-            (is (= (merge (crowberto-alert-not-working {expected-email true})
-                          (rasta-alert-not-working     {expected-email true}))
-                   (mt/regex-email-bodies (re-pattern expected-email)))
-                (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))
-            (is (= nil
-                   (Pulse (u/the-id pulse)))
-                "Alert should have been deleted")))))))
+            (testing (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email))
+              (is (= (merge (crowberto-alert-not-working {expected-email true})
+                            (rasta-alert-not-working     {expected-email true}))
+                     (mt/regex-email-bodies (re-pattern expected-email)))))
+            (testing "Alert should have been deleted"
+              (is (= nil
+                     (Pulse (u/the-id pulse)))))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (is (= {:emails-1 {}

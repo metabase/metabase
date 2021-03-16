@@ -1,5 +1,3 @@
-/* @flow */
-
 import MBQLClause from "./MBQLClause";
 
 import type {

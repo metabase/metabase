@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import RemappedValue from "metabase/containers/RemappedValue";

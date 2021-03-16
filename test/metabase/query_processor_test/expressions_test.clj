@@ -182,53 +182,52 @@
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
-             (calculate-bird-scarcity [:field-id $count]))))
-
+             (calculate-bird-scarcity $count))))
 
     (testing (str "do expressions automatically handle division by zero? Should return `nil` in the results for places "
                   "where that was attempted")
       (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
-             (calculate-bird-scarcity [:/ 100.0 [:field-id $count]]
+             (calculate-bird-scarcity [:/ 100.0 $count]
                                       [:!= $count nil]))))
 
 
     (testing (str "do expressions handle division by `nil`? Should return `nil` in the results for places where that "
                   "was attempted")
       (is (= [[nil] [10.0] [12.5] [20.0] [20.0] [nil] [9.09] [7.14] [12.5] [7.14]]
-             (calculate-bird-scarcity [:/ 100.0 [:field-id $count]]
+             (calculate-bird-scarcity [:/ 100.0 $count]
                                       [:or
                                        [:= $count nil]
                                        [:!= $count 0]]))))
 
     (testing "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
       (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 [:field-id $count]]))))
+             (calculate-bird-scarcity [:/ 100.0 $count]))))
 
     (testing "ok, what if we use multiple args to divide, and more than one is zero?"
       (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 [:field-id $count] [:field-id $count]]))))
+             (calculate-bird-scarcity [:/ 100.0 $count $count]))))
 
     (testing "are nulls/zeroes still handled appropriately when nested inside other expressions?"
       (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:* [:/ 100.0 [:field-id $count]] 2]))))
+             (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))
 
     (testing (str "if a zero is present in the NUMERATOR we should return ZERO and not NULL "
                   "(`0 / 10 = 0`; `10 / 0 = NULL`, at least as far as MBQL is concerned)")
       (is (= [[nil] [0.0] [0.0] [1.0] [0.8] [0.5] [0.5] [nil] [0.0] [0.0]]
-             (calculate-bird-scarcity [:/ [:field-id $count] 10]))))
+             (calculate-bird-scarcity [:/ $count 10]))))
 
     (testing "can addition handle nulls & zeroes?"
       (is (= [[nil] [10.0] [10.0] [20.0] [18.0] [15.0] [15.0] [nil] [10.0] [10.0]]
-             (calculate-bird-scarcity [:+ [:field-id $count] 10]))))
+             (calculate-bird-scarcity [:+ $count 10]))))
 
     (testing "can subtraction handle nulls & zeroes?"
       (is (= [[nil] [10.0] [10.0] [0.0] [2.0] [5.0] [5.0] [nil] [10.0] [10.0]]
-             (calculate-bird-scarcity [:- 10 [:field-id $count]]))))
+             (calculate-bird-scarcity [:- 10 $count]))))
 
 
     (testing "can multiplications handle nulls & zeros?"
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
-             (calculate-bird-scarcity [:* 1 [:field-id $count]]))))))
+             (calculate-bird-scarcity [:* 1 $count]))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -271,7 +270,7 @@
                "2014-07-01T00:00:00"])
              (mt/with-temporary-setting-values [report-timezone "UTC"]
                (-> (mt/run-mbql-query users
-                     {:expressions {:prev_month [:+ [:datetime-field $last_login :day] [:interval -31 :day]]}
+                     {:expressions {:prev_month [:+ !day.last_login [:interval -31 :day]]}
                       :fields      [[:expression :prev_month]]
                       :limit       3
                       :order-by    [[:asc $name]]})
@@ -288,15 +287,16 @@
       (is (= "Simcha Yan"
              (-> (mt/run-mbql-query checkins
                    {:expressions {:prev_month [:+ $date [:interval -31 :day]]}
-                    :fields      [[:joined-field "users__via__user_id" [:field-id (mt/id :users :name)]]
+                    :fields      [[:field (mt/id :users :name) {:join-alias "users__via__user_id"}]
                                   [:expression :prev_month]]
                     :limit       1
                     :order-by    [[:asc $date]]
                     :joins       [{:strategy :left-join
                                    :source-table (mt/id :users)
                                    :alias        "users__via__user_id"
-                                   :condition    [:= $user_id
-                                                  [:joined-field "users__via__user_id" [:field-id (mt/id :users :id)]]]}]})
+                                   :condition    [:=
+                                                  $user_id
+                                                  [:field (mt/id :users :id) {:join-alias "users__via__user_id"}]]}]})
                  mt/rows
                  ffirst))))))
 
@@ -322,11 +322,11 @@
       (sync/sync-database! (mt/db))
       (is (= 1
              (->> (mt/run-mbql-query lots_of_fields
-                    {:expressions {:c [:+ [:field-id (mt/id :lots_of_fields :a)]
-                                       [:field-id (mt/id :lots_of_fields :b)]]}
+                    {:expressions {:c [:+ [:field (mt/id :lots_of_fields :a) nil]
+                                       [:field (mt/id :lots_of_fields :b) nil]]}
                      :fields      (concat [[:expression :c]]
                                           (for [field fields]
-                                            [:field-id (mt/id :lots_of_fields (keyword field))]))})
+                                            [:field (mt/id :lots_of_fields (keyword field)) nil]))})
                   (mt/formatted-rows [int])
                   ffirst))))))
 
@@ -346,16 +346,17 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use aggregations from previous steps in expressions (#12762)"
       (is (= [["20th Century Cafe" 2 2 0]
-              [ "25°" 2 2 0 ]
+              [ "25°" 2 2 0]
               ["33 Taps" 2 2 0]]
              (mt/formatted-rows [str int int int]
                (mt/run-mbql-query venues
                  {:source-query {:source-table (mt/id :venues)
                                  :aggregation  [[:min (mt/id :venues :price)]
                                                 [:max (mt/id :venues :price)]]
-                                 :breakout     [[:field-id (mt/id :venues :name)]]}
-                  :expressions  {:price-range [:- [:field-literal "max" :type/Number]
-                                               [:field-literal "min" :type/Number]]}
+                                 :breakout     [[:field (mt/id :venues :name) nil]]}
+                  :expressions  {:price-range [:-
+                                               [:field "max" {:base-type :type/Number}]
+                                               [:field "min" {:base-type :type/Number}]]}
                   :limit        3})))))))
 
 (deftest fk-field-and-duplicate-names-test
@@ -375,3 +376,23 @@
                   [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04.58Z"  3 "2017-11-16T13:53:14.232Z"]]
                  (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int str]
                    results))))))))
+
+(deftest string-operations-from-subquery
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+    (testing "regex-match-first and replace work when evaluated against a subquery (#14873)"
+      (mt/dataset test-data
+        (let [r-word  "r_word"
+              no-sp   "no_spaces"
+              id      (mt/id :venues :id)
+              results (mt/run-mbql-query venues
+                        {:expressions  {r-word [:regex-match-first [:field-id (mt/id :venues :name)] "^R[^ ]+"]
+                                        no-sp  [:replace [:field-id (mt/id :venues :name)] " " ""]}
+                         :source-query {:source-table $$venues}
+                         :fields       [$name [:expression r-word] [:expression no-sp]]
+                         :filter       [:= $id 1 95]
+                         :order-by     [[:asc $id]]})]
+          (is (= ["Name" r-word no-sp]
+                 (map :display_name (mt/cols results))))
+          (is (= [["Red Medicine" "Red" "RedMedicine"]
+                  ["Rush Street" "Rush" "RushStreet"]]
+                 (mt/formatted-rows [str str str] results))))))))

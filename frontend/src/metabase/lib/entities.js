@@ -1,5 +1,3 @@
-/* @flow */
-
 import {
   combineReducers,
   handleEntities,
@@ -556,6 +554,9 @@ export function createEntity(def: EntityDefinition): Entity {
     },
     getColor(object) {
       return undefined;
+    },
+    getCollection(object) {
+      return object.collection;
     },
     ...(def.objectSelectors || {}),
   };

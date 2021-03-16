@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
@@ -45,7 +43,7 @@ export default class PublicLinksListing extends Component {
     };
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.load();
   }
 

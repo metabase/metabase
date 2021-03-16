@@ -1,5 +1,3 @@
-/* @flow */
-
 /**
  * Settings editor for a single database field. Lets you change field type, visibility and display values / remappings.
  *
@@ -26,6 +24,9 @@ import AdminLayout from "metabase/components/AdminLayout";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import Section, { SectionHeader } from "../components/Section";
 import SelectSeparator from "../components/SelectSeparator";
+
+import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
+import { isFK } from "metabase/lib/types";
 
 import {
   FieldVisibilityPicker,
@@ -114,8 +115,7 @@ export default class FieldApp extends React.Component {
     params: any,
   };
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       databaseId,
       tableId,
@@ -316,6 +316,35 @@ const FieldGeneralPane = ({
       />
     </Section>
 
+    {!isFK(field.semantic_type) && is_coerceable(field.base_type) && (
+      <Section>
+        <SectionHeader title={t`Coercion`} />
+        <Select
+          className="inline-block"
+          placeholder={t`Select a conversion`}
+          searchProp="name"
+          value={field.coercion_strategy}
+          onChange={({ target: { value } }) =>
+            onUpdateFieldProperties({
+              coercion_strategy: value,
+            })
+          }
+          options={[
+            ...coercions_for_type(field.base_type).map(c => ({
+              id: c,
+              name: c,
+            })),
+            {
+              id: null,
+              name: t`No coercion strategy`,
+            },
+          ]}
+          optionValueFn={field => field.id}
+          optionNameFn={field => field.name.replace("Coercion/", "")}
+          optionIconFn={field => null}
+        />
+      </Section>
+    )}
     <Section>
       <SectionHeader
         title={t`Filtering on this field`}

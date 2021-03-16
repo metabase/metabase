@@ -5,6 +5,7 @@
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [pretty.core :as pretty :refer [PrettyPrintable]]
             [schema.core :as s])
@@ -140,19 +141,112 @@
 (defn inc "Add 1 to `x`."        [x] (+ x 1))
 (defn dec "Subtract 1 from `x`." [x] (- x 1))
 
+(p.types/defprotocol+ TypedHoneySQL
+  "Protocol for a HoneySQL form that has type information such as `::database-type`. See #15115 for background."
+  (type-info [honeysql-form]
+    "Return type information associated with `honeysql-form`, if any (i.e., if it is a `TypedHoneySQLForm`); otherwise
+    returns `nil`.")
+  (with-type-info [honeysql-form new-type-info]
+    "Add type information to a `honeysql-form`. Wraps `honeysql-form` and returns a `TypedHoneySQLForm`.")
+  (unwrap-typed-honeysql-form [honeysql-form]
+    "If `honeysql-form` is a `TypedHoneySQLForm`, unwrap it and return the original form without type information.
+    Otherwise, returns form as-is."))
 
-(defn cast
-  "Generate a statement like `cast(x AS c)`."
-  [c x]
-  (hsql/call :cast x (hsql/raw (name c))))
+;; a wrapped for any HoneySQL form that records additional type information in an `info` map.
+(p.types/defrecord+ TypedHoneySQLForm [form info]
+  PrettyPrintable
+  (pretty [_]
+    `(with-type-info ~form ~info))
 
-(defn quoted-cast
-  "Generate a statement like `cast(x AS \"c\")`.
+  ToSql
+  (to-sql [_]
+    (hformat/to-sql form)))
 
-   Like `cast` but quotes the type C. This is useful for cases where we deal with user-defined types or other types
-   that may have a space in the name, for example Postgres enum types."
-  [c x]
-  (hsql/call :cast x (keyword c)))
+(alter-meta! #'->TypedHoneySQLForm assoc :private true)
+(alter-meta! #'map->TypedHoneySQLForm assoc :private true)
+
+(def ^:private NormalizedTypeInfo
+  {(s/optional-key ::database-type) (s/constrained
+                                     su/NonBlankString
+                                     (fn [s]
+                                       (= s (str/lower-case s)))
+                                     "lowercased string")})
+
+(s/defn ^:private normalize-type-info :- NormalizedTypeInfo
+  "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
+  `::database-type` to a lower-case string)."
+  [type-info]
+  (cond-> type-info
+    (::database-type type-info) (update ::database-type (comp str/lower-case name))))
+
+(extend-protocol TypedHoneySQL
+  Object
+  (type-info [_]
+    nil)
+  (with-type-info [this new-info]
+    (TypedHoneySQLForm. this (normalize-type-info new-info)))
+  (unwrap-typed-honeysql-form [this]
+    this)
+
+  nil
+  (type-info [_]
+    nil)
+  (with-type-info [_ new-info]
+    (TypedHoneySQLForm. nil (normalize-type-info new-info)))
+  (unwrap-typed-honeysql-form [_]
+    nil)
+
+  TypedHoneySQLForm
+  (type-info [this]
+    (:info this))
+  (with-type-info [this new-info]
+    (assoc this :info (normalize-type-info new-info)))
+  (unwrap-typed-honeysql-form [this]
+    (:form this)))
+
+(defn is-of-type?
+  "Is `honeysql-form` a typed form with `database-type`?
+
+    (is-of-type? expr \"datetime\") ; -> true"
+  [honeysql-form database-type]
+  (= (::database-type (type-info honeysql-form))
+     (some-> database-type name str/lower-case)))
+
+(s/defn with-database-type-info
+  "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a
+  `TypedHoneySQLForm`. Passing `nil` as `database-type` will remove any existing type info.
+
+    (with-database-type-info :field \"text\")
+    ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
+  {:style/indent [:form]}
+  [honeysql-form database-type :- (s/maybe su/KeywordOrString)]
+  (if (some? database-type)
+    (with-type-info honeysql-form {::database-type database-type})
+    (unwrap-typed-honeysql-form honeysql-form)))
+
+(s/defn cast :- TypedHoneySQLForm
+  "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
+  [sql-type expr]
+  (-> (hsql/call :cast expr (hsql/raw (name sql-type)))
+      (with-type-info {::database-type sql-type})))
+
+(s/defn quoted-cast :- TypedHoneySQLForm
+  "Generate a statement like `cast(expr AS \"sql-type\")`.
+
+  Like `cast` but quotes `sql-type`. This is useful for cases where we deal with user-defined types or other types
+  that may have a space in the name, for example Postgres enum types.
+
+  Returns a typed HoneySQL form."
+  [sql-type expr]
+  (-> (hsql/call :cast expr (keyword sql-type))
+      (with-type-info {::database-type sql-type})))
+
+(s/defn maybe-cast :- TypedHoneySQLForm
+  "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."
+  [sql-type expr]
+  (if (is-of-type? expr sql-type)
+      expr
+      (cast sql-type expr)))
 
 (defn format
   "SQL `format` function."
@@ -164,13 +258,13 @@
   [x decimal-places]
   (hsql/call :round x decimal-places))
 
-(defn ->date                     "CAST `x` to a `date`."                     [x] (cast :date x))
-(defn ->datetime                 "CAST `x` to a `datetime`."                 [x] (cast :datetime x))
-(defn ->timestamp                "CAST `x` to a `timestamp`."                [x] (cast :timestamp x))
-(defn ->timestamp-with-time-zone "CAST `x` to a `timestamp with time zone`." [x] (cast "timestamp with time zone" x))
-(defn ->integer                  "CAST `x` to a `integer`."                  [x] (cast :integer x))
-(defn ->time                     "CAST `x` to a `time` datatype"             [x] (cast :time x))
-(defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (cast :boolean x))
+(defn ->date                     "CAST `x` to a `date`."                     [x] (maybe-cast :date x))
+(defn ->datetime                 "CAST `x` to a `datetime`."                 [x] (maybe-cast :datetime x))
+(defn ->timestamp                "CAST `x` to a `timestamp`."                [x] (maybe-cast :timestamp x))
+(defn ->timestamp-with-time-zone "CAST `x` to a `timestamp with time zone`." [x] (maybe-cast "timestamp with time zone" x))
+(defn ->integer                  "CAST `x` to a `integer`."                  [x] (maybe-cast :integer x))
+(defn ->time                     "CAST `x` to a `time` datatype"             [x] (maybe-cast :time x))
+(defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (maybe-cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial hsql/call :floor))

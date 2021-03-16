@@ -4,7 +4,6 @@
   (:require [clojure.core :as core]
             [clojure.set :as set]
             [metabase.mbql.schema.helpers :as schema.helpers :refer [defclause is-clause? one-of]]
-            [metabase.mbql.util.match :as match]
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import java.time.format.DateTimeFormatter))
@@ -32,8 +31,44 @@
 
 ;;; ------------------------------------------------- Datetime Stuff -------------------------------------------------
 
-(def DatetimeFieldUnit
-  "Schema for all valid datetime bucketing units."
+(def date-bucketing-units
+  "Set of valid units for bucketing or comparing against a *date* Field."
+  #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
+    :month :month-of-year :quarter :quarter-of-year :year})
+
+(def time-bucketing-units
+  "Set of valid units for bucketing or comparing against a *time* Field."
+  #{:default :millisecond :second :minute :minute-of-hour :hour :hour-of-day})
+
+(def datetime-bucketing-units
+  "Set of valid units for bucketing or comparing against a *datetime* Field."
+  (set/union date-bucketing-units time-bucketing-units))
+
+(def DateUnit
+  "Valid unit for *date* bucketing."
+  (s/named
+   (apply s/enum date-bucketing-units)
+   "date-bucketing-unit"))
+
+;; it could make sense to say hour-of-day(field) =  hour-of-day("2018-10-10T12:00")
+;; but it does not make sense to say month-of-year(field) = month-of-year("08:00:00"),
+;; does it? So we'll restrict the set of units a TimeValue can have to ones that have no notion of day/date.
+(def TimeUnit
+  "Valid unit for *time* bucketing."
+  (s/named
+   (apply s/enum time-bucketing-units)
+   "time-bucketing-unit"))
+
+(def DateTimeUnit
+  "Valid unit for *datetime* bucketing."
+  (s/named
+   (apply s/enum datetime-bucketing-units)
+   "datetime-bucketing-unit"))
+
+;; TODO -- rename to `TemporalUnit`
+(def ^{:deprecated "0.39.0"} DatetimeFieldUnit
+  "Schema for all valid datetime bucketing units. DEPRECATED -- use `DateUnit`, `TimeUnit`, or
+  `DateTimeUnit` instead."
   (s/named
    (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
                    :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
@@ -92,23 +127,35 @@
 ;; literal strings are preferred instead.
 ;;
 ;; example:
-;; [:= [:datetime-field [:field-id 10] :day] "2018-10-02"]
+;; [:= [:field 10 {:temporal-unit :day}] "2018-10-02"]
 ;;
 ;; becomes:
-;; [:= [:datetime-field [:field-id 10] :day] [:absolute-datetime #inst "2018-10-02" :day]]
-(defclause ^:internal absolute-datetime
-  timestamp (s/cond-pre java.time.LocalDate
-                        java.time.LocalDateTime
-                        java.time.OffsetDateTime
-                        java.time.ZonedDateTime)
-  unit      DatetimeFieldUnit)
+;; [:= [:field 10 {:temporal-unit :day}] [:absolute-datetime #inst "2018-10-02" :day]]
+(def ^:internal ^{:clause-name :absolute-datetime} absolute-datetime
+  "Schema for an `:absolute-datetime` clause."
+  (s/conditional
+   #(core/not (is-clause? :absolute-datetime %))
+   (schema.helpers/clause
+    :absolute-datetime
+    "t"
+    (s/cond-pre java.time.LocalDate java.time.LocalDateTime java.time.OffsetDateTime java.time.ZonedDateTime)
+    "unit"
+    DateTimeUnit)
 
-;; it could make sense to say hour-of-day(field) =  hour-of-day("2018-10-10T12:00")
-;; but it does not make sense to say month-of-year(field) = month-of-year("08:00:00"),
-;; does it? So we'll restrict the set of units a TimeValue can have to ones that have no notion of day/date.
-(def TimeUnit
-  "Valid unit for time bucketing."
-  (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day}))
+   #(instance? java.time.LocalDate (second %))
+   (schema.helpers/clause
+    :absolute-datetime
+    "date" java.time.LocalDate
+    "unit" DateUnit)
+
+   :else
+   (schema.helpers/clause
+    :absolute-datetime
+    "datetime"
+    (s/cond-pre java.time.LocalDateTime java.time.OffsetDateTime java.time.ZonedDateTime)
+    "unit"
+    DateTimeUnit)))
+
 
 ;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
@@ -153,10 +200,11 @@
 (def ValueTypeInfo
   "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals` middleware to values in
   filter clauses based on the Field in the clause."
+  ;; TODO -- these should use `lisp-case` like everything else in MBQL.
   {(s/optional-key :database_type) (s/maybe su/NonBlankString)
    (s/optional-key :base_type)     (s/maybe su/FieldType)
    (s/optional-key :semantic_type) (s/maybe su/FieldType)
-   (s/optional-key :unit)          (s/maybe DatetimeFieldUnit)
+   (s/optional-key :unit)          (s/maybe DateTimeUnit)
    (s/optional-key :name)          (s/maybe su/NonBlankString)
    s/Keyword                       s/Any})
 
@@ -173,111 +221,142 @@
 
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
-;; Normal lowest-level Field clauses refer to a Field either by ID or by name
-
-(defclause field-id, id su/IntGreaterThanZero)
-
-(defclause field-literal, field-name su/NonBlankString, field-type su/FieldType)
-
-(defclause joined-field, alias su/NonBlankString, field (one-of field-id field-literal))
-
-;; Both args in `[:fk-> <source-field> <dest-field>]` are implict `:field-ids`. E.g.
+;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like
 ;;
-;;   [:fk-> 10 20] --[NORMALIZE]--> [:fk-> [:field-id 10] [:field-id 20]]
-;;
-;; `fk->` clauses are automatically replaced by the Query Processor with appropriate `:joined-field` clauses during
-;; preprocessing. Drivers do not need to handle `:fk->` clauses themselves.
-(defclause ^{:requires-features #{:foreign-keys}} ^:sugar fk->
-  source-field (one-of field-id field-literal)
-  dest-field   (one-of field-id field-literal))
-
-;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like `[:+ [:field-id 1]
-;; [:field-id 2]]`
+;;    [:+ [:field 1 nil] [:field 2 nil]]`
 (defclause ^{:requires-features #{:expressions}} expression
   expression-name su/NonBlankString)
 
-;; `datetime-field` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort. There
-;; is no requirement that all `:type/DateTime` derived Fields be wrapped in `datetime-field`, but for legacy reasons
-;; `:field-id` clauses that refer to datetime Fields will be automatically "bucketed" in the `:breakout` and `:filter`
-;; clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when values for comparison are
-;; `yyyy-MM-dd` date strings. See `auto-bucket-datetimes` for more details. `:field-id` clauses elsewhere will not be
-;; automatically bucketed, so drivers still need to make sure they do any special datetime handling for plain
-;; `:field-id` clauses when their Field derives from `:type/DateTime`.
-;;
-;; Datetime Field can wrap any of the lowest-level Field clauses, but not other datetime-field clauses, because that
-;; wouldn't make sense. They similarly can not wrap expression references, because doing arithmetic on timestamps
-;; doesn't make a whole lot of sense (what does `"2018-10-23"::timestamp / 2` mean?).
-;;
-;; Field is an implicit Field ID
-(defclause datetime-field
-  field (one-of field-id field-literal fk-> joined-field)
-  unit  DatetimeFieldUnit)
-
-;; binning strategy can wrap any of the above clauses, but again, not another binning strategy clause
 (def BinningStrategyName
   "Schema for a valid value for the `strategy-name` param of a `binning-strategy` clause."
   (s/enum :num-bins :bin-width :default))
 
-(def BinnableField
-  "Schema for any sort of field clause that can be wrapped by a `binning-strategy` clause."
-  (one-of field-id field-literal joined-field fk-> datetime-field))
+(defn- validate-bin-width [schema]
+  (s/constrained
+   schema
+   (fn [{:keys [strategy bin-width]}]
+     (if (core/= strategy :bin-width)
+       bin-width
+       true))
+   "You must specify :bin-width when using the :bin-width strategy."))
 
-(def ResolvedBinningStrategyOptions
-  "Schema for map of options tacked on to the end of `binning-strategy` clauses by the `binning` middleware."
-  {:num-bins   su/IntGreaterThanZero
-   :bin-width  (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
-   :min-value  s/Num
-   :max-value  s/Num})
+(defn- validate-num-bins [schema]
+  (s/constrained
+   schema
+   (fn [{:keys [strategy num-bins]}]
+     (if (core/= strategy :num-bins)
+       num-bins
+       true))
+   "You must specify :num-bins when using the :num-bins strategy."))
 
-;; binning strategy must match one of the three schemas below -- the param differs for different strategies.
+(def FieldBinningOptions
+  "Schema for `:binning` options passed to a `:field` clause."
+  (-> {:strategy                   BinningStrategyName
+       (s/optional-key :num-bins)  su/IntGreaterThanZero
+       (s/optional-key :bin-width) (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
+       s/Keyword                   s/Any}
+      validate-bin-width
+      validate-num-bins))
 
-(defclause [binning-strategy:num-bins binning-strategy]
-  field            BinnableField
-  strategy-name    (s/eq :num-bins)
-  num-bins         su/IntGreaterThanZero
-  ;; These are added in automatically by the `binning` middleware. Don't add them yourself, as they're just be
-  ;; replaced. Driver implementations can rely on this being populated
-  resolved-options (optional ResolvedBinningStrategyOptions))
+(defn- validate-temporal-unit [schema]
+  ;; TODO - consider breaking this out into separate constraints for the three different types so we can generate more
+  ;; specific error messages
+  (s/constrained
+   schema
+   (fn [{:keys [base-type temporal-unit]}]
+     (if-not temporal-unit
+       true
+       (if-let [units (condp #(isa? %2 %1) base-type
+                        :type/Date     date-bucketing-units
+                        :type/Time     time-bucketing-units
+                        :type/DateTime datetime-bucketing-units
+                        nil)]
+         (contains? units temporal-unit)
+         true)))
+   "Invalid :temporal-unit for the specified :base-type."))
 
-(defclause [binning-strategy:bin-width binning-strategy]
-  field            BinnableField
-  strategy-name    (s/eq :bin-width)
-  bin-width        (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
-  resolved-options (optional ResolvedBinningStrategyOptions))
+(defn- no-binning-options-at-top-level [schema]
+  (s/constrained
+   schema
+   (complement :strategy)
+   "Found :binning keys at the top level of :field options. binning-related options belong under the :binning key."))
 
-(defclause [binning-strategy:default binning-strategy]
-  field            BinnableField
-  strategy-name    (s/eq :default)
-  _                (optional (s/eq nil))
-  resolved-options (optional ResolvedBinningStrategyOptions))
+(def ^:private FieldOptions
+  (-> {(s/optional-key :base-type)     (s/maybe su/FieldType)
+       ;;
+       ;; replaces `fk->`
+       ;;
+       ;; `:source-field` is used to refer to a Field from a different Table you would like IMPLICITLY JOINED to the
+       ;; source table.
+       ;;
+       ;; If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
+       ;; `:source-field` should be for information purposes only.
+       (s/optional-key :source-field)  (s/maybe (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
+       ;;
+       ;; `:temporal-unit` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort.
+       ;;
+       ;; There is no requirement that all `:type/Temporal` derived Fields specify a `:temporal-unit`, but for legacy
+       ;; reasons `:field` clauses that refer to `:type/DateTime` Fields will be automatically "bucketed" in the
+       ;; `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when
+       ;; values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more
+       ;; details. `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they
+       ;; do any special datetime handling for plain `:field` clauses when their Field derives from `:type/DateTime`.
+       (s/optional-key :temporal-unit) (s/maybe DateTimeUnit)
+       ;;
+       ;; replaces `joined-field`
+       ;;
+       ;; `:join-alias` is used to refer to a Field from a different Table/nested query that you are EXPLICITLY
+       ;; JOINING against.
+       (s/optional-key :join-alias)    (s/maybe su/NonBlankString)
+       ;;
+       ;; replaces `binning-strategy`
+       ;;
+       ;; Using binning requires the driver to support the `:binning` feature.
+       (s/optional-key :binning)       (s/maybe FieldBinningOptions)
+       ;;
+       s/Keyword                       s/Any}
+      validate-temporal-unit
+      no-binning-options-at-top-level))
 
-;; this is only used for purposes of error messages for a `binning-strategy` that doesn't match one of the three
-;; specific schemas above
-(defclause [^:private binning-strategy:-generic binning-strategy]
-  field            BinnableField
-  strategy-name    BinningStrategyName
-  param            (optional s/Num)
-  resolved-options (optional ResolvedBinningStrategyOptions))
+(defn- require-base-type-for-field-name [schema]
+  (s/constrained
+   schema
+   (fn [[_ id-or-name {:keys [base-type]}]]
+     (if (string? id-or-name)
+       base-type
+       true))
+   ":field clauses using a string field name must specify :base-type."))
 
-(def ^{:requires-features #{:binning}} ^{:clause-name :binning-strategy} binning-strategy
-  "Schema for a valid `:binning-strategy` clause."
-  (letfn [(strategy= [a-strategy]
-            (fn [clause]
-              (core/and (is-clause? :binning-strategy clause)
-                        (let [[_ _ strategy] clause]
-                          (core/= strategy a-strategy)))))]
-    (s/conditional
-     (strategy= :num-bins)  binning-strategy:num-bins
-     (strategy= :bin-width) binning-strategy:bin-width
-     (strategy= :default)   binning-strategy:default
-     :else                  binning-strategy:-generic)))
+(def ^{:clause-name :field, :added "0.39.0"} field
+  "Schema for a `:field` clause."
+  (-> (schema.helpers/clause
+       :field
+       "id-or-name" (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
+       "options"    (s/maybe (s/recursive #'FieldOptions)))
+      require-base-type-for-field-name))
+
+(def ^{:clause-name :field, :added "0.39.0"} field:id
+  "Schema for a `:field` clause, with the added constraint that it must use an integer Field ID."
+  (s/constrained
+   field
+   (fn [[_ id-or-name]]
+     (integer? id-or-name))
+   "Must be a :field with an integer Field ID."))
+
+(def ^{:clause-name :field, :added "0.39.0"} field:name
+  "Schema for a `:field` clause, with the added constraint that it must use an string Field name."
+  (s/constrained
+   field
+   (fn [[_ id-or-name]]
+     (string? id-or-name))
+   "Must be a :field with a string Field name."))
 
 (def ^:private Field*
-  (one-of field-id field-literal joined-field fk-> datetime-field expression binning-strategy))
+  (one-of expression field))
 
+;; TODO -- consider renaming this FieldOrExpression,
 (def Field
-  "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or
-  `:fk->` or an expression reference `[:expression <name>]`."
+  "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   (s/recursive #'Field*))
 
 ;; aggregate field reference refers to an aggregation, e.g.
@@ -479,7 +558,7 @@
    relative-datetime
    Field))
 
-(def ^:private EqualityComparible
+(def ^:private EqualityComparable
   "Schema for things things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
   (s/maybe
    (s/cond-pre
@@ -491,7 +570,7 @@
     ExpressionArg
     value)))
 
-(def ^:private OrderComparible
+(def ^:private OrderComparable
   "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted."
   (s/if (partial is-clause? :value)
     value
@@ -508,29 +587,32 @@
 ;; implementations only need to handle the 2-arg forms.
 ;;
 ;; `=` works like SQL `IN` with more than 2 args
-;; [:= [:field-id 1] 2 3] --[DESUGAR]--> [:or [:= [:field-id 1] 2] [:= [:field-id 1] 3]]
+;;
+;;    [:= [:field 1 nil] 2 3] --[DESUGAR]--> [:or [:= [:field 1 nil] 2] [:= [:field 1 nil] 3]]
 ;;
 ;; `!=` works like SQL `NOT IN` with more than 2 args
-;; [:!= [:field-id 1] 2 3] --[DESUGAR]--> [:and [:!= [:field-id 1] 2] [:!= [:field-id 1] 3]]
+;;
+;;    [:!= [:field 1 nil] 2 3] --[DESUGAR]--> [:and [:!= [:field 1 nil] 2] [:!= [:field 1 nil] 3]]
 
-(defclause =,  field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
-(defclause !=, field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
+(defclause =,  field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
+(defclause !=, field EqualityComparable, value-or-field EqualityComparable, more-values-or-fields (rest EqualityComparable))
 
-(defclause <,  field OrderComparible, value-or-field OrderComparible)
-(defclause >,  field OrderComparible, value-or-field OrderComparible)
-(defclause <=, field OrderComparible, value-or-field OrderComparible)
-(defclause >=, field OrderComparible, value-or-field OrderComparible)
+(defclause <,  field OrderComparable, value-or-field OrderComparable)
+(defclause >,  field OrderComparable, value-or-field OrderComparable)
+(defclause <=, field OrderComparable, value-or-field OrderComparable)
+(defclause >=, field OrderComparable, value-or-field OrderComparable)
 
-(defclause between field OrderComparible, min OrderComparible, max OrderComparible)
+;; :between is INCLUSIVE just like SQL !!!
+(defclause between field OrderComparable, min OrderComparable, max OrderComparable)
 
 ;; SUGAR CLAUSE: This is automatically written as a pair of `:between` clauses by the `:desugar` middleware.
 (defclause ^:sugar inside
-  lat-field OrderComparible
-  lon-field OrderComparible
-  lat-max   OrderComparible
-  lon-min   OrderComparible
-  lat-min   OrderComparible
-  lon-max   OrderComparible)
+  lat-field OrderComparable
+  lon-field OrderComparable
+  lat-max   OrderComparable
+  lon-min   OrderComparable
+  lat-min   OrderComparable
+  lon-max   OrderComparable)
 
 ;; SUGAR CLAUSES: These are rewritten as `[:= <field> nil]` and `[:not= <field> nil]` respectively
 (defclause ^:sugar is-null,  field Field)
@@ -561,16 +643,16 @@
 ;;
 ;; Return rows where datetime Field 100's value is in the current month
 ;;
-;;    [:time-interval [:field-id 100] :current :month]
+;;    [:time-interval [:field 100 nil] :current :month]
 ;;
 ;; Return rows where datetime Field 100's value is in the current month, including partial results for the
 ;; current day
 ;;
-;;    [:time-interval [:field-id 100] :current :month {:include-current true}]
+;;    [:time-interval [:field 100 nil] :current :month {:include-current true}]
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
-  field   (one-of field-id fk-> field-literal joined-field)
+  field   field
   n       (s/cond-pre
            s/Int
            (s/enum :current :last :next))
@@ -611,7 +693,7 @@
 
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a Field clause such as `:field-id`."
+  `:+` clause or a `:field` clause."
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
@@ -630,7 +712,7 @@
 
 ;; technically aggregations besides count can also accept expressions as args, e.g.
 ;;
-;;    [[:sum [:+ [:field-id 1] [:field-id 2]]]]
+;;    [[:sum [:+ [:field 1 nil] [:field 2 nil]]]]
 ;;
 ;; Which is equivalent to SQL:
 ;;
@@ -672,7 +754,9 @@
 ;; pass straight thru to the GA query processor.
 (defclause ^:sugar metric, metric-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
 
-;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
+;; the following are definitions for expression aggregations, e.g.
+;;
+;;    [:+ [:sum [:field 10 nil]] [:sum [:field 20 nil]]]
 
 (def ^:private UnnamedAggregation*
   (s/if (partial is-clause? arithmetic-expressions)
@@ -705,7 +789,7 @@
 
 ;; order-by is just a series of `[<direction> <field>]` clauses like
 ;;
-;;    {:order-by [[:asc [:field-id 1]], [:desc [:field-id 2]]]}
+;;    {:order-by [[:asc [:field 1 nil]], [:desc [:field 2 nil]]]}
 ;;
 ;; Field ID is implicit in these clauses
 
@@ -779,20 +863,6 @@
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
 
-(def JoinField
-  "Schema for any valid `Field` that is, or wraps, a `:joined-field` clause."
-  (s/constrained
-   Field
-   (fn [field-clause]
-     (seq (match/match field-clause [:joined-field true])))
-   "`:joined-field` clause or Field clause wrapping a `:joined-field` clause"))
-
-(def JoinFields
-  "Schema for valid values of a join `:fields` clause."
-  (s/named
-   (su/distinct (su/non-empty [JoinField]))
-   "Distinct, non-empty sequence of `:joined-field` clauses or Field clauses wrapping `:joined-field` clauses"))
-
 (def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
@@ -801,13 +871,17 @@
 
 (def Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
-  specified in the incoming query, or implicitly generated when one uses a `:fk->` clause.
-  In the top-level query, you can reference Fields from the joined table or nested query by the `:fk->` clause for
-  implicit joins; for explicit joins, you *must* specify `:alias` yourself; you can then reference Fields by using a
-  `:joined-field` clause, e.g.
+  specified in the incoming query, or implicitly generated when one uses a `:field` clause with `:source-field`.
 
-    [:joined-field \"my_join_alias\" [:field-id 1]]                                ; for joins against other Tabless
-    [:joined-field \"my_join_alias\" [:field-literal \"my_field\" :field/Integer]] ; for joins against nested queries"
+  In the top-level query, you can reference Fields from the joined table or nested query by including `:source-field`
+  in the `:field` options (known as implicit joins); for explicit joins, you *must* specify `:join-alias` yourself; in
+  the `:field` options, e.g.
+
+    ;; for joins against other Tables/MBQL source queries
+    [:field 1 {:join-alias \"my_join_alias\"}]
+
+    ;; for joins against native queries
+    [:field \"my_field\" {:base-type :field/Integer, :join-alias \"my_join_alias\"}]"
   (->
    {;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
     ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
@@ -820,7 +894,7 @@
     ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
     ;; JOINs this is always
     ;;
-    ;;    [:= <source-table-fk-field> [:joined-field <join-table-alias> <dest-table-pk-field>]]
+    ;;    [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]
     ;;
     :condition
     Filter
@@ -849,23 +923,22 @@
     (s/named
      (s/cond-pre
       (s/enum :all :none)
-      JoinFields)
+      [field])
      (str
-      "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:joined-field` clauses,"
-      " or clauses wrapping `:joined-field`."))
+      "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`."))
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
-    ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field in a
-    ;; `:joined-field` clause.
+    ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
+    ;; `:join-alias` in the options.
     ;;
     ;; Driver implementations: This is guaranteed to be present after pre-processing.
     (s/optional-key :alias)
     su/NonBlankString
     ;;
-    ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via an
-    ;; `:fk->` clause, the ID of the foreign key field in the source Table will be recorded here. This information is
-    ;; used to add `fk_field_id` information to the `:cols` in the query results; I believe this is used to facilitate
-    ;; drill-thru? :shrug:
+    ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via a
+    ;; `:field` clause with `:source-field`, the ID of the foreign key field in the source Table will
+    ;; be recorded here. This information is used to add `fk_field_id` information to the `:cols` in the query
+    ;; results; I believe this is used to facilitate drill-thru? :shrug:
     ;;
     ;; Don't set this information yourself. It will have no effect.
     (s/optional-key :fk-field-id)

@@ -127,6 +127,7 @@
     :display_name      "ID"
     :database_type     "SERIAL"
     :base_type         :type/Integer
+    :effective_type    :type/Integer
     :semantic_type     :type/PK
     :database_position 0
     :position          0}))
@@ -138,6 +139,7 @@
     :display_name       "Studio"
     :database_type      "VARCHAR"
     :base_type          :type/Text
+    :effective_type          :type/Text
     :fk_target_field_id true
     :semantic_type      :type/FK
     :database_position  2
@@ -150,6 +152,7 @@
     :display_name      "Title"
     :database_type     "VARCHAR"
     :base_type         :type/Text
+    :effective_type    :type/Text
     :semantic_type     :type/Title
     :database_position 1
     :position          1}))
@@ -161,6 +164,7 @@
     :display_name      "Name"
     :database_type     "VARCHAR"
     :base_type         :type/Text
+    :effective_type    :type/Text
     :semantic_type     :type/Name
     :database_position 1
     :position          1}))
@@ -173,6 +177,7 @@
     :display_name      "Studio"
     :database_type     "VARCHAR"
     :base_type         :type/Text
+    :effective_type    :type/Text
     :semantic_type     :type/PK
     :database_position 0
     :position          0}))

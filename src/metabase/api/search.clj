@@ -72,7 +72,10 @@
    ;; returned for Card and Dashboard
    :collection_position :integer
    :favorite            :boolean
+   ;; returned for everything except Collection
+   :updated_at          :timestamp
    ;; returned for Card only
+   :dashboardcard_count :integer
    :dataset_query       :text
    ;; returned for Metric and Segment
    :table_id            :integer
@@ -123,8 +126,7 @@
       ;;
       ;; For MySQL, this is not needed.
       :else
-      [(if (= (mdb/db-type) :mysql)
-         nil
+      [(when-not (= (mdb/db-type) :mysql)
          (hx/cast col-type nil))
        search-col])))
 
@@ -266,7 +268,7 @@
             {:select (:select base-query)
              :from   [[(merge
                         base-query
-                        {:select [:id :schema :db_id :name :description :display_name
+                        {:select [:id :schema :db_id :name :description :display_name :updated_at
                                   [(hx/concat (hx/literal "/db/") :db_id
                                               (hx/literal "/schema/") (hsql/call :case
                                                                         [:not= :schema nil] :schema
@@ -302,23 +304,20 @@
             (if (number? v)
               (not (zero? v))
               v))]
-    (let [search-query {:union-all (for [model search-config/searchable-models
-                                         :let  [query (search-query-for-model model search-ctx)]
-                                         :when (seq query)]
-                                     query)}
-          _            (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          results      (db/reducible-query search-query :max-rows search-config/db-max-results)
-          xf           (comp
-                        (filter check-permissions-for-model)
-                        ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-                        (map #(update % :favorite bit->boolean))
-                        (map #(update % :archived bit->boolean))
-                        (map (partial scoring/score-and-result (:search-string search-ctx)))
-                        (filter some?))]
-      (->> results
-           (transduce xf scoring/accumulate-top-results)
-           ;; Pluck out the result; discard the score
-           (map second)))))
+    (let [search-query      {:union-all (for [model search-config/searchable-models
+                                              :let  [query (search-query-for-model model search-ctx)]
+                                              :when (seq query)]
+                                          query)}
+          _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
+          reducible-results (db/reducible-query search-query :max-rows search-config/db-max-results)
+          xf                (comp
+                             (filter check-permissions-for-model)
+                             ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
+                             (map #(update % :favorite bit->boolean))
+                             (map #(update % :archived bit->boolean))
+                             (map (partial scoring/score-and-result (:search-string search-ctx)))
+                             (filter some?))]
+      (scoring/top-results reducible-results xf))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

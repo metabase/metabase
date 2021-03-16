@@ -36,7 +36,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       });
       cy.findByText("Add filters to narrow your answer").click();
 
-      cy.log("**Fails in v0.36.0 and v0.36.3. It exists in v0.35.4**");
+      cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
       popover().within(() => {
         cy.findByText("Custom Expression");
       });
@@ -61,7 +61,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
-          filter: ["<", ["field-id", ORDERS.TOTAL], 100],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });
     });

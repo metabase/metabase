@@ -1,5 +1,3 @@
-/* @flow */
-
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 

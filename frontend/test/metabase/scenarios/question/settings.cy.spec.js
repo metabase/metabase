@@ -3,7 +3,11 @@ import {
   signInAsAdmin,
   restore,
   openOrdersTable,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > question > settings", () => {
   beforeEach(() => {
@@ -65,6 +69,82 @@ describe("scenarios > question > settings", () => {
       cy.get("@table")
         .contains("Total")
         .should("not.exist");
+    });
+
+    it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
+      cy.viewport(2000, 1200);
+      // Orders join Products
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ],
+                alias: "Products",
+              },
+            ],
+          },
+          database: 1,
+        },
+        display: "table",
+      });
+
+      cy.findByText("Settings").click();
+      cy.findByText("Click and drag to change their order")
+        .should("be.visible")
+        .parent()
+        .find(".cursor-grab")
+        .as("sidebarColumns"); // Store all columns in an array
+
+      cy.get("@sidebarColumns")
+        .eq("12")
+        .as("prod-category")
+        .contains(/Products? → Category/);
+
+      // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
+      cy.get("@prod-category")
+        .trigger("mousedown", 0, 0, { force: true })
+        .trigger("mousemove", 5, 5, { force: true })
+        .trigger("mousemove", 0, -300, { force: true })
+        .trigger("mouseup", 0, -300, { force: true });
+
+      reloadResults();
+      findColumnAtIndex("Products → Category", 5);
+      // Remove "Total"
+      cy.get("@sidebarColumns")
+        .contains("Total")
+        .closest(".cursor-grab")
+        .find(".Icon-close")
+        .click();
+      reloadResults();
+      cy.findByText("117.03").should("not.exist");
+      // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
+      cy.findByText("Visible columns").click();
+      findColumnAtIndex("Products → Category", 5);
+
+      /**
+       * Helper functions related to THIS test only
+       */
+
+      function reloadResults() {
+        cy.icon("play")
+          .last()
+          .click();
+      }
+
+      function findColumnAtIndex(column_name, index) {
+        cy.get("@sidebarColumns")
+          .eq(index)
+          .contains(column_name);
+      }
     });
   });
 

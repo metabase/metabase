@@ -23,6 +23,7 @@
             [metabase.query-processor.interface :as qpi]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.streaming :as qp.streaming]
@@ -588,7 +589,8 @@
              ;; customize the `context` passed to the QP
              run         (^:once fn* [query info]
                           (qp.streaming/streaming-response [context export-format]
-                            (qp-runner query info context)))}}]
+                            (binding [qp.perms/*card-id* card-id]
+                              (qp-runner query info context))))}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)

@@ -30,7 +30,7 @@ describe("scenarios > question > custom columns", () => {
   it("can create a custom column (metabase#13241)", () => {
     const columnName = "Simple Math";
     openOrdersTable({ mode: "notebook" });
-    cy.get(".Icon-add_data").click();
+    cy.icon("add_data").click();
 
     popover().within(() => {
       _typeUsingGet("[contenteditable='true']", "1 + 1");
@@ -51,7 +51,7 @@ describe("scenarios > question > custom columns", () => {
   it("can create a custom column with an existing column name", () => {
     customFormulas.forEach(({ customFormula, columnName }) => {
       openOrdersTable({ mode: "notebook" });
-      cy.get(".Icon-add_data").click();
+      cy.icon("add_data").click();
 
       popover().within(() => {
         _typeUsingGet("[contenteditable='true']", customFormula);
@@ -81,7 +81,7 @@ describe("scenarios > question > custom columns", () => {
 
     // TODO: There isn't a single unique parent that can be used to scope this icon within
     // (a good candidate would be `.NotebookCell`)
-    cy.get(".Icon-add")
+    cy.icon("add")
       .last() // This is brittle.
       .click();
 
@@ -140,7 +140,7 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText(columnName).click();
     });
 
-    cy.get(".Icon-add")
+    cy.icon("add")
       .last()
       .click();
 
@@ -190,7 +190,7 @@ describe("scenarios > question > custom columns", () => {
     cy.log(
       "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
     );
-    cy.log("**Works in 0.35.3**");
+    cy.log("Works in 0.35.3");
     // ID should be "1" but it is picking the product ID and is showing "14"
     cy.get(".TableInteractive-cellWrapper--firstColumn")
       .eq(1) // the second cell from the top in the first column (the first one is a header cell)
@@ -205,35 +205,29 @@ describe("scenarios > question > custom columns", () => {
 
     signInAsAdmin();
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13857",
-      dataset_query: {
-        database: 1,
-        query: {
-          expressions: {
-            [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
-          },
-          "source-query": {
-            aggregation: [
-              ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
-            ],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-            ],
-            "source-table": ORDERS_ID,
-          },
+      query: {
+        expressions: {
+          [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
         },
-        type: "query",
+        "source-query": {
+          aggregation: [
+            ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
+          ],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+          "source-table": ORDERS_ID,
+        },
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
       cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
       cy.visit(`/question/${QUESTION_ID}`);
 
-      cy.log("**Reported failing v0.34.3 through v0.37.2**");
+      cy.log("Reported failing v0.34.3 through v0.37.2");
       cy.wait("@cardQuery").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
@@ -246,39 +240,32 @@ describe("scenarios > question > custom columns", () => {
     const CC_NAME = "OneisOne";
     signInAsAdmin();
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14080",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: { [CC_NAME]: ["*", 1, 1] },
-          aggregation: [
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: { [CC_NAME]: ["*", 1, 1] },
+        aggregation: [
+          [
+            "distinct",
             [
-              "distinct",
-              [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.ID],
-              ],
+              "fk->",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", PRODUCTS.ID],
             ],
-            ["sum", ["expression", CC_NAME]],
           ],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
-        },
-        type: "query",
+          ["sum", ["expression", CC_NAME]],
+        ],
+        breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"]],
       },
       display: "line",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
       cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
       cy.visit(`/question/${QUESTION_ID}`);
 
-      cy.log("**Regression since v0.37.1 - it works on v0.37.0**");
+      cy.log("Regression since v0.37.1 - it works on v0.37.0");
       cy.wait("@cardQuery").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
@@ -289,29 +276,23 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13634",
-      dataset_query: {
-        database: 1,
-        query: {
-          expressions: { "Foo Bar": ["+", 57910, 1] },
-          "source-query": {
-            aggregation: [["cum-count"]],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-            ],
-            "source-table": ORDERS_ID,
-          },
+      query: {
+        expressions: { "Foo Bar": ["+", 57910, 1] },
+        "source-query": {
+          aggregation: [["cum-count"]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+          "source-table": ORDERS_ID,
         },
-        type: "query",
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: questionId } }) => {
       cy.visit(`/question/${questionId}`);
       cy.findByText("13634");
 
-      cy.log("**Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2**");
+      cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
       cy.findByText("Foo Bar");
       cy.findAllByText("57911");
     });
@@ -320,32 +301,26 @@ describe("scenarios > question > custom columns", () => {
   it.skip("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
     const CC_NAME = "Double the fun";
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14193",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
-            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-            ],
-          },
-          expressions: {
-            [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
-          },
+      query: {
+        "source-query": {
+          "source-table": ORDERS_ID,
+          filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
+          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          ],
         },
-        database: 1,
+        expressions: {
+          [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+        },
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
 
       // Test displays collapsed filter - click on number 1 to expand and show the filter name
-      cy.get(".Icon-filter")
+      cy.icon("filter")
         .parent()
         .contains("1")
         .click();
@@ -363,22 +338,16 @@ describe("scenarios > question > custom columns", () => {
     // Uppercase is important for this reproduction on H2
     const CC_NAME = "CATEGORY";
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14255",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-          expressions: {
-            [CC_NAME]: ["concat", ["field-id", PRODUCTS.CATEGORY], "2"],
-          },
-          aggregation: [["count"]],
-          breakout: [["expression", CC_NAME]],
+      query: {
+        "source-table": PRODUCTS_ID,
+        expressions: {
+          [CC_NAME]: ["concat", ["field-id", PRODUCTS.CATEGORY], "2"],
         },
-        database: 1,
+        aggregation: [["count"]],
+        breakout: [["expression", CC_NAME]],
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
 
@@ -390,35 +359,29 @@ describe("scenarios > question > custom columns", () => {
   it.skip("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
     const CE_NAME = "Rounded price";
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14775",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-              ],
-              alias: "Products",
-            },
-          ],
-          expressions: {
-            [CE_NAME]: [
-              "ceil",
-              ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
             ],
+            alias: "Products",
           },
+        ],
+        expressions: {
+          [CE_NAME]: [
+            "ceil",
+            ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
+          ],
         },
-        type: "query",
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
@@ -433,7 +396,7 @@ describe("scenarios > question > custom columns", () => {
       .click({ force: true }); // x is hidden and hover doesn't work so we have to force it
     cy.findByText("Join data").should("not.exist");
 
-    cy.log("**Reported failing on 0.38.1-SNAPSHOT (6d77f099)**");
+    cy.log("Reported failing on 0.38.1-SNAPSHOT (6d77f099)");
     cy.get("[class*=NotebookCellItem]")
       .contains(CE_NAME)
       .should("not.exist");
@@ -461,15 +424,15 @@ describe("scenarios > question > custom columns", () => {
               "case",
               [
                 [
-                  [">", ["field-id", ORDERS.DISCOUNT], 0],
-                  ["field-id", ORDERS.CREATED_AT],
+                  [">", ["field", ORDERS.DISCOUNT, null], 0],
+                  ["field", ORDERS.CREATED_AT, null],
                 ],
               ],
               {
                 default: [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CREATED_AT],
+                  "field",
+                  PRODUCTS.CREATED_AT,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               },
             ],

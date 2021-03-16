@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -48,7 +46,7 @@ type Props = {
   refreshPeriod: ?number,
   setRefreshElapsedHook: Function,
 
-  parametersWidget: React$Element<*>,
+  parametersWidget: React.Element,
 
   addCardToDashboard: ({ dashId: DashCardId, cardId: CardId }) => void,
   addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,

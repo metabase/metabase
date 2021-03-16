@@ -175,7 +175,7 @@ describe("scenarios > question > native", () => {
               name: "created_at",
               "display-name": "Created at",
               type: "dimension",
-              dimension: ["field-id", ORDERS.CREATED_AT],
+              dimension: ["field", ORDERS.CREATED_AT, null],
               "widget-type": "date/month-year",
             },
           },
@@ -200,7 +200,7 @@ describe("scenarios > question > native", () => {
     cy.get(".ace_content").type("select * from people where false");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("No results!");
-    cy.get(".Icon-contract").click();
+    cy.icon("contract").click();
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -248,7 +248,7 @@ describe("scenarios > question > native", () => {
       // We can ask variations of that question "on the fly"
       cy.findByText(QUESTION).click();
 
-      cy.log("**Apply a filter**");
+      cy.log("Apply a filter");
       cy.findAllByText("Filter")
         .first()
         .click();
@@ -306,7 +306,7 @@ describe("scenarios > question > native", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
       cy.findByText("14302");
-      cy.log("**Reported on v0.37.5 - Regression since v0.37.0**");
+      cy.log("Reported on v0.37.5 - Regression since v0.37.0");
       cy.findByText("Save").should("not.exist");
     });
   });
@@ -327,7 +327,7 @@ describe("scenarios > question > native", () => {
               name: "filter",
               "display-name": "Filter",
               type: "dimension",
-              dimension: ["field-id", ORDERS.CREATED_AT],
+              dimension: ["field", ORDERS.CREATED_AT, null],
               "widget-type": "date/month-year",
               default: null,
             },
@@ -356,14 +356,49 @@ describe("scenarios > question > native", () => {
     });
 
     cy.reload();
-    cy.get(".Icon-pencil").click();
+    cy.icon("pencil").click();
     cy.findByText(/View revision history/i).click();
     cy.findByText(/Revert/i).click(); // Revert to the first revision
     cy.findByText(/Open Editor/i).click();
 
-    cy.log("**Reported failing on v0.35.3**");
+    cy.log("Reported failing on v0.35.3");
     cy.findByText(ORIGINAL_QUERY);
     // Filter dropdown field
     cy.get("fieldset").contains("Filter");
+  });
+
+  it("should reorder template tags by drag and drop (metabase#9357)", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+
+    // Write a query with parameter firstparameter,nextparameter,lastparameter.
+    cy.get(".ace_content").type(
+      "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
+      {
+        parseSpecialCharSequences: false,
+        delay: 0,
+      },
+    );
+
+    // Drag the firstparameter to last position
+    cy.get("fieldset .Icon-empty")
+      .first()
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 5, 5, { force: true })
+      .trigger("mousemove", 430, 0, { force: true })
+      .trigger("mouseup", 430, 0, { force: true });
+
+    // Ensure they're in the right order
+    cy.findAllByText("Variable name")
+      .parent()
+      .as("variableField");
+
+    cy.get("@variableField")
+      .first()
+      .findByText("nextparameter");
+
+    cy.get("@variableField")
+      .last()
+      .findByText("firstparameter");
   });
 });

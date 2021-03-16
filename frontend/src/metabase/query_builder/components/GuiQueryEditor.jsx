@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -18,10 +16,10 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 import cx from "classnames";
 
 import type { DatasetQuery } from "metabase-types/types/Card";
+import type { Aggregation, Breakout } from "metabase-types/types/Query";
 import type { Children } from "react";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
 export type GuiQueryEditorFeatures = {
   filter?: boolean,
   aggregation?: boolean,

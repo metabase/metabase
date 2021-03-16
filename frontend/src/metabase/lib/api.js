@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import querystring from "querystring";
 
 import EventEmitter from "events";

@@ -30,7 +30,7 @@
                 {:source-query {:source-table $$orders
                                 :fields       [$id
                                                &Products.products.title
-                                               &PRODUCTS__via__PRODUCT_ID.products.title]
+                                               [:field %products.title {:source-field %product_id, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                 :joins        [{:fields       :all
                                                 :source-table $$products
                                                 :condition    [:= $product_id &Products.products.id]
@@ -55,25 +55,27 @@
 (deftest basic-test
   (testing "make sure `:joins` get added automatically for `:fk->` clauses"
     (is (= (mt/mbql-query venues
-                          {:source-table $$venues
-                           :fields       [$name &CATEGORIES__via__CATEGORY_ID.categories.name]
-                           :joins        [{:source-table $$categories
-                                           :alias        "CATEGORIES__via__CATEGORY_ID"
-                                           :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
-                                           :strategy     :left-join
-                                           :fields       :none
-                                           :fk-field-id  %category_id}]})
-         (add-implicit-joins
-          (mt/mbql-query venues
-                           {:source-table $$venues
-                            :fields       [$name $category_id->categories.name]}))))))
+             {:source-table $$venues
+              :fields       [$name [:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
+                                                             :source-field %category_id}]]
+              :joins        [{:source-table $$categories
+                              :alias        "CATEGORIES__via__CATEGORY_ID"
+                              :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                              :strategy     :left-join
+                              :fields       :none
+                              :fk-field-id  %category_id}]})
+           (add-implicit-joins
+            (mt/mbql-query venues
+              {:source-table $$venues
+               :fields       [$name $category_id->categories.name]}))))))
 
 (deftest nested-queries-test
   (testing "For FK clauses inside nested source queries, we should add the `:joins` info to the nested query instead of at the top level (#8972)"
     (is (= (mt/mbql-query venues
              {:source-query
               {:source-table $$venues
-               :fields       [$name &CATEGORIES__via__CATEGORY_ID.categories.name]
+               :fields       [$name [:field %categories.name {:join-alias "CATEGORIES__via__CATEGORY_ID"
+                                                              :source-field %category_id}]]
                :joins        [{:source-table $$categories
                                :alias        "CATEGORIES__via__CATEGORY_ID"
                                :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
@@ -108,12 +110,14 @@
     (is (= (mt/mbql-query venues
              {:source-query
               {:source-table $$venues
-               :fields       [$name &CATEGORIES__via__CATEGORY_ID.categories.name]
+               :fields       [$name [:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
+                                                              :source-field %category_id}]]
                :joins        [{:source-table $$categories
                                :alias        "CATEGORIES__via__CATEGORY_ID"
                                :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                :strategy     :left-join
-                               :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                               :fields       [[:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
+                                                                        :source-field %category_id}]]
                                :fk-field-id  %category_id}]}})
            (add-implicit-joins
             (mt/mbql-query venues
@@ -124,7 +128,8 @@
                                 :alias        "CATEGORIES__via__CATEGORY_ID"
                                 :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                 :strategy     :left-join
-                                :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                                :fields       [[:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
+                                                                         :source-field %category_id}]]
                                 :fk-field-id  %category_id}]}}))))
 
     (testing "Should work at arbitrary levels of nesting"
@@ -138,7 +143,7 @@
                                               $product_id->products.title]
                                :joins        [{:fields       :all
                                                :source-table $$products
-                                               :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                               :condition    [:= $product_id [:field %products.id {:join-alias "Products"}]]
                                                :alias        "Products"}]
                                :order-by     [[:asc $id]]
                                :limit        2})
@@ -177,7 +182,8 @@
                              {:source-table $$orders
                               :fields       [$id
                                              &Products.products.title
-                                             &PRODUCTS__via__PRODUCT_ID.products.title]
+                                             [:field %products.title {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                                      :source-field %product_id}]]
                               :joins        [{:source-table $$products
                                               :alias        "Products"
                                               :fields       :all
@@ -199,10 +205,16 @@
     (mt/dataset sample-dataset
       (is (= (mt/mbql-query orders
                {:filter       [:> *count/Integer 5]
-                :fields       [$created_at &PRODUCTS__via__PRODUCT_ID.products.created_at *count/Integer]
+                :fields       [$created_at
+                               [:field %products.created_at {:source-field %product_id
+                                                             :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
+                               *count/Integer]
                 :source-query {:source-table $$orders
                                :aggregation  [[:count]]
-                               :breakout     [!month.created_at !month.&PRODUCTS__via__PRODUCT_ID.products.created_at]
+                               :breakout     [!month.created_at
+                                              [:field %products.created_at {:source-field  %product_id
+                                                                            :temporal-unit :month
+                                                                            :join-alias    "PRODUCTS__via__PRODUCT_ID"}]]
                                :joins        [{:fields       :none
                                                :alias        "PRODUCTS__via__PRODUCT_ID"
                                                :strategy     :left-join
@@ -233,18 +245,26 @@
                                               $discount
                                               !default.created_at
                                               $quantity
-                                              &PRODUCTS__via__PRODUCT_ID.products.category]
+                                              [:field %products.category {:source-field %product_id
+                                                                          :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]
                                :filter       [:and
                                               [:= $user_id 1]
-                                              [:= &PRODUCTS__via__PRODUCT_ID.products.category "Doohickey"]]
+                                              [:=
+                                               [:field %products.category {:source-field %product_id
+                                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
+                                               "Doohickey"]]
                                :joins        [{:source-table $$products
                                                :alias        "PRODUCTS__via__PRODUCT_ID"
                                                :fields       :none
                                                :strategy     :left-join
                                                :fk-field-id  %product_id
                                                :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]}
-                :filter       [:= &PRODUCTS__via__PRODUCT_ID.products.category "Doohickey"]
-                :order-by     [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]]
+                :filter       [:=
+                               [:field %products.category {:source-field %product_id
+                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
+                               "Doohickey"]
+                :order-by     [[:asc [:field %products.category {:source-field %product_id
+                                                                 :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]]
                 :limit        5})
              (add-implicit-joins
               (mt/mbql-query orders
@@ -259,8 +279,11 @@
     (testing "don't add fields for a native source query."
       (is (= (mt/mbql-query orders
                {:source-query {:native "SELECT * FROM my_table"}
-                :filter       [:= &PRODUCTS__via__PRODUCT_ID.products.category "Doohickey"]
-                :order-by     [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]]
+                :filter       [:= [:field %products.category {:source-field %product_id
+                                                              :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
+                               "Doohickey"]
+                :order-by     [[:asc [:field %products.category {:source-field %product_id
+                                                                 :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]]
                 :joins        [{:source-table $$products
                                 :alias        "PRODUCTS__via__PRODUCT_ID"
                                 :fields       :none
@@ -296,7 +319,8 @@
              {:source-query
               {:source-query
                {:source-table $$venues
-                :fields       [$name &CATEGORIES__via__CATEGORY_ID.categories.name]
+                :fields       [$name [:field %categories.name {:join-alias "CATEGORIES__via__CATEGORY_ID"
+                                                               :source-field %category_id}]]
                 :joins        [{:source-table $$categories
                                 :alias        "CATEGORIES__via__CATEGORY_ID"
                                 :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
@@ -323,8 +347,8 @@
                                             $venue_id]
                              :filter       [:> $date "2014-01-01"]}
               :aggregation  [[:count]]
-              :breakout     [&VENUES__via__VENUE_ID.venues.price]
-              :order-by     [[:asc &VENUES__via__VENUE_ID.venues.price]]
+              :breakout     [[:field %venues.price {:source-field %venue_id, :join-alias "VENUES__via__VENUE_ID"}]]
+              :order-by     [[:asc [:field %venues.price {:source-field %venue_id, :join-alias "VENUES__via__VENUE_ID"}]]]
               :joins        [{:source-table $$venues
                               :alias        "VENUES__via__VENUE_ID"
                               :condition    [:= $venue_id &VENUES__via__VENUE_ID.venues.id]
@@ -343,7 +367,8 @@
   (testing "Test that adding implicit joins still works correctly if the query also contains explicit joins"
     (is (= (mt/mbql-query checkins
              {:source-table $$checkins
-              :aggregation  [[:sum [:joined-field "USERS__via__USER_ID" $users.id]]]
+              :aggregation  [[:sum [:field %users.id {:join-alias   "USERS__via__USER_ID"
+                                                      :source-field %user_id}]]]
               :breakout     [$id]
               :joins        [{:alias        "u"
                               :source-table $$users
@@ -368,7 +393,8 @@
     (testing "in nested source queries"
       (is (= (mt/mbql-query checkins
                {:source-query {:source-table $$checkins
-                               :aggregation  [[:sum &USERS__via__USER_ID.users.id]]
+                               :aggregation  [[:sum [:field %users.id {:join-alias   "USERS__via__USER_ID"
+                                                                       :source-field %user_id}]]]
                                :breakout     [$id]
                                :joins        [{:source-table $$users
                                                :alias        "USERS__via__USER_ID"

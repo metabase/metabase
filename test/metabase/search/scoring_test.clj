@@ -1,5 +1,6 @@
 (ns metabase.search.scoring-test
   (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.search.config :as search-config]
             [metabase.search.scoring :as search]))
 
@@ -25,8 +26,9 @@
 
 (defn scorer->score
   [scorer]
-  (comp :score
-        (partial #'search/score-with [scorer])))
+  (comp (fn [s] (when s (* s search/text-score-max)))
+        :text-score
+        (partial #'search/text-score-with [scorer])))
 
 (deftest consecutivity-scorer-test
   (let [score (scorer->score #'search/consecutivity-scorer)]
@@ -103,13 +105,143 @@
            (score ["rasta" "the" "toucan"]
                   (result-row "Rasta the toucan"))))))
 
-(deftest accumulate-top-results-test
+(deftest top-results-test
   (let [xf (map identity)]
     (testing "a non-full queue behaves normally"
-      (let [items (map (fn [i] [[2 2 i] (str "item " i)]) (range 10))]
-        (is (= items
-               (transduce xf search/accumulate-top-results items)))))
+      (let [items (->> (range 10)
+                       reverse ;; descending order
+                       (map (fn [i]
+                              {:score  [2 2 i]
+                               :result (str "item " i)})))]
+        (is (= (map :result items)
+               (search/top-results items xf)))))
     (testing "a full queue only saves the top items"
-      (let [sorted-items (map (fn [i] [[1 2 3 i] (str "item " i)]) (range (+ 10 search-config/max-filtered-results)))]
-        (is (= (drop 10 sorted-items)
-               (transduce xf search/accumulate-top-results (shuffle sorted-items))))))))
+      (let [sorted-items (->> (+ 10 search-config/max-filtered-results)
+                              range
+                              reverse ;; descending order
+                              (map (fn [i]
+                                     {:score  [1 2 3 i]
+                                      :result (str "item " i)})))]
+        (is (= (->> sorted-items
+                    (take search-config/max-filtered-results)
+                    (map :result))
+               (search/top-results (shuffle sorted-items) xf)))))))
+
+(deftest match-context-test
+  (let [context  #'search/match-context
+        tokens   (partial map str)
+        match    (fn [text] {:text text :is_match true})
+        no-match (fn [text] {:text text :is_match false})]
+    (testing "it groups matches together"
+      (is (=
+           [(no-match "this is")
+            (match "rasta toucan's")
+            (no-match "collection of")
+            (match "toucan")
+            (no-match "things")]
+           (context
+               ["rasta" "toucan"]
+               ["this" "is" "rasta" "toucan's" "collection" "of" "toucan" "things"]))))
+    (testing "it handles no matches"
+      (is (= [(no-match "aviary stats")]
+             (context
+                 ["rasta" "toucan"]
+                 ["aviary" "stats"]))))
+    (testing "it abbreviates when necessary"
+      (is (= [(no-match "one two…eleven twelve")
+              (match "rasta toucan")
+              (no-match "alpha beta…the end")]
+             (context
+                 (tokens '(rasta toucan))
+                 (tokens '(one two
+                           this should not be included
+                           eleven twelve
+                           rasta toucan
+                           alpha beta
+                           some other noise
+                           the end))))))))
+
+(deftest test-largest-common-subseq-length
+  (let [subseq-length (partial #'search/largest-common-subseq-length =)]
+    (testing "greedy choice can't be taken"
+      (is (= 3
+             (subseq-length ["garden" "path" "this" "is" "not" "a" "garden" "path"]
+                            ["a" "garden" "path"]))))
+    (testing "no match"
+      (is (= 0
+             (subseq-length ["can" "not" "be" "found"]
+                            ["The" "toucan" "is" "a" "South" "American" "bird"]))))
+    (testing "long matches"
+      (is (= 28
+             (subseq-length (map str '(this social bird lives in small flocks in lowland rainforests in countries such as costa rica
+                                       it flies short distances between trees toucans rest in holes in trees))
+                            (map str '(here is some filler
+                                       this social bird lives in small flocks in lowland rainforests in countries such as costa rica
+                                       it flies short distances between trees toucans rest in holes in trees
+                                       here is some more filler))))))))
+
+(deftest pinned-score-test
+  (let [score #'search/pinned-score
+        item (fn [collection-position] {:collection_position collection-position})]
+    (testing "it provides a sortable score, but doesn't favor magnitude"
+      (let [result (->> [(item 0)
+                         (item nil)
+                         (item 3)
+                         (item 1)
+                         (item 2)]
+                        shuffle
+                        (sort-by score)
+                        reverse
+                        (map :collection_position))]
+        (is (= #{1 2 3}
+               (set (take 3 result))))
+        (is (= #{nil 0}
+               (set (take-last 2 result))))))))
+
+(deftest recency-score-test
+  (let [score    #'search/recency-score
+        now      (t/offset-date-time)
+        item     (fn [id updated-at] {:id id :updated_at updated-at})
+        days-ago (fn [days] (t/minus now (t/days days)))]
+    (testing "it provides a sortable score"
+      (is (= [1 2 3 4]
+             (->> [(item 1 (days-ago 0))
+                   (item 2 (days-ago 1))
+                   (item 3 (days-ago 50))
+                   (item 4 nil)]
+                  shuffle
+                  (sort-by score)
+                  reverse
+                  (map :id)))))
+    (testing "it treats stale items as being equally old"
+      (let [stale search-config/stale-time-in-days]
+        (is (= [1 2 3 4]
+               (->> [(item 1 (days-ago (+ stale 1)))
+                     (item 2 (days-ago (+ stale 50)))
+                     (item 3 nil)
+                     (item 4 (days-ago stale))]
+                    (sort-by score)
+                    (map :id))))))))
+
+(deftest combined-test
+  (let [search-string     "custom expression examples"
+        labeled-results   {:a {:name "custom expression examples" :model "dashboard"}
+                           :b {:name "examples of custom expressions" :model "dashboard"}
+                           :c {:name "customer success stories"
+                               :dashboardcard_count 50
+                               :updated_at (t/offset-date-time)
+                               :collection_position 1
+                               :model "dashboard"}
+                           :d {:name "customer examples of bad sorting" :model "dashboard"}}
+        {:keys [a b c d]} labeled-results]
+    (is (= (map :name [a                ; exact text match
+                       b                ; good text match
+                       c                ; weak text match, but awesome other stuff
+                       d])              ; middling text match, no other signal
+           (->> labeled-results
+                vals
+                (map (partial search/score-and-result search-string))
+                (sort-by :score)
+                reverse
+                (map :result)
+                (map :name))))))

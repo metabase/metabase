@@ -55,7 +55,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     it.skip("should be hideable", () => {
       // Check viewable
       cy.visit("/dashboard/2");
-      cy.get(".Icon-share").click();
+      cy.icon("share").click();
       cy.findByText("Embed this dashboard in an application").click();
 
       cy.findByText("Parameters");
@@ -230,7 +230,7 @@ const createQuestion = () =>
             name: "id",
             display_name: "Id",
             type: "dimension",
-            dimension: ["field-id", PEOPLE.ID],
+            dimension: ["field", PEOPLE.ID, null],
             "widget-type": "id",
             default: null,
           },
@@ -239,7 +239,7 @@ const createQuestion = () =>
             name: "name",
             display_name: "Name",
             type: "dimension",
-            dimension: ["field-id", PEOPLE.NAME],
+            dimension: ["field", PEOPLE.NAME, null],
             "widget-type": "category",
             default: null,
           },
@@ -248,7 +248,7 @@ const createQuestion = () =>
             name: "source",
             display_name: "Source",
             type: "dimension",
-            dimension: ["field-id", PEOPLE.SOURCE],
+            dimension: ["field", PEOPLE.SOURCE, null],
             "widget-type": "category",
             default: null,
           },
@@ -257,7 +257,7 @@ const createQuestion = () =>
             name: "user_id",
             display_name: "User",
             type: "dimension",
-            dimension: ["field-id", ORDERS.USER_ID],
+            dimension: ["field", ORDERS.USER_ID, null],
             "widget-type": "id",
             default: null,
           },

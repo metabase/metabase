@@ -4,9 +4,13 @@
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.pivots :as pivot.test-utils]
+            [metabase.models :refer [Card Collection]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
             [metabase.query-processor :as qp]
             [metabase.query-processor.pivot :as pivot]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [schema.core :as s]))
 
 (deftest group-bitmask-test
@@ -107,43 +111,44 @@
       (let [request {:database   (mt/db)
                      :query      {:source-table (mt/$ids $$orders)
                                   :aggregation  [[:count] [:sum (mt/$ids $orders.quantity)]]
-                                  :breakout     [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
-                                                 [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
-                                                 [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]]}
+                                  :breakout     [(mt/$ids $orders.user_id->people.state)
+                                                 (mt/$ids $orders.user_id->people.source)
+                                                 (mt/$ids $orders.product_id->products.category)]}
                      :type       :query
                      :parameters []
                      :pivot-rows [1 0]
                      :pivot-cols [2]}]
         (testing "can generate queries for each new breakout"
-          (let [expected [{:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
-                                                 [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
-                                                 [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 0]}}}
-                          {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
-                                                 [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 1]}}}
-                          {:query {:breakout    [[:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 3]}}}
-                          {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
-                                                 [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 4]}}}
-                          {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 5]}}}
-                          {:query {:breakout    [[:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 7]}}}]
-                expected (map (fn [expected-val] (-> expected-val
-                                                     (assoc :type       :query
-                                                            :parameters []
-                                                            :pivot-rows [1 0]
-                                                            :pivot-cols [2])
-                                                     (assoc-in [:query :fields] [[:expression "pivot-grouping"]])
-                                                     (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
-                                                     (assoc-in [:query :source-table] (mt/$ids $$orders)))) expected)
+          (let [expected (mt/$ids
+                           [{:query {:breakout    [$orders.user_id->people.state
+                                                   $orders.user_id->people.source
+                                                   $orders.product_id->products.category
+                                                   [:expression "pivot-grouping"]]
+                                     :expressions {:pivot-grouping [:abs 0]}}}
+                            {:query {:breakout    [$orders.user_id->people.source
+                                                   $orders.product_id->products.category
+                                                   [:expression "pivot-grouping"]]
+                                     :expressions {:pivot-grouping [:abs 1]}}}
+                            {:query {:breakout    [$orders.product_id->products.category
+                                                   [:expression "pivot-grouping"]]
+                                     :expressions {:pivot-grouping [:abs 3]}}}
+                            {:query {:breakout    [$orders.user_id->people.source
+                                                   $orders.user_id->people.state
+                                                   [:expression "pivot-grouping"]]
+                                     :expressions {:pivot-grouping [:abs 4]}}}
+                            {:query {:breakout    [$orders.user_id->people.source
+                                                   [:expression "pivot-grouping"]]
+                                     :expressions {:pivot-grouping [:abs 5]}}}
+                            {:query {:breakout    [[:expression "pivot-grouping"]]
+                                     :expressions {:pivot-grouping [:abs 7]}}}])
+                expected (for [expected-val expected]
+                           (-> expected-val
+                               (assoc :type       :query
+                                      :parameters []
+                                      :pivot-rows [1 0]
+                                      :pivot-cols [2])
+                               (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
+                               (assoc-in [:query :source-table] (mt/$ids $$orders))))
                 actual   (map (fn [actual-val] (dissoc actual-val :database)) (#'pivot/generate-queries request))]
             (is (= 6 (count actual)))
             (is (= expected actual))))))))
@@ -265,3 +270,33 @@
                       {:expressions {"Product Rating + 1" [:+ $product_id->products.rating 1]}
                        :aggregation [[:count]]
                        :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
+
+(deftest pivot-query-should-work-without-data-permissions-test
+  (testing "Pivot queries should work if the current user only has permissions to view the Card -- no data perms (#14989)"
+    (mt/dataset sample-dataset
+      (mt/with-temp-copy-of-db
+        (let [query (mt/mbql-query orders
+                      {:aggregation [[:count]]
+                       :breakout    [$product_id->products.category $user_id->people.source]})]
+          (perms/revoke-permissions! (group/all-users) (mt/db))
+          (testing "User without perms shouldn't be able to run the query normally"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (mt/with-test-user :rasta
+                   (qp/process-query query)))))
+          (testing "Should be able to run the query via a Card that All Users has perms for"
+            ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
+            ;; Collection inherits Root Collection perms when created
+            (mt/with-temp* [Collection [collection]
+                            Card       [card {:collection_id (u/the-id collection), :dataset_query query}]]
+              (is (schema= {:status   (s/eq "completed")
+                            s/Keyword s/Any}
+                           (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
+              (testing "... with the pivot-table endpoints"
+                (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
+                  (is (schema= {:status   (s/eq "completed")
+                                s/Keyword s/Any}
+                               result))
+                  (is (= (mt/rows (pivot/run-pivot-query query))
+                         (mt/rows result))))))))))))

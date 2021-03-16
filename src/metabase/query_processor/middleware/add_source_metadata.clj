@@ -22,7 +22,8 @@
     (and (every? empty? [breakouts aggregations])
          (or (empty? fields)
              (and (= (count fields) (count nested-source-metadata))
-                  (every? #(mbql.u/is-clause? :field-literal (mbql.u/unwrap-field-clause %)) fields))))))
+                  (every? #(mbql.u/match-one % [:field (_ :guard string?) _])
+                          fields))))))
 
 (s/defn ^:private native-source-query->metadata :- (s/maybe [mbql.s/SourceQueryMetadata])
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
@@ -44,23 +45,21 @@
 
 (s/defn mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
   "Preprocess a `source-query` so we can determine the result columns."
-  [{:keys [source-metadata], :as source-query} :- mbql.s/MBQLQuery]
-  (if (seq source-metadata)
-    source-metadata
-    (try
-      (let [cols (binding [api/*current-user-id* nil]
-                   ((requiring-resolve 'metabase.query-processor/query->expected-cols)
-                    {:database (:id (qp.store/database))
-                     :type     :query
-                     ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
-                     ;; to end up adding it again when the middleware runs at the top level
-                     :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
-        (for [col cols]
-          (select-keys col [:name :id :table_id :display_name :base_type :semantic_type :unit :fingerprint :settings
-                            :source_alias :field_ref :parent_id])))
-      (catch Throwable e
-        (log/error e (str (trs "Error determining expected columns for query")))
-        nil))))
+  [source-query :- mbql.s/MBQLQuery]
+  (try
+    (let [cols (binding [api/*current-user-id* nil]
+                 ((requiring-resolve 'metabase.query-processor/query->expected-cols)
+                  {:database (:id (qp.store/database))
+                   :type     :query
+                   ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
+                   ;; to end up adding it again when the middleware runs at the top level
+                   :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
+      (for [col cols]
+        (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
+                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :parent_id])))
+    (catch Throwable e
+      (log/error e (str (trs "Error determining expected columns for query")))
+      nil)))
 
 (s/defn ^:private add-source-metadata :- {(s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]

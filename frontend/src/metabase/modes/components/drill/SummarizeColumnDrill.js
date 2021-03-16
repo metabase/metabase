@@ -1,5 +1,3 @@
-/* @flow */
-
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   getAggregationOperator,

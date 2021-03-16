@@ -1,5 +1,3 @@
-/* @flow */
-
 export const mostQueried = () => ({
   card: {
     name: "Most-queried schemas",

@@ -17,21 +17,14 @@ describe("scenarios > question > nested (metabase#12568)", () => {
     signInAsAdmin();
 
     // Create a simple question of orders by week
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "GH_12568: Simple",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"],
-          ],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
       },
       display: "line",
-      visualization_settings: {},
     });
 
     // Create a native question of orders by day
@@ -151,33 +144,23 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "10511",
-      dataset_query: {
-        database: 1,
-        query: {
-          filter: [">", ["field-literal", "count", "type/Integer"], 5],
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-              [
-                "datetime-field",
-                [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CREATED_AT],
-                ],
-                "month",
-              ],
+      query: {
+        filter: [">", ["field", "count", { "base-type": "type/Integer" }], 5],
+        "source-query": {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "temporal-unit": "month", "source-field": ORDERS.PRODUCT_ID },
             ],
-          },
+          ],
         },
-        type: "query",
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: questionId } }) => {
       cy.visit(`/question/${questionId}`);
       cy.findByText("10511");
@@ -200,7 +183,7 @@ describe("scenarios > question > nested", () => {
       .click();
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.log("**Reported failing on v0.34.3 - v0.37.0.2**");
+    cy.log("Reported failing on v0.34.3 - v0.37.0.2");
     popover()
       .contains("Average of Total")
       .closest(".List-item")
@@ -208,49 +191,38 @@ describe("scenarios > question > nested", () => {
   });
 
   it.skip("should show all filter options for a nested question (metabase#13186)", () => {
-    cy.log("**-- 1. Create and save native question Q1 --**");
+    cy.log("Create and save native question Q1");
 
     createNativeQuestion("13816_Q1", "SELECT * FROM PRODUCTS").then(
       ({ body: { id: Q1_ID } }) => {
-        cy.log("**-- 2. Convert it to `query` and save as Q2 --**");
-
-        cy.request("POST", "/api/card", {
+        cy.log("Convert it to `query` and save as Q2");
+        cy.createQuestion({
           name: "13816_Q2",
-          dataset_query: {
-            database: 1,
-            query: {
-              "source-table": `card__${Q1_ID}`,
-            },
-            type: "query",
+          query: {
+            "source-table": `card__${Q1_ID}`,
           },
-          display: "table",
-          visualization_settings: {},
         });
       },
     );
 
-    cy.log("**-- 3. Create a brand new dashboard --**");
-
-    cy.request("POST", "/api/dashboard", {
-      name: "13186D",
-    }).then(({ body: { id: DASBOARD_ID } }) => {
+    cy.createDashboard("13186D").then(({ body: { id: DASBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASBOARD_ID}`);
     });
 
     // Add Q2 to that dashboard
-    cy.get(".Icon-pencil").click();
-    cy.get(".Icon-add")
+    cy.icon("pencil").click();
+    cy.icon("add")
       .last()
       .click();
     cy.findByText("13816_Q2").click();
 
     // Add filter to the dashboard...
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     cy.findByText("Other Categories").click();
     // ...and try to connect it to the question
     cy.findByText("Select…").click();
 
-    cy.log("**Reported failing in v0.36.4 (`Category` is missing)**");
+    cy.log("Reported failing in v0.36.4 (`Category` is missing)");
     popover().within(() => {
       cy.findByText(/Category/i);
       cy.findByText(/Title/i);
@@ -261,14 +233,14 @@ describe("scenarios > question > nested", () => {
   it.skip("should apply metrics including filter to the nested question (metabase#12507)", () => {
     const METRIC_NAME = "Discount Applied";
 
-    cy.log("**-- 1. Create a metric with a filter --**");
+    cy.log("Create a metric with a filter");
 
     cy.request("POST", "/api/metric", {
       name: METRIC_NAME,
       description: "Discounted orders.",
       definition: {
         aggregation: [["count"]],
-        filter: ["not-null", ["field-id", ORDERS.DISCOUNT]],
+        filter: ["not-null", ["field", ORDERS.DISCOUNT, null]],
         "source-table": ORDERS_ID,
       },
       table_id: ORDERS_ID,
@@ -276,21 +248,16 @@ describe("scenarios > question > nested", () => {
       // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
       const ORIGINAL_QUERY = {
         aggregation: ["metric", METRIC_ID],
-        breakout: [["binning-strategy", ["field-id", ORDERS.TOTAL], "default"]],
+        breakout: [
+          ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
+        ],
         "source-table": ORDERS_ID,
       };
 
-      cy.log(
-        "**-- 2. Create new question which uses previously defined metric --**",
-      );
-
-      cy.request("POST", "/api/card", {
+      // Create new question which uses previously defined metric
+      cy.createQuestion({
         name: "Orders with discount applied",
-        dataset_query: {
-          database: 1,
-          query: ORIGINAL_QUERY,
-          type: "query",
-        },
+        query: ORIGINAL_QUERY,
         display: "bar",
         visualization_settings: {
           "graph.dimension": ["TOTAL"],
@@ -300,23 +267,25 @@ describe("scenarios > question > nested", () => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
-        cy.log(
-          "**-- 3. Create a nested question based on the previous one --**",
-        );
+        cy.log("Create a nested question based on the previous one");
 
         // we're adding filter and saving/overwriting the original question, keeping the same ID
         cy.request("PUT", `/api/card/${QUESTION_ID}`, {
           dataset_query: {
             database: 1,
             query: {
-              filter: [">", ["field-literal", "TOTAL", "type/Float"], 50],
+              filter: [
+                ">",
+                ["field", "TOTAL", { "base-type": "type/Float" }],
+                50,
+              ],
               "source-query": ORIGINAL_QUERY,
             },
             type: "query",
           },
         });
 
-        cy.log("**Reported failing since v0.35.2**");
+        cy.log("Reported failing since v0.35.2");
         cy.visit(`/question/${QUESTION_ID}`);
         cy.wait("@cardQuery").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
@@ -335,23 +304,16 @@ describe("scenarios > question > nested", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    cy.log("**-- 1. Remap Product ID's display value to `title` --**");
+    cy.log("Remap Product ID's display value to `title`");
     remapDisplayValueToFK({
       display_value: ORDERS.PRODUCT_ID,
       name: "Product ID",
       fk: PRODUCTS.TITLE,
     });
 
-    cy.log("**-- 2. Save simple 'Orders' table with remapped values --**");
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders (remapped)",
-      dataset_query: {
-        database: 1,
-        query: { "source-table": ORDERS_ID },
-        type: "query",
-      },
-      display: "table",
-      visualization_settings: {},
+      query: { "source-table": ORDERS_ID },
     });
 
     // Try to use saved question as a base for a new / nested question
@@ -373,7 +335,7 @@ describe("scenarios > question > nested", () => {
 
       beforeEach(() => {
         if (test === "remapped") {
-          cy.log("**-- Remap Product ID's display value to `title` --**");
+          cy.log("Remap Product ID's display value to `title`");
           remapDisplayValueToFK({
             display_value: ORDERS.PRODUCT_ID,
             name: "Product ID",
@@ -404,15 +366,9 @@ describe("scenarios > question > nested", () => {
         // Use the original question qith joins, then save it again
         ordersJoinProducts(QUESTION_NAME).then(
           ({ body: { id: ORIGINAL_QUESTION_ID } }) => {
-            cy.request("POST", "/api/card", {
+            cy.createQuestion({
               name: SECOND_QUESTION_NAME,
-              dataset_query: {
-                database: 1,
-                query: { "source-table": `card__${ORIGINAL_QUESTION_ID}` },
-                type: "query",
-              },
-              display: "table",
-              visualization_settings: {},
+              query: { "source-table": `card__${ORIGINAL_QUESTION_ID}` },
             });
           },
         );
@@ -449,13 +405,13 @@ describe("scenarios > question > nested", () => {
     cy.findByText("Group by")
       .parent()
       .within(() => {
-        cy.log("**Regression that worked on 0.37.9**");
+        cy.log("Regression that worked on 0.37.9");
         isSelected("Products → Category");
       });
 
     // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
     // It can potentially fail at two more places. See [1] and [2]
-    cy.get(".Icon-notebook").click();
+    cy.icon("notebook").click();
     cy.get("[class*=NotebookCellItem]")
       .contains(/^Products → Category$/) /* [1] */
       .click();
@@ -481,28 +437,22 @@ describe("scenarios > question > nested", () => {
 });
 
 function ordersJoinProducts(name) {
-  return cy.request("POST", "/api/card", {
+  return cy.createQuestion({
     name,
-    dataset_query: {
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-            ],
-            alias: "Products",
-          },
-        ],
-      },
-      database: 1,
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          fields: "all",
+          "source-table": PRODUCTS_ID,
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+          ],
+          alias: "Products",
+        },
+      ],
     },
-    display: "table",
-    visualization_settings: {},
   });
 }
