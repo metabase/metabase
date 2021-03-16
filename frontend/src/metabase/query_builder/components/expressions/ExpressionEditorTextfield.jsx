@@ -369,6 +369,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         <AceEditor
           className="z1"
           value={source}
+          style={{ ...inputStyle, paddingLeft: 26 }}
           theme="ace/theme/metabase"
           mode="ace/mode/javascript"
           ref="input"
