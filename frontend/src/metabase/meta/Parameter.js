@@ -22,7 +22,10 @@ import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import moment from "moment";
 import { t } from "ttag";
 import * as FIELD_REF from "metabase/lib/query/field_ref";
-import { isNumericBaseType } from "metabase/lib/schema_metadata";
+import {
+  isNumericBaseType,
+  doesOperatorExist,
+} from "metabase/lib/schema_metadata";
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
@@ -451,5 +454,16 @@ export function getParameterIconName(parameterType: ?ParameterType) {
     case "id":
     default:
       return "label";
+  }
+}
+
+export function mapParameterTypeToFieldType(parameter) {
+  const [fieldType, operatorType] = parameter.type.split("/");
+  switch (fieldType) {
+    case "location":
+    case "category":
+      return `string/${doesOperatorExist(operatorType) ? operatorType : "="}`;
+    default:
+      parameter.type;
   }
 }
