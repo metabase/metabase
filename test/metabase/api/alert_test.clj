@@ -564,7 +564,7 @@
                    :type     :query
                    :query    {:source-table (mt/id :checkins)
                               :aggregation  [["count"]]
-                              :breakout     [["datetime-field" (mt/id :checkins :date) "hour"]]}}})
+                              :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :hour}]]}}})
 
 (defn- alert-question-url [card-or-id]
   (format "alert/question/%d" (u/get-id card-or-id)))

@@ -278,9 +278,9 @@
     :type/PostgresEnum
     (default-base-types column)))
 
-(defmethod sql-jdbc.sync/column->special-type :postgres
+(defmethod sql-jdbc.sync/column->semantic-type :postgres
   [_ database-type _]
-  ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
+  ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON semantic-type
   (case database-type
     "json"  :type/SerializedJSON
     "jsonb" :type/SerializedJSON

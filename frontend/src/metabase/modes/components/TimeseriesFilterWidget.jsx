@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 import { t } from "ttag";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
@@ -53,11 +51,11 @@ export default class TimeseriesFilterWidget extends Component {
 
   _popover: ?any;
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     const query = Card.getQuery(nextProps.card);
     if (query) {
       const breakouts = Query.getBreakouts(query);

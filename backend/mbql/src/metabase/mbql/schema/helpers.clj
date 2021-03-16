@@ -49,7 +49,7 @@
   [clause-name & arg-names-and-schemas]
   (let [[symb-name clause-name] (if (vector? clause-name)
                                   clause-name
-                                  [clause-name clause-name])]
+                                  [clause-name (or (:clause-name (meta clause-name)) clause-name)])]
     `(def ~(vary-meta symb-name assoc
                       :clause-name (keyword clause-name)
                       :doc         (format "Schema for a valid %s clause." clause-name))

@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -64,7 +62,7 @@ export default class Parameters extends Component {
     commitImmediately: false,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // sync parameters from URL query string
     const { parameters, setParameterValue, query, metadata } = this.props;
     if (setParameterValue) {
@@ -82,7 +80,7 @@ export default class Parameters extends Component {
             // widget, we should start with an array to match.
             value = [value];
           }
-          // field IDs can be either ["field-id", <id>] or ["field-literal", <name>, <type>]
+          // field IDs can be either ["field", <integer-id>, <options>] or ["field", <string-name>, <options>]
           const fieldIds = parameter.field_ids || [];
           const fields = fieldIds.map(
             id =>

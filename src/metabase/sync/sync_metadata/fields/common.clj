@@ -39,11 +39,11 @@
   [field]
   (str/lower-case (:name field)))
 
-(s/defn special-type :- (s/maybe su/FieldType)
-  "Determine a the appropriate `special-type` for a Field with `field-metadata`."
+(s/defn semantic-type :- (s/maybe su/FieldType)
+  "Determine a the appropriate `semantic-type` for a Field with `field-metadata`."
   [field-metadata :- (s/maybe i/TableMetadataField)]
   (and field-metadata
-       (or (:special-type field-metadata)
+       (or (:semantic-type field-metadata)
            (when (:pk? field-metadata) :type/PK))))
 
 (s/defn matching-field-metadata :- (s/maybe TableMetadataFieldWithOptionalID)

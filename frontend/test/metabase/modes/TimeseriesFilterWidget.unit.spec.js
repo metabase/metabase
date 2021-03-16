@@ -1,4 +1,3 @@
-/* eslint-disable flowtype/require-valid-file-annotation */
 import React from "react";
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 import { render, screen } from "@testing-library/react";
@@ -26,7 +25,7 @@ describe("TimeseriesFilterWidget", () => {
   })
     .query()
     .aggregate(["count"])
-    .breakout(["datetime-field", ["field-id", 1], "day"])
+    .breakout(["field", 1, { "temporal-unit": "day" }])
     .question();
 
   it("should display 'All Time' text if no filter is selected", () => {
@@ -37,7 +36,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Previous 30 Days' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .filter(["time-interval", ["field-id", 1], -30, "day"])
+      .filter(["time-interval", ["field", 1, null], -30, "day"])
       .question();
 
     render(getTimeseriesFilterWidget(questionWithFilter));
@@ -47,7 +46,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Is Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .filter(["is-null", ["field-id", 1]])
+      .filter(["is-null", ["field", 1, null]])
       .question();
 
     render(getTimeseriesFilterWidget(questionWithFilter));
@@ -57,7 +56,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Not Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .filter(["not-null", ["field-id", 1]])
+      .filter(["not-null", ["field", 1, null]])
       .question();
 
     render(getTimeseriesFilterWidget(questionWithFilter));

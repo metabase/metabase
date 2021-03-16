@@ -3,7 +3,8 @@
    which in turn derive from their own parents. This makes it possible to add new types without needing to add
    corresponding mappings in the frontend or other places. For example, a Database may want a type called something
    like `:type/CaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
-   continue to treat it as such until further notice.")
+   continue to treat it as such until further notice."
+  (:require [metabase.shared.util :as shared.u]))
 
 ;; NOTE: be sure to update frontend/test/metabase-bootstrap.js when updating this
 
@@ -178,7 +179,7 @@
 (derive :type/XML :type/Structured)
 
 
-;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and
+;;; Legacy Semantic Types. These will hopefully be going away in the future when we add columns like `:is_pk` and
 ;;; `:cardinality`
 
 (derive :type/Special :type/*)
@@ -208,9 +209,21 @@
 (derive :type/Boolean :type/Category)
 (derive :type/Enum :type/Category)
 
+(derive :Coercion/String->Temporal :Coercion/*)
+(derive :Coercion/ISO8601->Temporal :Coercion/String->Temporal)
+(derive :Coercion/ISO8601->DateTime :Coercion/ISO8601->Temporal)
+(derive :Coercion/ISO8601->Time :Coercion/ISO8601->Temporal)
+(derive :Coercion/ISO8601->Date :Coercion/ISO8601->Temporal)
+
+(derive :Coercion/Number->Temporal :Coercion/*)
+(derive :Coercion/UNIXTime->Temporal :Coercion/Number->Temporal)
+(derive :Coercion/UNIXSeconds->DateTime :Coercion/UNIXTime->Temporal)
+(derive :Coercion/UNIXMilliSeconds->DateTime :Coercion/UNIXTime->Temporal)
+(derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Temporal)
+
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(defn types->parents
+(defn- types->parents
   "Return a map of various types to their parent types.
 
   This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of
@@ -221,8 +234,69 @@
               {t (parents t)}))))
 
 (defn temporal-field?
-  "True if a Metabase `Field` instance has a temporal base or special type, i.e. if this Field represents a value
+  "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
   relating to a moment in time."
   {:arglists '([field])}
-  [{base-type :base_type, special-type :special_type}]
-  (some #(isa? % :type/Temporal) [base-type special-type]))
+  [{base-type :base_type, effective-type :effective_type}]
+  (some #(isa? % :type/Temporal) [base-type effective-type]))
+
+(def ^:private coercions
+  "A map from types to maps of conversions to resulting effective types:
+
+  eg:
+  {:type/Text   {:Coercion/ISO8601->Date     :type/Date
+                 :Coercion/ISO8601->DateTime :type/DateTime
+                 :Coercion/ISO8601->Time     :type/Time}}"
+  ;; Decimal seems out of place but that's the type that oracle uses Number which we map to Decimal. Not sure if
+  ;; that's an intentional mapping or not. But it does mean that lots of extra columns will be offered a conversion
+  ;; (think Price being offerred to be interpreted as a date)
+  (let [numeric-types [:type/BigInteger :type/Integer :type/Decimal]]
+    (reduce #(assoc %1 %2 {:Coercion/UNIXMicroSeconds->DateTime :type/DateTime
+                           :Coercion/UNIXMilliSeconds->DateTime :type/DateTime
+                           :Coercion/UNIXSeconds->DateTime      :type/DateTime})
+            {:type/Text   {:Coercion/ISO8601->Date     :type/Date
+                           :Coercion/ISO8601->DateTime :type/DateTime
+                           :Coercion/ISO8601->Time     :type/Time}}
+            numeric-types)))
+
+(defn ^:export is_coerceable
+  "Returns a boolean of whether a field base-type has any coercion strategies available."
+  [base-type]
+  (boolean (contains? coercions (keyword base-type))))
+
+(defn ^:export effective_type_for_coercion
+  "The effective type resulting from a coercion."
+  [coercion]
+  ;;todo: unify this with the coercions map above
+  (get {:Coercion/ISO8601->Date :type/Date
+        :Coercion/ISO8601->DateTime :type/DateTime
+        :Coercion/ISO8601->Time :type/Time
+        :Coercion/UNIXMicroSeconds->DateTime :type/DateTime
+        :Coercion/UNIXMilliSeconds->DateTime :type/DateTime
+        :Coercion/UNIXSeconds->DateTime :type/DateTime}
+       (keyword coercion)))
+
+(defn ^:export coercions_for_type
+  "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
+  clojure will return a sequence of keywords."
+   [base-type]
+   (let [applicable (keys (get coercions (keyword base-type)))]
+     #?(:cljs
+        (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
+                      applicable))
+        :clj
+        applicable)))
+
+#?(:cljs
+   (defn ^:export isa
+     "Is `x` the same as, or a descendant type of, `y`?"
+     [x y]
+     (isa? (keyword x) (keyword y))))
+
+#?(:cljs
+   (def ^:export TYPE
+     "A map of Type name (as string, without `:type/` namespace) -> qualified type name as string
+
+         {\"Temporal\" \"type/Temporal\", ...}"
+     (clj->js (into {} (for [tyype (descendants :type/*)]
+                         [(name tyype) (shared.u/qualified-name tyype)])))))

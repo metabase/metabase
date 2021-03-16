@@ -1,5 +1,3 @@
-/* @flow */
-
 import type {
   StructuredQuery as SQ,
   Aggregation,

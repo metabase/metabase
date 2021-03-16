@@ -34,7 +34,7 @@ function createQuestion(options, callback) {
             name: "city",
             "display-name": "City",
             type: "dimension",
-            dimension: ["field-id", PEOPLE.CITY],
+            dimension: ["field", PEOPLE.CITY, null],
             "widget-type": "category",
           },
           state: {
@@ -42,7 +42,7 @@ function createQuestion(options, callback) {
             name: "state",
             "display-name": "State",
             type: "dimension",
-            dimension: ["field-id", PEOPLE.STATE],
+            dimension: ["field", PEOPLE.STATE, null],
             "widget-type": "category",
           },
         },

@@ -1,0 +1,108 @@
+name: Backend
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - 'release**'
+      - 'feature**'
+    tags:
+      - '**'
+    paths:
+    - '**.clj'
+    - '**.edn'
+    - '**.java'
+    - '**/metabase-plugin.yaml'
+    - '.github/workflows/**'
+
+jobs:
+
+  be-linter-clj-kondo:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run clj-kondo
+      run: docker run -v $PWD:/work --rm cljkondo/clj-kondo clj-kondo --config /work/lint-config.edn --lint /work/src /work/enterprise/backend/src /work/backend/mbql/src /work/shared/src
+
+  be-linter-bikeshed:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-bikeshed-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +ci bikeshed
+
+  be-linter-eastwood:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-eastwood-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +ci eastwood
+
+  be-linter-docstring-checker:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-docstring-checker-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +ci docstring-checker
+
+  be-linter-namespace-decls:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-namespace-decls-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +ci check-namespace-decls
+
+  be-linter-reflection-warnings:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-reflection-warnings-${{ hashFiles('**/project.clj') }}
+    - run: ./bin/reflection-linter
+      name: Run reflection warnings checker

@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -15,9 +13,10 @@ export type Props = {
   entityQuery?: ?{ [key: string]: any },
   reload?: boolean,
   wrapped?: boolean,
+  debounced?: boolean,
   loadingAndErrorWrapper: boolean,
   selectorName?: string,
-  children: (props: RenderProps) => ?React$Element<any>,
+  children: (props: RenderProps) => ?React.Element,
 };
 
 export type RenderProps = {
@@ -34,6 +33,7 @@ const CONSUMED_PROPS: string[] = [
   "entityQuery",
   // "reload", // Masked by `reload` function. Should we rename that?
   "wrapped",
+  "debounced",
   "loadingAndErrorWrapper",
   "selectorName",
 ];
@@ -100,6 +100,7 @@ export default class EntityListLoader extends React.Component {
     loadingAndErrorWrapper: true,
     reload: false,
     wrapped: false,
+    debounced: false,
   };
 
   _getWrappedList: ?(props: Props) => any;
@@ -114,25 +115,36 @@ export default class EntityListLoader extends React.Component {
     );
   }
 
-  async fetchList(
-    // $FlowFixMe: fetchList provided by @connect
-    { fetchList, entityQuery, pageSize, onChangeHasMorePages },
-    options?: any,
-  ) {
-    const result = await fetchList(entityQuery, options);
-    if (typeof pageSize === "number" && onChangeHasMorePages) {
-      onChangeHasMorePages(
-        !result.payload.result || result.payload.result.length === pageSize,
-      );
+  maybeDebounce(f: any, ...args: any) {
+    if (this.props.debounced) {
+      return _.debounce(f, ...args);
+    } else {
+      return f;
     }
-    return result;
   }
 
-  componentWillMount() {
+  fetchList = this.maybeDebounce(
+    async (
+      { fetchList, entityQuery, pageSize, onChangeHasMorePages },
+      options?: any,
+    ) => {
+      const result = await fetchList(entityQuery, options);
+
+      if (typeof pageSize === "number" && onChangeHasMorePages) {
+        onChangeHasMorePages(
+          !result.payload.result || result.payload.result.length === pageSize,
+        );
+      }
+      return result;
+    },
+    250,
+  );
+
+  UNSAFE_componentWillMount() {
     this.fetchList(this.props, { reload: this.props.reload });
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (!_.isEqual(nextProps.entityQuery, this.props.entityQuery)) {
       // entityQuery changed, reload
       this.fetchList(nextProps, { reload: nextProps.reload });

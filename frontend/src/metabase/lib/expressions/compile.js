@@ -10,11 +10,17 @@ import {
 
 import { ExpressionCstVisitor, parse } from "./parser";
 
+const NEGATIVE_FILTER_SHORTHANDS = {
+  contains: "does-not-contain",
+  "is-null": "not-null",
+  "is-empty": "not-empty",
+};
 class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   constructor(options) {
     super();
-    this._options = options;
     this.validateVisitor();
+    const resolve = (kind, name) => [kind, name];
+    this.resolve = options.resolve ? options.resolve : resolve;
   }
 
   any(ctx) {
@@ -34,6 +40,33 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
   boolean(ctx) {
     return this.visit(ctx.expression);
+  }
+
+  booleanExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+  logicalOrExpression(ctx) {
+    return this._collapseOperators(ctx.operands, ctx.operators);
+  }
+  logicalAndExpression(ctx) {
+    return this._collapseOperators(ctx.operands, ctx.operators);
+  }
+  booleanUnaryExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+  logicalNotExpression(ctx) {
+    const expr = this.visit(ctx.operands[0]);
+    if (Array.isArray(expr)) {
+      const [fn, ...args] = expr;
+      const shorthand = NEGATIVE_FILTER_SHORTHANDS[fn];
+      if (shorthand) {
+        return [shorthand, ...args];
+      }
+    }
+    return ["not", expr];
+  }
+  relationalExpression(ctx) {
+    return this._collapseOperators(ctx.operands, ctx.operators);
   }
 
   additionExpression(ctx) {
@@ -68,29 +101,9 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     return mbql;
   }
 
-  metricExpression(ctx) {
-    const metricName = this.visit(ctx.metricName);
-    const metric = parseMetric(metricName, this._options);
-    if (!metric) {
-      throw new Error(`Unknown Metric: ${metricName}`);
-    }
-    return ["metric", metric.id];
-  }
-  segmentExpression(ctx) {
-    const segmentName = this.visit(ctx.segmentName);
-    const segment = parseSegment(segmentName, this._options);
-    if (!segment) {
-      throw new Error(`Unknown Segment: ${segmentName}`);
-    }
-    return ["segment", segment.id];
-  }
-  dimensionExpression(ctx) {
-    const dimensionName = this.visit(ctx.dimensionName);
-    const dimension = parseDimension(dimensionName, this._options);
-    if (!dimension) {
-      throw new Error(`Unknown Field: ${dimensionName}`);
-    }
-    return dimension.mbql();
+  identifierExpression(ctx) {
+    const name = this.visit(ctx.identifierName);
+    return this.resolve(ctx.resolveAs, name);
   }
 
   identifier(ctx) {
@@ -110,22 +123,6 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
   parenthesisExpression(ctx) {
     return this.visit(ctx.expression);
-  }
-
-  // FILTERS
-  booleanExpression(ctx) {
-    return this._collapseOperators(ctx.operands, ctx.operators);
-  }
-
-  comparisonExpression(ctx) {
-    return [
-      ctx.operators[0].image.toLowerCase(),
-      this.visit(ctx.operands[0]),
-      this.visit(ctx.operands[1]),
-    ];
-  }
-  booleanUnaryExpression(ctx) {
-    return [ctx.operators[0].image.toLowerCase(), this.visit(ctx.operands[0])];
   }
 
   // HELPERS:
@@ -157,7 +154,30 @@ export function compile({ cst, ...options }) {
   if (!cst) {
     ({ cst } = parse(options));
   }
-  const vistor = new ExpressionMBQLCompilerVisitor(options);
+  function resolveMBQLField(kind, name) {
+    if (kind === "metric") {
+      const metric = parseMetric(name, options);
+      if (!metric) {
+        throw new Error(`Unknown Metric: ${name}`);
+      }
+      return ["metric", metric.id];
+    } else if (kind === "segment") {
+      const segment = parseSegment(name, options);
+      if (!segment) {
+        throw new Error(`Unknown Segment: ${name}`);
+      }
+      return ["segment", segment.id];
+    } else {
+      // fallback
+      const dimension = parseDimension(name, options);
+      if (!dimension) {
+        throw new Error(`Unknown Field: ${name}`);
+      }
+      return dimension.mbql();
+    }
+  }
+  const resolve = options.resolve ? options.resolve : resolveMBQLField;
+  const vistor = new ExpressionMBQLCompilerVisitor({ ...options, resolve });
   return vistor.visit(cst);
 }
 

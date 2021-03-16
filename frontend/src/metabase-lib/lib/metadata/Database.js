@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import Question from "../Question";
 
 import Base from "./Base";

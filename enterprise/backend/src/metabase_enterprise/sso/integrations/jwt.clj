@@ -49,7 +49,7 @@
   (when (sso-settings/jwt-group-sync)
     (when-let [groups-attribute (jwt-attribute-groups)]
       (when-let [group-names (get jwt-data (jwt-attribute-groups))]
-        (integrations.common/sync-group-memberships! user (group-names->ids group-names))))))
+        (integrations.common/sync-group-memberships! user (group-names->ids group-names) false)))))
 
 (defn- login-jwt-user
   [jwt {{redirect :return_to} :params, :as request}]

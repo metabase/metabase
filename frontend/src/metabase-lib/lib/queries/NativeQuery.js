@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
@@ -303,10 +301,7 @@ export default class NativeQuery extends AtomicQuery {
   ): DimensionOptions {
     const dimensions = this.templateTags()
       .filter(tag => tag.type === "dimension")
-      .map(
-        tag =>
-          new TemplateTagDimension(null, [tag.name], this.metadata(), this),
-      )
+      .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
       .filter(dimensionFilter);
     return new DimensionOptions({
       dimensions: dimensions,

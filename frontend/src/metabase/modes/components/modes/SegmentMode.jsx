@@ -1,5 +1,3 @@
-/* @flow */
-
 import { getDefaultDrills } from "../drill";
 
 import SummarizeColumnDrill from "../drill/SummarizeColumnDrill";

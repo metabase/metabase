@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
@@ -114,7 +112,7 @@ export class ObjectDetail extends Component {
     window.removeEventListener("keydown", this.onKeyDown, true);
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // if the card changed or table metadata loaded then reload fk references
     const tableFKsJustLoaded =
       nextProps.tableForeignKeys && !this.props.tableForeignKeys;
@@ -159,7 +157,7 @@ export class ObjectDetail extends Component {
     } else {
       if (value === null || value === undefined || value === "") {
         cellValue = <span className="text-light">{t`Empty`}</span>;
-      } else if (isa(column.special_type, TYPE.SerializedJSON)) {
+      } else if (isa(column.semantic_type, TYPE.SerializedJSON)) {
         let formattedJson;
         try {
           formattedJson = JSON.stringify(JSON.parse(value), null, 2);

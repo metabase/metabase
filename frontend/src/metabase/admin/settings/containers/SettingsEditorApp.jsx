@@ -57,7 +57,7 @@ export default class SettingsEditorApp extends Component {
     updateSetting: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.initializeSettings();
   }
 

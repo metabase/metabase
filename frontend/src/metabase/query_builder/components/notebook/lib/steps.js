@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type Question from "metabase-lib/lib/Question";
 

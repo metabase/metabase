@@ -261,3 +261,14 @@ PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(
     !user.ldap_auth &&
     MetabaseSettings.get("enable-password-login"),
 );
+
+PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
+  updateIn(sections, ["authentication/ldap", "settings"], settings => [
+    ...settings,
+    {
+      key: "ldap-sync-admin-group",
+      display_name: t`Sync Administrator group`,
+      type: "boolean",
+    },
+  ]),
+);

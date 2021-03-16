@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { jt } from "ttag";
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
@@ -44,10 +42,10 @@ export default function QuickFilterDrill({
 
   const { value, column } = clicked;
 
-  if (isPK(column.special_type)) {
+  if (isPK(column.semantic_type)) {
     return [];
   }
-  if (isFK(column.special_type)) {
+  if (isFK(column.semantic_type)) {
     return [
       {
         name: "view-fks",

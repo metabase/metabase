@@ -1,5 +1,3 @@
-/* @flow */
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { t } from "ttag";
 import type {

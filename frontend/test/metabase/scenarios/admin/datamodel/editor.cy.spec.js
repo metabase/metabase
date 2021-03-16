@@ -133,11 +133,11 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     field("Created At");
   });
 
-  it("should allow changing of special type and currency", () => {
+  it("should allow changing of semantic type and currency", () => {
     visitAlias("@ORDERS_URL");
 
     field("Tax").as("tax");
-    testSelect("@tax", "No special type", "Currency");
+    testSelect("@tax", "No semantic type", "Currency");
     testSelect("@tax", "US Dollar", "Canadian Dollar");
   });
 

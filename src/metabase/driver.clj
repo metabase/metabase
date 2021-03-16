@@ -594,3 +594,11 @@
   {:added "0.37.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti incorporate-ssh-tunnel-details
+  "A multimethod for driver-specific behavior required to incorporate details for an opened SSH tunnel into the DB
+  details. In most cases, this will simply involve updating the :host and :port (to point to the tunnel entry point,
+  instead of the backing database server), but some drivers may have more specific behavior."
+  {:added "0.39.0" :arglists '([driver db-details])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)

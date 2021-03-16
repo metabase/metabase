@@ -47,7 +47,7 @@
 (expect
   {:description      "The name of the user who owns an account"
    :database_type    "VARCHAR"
-   :special_type     :type/Name
+   :semantic_type    :type/Name
    :name             "NAME"
    :has_field_values :search
    :active           true
@@ -68,5 +68,5 @@
         ;; setting anything else is reserved for admins, however we fill in what we think should be the appropiate value
         ;; with the hydration fn
         (hydrate :has_field_values)
-        (select-keys [:name :description :database_type :special_type :has_field_values :active :visibility_type
+        (select-keys [:name :description :database_type :semantic_type :has_field_values :active :visibility_type
                       :preview_display :display_name :fingerprint :base_type]))))

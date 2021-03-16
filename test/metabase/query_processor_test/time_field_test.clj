@@ -1,10 +1,8 @@
 (ns metabase.query-processor-test.time-field-test
   (:require [clojure.test :refer :all]
-            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.query-processor-test :as qp.test]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]))
+            [metabase.test :as mt]))
 
 (defn- time-query [filter-type & filter-args]
   (mt/formatted-rows [int identity identity]
@@ -55,29 +53,27 @@
 
 (deftest report-timezone-test
   (mt/test-drivers (mt/normal-drivers-except skip-time-test-drivers)
-    (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-      ;; TIMEZONE FIXME — the value of some of these change based on DST. This is B R O K E N
-      (let [offset (t/zone-offset (t/zoned-date-time (t/local-date) (t/local-time) (t/zone-id "America/Los_Angeles")))]
-        (is (= (cond
-                 (= :sqlite driver/*driver*)
-                 [[1 "Plato Yeshua" "08:30:00"]
-                  [4 "Simcha Yan" "08:30:00"]]
+    (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+      (is (= (cond
+               (= :sqlite driver/*driver*)
+               [[1 "Plato Yeshua" "08:30:00"]
+                [4 "Simcha Yan" "08:30:00"]]
 
-                 ;; TIMEZONE FIXME — Wack answer
-                 (= :presto driver/*driver*)
-                 [[3 "Kaneonuskatew Eiran" (str "08:15:00" offset)]]
+               ;; TIMEZONE FIXME — Wack answer
+               (= :presto driver/*driver*)
+               [[3 "Kaneonuskatew Eiran" "08:15:00-08:00"]]
 
-                 ;; Databases like PostgreSQL ignore timezone information when
-                 ;; using a time field, the result below is what happens when the
-                 ;; 08:00 time is interpreted as UTC, then not adjusted to Pacific
-                 ;; time by the DB
-                 (qp.test/supports-report-timezone? driver/*driver*)
-                 [[1 "Plato Yeshua" (str "08:30:00" offset)]
-                  [4 "Simcha Yan" (str "08:30:00" offset)]]
+               ;; Databases like PostgreSQL ignore timezone information when
+               ;; using a time field, the result below is what happens when the
+               ;; 08:00 time is interpreted as UTC, then not adjusted to Pacific
+               ;; time by the DB
+               (qp.test/supports-report-timezone? driver/*driver*)
+               [[1 "Plato Yeshua" "08:30:00-08:00"]
+                [4 "Simcha Yan" "08:30:00-08:00"]]
 
-                 :else
-                 [[1 "Plato Yeshua" "08:30:00Z"]
-                  [4 "Simcha Yan" "08:30:00Z"]])
-               (apply time-query :between (if (qp.test/supports-report-timezone? driver/*driver*)
-                                            ["08:00:00"       "09:00:00"]
-                                            ["08:00:00-00:00" "09:00:00-00:00"]))))))))
+               :else
+               [[1 "Plato Yeshua" "08:30:00Z"]
+                [4 "Simcha Yan" "08:30:00Z"]])
+             (apply time-query :between (if (qp.test/supports-report-timezone? driver/*driver*)
+                                          ["08:00:00"       "09:00:00"]
+                                          ["08:00:00-00:00" "09:00:00-00:00"])))))))
