@@ -139,7 +139,7 @@ export function createParameter(
   option: ParameterOption,
   parameters: Parameter[] = [],
 ): Parameter {
-  let name = option.name;
+  let name = option.combinedName || option.name;
   let nameIndex = 0;
   // get a unique name
   while (_.any(parameters, p => p.name === name)) {
