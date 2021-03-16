@@ -61,6 +61,11 @@
   [:name
    :dataset_query])
 
+(defmethod searchable-columns-for-model (class Dashboard)
+  [_]
+  [:name
+   :description])
+
 (defmethod searchable-columns-for-model (class Table)
   [_]
   [:name

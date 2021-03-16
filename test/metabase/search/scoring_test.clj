@@ -26,9 +26,8 @@
 
 (defn scorer->score
   [scorer]
-  (comp (fn [s] (when s (* s search/text-score-max)))
-        :text-score
-        (partial #'search/text-score-with [scorer])))
+  (comp :text-score
+        (partial #'search/text-score-with [{:weight 1 :scorer scorer}])))
 
 (deftest consecutivity-scorer-test
   (let [score (scorer->score #'search/consecutivity-scorer)]
@@ -82,6 +81,24 @@
       (is (= 1
              (score ["rasta" "the" "toucan"]
                     (result-row "Rasta may be my favorite of the toucans")))))
+    (testing "misses"
+      (is (nil?
+           (score ["rasta"]
+                  (result-row "just a straight-up imposter"))))
+      (is (nil?
+           (score ["rasta" "the" "toucan"]
+                  (result-row "")))))))
+
+(deftest fullness-scorer-test
+  (let [score (scorer->score #'search/fullness-scorer)]
+    (testing "partial matches"
+      (is (= 1/8
+             (score ["rasta" "el" "tucan"]
+                    (result-row "Here is Rasta the hero of many lands")))))
+    (testing "full matches"
+      (is (= 1
+             (score ["rasta" "the" "toucan"]
+                    (result-row "Rasta the Toucan")))))
     (testing "misses"
       (is (nil?
            (score ["rasta"]
@@ -182,7 +199,8 @@
 
 (deftest pinned-score-test
   (let [score #'search/pinned-score
-        item (fn [collection-position] {:collection_position collection-position})]
+        item (fn [collection-position] {:collection_position collection-position
+                                        :model "card"})]
     (testing "it provides a sortable score, but doesn't favor magnitude"
       (let [result (->> [(item 0)
                          (item nil)
