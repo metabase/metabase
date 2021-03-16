@@ -121,7 +121,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     const rng = editor.getSession().getSelection().getRange();
     return [rng.start.column, rng.end.column]
   }
-  
+
   setAcePosition(editor, [start, end]) {
     editor.selection.setRange(new ace.Range(0, start, 0, end))
   }
@@ -351,7 +351,11 @@ export default class ExpressionEditorTextfield extends React.Component {
     const inputStyle = { fontSize: 12 };
 
     return (
-      <div className={cx("relative my1")}>
+      <div className={cx("relative my1")}
+          onBlur={() => this.onInputBlur()}
+          onClick={() => this.onInputClick()}
+          onKeyDown={(e) => this.onInputKeyDown(e)}
+            >
         <div
           className={cx(inputClassName, "absolute top left")}
           style={{
@@ -365,11 +369,10 @@ export default class ExpressionEditorTextfield extends React.Component {
         <AceEditor
           className="z1"
           value={source}
-          theme="ace/theme/eclipse"
+          theme="ace/theme/metabase"
           mode="ace/mode/javascript"
           ref="input"
           onChange={e => this.onExpressionChange(e)}
-          onBlur={() => this.onInputBlur()}
           sizeToFit
           aceAutocomplete={false}
         />
