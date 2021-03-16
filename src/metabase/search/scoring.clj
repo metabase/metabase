@@ -77,30 +77,27 @@
                 {:is_match is-match
                  :text     (tokens->string text-tokens (not is-match))})))))
 
-(def ^:const text-score-max
-  "The maximum text score that could be achieved without normalization. This value is then used to normalize it down to the interval [0, 1]"
-  9/2)
-
 (defn- text-score-with
-  [scoring-fns query-tokens search-result]
-  (let [scores (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model search-result)))
-                     :let   [matched-text (-> search-result
-                                              (get column)
-                                              (search-config/column->string (:model search-result) column))
-                             match-tokens (some-> matched-text normalize tokenize)
-                             score        (and matched-text
-                                               (reduce (fn [tally f]
-                                                         (+ tally
-                                                            (f query-tokens match-tokens)))
-                                                       0
-                                                       scoring-fns))]
-                     :when  (and matched-text
-                                 (> score 0))]
-                 {:text-score          (/ score text-score-max)
-                  :match               matched-text
-                  :match-context-thunk #(match-context query-tokens match-tokens)
-                  :column              column
-                  :result              search-result})]
+  [weighted-scorers query-tokens search-result]
+  (let [total-weight (reduce + (map :weight weighted-scorers))
+        scores       (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model search-result)))
+                           :let   [matched-text (-> search-result
+                                                    (get column)
+                                                    (search-config/column->string (:model search-result) column))
+                                   match-tokens (some-> matched-text normalize tokenize)
+                                   score        (and matched-text
+                                                     (reduce (fn [tally f]
+                                                               (+ tally
+                                                                  (f query-tokens match-tokens)))
+                                                             0
+                                                             (map :scorer weighted-scorers)))]
+                           :when  (and matched-text
+                                       (> score 0))]
+                       {:text-score          (/ score total-weight)
+                        :match               matched-text
+                        :match-context-thunk #(match-context query-tokens match-tokens)
+                        :column              column
+                        :result              search-result})]
     (when (seq scores)
       (apply max-key :text-score scores))))
 
@@ -143,16 +140,15 @@
       (/ (occurrences query-tokens match-tokens matches-in?)
          match-token-count))))
 
-(defn- weigh-by
-  [factor scorer]
-  (comp (partial * factor) scorer))
-
 (def ^:private match-based-scorers
-  ;; If the below is modified, be sure to update `text-score-max`!
-  [consecutivity-scorer
-   total-occurrences-scorer
-   (weigh-by 1/2 fullness-scorer)
-   (weigh-by 2 exact-match-scorer)])
+  [{:scorer consecutivity-scorer
+    :weight 1}
+   {:scorer total-occurrences-scorer
+    :weight 1}
+   {:scorer fullness-scorer
+    :weight 1/2}
+   {:scorer exact-match-scorer
+    :weight 2}])
 
 (def ^:private model->sort-position
   (into {} (map-indexed (fn [i model]

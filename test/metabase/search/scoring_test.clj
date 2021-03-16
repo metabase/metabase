@@ -26,9 +26,8 @@
 
 (defn scorer->score
   [scorer]
-  (comp (fn [s] (when s (* s search/text-score-max)))
-        :text-score
-        (partial #'search/text-score-with [scorer])))
+  (comp :text-score
+        (partial #'search/text-score-with [{:weight 1 :scorer scorer}])))
 
 (deftest consecutivity-scorer-test
   (let [score (scorer->score #'search/consecutivity-scorer)]
