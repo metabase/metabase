@@ -77,3 +77,7 @@ dev/src/dev/nocommit/
 **/cypress_sample_dataset.json
 /frontend/src/cljs
 .shadow-cljs
+
+# lsp: ignore all but the config file
+.lsp/*
+!.lsp/config.edn
