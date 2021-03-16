@@ -1,10 +1,10 @@
 {:paths ["src"]
 
  :deps
- {common/common               {:local/root "../common"}
-  build-drivers/build-drivers {:local/root "../build-drivers"}
-  i18n/i18n                   {:local/root "../i18n"}
-  org.flatland/ordered        {:mvn/version "1.5.7"}}
+ {common/common                     {:local/root "../common"}
+  cheshire/cheshire                 {:mvn/version "5.8.1"}
+  clj-http/clj-http                 {:mvn/version "3.9.1"}
+  org.fedorahosted.tennera/jgettext {:mvn/version "0.15.1"}}
 
  :aliases
  {:test {:extra-paths ["test"]
