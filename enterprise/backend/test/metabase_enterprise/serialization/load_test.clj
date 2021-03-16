@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [load])
   (:require [clojure.data :as diff]
             [clojure.java.io :as io]
+            [clojure.test :refer [deftest is]]
             [expectations :refer [expect]]
             [metabase-enterprise.serialization.cmd :refer [dump load]]
             [metabase-enterprise.serialization.test-util :as ts]
@@ -35,7 +36,8 @@
                     (vector :in)
                     (db/delete! model# :id)))))))
 
-(expect
+
+(deftest dump-load-entities-test
   (try
     ;; in case it already exists
     (u/ignore-exceptions
@@ -52,14 +54,20 @@
                          [Segment       (Segment segment-id)]
                          [Dashboard     (Dashboard dashboard-id)]
                          [Card          (Card card-id)]
+                         [Card          (Card card-arch-id)]
                          [Card          (Card card-id-root)]
                          [Card          (Card card-id-nested)]
+                         [Card          (Card card-id-nested-query)]
+                         [Card          (Card card-id-native-query)]
                          [DashboardCard (DashboardCard dashcard-id)]])]
       (with-world-cleanup
         (load dump-dir {:on-error :abort :mode :skip})
-        (every? (fn [[model entity]]
-                  (or (-> entity :name nil?)
-                      (db/select-one model :name (:name entity))))
-                fingerprint)))
+        (doseq [[model entity] fingerprint]
+          (is (or (-> entity :name nil?)
+                  (db/select-one model :name (:name entity))
+                  (and (-> entity :archived) ; archived card hasn't been dump-loaded
+                       (= (:name entity) "My Arch Card")))
+              (str " failed " (pr-str entity))))
+        fingerprint))
     (finally
       (delete-directory! dump-dir))))
