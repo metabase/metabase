@@ -135,6 +135,11 @@
     (driver/sync-in-context (driver.u/database->driver database) database
       f)))
 
+(def ^:private exception-classes-not-to-retry
+  ;;TODO: future, expand this to `driver` level, where the drivers themselves can add to the
+  ;; list of exception classes (like, driver-specific exceptions)
+  [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException
+   com.mchange.v2.resourcepool.CannotAcquireResourceException])
 
 (defn do-with-error-handling
   "Internal implementation of `with-error-handling`; use that instead of calling this directly."
@@ -144,13 +149,16 @@
   ([message f]
    (try
      (f)
-     (catch Throwable e
-       (log/error e message)
-       e))))
+     (catch Throwable t
+       (log/warn t message)
+       t))))
 
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
-  `message` to help provide information about what failed for the log message."
+  `message` to help provide information about what failed for the log message.
+
+  The exception classes in `exception-classes-not-to-retry` are a list of classes tested against exceptions thrown.
+  If there is a match found, the sync is aborted as that error is not considered recoverable for this sync run."
   {:style/indent 1}
   [message & body]
   `(do-with-error-handling ~message (fn [] ~@body)))
@@ -339,7 +347,11 @@
         results    (with-start-and-finish-debug-logging (trs "step ''{0}'' for {1}"
                                                              step-name
                                                              (name-for-logging database))
-                     #(sync-fn database))
+                     (fn [& args]
+                       (try
+                         (apply sync-fn database args)
+                         (catch Throwable t
+                           {:throwable t}))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                  :start-time start-time
@@ -424,7 +436,21 @@
    database :- i/DatabaseInstance
    sync-steps :- [StepDefinition]]
   (let [start-time    (t/zoned-date-time)
-        step-metadata (mapv #(run-step-with-metadata database %) sync-steps)
+        step-metadata (loop [[step-defn & rest-defns] sync-steps
+                             result                   []]
+                        (let [[step-name r] (run-step-with-metadata database step-defn)
+                              new-result    (conj result [step-name r])]
+                          (if (contains? r :throwable)
+                            (let [caught-exception  (:throwable r)
+                                  exception-classes (u/full-exception-chain caught-exception)
+                                  abandon?          (some true? (for [ex      exception-classes
+                                                                      test-ex exception-classes-not-to-retry]
+                                                        (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
+                              (cond abandon? new-result
+                                    (not (seq rest-defns)) new-result
+                                    :else (recur rest-defns new-result)))
+                            (cond (not (seq rest-defns)) new-result
+                                  :else (recur rest-defns new-result)))))
         end-time      (t/zoned-date-time)
         sync-metadata {:start-time start-time
                        :end-time   end-time

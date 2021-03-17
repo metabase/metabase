@@ -1,13 +1,16 @@
 import {
   openOrdersTable,
-  signInAsNormalUser,
   restore,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
@@ -108,10 +111,37 @@ describe("scenarios > visualizations > waterfall", () => {
     });
   });
 
+  it.skip("should not be enabled for multi-series questions (metabase#15152)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          ],
+        },
+        database: 1,
+      },
+      display: "line",
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("Visualization").click();
+
+    cy.findByText("Waterfall")
+      .parent()
+      .should("not.have.css", "opacity", "1");
+  });
+
   describe("scenarios > visualizations > waterfall settings", () => {
     beforeEach(() => {
       restore();
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/question/new");
       cy.contains("Native query").click();
       cy.get(".ace_content").type("select 'A' as X, -4.56 as Y");

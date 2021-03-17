@@ -1,8 +1,6 @@
 import {
   restore,
-  signInAsAdmin,
   setupLocalHostEmail,
-  signInAsNormalUser,
   createBasicAlert,
   popover,
   openPeopleTable,
@@ -30,7 +28,7 @@ describe("scenarios > alert", () => {
   describe("with nothing set", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     it("should prompt you to add email/slack credentials", () => {
@@ -42,7 +40,7 @@ describe("scenarios > alert", () => {
     });
 
     it("should say to non-admins that admin must add email credentials", () => {
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/question/1");
       cy.icon("bell").click();
       cy.findByText(
@@ -55,7 +53,7 @@ describe("scenarios > alert", () => {
   describe.skip("educational screen", () => {
     before(() => {
       // NOTE: Must run `python -m smtpd -n -c DebuggingServer localhost:1025` before these tests
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/settings/email");
       setupLocalHostEmail();
       cy.server();
@@ -84,7 +82,7 @@ describe("scenarios > alert", () => {
   describe.skip("types of alerts", () => {
     before(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/settings/email");
       setupLocalHostEmail();
     });
@@ -148,7 +146,7 @@ describe("scenarios > alert", () => {
   describe.skip("time-multiseries questions with a set goal", () => {
     before(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/admin/settings/email");
       setupLocalHostEmail();
     });

@@ -28,6 +28,6 @@
             :name         "NAME"
             :base_type    :type/Text}]}
          (qp.test/rows-and-cols
-           (qp/process-query
-            (mt/native-query
-              {:query "select name from users;"}))))))
+          (qp/process-query
+           (mt/native-query
+            {:query "select name from users;"}))))))

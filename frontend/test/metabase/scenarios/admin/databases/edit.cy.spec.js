@@ -1,9 +1,9 @@
-import { signInAsAdmin, restore, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/cypress";
 
 describe("scenarios > admin > databases > edit", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.server();
     cy.route("GET", "/api/database/*").as("databaseGet");
     cy.route("PUT", "/api/database/*").as("databaseUpdate");
