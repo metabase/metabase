@@ -193,14 +193,17 @@
         (qp/query->expected-cols query)
         ;; for native queries, we'll need to run the query, but we only need to fetch a single row.
         (catch Throwable _
-          (let [query* (query-for-result-metadata query)
-                result (qp/process-query query*)]
-            (or (-> result
-                    :data
-                    :results_metadata
-                    :columns)
-                (throw (ex-info (tru "Error running query to determine results metadata")
-                                (if (map? result) result {}))))))))))
+          (try
+            (let [query* (query-for-result-metadata query)
+                  result (qp/process-query query*)]
+              (or (-> result
+                      :data
+                      :results_metadata
+                      :columns)
+                  (throw (ex-info (tru "Query does not contain results metadata")
+                                  (if (map? result) result {})))))
+            (catch Throwable e
+              (log/error e (tru "Error running query to determine results metadata")))))))))
 
 (defn check-data-permissions-for-query
   "Check that we have *data* permissions to run the `query` in question."

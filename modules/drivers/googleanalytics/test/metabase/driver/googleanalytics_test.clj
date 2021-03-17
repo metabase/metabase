@@ -10,6 +10,7 @@
             [metabase.models :refer [Card Database Field Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -357,32 +358,33 @@
   (mt/with-temp* [Database [db    {:engine :googleanalytics}]
                   Table    [table {:db_id (u/the-id db)}]
                   Field    [field {:table_id (u/the-id table)}]]
-    (let [cnt (->> (mt/user-http-request
-                    :crowberto :post 202 "card"
-                    {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"
-                     :display                :table
-                     :visualization_settings {}
-                     :dataset_query          {:database (u/the-id db)
-                                              :type     :query
-                                              :query    {:source-table (u/the-id table)
-                                                         :aggregation  [[:METRIC "ga:sessions"]
-                                                                        [:METRIC "ga:1dayUsers"]]
-                                                         :breakout     [[:field (u/the-id field) {:temporal-unit :day}]]}}
-                     :result_metadata        [{:base_type    :type/Date
-                                               :display_name "Date"
-                                               :name         "ga:date"
-                                               :description  "The date of the session formatted as YYYYMMDD."
-                                               :unit         :day}
-                                              {:base_type    :type/Integer
-                                               :display_name "Ga:1day Users"
-                                               :name         "ga:1dayUsers"}
-                                              {:base_type    :type/Integer
-                                               :display_name "Ga:sessions"
-                                               :name         "ga:sessions"}]
-                     :metadata_checksum      "i3uR1PM5q6uZfIpm0qZbb6Brcfw8S3/wejWolU0Bl1n1Dz/yqvLGxf/XXV6/uOBB75WhFE9V98pIw5Qm18VY6+rlzUnuaTfPvPbiJbh3D9w="})
-                   ;; just make sure the API call actually worked by checking that the created Card is actually
-                   ;; successfully saved in the DB
-                   u/the-id
-                   (db/count Card :id))]
+    (let [metadata [{:base_type    :type/Date
+                     :display_name "Date"
+                     :name         "ga:date"
+                     :description  "The date of the session formatted as YYYYMMDD."
+                     :unit         :day}
+                    {:base_type    :type/Integer
+                     :display_name "Ga:1day Users"
+                     :name         "ga:1dayUsers"}
+                    {:base_type    :type/Integer
+                     :display_name "Ga:sessions"
+                     :name         "ga:sessions"}]
+          cnt      (->> (mt/user-http-request
+                         :crowberto :post 200 "card"
+                         {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"
+                          :display                :table
+                          :visualization_settings {}
+                          :dataset_query          {:database (u/the-id db)
+                                                   :type     :query
+                                                   :query    {:source-table (u/the-id table)
+                                                              :aggregation  [[:METRIC "ga:sessions"]
+                                                                             [:METRIC "ga:1dayUsers"]]
+                                                              :breakout     [[:field (u/the-id field) {:temporal-unit :day}]]}}
+                          :result_metadata        metadata
+                          :metadata_checksum      (#'results-metadata/metadata-checksum metadata)})
+                        ;; just make sure the API call actually worked by checking that the created Card is actually
+                        ;; successfully saved in the DB
+                        u/the-id
+                        (db/count Card :id))]
       (is (= 1
              cnt)))))
