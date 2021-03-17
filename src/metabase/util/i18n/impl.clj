@@ -75,7 +75,7 @@
   (when-let [a-locale (locale locale-or-name)]
     (let [locale-name (-> (normalized-locale-string (str a-locale))
                           (str/replace #"_" "-"))
-          filename    (format "metabase/%s.edn" locale-name)]
+          filename    (format "i18n/%s.edn" locale-name)]
       (io/resource filename (classloader/the-classloader)))))
 
 (defn- translations* [a-locale]

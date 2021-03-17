@@ -11,7 +11,7 @@
           (some
            (fn [dir]
              (str/starts-with? path dir))
-           ["src" "backend" "enterprise/backend"]))
+           ["src" "backend" "enterprise/backend" "shared"]))
         source-references))
 
 (defn- ->edn [{:keys [messages]}]
@@ -22,7 +22,7 @@
    messages))
 
 (def target-directory
-  (u/filename u/project-root-directory "resources" "metabase"))
+  (u/filename u/project-root-directory "resources" "i18n"))
 
 (defn- target-filename [locale]
   (u/filename target-directory (format "%s.edn" locale)))
