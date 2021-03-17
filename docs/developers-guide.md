@@ -25,18 +25,17 @@ If you have problems with your development environment, make sure that you are n
 These are the set of tools which are required in order to complete any build of the Metabase code. Follow the links to download and install them on your own before continuing.
 
 1. [Clojure (ttps://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
-2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 8 (./operations-guide/java-versions.md)
+2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 (./operations-guide/java-versions.md)
 3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
 4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by doing `npm install --global yarn`
 5. [Leiningen (http://leiningen.org/)](http://leiningen.org/) - latest release
-6. [GetText package (https://www.gnu.org/software/gettext/)](https://www.gnu.org/software/gettext/) - latest
 
 On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure, can be installed by using:
 
 ```
-sudo apt install gettext openjdk-8-jdk nodejs leiningen && sudo npm install --global yarn
+sudo apt install openjdk-11-jdk nodejs leiningen && sudo npm install --global yarn
 ```
-If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building by doing `sudo update-alternatives --config java` and selecting Java 8 in the menu
+If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building by doing `sudo update-alternatives --config java` and selecting Java 11 in the menu
 
 If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 

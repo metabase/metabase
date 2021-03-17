@@ -1,7 +1,8 @@
 (ns metabase.util.i18n.impl-test
   (:require [clojure.test :refer :all]
             [metabase.test :as mt]
-            [metabase.util.i18n.impl :as impl]))
+            [metabase.util.i18n.impl :as impl])
+  (:import java.util.Locale))
 
 (deftest normalized-locale-string-test
   (doseq [[s expected] {"en"      "en"
@@ -29,11 +30,11 @@
                            :str     s
                            :keyword (keyword s))]]
       (testing (pr-str (list 'locale x))
-        (is (= (java.util.Locale/forLanguageTag (if language "en-US" "en"))
+        (is (= (Locale/forLanguageTag (if language "en-US" "en"))
                (impl/locale x)))))
 
     (testing "If something is already a Locale, `locale` should act as an identity fn"
-      (is (= (java.util.Locale/forLanguageTag "en-US")
+      (is (= (Locale/forLanguageTag "en-US")
              (impl/locale #locale "en-US")))))
 
   (testing "nil"
@@ -58,11 +59,11 @@
   (doseq [[locale expected] {nil                                       nil
                              :es                                       nil
                              "es"                                      nil
-                             (java.util.Locale/forLanguageTag "es")    nil
-                             "es-MX"                                   (java.util.Locale/forLanguageTag "es")
-                             "es_MX"                                   (java.util.Locale/forLanguageTag "es")
-                             :es/MX                                    (java.util.Locale/forLanguageTag "es")
-                             (java.util.Locale/forLanguageTag "es-MX") (java.util.Locale/forLanguageTag "es")}]
+                             (Locale/forLanguageTag "es")    nil
+                             "es-MX"                                   (Locale/forLanguageTag "es")
+                             "es_MX"                                   (Locale/forLanguageTag "es")
+                             :es/MX                                    (Locale/forLanguageTag "es")
+                             (Locale/forLanguageTag "es-MX") (Locale/forLanguageTag "es")}]
     (testing locale
       (is (= expected
              (impl/parent-locale locale))))))
@@ -103,10 +104,8 @@
   (mt/with-mock-i18n-bundles {"ba-DD" {"Bad translation {0}" "BaD TrAnSlAtIoN {a}"}}
     (testing "Should fall back to original format string if translated one is busted"
       (is (= "Bad translation 100"
-             (mt/suppress-output
-               (impl/translate "ba-DD" "Bad translation {0}" 100)))))
+             (impl/translate "ba-DD" "Bad translation {0}" 100))))
 
     (testing "if the original format string is busted, should just return format-string as-is (better than nothing)"
       (is (= "Bad original {a}"
-             (mt/suppress-output
-               (impl/translate "ba-DD" "Bad original {a}" 100)))))))
+             (impl/translate "ba-DD" "Bad original {a}" 100))))))
