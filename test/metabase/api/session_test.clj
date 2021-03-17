@@ -34,12 +34,14 @@
                         (reset! (:attempts throttler) nil))
                       (thunk)))
 
+(defn- mock-request []
+  (edn/read-string (slurp "test/metabase/api/sample-request.edn")))
+
 (deftest request-device-info-test
-  (let [request (edn/read-string (slurp "test/metabase/api/sample-request.edn"))]
-    (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
-            :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
-            :ip_address         "0:0:0:0:0:0:0:1"}
-           (#'session-api/request-device-info request)))))
+  (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+          :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+          :ip_address         "0:0:0:0:0:0:0:1"}
+         (#'session-api/request-device-info (mock-request)))))
 
 (def ^:private SessionResponse
   {:id (s/pred mt/is-uuid-string? "session")})
@@ -452,14 +454,18 @@
         (testing "their account should return a Session"
           (is (schema= {:id       UUID
                         s/Keyword s/Any}
-                       (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saul" "cam@sf-toucannery.com")))))))
+                       (#'session-api/google-auth-fetch-or-create-user!
+                        "Cam" "Saul" "cam@sf-toucannery.com"
+                        (mock-request))))))))
 
   (testing "test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception"
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
                                        admin-email                             "rasta@toucans.com"]
       (is (thrown?
            clojure.lang.ExceptionInfo
-           (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Can" "rasta@sf-toucannery.com")))))
+           (#'session-api/google-auth-fetch-or-create-user!
+            "Rasta" "Can" "rasta@sf-toucannery.com"
+            (mock-request))))))
 
   (testing "test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created"
     (et/with-fake-inbox
@@ -468,7 +474,9 @@
         (try
           (is (schema= {:id       UUID
                         s/Keyword s/Any}
-                       (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")))
+                       (#'session-api/google-auth-fetch-or-create-user!
+                        "Rasta" "Toucan" "rasta@sf-toucannery.com"
+                        (mock-request))))
           (finally
             (db/delete! User :email "rasta@sf-toucannery.com")))))))
 
