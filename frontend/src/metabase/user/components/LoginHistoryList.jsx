@@ -8,15 +8,11 @@ const LoginHistoryItemRow = item => {
       <td>
         <tt>{item.timestamp}</tt>
       </td>
-      <td>
-        {item.location && item.location.description}
-      </td>
+      <td>{item.location && item.location.description}</td>
       <td>
         <tt>{item.device_description}</tt>
       </td>
-      <td>
-        {item.active ? "✅" : "❌"}
-      </td>
+      <td>{item.active ? "✅" : "❌"}</td>
     </tr>
   );
 };
@@ -37,9 +33,7 @@ export default class LoginHistoryList extends Component {
           </tr>
         </thead>
 
-        <tbody>
-          {(loginHistory || []).map(LoginHistoryItemRow)}
-        </tbody>
+        <tbody>{(loginHistory || []).map(LoginHistoryItemRow)}</tbody>
       </table>
     );
   }
