@@ -1,18 +1,17 @@
 (ns metabase.query-processor.util-test
   "Tests for various functions that provide information about the query."
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.test :as mt]))
+            [metabase.query-processor.util :as qp.util]))
 
 (deftest mbql-query?-test
-  (mt/are+ [x expected] (= expected
-                           (qp.util/mbql-query? x))
+  (are [x expected] (= expected
+                       (qp.util/mbql-query? x))
     {}               false
     {:type "native"} false
     {:type "query"}  true))
 
 (deftest query-without-aggregations-or-limits?-test
-  (mt/are+ [x expected] (= expected
+  (are [x expected] (= expected
                        (qp.util/query-without-aggregations-or-limits? x))
     {:query {:aggregation [[:count]]}} false
     {:query {}}                        true
