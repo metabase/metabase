@@ -98,6 +98,18 @@ describe("type-checker", () => {
       expect(() => validate("CONCAT('1','2')")).not.toThrow();
       expect(() => validate("CONCAT('1','2','3')")).not.toThrow();
     });
+
+    it("should reject a CASE expression with only one argument", () => {
+      expect(() => validate("CASE([Deal])")).toThrow();
+    });
+
+    it("should reject a CASE expression with incorrect argument type", () => {
+      expect(() => validate("CASE(X, 1, 2, 3)")).toThrow();
+    });
+
+    it("should accept a CASE expression with complex arguments", () => {
+      expect(() => validate("CASE(Deal, 0.5*X, Y-Z)")).not.toThrow();
+    });
   });
 
   describe("for a filter", () => {
