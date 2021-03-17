@@ -1,18 +1,14 @@
-import {
-  signInAsNormalUser,
-  restore,
-  popover,
-  modal,
-} from "__support__/cypress";
-
+import { restore, popover, modal } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { USER_GROUPS } from "__support__/cypress_data";
 
-const { ORDERS } = SAMPLE_DATASET;
+const { ORDERS, PRODUCTS } = SAMPLE_DATASET;
+const { COLLECTION_GROUP } = USER_GROUPS;
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it("lets you create and run a SQL question", () => {
@@ -379,5 +375,92 @@ describe("scenarios > question > native", () => {
     cy.get("@variableField")
       .last()
       .findByText("firstparameter");
+  });
+
+  ["nodata+nosql", "nosql"].forEach(test => {
+    it.skip(`${test.toUpperCase()} version:\n should be able to view SQL question when accessing via dashboard with filters connected to modified card without SQL permissions (metabase#15163)`, () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.signInAsAdmin();
+      cy.createNativeQuestion({
+        name: "15163",
+        native: {
+          query: 'SELECT COUNT(*) FROM "PRODUCTS" WHERE {{cat}}',
+          "template-tags": {
+            cat: {
+              id: "dd7f3e66-b659-7d1c-87b3-ab627317581c",
+              name: "cat",
+              "display-name": "Cat",
+              type: "dimension",
+              dimension: ["field-id", PRODUCTS.CATEGORY],
+              "widget-type": "category",
+              default: null,
+            },
+          },
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.createDashboard("15163D").then(({ body: { id: DASHBOARD_ID } }) => {
+          // Add filter to the dashboard
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+            parameters: [
+              {
+                name: "Category",
+                slug: "category",
+                id: "fd723065",
+                type: "category",
+              },
+            ],
+          });
+
+          // Add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            // Connect filter to that question
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 10,
+                  sizeY: 8,
+                  series: [],
+                  visualization_settings: {
+                    "card.title": "New Title",
+                  },
+                  parameter_mappings: [
+                    {
+                      parameter_id: "fd723065",
+                      card_id: QUESTION_ID,
+                      target: ["dimension", ["template-tag", "cat"]],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+
+          if (test === "nosql") {
+            cy.updatePermissionsGraph({
+              [COLLECTION_GROUP]: { "1": { schemas: "all", native: "none" } },
+            });
+          }
+
+          cy.signIn("nodata");
+
+          // Visit dashboard and set the filter through URL
+          cy.visit(`/dashboard/${DASHBOARD_ID}?category=Gizmo`);
+          cy.findByText("New Title").click();
+          cy.wait("@dataset", { timeout: 5000 }).then(xhr => {
+            expect(xhr.response.body.error).not.to.exist;
+          });
+          cy.get(".ace_content").should("not.exist");
+          cy.findByText("Showing 1 row");
+        });
+      });
+    });
   });
 });

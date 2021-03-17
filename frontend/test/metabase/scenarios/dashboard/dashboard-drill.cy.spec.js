@@ -1,5 +1,4 @@
 import {
-  signIn,
   restore,
   modal,
   popover,
@@ -13,7 +12,7 @@ const { ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATASET;
 describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(() => {
     restore();
-    signIn();
+    cy.signInAsAdmin();
   });
 
   it("should handle URL click through on a table", () => {

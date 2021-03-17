@@ -70,7 +70,8 @@
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   (common/reducible-results
    #(.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
-                (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW" "EXTERNAL TABLE"]))
+                (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
+                                    "EXTERNAL TABLE"]))
    (fn [^ResultSet rs]
      (fn []
        {:name        (.getString rs "TABLE_NAME")

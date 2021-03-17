@@ -1,14 +1,9 @@
-import {
-  restore,
-  signInAsNormalUser,
-  sidebar,
-  popover,
-} from "__support__/cypress";
+import { restore, sidebar, popover } from "__support__/cypress";
 
 describe("smoketest > user", () => {
   // Goal: user can use all the features of the simple question and notebook editor
   before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(cy.signInAsNormalUser);
 
   it("should be able to ask a custom questions", () => {
     cy.visit("/");

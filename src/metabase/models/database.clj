@@ -25,7 +25,7 @@
   (try
     ;; this is done this way to avoid circular dependencies
     (classloader/require 'metabase.task.sync-databases)
-    ((resolve 'metabase.task.sync-databases/schedule-tasks-for-db!) database)
+    ((resolve 'metabase.task.sync-databases/check-and-schedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e (trs "Error scheduling tasks for DB")))))
 
