@@ -23,6 +23,7 @@
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.data.env :as tx.env]
+            [metabase.test.data.impl :as data.impl]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.users :as test-users]
             [metabase.test.initialize :as initialize]
@@ -40,6 +41,7 @@
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
 (comment
   data/keep-me
+  data.impl/keep-me
   datasets/keep-me
   driver/keep-me
   et/keep-me
@@ -75,6 +77,9 @@
   run-mbql-query
   with-db
   with-temp-copy-of-db]
+
+ [data.impl
+  *db-is-temp-copy?*]
 
  [datasets
   test-driver
@@ -148,6 +153,8 @@
   user->credentials
   user->id
   user-http-request
+  with-group
+  with-group-for-user
   with-test-user]
 
  [tt
@@ -218,7 +225,10 @@
 ;; ee-only stuff
 (u/ignore-exceptions
   (classloader/require 'metabase-enterprise.sandbox.test-util)
-  (eval '(potemkin/import-vars [metabase-enterprise.sandbox.test-util with-gtaps])))
+  (eval '(potemkin/import-vars [metabase-enterprise.sandbox.test-util
+                                with-gtaps
+                                with-gtaps-for-user
+                                with-user-attributes])))
 
 ;; TODO -- move this stuff into some other namespace and refer to it here
 

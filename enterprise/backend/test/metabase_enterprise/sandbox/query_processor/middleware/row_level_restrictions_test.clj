@@ -195,8 +195,8 @@
                                   :condition    [:= $venue_id &v.venues.id]}]}))))))
 
     (testing "Should substitute appropriate value in native query"
-      (mt.tu/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
-                         :attributes {"cat" 50}}
+      (mt/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
+                      :attributes {"cat" 50}}
         (is (= (mt/query nil
                  {:database   (mt/id)
                   :type       :query
@@ -289,7 +289,7 @@
       (mt/with-temp-copy-of-db
         (mt/with-temp* [Collection [collection]
                         Card       [card        {:collection_id (u/the-id collection)}]]
-          (mt.tu/with-group [group]
+          (mt/with-group [group]
             (perms/revoke-permissions! (perms-group/all-users) (mt/id))
             (perms/grant-collection-read-permissions! group collection)
             (mt/with-test-user :rasta

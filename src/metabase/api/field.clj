@@ -1,6 +1,5 @@
 (ns metabase.api.field
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
@@ -9,7 +8,7 @@
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.models.table :refer [Table]]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.related :as related]
             [metabase.util :as u]
@@ -191,41 +190,17 @@
         (dissoc :human_readable_values :created_at :updated_at :id))
     {:values [], :field_id (:id field)}))
 
-(def ^:private ^{:arglist '([user-id last-updated field])} fetch-sandboxed-field-values*
-  (memoize/ttl
-   (fn [_ _ field]
-     {:values   (map vector (field-values/distinct-values field))
-      :field_id (u/get-id field)})
-   ;; Expire entires older than 30 days so we don't have entries for users and/or fields that
-   ;; no longer exists hanging around.
-   ;; (`clojure.core.cache/TTLCacheQ` (which `memoize` uses underneath) evicts all stale entries on
-   ;; every cache miss)
-   :ttl/threshold (* 1000 60 60 24 30)))
-
-(defn- fetch-sandboxed-field-values
-  [field]
-  (fetch-sandboxed-field-values*
-   api/*current-user-id*
-   (db/select-one-field :updated_at FieldValues :field_id (u/get-id field))
-   field))
+(defn check-perms-and-return-field-values
+  "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
+  so, return its values."
+  [id]
+  (field->values (api/read-check (Field id))))
 
 (api/defendpoint GET "/:id/values"
   "If a Field's value of `has_field_values` is `list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
-  (let [field (api/check-404 (Field id))]
-    (cond
-      ;; if you have normal read permissions, return normal results
-      (mi/can-read? field)
-      (field->values (api/read-check field))
-
-      ;; otherwise if you have Segmented query perms (but not normal read perms) we'll do an ad-hoc query to fetch the
-      ;; results, filtered by your GTAP
-      (has-segmented-query-permissions? (field/table field))
-      (fetch-sandboxed-field-values field)
-
-      :else
-      (api/throw-403))))
+  (check-perms-and-return-field-values id))
 
 ;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
 ;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)

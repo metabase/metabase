@@ -258,6 +258,10 @@
   (copy-db-tables! old-db-id new-db-id)
   (copy-db-fks! old-db-id new-db-id))
 
+(def ^:dynamic *db-is-temp-copy?*
+  "Whether the current test database is a temp copy created with the `with-temp-copy-of-db` macro."
+  false)
+
 (defn do-with-temp-copy-of-db
   "Internal impl of `data/with-temp-copy-of-db`. Run `f` with a temporary Database that copies the details from the
   standard test database, and syncs it."
@@ -267,7 +271,8 @@
     (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
       (try
         (copy-db-tables-and-fields! old-db-id new-db-id)
-        (do-with-db new-db f)
+        (binding [*db-is-temp-copy?* true]
+          (do-with-db new-db f))
         (finally
           (db/delete! Database :id new-db-id))))))
 
