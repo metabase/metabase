@@ -156,7 +156,6 @@
                     :aggregation  [:count]
                     :breakout     [$price]}))))))))
 
-
 (defn- mbql-card-def
   "Basic MBQL Card definition. Pass kv-pair clauses for the inner query."
   {:style/indent 0}
@@ -173,7 +172,6 @@
   {:style/indent 0}
   [& additional-clauses]
   (apply mbql-card-def :source-table (mt/id :venues) additional-clauses))
-
 
 (defn- query-with-source-card
   {:style/indent 1}
@@ -209,10 +207,10 @@
             (qp.test/rows-and-cols
               (mt/format-rows-by [int int]
                 (qp/process-query
-                  (query-with-source-card card
-                    (mt/$ids venues
-                      {:aggregation [:count]
-                       :breakout    [*price]})))))))]
+                 (query-with-source-card card
+                   (mt/$ids venues
+                     {:aggregation [:count]
+                      :breakout    [*price]})))))))]
     (is (= (breakout-results :has-source-metadata? false :native-source? true)
            (run-native-query "SELECT * FROM VENUES"))
         "make sure `card__id`-style queries work with native source queries as well")
@@ -263,11 +261,11 @@
            :where  [:= (hsql/raw "\"source\".\"BIRD.ID\"") 1]
            :limit  10})
          (qp/query->native
-           {:database (mt/id)
-            :type     :query
-            :query    {:source-query {:source-table (mt/id :venues)}
-                       :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
-                       :limit        10}}))
+          {:database (mt/id)
+           :type     :query
+           :query    {:source-query {:source-table (mt/id :venues)}
+                      :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
+                      :limit        10}}))
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them"))
   (is (= (honeysql->sql
@@ -371,9 +369,9 @@
                                                                                            :required     true
                                                                                            :default      "Widget"}}}}}]
              (qp/query->native
-               {:database (mt/id)
-                :type     :query
-                :query    {:source-table (str "card__" (u/the-id card))}}))))))
+              {:database (mt/id)
+               :type     :query
+               :query    {:source-table (str "card__" (u/the-id card))}}))))))
 
 (deftest correct-column-metadata-test
   (testing "make sure a query using a source query comes back with the correct columns metadata"
@@ -475,7 +473,7 @@
 (deftest macroexpansion-test
   (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
     (mt/with-temp* [Segment [segment (mt/$ids {:table_id   $$venues
-                                                 :definition {:filter [:= $venues.price 1]}})]
+                                               :definition {:filter [:= $venues.price 1]}})]
                     Card    [card (mbql-card-def
                                     :source-table (mt/id :venues)
                                     :filter       [:and [:segment (u/the-id segment)]])]]
@@ -1005,25 +1003,25 @@
 (deftest support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of field-literal inside filter clauses"
     (mt/dataset sample-dataset
-                (testing "against joins (#14809)"
-                  (is (schema= {:status   (s/eq :completed)
-                                s/Keyword s/Any}
-                               (mt/run-mbql-query orders
-                                                  {:source-query {:source-table $$orders
-                                                                  :joins        [{:fields       :all
-                                                                                  :source-table $$products
-                                                                                  :condition    [:= $product_id &Products.products.id]
-                                                                                  :alias        "Products"}]}
-                                                   :filter       [:= *CATEGORY/Text "Widget"]}))))
-                (testing "(#14811)"
-                  (is (schema= {:status   (s/eq :completed)
-                                s/Keyword s/Any}
-                               (mt/run-mbql-query orders
-                                                  {:source-query {:source-table $$orders
-                                                                  :aggregation  [[:sum $product_id->products.price]]
-                                                                  :breakout     [$product_id->products.category]}
-                                                   ;; not sure why FE is using `field-literal` here... but it should work anyway.
-                                                   :filter       [:= *CATEGORY/Text "Widget"]})))))))
+      (testing "against joins (#14809)"
+        (is (schema= {:status   (s/eq :completed)
+                      s/Keyword s/Any}
+                     (mt/run-mbql-query orders
+                       {:source-query {:source-table $$orders
+                                       :joins        [{:fields       :all
+                                                       :source-table $$products
+                                                       :condition    [:= $product_id &Products.products.id]
+                                                       :alias        "Products"}]}
+                        :filter       [:= *CATEGORY/Text "Widget"]}))))
+      (testing "(#14811)"
+        (is (schema= {:status   (s/eq :completed)
+                      s/Keyword s/Any}
+                     (mt/run-mbql-query orders
+                       {:source-query {:source-table $$orders
+                                       :aggregation  [[:sum $product_id->products.price]]
+                                       :breakout     [$product_id->products.category]}
+                        ;; not sure why FE is using `field-literal` here... but it should work anyway.
+                        :filter       [:= *CATEGORY/Text "Widget"]})))))))
 
 (deftest support-legacy-dashboard-parameters-test
   (testing "We should handle legacy usage of field-literal inside (Dashboard) parameters (#14810)"
