@@ -51,7 +51,7 @@ describe("mongodb > user > query", () => {
         .click();
 
       cy.wait("@createQuestion").then(({ status }) => {
-        expect(status).to.equal(202);
+        expect(status).to.equal(200);
       });
 
       cy.findByText("Not now").click();
