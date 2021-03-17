@@ -467,7 +467,7 @@
                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                (catch Throwable e
                                  (throw (ex-info (tru "Error executing query")
-                                                 {:sql sql, :params params, :type qp.error-type/driver}
+                                                 {:sql sql, :params params, :type qp.error-type/invalid-query}
                                                  e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
