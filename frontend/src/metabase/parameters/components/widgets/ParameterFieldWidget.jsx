@@ -157,64 +157,70 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           hasArrow={false}
           onClose={() => focusChanged(false)}
         >
-          <div className={cx(!isEqualsOp && "p2")}>
-            {verboseName && !isEqualsOp && (
-              <div className="text-bold mb1">{verboseName}...</div>
-            )}
+          {({ maxHeight }) => (
+            <div className={cx(!isEqualsOp && "p2")}>
+              {verboseName && !isEqualsOp && (
+                <div className="text-bold mb1">{verboseName}...</div>
+              )}
 
-            {_.times(numFields, index => {
-              const value = multi ? unsavedValue : [unsavedValue[index]];
-              const onValueChange = multi
-                ? newValues => this.setState({ value: newValues })
-                : ([value]) => {
-                    const newValues = [...unsavedValue];
-                    newValues[index] = value;
-                    this.setState({ value: newValues });
-                  };
-              return (
-                <FieldValuesWidget
-                  key={index}
-                  className={cx("input", numFields - 1 !== index && "mb1")}
-                  value={value}
-                  parameter={parameter}
-                  parameters={parameters}
-                  dashboard={dashboard}
-                  onChange={onValueChange}
-                  placeholder={placeholder}
-                  fields={fields}
-                  autoFocus={index === 0}
-                  multi={multi}
-                  alwaysShowOptions={numFields === 1}
-                  formatOptions={
-                    operator && getFilterArgumentFormatOptions(operator, index)
+              {_.times(numFields, index => {
+                const value = multi ? unsavedValue : [unsavedValue[index]];
+                const onValueChange = multi
+                  ? newValues => this.setState({ value: newValues })
+                  : ([value]) => {
+                      const newValues = [...unsavedValue];
+                      newValues[index] = value;
+                      this.setState({ value: newValues });
+                    };
+                return (
+                  <FieldValuesWidget
+                    key={index}
+                    className={cx("input", numFields - 1 !== index && "mb1")}
+                    value={value}
+                    parameter={parameter}
+                    parameters={parameters}
+                    dashboard={dashboard}
+                    onChange={onValueChange}
+                    placeholder={placeholder}
+                    fields={fields}
+                    autoFocus={index === 0}
+                    multi={multi}
+                    alwaysShowOptions={numFields === 1}
+                    formatOptions={
+                      operator &&
+                      getFilterArgumentFormatOptions(operator, index)
+                    }
+                    color="brand"
+                    style={{
+                      borderWidth: BORDER_WIDTH,
+                      minWidth: widgetWidth
+                        ? widgetWidth + BORDER_WIDTH * 2
+                        : null,
+                    }}
+                    minWidth={300}
+                    maxWidth={400}
+                    maxHeight={maxHeight}
+                  />
+                );
+              })}
+              {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
+              <div className={cx("flex mt1", isEqualsOp && "mr1 mb1")}>
+                <Button
+                  primary
+                  className="ml-auto"
+                  disabled={
+                    savedValue.length === 0 && unsavedValue.length === 0
                   }
-                  color="brand"
-                  style={{
-                    borderWidth: BORDER_WIDTH,
-                    minWidth: widgetWidth
-                      ? widgetWidth + BORDER_WIDTH * 2
-                      : null,
+                  onClick={() => {
+                    setValue(unsavedValue.length > 0 ? unsavedValue : null);
+                    focusChanged(false);
                   }}
-                  minWidth={300}
-                  maxWidth={400}
-                />
-              );
-            })}
-            {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
-            <div className={cx("flex mt1", isEqualsOp && "mr1 mb1")}>
-              <Button
-                primary
-                className="ml-auto"
-                disabled={savedValue.length === 0 && unsavedValue.length === 0}
-                onClick={() => {
-                  setValue(unsavedValue.length > 0 ? unsavedValue : null);
-                  focusChanged(false);
-                }}
-              >
-                {savedValue.length > 0 ? "Update filter" : "Add filter"}
-              </Button>
+                >
+                  {savedValue.length > 0 ? "Update filter" : "Add filter"}
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </Popover>
       );
     }

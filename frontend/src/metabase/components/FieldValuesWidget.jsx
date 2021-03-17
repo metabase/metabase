@@ -383,6 +383,7 @@ export class FieldValuesWidget extends Component {
       className,
       style,
       optionsMaxHeight,
+      maxHeight,
     } = this.props;
     const { loadingState } = this.state;
 
@@ -435,6 +436,7 @@ export class FieldValuesWidget extends Component {
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
           maxWidth: this.props.maxWidth,
+          maxHeight,
         }}
       >
         <TokenField
@@ -450,8 +452,8 @@ export class FieldValuesWidget extends Component {
           className={className}
           optionsStyle={
             optionsMaxHeight !== undefined
-              ? { maxHeight: optionsMaxHeight }
-              : {}
+              ? { maxHeight: Math.min(maxHeight, optionsMaxHeight) }
+              : { maxHeight }
           }
           // end forwarded props
           options={options}
