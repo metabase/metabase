@@ -18,7 +18,7 @@
                          "plural-forms"              "nplurals=2; plural=(n != 1);"}
           :translations {""
                          {"No table description yet"
-                          {:msgstr "No hay una descripción de la tabla"}
+                          {:msgstr ["No hay una descripción de la tabla"]}
 
                           "${ 0 } Queryable Table"
                           {:msgid_plural "{0} Queryable Tables"
