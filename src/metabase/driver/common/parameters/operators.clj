@@ -1,4 +1,12 @@
 (ns metabase.driver.common.parameters.operators
+  "This namespace handles parameters that are operators.
+
+  {:type :number/between
+   :target [:dimension
+            [:field
+             26
+             {:source-field 5}]]
+   :value [3 5]}"
   (:require [metabase.mbql.schema :as mbql.s]
             [metabase.models.params :as params]
             [metabase.query-processor.error-type :as qp.error-type]

@@ -11,7 +11,6 @@
                                     [:field
                                      26
                                      {:source-field 5}]]
-                           ;; to clause happens after the parameters have been parsed
                            :value [3]})
            [:= [:field 26 {:source-field 5}] 3]))
     (is (= (ops/to-clause {:type :number/between
