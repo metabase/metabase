@@ -163,17 +163,31 @@
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
 ;; When a new Card is saved, we wouldn't normally have the results metadata for it until the first time its query is
-;; ran.  As a workaround, we'll calculate this metadata and return it with all query responses, and then let the
-;; frontend pass it back to us when saving or updating a Card.  As a basic step to make sure the Metadata is valid
+;; ran. As a workaround, we'll calculate this metadata and return it with all query responses, and then let the
+;; frontend pass it back to us when saving or updating a Card. As a basic step to make sure the Metadata is valid
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
 
-(defn- query-for-result-metadata [query]
-  ;; for purposes of calculating the actual Fields & types returned by this query we really only need the first
-  ;; row in the results
+(def ^:private result-metadata-query-max-rows
+  "If we need to run a query to determine results metadata, we have to return at least a few rows so we can generate
+  accurate fingerprints, which are required for auto-binning. This number is a tradeoff between fingerprint accuracy
+  and the query execution time. We could get mostly correct metadata by returning just 1 row, but the
+  fingerprint would have inaccurate min/max values (if applicable), and bins would be incorrect; we could have
+  completely accurate fingerprints, but the query might return a million rows, and saving a Card could potentially
+  take forever.
+
+  Under normal circumstances this code shouldn't be needed -- the FE client should pass in result metadata when it
+  creates a Card, so we won't need to calculate it ourselves."
+  1000)
+
+(defn- query-for-result-metadata
+  "Query to run to determine result metadata when saving a new Card if the FE client didn't pass it in."
+  [query]
+  ;; for purposes of calculating the actual Fields & types returned by this query we really only need the few rows in
+  ;; the results (see above)
   (let [query (-> query
-                  (assoc-in [:constraints :max-results] 1)
-                  (assoc-in [:constraints :max-results-bare-rows] 1)
+                  (assoc-in [:constraints :max-results] result-metadata-query-max-rows)
+                  (assoc-in [:constraints :max-results-bare-rows] result-metadata-query-max-rows)
                   (assoc-in [:info :executed-by] api/*current-user-id*))]
     ;; need add the constraints above before calculating hash because those affect the hash
     ;;
@@ -181,6 +195,17 @@
     ;; technically a userland query -- we don't want to save a QueryExecution -- so we need to add `executed-by`
     ;; and `query-hash` ourselves so the remark gets added)
     (assoc-in query [:info :query-hash] (qputil/query-hash query))))
+
+(defn- incomplete-metadata?
+  "Whether metadata `cols` is complete and includes fingerprint info. If not, we'll have to run the query to get that
+  information -- it's required for auto-binning. Normally `qp/query->expected-cols` returns fingerprint info for
+  existing Fields, but we won't have fingerprint information (e.g. min/max) for aggregate columns like `:count`
+  without running the query.
+
+  Under normal circumstances this code shouldn't be needed -- the FE client should pass in result metadata when it
+  creates a Card, so we won't need to calculate it ourselves."
+  [cols]
+  (some (complement :fingerprint) cols))
 
 (s/defn ^:private validate-or-recalculate-results-metadata
   "Check that results `metadata` makes sense for `query`. If it doesn't, recalculate and return the correct metadata."
@@ -190,7 +215,9 @@
     (binding [qpi/*disable-qp-logging* true]
       (try
         ;; try calculating the columns without running the query -- we can do this for MBQL queries
-        (qp/query->expected-cols query)
+        (u/prog1 (qp/query->expected-cols query)
+          (when (incomplete-metadata? <>)
+            (throw (ex-info "Incomplete metadata" {:query query, :metadata metadata}))))
         ;; for native queries, we'll need to run the query, but we only need to fetch a single row.
         (catch Throwable _
           (try

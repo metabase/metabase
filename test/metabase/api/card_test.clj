@@ -352,10 +352,11 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
             ;; create a card with the metadata
-            (mt/user-http-request :rasta :post 200 "card" (assoc (card-with-name-and-query card-name)
-                                                                 :collection_id      (u/the-id collection)
-                                                                 :result_metadata    metadata
-                                                                 :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
+            (mt/user-http-request :rasta :post 200 "card"
+                                  (assoc (card-with-name-and-query card-name)
+                                         :collection_id      (u/the-id collection)
+                                         :result_metadata    metadata
+                                         :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
             ;; now check the metadata that was saved in the DB
             (is (= [{:base_type    :type/Integer
                      :display_name "Count Chocula"
@@ -368,9 +369,10 @@
     (mt/with-model-cleanup [Card]
       (is (schema= {:result_metadata (s/eq [])
                     s/Keyword s/Any}
-                   (mt/user-http-request :rasta :post 200 "card" (assoc (card-with-name-and-query)
-                                                                        :result_metadata    []
-                                                                        :metadata_checksum  (#'results-metadata/metadata-checksum []))))))))
+                   (mt/user-http-request :rasta :post 200 "card"
+                                         (assoc (card-with-name-and-query)
+                                                :result_metadata    []
+                                                :metadata_checksum  (#'results-metadata/metadata-checksum []))))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -415,9 +417,9 @@
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/BigInteger
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"
+      (let [metadata  [{:base_type     :type/BigInteger
+                        :display_name  "Count Chocula"
+                        :name          "count_chocula"
                         :semantic_type :type/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
@@ -438,7 +440,42 @@
                          :semantic_type :type/Number
                          :field_ref     [:aggregation 0]
                          :source        :aggregation}]
-                       (db/select-one-field :result_metadata Card :name card-name)))))))))))
+                       (db/select-one-field :result_metadata Card :name card-name)))))))))
+
+    (testing "Should have correct fingerprint info for a Card with aggregate columns"
+      (mt/with-model-cleanup [Card]
+        (let [card (mt/user-http-request :rasta :post 200 "card"
+                                         (assoc (card-with-name-and-query)
+                                                :dataset_query (mt/mbql-query checkins
+                                                                 {:aggregation [[:count]]
+                                                                  :breakout    [!week.date]})))]
+          (is (schema= [(s/one
+                         {:fingerprint {:global   {:distinct-count (s/eq 618)
+                                                   :nil%           (s/eq 0.0)
+                                                   s/Keyword       s/Any}
+                                        :type     {:type/DateTime
+                                                   {:earliest (s/eq "2013-01-03")
+                                                    :latest   (s/eq "2015-12-29")
+                                                    s/Keyword s/Any}}
+                                        s/Keyword s/Any}
+                          s/Keyword    s/Any}
+                         "date")
+                        (s/one
+                         {:fingerprint {:global   {:distinct-count (s/eq 16)
+                                                   :nil%           (s/eq 0.0)
+                                                   s/Keyword       s/Any}
+                                        :type     {:type/Number
+                                                   {:min      (s/eq 1.0)
+                                                    :q1       (s/pred #(< 3.8 % 4.0) "~3.9")
+                                                    :q3       (s/pred #(< 8.5 % 8.7) "~8.6")
+                                                    :max      (s/eq 16.0)
+                                                    :sd       (s/pred #(< 3.5 % 3.7) "~3.6")
+                                                    :avg      (s/pred #(< 6.2 % 6.4) "~6.3")
+                                                    s/Keyword s/Any}}
+                                        s/Keyword s/Any}
+                          s/Keyword    s/Any}
+                         "count")]
+                       (db/select-one-field :result_metadata Card :id (u/the-id card)))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
