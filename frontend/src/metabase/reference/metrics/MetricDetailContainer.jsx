@@ -32,6 +32,9 @@ const mapDispatchToProps = {
 )
 export default class MetricDetailContainer extends Component {
   static propTypes = {
+    router: PropTypes.shape({
+      replace: PropTypes.func.isRequired,
+    }).isRequired,
     params: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
     user: PropTypes.object.isRequired,
