@@ -1,7 +1,6 @@
 import {
   createNativeQuestion,
   restore,
-  signInAsAdmin,
   openOrdersTable,
   openProductsTable,
   popover,
@@ -25,7 +24,7 @@ const {
 describe("scenarios > question > notebook", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {

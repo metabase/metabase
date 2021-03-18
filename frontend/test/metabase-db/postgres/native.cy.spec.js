@@ -1,16 +1,11 @@
-import {
-  signInAsAdmin,
-  restore,
-  addPostgresDatabase,
-  modal,
-} from "__support__/cypress";
+import { restore, addPostgresDatabase, modal } from "__support__/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 
 describe("postgres > question > native", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
   });
 

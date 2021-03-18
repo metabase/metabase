@@ -1,11 +1,13 @@
-import { browse, restore, signIn, signOut, USERS } from "__support__/cypress";
+import { browse, restore } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 
 const sizes = [[1280, 800], [640, 360]];
+const { admin } = USERS;
 
 describe("scenarios > auth > signin", () => {
   beforeEach(() => {
     restore();
-    signOut();
+    cy.signOut();
   });
 
   it("should redirect to  /auth/login", () => {
@@ -15,16 +17,16 @@ describe("scenarios > auth > signin", () => {
 
   it("should display an error for incorrect passwords", () => {
     cy.visit("/");
-    cy.findByLabelText("Email address").type(USERS.admin.username);
-    cy.findByLabelText("Password").type("INVALID" + USERS.admin.password);
+    cy.findByLabelText("Email address").type(admin.email);
+    cy.findByLabelText("Password").type("INVALID" + admin.password);
     cy.findByText("Sign in").click();
     cy.contains("did not match stored password");
   });
 
   it("should display same error for unknown users (to avoid leaking the existence of accounts)", () => {
     cy.visit("/");
-    cy.findByLabelText("Email address").type("INVALID" + USERS.admin.username);
-    cy.findByLabelText("Password").type(USERS.admin.password);
+    cy.findByLabelText("Email address").type("INVALID" + admin.email);
+    cy.findByLabelText("Password").type(admin.password);
     cy.findByText("Sign in").click();
     cy.contains("did not match stored password");
   });
@@ -33,24 +35,22 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/auth/login");
     cy.findByLabelText("Email address")
       .should("be.focused")
-      .type(USERS.admin.username);
-    cy.findByLabelText("Password").type(USERS.admin.password);
+      .type(admin.email);
+    cy.findByLabelText("Password").type(admin.password);
     cy.findByText("Sign in").click();
     cy.contains(/[a-z ]+, Bob/i);
   });
 
   it("should allow login regardless of login email case", () => {
     cy.visit("/auth/login");
-    cy.findByLabelText("Email address").type(
-      USERS.admin.username.toUpperCase(),
-    );
-    cy.findByLabelText("Password").type(USERS.admin.password);
+    cy.findByLabelText("Email address").type(admin.email.toUpperCase());
+    cy.findByLabelText("Password").type(admin.password);
     cy.findByText("Sign in").click();
     cy.contains(/[a-z ]+, Bob/i);
   });
 
   it("should redirect to a unsaved question after login", () => {
-    signIn();
+    cy.signInAsAdmin();
     cy.visit("/");
     // Browse data moved to an icon
     browse().click();
@@ -59,12 +59,12 @@ describe("scenarios > auth > signin", () => {
     cy.contains("37.65");
 
     // signout and reload page with question hash in url
-    signOut();
+    cy.signOut();
     cy.reload();
 
     cy.contains("Sign in to Metabase");
-    cy.findByLabelText("Email address").type(USERS.admin.username);
-    cy.findByLabelText("Password").type(USERS.admin.password);
+    cy.findByLabelText("Email address").type(admin.email);
+    cy.findByLabelText("Password").type(admin.password);
     cy.findByText("Sign in").click();
 
     // order table should load after login

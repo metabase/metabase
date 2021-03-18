@@ -42,25 +42,13 @@
 
 ;;; Scoring
 
-(defn- hits->ratio
-  [hits total]
-  (/ hits total))
-
 (defn- matches?
-  [search-term haystack]
-  (str/includes? haystack search-term))
+  [search-token match-token]
+  (str/includes? match-token search-token))
 
 (defn- matches-in?
-  [term haystack-tokens]
-  (some #(matches? term %) haystack-tokens))
-
-(defn- score-ratios
-  [search-tokens result-tokens fs]
-  (map (fn [f]
-         (hits->ratio
-          (f search-tokens result-tokens)
-          (count search-tokens)))
-       fs))
+  [search-token match-tokens]
+  (some #(matches? search-token %) match-tokens))
 
 (defn- tokens->string
   [tokens abbreviate?]
@@ -89,58 +77,78 @@
                 {:is_match is-match
                  :text     (tokens->string text-tokens (not is-match))})))))
 
-(def ^:const text-score-max
-  "The maximum text score that could be achieved without normalization. This value is then used to normalize it down to the interval [0, 1]"
-  4)
-
 (defn- text-score-with
-  [scoring-fns query-tokens search-result]
-  (let [scores (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model search-result)))
-                     :let   [matched-text (-> search-result
-                                              (get column)
-                                              (search-config/column->string (:model search-result) column))
-                             match-tokens (-> matched-text normalize tokenize)
-                             score        (reduce + (score-ratios query-tokens
-                                                                  match-tokens
-                                                                  scoring-fns))]
-                     :when  (> score 0)]
-                 {:text-score          (/ score text-score-max)
-                  :match               matched-text
-                  :match-context-thunk #(match-context query-tokens match-tokens)
-                  :column              column
-                  :result              search-result})]
+  [weighted-scorers query-tokens search-result]
+  (let [total-weight (reduce + (map :weight weighted-scorers))
+        scores       (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model search-result)))
+                           :let   [matched-text (-> search-result
+                                                    (get column)
+                                                    (search-config/column->string (:model search-result) column))
+                                   match-tokens (some-> matched-text normalize tokenize)
+                                   score        (and matched-text
+                                                     (reduce (fn [tally f]
+                                                               (+ tally
+                                                                  (f query-tokens match-tokens)))
+                                                             0
+                                                             (map :scorer weighted-scorers)))]
+                           :when  (and matched-text
+                                       (> score 0))]
+                       {:text-score          (/ score total-weight)
+                        :match               matched-text
+                        :match-context-thunk #(match-context query-tokens match-tokens)
+                        :column              column
+                        :result              search-result})]
     (when (seq scores)
       (apply max-key :text-score scores))))
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
-  (largest-common-subseq-length
-   matches?
-   ;; See comment on largest-common-subseq-length re. its cache. This is a little conservative, but better to under- than over-estimate
-   (take 30 query-tokens)
-   (take 30 match-tokens)))
+  (/ (largest-common-subseq-length
+      matches?
+      ;; See comment on largest-common-subseq-length re. its cache. This is a little conservative, but better to under- than over-estimate
+      (take 30 query-tokens)
+      (take 30 match-tokens))
+     (count query-tokens)))
+
+(defn- occurrences
+  [query-tokens match-tokens token-matches?]
+  (reduce (fn [tally token]
+            (if (token-matches? token match-tokens)
+              (inc tally)
+              tally))
+          0
+          query-tokens))
 
 (defn- total-occurrences-scorer
-  [tokens haystack]
-  (->> tokens
-       (map #(if (matches-in? % haystack) 1 0))
-       (reduce +)))
+  "How many search tokens show up in the result?"
+  [query-tokens match-tokens]
+  (/ (occurrences query-tokens match-tokens matches-in?)
+     (count query-tokens)))
 
 (defn- exact-match-scorer
-  [tokens haystack]
-  (->> tokens
-       (map #(if (some (partial = %) haystack) 1 0))
-       (reduce +)))
+  "How many search tokens are exact matches (perfect string match, not `includes?`) in the result?"
+  [query-tokens match-tokens]
+  (/ (occurrences query-tokens match-tokens #(some (partial = %1) %2))
+     (count query-tokens)))
 
-(defn- weigh-by
-  [factor scorer]
-  (comp (partial * factor) scorer))
+(defn fullness-scorer
+  "How much of the *result* is covered by the search query?"
+  [query-tokens match-tokens]
+  (let [match-token-count (count match-tokens)]
+    (if (zero? match-token-count)
+      0
+      (/ (occurrences query-tokens match-tokens matches-in?)
+         match-token-count))))
 
 (def ^:private match-based-scorers
-  ;; If the below is modified, be sure to update `text-score-max`!
-  [consecutivity-scorer
-   total-occurrences-scorer
-   (weigh-by 2 exact-match-scorer)])
+  [{:scorer consecutivity-scorer
+    :weight 1}
+   {:scorer total-occurrences-scorer
+    :weight 1}
+   {:scorer fullness-scorer
+    :weight 1/2}
+   {:scorer exact-match-scorer
+    :weight 2}])
 
 (def ^:private model->sort-position
   (into {} (map-indexed (fn [i model]
@@ -161,18 +169,20 @@
                      result)))
 
 (defn- pinned-score
-  [{:keys [:collection_position]}]
+  [{:keys [model collection_position]}]
   ;; We experimented with favoring lower collection positions, but it wasn't good
   ;; So instead, just give a bonus for items that are pinned at all
-  (if ((fnil pos? 0) collection_position)
-    1
-    0))
+  (when (#{"card" "dashboard" "pulse"} model)
+    (if ((fnil pos? 0) collection_position)
+      1
+      0)))
 
 (defn- dashboard-count-score
-  [{:keys [dashboardcard_count]}]
-  (min (/ (or dashboardcard_count 0)
-          search-config/dashboard-count-ceiling)
-       1))
+  [{:keys [model dashboardcard_count]}]
+  (when (= model "card")
+    (min (/ dashboardcard_count
+            search-config/dashboard-count-ceiling)
+         1)))
 
 (defn- recency-score
   [{:keys [updated_at]}]
@@ -235,6 +245,7 @@
   [hit]
   (->> hit
        weights-and-scores
+       (filter :score)
        (map (fn [{:keys [weight score] :as composite-score}]
               (assoc composite-score :weighted-score (* weight score))))))
 
@@ -262,7 +273,8 @@
   [raw-search-string result]
   (when-let [hit (text-score-with-match raw-search-string result)]
     (let [scores (weighted-scores hit)]
-      {:score      (reduce + (map :weighted-score scores))
+      {:score      (/ (reduce + (map :weighted-score scores))
+                      (reduce + (map :weight scores)))
        :result     (serialize hit scores)})))
 
 (defn top-results

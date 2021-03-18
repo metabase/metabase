@@ -256,6 +256,8 @@ export class FieldValuesWidget extends Component {
           ),
         ),
       );
+
+      results = results.map(result => [].concat(result));
     }
 
     if (this.showRemapping()) {

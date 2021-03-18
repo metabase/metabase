@@ -1,5 +1,5 @@
 // Imported from drillthroughs.e2e.spec.js
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
@@ -14,7 +14,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
   describe("card title click action", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
     describe("from a scalar card", () => {
       const DASHBOARD_NAME = "Scalar Dash";

@@ -1,4 +1,4 @@
-import { signInAsAdmin, signOut, restore, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -21,7 +21,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
 
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     cy.request("POST", `/api/field/${ORDERS.USER_ID}/dimension`, {
       type: "external",
@@ -74,7 +74,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   });
 
   describe("private question", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     sharedParametersTests(() => {
       cy.visit(`/question/${questionId}`);
@@ -90,7 +90,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.request("POST", `/api/card/${questionId}/public_link`).then(
         res => (uuid = res.body.uuid),
       );
-      signOut();
+      cy.signOut();
     });
 
     sharedParametersTests(() => {
@@ -112,7 +112,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
         },
         enable_embedding: true,
       });
-      signOut();
+      cy.signOut();
     });
 
     sharedParametersTests(() => {
@@ -124,7 +124,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   });
 
   describe("private dashboard", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     sharedParametersTests(() => {
       cy.visit(`/dashboard/${dashboardId}`);
@@ -140,7 +140,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
         res => (uuid = res.body.uuid),
       );
-      signOut();
+      cy.signOut();
     });
 
     sharedParametersTests(() => {
@@ -162,7 +162,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
         },
         enable_embedding: true,
       });
-      signOut();
+      cy.signOut();
     });
 
     sharedParametersTests(() => {

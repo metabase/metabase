@@ -1,9 +1,9 @@
-import { restore, signInAsNormalUser } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > visualizations > object detail", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it("should show orders/reviews connected to a product", () => {

@@ -342,12 +342,7 @@ export function isSameOrigin(url) {
 }
 
 export function getUrlTarget(url) {
-  if (IFRAMED) {
-    return isSameOrigin(url) ? "_self" : "_top";
-  } else {
-    // if not iframed then _top and _self are equivalent so don't bother checking origin
-    return "_top";
-  }
+  return isSameOrigin(url) ? "_self" : "_blank";
 }
 
 export function removeAllChildren(element) {

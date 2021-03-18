@@ -209,12 +209,13 @@
 
           (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
                         "exception (rather than leaking query info)")
-            (mt/suppress-output
-             (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
-                                                                            :type     :native
-                                                                            :native   {:query "SELECT * FROM XYZ"}}}]
-               (is (= {:status "failed" :error "An error occurred while running the query."}
-                      (http/client :get expected-status (card-query-url card response-format))))))))
+            (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT * FROM XYZ"}}}]
+              (is (= {:status     "failed"
+                      :error      "An error occurred while running the query."
+                      :error_type "invalid-query"}
+                     (http/client :get expected-status (card-query-url card response-format)))))))
 
         (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
           (with-temp-card [card]
@@ -409,13 +410,13 @@
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "
                 "(rather than leaking query info)")
-    (mt/suppress-output
-      (with-embedding-enabled-and-new-secret-key
-        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
-                                       :card {:dataset_query (mt/native-query {:query "SELECT * FROM XYZ"})}}]
-          (is (= {:status "failed"
-                  :error  "An error occurred while running the query." }
-                 (http/client :get 202 (dashcard-url dashcard)))))))))
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                     :card {:dataset_query (mt/native-query {:query "SELECT * FROM XYZ"})}}]
+        (is (= {:status     "failed"
+                :error      "An error occurred while running the query."
+                :error_type "invalid-query"}
+               (http/client :get 202 (dashcard-url dashcard))))))))
 
 (deftest check-that-the-dashcard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (tu/with-temporary-setting-values [enable-embedding false]

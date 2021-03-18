@@ -1,9 +1,4 @@
-import {
-  restore,
-  signInAsAdmin,
-  openOrdersTable,
-  popover,
-} from "__support__/cypress";
+import { restore, openOrdersTable, popover } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -12,7 +7,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > question > null", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should display rows whose value is `null` (metabase#13571)", () => {

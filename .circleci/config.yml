@@ -680,6 +680,11 @@ jobs:
                   cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
                 no_output_timeout: 15m
             - run:
+                name: Run i18n script tests
+                command: |
+                  cd /home/circleci/metabase/metabase/bin/i18n && clojure -M:test
+                no_output_timeout: 15m
+            - run:
                 name: Run build-mb build script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
@@ -1220,7 +1225,7 @@ workflows:
           <<: *Matrix
 
       - fe-tests-cypress:
-          name: fe-tests-cypres-mysql-8-<< matrix.edition >>
+          name: fe-tests-cypress-mysql-8-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
           e: fe-mysql-8

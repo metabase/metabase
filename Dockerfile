@@ -18,8 +18,7 @@ RUN yarn install --frozen-lockfile
 # STAGE 1.2: builder backend
 ###################
 
-# Build currently doesn't work on > Java 11 (i18n utils are busted) so build on 8 until we fix this
-FROM adoptopenjdk/openjdk8:alpine as backend
+FROM adoptopenjdk/openjdk11:alpine as backend
 
 ARG MB_EDITION=oss
 
@@ -45,8 +44,7 @@ RUN lein deps
 # STAGE 1.3: main builder
 ###################
 
-# Build currently doesn't work on > Java 11 (i18n utils are busted) so build on 8 until we fix this
-FROM adoptopenjdk/openjdk8:alpine as builder
+FROM adoptopenjdk/openjdk11:alpine as builder
 
 ARG MB_EDITION=oss
 
@@ -58,10 +56,9 @@ ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 # curl:    needed by script that installs Clojure CLI
 # git:     ./bin/version
 # yarn:    frontend building
-# gettext: translations
 # java-cacerts: installs updated cacerts to /etc/ssl/certs/java/cacerts
 
-RUN apk add --no-cache coreutils bash yarn git curl gettext java-cacerts
+RUN apk add --no-cache coreutils bash yarn git curl java-cacerts
 
 # lein:    backend dependencies and building
 RUN curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -o /usr/local/bin/lein && \
