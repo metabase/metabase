@@ -20,7 +20,7 @@ export type Field = {
   display_name: string,
   description: string,
   base_type: BaseType,
-  effective_type: BaseType,
+  effective_type?: BaseType,
   semantic_type: SemanticType,
   active: boolean,
   visibility_type: FieldVisibilityType,

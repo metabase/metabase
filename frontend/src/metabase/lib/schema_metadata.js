@@ -169,7 +169,7 @@ export const isNumericBaseType = field => {
   if (field.effective_type) {
     return isa(field.effective_type, TYPE.Number);
   } else {
-    return isa(field.effective_type, TYPE.Number);
+    return isa(field.base_type, TYPE.Number);
   }
 };
 
