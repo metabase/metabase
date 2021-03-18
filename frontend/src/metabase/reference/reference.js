@@ -192,6 +192,7 @@ export const rUpdateFieldDetail = (formFields, props) => {
 };
 
 export const rUpdateMetricDetail = async (metric, guide, formFields, props) => {
+export const rUpdateMetricDetail = async (metric, formFields, props) => {
   props.startLoading();
   try {
     const editedFields = filterUntouchedFields(formFields, metric);
