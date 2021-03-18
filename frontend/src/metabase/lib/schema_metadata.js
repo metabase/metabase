@@ -92,7 +92,7 @@ export function isFieldType(type, field) {
   // check to see if it belongs to any of the field types:
   const props = field.effective_type
     ? ["effective", "semantic"]
-    : ["base", "effective"];
+    : ["base", "semantic"];
   for (const prop of props) {
     const allowedTypes = typeDefinition[prop];
     if (!allowedTypes) {
