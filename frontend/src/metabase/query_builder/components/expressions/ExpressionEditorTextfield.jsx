@@ -118,12 +118,15 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   getAcePosition(editor) {
-    const rng = editor.getSession().getSelection().getRange();
-    return [rng.start.column, rng.end.column]
+    const rng = editor
+      .getSession()
+      .getSelection()
+      .getRange();
+    return [rng.start.column, rng.end.column];
   }
 
   setAcePosition(editor, [start, end]) {
-    editor.selection.setRange(new ace.Range(0, start, 0, end))
+    editor.selection.setRange(new ace.Range(0, start, 0, end));
   }
 
   _getParserOptions(props = this.props) {
@@ -165,6 +168,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       this.state.source.length,
       this.state.source.length === 0,
     );
+    this.refs.input._editor.focus();
   }
 
   onSuggestionSelected = index => {
@@ -293,7 +297,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       compileError,
       suggestions,
       helpText,
-      syntaxTree
+      syntaxTree,
     } = source
       ? this._processSource({
           source,
@@ -351,11 +355,12 @@ export default class ExpressionEditorTextfield extends React.Component {
     const inputStyle = { fontSize: 12 };
 
     return (
-      <div className={cx("relative my1")}
-          onBlur={() => this.onInputBlur()}
-          onClick={() => this.onInputClick()}
-          onKeyDown={(e) => this.onInputKeyDown(e)}
-            >
+      <div
+        className={cx("relative my1")}
+        onBlur={() => this.onInputBlur()}
+        onClick={() => this.onInputClick()}
+        onKeyDown={e => this.onInputKeyDown(e)}
+      >
         <div
           className={cx(inputClassName, "absolute top left")}
           style={{
