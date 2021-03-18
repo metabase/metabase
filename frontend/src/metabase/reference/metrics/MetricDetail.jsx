@@ -25,7 +25,6 @@ import {
   getError,
   getLoading,
   getUser,
-  getIsEditing,
   getIsFormulaExpanded,
   getForeignKeys,
 } from "../selectors";
@@ -59,7 +58,6 @@ const mapStateToProps = (state, props) => {
     loadingError: getError(state, props),
     user: getUser(state, props),
     foreignKeys: getForeignKeys(state, props),
-    isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
     initialValues,
   };

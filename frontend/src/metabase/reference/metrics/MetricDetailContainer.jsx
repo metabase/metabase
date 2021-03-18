@@ -10,20 +10,13 @@ import MetricDetail from "metabase/reference/metrics/MetricDetail";
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 
-import {
-  getUser,
-  getMetric,
-  getMetricId,
-  getDatabaseId,
-  getIsEditing,
-} from "../selectors";
+import { getUser, getMetric, getMetricId, getDatabaseId } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state, props),
   metric: getMetric(state, props),
   metricId: getMetricId(state, props),
   databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state, props),
 });
 
 const mapDispatchToProps = {
@@ -43,7 +36,6 @@ export default class MetricDetailContainer extends Component {
     metric: PropTypes.object.isRequired,
     metricId: PropTypes.number.isRequired,
     databaseId: PropTypes.number.isRequired,
-    isEditing: PropTypes.bool,
   };
 
   async fetchContainerData() {
@@ -63,7 +55,8 @@ export default class MetricDetailContainer extends Component {
   }
 
   render() {
-    const { isEditing, user, metric } = this.props;
+    const { location, user, metric } = this.props;
+    const isEditing = location.pathname.endsWith("/edit");
 
     return (
       <SidebarLayout
@@ -71,7 +64,7 @@ export default class MetricDetailContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<MetricSidebar metric={metric} user={user} />}
       >
-        <MetricDetail {...this.props} />
+        <MetricDetail {...this.props} isEditing={isEditing} />
       </SidebarLayout>
     );
   }
