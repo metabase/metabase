@@ -1,5 +1,4 @@
 import { assoc } from "icepick";
-import _ from "underscore";
 
 import { handleActions, createAction } from "metabase/lib/redux";
 
