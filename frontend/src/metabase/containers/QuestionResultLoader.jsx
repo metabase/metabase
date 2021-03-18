@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { defer } from "metabase/lib/promise";
 
@@ -22,7 +20,7 @@ type OnLoadCallback = (results: ?(Dataset[])) => void;
 
 type Props = {
   question: ?Question,
-  children?: (props: ChildProps) => React$Element<any>,
+  children?: (props: ChildProps) => React.Element,
   onLoad?: OnLoadCallback,
 };
 
@@ -60,11 +58,11 @@ export class QuestionResultLoader extends React.Component {
 
   _cancelDeferred: ?() => void;
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._loadResult(this.props.question, this.props.onLoad);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     // if the question is different, we need to do a fresh load
     if (
       nextProps.question &&

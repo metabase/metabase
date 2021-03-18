@@ -32,7 +32,7 @@ export default class MetadataHeader extends Component {
     this.setDatabaseIdIfUnset();
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.setDatabaseIdIfUnset();
   }
 

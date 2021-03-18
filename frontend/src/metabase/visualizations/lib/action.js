@@ -1,5 +1,3 @@
-/* @flow */
-
 import { open } from "metabase/lib/dom";
 
 import _ from "underscore";

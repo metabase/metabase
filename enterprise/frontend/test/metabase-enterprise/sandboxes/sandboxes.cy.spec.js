@@ -83,7 +83,7 @@ describeWithToken("formatting > sandboxes", () => {
         table_id: ORDERS_ID,
         group_id: DATA_GROUP,
         attribute_remappings: {
-          [USER_ATTRIBUTE]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          [USER_ATTRIBUTE]: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
       });
 
@@ -97,7 +97,7 @@ describeWithToken("formatting > sandboxes", () => {
               name: TTAG_NAME,
               "display-name": "CID",
               type: "dimension",
-              dimension: ["field-id", PEOPLE.ID],
+              dimension: ["field", PEOPLE.ID, null],
               "widget-type": "id",
             },
           },
@@ -180,7 +180,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: PEOPLE_ID,
         attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
+          attr_uid: ["dimension", ["field", PEOPLE.ID, null]],
         },
       });
 
@@ -234,7 +234,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
       });
 
@@ -246,11 +246,12 @@ describeWithToken("formatting > sandboxes", () => {
               "case",
               [
                 [
-                  [">", ["field-id", ORDERS.DISCOUNT], 0],
-                  ["field-id", ORDERS.DISCOUNT],
+                  [">", ["field", ORDERS.DISCOUNT, null], 0],
+                  ["field", ORDERS.DISCOUNT],
+                  null,
                 ],
               ],
-              { default: ["field-id", ORDERS.TOTAL] },
+              { default: ["field", ORDERS.TOTAL, null] },
             ],
           },
           "source-table": ORDERS_ID,
@@ -291,7 +292,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
-            attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+            attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
         });
 
@@ -312,9 +313,9 @@ describeWithToken("formatting > sandboxes", () => {
             aggregation: [["count"]],
             breakout: [
               [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.CATEGORY],
+                "field",
+                PRODUCTS.CATEGORY,
+                { "source-field": ORDERS.PRODUCT_ID },
               ],
             ],
             "source-table": ORDERS_ID,
@@ -359,7 +360,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
       });
 
@@ -379,15 +380,15 @@ describeWithToken("formatting > sandboxes", () => {
         query: {
           aggregation: [["count"]],
           breakout: [
-            ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.CATEGORY]],
+            ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
           ],
           joins: [
             {
               alias: PRODUCTS_ALIAS,
               condition: [
                 "=",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
               ],
               fields: "all",
               "source-table": PRODUCTS_ID,
@@ -448,14 +449,14 @@ describeWithToken("formatting > sandboxes", () => {
           name: "520_Orders",
           query: {
             "source-table": ORDERS_ID,
-            filter: [">", ["field-id", ORDERS.TOTAL], 10],
+            filter: [">", ["field", ORDERS.TOTAL, null], 10],
           },
         }).then(({ body: { id: CARD_ID } }) => {
           cy.sandboxTable({
             table_id: ORDERS_ID,
             card_id: CARD_ID,
             attribute_remappings: {
-              attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+              attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
             },
           });
         });
@@ -465,14 +466,14 @@ describeWithToken("formatting > sandboxes", () => {
           name: "520_Products",
           query: {
             "source-table": PRODUCTS_ID,
-            filter: [">", ["field-id", PRODUCTS.PRICE], 10],
+            filter: [">", ["field", PRODUCTS.PRICE, null], 10],
           },
         }).then(({ body: { id: CARD_ID } }) => {
           cy.sandboxTable({
             table_id: PRODUCTS_ID,
             card_id: CARD_ID,
             attribute_remappings: {
-              attr_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+              attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             },
           });
         });
@@ -621,7 +622,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
-            attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+            attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
         });
 
@@ -662,14 +663,14 @@ describeWithToken("formatting > sandboxes", () => {
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
-            attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+            attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
           },
         });
 
         cy.sandboxTable({
           table_id: PRODUCTS_ID,
           attribute_remappings: {
-            attr_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+            attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
           },
         });
 
@@ -678,7 +679,7 @@ describeWithToken("formatting > sandboxes", () => {
           query: {
             aggregation: [["count"]],
             breakout: [
-              ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.CATEGORY]],
+              ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
             ],
             joins: [
               {
@@ -686,8 +687,8 @@ describeWithToken("formatting > sandboxes", () => {
                 "source-table": PRODUCTS_ID,
                 condition: [
                   "=",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
                 ],
                 alias: PRODUCTS_ALIAS,
               },
@@ -731,6 +732,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.server();
       cy.route("POST", "/api/mt/gtap").as("sandboxTable");
+      cy.route("GET", "/api/permissions/group").as("tablePermissions");
 
       // Question with differently-typed columns than the sandboxed table
       cy.createNativeQuestion({
@@ -738,10 +740,13 @@ describeWithToken("formatting > sandboxes", () => {
         native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
 
-      cy.visit("/admin/permissions/databases/1/schemas/PUBLIC/tables");
+      cy.visit("/admin/permissions/databases/1/schemas");
+      cy.findByText("View tables").click();
       // |                | All users | collection |
       // |--------------- |:---------:|:----------:|
       // | Orders         |   X (0)   |    X (1)   |
+
+      cy.wait("@tablePermissions");
       cy.icon("close")
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();
@@ -799,7 +804,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.sandboxTable({
         table_id: PRODUCTS_ID,
         attribute_remappings: {
-          attr_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+          attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         },
       });
 
@@ -1046,8 +1051,8 @@ function createJoinedQuestion(name) {
           "source-table": PRODUCTS_ID,
           condition: [
             "=",
-            ["field-id", ORDERS.PRODUCT_ID],
-            ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
           ],
           alias: "Products",
         },

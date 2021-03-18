@@ -1,5 +1,3 @@
-/* @flow */
-
 export type RevisionId = string;
 
 export type Revision = {

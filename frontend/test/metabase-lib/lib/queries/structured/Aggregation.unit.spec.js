@@ -17,7 +17,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "+",
-          ["sum", ["field-id", ORDERS.TOTAL.id]],
+          ["sum", ["field", ORDERS.TOTAL.id, null]],
           42,
         ]).displayName(),
       ).toEqual("Sum(Total) + 42");
@@ -26,7 +26,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "sum",
-          ["+", ["field-id", ORDERS.TOTAL.id], 42],
+          ["+", ["field", ORDERS.TOTAL.id, null], 42],
         ]).displayName(),
       ).toEqual("Sum(Total + 42)");
     });
@@ -34,7 +34,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field-id", ORDERS.TOTAL.id]],
+          ["sum", ["field", ORDERS.TOTAL.id, null]],
           { "display-name": "named" },
         ]).displayName(),
       ).toEqual("named");
@@ -48,7 +48,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field-id", ORDERS.TOTAL.id]],
+          ["sum", ["field", ORDERS.TOTAL.id, null]],
           {},
         ]).displayName(),
       ).toEqual("Sum of Total");
@@ -62,7 +62,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "+",
-          ["sum", ["field-id", ORDERS.TOTAL.id]],
+          ["sum", ["field", ORDERS.TOTAL.id, null]],
           42,
         ]).isValid(),
       ).toBe(true);
@@ -71,7 +71,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "sum",
-          ["+", ["field-id", ORDERS.TOTAL.id], 42],
+          ["+", ["field", ORDERS.TOTAL.id, null], 42],
         ]).isValid(),
       ).toBe(true);
     });
@@ -79,7 +79,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field-id", ORDERS.TOTAL.id]],
+          ["sum", ["field", ORDERS.TOTAL.id, null]],
           { "display-name": "named" },
         ]).isValid(),
       ).toBe(true);
@@ -91,7 +91,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field-id", ORDERS.TOTAL.id]],
+          ["sum", ["field", ORDERS.TOTAL.id, null]],
           {},
         ]).isValid(),
       ).toBe(true);

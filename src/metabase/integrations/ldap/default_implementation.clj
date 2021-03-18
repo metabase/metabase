@@ -102,7 +102,7 @@
     (u/prog1 user
       (when sync-groups?
         (let [group-ids (ldap-groups->mb-group-ids groups settings)]
-          (integrations.common/sync-group-memberships! user group-ids))))))
+          (integrations.common/sync-group-memberships! user group-ids false))))))
 
 
 ;;; ------------------------------------------------------ impl ------------------------------------------------------

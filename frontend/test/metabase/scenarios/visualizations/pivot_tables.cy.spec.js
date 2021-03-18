@@ -142,7 +142,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["binning-strategy", ["field-id", ORDERS.SUBTOTAL], "default"],
+            ["field", ORDERS.SUBTOTAL, { binning: { strategy: "default" } }],
           ],
         },
         database: 1,
@@ -162,17 +162,13 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should allow collapsing rows", () => {
     // open a pivot table of order count grouped by source, category x year
-    const b1 = ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"];
+    const b1 = ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }];
     const b2 = [
-      "fk->",
-      ["field-id", ORDERS.PRODUCT_ID],
-      ["field-id", PRODUCTS.CATEGORY],
+      "field",
+      PRODUCTS.CATEGORY,
+      { "source-field": ORDERS.PRODUCT_ID },
     ];
-    const b3 = [
-      "fk->",
-      ["field-id", ORDERS.USER_ID],
-      ["field-id", PEOPLE.SOURCE],
-    ];
+    const b3 = ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }];
 
     visitQuestionAdhoc({
       dataset_query: {
@@ -409,7 +405,11 @@ describe("scenarios > visualizations > pivot tables", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["binning-strategy", ["field-id", ORDERS.TOTAL], "num-bins", 100],
+            [
+              "field",
+              ORDERS.TOTAL,
+              { binning: { strategy: "num-bins", "num-bins": 100 } },
+            ],
           ],
         },
         database: 1,
@@ -462,14 +462,14 @@ describe("scenarios > visualizations > pivot tables", () => {
           query: {
             "source-table": ORDERS_ID,
             expressions: {
-              "Twice Total": ["*", ["field-id", ORDERS.TOTAL], 2],
+              "Twice Total": ["*", ["field", ORDERS.TOTAL, null], 2],
             },
             aggregation: [
-              ["sum", ["field-id", ORDERS.TOTAL]],
+              ["sum", ["field", ORDERS.TOTAL, null]],
               ["sum", ["expression", "Twice Total"]],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           type: "query",
@@ -497,7 +497,11 @@ describe("scenarios > visualizations > pivot tables", () => {
           query: {
             "source-table": PRODUCTS_ID,
             expressions: {
-              category_foo: ["concat", ["field-id", PRODUCTS.CATEGORY], "foo"],
+              category_foo: [
+                "concat",
+                ["field", PRODUCTS.CATEGORY, null],
+                "foo",
+              ],
             },
             aggregation: [["count"]],
             breakout: [["expression", "category_foo"]],
@@ -754,12 +758,8 @@ const testQuery = {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
     breakout: [
-      ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.SOURCE]],
-      [
-        "fk->",
-        ["field-id", ORDERS.PRODUCT_ID],
-        ["field-id", PRODUCTS.CATEGORY],
-      ],
+      ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
     ],
   },
   database: 1,

@@ -29,18 +29,18 @@
             (mt/mbql-query venues
               {:joins
                [{:source-table $$categories
-                 :alias        "c",
+                 :alias        "c"
                  :strategy     :left-join
-                 :condition    [:= $category_id [:joined-field "c" $categories.id]]}]})
+                 :condition    [:= $category_id &c.categories.id]}]})
             :store
-            {:database "test-data",
-             :tables   #{"CATEGORIES" "VENUES"},
+            {:database "test-data"
+             :tables   #{"CATEGORIES" "VENUES"}
              :fields   #{["CATEGORIES" "ID"] ["VENUES" "CATEGORY_ID"]}}}
            (resolve-joins-and-inspect-store
             (mt/mbql-query venues
               {:joins [{:source-table $$categories
                         :alias        "c"
-                        :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                        :condition    [:= $category_id &c.categories.id]
                         :fields       :none}]}))))))
 
 (deftest fields-all-test
@@ -51,11 +51,11 @@
                [{:source-table $$categories
                  :alias        "c"
                  :strategy     :left-join
-                 :condition    [:= $category_id [:joined-field "c" $categories.id]]}]
+                 :condition    [:= $category_id &c.categories.id]}]
                :fields [$venues.id
                         $venues.name
-                        [:joined-field "c" $categories.id]
-                        [:joined-field "c" $categories.name]]})
+                        &c.categories.id
+                        &c.categories.name]})
             :store
             {:database "test-data"
              :tables   #{"CATEGORIES" "VENUES"}
@@ -67,7 +67,7 @@
               {:fields [$venues.id $venues.name]
                :joins  [{:source-table $$categories
                          :alias        "c"
-                         :condition    [:= $category_id [:joined-field "c" $categories.id]]
+                         :condition    [:= $category_id &c.categories.id]
                          :fields       :all}]}))))))
 
 (deftest fields-sequence-test
@@ -78,10 +78,10 @@
                [{:source-table $$categories
                  :alias        "c"
                  :strategy     :left-join
-                 :condition    [:= $category_id [:joined-field "c" $categories.id]]}]
+                 :condition    [:= $category_id &c.categories.id]}]
                :fields [$venues.id
                         $venues.name
-                        [:joined-field "c" $categories.name]]})
+                        &c.categories.name]})
             :store
             {:database "test-data"
              :tables   #{"CATEGORIES" "VENUES"}
@@ -93,8 +93,8 @@
               {:fields [$venues.id $venues.name]
                :joins  [{:source-table $$categories
                          :alias        "c"
-                         :condition    [:= $category_id [:joined-field "c" $categories.id]]
-                         :fields       [[:joined-field "c" $categories.name]]}]}))))))
+                         :condition    [:= $category_id &c.categories.id]
+                         :fields       [&c.categories.name]}]}))))))
 
 (deftest join-same-table-twice-test
   (testing "Does joining the same table twice without an explicit alias give both joins unique aliases?"
@@ -132,36 +132,36 @@
   (testing "test that resolving explicit joins still works if implict joins are present"
     (is (= (mt/mbql-query checkins
              {:source-table $$checkins
-              :aggregation  [[:sum [:joined-field "USERS__via__USER_ID" $users.id]]]
+              :aggregation  [[:sum &USERS__via__USER_ID.users.id]]
               :breakout     [$id]
               :joins        [{:source-table $$users
                               :alias        "USERS__via__USER_ID"
                               :strategy     :left-join
-                              :condition    [:= $user_id [:joined-field "USERS__via__USER_ID" $users.id]]
+                              :condition    [:= $user_id &USERS__via__USER_ID.users.id]
                               :fk-field-id  (mt/id :checkins :user_id)}
                              {:alias        "u"
                               :source-table $$users
                               :strategy     :left-join
                               :condition    [:=
-                                             [:field-literal "ID" :type/BigInteger]
-                                             [:joined-field "u" $users.id]]}]
+                                             [:field "ID" {:base-type :type/BigInteger}]
+                                             &u.users.id]}]
               :limit        10})
            (resolve-joins
             (mt/mbql-query checkins
               {:source-table $$checkins
-               :aggregation  [[:sum [:joined-field "USERS__via__USER_ID" $users.id]]]
+               :aggregation  [[:sum &USERS__via__USER_ID.users.id]]
                :breakout     [$id]
                :joins        [{:source-table $$users
                                :alias        "USERS__via__USER_ID"
                                :strategy     :left-join
-                               :condition    [:= $user_id [:joined-field "USERS__via__USER_ID" $users.id]]
+                               :condition    [:= $user_id &USERS__via__USER_ID.users.id]
                                :fk-field-id  (mt/id :checkins :user_id)
                                :fields       :none}
                               {:alias        "u"
                                :source-table $$users
                                :condition    [:=
-                                              [:field-literal "ID" :type/BigInteger]
-                                              [:joined-field "u" $users.id]]}]
+                                              [:field "ID" {:base-type :type/BigInteger}]
+                                              [:field %users.id {:join-alias "u"}]]}]
                :limit        10}))))))
 
 (deftest join-with-source-query-test
@@ -178,7 +178,7 @@
                            :strategy     :left-join
                            :condition    [:=
                                           $category_id
-                                          [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+                                          [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
                :order-by [[:asc $name]]
                :limit    3})}
            (resolve-joins-and-inspect-store
@@ -187,7 +187,7 @@
                            :source-query {:source-table $$categories}
                            :condition    [:=
                                           $category_id
-                                          [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+                                          [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
                :order-by [[:asc $name]]
                :limit    3}))))))
 
@@ -203,17 +203,17 @@
                                                    :fields          :all
                                                    :condition       [:=
                                                                      $category_id
-                                                                     [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+                                                                     [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
                                        :order-by [[:asc $name]]
                                        :limit    3}))]
       (is (= (mt/mbql-query venues
-               {:fields   [[:joined-field "cat" [:field-id (mt/id :categories :id)]]
-                           [:joined-field "cat" [:field-id (mt/id :categories :name)]]]
+               {:fields   [[:field (mt/id :categories :id) {:join-alias "cat"}]
+                           [:field (mt/id :categories :name) {:join-alias "cat"}]]
                 :joins    [{:alias           "cat"
                             :source-query    {:source-table $$categories}
                             :source-metadata source-metadata
                             :strategy        :left-join
-                            :condition       [:= $category_id [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+                            :condition       [:= $category_id [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
                 :order-by [[:asc $name]]
                 :limit    3})
              resolved))
@@ -228,14 +228,43 @@
              {:joins       [{:source-table $$checkins
                              :alias        "c"
                              :strategy     :left-join
-                             :condition    [:= $id [:joined-field "c" [:field-literal "USER_ID" :type/Integer]]]}],
-              :aggregation [[:sum [:joined-field "c" [:field-literal "id" :type/Float]]]]
-              :breakout    [[:datetime-field $last_login :month]]})
+                             :condition    [:= $id [:field "USER_ID" {:base-type :type/Integer, :join-alias "c"}]]}],
+              :aggregation [[:sum [:field "id" {:base-type :type/Float, :join-alias "c"}]]]
+              :breakout    [[:field %last_login {:temporal-unit :month}]]})
            (resolve-joins
             (mt/mbql-query users
               {:joins       [{:fields       :all
                               :alias        "c"
                               :source-table $$checkins
-                              :condition    [:= $id [:joined-field "c" [:field-literal "USER_ID" :type/Integer]]]}]
-               :aggregation [[:sum [:joined-field "c" [:field-literal "id" :type/Float]]]]
-               :breakout    [[:datetime-field $last_login :month]]}))))))
+                              :condition    [:= $id [:field "USER_ID" {:base-type :type/Integer, :join-alias "c"}]]}]
+               :aggregation [[:sum [:field "id" {:base-type :type/Float, :join-alias "c"}]]]
+               :breakout    [[:field %last_login {:temporal-unit :month}]]}))))))
+
+(deftest aggregation-field-ref-test
+  (testing "Should correctly handle [:aggregation n] field refs"
+    (is (some? (resolve-joins
+                (mt/mbql-query users
+                  {:fields [$id
+                            $name
+                            [:field %last_login {:temporal-unit :default}]]
+                   :joins  [{:fields       :all
+                             :alias        "__alias__"
+                             :condition    [:= $id [:field %checkins.user_id {:join-alias "__alias__"}]]
+                             :source-query {:source-table $$checkins
+                                            :aggregation  [[:sum $checkins.id]]
+                                            :breakout     [$checkins.user_id]}
+                             :source-metadata
+                             [{:name          "USER_ID"
+                               :display_name  "User ID"
+                               :base_type     :type/Integer
+                               :semantic_type :type/FK
+                               :id            %checkins.user_id
+                               :field_ref     $checkins.user_id
+                               :fingerprint   {:global {:distinct-count 15, :nil% 0.0}}}
+                              {:name          "sum"
+                               :display_name  "Sum of ID"
+                               :base_type     :type/Decimal
+                               :semantic_type :type/PK
+                               :field_ref     [:aggregation 0]
+                               :fingerprint   nil}]}]
+                   :limit  10}))))))

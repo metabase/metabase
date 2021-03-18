@@ -1,5 +1,3 @@
-/* eslint-disable flowtype/require-valid-file-annotation */
-
 import { ORDERS, createMetadata } from "__support__/sample_dataset_fixture";
 
 import SummarizeColumnByTimeDrill from "metabase/modes/components/drill/SummarizeColumnByTimeDrill";
@@ -38,8 +36,8 @@ describe("SummarizeColumnByTimeDrill", () => {
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       "source-table": ORDERS.id,
-      aggregation: [["sum", ["field-id", ORDERS.TOTAL.id]]],
-      breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "day"]],
+      aggregation: [["sum", ["field", ORDERS.TOTAL.id, null]]],
+      breakout: [["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }]],
     });
     expect(newCard.display).toEqual("line");
   });

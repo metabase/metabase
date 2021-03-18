@@ -1,11 +1,9 @@
-/* @flow */
-
 import React from "react";
 import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
 
 export default (entityType?: string) => (
-  ComposedComponent: Class<React$Component<*, *, *>>,
+  ComposedComponent: React.ComponentClass,
 ) => {
   const mapStateToProps = (state, props) => ({
     entityDef:
@@ -28,7 +26,7 @@ export default (entityType?: string) => (
         this._bindActionCreators(props);
       }
 
-      componentWillReceiveProps(nextProps) {
+      UNSAFE_componentWillReceiveProps(nextProps) {
         if (
           nextProps.entityDef !== this.props.entityDef ||
           nextProps.dispatch !== this.props.dispatch

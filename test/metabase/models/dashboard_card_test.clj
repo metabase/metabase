@@ -1,10 +1,14 @@
 (ns metabase.models.dashboard-card-test
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
+            [expectations :refer :all]
             [metabase.models.card :refer [Card]]
+            [metabase.models.card-test :as card-test]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer :all]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+            [metabase.test :as mt]
             [metabase.test.data.users :refer :all]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -199,3 +203,32 @@
                                                          :visualization_settings {}
                                                          :series                 [card-id-2 card-id-1]}))
      (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))]))
+
+(deftest normalize-parameter-mappings-test
+  (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
+    (mt/with-temp* [Dashboard     [dashboard {:parameters [{:name "Venue ID"
+                                                            :slug "venue_id"
+                                                            :id   "22486e00"
+                                                            :type "id"}]}]
+                    Card          [card]
+                    DashboardCard [dashcard {:dashboard_id       (u/the-id dashboard)
+                                             :card_id            (u/the-id card)
+                                             :parameter_mappings [{:parameter_id "22486e00"
+                                                                   :card_id      (u/the-id card)
+                                                                   :target       [:dimension [:field-id (mt/id :venues :id)]]}]}]]
+      (is (= [{:parameter_id "22486e00"
+               :card_id      (u/the-id card)
+               :target       [:dimension [:field (mt/id :venues :id) nil]]}]
+             (db/select-one-field :parameter_mappings DashboardCard :id (u/the-id dashcard)))))))
+
+(deftest normalize-visualization-settings-test
+  (testing "DashboardCard visualization settings should get normalized to use modern MBQL syntax"
+    (mt/with-temp* [Card      [card]
+                    Dashboard [dashboard]]
+      (card-test/test-visualization-settings-normalization
+       (fn [original expected]
+         (mt/with-temp DashboardCard [dashcard {:dashboard_id           (u/the-id dashboard)
+                                                :card_id                (u/the-id card)
+                                                :visualization_settings original}]
+           (is (= expected
+                  (db/select-one-field :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))

@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { Breakout, BreakoutClause } from "metabase-types/types/Query";
 
 import { add, update, remove, clear } from "./util";

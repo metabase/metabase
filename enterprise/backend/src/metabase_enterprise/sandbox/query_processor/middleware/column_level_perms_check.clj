@@ -5,13 +5,18 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.util.i18n :refer [trs tru]]))
 
+(defn- field-ids [form]
+  (set (mbql.u/match form
+         [:field (id :guard integer?) _]
+         id)))
+
 (defn- maybe-apply-column-level-perms-check*
   {:arglists '([query context])}
   [{{{source-query-fields :fields} :source-query} :query, :as query} {:keys [gtap-perms]}]
   (let [restricted-field-ids (and gtap-perms
-                                  (set (mbql.u/match source-query-fields [:field-id id] id)))]
+                                  (field-ids source-query-fields))]
     (when (seq restricted-field-ids)
-      (let [fields-ids-in-query (set (mbql.u/match (m/dissoc-in query [:query :source-query]) [:field-id id] id))]
+      (let [fields-ids-in-query (field-ids (m/dissoc-in query [:query :source-query]))]
         (when-not (every? restricted-field-ids fields-ids-in-query)
           (log/warn (trs "User ''{0}'' attempted to access an inaccessible field. Accessible fields {1}, fields in query {2}"
                          *current-user-id* (pr-str restricted-field-ids) (pr-str fields-ids-in-query)))

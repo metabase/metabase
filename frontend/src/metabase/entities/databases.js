@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import { normalize } from "normalizr";
 import _ from "underscore";
 

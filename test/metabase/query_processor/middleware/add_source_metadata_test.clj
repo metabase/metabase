@@ -16,7 +16,8 @@
   (for [col (-> query-results :data :cols)]
     (select-keys
      col
-     [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings :field_ref :parent_id])))
+     [:id :table_id :name :display_name :base_type :effective_type :coercion_strategy
+      :semantic_type :unit :fingerprint :settings :field_ref :parent_id])))
 
 (defn- venues-source-metadata
   ([]
@@ -26,15 +27,15 @@
    (let [field-ids (map #(mt/id :venues (keyword (str/lower-case (name %))))
                         field-names)]
      (results-metadata
-      (mt/run-mbql-query venues {:fields (for [id field-ids] [:field-id id])
+      (mt/run-mbql-query venues {:fields (for [id field-ids] [:field id nil])
                                  :limit  1})))))
 
 (defn- venues-source-metadata-for-field-literals
-  "Metadata we'd expect to see from a `:field-literal` clause. The same as normal metadata, but field literals don't
-  include special-type info."
+  "Metadata we'd expect to see from a `:field` clause with a string name. The same as normal metadata, but field
+  literals don't include semantic-type info."
   [& field-names]
   (for [field (apply venues-source-metadata field-names)]
-    (dissoc field :special_type)))
+    (dissoc field :semantic_type)))
 
 (deftest basic-test
   (testing "Can we automatically add source metadata to the parent level of a query? If the source query has `:fields`"
@@ -66,7 +67,7 @@
                                 [{:name         "count"
                                   :display_name "Count"
                                   :base_type    :type/BigInteger
-                                  :special_type :type/Number
+                                  :semantic_type :type/Number
                                   :field_ref    [:aggregation 0]}])})
            (add-source-metadata
             (mt/mbql-query venues
@@ -84,7 +85,7 @@
                                 [{:name         "avg"
                                   :display_name "Average of ID"
                                   :base_type    :type/BigInteger
-                                  :special_type :type/PK
+                                  :semantic_type :type/PK
                                   :settings     nil
                                   :field_ref    [:aggregation 0]}])})
            (add-source-metadata
@@ -110,7 +111,7 @@
                                   [{:name         "some_generated_name"
                                     :display_name "My Cool Ag"
                                     :base_type    :type/BigInteger
-                                    :special_type :type/PK
+                                    :semantic_type :type/PK
                                     :settings     nil
                                     :field_ref    [:aggregation 0]}])})
              (add-source-metadata
@@ -125,7 +126,7 @@
       (is (= [{:name         "some_generated_name"
                :display_name "Average of ID"
                :base_type    :type/BigInteger
-               :special_type :type/PK
+               :semantic_type :type/PK
                :settings     nil
                :field_ref    [:aggregation 0]}]
              (source-metadata
@@ -138,7 +139,7 @@
       (is (= [{:name         "avg"
                :display_name "My Cool Ag"
                :base_type    :type/BigInteger
-               :special_type :type/PK
+               :semantic_type :type/PK
                :settings     nil
                :field_ref    [:aggregation 0]}]
              (source-metadata
@@ -249,25 +250,23 @@
       (is (= (mt/mbql-query venues
                {:source-query    {:source-table $$venues
                                   :aggregation  [[:count]]
-                                  :breakout     [[:binning-strategy $latitude :default]]}
+                                  :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
                 :source-metadata (concat
                                   (let [[lat-col] (venues-source-metadata :latitude)]
-                                    [(assoc lat-col :field_ref (mt/$ids venues
-                                                                 [:binning-strategy
-                                                                  $latitude
-                                                                  :bin-width
-                                                                  5.0
-                                                                  {:min-value 10.0
-                                                                   :max-value 45.0
-                                                                   :num-bins  7
-                                                                   :bin-width 5.0}]))])
+                                    [(assoc lat-col :field_ref [:field
+                                                                (mt/id :venues :latitude)
+                                                                {:binning {:strategy :bin-width
+                                                                           :min-value 10.0
+                                                                           :max-value 45.0
+                                                                           :num-bins  7
+                                                                           :bin-width 5.0}}])])
                                   (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))})
              (add-source-metadata
               (mt/mbql-query venues
                 {:source-query
                  {:source-table $$venues
                   :aggregation  [[:count]]
-                  :breakout     [[:binning-strategy $latitude :default]]}})))))))
+                  :breakout     [[:field %latitude {:binning {:strategy :default}}]]}})))))))
 
 (deftest deduplicate-column-names-test
   (testing "Metadata that gets added to source queries should have deduplicated column names"
@@ -297,12 +296,12 @@
                   (get-in query [:query :source-metadata])
                   (u/key-by :name query)
                   (get query "EAN")
-                  (select-keys query [:name :display_name :base_type :special_type :id :field_ref])))]
+                  (select-keys query [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (let [base-query (mt/mbql-query orders
                            {:source-table $$orders
                             :joins        [{:fields       :all
                                             :source-table $$products
-                                            :condition    [:= $product_id [:joined-field "Products" $products.id]]
+                                            :condition    [:= $product_id &Products.products.id]
                                             :alias        "Products"}]
                             :limit        10})]
           (testing "Make sure metadata is correct for the 'EAN' column with"
@@ -313,9 +312,9 @@
                          {:name         "EAN"
                           :display_name "Products → Ean"
                           :base_type    :type/Text
-                          :special_type nil
+                          :semantic_type nil
                           :id           %ean
-                          :field_ref    [:joined-field "Products" $ean]})
+                          :field_ref    &Products.ean})
                        (ean-metadata (add-source-metadata query))))))))))))
 
 (deftest ignore-legacy-source-metadata-test
@@ -336,13 +335,12 @@
             ;; `qp/query->expected-cols`
             expected-metadata (for [col metadata]
                                 (cond-> (dissoc col :description :source :visibility_type)
-                                  ;; for some reason this middleware returns temporal fields with field refs wrapped
-                                  ;; in `:datetime-field` clauses with `:default` unit, whereas `query->expected-cols`
-                                  ;; does not wrap the field refs. It ulimately makes zero difference, so I haven't
-                                  ;; looked into why this is the case yet.
+                                  ;; for some reason this middleware returns temporal fields with a `:default` unit,
+                                  ;; whereas `query->expected-cols` does not return the unit. It ulimately makes zero
+                                  ;; difference, so I haven't looked into why this is the case yet.
                                   (isa? (:base_type col) :type/Temporal)
-                                  (update :field_ref (fn [field-ref]
-                                                       [:datetime-field field-ref :default]))))]
+                                  (update :field_ref (fn [[_ id-or-name opts]]
+                                                       [:field id-or-name (assoc opts :temporal-unit :default)]))))]
         (letfn [(added-metadata [query]
                   (get-in (add-source-metadata query) [:query :source-metadata]))]
           (testing "\nShould add source metadata if there's none already"

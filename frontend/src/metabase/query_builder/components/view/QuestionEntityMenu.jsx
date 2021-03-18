@@ -37,6 +37,11 @@ export default function QuestionEntityMenu({
           action: () => onOpenModal("move"),
         },
         canWrite && {
+          icon: "clone",
+          title: t`Duplicate this question`,
+          action: () => onOpenModal("clone"),
+        },
+        canWrite && {
           icon: "archive",
           title: `Archive`,
           action: () => onOpenModal("archive"),

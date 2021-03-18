@@ -10,9 +10,9 @@
   50)
 
 (defn- long-plain-text-field?
-  [{:keys [base_type special_type]} fingerprint]
+  [{:keys [base_type semantic_type]} fingerprint]
   (and (isa? base_type :type/Text)
-       (contains? #{nil :type/SerializedJSON} special_type)
+       (contains? #{nil :type/SerializedJSON} semantic_type)
        (some-> fingerprint
                (get-in [:type :type/Text :average-length])
                (> average-length-no-preview-threshold))))

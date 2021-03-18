@@ -113,22 +113,22 @@
    :type/Latitude
    :type/PK]
   (data/with-temp-copy-of-db
-    (let [get-special-type (fn [] (db/select-one-field :special_type Field, :id (data/id :venues :id)))]
-      [ ;; Special type should be :id to begin with
-       (get-special-type)
-       ;; Clear out the special type
-       (do (db/update! Field (data/id :venues :id), :special_type nil)
-           (get-special-type))
-       ;; Calling sync-table! should set the special type again
+    (let [get-semantic-type (fn [] (db/select-one-field :semantic_type Field, :id (data/id :venues :id)))]
+      [ ;; Semantic type should be :id to begin with
+       (get-semantic-type)
+       ;; Clear out the semantic type
+       (do (db/update! Field (data/id :venues :id), :semantic_type nil)
+           (get-semantic-type))
+       ;; Calling sync-table! should set the semantic type again
        (do (sync/sync-table! (Table (data/id :venues)))
-           (get-special-type))
-       ;; sync-table! should *not* change the special type of fields that are marked with a different type
-       (do (db/update! Field (data/id :venues :id), :special_type :type/Latitude)
-           (get-special-type))
+           (get-semantic-type))
+       ;; sync-table! should *not* change the semantic type of fields that are marked with a different type
+       (do (db/update! Field (data/id :venues :id), :semantic_type :type/Latitude)
+           (get-semantic-type))
        ;; Make sure that sync-table runs set-table-pks-if-needed!
-       (do (db/update! Field (data/id :venues :id), :special_type nil)
+       (do (db/update! Field (data/id :venues :id), :semantic_type nil)
            (sync/sync-table! (Table (data/id :venues)))
-           (get-special-type))])))
+           (get-semantic-type))])))
 
 
 ;; Check that Foreign Key relationships were created on sync as we expect
@@ -149,25 +149,25 @@
   {:before
    {:step-info         {:total-fks 3, :updated-fks 0, :total-failed 0}
     :task-details      {:total-fks 3, :updated-fks 0, :total-failed 0}
-    :special-type      :type/FK
+    :semantic-type     :type/FK
     :fk-target-exists? true}
 
    :after
    {:step-info         {:total-fks 3, :updated-fks 1, :total-failed 0}
     :task-details      {:total-fks 3, :updated-fks 1, :total-failed 0}
-    :special-type      :type/FK
+    :semantic-type     :type/FK
     :fk-target-exists? true}}
   (data/with-temp-copy-of-db
     (let [state (fn []
                   (let [{:keys                  [step-info]
                          {:keys [task_details]} :task-history}    (sync.util-test/sync-database! "sync-fks" (data/db))
-                        {:keys [special_type fk_target_field_id]} (db/select-one [Field :special_type :fk_target_field_id]
+                        {:keys [semantic_type fk_target_field_id]} (db/select-one [Field :semantic_type :fk_target_field_id]
                                                                     :id (data/id :checkins :user_id))]
                     {:step-info         (sync.util-test/only-step-keys step-info)
                      :task-details      task_details
-                     :special-type      special_type
+                     :semantic-type     semantic_type
                      :fk-target-exists? (db/exists? Field :id fk_target_field_id)}))]
       (array-map
        :before (state)
-       :after  (do (db/update! Field (data/id :checkins :user_id), :special_type nil, :fk_target_field_id nil)
+       :after  (do (db/update! Field (data/id :checkins :user_id), :semantic_type nil, :fk_target_field_id nil)
                    (state))))))

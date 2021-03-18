@@ -112,7 +112,7 @@ const validate = (values, props) => {
     "revision_message",
     "points_of_interest",
     "caveats",
-    "special_type",
+    "semantic_type",
     "fk_target_field_id",
   ],
   validate,
@@ -148,7 +148,7 @@ export default class SegmentFieldDetail extends Component {
         revision_message,
         points_of_interest,
         caveats,
-        special_type,
+        semantic_type,
         fk_target_field_id,
       },
       style,
@@ -259,7 +259,7 @@ export default class SegmentFieldDetail extends Component {
                     <FieldTypeDetail
                       field={entity}
                       foreignKeys={foreignKeys}
-                      fieldTypeFormField={special_type}
+                      fieldTypeFormField={semantic_type}
                       foreignKeyFormField={fk_target_field_id}
                       isEditing={isEditing}
                     />

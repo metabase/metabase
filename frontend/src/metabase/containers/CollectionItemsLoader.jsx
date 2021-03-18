@@ -1,4 +1,3 @@
-/* @flow */
 import React from "react";
 
 import Collection from "metabase/entities/collections";

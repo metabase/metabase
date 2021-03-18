@@ -14,4 +14,6 @@
 
 ### [Problems with saving questions/dashboards or blank page](proxies.md)
 
+### [LDAP](ldap.md)
+
 ### [I think I found a bug](bugs.md)

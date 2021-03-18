@@ -9,7 +9,7 @@ describe("StructuredQuery", () => {
     it("should return true for queries with expressions", () => {
       const q = ORDERS.query().addExpression("double_total", [
         "*",
-        ["field-id", ORDERS.TOTAL.id],
+        ["field", ORDERS.TOTAL.id, null],
         2,
       ]);
       expect(q.hasExpressions()).toBe(true);

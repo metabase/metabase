@@ -3,6 +3,7 @@
  :deps
  {common/common               {:local/root "../common"}
   build-drivers/build-drivers {:local/root "../build-drivers"}
+  i18n/i18n                   {:local/root "../i18n"}
   org.flatland/ordered        {:mvn/version "1.5.7"}}
 
  :aliases

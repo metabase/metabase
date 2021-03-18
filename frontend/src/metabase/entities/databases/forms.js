@@ -113,10 +113,16 @@ export const DEFAULT_SCHEDULES = {
   },
 };
 
+function concatTrimmed(a, b) {
+  return (a || "").trim() + (b || "").trim();
+}
+
 function getClientIdDescription(engine, details) {
   if (CREDENTIALS_URL_PREFIXES[engine]) {
-    const credentialsURL =
-      CREDENTIALS_URL_PREFIXES[engine] + (details["project-id"] || "");
+    const credentialsURL = concatTrimmed(
+      CREDENTIALS_URL_PREFIXES[engine],
+      details["project-id"] || "",
+    );
     return (
       <span>
         {jt`${(
@@ -132,22 +138,24 @@ function getClientIdDescription(engine, details) {
 
 function getAuthCodeLink(engine, details) {
   if (AUTH_URL_PREFIXES[engine] && details["client-id"]) {
+    const authCodeURL = concatTrimmed(
+      AUTH_URL_PREFIXES[engine],
+      details["client-id"],
+    );
+    const googleDriveAuthCodeURL = concatTrimmed(
+      AUTH_URL_PREFIXES["bigquery_with_drive"],
+      details["client-id"],
+    );
     return (
       <span>
         {jt`${(
-          <ExternalLink href={AUTH_URL_PREFIXES[engine] + details["client-id"]}>
-            {t`Click here`}
-          </ExternalLink>
+          <ExternalLink href={authCodeURL}>{t`Click here`}</ExternalLink>
         )} to get an auth code.`}
         {engine === "bigquery" && (
           <span>
             {" "}
             ({t`or`}{" "}
-            <ExternalLink
-              href={
-                AUTH_URL_PREFIXES["bigquery_with_drive"] + details["client-id"]
-              }
-            >
+            <ExternalLink href={googleDriveAuthCodeURL}>
               {t`with Google Drive permissions`}
             </ExternalLink>
             )
@@ -167,7 +175,11 @@ function getAuthCodeEnableAPILink(engine, details) {
       details["client-id"] && (details["client-id"].match(/^\d+/) || [])[0];
     if (ENABLE_API_PREFIXES[engine] && projectID) {
       // URL looks like https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project=12343611585
-      const enableAPIURL = ENABLE_API_PREFIXES[engine] + projectID;
+      const enableAPIURL = concatTrimmed(
+        ENABLE_API_PREFIXES[engine],
+        projectID,
+      );
+
       return (
         <span>
           {t`To use Metabase with this data you must enable API access in the Google Developers Console.`}{" "}
@@ -180,53 +192,76 @@ function getAuthCodeEnableAPILink(engine, details) {
   }
 }
 
-function getFieldsForEngine(engine, details, id) {
-  let info = (MetabaseSettings.get("engines") || {})[engine];
-  if (engine === "bigquery") {
+function getEngineInfo(engine, details, id) {
+  const engineInfo = (MetabaseSettings.get("engines") || {})[engine];
+  switch (engine) {
     // BigQuery has special logic to switch out forms depending on what style of authenication we use.
-    info = getFieldsForBigQuery(details);
-  }
-  if (engine === "mongo") {
+    case "bigquery":
+      return getFieldsForBigQuery(details);
     // Mongo has special logic to switch between a connection URI and broken out fields
-    info = getFieldsForMongo(details, info, id);
+    case "mongo":
+      return getFieldsForMongo(details, engineInfo, id);
+    default:
+      return engineInfo;
   }
-  if (info) {
-    const fields = [];
-    for (const field of info["details-fields"]) {
-      // NOTE: special case to hide tunnel settings if tunnel is disabled
-      if (
-        field.name.startsWith("tunnel-") &&
-        field.name !== "tunnel-enabled" &&
-        !details["tunnel-enabled"]
-      ) {
-        continue;
-      }
+}
 
-      // hide the auth settings based on which auth method is selected
-      // private key auth needs tunnel-private-key and tunnel-private-key-passphrase
-      if (
-        field.name.startsWith("tunnel-private-") &&
-        details["tunnel-auth-option"] !== "ssh-key"
-      ) {
-        continue;
-      }
+function isHiddenField(field, details) {
+  // NOTE: special case to hide tunnel settings if tunnel is disabled
+  const isDisabledTunnelSettingsField =
+    field.name.startsWith("tunnel-") &&
+    field.name !== "tunnel-enabled" &&
+    !details["tunnel-enabled"];
 
-      // username / password auth uses tunnel-pass
-      if (
-        field.name === "tunnel-pass" &&
-        details["tunnel-auth-option"] === "ssh-key"
-      ) {
-        continue;
-      }
+  // hide the auth settings based on which auth method is selected
+  // private key auth needs tunnel-private-key and tunnel-private-key-passphrase
+  const isTunnelPrivateFieldWithoutProperAuthMethod =
+    field.name.startsWith("tunnel-private-") &&
+    details["tunnel-auth-option"] !== "ssh-key";
 
-      // NOTE: special case to hide the SSL cert field if SSL is disabled
-      if (field.name === "ssl-cert" && !details["ssl"]) {
-        continue;
-      }
+  // username / password auth uses tunnel-pass
+  const isTunnelPassFieldWithoutProperAuthMethod =
+    field.name === "tunnel-pass" && details["tunnel-auth-option"] === "ssh-key";
 
+  // NOTE: special case to hide the SSL cert field if SSL is disabled
+  const isDisabledSslField = field.name === "ssl-cert" && !details["ssl"];
+
+  return (
+    isDisabledTunnelSettingsField ||
+    isTunnelPrivateFieldWithoutProperAuthMethod ||
+    isTunnelPassFieldWithoutProperAuthMethod ||
+    isDisabledSslField
+  );
+}
+
+function getDefaultValue(field) {
+  return "default" in field ? field.default : null;
+}
+
+function normalizeFieldValue(value, field) {
+  if (value === "" || value == null) {
+    return getDefaultValue(field);
+  }
+
+  if (typeof value === "string" && field.type !== "password") {
+    const trimmedValue = value.trim();
+    return trimmedValue === "" ? getDefaultValue(field) : trimmedValue;
+  }
+
+  return value;
+}
+
+function getEngineFormFields(engine, details, id) {
+  const engineInfo = getEngineInfo(engine, details, id);
+  const engineFields = engineInfo ? engineInfo["details-fields"] : [];
+
+  // convert database details-fields to Form fields
+  return engineFields
+    .filter(field => !isHiddenField(field, details))
+    .map(field => {
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
-      // convert database details-fields to Form fields
-      fields.push({
+
+      return {
         name: `details.${field.name}`,
         title: field["display-name"],
         type: field.type,
@@ -234,22 +269,13 @@ function getFieldsForEngine(engine, details, id) {
         placeholder: field.placeholder || field.default,
         options: field.options,
         validate: value => (field.required && !value ? t`required` : null),
-        normalize: value =>
-          value === "" || value == null
-            ? "default" in field
-              ? field.default
-              : null
-            : value,
+        normalize: value => normalizeFieldValue(value, field),
         horizontal: field.type === "boolean",
         initial: field.default,
         readOnly: field.readOnly || false,
         ...(overrides && overrides(engine, details, id)),
-      });
-    }
-    return fields;
-  } else {
-    return [];
-  }
+      };
+    });
 }
 
 const ENGINE_OPTIONS = Object.entries(MetabaseSettings.get("engines") || {})
@@ -276,7 +302,7 @@ const forms = {
         validate: value => !value && t`required`,
         hidden: !engine,
       },
-      ...(getFieldsForEngine(engine, details, id) || []),
+      ...(getEngineFormFields(engine, details, id) || []),
       {
         name: "auto_run_queries",
         type: "boolean",

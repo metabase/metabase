@@ -26,7 +26,7 @@ export default class TextEditor extends Component {
     theme: null,
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (
       this._editor &&
       nextProps.value != null &&

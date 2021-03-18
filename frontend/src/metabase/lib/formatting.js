@@ -1,5 +1,3 @@
-/* @flow */
-
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment-timezone";
@@ -105,7 +103,7 @@ export type FormattingOptions = {
   markdown_template?: string,
 };
 
-type FormattedString = string | React$Element<any>;
+type FormattedString = string | React.Element;
 
 export const FK_SYMBOL = "→";
 
@@ -638,7 +636,7 @@ export function formatImage(
   }
 }
 
-// fallback for formatting a string without a column special_type
+// fallback for formatting a string without a column semantic_type
 function formatStringFallback(value: Value, options: FormattingOptions = {}) {
   if (options.view_as !== null) {
     value = formatUrl(value, options);
@@ -779,7 +777,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   ) {
     return formatDateTime(value, options);
   } else if (typeof value === "string") {
-    if (column && column.special_type != null) {
+    if (column && column.semantic_type != null) {
       return value;
     } else {
       return formatStringFallback(value, options);

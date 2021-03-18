@@ -1,5 +1,3 @@
-/* eslint-disable flowtype/require-valid-file-annotation */
-
 import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill";
 
 import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
@@ -28,7 +26,7 @@ describe("ObjectDetailDrill", () => {
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       "source-table": ORDERS.id,
-      filter: ["=", ["field-id", ORDERS.ID.id], 42],
+      filter: ["=", ["field", ORDERS.ID.id, null], 42],
     });
   });
   it("should be return correct new card for FKs", () => {
@@ -43,7 +41,7 @@ describe("ObjectDetailDrill", () => {
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       "source-table": PRODUCTS.id,
-      filter: ["=", ["field-id", PRODUCTS.ID.id], 42],
+      filter: ["=", ["field", PRODUCTS.ID.id, null], 42],
     });
   });
 });

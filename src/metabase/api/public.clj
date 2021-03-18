@@ -178,7 +178,7 @@
   "Get a sequence of all the `:parameter_mappings` for all the DashCards in this `dashboard-or-id`."
   [dashboard-or-id]
   (for [params (db/select-field :parameter_mappings DashboardCard
-                 :dashboard_id (u/get-id dashboard-or-id))
+                 :dashboard_id (u/the-id dashboard-or-id))
         param  params
         :when  (:parameter_id param)]
     param))
@@ -319,7 +319,7 @@
 (defn- query->referenced-field-ids
   "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (mbql.u/match (:query query) [:field-id id] id))
+  (mbql.u/match (:query query) [:field id _] id))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template
@@ -353,8 +353,8 @@
        (db/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :special_type (mdb.u/isa :type/PK))]
-         (db/exists? Field :id search-field-id, :table_id table-id, :special_type (mdb.u/isa :type/Name))))))
+       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :semantic_type (mdb.u/isa :type/PK))]
+         (db/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.u/isa :type/Name))))))
 
 
 (defn- check-field-is-referenced-by-dashboard
@@ -478,12 +478,12 @@
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (dashboard-api/chain-filter dashboard param-key query-params))))
 
-(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:prefix"
-  "Fetch filter values for dashboard parameter `param-key`, with specified `prefix`."
-  [uuid param-key prefix :as {:keys [query-params]}]
+(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
+  "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
+  [uuid param-key query :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (dashboard-api/chain-filter dashboard param-key query-params prefix))))
+      (dashboard-api/chain-filter dashboard param-key query-params query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

@@ -1,4 +1,3 @@
-/* @flow weak */
 import { getIn } from "icepick";
 import _ from "underscore";
 

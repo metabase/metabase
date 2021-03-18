@@ -13,6 +13,8 @@ import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import type { Question } from "metabase-lib/lib/Question";
+
 type Props = {
   className?: string,
   question: Question,

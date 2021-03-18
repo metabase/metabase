@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { Join, JoinClause } from "metabase-types/types/Query";
 
 import { add, update, remove, clear } from "./util";

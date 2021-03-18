@@ -36,7 +36,7 @@
             [metabase.query-processor.middleware.limit :as limit]
             [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
             [metabase.query-processor.middleware.normalize-query :as normalize]
-            [metabase.query-processor.middleware.optimize-datetime-filters :as optimize-datetime-filters]
+            [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.query-processor.middleware.permissions :as perms]
             [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-ags]
@@ -53,6 +53,7 @@
             [metabase.query-processor.middleware.store :as store]
             [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
             [metabase.query-processor.middleware.validate :as validate]
+            [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
@@ -77,7 +78,8 @@
    #'check-features/check-features
    #'limit/limit
    #'cache/maybe-return-cached-results
-   #'optimize-datetime-filters/optimize-datetime-filters
+   #'optimize-temporal-filters/optimize-temporal-filters
+   #'validate-temporal-bucketing/validate-temporal-bucketing
    #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
