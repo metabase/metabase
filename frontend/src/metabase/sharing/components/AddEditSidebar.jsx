@@ -36,6 +36,7 @@ export function AddEditEmailSidebar({
   channelSpec,
   users,
 
+  // form callbacks
   handleSave,
   onCancel,
   onChannelPropertyChange,
@@ -198,6 +199,8 @@ export function AddEditSlackSidebar({
   formInput,
   channel,
   channelSpec,
+
+  // form callbacks
   handleSave,
   onCancel,
   onChannelPropertyChange,
