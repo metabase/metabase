@@ -11,8 +11,12 @@ import CollectionsList from "metabase/collections/components/CollectionsList";
 import { generateSchemaId } from "metabase/schema";
 import { MetabaseApi } from "metabase/services";
 
+import VirtualizedList from "metabase/components/VirtualizedList";
+
 // TODO - chastise Cam for this :P
 const SAVED_QUESTION_DB_ID = -1337;
+
+const ROW_HEIGHT = 36; // FIXME
 
 @Schemas.load({
   id: (state, props) =>
@@ -23,14 +27,18 @@ class SavedQuestionTableList extends React.Component {
     const { tables = [] } = this.props.schema;
     if (tables.length > 0) {
       return (
-        <ol className="List text-brand px1 pt2 full">
-          {tables.map(t => (
-            <li
+        <VirtualizedList
+          className="List text-brand px1 pt2 full"
+          items={tables}
+          rowHeight={ROW_HEIGHT}
+          useAutoSizerHeight={false}
+          renderItem={({ item, index }) => (
+            <div
               className="List-section"
-              key={t.id}
+              key={item.id}
               onClick={() => {
                 this.props.query
-                  .setTableId(t.id)
+                  .setTableId(item.id)
                   .setDefaultQuery()
                   .update(null, { run: true });
               }}
@@ -38,12 +46,12 @@ class SavedQuestionTableList extends React.Component {
               <div className="List-item flex mx1">
                 <a className="p1 flex-auto flex align-center cursor-pointer">
                   <Icon name="table2" className="mr1" />
-                  <h4 className="List-item-title">{t.display_name}</h4>
+                  <h4 className="List-item-title">{item.display_name}</h4>
                 </a>
               </div>
-            </li>
-          ))}
-        </ol>
+            </div>
+          )}
+        />
       );
     }
   }
@@ -109,7 +117,7 @@ class SavedQuestionPicker extends React.Component {
       };
       return (
         <div style={{ width: 480 }} className="flex">
-          <div className="bg-light border-right" style={{ width: 360 }}>
+          <div className="bg-light border-right" style={{ width: 240 }}>
             <div>
               <div
                 onClick={() => onBack()}
@@ -176,6 +184,7 @@ class SavedQuestionPicker extends React.Component {
             </div>
           </div>
           <SavedQuestionTableList
+            width={240}
             schemaName={this.state.currentSchema}
             query={this.props.query}
           />
