@@ -42,7 +42,6 @@ export function AddEditEmailSidebar({
   testPulse,
   toggleSkipIfEmpty,
   setPulse,
-  pulseId,
   users,
   handleArchive,
 }) {
@@ -62,7 +61,7 @@ export function AddEditEmailSidebar({
         <div>
           <div className="text-bold mb1">{t`To:`}</div>
           <RecipientPicker
-            isNewPulse={pulseId === undefined}
+            isNewPulse={pulse.id == null}
             autoFocus={false}
             recipients={channel.recipients}
             recipientTypes={channelSpec.recipients}

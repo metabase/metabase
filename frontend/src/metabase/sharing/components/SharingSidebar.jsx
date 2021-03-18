@@ -248,7 +248,7 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const { pulse, pulses, formInput, testPulse, pulseId, users } = this.props;
+    const { pulse, pulses, formInput, testPulse, users } = this.props;
 
     // protect from empty values that will mess this up
     if (!formInput.channels || !pulse) {
@@ -296,7 +296,6 @@ class SharingSidebar extends React.Component {
           testPulse={testPulse}
           toggleSkipIfEmpty={this.toggleSkipIfEmpty}
           setPulse={this.setPulse}
-          pulseId={pulseId}
           users={users}
           handleArchive={this.handleArchive}
         />
