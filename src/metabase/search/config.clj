@@ -61,7 +61,8 @@
 (defmethod searchable-columns-for-model (class Card)
   [_]
   [:name
-   :dataset_query])
+   :dataset_query
+   :description])
 
 (defmethod searchable-columns-for-model (class Dashboard)
   [_]
