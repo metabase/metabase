@@ -1,20 +1,12 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import {
-  handleActions,
-  createAction,
-  createThunkAction,
-  fetchData,
-} from "metabase/lib/redux";
+import { handleActions, createAction } from "metabase/lib/redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { GettingStartedApi } from "metabase/services";
-
 import { filterUntouchedFields, isEmptyObject } from "./utils.js";
 
-export const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
 export const SET_ERROR = "metabase/reference/SET_ERROR";
 export const CLEAR_ERROR = "metabase/reference/CLEAR_ERROR";
 export const START_LOADING = "metabase/reference/START_LOADING";
@@ -25,25 +17,6 @@ export const EXPAND_FORMULA = "metabase/reference/EXPAND_FORMULA";
 export const COLLAPSE_FORMULA = "metabase/reference/COLLAPSE_FORMULA";
 export const SHOW_DASHBOARD_MODAL = "metabase/reference/SHOW_DASHBOARD_MODAL";
 export const HIDE_DASHBOARD_MODAL = "metabase/reference/HIDE_DASHBOARD_MODAL";
-
-export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {
-  return async (dispatch, getState) => {
-    const requestStatePath = ["reference", "guide"];
-    const existingStatePath = requestStatePath;
-    const getData = async () => {
-      return await GettingStartedApi.get();
-    };
-
-    return await fetchData({
-      dispatch,
-      getState,
-      requestStatePath,
-      existingStatePath,
-      getData,
-      reload,
-    });
-  };
-});
 
 export const setError = createAction(SET_ERROR);
 
@@ -86,17 +59,7 @@ const fetchDataWrapper = (props, fn) => {
     props.endLoading();
   };
 };
-export const wrappedFetchGuide = async props => {
-  fetchDataWrapper(props, async () => {
-    await Promise.all([
-      props.fetchGuide(),
-      props.fetchDashboards(),
-      props.fetchMetrics(),
-      props.fetchSegments(),
-      props.fetchRealDatabasesWithMetadata(),
-    ]);
-  })();
-};
+
 export const wrappedFetchDatabaseMetadata = (props, databaseID) => {
   fetchDataWrapper(props, props.fetchDatabaseMetadata)(databaseID);
 };
@@ -114,11 +77,7 @@ export const wrappedFetchDatabaseMetadataAndQuestion = async (
 };
 export const wrappedFetchMetricDetail = async (props, metricID) => {
   fetchDataWrapper(props, async mID => {
-    await Promise.all([
-      props.fetchMetricTable(mID),
-      props.fetchMetrics(),
-      props.fetchGuide(),
-    ]);
+    await Promise.all([props.fetchMetricTable(mID), props.fetchMetrics()]);
   })(metricID);
 };
 export const wrappedFetchMetricQuestions = async (props, metricID) => {
@@ -543,9 +502,6 @@ const initialState = {
 };
 export default handleActions(
   {
-    [FETCH_GUIDE]: {
-      next: (state, { payload }) => assoc(state, "guide", payload),
-    },
     [SET_ERROR]: {
       throw: (state, { payload }) => assoc(state, "error", payload),
     },

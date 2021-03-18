@@ -385,10 +385,6 @@ export const PermissionsApi = {
   deleteGroup: DELETE("/api/permissions/group/:id"),
 };
 
-export const GettingStartedApi = {
-  get: GET("/api/getting_started"),
-};
-
 export const SetupApi = {
   create: POST("/api/setup"),
   validate_db: POST("/api/setup/validate"),
