@@ -35,7 +35,6 @@ export function AddEditEmailSidebar({
   channel,
   channelSpec,
   index,
-  emailRecipientText,
   handleSave,
   onCancel,
   onChannelPropertyChange,
@@ -61,7 +60,7 @@ export function AddEditEmailSidebar({
       <CaveatMessage />
       <div className="my2 px4">
         <div>
-          <div className="text-bold mb1">{emailRecipientText || t`To:`}</div>
+          <div className="text-bold mb1">{t`To:`}</div>
           <RecipientPicker
             isNewPulse={pulseId === undefined}
             autoFocus={false}

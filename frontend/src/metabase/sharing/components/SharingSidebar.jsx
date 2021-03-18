@@ -248,15 +248,7 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const {
-      pulse,
-      pulses,
-      formInput,
-      emailRecipientText,
-      testPulse,
-      pulseId,
-      users,
-    } = this.props;
+    const { pulse, pulses, formInput, testPulse, pulseId, users } = this.props;
 
     // protect from empty values that will mess this up
     if (!formInput.channels || !pulse) {
@@ -297,7 +289,6 @@ class SharingSidebar extends React.Component {
           formInput={formInput}
           channel={channel}
           channelSpec={channelSpec}
-          emailRecipientText={emailRecipientText}
           handleSave={this.handleSave}
           onCancel={this.onCancel}
           onChannelPropertyChange={this.onChannelPropertyChange}
