@@ -95,23 +95,6 @@ export const wrappedFetchMetricRevisions = async (props, metricID) => {
   })(metricID);
 };
 
-// export const wrappedFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
-//         clearError();
-//         startLoading();
-//         try {
-//             await Promise.all(
-//                     [props.fetchDatabaseMetadata(databaseID),
-//                      props.fetchQuestions()]
-//                 )
-//         }
-//         catch(error) {
-//             console.error(error);
-//             setError(error);
-//         }
-
-//         endLoading();
-// }
-
 export const wrappedFetchDatabases = props => {
   fetchDataWrapper(props, props.fetchRealDatabases)({});
 };
