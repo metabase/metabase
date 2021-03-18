@@ -173,7 +173,6 @@ describeWithToken("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.createUser("sandboxed");
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
