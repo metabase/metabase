@@ -318,20 +318,20 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
   (with-saml-default-setup
     (testing "The sample responses should normally fail because the <Assertion> NotOnOrAfter has passed"
       (do-with-some-validators-disabled nil #{:signature :recipient}
-       (fn []
-         (let [req-options (saml-post-request-options (saml-test-response)
-                                                      (saml20/str->base64 default-redirect-uri))]
-           (is (not (successful-login? (client-full-response :post 401 "/auth/sso" req-options))))))))
+        (fn []
+          (let [req-options (saml-post-request-options (saml-test-response)
+                                                       (saml20/str->base64 default-redirect-uri))]
+            (is (not (successful-login? (client-full-response :post 401 "/auth/sso" req-options))))))))
     (testing "If we time-travel then the sample responses *should* work"
       (let [orig saml20/validate]
         (with-redefs [saml20/validate (fn [& args]
                                         (mt/with-clock #t "2018-07-01T00:00:00.000Z"
                                           (apply orig args)))]
           (do-with-some-validators-disabled nil #{:signature :recipient :issuer}
-           (fn []
-             (let [req-options (saml-post-request-options (saml-test-response)
-                                                          (saml20/str->base64 default-redirect-uri))]
-               (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))))))))))
+            (fn []
+              (let [req-options (saml-post-request-options (saml-test-response)
+                                                           (saml20/str->base64 default-redirect-uri))]
+                (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))))))))))
 
 (deftest validate-recipient-test
   (with-saml-default-setup

@@ -156,11 +156,11 @@
         last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
         groups        (get attrs (sso-settings/saml-attribute-group))
         session       (saml-auth-fetch-or-create-user!
-                       :first-name first-name
-                       :last-name  last-name
-                       :email      email
-                       :groups     groups
-                       :attrs      attrs
-                       :request    request)
+                       {:first-name first-name
+                        :last-name  last-name
+                        :email      email
+                        :groups     groups
+                        :attrs      attrs
+                        :request    request})
         response      (resp/redirect (or continue-url (public-settings/site-url)))]
     (mw.session/set-session-cookie request response session)))

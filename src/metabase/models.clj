@@ -13,6 +13,7 @@
             [metabase.models.dimension :as dimension]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
+            [metabase.models.login-history :as login-history]
             [metabase.models.metric :as metric]
             [metabase.models.metric-important-field :as metric-important-field]
             [metabase.models.native-query-snippet :as native-query-snippet]
@@ -33,7 +34,6 @@
             [metabase.models.table :as table]
             [metabase.models.task-history :as task-history]
             [metabase.models.user :as user]
-            [metabase.models.login-history :as login-history]
             [metabase.models.view-log :as view-log]
             [potemkin :as p]))
 
