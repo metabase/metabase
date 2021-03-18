@@ -32,6 +32,8 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 
+import _ from "underscore";
+
 const mapStateToProps = (state, props) => {
   const entity = getMetric(state, props) || {};
   const guide = getGuide(state, props);
@@ -65,7 +67,11 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...metadataActions,
-  ...actions,
+
+  // Metric page doesn't use Redux isEditing state and related callbacks
+  // The state and callbacks are received via props
+  ..._.omit(actions, "startEditing", "endEditing"),
+
   onChangeLocation: push,
 };
 

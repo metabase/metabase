@@ -3,6 +3,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import MetricSidebar from "./MetricSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import MetricDetail from "metabase/reference/metrics/MetricDetail";
@@ -38,8 +40,26 @@ export default class MetricDetailContainer extends Component {
     databaseId: PropTypes.number.isRequired,
   };
 
+  constructor(props) {
+    super(props);
+    this.startEditing = this.startEditing.bind(this);
+    this.endEditing = this.endEditing.bind(this);
+  }
+
   async fetchContainerData() {
     await actions.wrappedFetchMetricDetail(this.props, this.props.metricId);
+  }
+
+  startEditing() {
+    const { metric, router } = this.props;
+    router.replace(`/reference/metrics/${metric.id}/edit`);
+    MetabaseAnalytics.trackEvent("Data Reference", "Started Editing");
+  }
+
+  endEditing() {
+    const { metric, router } = this.props;
+    router.replace(`/reference/metrics/${metric.id}`);
+    // No need to track end of editing here, as it's done by actions.clearState below
   }
 
   UNSAFE_componentWillMount() {
