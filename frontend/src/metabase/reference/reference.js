@@ -191,7 +191,6 @@ export const rUpdateFieldDetail = (formFields, props) => {
   updateDataWrapper(props, props.updateField)(formFields);
 };
 
-export const rUpdateMetricDetail = async (metric, guide, formFields, props) => {
 export const rUpdateMetricDetail = async (metric, formFields, props) => {
   props.startLoading();
   try {
@@ -199,23 +198,7 @@ export const rUpdateMetricDetail = async (metric, formFields, props) => {
     if (!isEmptyObject(editedFields)) {
       const newMetric = { ...metric, ...editedFields };
       await props.updateMetric(newMetric);
-
-      const importantFieldIds = formFields.important_fields.map(
-        field => field.id,
-      );
-      const existingImportantFieldIds =
-        guide.metric_important_fields &&
-        guide.metric_important_fields[metric.id];
-
-      const areFieldIdsIdentitical =
-        existingImportantFieldIds &&
-        existingImportantFieldIds.length === importantFieldIds.length &&
-        existingImportantFieldIds.every(id => importantFieldIds.includes(id));
-
-      if (!areFieldIdsIdentitical) {
-        await props.updateMetricImportantFields(metric.id, importantFieldIds);
-        wrappedFetchMetricDetail(props, metric.id);
-      }
+      wrappedFetchMetricDetail(props, metric.id);
     }
   } catch (error) {
     props.setError(error);
