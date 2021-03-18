@@ -1,3 +1,5 @@
+/* eslint "react/prop-types": "error" */
+
 import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
@@ -136,6 +138,10 @@ class SharingSidebar extends React.Component {
     setEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
+    pulses: PropTypes.array.isRequired,
+    onCancel: PropTypes.func.isRequired,
+    setPulseArchived: PropTypes.func.isRequired,
+    users: PropTypes.array,
   };
 
   setPulse = pulse => {

@@ -1,4 +1,7 @@
+/* eslint "react/prop-types": "error" */
+
 import React from "react";
+import PropTypes from "prop-types";
 import { t, ngettext, msgid } from "ttag";
 import { Flex } from "grid-styled";
 
@@ -74,6 +77,13 @@ function PulsesListSidebar({
   );
 }
 
+PulsesListSidebar.propTypes = {
+  pulses: PropTypes.array.isRequired,
+  createSubscription: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  editPulse: PropTypes.func.isRequired,
+};
+
 function EmailRecipients({ pulse }) {
   const recipients = pulse.channels[0].recipients;
   const [first, ...rest] = recipients;
@@ -112,6 +122,10 @@ function EmailRecipients({ pulse }) {
     </div>
   );
 }
+
+EmailRecipients.propTypes = {
+  pulse: PropTypes.object.isRequired,
+};
 
 function friendlySchedule(channel) {
   let scheduleString = "";

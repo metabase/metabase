@@ -1,4 +1,7 @@
+/* eslint "react/prop-types": "error" */
+
 import React from "react";
+import PropTypes from "prop-types";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
@@ -51,7 +54,7 @@ function NewPulseSidebar({
             >
               {!emailConfigured &&
                 jt`You'll need to ${(
-                  <Link to="/admin/settings/email" className="link">
+                  <Link key="link" to="/admin/settings/email" className="link">
                     set up email
                   </Link>
                 )} first.`}
@@ -89,7 +92,7 @@ function NewPulseSidebar({
             >
               {!slackConfigured &&
                 jt`First, you'll have to ${(
-                  <Link to="/admin/settings/slack" className="link">
+                  <Link key="link" to="/admin/settings/slack" className="link">
                     configure Slack
                   </Link>
                 )}.`}
@@ -102,5 +105,13 @@ function NewPulseSidebar({
     </Sidebar>
   );
 }
+
+NewPulseSidebar.propTypes = {
+  onCancel: PropTypes.func.isRequired,
+  emailConfigured: PropTypes.bool.isRequired,
+  slackConfigured: PropTypes.bool.isRequired,
+  onNewEmailPulse: PropTypes.func.isRequired,
+  onNewSlackPulse: PropTypes.func.isRequired,
+};
 
 export default NewPulseSidebar;

@@ -1,4 +1,7 @@
+/* eslint "react/prop-types": "error" */
+
 import React from "react";
+import PropTypes from "prop-types";
 import _ from "underscore";
 import { t, jt, ngettext, msgid } from "ttag";
 
@@ -19,6 +22,8 @@ import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
 
 const Heading = ({ children }) => <h4>{children}</h4>;
+Heading.propTypes = { children: PropTypes.any };
+
 export const CHANNEL_ICONS = {
   email: "mail",
   slack: "slack",
@@ -137,6 +142,22 @@ export function AddEditEmailSidebar({
   );
 }
 
+AddEditEmailSidebar.propTypes = {
+  pulse: PropTypes.object.isRequired,
+  formInput: PropTypes.object.isRequired,
+  channel: PropTypes.object.isRequired,
+  channelSpec: PropTypes.object.isRequired,
+  users: PropTypes.array,
+  handleSave: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  onChannelPropertyChange: PropTypes.func.isRequired,
+  onChannelScheduleChange: PropTypes.func.isRequired,
+  testPulse: PropTypes.func.isRequired,
+  toggleSkipIfEmpty: PropTypes.func.isRequired,
+  setPulse: PropTypes.func.isRequired,
+  handleArchive: PropTypes.func.isRequired,
+};
+
 function DeleteSubscriptionAction({ pulse, handleArchive }) {
   return pulse.id != null && !pulse.archived ? (
     <div className="border-top pt1 pb3 flex justify-end">
@@ -159,34 +180,39 @@ function DeleteSubscriptionAction({ pulse, handleArchive }) {
   ) : null;
 }
 
+DeleteSubscriptionAction.propTypes = {
+  pulse: PropTypes.object.isRequired,
+  handleArchive: PropTypes.func.isRequired,
+};
+
 function getConfirmItems(pulse) {
   return pulse.channels.map((c, index) =>
     c.channel_type === "email" ? (
       <span key={index}>
         {jt`This dashboard will no longer be emailed to ${(
-          <strong>
+          <strong key="msg">
             {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
               c.recipients.length,
             )}
           </strong>
-        )} ${<strong>{c.schedule_type}</strong>}`}
+        )} ${<strong key="type">{c.schedule_type}</strong>}`}
         .
       </span>
     ) : c.channel_type === "slack" ? (
       <span key={index}>
         {jt`Slack channel ${(
-          <strong>{c.details && c.details.channel}</strong>
+          <strong key="msg">{c.details && c.details.channel}</strong>
         )} will no longer get this dashboard ${(
-          <strong>{c.schedule_type}</strong>
+          <strong key="type">{c.schedule_type}</strong>
         )}`}
         .
       </span>
     ) : (
       <span key={index}>
         {jt`Channel ${(
-          <strong>{c.channel_type}</strong>
+          <strong key="msg">{c.channel_type}</strong>
         )} will no longer receive this dashboard ${(
-          <strong>{c.schedule_type}</strong>
+          <strong key="type">{c.schedule_type}</strong>
         )}`}
         .
       </span>
@@ -263,19 +289,35 @@ export function AddEditSlackSidebar({
   );
 }
 
+AddEditSlackSidebar.propTypes = {
+  pulse: PropTypes.object.isRequired,
+  formInput: PropTypes.object.isRequired,
+  channel: PropTypes.object.isRequired,
+  channelSpec: PropTypes.object.isRequired,
+  users: PropTypes.array,
+  handleSave: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  onChannelPropertyChange: PropTypes.func.isRequired,
+  onChannelScheduleChange: PropTypes.func.isRequired,
+  toggleSkipIfEmpty: PropTypes.func.isRequired,
+  handleArchive: PropTypes.func.isRequired,
+};
+
 function CaveatMessage() {
   return (
-    <Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${(
-      <span className="text-bold">Note:</span>
-    )} charts in your subscription won't look the same as in your dashboard. ${(
+    <Text className="mx4 my2 p2 bg-light text-dark rounded">
+      <span className="text-bold">{t`Note`}:</span>
+      {t`charts in your subscription won't look the same as in your dashboard.`}
+      &nbsp;
       <ExternalLink
         className="link"
         target="_blank"
         href={MetabaseSettings.docsUrl("users-guide/dashboard-subscriptions")}
       >
-        Learn more
+        {t`Learn more`}
       </ExternalLink>
-    )}.`}</Text>
+      .
+    </Text>
   );
 }
 
@@ -304,7 +346,7 @@ function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
               }
             >
               {field.options.map(option => (
-                <Option name={option} value={option}>
+                <Option key={option} name={option} value={option}>
                   {option}
                 </Option>
               ))}
@@ -315,3 +357,9 @@ function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
     </div>
   );
 }
+
+ChannelFields.propTypes = {
+  channel: PropTypes.object.isRequired,
+  channelSpec: PropTypes.object.isRequired,
+  onChannelPropertyChange: PropTypes.func.isRequired,
+};
