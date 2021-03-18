@@ -8,7 +8,7 @@ const LoginHistoryItemRow = item => {
       <td>
         <tt>{item.timestamp}</tt>
       </td>
-      <td>{item.location && item.location.description}</td>
+      <td>{item.location}</td>
       <td>
         <tt>{item.device_description}</tt>
       </td>

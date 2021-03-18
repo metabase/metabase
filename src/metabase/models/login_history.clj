@@ -7,7 +7,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]
-            [toucan.models :as models]))
+            [toucan.models :as models]
+            [user-agent :as user-agent]))
 
 (models/defmodel LoginHistory :login_history)
 
@@ -27,11 +28,9 @@
    {:post-select post-select
     :pre-update  pre-update}))
 
-(defn- describe-location [{:keys [city region country organization]}]
-  (when (or city region country)
-    (format "%s (%s)"
-            (str/join ", " (filter some? [city region country]))
-            organization)))
+(defn- describe-location [{:keys [city region country]}]
+  (when-let [info (not-empty (remove str/blank? [city region country]))]
+    (str/join ", " info)))
 
 (defn- geocode-ip-address* [ip-address]
   (try
@@ -42,11 +41,9 @@
           info          (-> (http/get url)
                             :body
                             (json/parse-string true)
-                            (select-keys [:country :region :city :organization :latitude :longitude])
-                            (update :latitude parse-lat-lon)
-                            (update :longitude parse-lat-lon))]
-      (assoc info :description (or (describe-location info)
-                                   ip-address)))
+                            (select-keys [:country :region :city]))]
+      (or (describe-location info)
+          "Unknown location"))
     (catch Throwable e
       (log/error e (trs "Error geocoding IP addresss"))
       nil)))
@@ -55,13 +52,25 @@
 (def ^:private ^{:arglists '([ip-address])} geocode-ip-address
   (memoize/ttl geocode-ip-address* :ttl/threshold (u/minutes->ms 30)))
 
+(defn- describe-user-agent [user-agent-string]
+  (when-let [info (some-> user-agent-string user-agent/parse not-empty)]
+    (let [device-type  (or (:type-name info) (tru "Unknown device type"))
+          os-name      (or (get-in info [:os :name]) (tru "Unknown OS"))
+          browser-name (or (:name info) (tru "Unknown browser"))]
+      (format "%s (%s/%s)" device-type browser-name os-name))))
+
+(defn- nicely-format-login-history [history-item]
+  (-> history-item
+      (assoc :location (geocode-ip-address (:ip_address history-item)))
+      (update :device_description describe-user-agent )))
+
 (defn login-history
   "Return complete login history (sorted by most-recent -> least-recent) for `user-or-id`"
   [user-or-id]
   ;; TODO -- should this only return history in some window, e.g. last 3 months? I think for auditing purposes it's
   ;; nice to be able to see every log in that's every happened with an account. Maybe we should page this, or page the
   ;; API endpoint?
-  (for [history (db/select [LoginHistory :timestamp :session_id :device_id :device_description :ip_address]
-                  :user_id (u/the-id user-or-id)
-                  {:order-by [[:timestamp :desc]]})]
-    (assoc history :location (geocode-ip-address (:ip_address history)))))
+  (for [history-item (db/select [LoginHistory :timestamp :session_id :device_id :device_description :ip_address]
+                       :user_id (u/the-id user-or-id)
+                       {:order-by [[:timestamp :desc]]})]
+    (nicely-format-login-history history-item)))
