@@ -34,7 +34,8 @@ export function AddEditEmailSidebar({
   formInput,
   channel,
   channelSpec,
-  index,
+  users,
+
   handleSave,
   onCancel,
   onChannelPropertyChange,
@@ -42,7 +43,6 @@ export function AddEditEmailSidebar({
   testPulse,
   toggleSkipIfEmpty,
   setPulse,
-  users,
   handleArchive,
 }) {
   return (
@@ -67,7 +67,7 @@ export function AddEditEmailSidebar({
             recipientTypes={channelSpec.recipients}
             users={users}
             onRecipientsChange={recipients =>
-              onChannelPropertyChange(index, "recipients", recipients)
+              onChannelPropertyChange("recipients", recipients)
             }
           />
         </div>
@@ -75,7 +75,6 @@ export function AddEditEmailSidebar({
           <ChannelFields
             channel={channel}
             channelSpec={channelSpec}
-            index={index}
             onChannelPropertyChange={onChannelPropertyChange}
           />
         )}
@@ -93,7 +92,7 @@ export function AddEditEmailSidebar({
             channelSpec && channelSpec.type
           ] || t`Messages`} will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
-            onChannelScheduleChange(index, newSchedule, changedProp)
+            onChannelScheduleChange(newSchedule, changedProp)
           }
         />
         <div className="pt2 pb1">
@@ -199,7 +198,6 @@ export function AddEditSlackSidebar({
   formInput,
   channel,
   channelSpec,
-  index,
   handleSave,
   onCancel,
   onChannelPropertyChange,
@@ -224,7 +222,6 @@ export function AddEditSlackSidebar({
           <ChannelFields
             channel={channel}
             channelSpec={channelSpec}
-            index={index}
             onChannelPropertyChange={onChannelPropertyChange}
           />
         )}
@@ -242,7 +239,7 @@ export function AddEditSlackSidebar({
             channelSpec && channelSpec.type
           ] || t`Messages`} will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
-            onChannelScheduleChange(index, newSchedule, changedProp)
+            onChannelScheduleChange(newSchedule, changedProp)
           }
         />
         <div className="text-bold py2 mt2 flex justify-between align-center border-top">
@@ -279,12 +276,7 @@ function CaveatMessage() {
   );
 }
 
-function ChannelFields({
-  channel,
-  channelSpec,
-  index,
-  onChannelPropertyChange,
-}) {
+function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
   const valueForField = field => {
     const value = channel.details && channel.details[field.name];
     return value != null ? value : null; // convert undefined to null so Uncontrollable doesn't ignore changes
@@ -302,7 +294,7 @@ function ChannelFields({
               searchProp="name"
               // Address #5799 where `details` object is missing for some reason
               onChange={o =>
-                onChannelPropertyChange(index, "details", {
+                onChannelPropertyChange("details", {
                   ...channel.details,
                   [field.name]: o.target.value,
                 })

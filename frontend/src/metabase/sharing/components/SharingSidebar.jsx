@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
 
 import NewPulseSidebar from "metabase/sharing/components/NewPulseSidebar";
 import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
@@ -285,14 +286,19 @@ class SharingSidebar extends React.Component {
       return (
         <AddEditEmailSidebar
           pulse={pulse}
-          index={index}
           formInput={formInput}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
           onCancel={this.onCancel}
-          onChannelPropertyChange={this.onChannelPropertyChange}
-          onChannelScheduleChange={this.onChannelScheduleChange}
+          onChannelPropertyChange={_.partial(
+            this.onChannelPropertyChange,
+            index,
+          )}
+          onChannelScheduleChange={_.partial(
+            this.onChannelScheduleChange,
+            index,
+          )}
           testPulse={testPulse}
           toggleSkipIfEmpty={this.toggleSkipIfEmpty}
           setPulse={this.setPulse}
@@ -324,14 +330,19 @@ class SharingSidebar extends React.Component {
       return (
         <AddEditSlackSidebar
           pulse={pulse}
-          index={index}
           formInput={formInput}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
           onCancel={this.onCancel}
-          onChannelPropertyChange={this.onChannelPropertyChange}
-          onChannelScheduleChange={this.onChannelScheduleChange}
+          onChannelPropertyChange={_.partial(
+            this.onChannelPropertyChange,
+            index,
+          )}
+          onChannelScheduleChange={_.partial(
+            this.onChannelScheduleChange,
+            index,
+          )}
           toggleSkipIfEmpty={this.toggleSkipIfEmpty}
           handleArchive={this.handleArchive}
         />
