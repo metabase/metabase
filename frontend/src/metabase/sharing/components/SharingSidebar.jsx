@@ -279,8 +279,7 @@ class SharingSidebar extends React.Component {
         return <Sidebar />;
       }
 
-      const channel = channelDetails[0][0];
-      const index = channelDetails[0][1];
+      const [channel, index] = channelDetails[0];
       const channelSpec = formInput.channels.email;
 
       return (
@@ -312,20 +311,16 @@ class SharingSidebar extends React.Component {
       editingMode === "add-edit-slack" &&
       (pulse.channels && pulse.channels.length > 0)
     ) {
-      const channelType = "slack";
-
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
-        .filter(([c, i]) => c.enabled && c.channel_type === channelType);
+        .filter(([c, i]) => c.enabled && c.channel_type === "slack");
 
       // protection from a failure where the channels aren't loaded yet
       if (channelDetails.length === 0) {
         return <Sidebar />;
       }
 
-      const channel = channelDetails[0][0];
-      const index = channelDetails[0][1];
-
+      const [channel, index] = channelDetails[0];
       const channelSpec = formInput.channels.slack;
       return (
         <AddEditSlackSidebar
