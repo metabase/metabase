@@ -367,15 +367,35 @@
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [Card]
-      (is (= :wow
-             (mt/user-http-request
-              :rasta
-              :post
-              202
-              "card"
-              (assoc (card-with-name-and-query)
-                     :result_metadata    []
-                     :metadata_checksum  (#'results-metadata/metadata-checksum []))))))))
+      (let [ignore-keys       [:id :database_id :table_id :created_at :updated_at]
+            card              (card-with-name-and-query)
+            expected-defaults {:dashboard_count 0
+                               :creator_id      (mt/user->id :rasta)
+                               :creator         (merge
+                                                 (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
+                                                 {:common_name  "Rasta Toucan"
+                                                  :is_superuser false
+                                                  :is_qbnewb    true
+                                                  :last_name    "Toucan"
+                                                  :first_name   "Rasta"
+                                                  :email        "rasta@metabase.com"})
+                               :dataset_query   (mt/obj->json->obj (:dataset_query card))
+                               :query_type      "query"
+                               :can_write       true
+                               :collection_id   nil
+                               :collection      nil
+                               :result_metadata (mt/obj->json->obj (:result_metadata card))}
+            expected           (merge card-defaults card expected-defaults)
+            md-checksum        (#'results-metadata/metadata-checksum [])
+            actual             (mt/user-http-request :rasta
+                                                     :post
+                                                     202
+                                                     "card"
+                                                     (assoc card
+                                                            :result_metadata   []
+                                                            :metadata_checksum md-checksum))]
+        (is (= (apply dissoc expected ignore-keys)
+               (apply dissoc actual ignore-keys)))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
