@@ -376,7 +376,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           value={source}
           style={{ ...inputStyle, paddingLeft: 26 }}
           theme="ace/theme/metabase"
-          mode="ace/mode/javascript"
+          mode="ace/mode/mbce"
           ref="input"
           onChange={e => this.onExpressionChange(e)}
           sizeToFit
