@@ -96,6 +96,7 @@ const Errors = ({ compileError }) => {
 export default class ExpressionEditorTextfield extends React.Component {
   constructor() {
     super();
+    this.input = React.createRef();
     // memoize processSource for performance when editing previously seen source/targetOffset
     this._processSource = memoize(processSource, ({ source, targetOffset }) =>
       // resovle should include anything that affect the results of processSource
@@ -168,7 +169,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       this.state.source.length,
       this.state.source.length === 0,
     );
-    this.refs.input._editor.focus();
+    this.input.current._editor.focus();
   }
 
   onSuggestionSelected = index => {
@@ -274,14 +275,14 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   _setCaretPosition = (position, autosuggest) => {
-    this.setAcePosition(this.refs.input._editor, [position, position]);
+    this.setAcePosition(this.input.current._editor, [position, position]);
     if (autosuggest) {
       setTimeout(() => this._triggerAutosuggest());
     }
   };
 
   onExpressionChange(source) {
-    const editor = this.refs.input._editor;
+    const editor = this.input.current._editor;
     if (!editor) {
       return;
     }
@@ -377,7 +378,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           style={{ ...inputStyle, paddingLeft: 26 }}
           theme="ace/theme/metabase"
           mode="ace/mode/mbce"
-          ref="input"
+          ref={this.input}
           onChange={e => this.onExpressionChange(e)}
           sizeToFit
           aceAutocomplete={false}
