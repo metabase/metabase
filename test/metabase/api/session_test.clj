@@ -6,7 +6,7 @@
             [metabase.api.session :as session-api]
             [metabase.driver.h2 :as h2]
             [metabase.email-test :as et]
-            [metabase.http-client :as client]
+            [metabase.http-client :as http-client]
             [metabase.models :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :as setting]
@@ -57,7 +57,7 @@
           (is (schema= {:id                 su/IntGreaterThanZero
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          client/UUIDString
+                        :device_id          http-client/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
