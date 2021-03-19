@@ -13,6 +13,38 @@ describe("collection permissions", () => {
     cy.server();
   });
 
+  describe("item management", () => {
+    Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
+      context(`${permission} access`, () => {
+        userGroup.forEach(user => {
+          onlyOn(permission === "curate", () => {
+            describe(`${user} user`, () => {
+              beforeEach(() => {
+                cy.signIn(user);
+              });
+
+              it.skip("should be able to duplicate the dashboard without obstructions from the modal (metabase#15256)", () => {
+                cy.visit("/collection/root");
+                openEllipsisMenuFor("Orders in a dashboard");
+                cy.findByText("Duplicate this item").click();
+                cy.get(".Modal")
+                  .as("modal")
+                  .within(() => {
+                    cy.findByRole("button", { name: "Duplicate" })
+                      .should("not.be.disabled")
+                      .click();
+                    cy.findByText("Failed").should("not.exist");
+                  });
+                cy.get("@modal").should("not.exist");
+                cy.findByText("Orders in a dashboard - Duplicate");
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+
   describe("revision history", () => {
     beforeEach(() => {
       cy.route("POST", "/api/revision/revert").as("revert");
@@ -69,4 +101,12 @@ function clickRevert(event_name) {
     .closest("tr")
     .findByText(/Revert/i)
     .click();
+}
+
+function openEllipsisMenuFor(item, index = 0) {
+  cy.findAllByText(item)
+    .eq(index)
+    .closest("a")
+    .find(".Icon-ellipsis")
+    .click({ force: true });
 }
