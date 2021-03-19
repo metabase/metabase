@@ -275,17 +275,19 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   _setCaretPosition = (position, autosuggest) => {
-    this.setAcePosition(this.input.current._editor, [position, position]);
-    if (autosuggest) {
-      setTimeout(() => this._triggerAutosuggest());
+    if (this.input.current) {
+      this.setAcePosition(this.input.current._editor, [position, position]);
+      if (autosuggest) {
+        setTimeout(() => this._triggerAutosuggest());
+      }
     }
   };
 
   onExpressionChange(source) {
-    const editor = this.input.current._editor;
-    if (!editor) {
+    if (!this.input.current || !this.input.current._editor) {
       return;
     }
+    const editor = this.input.current._editor;
 
     const [selectionStart, selectionEnd] = this.getAcePosition(editor);
     const hasSelection = selectionStart !== selectionEnd;
