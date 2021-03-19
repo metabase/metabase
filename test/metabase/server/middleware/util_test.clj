@@ -1,6 +1,6 @@
 (ns metabase.server.middleware.util-test
   (:require [clojure.test :refer :all]
-            [metabase.server.middleware.util :as mw.util]))
+            [metabase.server.middleware.util :as middleware.u]))
 
 (deftest https-request?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
@@ -17,4 +17,4 @@
                               {"origin" "http://mysite.com"}   false}]
     (testing (pr-str (list 'https-request? {:headers headers}))
       (is (= expected
-             (mw.util/https-request? {:headers headers}))))))
+             (middleware.u/https-request? {:headers headers}))))))
