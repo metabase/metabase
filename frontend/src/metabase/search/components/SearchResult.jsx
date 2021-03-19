@@ -185,20 +185,16 @@ function InfoText({ result }) {
                   {({ list }) =>
                     list && list.length > 1 ? (
                       <span>
-                        {list.length > 1 && (
-                          <span>
-                            <Icon name="chevronright" mx="4px" size={10} />
-                            {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
-                            <Link
-                              to={Urls.browseSchema({
-                                db: { id: result.database_id },
-                                schema_name: result.table_schema,
-                              })}
-                            >
-                              {result.table_schema}
-                            </Link>
-                          </span>
-                        )}
+                        <Icon name="chevronright" mx="4px" size={10} />
+                        {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
+                        <Link
+                          to={Urls.browseSchema({
+                            db: { id: result.database_id },
+                            schema_name: result.table_schema,
+                          })}
+                        >
+                          {result.table_schema}
+                        </Link>
                       </span>
                     ) : null
                   }
