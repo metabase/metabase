@@ -1,4 +1,5 @@
 import Question from "metabase-lib/lib/Question";
+import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type { Card } from "metabase-types/types/Card";
@@ -98,7 +99,10 @@ export function getParameterMappingOptions(
             name: dimension.displayName(),
             icon: dimension.icon(),
             target: ["dimension", dimension.mbql()],
-            isForeign: !!(dimension.fk() || dimension.joinAlias()),
+            // these methods don't exist on instances of ExpressionDimension
+            isForeign: !!(dimension instanceof ExpressionDimension
+              ? false
+              : dimension.fk() || dimension.joinAlias()),
           })),
         ),
     );
