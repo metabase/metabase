@@ -19,7 +19,15 @@
                                      26
                                      {:source-field 5}]]
                            :value [3 9]})
-           [:between [:field 26 {:source-field 5}] 3 9])))
+           [:between [:field 26 {:source-field 5}] 3 9]))
+    (testing "equality is variadic"
+      (is (= [:= [:field 26 {:source-field 5}] 3 4 5]
+             (ops/to-clause {:type :number/=
+                             :target [:dimension
+                                      [:field
+                                       26
+                                       {:source-field 5}]]
+                             :value [3 4 5]})))))
   (testing "string operations"
     (is (= (ops/to-clause {:type :string/starts-with
                            :target [:dimension
@@ -47,9 +55,7 @@
                 (is false "Did not throw")
                 (catch Exception e
                   (ex-data e))))]
-      (doseq [[op values] [[:string/= ["a" "b"]]
-                           [:string/starts-with ["a" "b"]]
-                           [:number/= [1 2 3]]
+      (doseq [[op values] [[:string/starts-with ["a" "b"]]
                            [:number/between [1]]
                            [:number/between [1 2 3]]]]
         (is (schema= {:param-type (s/eq op)

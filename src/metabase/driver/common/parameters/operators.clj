@@ -12,19 +12,20 @@
             [metabase.query-processor.error-type :as qp.error-type]
             [schema.core :as s]))
 
-(def ^:private unary {:string/=                :=
-                      :string/starts-with      :starts-with
+(def ^:private unary {:string/starts-with      :starts-with
                       :string/ends-with        :ends-with
                       :string/contains         :contains
                       :string/does-not-contain :does-not-contain
-                      :number/=                :=
                       :number/!=               :!=
                       :number/>=               :>=
                       :number/<=               :<=})
 
 (def ^:private binary {:number/between :between})
 
-(def ^:private all-ops (into #{} (mapcat keys [unary binary])))
+(def ^:private variadic {:string/= :=
+                         :number/= :=})
+
+(def ^:private all-ops (into #{} (mapcat keys [unary binary variadic])))
 
 (s/defn operator? :- s/Bool
   "Returns whether param-type is an \"operator\" type."
@@ -41,13 +42,19 @@
                                :param-value param-value
                                :field-id    (second field)
                                :type        qp.error-type/invalid-parameter}))))]
-    (cond (contains? unary param-type)  (maybe-arity-error 1)
-          (contains? binary param-type) (maybe-arity-error 2)
-          :else                         (throw (ex-info (format "Unrecognized operation: %s" param-type)
-                                                        {:param-type  param-type
-                                                         :param-value param-value
-                                                         :field-id    (second field)
-                                                         :type        qp.error-type/invalid-parameter})))))
+    (cond (contains? unary param-type)    (maybe-arity-error 1)
+          (contains? binary param-type)   (maybe-arity-error 2)
+          (contains? variadic param-type) (when-not (seq param-value)
+                                            (throw (ex-data (format "No values provided for operator: %s" param-type)
+                                                            {:param-type  param-type
+                                                             :param-value param-value
+                                                             :field-id    (second field)
+                                                             :type        qp.error-type/invalid-parameter})))
+          :else                           (throw (ex-info (format "Unrecognized operation: %s" param-type)
+                                                          {:param-type  param-type
+                                                           :param-value param-value
+                                                           :field-id    (second field)
+                                                           :type        qp.error-type/invalid-parameter})))))
 
 (s/defn to-clause :- mbql.s/Filter
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
@@ -60,6 +67,9 @@
 
           (contains? unary param-type)
           [(unary param-type) field' a]
+
+          (contains? variadic param-type)
+          (into [(variadic param-type) field'] param-value)
 
           :else (throw (ex-info (format "Unrecognized operator: %s" param-type)
                                 {:param-type param-type
