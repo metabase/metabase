@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.reader.edn :as edn]
             [java-time :as t]
-            [metabase.server.request.util :as request.u]
-            [metabase.test :as mt]))
+            [metabase.server.request.util :as request.u]))
 
 (deftest https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
@@ -32,7 +31,7 @@
          (request.u/device-info @mock-request))))
 
 (deftest describe-user-agent-test
-  (mt/are+ [user-agent expected] (= expected (request.u/describe-user-agent user-agent))
+  (are [user-agent expected] (= expected (request.u/describe-user-agent user-agent))
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"
     "Browser (Chrome/Windows)"
 
@@ -52,7 +51,7 @@
     nil))
 
 (deftest geocode-ip-address-test
-  (mt/are+ [ip-address expected] (= expected (request.u/geocode-ip-address ip-address))
+  (are [ip-address expected] (= expected (request.u/geocode-ip-address ip-address))
     "8.8.8.8"
     {:description "United States", :timezone (t/zone-id "America/Chicago")}
 
