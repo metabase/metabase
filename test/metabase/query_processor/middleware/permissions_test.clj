@@ -65,13 +65,13 @@
     (mt/with-temp* [Database [db]
                     Table    [table {:db_id (u/the-id db)}]]
       ;; query should be returned by middleware unchanged
-      (= {:database (u/the-id db)
-          :type     :query
-          :query    {:source-table (u/the-id table)}}
-         (check-perms-for-rasta
-          {:database (u/the-id db)
-           :type     :query
-           :query    {:source-table (u/the-id table)}})))))
+      (is (= {:database (u/the-id db)
+              :type     :query
+              :query    {:source-table (u/the-id table)}}
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-table (u/the-id table)}}))))))
 
 (deftest nested-native-query-test
   (testing "Make sure nested native query fails to run if current user doesn't have perms"
@@ -84,13 +84,13 @@
   (testing "...but it should work if user has perms [nested native queries]"
     (mt/with-temp Database [db]
       ;; query should be returned by middleware unchanged
-      (= {:database (u/the-id db)
-          :type     :query
-          :query    {:source-query {:native "SELECT * FROM VENUES"}}}
-         (check-perms-for-rasta
-          {:database (u/the-id db)
-           :type     :query
-           :query   {:source-query {:native "SELECT * FROM VENUES"}}})))))
+      (is (= {:database (u/the-id db)
+              :type     :query
+              :query    {:source-query {:native "SELECT * FROM VENUES"}}}
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :query
+               :query   {:source-query {:native "SELECT * FROM VENUES"}}}))))))
 
 (deftest nested-mbql-query-test
   (testing "Make sure nested MBQL query fails to run if current user doesn't have perms"
@@ -107,13 +107,13 @@
   (testing "...but it should work if user has perms [nested MBQL queries]"
     (mt/with-temp* [Database [db]
                     Table    [table {:db_id (u/the-id db)}]]
-      (= {:database (u/the-id db)
-          :type     :query
-          :query    {:source-query {:source-table (u/the-id table)}}}
-         (check-perms-for-rasta
-          {:database (u/the-id db)
-           :type     :query
-           :query    {:source-query {:source-table (u/the-id table)}}})))))
+      (is (= {:database (u/the-id db)
+              :type     :query
+              :query    {:source-query {:source-table (u/the-id table)}}}
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-query {:source-table (u/the-id table)}}}))))))
 
 (deftest template-tags-referenced-queries-test
   (testing "Fails for MBQL query referenced in template tag, when user has no perms to referenced query"

@@ -64,8 +64,8 @@
         "Updated setting should be visible from API endpoint")
 
     (testing "Check non-superuser can't set a Setting"
-      (= "You don't have permissions to do that."
-         (mt/user-http-request :rasta :put 403 "setting/test-setting-1" {:value "NICE!"})))))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 "setting/test-setting-1" {:value "NICE!"}))))))
 
 (deftest fetch-sensitive-setting-test
   (testing "Sensitive settings should always come back obfuscated"

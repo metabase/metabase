@@ -367,10 +367,15 @@
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [Card]
-      (= :wow
-         (mt/user-http-request :rasta :post 202 "card" (assoc (card-with-name-and-query)
-                                                              :result_metadata    []
-                                                              :metadata_checksum  (#'results-metadata/metadata-checksum [])))))))
+      (is (= :wow
+             (mt/user-http-request
+              :rasta
+              :post
+              202
+              "card"
+              (assoc (card-with-name-and-query)
+                     :result_metadata    []
+                     :metadata_checksum  (#'results-metadata/metadata-checksum []))))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -1209,8 +1214,8 @@
         (let [card (mt/user-http-request :rasta :post 202 "card"
                                          (assoc (card-with-name-and-query)
                                                 :collection_id (u/the-id collection)))]
-          (= (db/select-one-field :collection_id Card :id (u/the-id card))
-             (u/the-id collection)))))))
+          (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
+                 (u/the-id collection))))))))
 
 (deftest make-sure-we-card-creation-fails-if-we-try-to-set-a--collection-id--we-don-t-have-permissions-for
   (testing "POST /api/card"
@@ -1227,8 +1232,8 @@
     (mt/with-temp* [Card       [card]
                     Collection [collection]]
       (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card)) {:collection_id (u/the-id collection)})
-      (= (db/select-one-field :collection_id Card :id (u/the-id card))
-         (u/the-id collection)))))
+      (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
+             (u/the-id collection))))))
 
 (deftest update-card-require-parent-perms-test
   (testing "Should require perms for the parent collection to change a Card's properties"
@@ -1438,8 +1443,10 @@
     (testing "Attempting to share a Card that's already shared should return the existing public UUID"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp Card [card (shared-card)]
-          (= (:public_uuid card)
-             (:uuid (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card))))))))))
+          (is (= (:public_uuid card)
+                 (:uuid (mt/user-http-request :crowberto :post 200 (format
+                                                                    "card/%d/public_link"
+                                                                    (u/the-id card)))))))))))
 
 (deftest unshare-card-test
   (testing "DELETE /api/card/:id/public_link"

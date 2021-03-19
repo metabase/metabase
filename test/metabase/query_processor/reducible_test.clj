@@ -192,6 +192,6 @@
                       [2147483647]]
                      (process-query)))
               (testing "Should work with the middleware options used by API requests as well"
-                (= [["1"]
-                    ["2147483647"]]
-                   (process-query :middleware @api-qp-middleware-options))))))))))
+                (is (= [["1"]
+                        ["2147483647"]]
+                       (process-query :middleware @api-qp-middleware-options)))))))))))

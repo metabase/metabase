@@ -84,7 +84,7 @@
                              (mt/run-mbql-query incidents
                                {:fields   [$id $timestamp $severity]
                                 :order-by [[:asc $id]]
-                                :limit    5} ))))))))))))))
+                                :limit    5}))))))))))))))
 
 (defn- sad-toucan-incidents-with-bucketing
   "Returns 10 sad toucan incidents grouped by `unit`"

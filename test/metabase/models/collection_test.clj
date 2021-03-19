@@ -508,8 +508,8 @@
              (descendants c))))
 
     (testing "try for a grandchild"
-      (= #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}
-         (descendants d)))))
+      (is (= #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}
+             (descendants d))))))
 
 (deftest root-collection-descendants-test
   (testing "For the *Root* Collection, can we get top-level Collections?"
@@ -1516,7 +1516,7 @@
              :id       2
              :children [{:name "Grandchild", :location "/1/2/", :id 3, :children []}]}]
            (collection/collections->tree [{:name "Child", :location "/1/", :id 2}
-                                          {:name "Grandchild", :location "/1/2/", :id 3} ])))))
+                                          {:name "Grandchild", :location "/1/2/", :id 3}])))))
 
 (deftest collections->tree-permutations-test
   (testing "The tree should build a proper tree regardless of which order the Collections are passed in (#14280)"

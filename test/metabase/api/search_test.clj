@@ -204,7 +204,7 @@
                     DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
                     DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]]
       (is (= dashboard-count-results
-             (unsorted-search-request :rasta :q "dashboard-count" ))))))
+             (unsorted-search-request :rasta :q "dashboard-count"))))))
 
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
