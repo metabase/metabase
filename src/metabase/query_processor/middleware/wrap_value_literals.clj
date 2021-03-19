@@ -103,7 +103,20 @@
 
 (def ^:private raw-value? (complement mbql.u/mbql-clause?))
 
-(defn wrap-value-literals-in-mbql [mbql]
+(defn wrap-value-literals-in-mbql
+  "Given a normalized mbql query (important to desugar forms like `[:does-not-contain ...]` -> `[:not [:contains
+  ...]]`), walks over the clause and annotates literals with type information.
+
+  eg:
+
+  [:not [:contains [:field 13 {:base_type :type/Text}] \"foo\"]]
+  ->
+  [:not [:contains [:field 13 {:base_type :type/Text}]
+                   [:value \"foo\" {:base_type :type/Integer,
+                                    :semantic_type :type/FK,
+                                    :database_type \"INTEGER\",
+                                    :name \"PRODUCT_ID\"}]]]"
+  [mbql]
   (mbql.u/replace mbql
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
     [clause field (add-type-info x (type-info field))]
