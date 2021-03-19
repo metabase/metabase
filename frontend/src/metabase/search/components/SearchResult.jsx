@@ -210,13 +210,18 @@ function InfoText({ result }) {
       );
     case "segment":
     case "metric":
-      return jt`${result.model === "segment" ? "Segment of " : "Metric for "}${(
-        <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
-          <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
-            {({ table }) => (table ? <span>{table.display_name}</span> : null)}
-          </Table.Loader>
-        </Link>
-      )}`;
+      return (
+        <span>
+          {result.model === "segment" ? t`Segment of ` : t`Metric for `}
+          <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
+            <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
+              {({ table }) =>
+                table ? <span>{table.display_name}</span> : null
+              }
+            </Table.Loader>
+          </Link>
+        </span>
+      );
     default:
       return jt`${capitalize(result.model)} in ${formatCollection(collection)}`;
   }
