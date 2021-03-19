@@ -6,7 +6,9 @@
             [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [colorize.core :as colorize]
+            [environ.core :as env]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
                                      Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
@@ -794,3 +796,15 @@
   []
   (with-open [socket (ServerSocket. 0)]
     (.getLocalPort socket)))
+
+(defmacro with-env-keys-renamed-by
+  "Evaluates body with the current core.environ/env being redefined, its keys having been renamed by the given
+  rename-fn."
+  {:arglists '([rename-fn & body])}
+  [rename-fn & body]
+  `(let [e#      env/env
+         key-fn# (fn [k#]
+                   (keyword (~rename-fn (name k#))))
+         new-e#  (m/map-keys key-fn# e#)]
+     (with-redefs [env/env new-e#]
+       ~@body)))

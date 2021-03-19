@@ -1,6 +1,7 @@
 (ns metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
@@ -12,6 +13,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor-test.order-by-test] ; used for one SSL connectivity test
             [metabase.test :as mt]
             [metabase.test.data.oracle :as oracle.tx]
             [metabase.test.data.sql :as sql.tx]
@@ -231,3 +233,13 @@
                                                   &test_data_categories__via__cat.categories.id]
                                    :fk-field-id  (mt/id :venues :category_id)
                                    :fields       :none}]}))))))))
+
+(deftest oracle-connect-with-ssl-test
+  (mt/test-driver :oracle
+    (if (System/getenv "MB_ORACLE_SSL_TEST_SSL")
+      (testing "Oracle with SSL connectivity"
+        (tu/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
+          (metabase.query-processor-test.order-by-test/order-by-aggregate-fields-test)))
+      (println (u/colorize 'yellow (format "Skipping %s because %s env var is not set\n"
+                                           "oracle-connect-with-ssl-test"
+                                           "MB_ORACLE_SSL_TEST_SSL"))))))

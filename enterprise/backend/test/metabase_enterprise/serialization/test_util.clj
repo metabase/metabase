@@ -81,8 +81,8 @@
                                  :query
                                  {:source-query
                                   {:source-query
-                                   {:source-table ~'table-id
-                                    }}}}}]
+                                   {:source-table ~'table-id}}}}}]
+
                    Card       [{~'card-id-native-query :id}
                                {:query_type :native
                                 :name "My Native Nested Query Card"
