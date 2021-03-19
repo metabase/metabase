@@ -18,7 +18,7 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [deferred-tru trs]]
             [metabase.util.ssh :as ssh])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]))
@@ -75,6 +75,12 @@
 
 (defmethod driver/supports? [:mysql :full-join] [_ _] false)
 
+(def default-ssl-cert-details
+  "Server SSL certificate chain, in PEM format."
+  {:name         "ssl-cert"
+   :display-name (deferred-tru "Server SSL certificate chain")
+   :placeholder  ""})
+
 (defmethod driver/connection-properties :mysql
   [_]
   (ssh/with-tunnel-config
@@ -84,6 +90,7 @@
      driver.common/default-user-details
      driver.common/default-password-details
      driver.common/default-ssl-details
+     default-ssl-cert-details
      (assoc driver.common/default-additional-options-details
        :placeholder  "tinyInt1isBit=false")]))
 
@@ -297,12 +304,13 @@
    :useCompression       true})
 
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
-  [_ {ssl? :ssl, :keys [additional-options], :as details}]
+  [_ {ssl? :ssl, :keys [additional-options ssl-cert], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
   ;; around this by including `useSSL=true`. Check if that's there, and if it is, assume SSL status. See #9629
   ;;
   ;; TODO - should this be fixed by a data migration instead?
-  (let [ssl? (or ssl? (some-> additional-options (str/includes? "useSSL=true")))]
+  (let [ssl?      (or ssl? (some-> additional-options (str/includes? "useSSL=true")))
+        ssl-cert? (and ssl? (some? ssl-cert))]
     (when (and ssl?
                (not (some->  additional-options (str/includes? "trustServerCertificate"))))
       (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
@@ -310,7 +318,7 @@
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
      {:useSSL (boolean ssl?)}
-     (let [details (-> details
+     (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
        (-> (dbspec/mysql details)
