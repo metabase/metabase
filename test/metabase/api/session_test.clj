@@ -6,7 +6,8 @@
             [metabase.api.session :as session-api]
             [metabase.driver.h2 :as h2]
             [metabase.email-test :as et]
-            [metabase.http-client :as http-client]
+            [metabase.http-client :as client]
+            [metabase.models :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :as setting]
             [metabase.models.user :refer [User]]
@@ -16,6 +17,7 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.test.integrations.ldap :as ldap.test]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
@@ -47,9 +49,20 @@
       (is (schema= SessionResponse
                    (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
     (testing "Test that we can login with email of mixed case"
-      (let [creds (update (mt/user->credentials :rasta) :username u/upper-case-en)]
+      (let [creds    (update (mt/user->credentials :rasta) :username u/upper-case-en)
+            response (mt/client :post 200 "session" creds)]
         (is (schema= SessionResponse
-                     (mt/client :post 200 "session" creds)))))))
+                     response))
+        (testing "Login should record a LoginHistory item"
+          (is (schema= {:id                 su/IntGreaterThanZero
+                        :timestamp          java.time.OffsetDateTime
+                        :user_id            (s/eq (mt/user->id :rasta))
+                        :device_id          client/UUIDString
+                        :device_description su/NonBlankString
+                        :ip_address         su/NonBlankString
+                        :active             (s/eq true)
+                        s/Keyword s/Any}
+                       (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))))
 
 (deftest login-validation-test
   (testing "POST /api/session"
@@ -152,13 +165,26 @@
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
       (test-users/clear-cached-session-tokens!)
-      (let [session-id (test-users/username->token :rasta)]
+      (let [session-id       (test-users/username->token :rasta)
+            login-history-id (db/select-one-id LoginHistory :session_id session-id)]
+        (testing "LoginHistory should have been recorded"
+          (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
         ;; in on the next API call
         (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (Session session-id)))))))
+               (Session session-id)))
+        (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
+          (is (schema= {:id                 (s/eq login-history-id)
+                        :timestamp          java.time.OffsetDateTime
+                        :user_id            (s/eq (mt/user->id :rasta))
+                        :device_id          client/UUIDString
+                        :device_description su/NonBlankString
+                        :ip_address         su/NonBlankString
+                        :active             (s/eq false)
+                        s/Keyword           s/Any}
+                       (LoginHistory login-history-id))))))))
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
@@ -510,8 +536,7 @@
           (try
             (db/simple-delete! Session :user_id user-id)
             (is (schema= SessionResponse
-                         (mt/suppress-output
-                           (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
+                         (mt/client :post 200 "session" (mt/user->credentials :rasta))))
             (finally
               (db/update! User user-id :login_attributes nil))))))
 

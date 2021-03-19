@@ -4,7 +4,7 @@
             [clojure.test :as t]
             [medley.core :as m]
             [metabase.http-client :as http]
-            [metabase.models.user :as user :refer [User]]
+            [metabase.models.user :refer [User]]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]

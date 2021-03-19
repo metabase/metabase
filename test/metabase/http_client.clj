@@ -93,7 +93,7 @@
 (def ^:private Credentials
   {:username su/NonBlankString, :password su/NonBlankString})
 
-(def ^:private UUIDString
+(def UUIDString
   "Schema for a canonical string representation of a UUID."
   (s/constrained
    su/NonBlankString
