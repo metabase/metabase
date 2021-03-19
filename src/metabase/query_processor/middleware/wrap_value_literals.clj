@@ -103,7 +103,7 @@
 
 (def ^:private raw-value? (complement mbql.u/mbql-clause?))
 
-(defn- wrap-value-literals-in-mbql [mbql]
+(defn wrap-value-literals-in-mbql [mbql]
   (mbql.u/replace mbql
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
     [clause field (add-type-info x (type-info field))]

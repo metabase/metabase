@@ -11,8 +11,11 @@
             [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.dates :as date-params]
+            [metabase.driver.common.parameters.operators :as ops]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
@@ -210,19 +213,6 @@
   (-> (->replacement-snippet-info driver (i/map->MultipleValues {:values values}))
       (update :replacement-snippet (partial format "IN (%s)"))))
 
-(s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
-  "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
-  [driver {param-type :type, value :value} :- i/ParamValue]
-  (cond
-    ;; convert date ranges to DateRange record types
-    (date-params/date-range-type? param-type) (date-range-field-filter->replacement-snippet-info driver value)
-    ;; convert all other dates to `= <date>`
-    (date-params/date-type? param-type)       (field-filter->equals-clause-sql driver (i/map->Date {:s value}))
-    ;; for sequences of multiple values we want to generate an `IN (...)` clause
-    (sequential? value)                       (field-filter-multiple-values->in-clause-sql driver value)
-    ;; convert everything else to `= <value>`
-    :else                                     (field-filter->equals-clause-sql driver value)))
-
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert `hsql-form` to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver hsql-form]
@@ -243,8 +233,39 @@
         (sql.qp/date driver :day identifier)
         identifier)))))
 
+(s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
+  "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
+  [driver {{param-type :type, value :value :as params} :value field :field :as _field-filter}]
+  (let [prepend-field
+        (fn [x]
+          (update x :replacement-snippet
+                  (partial str (field->identifier driver field param-type) " ")))]
+    (cond
+      (ops/operator? param-type)
+      (let [[snippet & args]
+            (->> (ops/to-clause (assoc params :target
+                                       [:template-tag [:field (:name field)
+                                                       {:base-type (:base_type field)}]]))
+                 (mbql.u/desugar-filter-clause)
+                 (wrap-value-literals/wrap-value-literals-in-mbql)
+                 (sql.qp/->honeysql driver/*driver*)
+                 (hsql/format-predicate))]
+        {:replacement-snippet snippet, :prepared-statement-args (vec args)})
+      ;; convert date ranges to DateRange record types
+      (date-params/date-range-type? param-type) (prepend-field
+                                                 (date-range-field-filter->replacement-snippet-info driver value))
+      ;; convert all other dates to `= <date>`
+      (date-params/date-type? param-type)       (prepend-field
+                                                 (field-filter->equals-clause-sql driver (i/map->Date {:s value})))
+      ;; for sequences of multiple values we want to generate an `IN (...)` clause
+      (sequential? value)                       (prepend-field
+                                                 (field-filter-multiple-values->in-clause-sql driver value))
+      ;; convert everything else to `= <value>`
+      :else                                     (prepend-field
+                                                 (field-filter->equals-clause-sql driver value)))))
+
 (defmethod ->replacement-snippet-info [:sql FieldFilter]
-  [driver {:keys [field value], :as field-filter}]
+  [driver {:keys [value], :as field-filter}]
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
     ;; = 1`). This is only used for field filters outside of optional clauses
@@ -258,8 +279,7 @@
     ;; otherwise convert single value to SQL.
     ;; Convert the value to a replacement snippet info map and then tack on the field identifier to the front
     :else
-    (update (field-filter->replacement-snippet-info driver value)
-            :replacement-snippet (partial str (field->identifier driver field (:type value)) " "))))
+    (field-filter->replacement-snippet-info driver field-filter)))
 
 
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
