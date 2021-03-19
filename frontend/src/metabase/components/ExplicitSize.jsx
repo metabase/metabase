@@ -4,6 +4,7 @@ import ReactDOM from "react-dom";
 import ResizeObserver from "resize-observer-polyfill";
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default ({ selector, wrapped } = {}) => ComposedComponent =>
   class extends Component {
@@ -88,7 +89,7 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
       }
     }
 
-    _updateSize = () => {
+    _updateSize = _.throttle(() => {
       const element = this._getElement();
       if (element) {
         const { width, height } = element.getBoundingClientRect();
@@ -96,7 +97,7 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
           this.setState({ width, height });
         }
       }
-    };
+    }, 500);
 
     render() {
       if (wrapped) {
