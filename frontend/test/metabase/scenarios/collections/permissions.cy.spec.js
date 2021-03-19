@@ -38,6 +38,55 @@ describe("collection permissions", () => {
                 cy.get("@modal").should("not.exist");
                 cy.findByText("Orders in a dashboard - Duplicate");
               });
+
+              describe("managing question from the question's edit dropdown (metabase#11719)", () => {
+                beforeEach(() => {
+                  cy.route("PUT", "/api/card/1").as("updateQuestion");
+                  cy.visit("/question/1");
+                  cy.icon("pencil").click();
+                });
+
+                it("should be able to edit question details (metabase#11719-1)", () => {
+                  cy.skipOn(user === "nodata");
+                  cy.findByText("Edit this question").click();
+                  cy.findByLabelText("Name")
+                    .click()
+                    .type("1");
+                  clickButton("Save");
+                  assertOnQuestionUpdate();
+                  cy.findByText("Orders1");
+                });
+
+                it("should be able to move the question (metabase#11719-2)", () => {
+                  cy.skipOn(user === "nodata");
+                  cy.findByText("Move").click();
+                  cy.findByText("My personal collection").click();
+                  clickButton("Move");
+                  assertOnQuestionUpdate();
+                  cy.contains("37.65");
+                });
+
+                it("should be able to archive the question (metabase#11719-3)", () => {
+                  cy.findByText("Archive").click();
+                  clickButton("Archive");
+                  assertOnQuestionUpdate();
+                  cy.location("pathname").should("eq", "/collection/root");
+                  cy.findByText("Orders").should("not.exist");
+                });
+
+                /**
+                 * Custom function related to this describe block only
+                 */
+                function assertOnQuestionUpdate() {
+                  cy.wait("@updateQuestion").then(xhr => {
+                    expect(xhr.status).not.to.eq(403);
+                  });
+                  cy.findByText(
+                    "Sorry, you don’t have permission to see that.",
+                  ).should("not.exist");
+                  cy.get(".Modal").should("not.exist");
+                }
+              });
             });
           });
         });
@@ -109,4 +158,10 @@ function openEllipsisMenuFor(item, index = 0) {
     .closest("a")
     .find(".Icon-ellipsis")
     .click({ force: true });
+}
+
+function clickButton(name) {
+  cy.findByRole("button", { name })
+    .should("not.be.disabled")
+    .click();
 }
