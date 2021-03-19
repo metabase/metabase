@@ -39,6 +39,30 @@ describe("collection permissions", () => {
                 cy.findByText("Orders in a dashboard - Duplicate");
               });
 
+              describe("archive", () => {
+                it("should be able to archive/unarchive question (metabase#15253)", () => {
+                  cy.skipOn(user === "nodata");
+                  archiveUnarchive("Orders");
+                });
+
+                it("should be able to archive/unarchive dashboard", () => {
+                  archiveUnarchive("Orders in a dashboard");
+                });
+
+                function archiveUnarchive(item) {
+                  cy.visit("/collection/root");
+                  openEllipsisMenuFor(item);
+                  cy.findByText("Archive this item").click();
+                  cy.findByText(item).should("not.exist");
+                  cy.findByText(/Archived (question|dashboard)/);
+                  cy.findByText("Undo").click();
+                  cy.findByText(
+                    "Sorry, you don’t have permission to see that.",
+                  ).should("not.exist");
+                  cy.findByText(item);
+                }
+              });
+
               describe("managing question from the question's edit dropdown (metabase#11719)", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/card/1").as("updateQuestion");
