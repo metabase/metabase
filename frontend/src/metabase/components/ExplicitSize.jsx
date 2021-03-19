@@ -89,6 +89,8 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
       }
     }
 
+    // if _currentElement's dimensions change too frequently this function
+    // can freeze the application
     _updateSize = _.throttle(() => {
       const element = this._getElement();
       if (element) {
