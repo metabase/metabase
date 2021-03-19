@@ -170,6 +170,7 @@ export default class TokenizedInput extends Component {
         className={className}
         style={{ ...style }}
         contentEditable
+        spellCheck={false}
         onKeyDown={
           this.props.tokenizedEditing
             ? this.onKeyDownTokenized
