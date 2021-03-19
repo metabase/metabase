@@ -18,6 +18,7 @@
                             ;; This list isn't complete; add more forms as we come across them.
                             (define-clojure-indent
                               (let-404)
+                              (macros/case 0)
                               (match 1)
                               (l/matche '(1 (:defn)))
                               (l/matcha '(1 (:defn)))
