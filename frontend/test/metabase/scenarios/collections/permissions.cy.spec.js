@@ -44,6 +44,20 @@ describe("collection permissions", () => {
               });
             });
           });
+
+          onlyOn(permission === "view", () => {
+            describe(`${user} user`, () => {
+              it.skip("should not see revert buttons (metabase#13229)", () => {
+                cy.signIn(user);
+                cy.visit("/dashboard/1");
+                cy.icon("ellipsis").click();
+                cy.findByText("Revision history").click();
+                cy.findAllByRole("button", { name: "Revert" }).should(
+                  "not.exist",
+                );
+              });
+            });
+          });
         });
       });
     });
