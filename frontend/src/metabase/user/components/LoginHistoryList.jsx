@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React from "react";
 import { Box, Flex } from "grid-styled";
 
 import _ from "underscore";
@@ -9,18 +9,25 @@ import LoginHistory from "metabase/entities/loginHistory";
 import Card from "metabase/components/Card";
 import Label from "metabase/components/type/Label";
 import Text from "metabase/components/type/Text";
-import Subhead from "metabase/components/type/Subhead";
 
 const LoginHistoryItem = item => (
-  <Card p={1} className="my2">
+  <Card py={1} px="20px" my={2}>
     <Flex align="center">
       <Box>
-        <Label>{item.location}</Label>
-        <Text>{item.ip_address}</Text>
-        <Text color="medium">{item.device_description}</Text>
+        <Label mb="0">
+          {item.location} -{" "}
+          <span className="text-medium">{item.ip_address}</span>
+        </Label>
+        <Text color="medium" mt="-2px">
+          {item.device_description}
+        </Text>
       </Box>
-      <Flex align="right" ml="auto">
-        {item.active && <Label className="pr2 text-data">Active</Label>}
+      <Flex ml="auto">
+        {item.active && (
+          <Label pr={2} className="text-data">
+            Active
+          </Label>
+        )}
         <Label>{item.time}</Label>
       </Flex>
     </Flex>
@@ -28,10 +35,10 @@ const LoginHistoryItem = item => (
 );
 
 const LoginHistoryGroup = (items, date) => (
-  <div className="py2">
-    <Subhead>{date}</Subhead>
-    <div>{items.map(LoginHistoryItem)}</div>
-  </div>
+  <Box py={2}>
+    <Label>{date}</Label>
+    <Box>{items.map(LoginHistoryItem)}</Box>
+  </Box>
 );
 
 const formatItems = items =>
@@ -45,14 +52,11 @@ const formatItems = items =>
     };
   });
 
-@LoginHistory.loadList()
-export default class LoginHistoryList extends Component {
-  render() {
-    const { loginHistory } = this.props;
+function LoginHistoryList({ loginHistory }) {
+  const items = formatItems(loginHistory);
+  const groups = _.groupBy(items, item => item.date);
 
-    const items = formatItems(loginHistory);
-    const groups = _.groupBy(items, item => item.date);
-
-    return <div>{_.map(groups, LoginHistoryGroup)}</div>;
-  }
+  return <Box>{_.map(groups, LoginHistoryGroup)}</Box>;
 }
+
+export default LoginHistory.loadList()(LoginHistoryList);
