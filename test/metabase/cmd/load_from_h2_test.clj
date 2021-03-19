@@ -7,13 +7,14 @@
             [metabase.models :refer [Table]]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.cmd.test-util :as cmd.test-util]))
 
 (deftest load-from-h2-test
   ;; enable this test in the REPL with something like (mt/set-test-drivers! #{:postgres})
   (mt/test-drivers #{:postgres :mysql}
     (let [db-def           {:database-name "dump-test"}
-          h2-filename      "frontend/test/__runner__/test_db_fixture.db"
+          h2-filename      @cmd.test-util/fixture-db-file-path
           target-db-type   driver/*driver*
           target-jdbc-spec (sql-jdbc.conn/connection-details->spec target-db-type
                              (tx/dbdef->connection-details target-db-type :db db-def))]
