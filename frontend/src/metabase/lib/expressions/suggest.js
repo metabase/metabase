@@ -388,7 +388,7 @@ function operatorSuggestion(clause) {
     type: "operators",
     name: name,
     text: " " + name + " ",
-    prefixTrim: /\s*$/,
+    prefixTrim: new RegExp("\\s*" + name.replace(/(.{1})/g, "$1?") + "$", "i"),
     postfixTrim: new RegExp("/^s*" + escape(name) + "?s*/"),
   };
 }
