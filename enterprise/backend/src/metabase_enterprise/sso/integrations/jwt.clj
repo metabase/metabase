@@ -8,9 +8,9 @@
             [metabase.api.session :as session]
             [metabase.integrations.common :as integrations.common]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.server.request.util :as request.u]
             [metabase.util.i18n :refer [tru]]
-            [ring.util.response :as resp]
-            [metabase.server.request.util :as request.u])
+            [ring.util.response :as resp])
   (:import java.net.URLEncoder))
 
 (defn fetch-or-create-user!
