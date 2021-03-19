@@ -33,7 +33,7 @@ If you would like a reliable, scalable and fully managed Metabase, please consid
 
 ## Quick Launch
 
-Download the [Metabase Docker image](https://downloads.metabase.com/{{ site.latest_version }}/launch-aws-eb.html) to upload to Elastic Beanstalk.
+Download the [Metabase AWS source bundle file](https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip) to upload to Elastic Beanstalk.
 
 Metabase provides several pre-configured Elastic Beanstalk launch URLs to help you get started. Open one of the links below in a new tab to create an Elastic Beanstalk deployment with a few choices pre-filled. Then just follow the step-by-step instructions below to complete your installation. 
 
