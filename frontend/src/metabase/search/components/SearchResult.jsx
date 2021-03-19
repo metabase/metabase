@@ -178,9 +178,12 @@ function InfoText({ result }) {
                 <Database.Name id={result.database_id} />{" "}
               </Link>
               {result.table_schema && (
-                <Schema.ListLoader query={{ dbId: result.database_id }}>
-                  {({ list }) => {
-                    return (
+                <Schema.ListLoader
+                  query={{ dbId: result.database_id }}
+                  loadingAndErrorWrapper={false}
+                >
+                  {({ list }) =>
+                    list && list.length > 1 ? (
                       <span>
                         {list.length > 1 && (
                           <span>
@@ -197,8 +200,8 @@ function InfoText({ result }) {
                           </span>
                         )}
                       </span>
-                    );
-                  }}
+                    ) : null
+                  }
                 </Schema.ListLoader>
               )}
             </span>
@@ -207,10 +210,10 @@ function InfoText({ result }) {
       );
     case "segment":
     case "metric":
-      return jt`${result.model === "segment" ? "Segment of" : "Metric for"} ${(
+      return jt`${result.model === "segment" ? "Segment of " : "Metric for "}${(
         <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
-          <Table.Loader id={result.table_id}>
-            {({ table }) => <span>{table.display_name}</span>}
+          <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
+            {({ table }) => (table ? <span>{table.display_name}</span> : null)}
           </Table.Loader>
         </Link>
       )}`;
