@@ -132,13 +132,9 @@ describe("scenarios > collection_defaults", () => {
       describe("deeply nested collection navigation", () => {
         it("should correctly display deep nested collections", () => {
           cy.request("GET", "/api/collection").then(xhr => {
-            // "Third collection" is the last nested collection in the snapshot (data set)
-            // we need its ID to continue nesting below it
-            const THIRD_COLLECTION_ID = xhr.body.length - 1;
-
-            // sanity check and early alarm if the initial data set changes in the future
-            expect(xhr.body[THIRD_COLLECTION_ID].name).to.eq(
-              "Third collection",
+            // We need its ID to continue nesting below it
+            const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+              collection => collection.slug === "third_collection",
             );
 
             cy.log("Create two more nested collections");
