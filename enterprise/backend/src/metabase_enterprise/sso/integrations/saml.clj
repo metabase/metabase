@@ -12,6 +12,7 @@
             [metabase.integrations.common :as integrations.common]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec]
@@ -51,7 +52,7 @@
                                                        :sso_source       "saml"
                                                        :login_attributes user-attributes}))]
     (sync-groups! user group-names)
-    (session/create-session! :sso user request)))
+    (session/create-session! :sso user (request.u/device-info request))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -1,8 +1,9 @@
-(ns metabase.server.middleware.util-test
+(ns metabase.server.request.util-test
   (:require [clojure.test :refer :all]
-            [metabase.server.middleware.util :as middleware.u]))
+            [clojure.tools.reader.edn :as edn]
+            [metabase.server.request.util :as request.u]))
 
-(deftest https-request?-test
+(deftest https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
                               {"x-forwarded-proto" "http"}     false
                               {"x-forwarded-protocol" "https"} true
@@ -15,6 +16,15 @@
                               {"front-end-https" "off"}        false
                               {"origin" "https://mysite.com"}  true
                               {"origin" "http://mysite.com"}   false}]
-    (testing (pr-str (list 'https-request? {:headers headers}))
+    (testing (pr-str (list 'https? {:headers headers}))
       (is (= expected
-             (middleware.u/https-request? {:headers headers}))))))
+             (request.u/https? {:headers headers}))))))
+
+(def ^:private mock-request
+  (delay (edn/read-string (slurp "test/metabase/server/request/sample-request.edn"))))
+
+(deftest device-info-test
+  (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+          :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+          :ip_address         "0:0:0:0:0:0:0:1"}
+         (request.u/device-info @mock-request))))

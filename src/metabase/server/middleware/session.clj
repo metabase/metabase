@@ -10,7 +10,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.session :refer [Session]]
             [metabase.models.user :as user :refer [User]]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
             [ring.util.response :as resp]
@@ -80,7 +80,7 @@
                           {:max-age (* 60 (config/config-int :max-session-age))})
                         ;; If the authentication request request was made over HTTPS (hopefully always except for
                         ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-                        (when (middleware.u/https-request? request)
+                        (when (request.u/https? request)
                           {:secure true})
                         (when (= config/mb-session-cookie-samesite :none)
                           (log/warn
@@ -97,7 +97,7 @@
         cookie-options (merge
                         {:http-only true
                          :path      "/"}
-                        (when (middleware.u/https-request? request)
+                        (when (request.u/https? request)
                           {:secure true}))]
     (-> response
         (resp/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)

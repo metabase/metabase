@@ -3,7 +3,6 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.test :refer :all]
-            [clojure.tools.reader.edn :as edn]
             [metabase.api.session :as session-api]
             [metabase.driver.h2 :as h2]
             [metabase.email-test :as et]
@@ -34,14 +33,10 @@
                         (reset! (:attempts throttler) nil))
                       (thunk)))
 
-(defn- mock-request []
-  (edn/read-string (slurp "test/metabase/api/sample-request.edn")))
-
-(deftest request-device-info-test
-  (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
-          :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
-          :ip_address         "0:0:0:0:0:0:0:1"}
-         (#'session-api/request-device-info (mock-request)))))
+(def ^:private mock-device-info
+  {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+   :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+   :ip_address         "0:0:0:0:0:0:0:1"})
 
 (def ^:private SessionResponse
   {:id (s/pred mt/is-uuid-string? "session")})
@@ -160,7 +155,7 @@
       (let [session-id (test-users/username->token :rasta)]
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
         ;; in on the next API call
-        ((mt/user->client :rasta) :delete 204 "session")
+        (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
                (Session session-id)))))))
@@ -178,7 +173,7 @@
           (assert (not (reset-fields-set?)))
           ;; issue reset request (token & timestamp should be saved)
           (is (= nil
-                 ((mt/user->client :rasta) :post 204 "session/forgot_password" {:email (:username (mt/user->credentials :rasta))}))
+                 (mt/user-http-request :rasta :post 204 "session/forgot_password" {:email (:username (mt/user->credentials :rasta))}))
               "Request should return no content")
           (is (= true
                  (reset-fields-set?))
@@ -298,14 +293,14 @@
       (is (= (set (keys (merge
                          (setting/properties :public)
                          (setting/properties :authenticated))))
-             (set (keys ((mt/user->client :lucky) :get 200 "session/properties"))))))
+             (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
     (testing "Authenticated super user"
       (is (= (set (keys (merge
                          (setting/properties :public)
                          (setting/properties :authenticated)
                          (setting/properties :admin))))
-             (set (keys ((mt/user->client :crowberto) :get 200 "session/properties"))))))))
+             (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 
 (deftest properties-i18n-test
   (testing "GET /session/properties"
@@ -456,7 +451,7 @@
                         s/Keyword s/Any}
                        (#'session-api/google-auth-fetch-or-create-user!
                         "Cam" "Saul" "cam@sf-toucannery.com"
-                        (mock-request))))))))
+                        mock-device-info)))))))
 
   (testing "test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception"
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
@@ -465,7 +460,7 @@
            clojure.lang.ExceptionInfo
            (#'session-api/google-auth-fetch-or-create-user!
             "Rasta" "Can" "rasta@sf-toucannery.com"
-            (mock-request))))))
+            mock-device-info)))))
 
   (testing "test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created"
     (et/with-fake-inbox
@@ -476,7 +471,7 @@
                         s/Keyword s/Any}
                        (#'session-api/google-auth-fetch-or-create-user!
                         "Rasta" "Toucan" "rasta@sf-toucannery.com"
-                        (mock-request))))
+                        mock-device-info)))
           (finally
             (db/delete! User :email "rasta@sf-toucannery.com")))))))
 

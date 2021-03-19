@@ -6,7 +6,7 @@
             [metabase.config :as config]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.request.util :as request.u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru]]
             [ring.util.codec :refer [base64-encode]])
   (:import java.security.MessageDigest))
@@ -132,8 +132,8 @@
 
 (defn- add-security-headers* [request response]
   (update response :headers merge (security-headers
-                                   :allow-iframes? ((some-fn middleware.u/public? middleware.u/embed?) request)
-                                   :allow-cache?   (middleware.u/cacheable? request))))
+                                   :allow-iframes? ((some-fn request.u/public? request.u/embed?) request)
+                                   :allow-cache?   (request.u/cacheable? request))))
 
 (defn add-security-headers
   "Add HTTP security and cache-busting headers."
