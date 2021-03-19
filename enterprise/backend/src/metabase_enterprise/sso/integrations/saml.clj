@@ -32,9 +32,9 @@
     (when group-names
       (integrations.common/sync-group-memberships! user (group-names->ids group-names) false))))
 
-(s/defn saml-auth-fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
+(s/defn ^:private fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Returns a Session for the given `email`. Will create the user if needed."
-  [{:keys [first-name last-name email group-names user-attributes request]}]
+  [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-configured?)
     (throw (IllegalArgumentException. (tru "Can't create new SAML user when SAML is not configured"))))
   (when-not email
@@ -52,7 +52,7 @@
                                                        :sso_source       "saml"
                                                        :login_attributes user-attributes}))]
     (sync-groups! user group-names)
-    (session/create-session! :sso user (request.u/device-info request))))
+    (session/create-session! :sso user device-info)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -156,12 +156,12 @@
         first-name    (get attrs (sso-settings/saml-attribute-firstname) "Unknown")
         last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
         groups        (get attrs (sso-settings/saml-attribute-group))
-        session       (saml-auth-fetch-or-create-user!
-                       {:first-name first-name
-                        :last-name  last-name
-                        :email      email
-                        :groups     groups
-                        :attrs      attrs
-                        :request    request})
+        session       (fetch-or-create-user!
+                       {:first-name      first-name
+                        :last-name       last-name
+                        :email           email
+                        :group-names     groups
+                        :user-attributes attrs
+                        :device-info     (request.u/device-info request)})
         response      (resp/redirect (or continue-url (public-settings/site-url)))]
     (mw.session/set-session-cookie request response session)))

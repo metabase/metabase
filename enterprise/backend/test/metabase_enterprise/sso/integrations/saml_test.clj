@@ -424,13 +424,14 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
                        :common_name  "New User"}]
                      (->> (tu/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login)))))
-              (is (= (some-saml-attributes "newuser")
-                     (saml-login-attributes "newuser@metabase.com"))))
+              (testing "attributes"
+                (is (= (some-saml-attributes "newuser")
+                       (saml-login-attributes "newuser@metabase.com")))))
             (finally
               (db/delete! User :%lower.email "newuser@metabase.com"))))))))
 
 (defn- group-memberships [user-or-id]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/get-id user-or-id)))]
+  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
     (db/select-field :name PermissionsGroup :id [:in group-ids])))
 
 (deftest login-should-sync-single-group-membership
@@ -440,7 +441,7 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
        (fn []
          (tt/with-temp PermissionsGroup [group-1 {:name (str ::group-1)}]
            (tu/with-temporary-setting-values [saml-group-sync      true
-                                              saml-group-mappings  {"group_1" [(u/get-id group-1)]}
+                                              saml-group-mappings  {"group_1" [(u/the-id group-1)]}
                                               saml-attribute-group "GroupMembership"]
              (try
                ;; user doesn't exist until SAML request
@@ -463,8 +464,8 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
          (tt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
                          PermissionsGroup [group-2 {:name (str ::group-2)}]]
            (tu/with-temporary-setting-values [saml-group-sync      true
-                                              saml-group-mappings  {"group_1" [(u/get-id group-1)]
-                                                                    "group_2" [(u/get-id group-2)]}
+                                              saml-group-mappings  {"group_1" [(u/the-id group-1)]
+                                                                    "group_2" [(u/the-id group-2)]}
                                               saml-attribute-group "GroupMembership"]
              (try
                (testing "user doesn't exist until SAML request"
