@@ -8057,7 +8057,7 @@ databaseChangeLog:
                                         'type/UNIXTimestampMicroSeconds')
 
   - changeSet:
-      id: 289
+      id: 291
       author: camsaul
       comment: Added 0.39.0
       changes:
@@ -8113,7 +8113,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: 290
+      id: 292
       author: camsaul
       comment: Added 0.39.0
       changes:
@@ -8125,7 +8125,7 @@ databaseChangeLog:
                   name: user_id
 
   - changeSet:
-      id: 291
+      id: 293
       author: camsaul
       comment: Added 0.39.0
       changes:
@@ -8138,7 +8138,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: 292
+      id: 294
       author: camsaul
       comment: Added 0.39.0
       changes:
@@ -8151,7 +8151,7 @@ databaseChangeLog:
 
   # index on login history timestamp -- so admin can see *all* recent logins, or we can delete login history after a certain age
   - changeSet:
-      id: 293
+      id: 295
       author: camsaul
       comment: Added 0.39.0
       changes:
@@ -8164,7 +8164,7 @@ databaseChangeLog:
 
   # index on login history user_id + device_id -- so we can easily see if this is the first time a device is used
   - changeSet:
-      id: 294
+      id: 296
       author: camsaul
       comment: Added 0.39.0
       changes:
@@ -8179,7 +8179,7 @@ databaseChangeLog:
 
   # index on login history user_id + timestamp -- so we can easily see recent logins for a user
   - changeSet:
-      id: 295
+      id: 297
       author: camsaul
       comment: Added 0.39.0
       changes:
