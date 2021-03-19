@@ -227,6 +227,7 @@
                               (is (= 14 (.getFetchSize (.getStatement rs))))
                               (orig-fn driver rs rsmeta canceled-chan))]
                 (with-redefs [sql-jdbc.execute/reducible-rows new-fn]
-                  (is (= [1] (-> {:query "SELECT 1"}
-                                 (mt/native-query)
-                                 (qp/process-query)))))))))))))
+                  (is (= [[1]] (-> {:query "SELECT 1"}
+                                   (mt/native-query)
+                                   (qp/process-query)
+                                   (mt/rows)))))))))))))
