@@ -87,6 +87,7 @@
   },
   "devDependencies": {
     "@babel/standalone": "^7.4.5",
+    "@cypress/skip-test": "^2.6.0",
     "@cypress/webpack-preprocessor": "^4.1.0",
     "@slack/client": "^3.5.4",
     "@testing-library/cypress": "^5.0.2",

@@ -44,7 +44,6 @@ jobs:
         java -version
         echo "Clojure `clojure -e "(println (clojure-version))"`"
         lein --version
-        msgfmt --version
 
     - name: Get yarn cache
       uses: actions/cache@v2
