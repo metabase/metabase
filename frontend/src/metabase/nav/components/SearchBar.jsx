@@ -128,6 +128,7 @@ export default class SearchBar extends React.Component {
             pl={1}
             ref={ref => (this.searchInput = ref)}
             value={searchText}
+            maxLength={200}
             placeholder={t`Search` + "…"}
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}

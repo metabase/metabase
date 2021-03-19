@@ -31,21 +31,26 @@ export const UNKNOWN = "UNKNOWN";
 const TYPES = {
   [TEMPORAL]: {
     base: [TYPE.Temporal],
+    effective: [TYPE.Temporal],
     semantic: [TYPE.Temporal],
   },
   [NUMBER]: {
     base: [TYPE.Number],
+    effective: [TYPE.Number],
     semantic: [TYPE.Number],
   },
   [STRING]: {
     base: [TYPE.Text],
+    effective: [TYPE.Text],
     semantic: [TYPE.Text],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
+    effective: [TYPE.TextLike],
   },
   [BOOLEAN]: {
     base: [TYPE.Boolean],
+    effective: [TYPE.Boolean],
   },
   [COORDINATE]: {
     semantic: [TYPE.Coordinate],
@@ -68,6 +73,7 @@ const TYPES = {
   },
   [CATEGORY]: {
     base: [TYPE.Boolean],
+    effective: [TYPE.Boolean],
     semantic: [TYPE.Category],
     include: [LOCATION],
   },
@@ -84,7 +90,10 @@ export function isFieldType(type, field) {
 
   const typeDefinition = TYPES[type];
   // check to see if it belongs to any of the field types:
-  for (const prop of ["base", "semantic"]) {
+  const props = field.effective_type
+    ? ["effective", "semantic"]
+    : ["base", "semantic"];
+  for (const prop of props) {
     const allowedTypes = typeDefinition[prop];
     if (!allowedTypes) {
       continue;
@@ -153,8 +162,16 @@ export const isEntityName = field =>
 
 export const isAny = col => true;
 
-export const isNumericBaseType = field =>
-  field && isa(field.base_type, TYPE.Number);
+export const isNumericBaseType = field => {
+  if (!field) {
+    return false;
+  }
+  if (field.effective_type) {
+    return isa(field.effective_type, TYPE.Number);
+  } else {
+    return isa(field.base_type, TYPE.Number);
+  }
+};
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
 export const isNumber = field =>
@@ -164,7 +181,16 @@ export const isNumber = field =>
 
 export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
 
-export const isTime = field => field && isa(field.base_type, TYPE.Time);
+export const isTime = field => {
+  if (!field) {
+    return false;
+  }
+  if (field.effective_type) {
+    return isa(field.effective_type, TYPE.Time);
+  } else {
+    return isa(field.base_type, TYPE.Time);
+  }
+};
 
 export const isAddress = field =>
   field && isa(field.semantic_type, TYPE.Address);

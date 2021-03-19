@@ -318,7 +318,7 @@ const FieldGeneralPane = ({
 
     {!isFK(field.semantic_type) && is_coerceable(field.base_type) && (
       <Section>
-        <SectionHeader title={t`Coercion`} />
+        <SectionHeader title={t`Cast to a specific data type`} />
         <Select
           className="inline-block"
           placeholder={t`Select a conversion`}
@@ -336,7 +336,7 @@ const FieldGeneralPane = ({
             })),
             {
               id: null,
-              name: t`No coercion strategy`,
+              name: t`Don't cast`,
             },
           ]}
           optionValueFn={field => field.id}
