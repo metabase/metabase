@@ -9,7 +9,7 @@ import {
   remapDisplayValueToFK,
   sidebar,
 } from "__support__/cypress";
-import { USERS, USER_GROUPS } from "__support__/cypress_data";
+import { USER_GROUPS } from "__support__/cypress_data";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -25,7 +25,6 @@ const {
 } = SAMPLE_DATASET;
 
 const { DATA_GROUP } = USER_GROUPS;
-const { sandboxed } = USERS;
 
 describeWithToken("formatting > sandboxes", () => {
   describe("admin", () => {
@@ -48,10 +47,10 @@ describeWithToken("formatting > sandboxes", () => {
 
     it("should add key attributes to a new user", () => {
       cy.findByText("Add someone").click();
-      cy.findByPlaceholderText("Johnny").type(sandboxed.first_name);
-      cy.findByPlaceholderText("Appleseed").type(sandboxed.last_name);
+      cy.findByPlaceholderText("Johnny").type("John");
+      cy.findByPlaceholderText("Appleseed").type("Smith");
       cy.findByPlaceholderText("youlooknicetoday@email.com").type(
-        sandboxed.email,
+        "john@smith.test",
       );
       cy.findByText("Add an attribute").click();
       cy.findByPlaceholderText("Key").type("User ID");
@@ -173,7 +172,6 @@ describeWithToken("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.createUser("sandboxed");
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
