@@ -177,11 +177,15 @@
       (when-not user-email
         (throw (ex-info "User does not exist" {:user user})))
       (try
-        (db/execute! {:update User, :set {:password      (creds/hash-bcrypt user-email)
-                                          :password_salt ""}})
+        (db/execute! {:update User
+                      :set    {:password      (creds/hash-bcrypt user-email)
+                               :password_salt ""}
+                      :where  [:= :id user-id]})
         (apply http/client {:username user-email, :password user-email} args)
         (finally
-          (db/execute! {:update User, :set old-password-info}))))))
+          (db/execute! {:update User
+                        :set    old-password-info
+                        :where  [:= :id user-id]}))))))
 
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "with test user %s\n" user-kwd)
