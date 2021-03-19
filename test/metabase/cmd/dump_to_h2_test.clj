@@ -16,6 +16,7 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.util.encryption-test :as eu]
+            [metabase.util.files :as u.files]
             [metabase.util.i18n.impl :as i18n.impl]
             [toucan.db :as db]))
 
