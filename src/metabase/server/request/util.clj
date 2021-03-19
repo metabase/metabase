@@ -1,11 +1,17 @@
 (ns metabase.server.request.util
   "Utility functions for Ring requests."
-  (:require [clojure.string :as str]
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
+            [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [user-agent :as user-agent]))
 
 (defn api-call?
   "Is this ring request an API call (does path start with `/api`)?"
@@ -101,3 +107,45 @@
     {:device_id          (or id (trs "unknown"))
      :device_description (or description (trs "unknown"))
      :ip_address         (or ip-address (trs "unknown"))}))
+
+(defn describe-user-agent
+  "Format a user-agent string from a request in a human-friendly way."
+  [user-agent-string]
+  (when-not (str/blank? user-agent-string)
+    (when-let [{device-type     :type-name
+                {os-name :name} :os
+                browser-name    :name} (some-> user-agent-string user-agent/parse not-empty)]
+      (let [non-blank    (fn [s]
+                           (when-not (str/blank? s)
+                             s))
+            device-type  (or (non-blank device-type)
+                             (tru "Unknown device type"))
+            os-name      (or (non-blank os-name)
+                             (tru "Unknown OS"))
+            browser-name (or (non-blank browser-name)
+                             (tru "Unknown browser"))]
+        (format "%s (%s/%s)" device-type browser-name os-name)))))
+
+(defn- describe-location [{:keys [city region country], :as info}]
+  (when-let [info (not-empty (remove str/blank? [city region country]))]
+    (str/join ", " info)))
+
+;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
+(defn- geocode-ip-address* [ip-address]
+  (when-not (str/blank? ip-address)
+    (try
+      (let [url  (format "https://get.geojs.io/v1/ip/geo/%s.json" ip-address)
+            info (-> (http/get url)
+                     :body
+                     (json/parse-string true))]
+        {:description (or (describe-location info)
+                          "Unknown location")
+         :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))})
+      (catch Throwable e
+        (log/error e (trs "Error geocoding IP addresss"))
+        nil))))
+
+(def ^{:arglists '([ip-address])} geocode-ip-address
+  "Geocode an IP address, returning a human-friendly `:description` of the location and a `java.time.ZoneId`
+  `:timezone`, if that information is available."
+  (memoize/ttl geocode-ip-address* :ttl/threshold (u/minutes->ms 30)))
