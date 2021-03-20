@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import cx from "classnames";
+import _ from "underscore";
 
 import TagEditorParam from "./TagEditorParam";
 import CardTagEditor from "./CardTagEditor";
@@ -71,6 +72,8 @@ export default class TagEditorSidebar extends React.Component {
     // The tag editor sidebar excludes snippets since they have a separate sidebar.
     const tags = query.templateTagsWithoutSnippets();
     const database = query.database();
+    const parameters = query.question().parameters();
+    const parametersById = _.indexBy(parameters, "id");
 
     let section;
     if (tags.length === 0) {
@@ -100,6 +103,7 @@ export default class TagEditorSidebar extends React.Component {
           {section === "settings" ? (
             <SettingsPane
               tags={tags}
+              parametersById={parametersById}
               onUpdate={updateTemplateTag}
               databaseFields={databaseFields}
               database={database}
@@ -123,6 +127,7 @@ export default class TagEditorSidebar extends React.Component {
 
 const SettingsPane = ({
   tags,
+  parametersById,
   onUpdate,
   databaseFields,
   database,
@@ -142,6 +147,7 @@ const SettingsPane = ({
         ) : (
           <TagEditorParam
             tag={tag}
+            parameter={parametersById[tag.id]}
             onUpdate={onUpdate}
             databaseFields={databaseFields}
             database={database}
