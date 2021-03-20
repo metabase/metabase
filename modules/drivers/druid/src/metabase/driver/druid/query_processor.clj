@@ -320,11 +320,11 @@
   milliseconds, because that is the smallest unit Druid supports."
   [clause n]
   (mbql.u/replace clause
-                  [:absolute-datetime t :default]
-                  [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
+    [:absolute-datetime t :default]
+    [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
 
-                  _
-                  (add-datetime-units* clause n)))
+    _
+    (add-datetime-units* clause n)))
 
 (defn- ->absolute-timestamp ^java.time.temporal.Temporal [clause]
   (mbql.u/match-one clause
