@@ -23,20 +23,28 @@ describe("collection permissions", () => {
                 cy.signIn(user);
               });
 
-              it.skip("should be able to duplicate the dashboard without obstructions from the modal (metabase#15256)", () => {
-                cy.visit("/collection/root");
-                openEllipsisMenuFor("Orders in a dashboard");
-                cy.findByText("Duplicate this item").click();
-                cy.get(".Modal")
-                  .as("modal")
-                  .within(() => {
-                    cy.findByRole("button", { name: "Duplicate" })
-                      .should("not.be.disabled")
-                      .click();
-                    cy.findByText("Failed").should("not.exist");
-                  });
-                cy.get("@modal").should("not.exist");
-                cy.findByText("Orders in a dashboard - Duplicate");
+              describe("duplicate", () => {
+                it.skip("should be able to duplicate the dashboard without obstructions from the modal (metabase#15255)", () => {
+                  duplicate("Orders in a dashboard");
+                });
+
+                it.skip("should be able to duplicate the question (metabase#15255)", () => {
+                  duplicate("Orders");
+                });
+
+                function duplicate(item) {
+                  cy.visit("/collection/root");
+                  openEllipsisMenuFor(item);
+                  cy.findByText("Duplicate this item").click();
+                  cy.get(".Modal")
+                    .as("modal")
+                    .within(() => {
+                      clickButton("Duplicate");
+                      cy.findByText("Failed").should("not.exist");
+                    });
+                  cy.get("@modal").should("not.exist");
+                  cy.findByText(`${item} - Duplicate`);
+                }
               });
 
               describe("archive", () => {
