@@ -31,8 +31,8 @@
   (:require [clojure.set :as set]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.mbql.util.match :as mbql.match]
             [metabase.mbql.util :as mbql.u]
+            [metabase.mbql.util.match :as mbql.match]
             [metabase.shared.util.i18n :as i18n]
             [metabase.shared.util.log :as log]))
 

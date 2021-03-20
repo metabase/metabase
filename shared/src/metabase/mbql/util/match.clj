@@ -77,7 +77,9 @@
   [{parent :parent} ocr]
   `(isa? ~ocr ~parent))
 
-(defmacro match** [& args]
+(defmacro match**
+  "Internal impl for `match` and `replace` macros."
+  [& args]
   (macros/case
     :clj  `(clojure.core.match/match ~@args)
     :cljs `(cljs.core.match/match ~@args)))
