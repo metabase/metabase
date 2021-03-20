@@ -305,16 +305,26 @@
   (when-let [subclause (parse-filter subclause)]
     (filter:not subclause)))
 
+(s/defn ^:private add-datetime-units* :- mbql.s/DateTimeValue
+  "Return a `relative-datetime` clause with `n` units added to it."
+  [absolute-or-relative-datetime :- mbql.s/DateTimeValue
+   n                             :- s/Num]
+  (if (is-clause? :relative-datetime absolute-or-relative-datetime)
+    (let [[_ original-n unit] absolute-or-relative-datetime]
+      [:relative-datetime (+ n original-n) unit])
+    (let [[_ t unit] absolute-or-relative-datetime]
+      [:absolute-datetime (u.date/add t unit n) unit])))
+
 (defn- add-datetime-units
   "Adding `n` `:default` units doesn't make sense. So if an `:absoulte-datetime` has `:default` as its unit, add `n`
   milliseconds, because that is the smallest unit Druid supports."
   [clause n]
   (mbql.u/replace clause
-    [:absolute-datetime t :default]
-    [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
+                  [:absolute-datetime t :default]
+                  [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
 
-    _
-    (mbql.u/add-datetime-units clause n)))
+                  _
+                  (add-datetime-units* clause n)))
 
 (defn- ->absolute-timestamp ^java.time.temporal.Temporal [clause]
   (mbql.u/match-one clause

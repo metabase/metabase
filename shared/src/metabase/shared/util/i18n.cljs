@@ -1,13 +1,10 @@
 (ns metabase.shared.util.i18n
-  (:require [clojure.string :as str]
-            [goog.string :as gstring]
-            [goog.string.format :as gstring.format]))
+  (:require ["ttag" :as ttag])
+  (:require-macros metabase.shared.util.i18n))
 
-(comment gstring.format/keep-me)
+(comment metabase.shared.util.i18n/keep-me
+         ttag/keep-me)
 
-;; TODO -- use JavaScript i18n libraries.
+;; TODO -- this definitely isn't working right.
 (defn js-i18n [format-string & args]
-  (if (empty? args)
-    format-string
-    (let [format-string (str/replace format-string #"\{\d+\}" "%s")]
-      (apply gstring/format format-string args))))
+  (apply ttag/gettext format-string args))
