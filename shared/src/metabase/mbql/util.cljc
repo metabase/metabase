@@ -5,17 +5,17 @@
   (:clj
    [(:require [clojure.string :as str]
               [metabase.mbql.schema :as mbql.s]
+              [metabase.mbql.schema.helpers :as schema.helpers]
               [metabase.mbql.util.match :as mbql.match]
               [metabase.shared.util.i18n :as i18n]
-              [metabase.mbql.schema.helpers :as schema.helpers]
               [potemkin :as p]
               [schema.core :as s])]
    :cljs
    [(:require [clojure.string :as str]
               [metabase.mbql.schema :as mbql.s]
+              [metabase.mbql.schema.helpers :as schema.helpers]
               [metabase.mbql.util.match :as mbql.match]
               [metabase.shared.util.i18n :as i18n]
-              [metabase.mbql.schema.helpers :as schema.helpers]
               [schema.core :as s])]))
 
 (defn qualified-name

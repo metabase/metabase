@@ -5,16 +5,15 @@
   (:clj
    [(:require [clojure.core :as core]
               [clojure.set :as set]
-              [metabase.mbql.schema.macros :refer [defclause one-of]]
               [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+              [metabase.mbql.schema.macros :refer [defclause one-of]]
               [schema.core :as s])
     (:import java.time.format.DateTimeFormatter)]
-
    :cljs
    [(:require [clojure.core :as core]
               [clojure.set :as set]
-              [metabase.mbql.schema.macros :refer [defclause one-of]]
               [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+              [metabase.mbql.schema.macros :refer [defclause one-of]]
               [schema.core :as s])]))
 
 ;; A NOTE ABOUT METADATA:
