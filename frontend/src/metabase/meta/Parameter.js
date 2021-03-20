@@ -21,11 +21,17 @@ import type Field from "metabase-lib/lib/metadata/Field";
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import moment from "moment";
 import { t } from "ttag";
+import _ from "underscore";
 import * as FIELD_REF from "metabase/lib/query/field_ref";
 import {
   isNumericBaseType,
   doesOperatorExist,
+  getOperatorByTypeAndName,
+  STRING,
+  NUMBER,
+  PRIMARY_KEY,
 } from "metabase/lib/schema_metadata";
+
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
@@ -169,7 +175,7 @@ function fieldFilterForParameter(parameter: Parameter) {
 function fieldFilterForParameterType(
   parameterType: ParameterType,
 ): FieldPredicate {
-  const [type] = parameterType.split("/");
+  const [type] = splitType(parameterType);
   switch (type) {
     case "date":
       return (field: Field) => field.isDate();
@@ -222,7 +228,7 @@ export function variableFilterForParameter(
 }
 
 function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
-  const [type, subtype] = parameter.type.split("/");
+  const [type, subtype] = splitType(parameter);
   switch (type) {
     case "date":
       return (tag: TemplateTag) => subtype === "single" && tag.type === "date";
@@ -395,7 +401,7 @@ export function stringParameterValueToMBQL(
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
   const parameterValue: ParameterValueOrArray = parameter.value;
-  const [, subtype] = parameter.type.split("/");
+  const [, subtype] = splitType(parameter);
   const operatorName = getParameterOperatorName(subtype);
   // $FlowFixMe: thinks we're returning a nested array which concat does not do
   return [operatorName, fieldRef].concat(parameterValue);
@@ -406,7 +412,7 @@ export function numberParameterValueToMBQL(
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
   const parameterValue: ParameterValue = parameter.value;
-  const [, subtype] = parameter.type.split("/");
+  const [, subtype] = splitType(parameter);
   const operatorName = subtype || "=";
 
   // $FlowFixMe: thinks we're returning a nested array which concat does not do
@@ -448,7 +454,7 @@ export function parameterToMBQLFilter(
 }
 
 export function getParameterIconName(parameterType: ?ParameterType) {
-  const [type] = parameterType ? parameterType.split("/") : [];
+  const [type] = splitType(parameterType);
   switch (type) {
     case "date":
       return "calendar";
@@ -465,7 +471,7 @@ export function getParameterIconName(parameterType: ?ParameterType) {
 }
 
 export function mapParameterTypeToFieldType(parameter) {
-  const [fieldType, maybeOperatorName] = parameter.type.split("/");
+  const [fieldType, maybeOperatorName] = splitType(parameter);
   switch (fieldType) {
     case "location":
     case "category":
@@ -477,4 +483,34 @@ export function mapParameterTypeToFieldType(parameter) {
 
 function getParameterOperatorName(maybeOperatorName) {
   return doesOperatorExist(maybeOperatorName) ? maybeOperatorName : "=";
+}
+
+export function deriveFieldOperatorFromParameter(parameter) {
+  const [parameterType, maybeOperatorName] = splitType(parameter);
+  const operatorType = getParameterOperatorType(parameterType);
+  const operatorName = getParameterOperatorName(maybeOperatorName);
+
+  return getOperatorByTypeAndName(operatorType, operatorName);
+}
+
+function getParameterOperatorType(parameterType) {
+  switch (parameterType) {
+    case "number":
+      return NUMBER;
+    case "location":
+    case "category":
+      return STRING;
+    case "id":
+      // id can technically be a FK but doesn't matter as both use default filter operators
+      return PRIMARY_KEY;
+    default:
+      return undefined;
+  }
+}
+
+function splitType(parameterOrType) {
+  const parameterType = _.isString(parameterOrType)
+    ? parameterOrType
+    : (parameterOrType || {}).type || "";
+  return parameterType.split("/");
 }
