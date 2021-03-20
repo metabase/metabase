@@ -151,6 +151,7 @@
                                  org.clojure/tools.logging
                                  org.clojure/tools.namespace
                                  honeysql]]
+   [user-agent "0.1.0"]                                               ; User-Agent string parser, for Login History page & elsewhere
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
    ]
 

@@ -74,7 +74,9 @@
   (when (exists? path)
     (.toInstant (Files/getLastModifiedTime path (u/varargs LinkOption)))))
 
-(defn- copy-file! [^Path source, ^Path dest]
+(defn copy-file!
+  "Copy a file from `source` -> `dest`."
+  [^Path source ^Path dest]
   (when (or (not (exists? dest))
             (not= (last-modified-timestamp source) (last-modified-timestamp dest)))
     (log/info (trs "Extract file {0} -> {1}" source dest))
@@ -86,7 +88,7 @@
   that of the source file — see #11699 for more context."
   [^Path source-dir, ^Path dest-dir]
   (doseq [^Path source (files-seq source-dir)
-          :let [target (append-to-path dest-dir (str (.getFileName source)))]]
+          :let         [target (append-to-path dest-dir (str (.getFileName source)))]]
     (try
       (copy-file! source target)
       (catch Throwable e
