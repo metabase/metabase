@@ -36,7 +36,6 @@
                   [])))
             [(u/filename u/project-root-directory "src")
              (u/filename u/project-root-directory "enterprise" "backend" "src")
-             (u/filename u/project-root-directory "backend" "mbql")
              (u/filename u/project-root-directory "shared" "src")]))))
 
 (defn metabase-source-checksum
