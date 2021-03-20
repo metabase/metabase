@@ -117,6 +117,27 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
+  it("should process the updated expression when pressing Enter", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1");
+    cy.findAllByRole("button", { name: "Done" }).click();
+
+    // change the corresponding custom expression
+    cy.findByText("Price is greater than 1").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.contains(/^Price is less than 5/i);
+  });
+
   describe("joins", () => {
     it("should allow joins", () => {
       // start a custom question with orders

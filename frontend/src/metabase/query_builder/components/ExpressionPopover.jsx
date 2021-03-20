@@ -19,6 +19,7 @@ export default class ExpressionPopover extends React.Component {
       query,
       expression,
       onChange,
+      onUpdateAndCommit,
       onBack,
       onDone,
       name,
@@ -52,7 +53,7 @@ export default class ExpressionPopover extends React.Component {
             onCommit={expression => {
               if (!onChangeName) {
                 onChange(expression);
-                onDone();
+                onUpdateAndCommit(expression);
               }
             }}
           />

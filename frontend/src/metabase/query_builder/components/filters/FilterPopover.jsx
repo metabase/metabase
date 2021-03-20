@@ -88,6 +88,14 @@ export default class ViewFilterPopover extends Component {
     }
   }
 
+  handleUpdateAndCommit = (newFilter: ?Filter) => {
+    const base = this.state.filter || new Filter([], null, this.props.query);
+    const filter = base.set(newFilter);
+    this.setState({ filter }, () => {
+      this.handleCommitFilter(filter, this.props.query);
+    });
+  };
+
   handleCommit = () => {
     this.handleCommitFilter(this.state.filter, this.props.query);
   };
@@ -147,6 +155,7 @@ export default class ViewFilterPopover extends Component {
           startRule="boolean"
           isValid={filter && filter.isValid()}
           onChange={this.handleFilterChange}
+          onUpdateAndCommit={this.handleUpdateAndCommit}
           onBack={() => this.setState({ editingFilter: false })}
           onDone={this.handleCommit}
         />
