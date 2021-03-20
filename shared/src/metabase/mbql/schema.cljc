@@ -9,6 +9,7 @@
               [metabase.mbql.schema.macros :refer [defclause one-of]]
               [schema.core :as s])
     (:import java.time.format.DateTimeFormatter)]
+
    :cljs
    [(:require [clojure.core :as core]
               [clojure.set :as set]

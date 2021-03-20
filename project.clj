@@ -401,7 +401,7 @@
 
    :check-namespace-decls
    [:linters-common
-    {:plugins               [[lein-check-namespace-decls "1.0.2"]]
+    {:plugins               [[lein-check-namespace-decls "1.0.3"]]
      :check-namespace-decls {:prefix-rewriting false}}]
 
    :cloverage
