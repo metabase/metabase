@@ -16,4 +16,6 @@
 
 ### [LDAP](ldap.md)
 
+### [Metabot](metabot.md)
+
 ### [I think I found a bug](bugs.md)
