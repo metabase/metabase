@@ -87,7 +87,12 @@ export default class MetricDetailContainer extends Component {
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<MetricSidebar metric={metric} user={user} />}
       >
-        <MetricDetail {...this.props} isEditing={isEditing} />
+        <MetricDetail
+          {...this.props}
+          isEditing={isEditing}
+          startEditing={this.startEditing}
+          endEditing={this.endEditing}
+        />
       </SidebarLayout>
     );
   }
