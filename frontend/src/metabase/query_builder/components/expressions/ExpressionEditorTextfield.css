@@ -3,3 +3,20 @@
   background-color: var(--color-bg-light);
   color: var(--color-text-dark);
 }
+.ExpressionEditorTextField .ace_editor .ace_keyword {
+  color: var(--color-saturated-purple);
+}
+.ExpressionEditorTextField .ace_editor .ace_function,
+.ExpressionEditorTextField .ace_editor .ace_variable {
+  color: var(--color-saturated-blue);
+}
+.ExpressionEditorTextField .ace_editor .ace_constant,
+.ExpressionEditorTextField .ace_editor .ace_type {
+  color: var(--color-saturated-red);
+}
+.ExpressionEditorTextField .ace_editor .ace_string {
+  color: var(--color-saturated-green);
+}
+.ExpressionEditorTextField .ace_editor .ace_templateTag {
+  color: var(--color-brand);
+}
