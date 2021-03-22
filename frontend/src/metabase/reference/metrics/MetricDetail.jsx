@@ -5,6 +5,8 @@ import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
+
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -31,8 +33,6 @@ import {
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
-
-import _ from "underscore";
 
 const mapStateToProps = (state, props) => {
   const entity = getMetric(state, props) || {};
