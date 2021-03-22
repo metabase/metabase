@@ -403,7 +403,7 @@ export function stringParameterValueToMBQL(
   const parameterValue: ParameterValueOrArray = parameter.value;
   const [, subtype] = splitType(parameter);
   const operatorName = getParameterOperatorName(subtype);
-  // $FlowFixMe: thinks we're returning a nested array which concat does not do
+
   return [operatorName, fieldRef].concat(parameterValue);
 }
 
@@ -413,9 +413,8 @@ export function numberParameterValueToMBQL(
 ): ?FieldFilter {
   const parameterValue: ParameterValue = parameter.value;
   const [, subtype] = splitType(parameter);
-  const operatorName = subtype || "=";
+  const operatorName = getParameterOperatorName(subtype);
 
-  // $FlowFixMe: thinks we're returning a nested array which concat does not do
   return [operatorName, fieldRef].concat(
     [].concat(parameterValue).map(v => parseFloat(v)),
   );
@@ -470,7 +469,7 @@ export function getParameterIconName(parameterType: ?ParameterType) {
   }
 }
 
-export function mapParameterTypeToFieldType(parameter) {
+export function mapUITypeToParameterType(parameter) {
   const [fieldType, maybeOperatorName] = splitType(parameter);
   switch (fieldType) {
     case "location":

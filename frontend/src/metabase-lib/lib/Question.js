@@ -33,7 +33,7 @@ import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
 import {
   parameterToMBQLFilter,
-  mapParameterTypeToFieldType,
+  mapUITypeToParameterType,
 } from "metabase/meta/Parameter";
 import {
   aggregate,
@@ -830,7 +830,7 @@ export default class Question {
       .map(param => {
         return {
           ...param,
-          type: mapParameterTypeToFieldType(param),
+          type: mapUITypeToParameterType(param),
         };
       });
 
