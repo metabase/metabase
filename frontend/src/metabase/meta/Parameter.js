@@ -74,6 +74,11 @@ export const PARAMETER_OPERATOR_TYPES = {
       description: t`Use a dropdown or search box to pick one or more exact matches.`,
     },
     {
+      operator: "!=",
+      name: t`Is not`,
+      description: t`Exclude one or more specific values.`,
+    },
+    {
       operator: "contains",
       name: t`Contains`,
       description: t`Match values that contain the entered text.`,
