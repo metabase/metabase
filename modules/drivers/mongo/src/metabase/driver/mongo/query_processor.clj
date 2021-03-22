@@ -289,7 +289,7 @@
 (defmethod ->rvalue ::not [[_ value]]
   {$not (->rvalue value)})
 
-(defmulti ^:private compile-filter mbql.u/dispatch-by-clause-name-or-class)
+(defmulti compile-filter mbql.u/dispatch-by-clause-name-or-class)
 
 (def ^:private ^:dynamic *top-level-filter?*
   "Whether we are compiling a top-level filter clause. This means we can generate somewhat simpler `$match` clauses that
@@ -308,9 +308,11 @@
     (let [case-sensitive? (get options :case-sensitive true)]
       (re-pattern (str (when-not case-sensitive? "(?i)") prefix (->rvalue value) suffix)))))
 
-(defmethod compile-filter :contains    [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v nil)})
-(defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
-(defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
+;; these are changed to {field {$regex "regex"}} instead of {field #regex} for serialization purposes. When doing
+;; native query substitution we need a string and the explicit regex form is better there
+(defmethod compile-filter :contains    [[_ field v opts]] {(->lvalue field) {$regex (str-match-pattern opts nil v nil)}})
+(defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) {$regex (str-match-pattern opts \^  v nil)}})
+(defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) {$regex (str-match-pattern opts nil v \$)}})
 
 (defn- simple-rvalue? [rvalue]
   (and (string? rvalue)
@@ -331,8 +333,14 @@
       ;;    {$expr {$eq [{$add [$field 1]} 100]}}
       {:$expr {operator [field-rvalue value-rvalue]}})))
 
-(defmethod compile-filter :=  [[_ field value]] (filter-expr $eq field value))
-(defmethod compile-filter :!= [[_ field value]] (filter-expr $ne field value))
+(defmethod compile-filter :=  [[_ field value & rst]]
+  (if (seq rst)
+    {$or (mapv (partial filter-expr $eq field) (cons value rst))}
+    (filter-expr $eq field value)))
+(defmethod compile-filter :!= [[_ field value & rst]]
+  (if (seq rst)
+    {$and (mapv (partial filter-expr $ne field) (cons value rst))}
+    (filter-expr $ne field value)))
 (defmethod compile-filter :<  [[_ field value]] (filter-expr $lt field value))
 (defmethod compile-filter :>  [[_ field value]] (filter-expr $gt field value))
 (defmethod compile-filter :<= [[_ field value]] (filter-expr $lte field value))
