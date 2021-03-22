@@ -105,6 +105,51 @@ describe("scenarios > dashboard > parameters", () => {
       .contains("4,939");
   });
 
+  it("should query with a 2 argument parameter", () => {
+    cy.createDashboard("my dash");
+
+    cy.visit("/collection/root");
+    cy.findByText("my dash").click();
+
+    // add a question
+    cy.icon("pencil").click();
+    addQuestion("Orders, Count");
+
+    // add a Number - Between filter
+    cy.icon("filter").click();
+    cy.contains("Number").click();
+    cy.findByText("Between").click();
+
+    // map the parameter to the Rating field
+    selectFilter(cy.get(".DashCard"), "Rating");
+
+    // finish editing filter and save dashboard
+    cy.contains("Save").click();
+
+    // wait for saving to finish
+    cy.contains("You're editing this dashboard.").should("not.exist");
+
+    // populate the filter inputs
+    cy.contains("Number - Between").click();
+    popover()
+      .find("input")
+      .first()
+      .type("3");
+
+    popover()
+      .find("input")
+      .last()
+      .type("4");
+
+    popover()
+      .contains("Add filter")
+      .click();
+
+    // There should be 8849 orders with a rating >= 3 && <= 4
+    cy.get(".DashCard").contains("8,849");
+    cy.url().should("include", "number_-_between=3&number_-_between=4");
+  });
+
   it("should remove previously deleted dashboard parameter from URL (metabase#10829)", () => {
     // Mirrored issue in metabase-enterprise#275
 
@@ -116,12 +161,24 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("filter").click();
     cy.contains("Other Categories").click();
     cy.contains("Ends with").click();
+
+    // map the parameter to the Category field
+    selectFilter(cy.get(".DashCard"), "Category");
+
     cy.findByText("Save").click();
 
-    // Give value to the filter
-    cy.findByPlaceholderText("Category - Ends with")
-      .click()
-      .type("zmo{enter}");
+    // wait for saving to finish
+    cy.contains("You're editing this dashboard.").should("not.exist");
+
+    // populate the filter input
+    cy.findByText("Category - Ends with").click();
+    popover()
+      .find("input")
+      .type("zmo");
+
+    popover()
+      .contains("Add filter")
+      .click();
 
     cy.log(
       "**URL is updated correctly with the given parameter at this point**",
@@ -140,7 +197,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.log("Filter name should be 'unnamed' and the value cleared");
-    cy.findByPlaceholderText(/unnamed/i);
+    cy.findByText(/unnamed/i);
 
     cy.log("URL should reset");
     cy.location("pathname").should("eq", "/dashboard/1");
