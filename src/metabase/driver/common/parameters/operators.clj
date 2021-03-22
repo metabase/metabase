@@ -46,7 +46,7 @@
     (cond (contains? unary param-type)    (maybe-arity-error 1)
           (contains? binary param-type)   (maybe-arity-error 2)
           (contains? variadic param-type) (when-not (seq param-value)
-                                            (throw (ex-data (format "No values provided for operator: %s" param-type)
+                                            (throw (ex-info (format "No values provided for operator: %s" param-type)
                                                             {:param-type  param-type
                                                              :param-value param-value
                                                              :field-id    (second field)

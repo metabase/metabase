@@ -289,7 +289,10 @@
 (defmethod ->rvalue ::not [[_ value]]
   {$not (->rvalue value)})
 
-(defmulti compile-filter mbql.u/dispatch-by-clause-name-or-class)
+(defmulti compile-filter
+  "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
+  compiling the \"where\" clause equivalent."
+  mbql.u/dispatch-by-clause-name-or-class)
 
 (def ^:private ^:dynamic *top-level-filter?*
   "Whether we are compiling a top-level filter clause. This means we can generate somewhat simpler `$match` clauses that
