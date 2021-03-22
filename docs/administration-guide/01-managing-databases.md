@@ -28,7 +28,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 - SQLite
 - [Vertica](databases/vertica.md)
 
-Don't see the database you need here? Take a look at our [Community Drivers](../developers-guide-drivers.md) page to see if someone's built one, or learn how to get started building your own. Note that our hosted offering, [Metabase Cloud](https://www.metabase.com/start/hosted/), doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported databases][#officially-supported-databases] listed above.
+Don't see the database you need here? Take a look at our [Community Drivers](../developers-guide-drivers.md) page to see if someone's built one, or learn how to get started building your own. Note that our hosted offering, [Metabase Cloud](https://www.metabase.com/start/hosted/), doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported databases](#officially-supported-databases) listed above.
 
 To add a database, you'll need its connection information.
 
