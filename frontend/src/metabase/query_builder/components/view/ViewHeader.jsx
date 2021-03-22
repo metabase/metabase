@@ -263,20 +263,7 @@ export class ViewTitleHeader extends React.Component {
             </Box>
           )}
           {question.query().database() && isNative && isSaved && (
-            <Link
-              to={new Question(
-                {
-                  dataset_query: {
-                    database: question.query().database().id,
-                    query: { "source-table": `card__${question.id()}` },
-                    type: "query",
-                  },
-                  display: "table",
-                  visualization_settings: {},
-                },
-                question.metadata(),
-              ).getUrl()}
-            >
+            <Link to={getExploreResultsUrl(question)}>
               <ViewButton medium p={[2, 1]} icon="insight" labelBreakpoint="sm">
                 {t`Explore results`}
               </ViewButton>
@@ -304,6 +291,21 @@ export class ViewTitleHeader extends React.Component {
       </ViewSection>
     );
   }
+}
+
+function getExploreResultsUrl(question) {
+  return new Question(
+    {
+      dataset_query: {
+        database: question.query().database().id,
+        query: { "source-table": `card__${question.id()}` },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    },
+    question.metadata(),
+  ).getUrl();
 }
 
 export class ViewSubHeader extends React.Component {
