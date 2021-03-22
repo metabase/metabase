@@ -58,6 +58,52 @@ describe("collection permissions", () => {
                   archiveUnarchive("Orders in a dashboard");
                 });
 
+                describe("collections", () => {
+                  it("shouldn't be able to arhive root or personal collection", () => {
+                    cy.visit("/collection/root");
+                    cy.icon("edit").should("not.exist");
+                    cy.findByText("Your personal collection").click();
+                    cy.icon("edit").should("not.exist");
+                  });
+
+                  it("archiving sub-collection should redirect to its parent (metabase#12489)", () => {
+                    cy.request("GET", "/api/collection").then(xhr => {
+                      // We need its ID to continue nesting below it
+                      const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+                        collection => collection.slug === "third_collection",
+                      );
+                      cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
+                    });
+                    cy.icon("pencil").click();
+                    cy.findByText("Archive this collection").click();
+                    cy.get(".Modal")
+                      .findByText("Archive")
+                      .click();
+                    cy.get("[class*=PageHeading]")
+                      .as("title")
+                      .contains("Second collection");
+                    cy.get("[class*=CollectionSidebar]")
+                      .as("sidebar")
+                      .within(() => {
+                        cy.findByText("First collection");
+                        cy.findByText("Second collection");
+                        cy.findByText("Third collection").should("not.exist");
+                      });
+                    // Although this was not the part of the original issue, it is a good place to test unarchiving collection without duplicating tests
+                    cy.findByText("Archived collection");
+                    cy.findByText("Undo").click();
+                    cy.findByText(
+                      "Sorry, you don’t have permission to see that.",
+                    ).should("not.exist");
+                    // We're still in the parent collection
+                    cy.get("@title").contains("Second collection");
+                    // But unarchived collection is now visible in the sidebar
+                    cy.get("@sidebar").within(() => {
+                      cy.findByText("Third collection");
+                    });
+                  });
+                });
+
                 function archiveUnarchive(item) {
                   cy.visit("/collection/root");
                   openEllipsisMenuFor(item);
