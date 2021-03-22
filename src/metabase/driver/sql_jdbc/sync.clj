@@ -15,7 +15,8 @@
   db-default-timezone
   excluded-schemas
   fallback-metadata-query
-  have-select-privilege?]
+  have-select-privilege?
+  have-any-schema-privileges?]
 
  [sync.describe-table
   add-table-pks
