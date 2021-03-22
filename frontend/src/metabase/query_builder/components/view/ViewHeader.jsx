@@ -262,7 +262,7 @@ export class ViewTitleHeader extends React.Component {
               />
             </Box>
           )}
-          {isNative && isSaved && (
+          {question.query().database() && isNative && isSaved && (
             <Link
               to={new Question(
                 {
