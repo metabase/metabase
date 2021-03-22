@@ -1,6 +1,7 @@
 (ns metabase.driver.mongo.parameters-test
   (:require [cheshire.core :as json]
             [cheshire.generate :as json.generate]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
@@ -193,7 +194,26 @@
                                                  {"description" {"$eq" "bar"}}]}}]))
                (strip
                 (substitute {:desc (field-filter "description" :type/Text :string/= ["foo" "bar"])}
-                            ["[{$match: " (param :desc) "}]"]))))))))
+                            ["[{$match: " (param :desc) "}]"])))))
+      (testing :string/!=
+        ;; this could be optimized to {:description {:in ["foo" "bar"}}?
+        (is (= (strip (to-bson [{:$match {"$and" [{"description" {"$ne" "foo"}}
+                                                  {"description" {"$ne" "bar"}}]}}]))
+               (strip
+                (substitute {:desc (field-filter "description" :type/Text :string/!= ["foo" "bar"])}
+                            ["[{$match: " (param :desc) "}]"])))))
+      (testing :number/=
+        (is (= (strip (to-bson [{:$match {"$or" [{"price" {"$eq" 1}}
+                                                 {"price" {"$eq" 2}}]}}]))
+               (strip
+                (substitute {:price (field-filter "price" :type/Integer :number/= [1 2])}
+                            ["[{$match: " (param :price) "}]"])))))
+      (testing :number/!=
+        (is (= (strip (to-bson [{:$match {"$and" [{"price" {"$ne" 1}}
+                                                  {"price" {"$ne" 2}}]}}]))
+               (strip
+                (substitute {:price (field-filter "price" :type/Integer :number/!= [1 2])}
+                            ["[{$match: " (param :price) "}]"]))))))))
 
 (defn- json-raw
   "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
@@ -350,8 +370,10 @@
                    (into #{} (map second)
                          (run-query! :string/=))))
             ;; the dis-equality aren't variadic yet
-            #_(is (= #{}
+            (is (= #{}
                      (set/intersection
                       #{"bob" "tupac"}
+                      ;; most of these are nil as most records don't have a username. not equal is a bit ambiguous in
+                      ;; mongo. maybe they might want present but not equal semantics
                       (into #{} (map second)
                             (run-query! :string/!=)))))))))))

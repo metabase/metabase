@@ -131,6 +131,10 @@
                   :string/=                {:field    :name
                                             :value    ["foo" "bar" "baz"]
                                             :expected ["select * from venues where (NAME = ? OR NAME = ? OR NAME = ?)" ["foo" "bar" "baz"]]}
+                  :string/!=               {:field    :name
+                                            :value    ["foo" "bar"]
+                                            :expected ["select * from venues where ((NAME <> ? OR NAME IS NULL) AND (NAME <> ? OR NAME IS NULL))"
+                                                       ["foo" "bar"]]}
                   :number/=                {:field    :price
                                             :value    [1]
                                             :expected ["select * from venues where PRICE = 1" ()]}
@@ -140,6 +144,11 @@
                   :number/!=               {:field    :price
                                             :value    [1]
                                             :expected ["select * from venues where (PRICE <> 1 OR PRICE IS NULL)" ()]}
+                  :number/!=               {:field    :price
+                                            :value    [1 2 3]
+                                            :expected [(str "select * from venues where ((PRICE <> 1 OR PRICE IS NULL) "
+                                                            "AND (PRICE <> 2 OR PRICE IS NULL) AND (PRICE <> 3 OR PRICE IS NULL))")
+                                                       ()]}
                   :number/>=               {:field    :price
                                             :value    [1]
                                             :expected ["select * from venues where PRICE >= 1" ()]}

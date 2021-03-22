@@ -16,14 +16,15 @@
                       :string/ends-with        :ends-with
                       :string/contains         :contains
                       :string/does-not-contain :does-not-contain
-                      :number/!=               :!=
                       :number/>=               :>=
                       :number/<=               :<=})
 
 (def ^:private binary {:number/between :between})
 
-(def ^:private variadic {:string/= :=
-                         :number/= :=})
+(def ^:private variadic {:string/=  :=
+                         :string/!= :!=
+                         :number/=  :=
+                         :number/!= :!=})
 
 (def ^:private all-ops (into #{} (mapcat keys [unary binary variadic])))
 
