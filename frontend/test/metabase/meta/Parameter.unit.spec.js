@@ -1,6 +1,11 @@
 import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
+  numberParameterValueToMBQL,
+  parameterOptionsForField,
+  getParametersBySlug,
+  mapUITypeToParameterType,
+  deriveFieldOperatorFromParameter,
 } from "metabase/meta/Parameter";
 
 describe("metabase/meta/Parameter", () => {
@@ -129,6 +134,136 @@ describe("metabase/meta/Parameter", () => {
           null,
         ),
       ).toEqual(["=", null, "1", "2"]);
+    });
+  });
+
+  describe("numberParameterValueToMBQL", () => {
+    describe("when given an array parameter value", () => {
+      it("should flatten the array parameter values", () => {
+        expect(
+          numberParameterValueToMBQL(
+            { type: "number/between", value: [1, 2] },
+            null,
+          ),
+        ).toEqual(["between", null, 1, 2]);
+      });
+    });
+
+    describe("when given a string parameter value", () => {
+      it("should parse the parameter value as a float", () => {
+        expect(
+          numberParameterValueToMBQL({ type: "number/=", value: "1.1" }, null),
+        ).toEqual(["=", null, 1.1]);
+      });
+    });
+  });
+
+  describe("parameterOptionsForField", () => {
+    const field = {
+      isDate: () => false,
+      isID: () => false,
+      isCategory: () => false,
+      isCity: () => false,
+      isState: () => false,
+      isZipCode: () => false,
+      isCountry: () => false,
+      isNumber: () => false,
+    };
+    it("should relevantly typed options for date field", () => {
+      const dateField = {
+        ...field,
+        isDate: () => true,
+      };
+      const availableOptions = parameterOptionsForField(dateField);
+      expect(
+        availableOptions.length > 0 &&
+          availableOptions.every(option => option.type.startsWith("date")),
+      ).toBe(true);
+    });
+
+    it("should relevantly typed options for location field", () => {
+      const countryField = {
+        ...field,
+        isCountry: () => true,
+      };
+      const availableOptions = parameterOptionsForField(countryField);
+      expect(
+        availableOptions.length > 0 &&
+          availableOptions.every(option => option.type.startsWith("location")),
+      ).toBe(true);
+    });
+  });
+
+  describe("getParameterBySlug", () => {
+    it("should return an object mapping slug to parameter value", () => {
+      const parameters = [
+        { id: "foo", slug: "bar" },
+        { id: "aaa", slug: "bbb" },
+        { id: "cat", slug: "dog" },
+      ];
+      const parameterValuesById = {
+        foo: 123,
+        aaa: "ccc",
+        something: true,
+      };
+      expect(getParametersBySlug(parameters, parameterValuesById)).toEqual({
+        bar: 123,
+        bbb: "ccc",
+      });
+    });
+  });
+
+  describe("mapParameterTypeToFieldType", () => {
+    it("should return the proper parameter type of location/category parameters", () => {
+      expect(mapUITypeToParameterType({ type: "category" })).toEqual(
+        "string/=",
+      );
+      expect(
+        mapUITypeToParameterType({ type: "category/starts-with" }),
+      ).toEqual("string/starts-with");
+      expect(mapUITypeToParameterType({ type: "location/city" })).toEqual(
+        "string/=",
+      );
+      expect(mapUITypeToParameterType({ type: "location/contains" })).toEqual(
+        "string/contains",
+      );
+    });
+
+    it("should return given type when not a location/category option", () => {
+      expect(mapUITypeToParameterType({ type: "foo/bar" })).toEqual("foo/bar");
+      expect(mapUITypeToParameterType({ type: "date/single" })).toEqual(
+        "date/single",
+      );
+      expect(mapUITypeToParameterType({ type: "number/=" })).toEqual(
+        "number/=",
+      );
+    });
+  });
+
+  describe("deriveFieldOperatorFromParameter", () => {
+    describe("when parameter is associated with an operator", () => {
+      it("should return relevant operator object", () => {
+        const operator1 = deriveFieldOperatorFromParameter({
+          type: "location/city",
+        });
+        const operator2 = deriveFieldOperatorFromParameter({
+          type: "category/contains",
+        });
+        const operator3 = deriveFieldOperatorFromParameter({
+          type: "number/between",
+        });
+        expect(operator1.name).toEqual("=");
+        expect(operator2.name).toEqual("contains");
+        expect(operator3.name).toEqual("between");
+      });
+    });
+
+    describe("when parameter is NOT associated with an operator", () => {
+      it("should return undefined", () => {
+        expect(deriveFieldOperatorFromParameter({ type: "date/single" })).toBe(
+          undefined,
+        );
+      });
     });
   });
 });
