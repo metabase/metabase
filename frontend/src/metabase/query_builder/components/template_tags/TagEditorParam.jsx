@@ -242,12 +242,18 @@ export default class TagEditorParam extends Component {
             <h4 className="text-medium pb1">{t`Default filter widget value`}</h4>
             <ParameterValueWidget
               parameter={
-                parameter || {
-                  ...tag,
-                  type:
-                    tag["widget-type"] ||
-                    (tag.type === "date" ? "date/single" : null),
-                }
+                tag.type === "dimension"
+                  ? parameter || {
+                      ...tag,
+                      type:
+                        tag["widget-type"] ||
+                        (tag.type === "date" ? "date/single" : null),
+                    }
+                  : {
+                      type:
+                        tag["widget-type"] ||
+                        (tag.type === "date" ? "date/single" : null),
+                    }
               }
               value={tag.default}
               setValue={value => this.setParameterAttribute("default", value)}
