@@ -130,7 +130,7 @@ function getClientIdDescription(engine, details) {
             {t`Click here`}
           </ExternalLink>
         )} to generate a Client ID and Client Secret for your project.`}{" "}
-        {t`Choose "Other" as the application type. Name it whatever you'd like.`}
+        {t`Choose "Desktop App" as the application type. Name it whatever you'd like.`}
       </span>
     );
   }
