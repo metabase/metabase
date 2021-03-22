@@ -238,9 +238,7 @@
   (:replacement-snippet
    (honeysql->replacement-snippet-info
     driver
-    (let [identifier (cond->> (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))
-                       (isa? semantic-type :type/UNIXTimestamp)
-                       (sql.qp/unix-timestamp->honeysql driver (sql.qp/semantic-type->unix-timestamp-unit semantic-type)))]
+    (let [identifier (sql.qp/cast-field-if-needed driver field (sql.qp/->honeysql driver (sql.qp/field->identifier driver field)))]
       (if (date-params/date-type? param-type)
         (sql.qp/date driver :day identifier)
         identifier)))))

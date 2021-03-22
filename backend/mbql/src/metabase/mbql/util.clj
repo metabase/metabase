@@ -2,10 +2,9 @@
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
   (:require [clojure.string :as str]
-            [java-time.amount :as t.amount]
-            [java-time.core :as t.core]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util.match :as mbql.match]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -460,26 +459,6 @@
       ;; otherwise add new clause at the end
       (update inner-query :order-by (comp vec distinct conj) order-by-clause))))
 
-(defn relative-date
-  "Return a new Temporal value relative to `t` using a relative date `unit`.
-
-    (relative-date :year -1 (t/zoned-date-time \"2019-11-04T10:57:00-08:00[America/Los_Angeles]\"))
-    ;; ->
-    (t/zoned-date-time \"2020-11-04T10:57-08:00[America/Los_Angeles]\")"
-  ^java.time.temporal.Temporal [unit amount t]
-  (if (zero? amount)
-    t
-    (t.core/plus t (case unit
-                     :millisecond (t.amount/millis amount)
-                     :second      (t.amount/seconds amount)
-                     :minute      (t.amount/minutes amount)
-                     :hour        (t.amount/hours amount)
-                     :day         (t.amount/days amount)
-                     :week        (t.amount/days (* amount 7))
-                     :month       (t.amount/months amount)
-                     :quarter     (t.amount/months (* amount 3))
-                     :year        (t.amount/years amount)))))
-
 (s/defn add-datetime-units :- mbql.s/DateTimeValue
   "Return a `relative-datetime` clause with `n` units added to it."
   [absolute-or-relative-datetime :- mbql.s/DateTimeValue
@@ -487,16 +466,18 @@
   (if (is-clause? :relative-datetime absolute-or-relative-datetime)
     (let [[_ original-n unit] absolute-or-relative-datetime]
       [:relative-datetime (+ n original-n) unit])
-    (let [[_ timestamp unit] absolute-or-relative-datetime]
-      [:absolute-datetime (relative-date unit n timestamp) unit])))
+    (let [[_ t unit] absolute-or-relative-datetime]
+      [:absolute-datetime (u.date/add t unit n) unit])))
 
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
-  [x]
-  (if (mbql-clause? x)
-    (first x)
-    (class x)))
+  ([x]
+   (if (mbql-clause? x)
+     (first x)
+     (class x)))
+  ([x _]
+   (dispatch-by-clause-name-or-class x)))
 
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
@@ -728,9 +709,24 @@
      joins
      unique-aliases)))
 
+(defn- remove-empty [x]
+  (cond
+    (map? x)
+    (not-empty (into {} (for [[k v] x
+                              :let  [v (remove-empty v)]
+                              :when (some? v)]
+                          [k v])))
+
+    (sequential? x)
+    (not-empty (into (empty x) (filter some? (map remove-empty x))))
+
+    :else
+    x))
+
 (s/defn update-field-options :- mbql.s/field
   "Like `clojure.core/update`, but for the options in a `:field` clause."
   [[_ id-or-name opts] :- mbql.s/field f & args]
+  ;; TODO -- this should canonicalize the clause afterwards
   [:field id-or-name (not-empty (apply f opts args))])
 
 (defn assoc-field-options

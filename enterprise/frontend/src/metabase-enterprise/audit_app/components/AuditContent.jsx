@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import Radio from "metabase/components/Radio";

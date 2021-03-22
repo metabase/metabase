@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
@@ -6,7 +6,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     setFirstWeekDayTo("monday");
   });
 
@@ -15,51 +15,42 @@ describe("scenarios > admin > permissions", () => {
     // filter: created before June 1st, 2016
     // summarize: Count by CreatedAt: Week
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders created before June 1st 2016",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2016-06-01"],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2016-06-01"],
       },
       display: "line",
-      visualization_settings: {},
     });
 
     // find and open that question
     cy.visit("/collection/root");
     cy.findByText("Orders created before June 1st 2016").click();
 
-    cy.log("**Assert the dates on the X axis**");
+    cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
     cy.get(".axis.x").contains("April 25, 2016");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "13604",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
-          ],
-          filter: [
-            "between",
-            ["field", ORDERS.CREATED_AT, null],
-            "2020-03-02", // Monday
-            "2020-03-03", // Tuesday
-          ],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
+        ],
+        filter: [
+          "between",
+          ["field", ORDERS.CREATED_AT, null],
+          "2020-03-02", // Monday
+          "2020-03-03", // Tuesday
+        ],
       },
       display: "bar",
       visualization_settings: {
@@ -72,7 +63,7 @@ describe("scenarios > admin > permissions", () => {
     cy.visit("/collection/root");
     cy.findByText("13604").click();
 
-    cy.log("**Reported failing on v0.37.0.2 and labeled as `.Regression`**");
+    cy.log("Reported failing on v0.37.0.2 and labeled as `.Regression`");
     cy.get(".axis.x")
       .contains(/sunday/i)
       .should("not.exist");
@@ -87,31 +78,25 @@ describe("scenarios > admin > permissions", () => {
 
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
-  it.skip("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
-    cy.request("POST", "/api/card", {
+  it("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
+    cy.createNativeQuestion({
       name: "14294",
-      dataset_query: {
-        database: 1,
-        native: {
-          "template-tags": {
-            date_range: {
-              id: "93961154-c3d5-7c93-7b59-f4e494fda499",
-              name: "date_range",
-              "display-name": "Date range",
-              type: "dimension",
-              dimension: ["field", ORDERS.CREATED_AT, null],
-              "widget-type": "date/all-options",
-              default: "past220weeks",
-              required: true,
-            },
+      native: {
+        query:
+          "select ID, CREATED_AT, dayname(CREATED_AT) as CREATED_AT_DAY\nfrom ORDERS \n[[where {{date_range}}]]\norder by CREATED_AT",
+        "template-tags": {
+          date_range: {
+            id: "93961154-c3d5-7c93-7b59-f4e494fda499",
+            name: "date_range",
+            "display-name": "Date range",
+            type: "dimension",
+            dimension: ["field", ORDERS.CREATED_AT, null],
+            "widget-type": "date/all-options",
+            default: "past220weeks",
+            required: true,
           },
-          query:
-            "select ID, CREATED_AT, dayname(CREATED_AT) as CREATED_AT_DAY\nfrom ORDERS \n[[where {{date_range}}]]\norder by CREATED_AT",
         },
-        type: "native",
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
       cy.get(".TableInteractive-header")

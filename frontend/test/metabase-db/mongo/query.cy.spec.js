@@ -1,17 +1,11 @@
-import {
-  signInAsAdmin,
-  restore,
-  modal,
-  signInAsNormalUser,
-  addMongoDatabase,
-} from "__support__/cypress";
+import { restore, modal, addMongoDatabase } from "__support__/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
 describe("mongodb > user > query", () => {
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addMongoDatabase(MONGO_DB_NAME);
   });
 
@@ -23,7 +17,7 @@ describe("mongodb > user > query", () => {
 
   context("as a user", () => {
     beforeEach(() => {
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
     });
 
     it("can query a Mongo database", () => {
@@ -65,7 +59,7 @@ describe("mongodb > user > query", () => {
       cy.findByText("Number of distinct values of ...").click();
       cy.findByText("City").click();
       cy.get("[class*=NotebookCell]").within(() => {
-        cy.get(".Icon-add").click();
+        cy.icon("add").click();
       });
       cy.findByText("Number of distinct values of ...").click();
       cy.findByText("State").click();
@@ -76,7 +70,7 @@ describe("mongodb > user > query", () => {
       cy.findByText("Visualize").click();
       cy.wait("@dataset");
 
-      cy.log("**Reported failing on stats ~v0.36.3**");
+      cy.log("Reported failing on stats ~v0.36.3");
       cy.findAllByText("1,966").should("have.length", 1); // City
       cy.findByText("49"); // State
     });

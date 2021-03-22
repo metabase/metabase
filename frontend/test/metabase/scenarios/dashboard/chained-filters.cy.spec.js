@@ -1,7 +1,7 @@
-import { signIn, restore, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { PEOPLE } = SAMPLE_DATASET;
+const { PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 // This token (simliar to what's done in parameters-embedded.cy.spec.js) just encodes the dashboardId=2 and dashboard parameters
 // See this link for details: https://jwt.io/#debugger-io?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE2MDc5NzUwMTMsIl9lbWJlZGRpbmdfcGFyYW1zIjp7InN0YXRlIjoiZW5hYmxlZCIsImNpdHkiOiJlbmFibGVkIn19.nqy_ibysLb6QB9o3loG5SNgOoE5HdexuUjCjA_KS1kM
@@ -21,36 +21,31 @@ function createDashboardWithQuestion(
 
 // Create a native SQL question with two parameters for city and state.
 function createQuestion(options, callback) {
-  cy.request("POST", "/api/card", {
+  cy.createNativeQuestion({
     name: "Count of People by State (SQL)",
-    dataset_query: {
-      type: "native",
-      native: {
-        query:
-          'SELECT "PUBLIC"."PEOPLE"."STATE" AS "STATE", count(*) AS "count" FROM "PUBLIC"."PEOPLE" WHERE 1=1 [[ AND {{city}}]] [[ AND {{state}}]] GROUP BY "PUBLIC"."PEOPLE"."STATE" ORDER BY "count" DESC, "PUBLIC"."PEOPLE"."STATE" ASC',
-        "template-tags": {
-          city: {
-            id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
-            name: "city",
-            "display-name": "City",
-            type: "dimension",
-            dimension: ["field", PEOPLE.CITY, null],
-            "widget-type": "category",
-          },
-          state: {
-            id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
-            name: "state",
-            "display-name": "State",
-            type: "dimension",
-            dimension: ["field", PEOPLE.STATE, null],
-            "widget-type": "category",
-          },
+    native: {
+      query:
+        'SELECT "PUBLIC"."PEOPLE"."STATE" AS "STATE", count(*) AS "count" FROM "PUBLIC"."PEOPLE" WHERE 1=1 [[ AND {{city}}]] [[ AND {{state}}]] GROUP BY "PUBLIC"."PEOPLE"."STATE" ORDER BY "count" DESC, "PUBLIC"."PEOPLE"."STATE" ASC',
+      "template-tags": {
+        city: {
+          id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+          name: "city",
+          "display-name": "City",
+          type: "dimension",
+          dimension: ["field", PEOPLE.CITY, null],
+          "widget-type": "category",
+        },
+        state: {
+          id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+          name: "state",
+          "display-name": "State",
+          type: "dimension",
+          dimension: ["field", PEOPLE.STATE, null],
+          "widget-type": "category",
         },
       },
-      database: 1,
     },
     display: "bar",
-    visualization_settings: {},
   }).then(({ body: { id: questionId } }) => {
     callback(questionId);
   });
@@ -60,9 +55,7 @@ function createQuestion(options, callback) {
 // Once created, add the provided questionId to the dashboard and then
 // map the city/state filters to the template-tags in the native query.
 function createDashboard({ dashboardName, questionId }, callback) {
-  cy.request("POST", "/api/dashboard", {
-    name: dashboardName,
-  }).then(({ body: { id: dashboardId } }) => {
+  cy.createDashboard(dashboardName).then(({ body: { id: dashboardId } }) => {
     cy.request("PUT", `/api/dashboard/${dashboardId}`, {
       parameters: [
         {
@@ -117,7 +110,7 @@ function createDashboard({ dashboardName, questionId }, callback) {
 describe("scenarios > dashboard > chained filter", () => {
   beforeEach(() => {
     restore();
-    signIn();
+    cy.signInAsAdmin();
   });
 
   for (const has_field_values of ["search", "list"]) {
@@ -125,10 +118,10 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
         cy.visit("/dashboard/1");
       // start editing
-      cy.get(".Icon-pencil").click();
+      cy.icon("pencil").click();
 
       // add a state filter
-      cy.get(".Icon-filter").click();
+      cy.icon("filter").click();
       popover().within(() => {
         cy.findByText("Location").click();
         cy.findByText("State").click();
@@ -251,5 +244,74 @@ describe("scenarios > dashboard > chained filter", () => {
     cy.findByText("There was a problem displaying this chart.").should(
       "not.exist",
     );
+  });
+
+  it.skip("should work for all field types (metabase#15170)", () => {
+    // Change Field Types for the following fields
+    cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
+      special_type: null,
+    });
+
+    cy.request("PUT", `/api/field/${PRODUCTS.EAN}`, {
+      special_type: "type/PK",
+    });
+
+    cy.createQuestion({
+      name: "15170",
+      query: { "source-table": PRODUCTS_ID },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("15170D").then(({ body: { id: DASHBOARD_ID } }) => {
+        // Add filter to the dashboard
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            {
+              id: "50c9eac6",
+              name: "ID",
+              slug: "id",
+              type: "id",
+            },
+          ],
+        });
+
+        // Add previously created question to the dashboard
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          // Connect filter to that question
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 8,
+                sizeY: 6,
+                parameter_mappings: [
+                  {
+                    parameter_id: "50c9eac6",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.EAN]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        cy.icon("pencil").click();
+        cy.get(".DashCard .Icon-click").click({ force: true });
+        cy.findByText(/Ean/i).click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText("Available filters")
+          .parent()
+          .findByText(/ID/i)
+          .click();
+        popover().within(() => {
+          cy.findByText(/Ean/i);
+        });
+      });
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 const MOCK_PULSE_FORM_INPUT = {
   channels: {
@@ -16,12 +16,12 @@ const MOCK_PULSE_FORM_INPUT = {
 describe("scenarios > pulse", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
   it("should be able get to the new pulse page from the nav bar", () => {
     cy.visit("/");
 
-    cy.get(".Icon-add").click();
+    cy.icon("add").click();
     cy.contains("New pulse").click();
 
     cy.url().should("match", /\/pulse\/create$/);

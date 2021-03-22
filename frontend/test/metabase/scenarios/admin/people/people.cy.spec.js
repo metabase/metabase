@@ -1,22 +1,15 @@
 // Includes migrations from integration tests:
 // https://github.com/metabase/metabase/pull/14174
 
-import {
-  signInAsAdmin,
-  restore,
-  popover,
-  USERS,
-  USER_GROUPS,
-  setupDummySMTP,
-} from "__support__/cypress";
-
+import { restore, popover, setupDummySMTP } from "__support__/cypress";
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   const TEST_USER = {
@@ -30,7 +23,7 @@ describe("scenarios > admin > people", () => {
     it("should render (metabase-enterprise#210)", () => {
       cy.visit("/admin/people");
 
-      cy.log("**Assert it loads People by default**");
+      cy.log("Assert it loads People by default");
       cy.get(".PageTitle").contains("People");
 
       cy.get(".ContentTable tbody tr")
@@ -44,7 +37,7 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Groups").click();
       });
 
-      cy.log("**Switch to 'Groups' and make sure it renders properly**");
+      cy.log("Switch to 'Groups' and make sure it renders properly");
       cy.get(".PageTitle").contains("Groups");
 
       // Administrators, All Users, collection, data
@@ -92,7 +85,7 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should disallow admin to create new users with case mutation of existing user", () => {
-      const { first_name, last_name, username: email } = normal;
+      const { first_name, last_name, email } = normal;
       cy.visit("/admin/people");
       clickButton("Add someone");
 
@@ -131,10 +124,10 @@ describe("scenarios > admin > people", () => {
         clickButton("Deactivate");
         cy.findByText(FULL_NAME).should("not.exist");
 
-        cy.log("**-- It should load inactive users --**");
+        cy.log("It should load inactive users");
         cy.findByText("Deactivated").click();
         cy.findByText(FULL_NAME);
-        cy.get(".Icon-refresh").click();
+        cy.icon("refresh").click();
         cy.findByText(`Reactivate ${FULL_NAME}?`);
         clickButton("Reactivate");
         // It redirects to all people listing
@@ -199,7 +192,7 @@ function showUserOptions(full_name) {
   cy.findByText(full_name)
     .closest("tr")
     .within(() => {
-      cy.get(".Icon-ellipsis").click();
+      cy.icon("ellipsis").click();
     });
 }
 

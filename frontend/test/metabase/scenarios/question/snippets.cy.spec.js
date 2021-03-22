@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore, modal } from "__support__/cypress";
+import { restore, modal } from "__support__/cypress";
 
 // HACK which lets us type (even very long words) without losing focus
 // this is needed for fields where autocomplete suggestions are enabled
@@ -16,11 +16,11 @@ function _clearAndIterativelyTypeUsingLabel(label, string) {
 //       - Normal users don't have permission to create/edit snippets in `ee` version.
 //       - CI runs this test twice (both contexts), so it fails on `ee`.
 //       - There is a related issue: https://github.com/metabase/metabase-enterprise/issues/543
-// TODO: Once the above issue is (re)solved, change back to `signInAsNormalUser`
+// TODO: Once the above issue is (re)solved, change back to `cy.signInAsNormalUser`
 describe("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should let you create and use a snippet", () => {
@@ -34,7 +34,7 @@ describe("scenarios > question > snippets", () => {
     );
 
     // Add a snippet of that text
-    cy.get(".Icon-snippet").click();
+    cy.icon("snippet").click();
     cy.contains("Create a snippet").click();
 
     modal().within(() => {
@@ -65,11 +65,11 @@ describe("scenarios > question > snippets", () => {
     cy.get(".ace_content").as("editor");
     cy.get("@editor").type("select ");
     // 2. snippet
-    cy.get(".Icon-snippet").click();
+    cy.icon("snippet").click();
     cy.findByText("stuff-snippet").click();
 
     // Open the snippet edit modal
-    cy.get(".Icon-chevrondown").click({ force: true });
+    cy.icon("chevrondown").click({ force: true });
     cy.findByText("Edit").click();
 
     // Update the name and content

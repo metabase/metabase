@@ -65,7 +65,7 @@ export default class DashboardGrid extends Component {
     isEditingParameter: false,
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
       dashcards: this.getSortedDashcards(nextProps),
       layout: this.getLayout(nextProps),

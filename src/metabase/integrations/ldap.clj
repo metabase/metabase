@@ -84,17 +84,6 @@
                  (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
              (setting/set-json! :ldap-group-mappings new-value)))
 
-(defsetting ldap-sync-user-attributes
-  (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
-  :type :boolean
-  :default true)
-
-;; TODO - maybe we want to add a csv setting type?
-(defsetting ldap-sync-user-attributes-blacklist
-  (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
-  :default "userPassword,dn,distinguishedName"
-  :type    :csv)
-
 (defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
   :type       :boolean

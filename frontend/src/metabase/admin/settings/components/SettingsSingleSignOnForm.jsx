@@ -23,7 +23,7 @@ export default class SettingsSingleSignOnForm extends Component {
     updateSetting: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { elements } = this.props;
     const clientID = _.findWhere(elements, { key: "google-auth-client-id" });
     const domain = _.findWhere(elements, {

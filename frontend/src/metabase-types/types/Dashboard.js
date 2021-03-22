@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { Card, CardId, VisualizationSettings } from "./Card";
 import type { Parameter, ParameterMapping } from "./Parameter";
 import type { EmbeddingParams } from "metabase/public/lib/types";

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";

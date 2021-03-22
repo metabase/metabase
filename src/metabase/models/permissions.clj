@@ -266,7 +266,7 @@
 
 (s/defn set-has-full-permissions-for-set? :- s/Bool
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `object-paths-set`?"
-  [permissions-set :- #{UserPath}, object-paths-set :- #{ObjectPath}]
+  [permissions-set :- #{UserPath} object-paths-set :- #{ObjectPath}]
   (every? (partial set-has-full-permissions? permissions-set)
           object-paths-set))
 

@@ -2,11 +2,13 @@
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
             [metabase.models :refer [Card CardFavorite Collection Dashboard DashboardCard DashboardFavorite Database
                                      Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard Segment Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
+            [metabase.search.config :as search-config]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
@@ -26,7 +28,8 @@
    :dataset_query       nil
    :table_schema        nil
    :table_name          nil
-   :table_description   nil})
+   :table_description   nil
+   :updated_at          true})
 
 (defn- table-search-results
   "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
@@ -49,12 +52,14 @@
    {:name name}
    (apply array-map kvs)))
 
+(def ^:private test-collection (make-result "collection test collection", :model "collection", :collection {:id true, :name true}, :updated_at false))
+
 (defn- default-search-results []
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
-    (make-result "collection test collection", :model "collection", :collection {:id true, :name true})
+    test-collection
     (make-result "card test card", :model "card", :favorite false, :dataset_query "{}", :dashboardcard_count 0)
-    (make-result "pulse test pulse", :model "pulse", :archived nil)
+    (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -128,8 +133,8 @@
           (-> result
               mt/boolean-ids-and-timestamps
               (update-in [:collection :name] #(some-> % string?))
-              ;; `:score` is just used for debugging and would be a pain to match against
-              (dissoc :score))))))))
+              ;; `:scores` is just used for debugging and would be a pain to match against.
+              (dissoc :scores))))))))
 
 (defn- search-request
   [& args]
@@ -138,6 +143,22 @@
 (defn- unsorted-search-request
   [& args]
   (apply search-request* identity args))
+
+(deftest order-clause-test
+  (testing "it includes all columns"
+    (is (= (hsql/call
+            :case
+            [:like :model "%foo%"] 0
+            [:like :name "%foo%"] 0
+            [:like :display_name "%foo%"] 0
+            [:like :description "%foo%"] 0
+            [:like :collection_name "%foo%"] 0
+            [:like :dataset_query "%foo%"] 0
+            [:like :table_schema "%foo%"] 0
+            [:like :table_name "%foo%"] 0
+            [:like :table_description "%foo%"] 0
+            :else 1)
+           (api.search/order-clause "foo")))))
 
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
@@ -153,7 +174,12 @@
     (with-search-items-in-root-collection "test"
       (with-search-items-in-root-collection "something different"
         (is (= (default-search-results)
-               (search-request :crowberto :q "test")))))))
+               (search-request :crowberto :q "test"))))))
+  (testing "It prioritizes exact matches"
+    (with-search-items-in-root-collection "test"
+      (with-redefs [search-config/db-max-results 1]
+        (is (= [test-collection]
+               (search-request :crowberto :q "test collection")))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]

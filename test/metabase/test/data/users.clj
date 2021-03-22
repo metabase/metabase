@@ -3,12 +3,15 @@
   (:require [clojure.test :as t]
             [medley.core :as m]
             [metabase.http-client :as http]
+            [metabase.models.permissions-group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :as user :refer [User]]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import clojure.lang.ExceptionInfo
            metabase.models.user.UserInstance))
 
@@ -163,16 +166,41 @@
   (fetch-user username)
   (apply client-fn username args))
 
+(defn do-with-test-user [user-kwd thunk]
+  (t/testing (format "with test user %s\n" user-kwd)
+    (mw.session/with-current-user (some-> user-kwd user->id)
+      (thunk))))
+
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the test User named by
   `user-kwd`."
   {:style/indent 1}
   [user-kwd & body]
-  `(t/testing ~(format "with test user %s\n" user-kwd)
-     (mw.session/with-current-user (some-> ~user-kwd user->id)
-       ~@body)))
+  `(do-with-test-user ~user-kwd (fn [] ~@body)))
 
 (defn test-user?
   "Does this User or User ID belong to one of the predefined test birds?"
   [user-or-id]
   (contains? (set (vals (user->id))) (u/the-id user-or-id)))
+
+(defn test-user-name-or-user-id->user-id [test-user-name-or-user-id]
+  (if (keyword? test-user-name-or-user-id)
+    (user->id test-user-name-or-user-id)
+    (u/the-id test-user-name-or-user-id)))
+
+(defn do-with-group-for-user [group test-user-name-or-user-id f]
+  (tt/with-temp* [PermissionsGroup           [group group]
+                  PermissionsGroupMembership [_ {:group_id (u/the-id group)
+                                                 :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]]
+    (f group)))
+
+(defmacro with-group
+  "Create a new PermissionsGroup, bound to `group-binding`; add test user Rasta Toucan [RIP] to the
+  group, then execute `body`."
+  [[group-binding group] & body]
+  `(do-with-group-for-user ~group :rasta (fn [~group-binding] ~@body)))
+
+(defmacro with-group-for-user
+  "Like `with-group`, but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
+  [[group-binding test-user-name-or-user-id group] & body]
+  `(do-with-group-for-user ~group ~test-user-name-or-user-id (fn [~group-binding] ~@body)))

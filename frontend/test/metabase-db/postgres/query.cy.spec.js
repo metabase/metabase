@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   addPostgresDatabase,
   withDatabase,
@@ -12,7 +11,7 @@ const PG_DB_ID = 2;
 describe("postgres > user > query", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
   });
 
@@ -33,7 +32,7 @@ describe("postgres > user > query", () => {
     cy.get(".LoadingSpinner").should("not.exist");
 
     // Assertions
-    cy.log("**Fails in v0.36.6**");
+    cy.log("Fails in v0.36.6");
     // This could be omitted because real test is searching for "37.65" on the page
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.contains("37.65");
@@ -62,7 +61,7 @@ describe("postgres > user > query", () => {
     );
 
     cy.log(
-      "**Reported failing on v0.38.0-rc1 querying Postgres, Redshift and BigQuery. It works on MySQL and H2.**",
+      "Reported failing on v0.38.0-rc1 querying Postgres, Redshift and BigQuery. It works on MySQL and H2.",
     );
     cy.wait("@pivotDataset").then(xhr => {
       expect(xhr.response.body.cause || "").not.to.contain("ERROR");

@@ -10,14 +10,18 @@
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is only
-  in `new-groups-or-ids`. Ignores special groups like `admin` and `all-users`."
-  [user-or-id new-groups-or-ids]
-  (let [special-group-ids  #{(u/get-id (group/admin)) (u/get-id (group/all-users))}
+  in `new-groups-or-ids`. Ignores special groups like `all-users`."
+  [user-or-id new-groups-or-ids sync-admin-group?]
+  ;; if you AREN'T syncing the admin group, it's a "special group", which means it's excluded from being added
+  ;; or removed from a user
+  (let [special-group-ids  (if (false? sync-admin-group?)
+                             #{(u/get-id (group/admin)) (u/get-id (group/all-users))}
+                             #{(u/get-id (group/all-users))})
         user-id            (u/get-id user-or-id)
         ;; Get a set of Group IDs the user currently belongs to
         current-group-ids  (db/select-field :group_id PermissionsGroupMembership
-                             :user_id  user-id
-                             :group_id [:not-in special-group-ids])
+                                            :user_id  user-id
+                                            :group_id [:not-in special-group-ids])
         new-group-ids      (set (map u/get-id new-groups-or-ids))
         ;; determine what's different between current groups and new groups
         [to-remove to-add] (data/diff current-group-ids new-group-ids)]

@@ -1,6 +1,7 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
             [metabase.config :as config]
             [metabase.driver :as driver]
@@ -62,17 +63,15 @@
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
                                                       (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
-      (doseq [{:keys [field-name visibility-type semantic-type], :as field-definition} (:field-definitions table-definition)]
+      (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
         (let [field (delay (or (tx/metabase-instance field-definition @table)
-                               (throw (Exception. (format "Field '%s' not loaded from definition:\n"
+                               (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
                                                           field-name
                                                           (u/pprint-to-str field-definition))))))]
-          (when visibility-type
-            (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
-            (db/update! Field (:id @field) :visibility_type (name visibility-type)))
-          (when semantic-type
-            (log/debug (format "SET SEMANTIC TYPE %s.%s -> %s" table-name field-name semantic-type))
-            (db/update! Field (:id @field) :semantic_type (u/qualified-name semantic-type))))))))
+          (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
+            (when-let [v (get field-definition property)]
+              (log/debug (format "SET %s %s.%s -> %s" property table-name field-name v))
+              (db/update! Field (:id @field) (keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -258,6 +257,10 @@
   (copy-db-tables! old-db-id new-db-id)
   (copy-db-fks! old-db-id new-db-id))
 
+(def ^:dynamic *db-is-temp-copy?*
+  "Whether the current test database is a temp copy created with the `with-temp-copy-of-db` macro."
+  false)
+
 (defn do-with-temp-copy-of-db
   "Internal impl of `data/with-temp-copy-of-db`. Run `f` with a temporary Database that copies the details from the
   standard test database, and syncs it."
@@ -267,7 +270,8 @@
     (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
       (try
         (copy-db-tables-and-fields! old-db-id new-db-id)
-        (do-with-db new-db f)
+        (binding [*db-is-temp-copy?* true]
+          (do-with-db new-db f))
         (finally
           (db/delete! Database :id new-db-id))))))
 

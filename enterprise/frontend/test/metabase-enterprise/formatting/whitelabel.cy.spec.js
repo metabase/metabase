@@ -1,8 +1,5 @@
 import {
   restore,
-  signInAsAdmin,
-  signOut,
-  signInAsNormalUser,
   openOrdersTable,
   describeWithToken,
 } from "__support__/cypress";
@@ -47,17 +44,17 @@ function checkLogo() {
 describeWithToken("formatting > whitelabel", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("admin", () => {
     it("should be able to set colors using color-picker dialog", () => {
       cy.visit("/admin/settings/whitelabel");
 
-      cy.log("**--1. Select color with squares--**");
+      cy.log("Select color with squares");
       changeThemeColor(1, colors.primary.hex);
 
-      cy.log("**--2. Select color by entering rgb value--**");
+      cy.log("Select color by entering rgb value");
       cy.get("td")
         .eq(5)
         .click();
@@ -78,7 +75,7 @@ describeWithToken("formatting > whitelabel", () => {
         .type(colors.nav.rgb[2]);
       cy.findByText("Done").click();
 
-      cy.log("**--3. Select color by typing hex code--**");
+      cy.log("Select color by typing hex code");
       cy.get("td")
         .eq(29)
         .click();
@@ -95,7 +92,7 @@ describeWithToken("formatting > whitelabel", () => {
     const COMPANY_NAME = "Test Co";
 
     beforeEach(() => {
-      cy.log("**Change company name**");
+      cy.log("Change company name");
       cy.visit("/admin/settings/whitelabel");
       cy.findByPlaceholderText("Metabase")
         .clear()
@@ -108,18 +105,18 @@ describeWithToken("formatting > whitelabel", () => {
     });
 
     it("changes should reflect in different parts of UI", () => {
-      cy.log("**--1. New company should show up on activity page--**");
+      cy.log("New company should show up on activity page");
       cy.visit("/activity");
       cy.findByText(`${COMPANY_NAME} is up and running.`);
       cy.findByText("Metabase is up and running.").should("not.exist");
 
-      cy.log("**--2. New company should show up when logged out--**");
-      signOut();
+      cy.log("New company should show up when logged out");
+      cy.signOut();
       cy.visit("/");
       cy.findByText(`Sign in to ${COMPANY_NAME}`);
 
-      cy.log("**--3. New company should show up for a normal user--**");
-      signInAsNormalUser();
+      cy.log("New company should show up for a normal user");
+      cy.signInAsNormalUser();
       cy.visit("/activity");
       cy.findByText(`${COMPANY_NAME} is up and running.`);
       cy.findByText("Metabase is up and running.").should("not.exist");
@@ -144,7 +141,7 @@ describeWithToken("formatting > whitelabel", () => {
     });
 
     it("should reflect color changes", () => {
-      signOut();
+      cy.signOut();
       cy.visit("/");
 
       // Note that if we have modified the logo, the entire background turns the brand color.
@@ -165,7 +162,7 @@ describeWithToken("formatting > whitelabel", () => {
       );
 
       cy.log("Normal users should have a green header");
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/");
       cy.get(".Nav").should(
         "have.css",
@@ -176,7 +173,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.log(
         "Admin users should also have a green header, but yellow in the admin panel",
       );
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.visit("/");
       cy.get(".Nav").should(
         "have.css",
@@ -193,7 +190,7 @@ describeWithToken("formatting > whitelabel", () => {
 
     it.skip("should show color changes reflected in q visualizations (metabase-enterprise #470)", () => {
       // *** Test should pass when issue #470 is resolved
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       openOrdersTable();
       cy.findAllByText("Summarize")
         .first()
@@ -208,7 +205,7 @@ describeWithToken("formatting > whitelabel", () => {
 
   describe("company logo", () => {
     beforeEach(() => {
-      cy.log("**Add a logo**");
+      cy.log("Add a logo");
       cy.readFile(
         "enterprise/frontend/test/metabase-enterprise/_support_/logo.jpeg",
         "base64",
@@ -225,13 +222,13 @@ describeWithToken("formatting > whitelabel", () => {
     });
 
     it("changes should reflect while signed out", () => {
-      signOut();
+      cy.signOut();
       cy.visit("/");
       checkLogo();
     });
 
     it("changes should reflect on user's dashboard", () => {
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/");
       checkLogo();
     });
@@ -241,7 +238,7 @@ describeWithToken("formatting > whitelabel", () => {
     beforeEach(() => {
       cy.visit("/admin/settings/whitelabel");
 
-      cy.log("**Add favicon**");
+      cy.log("Add favicon");
       cy.findByPlaceholderText("frontend_client/favicon.ico").type(
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
@@ -252,7 +249,7 @@ describeWithToken("formatting > whitelabel", () => {
       checkFavicon();
     });
     it("should show up in user's HTML", () => {
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       cy.visit("/");
       cy.get('head link[rel="icon"]')
         .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')

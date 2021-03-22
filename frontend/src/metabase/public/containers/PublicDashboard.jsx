@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -95,8 +93,7 @@ type Props = {
 export default class PublicDashboard extends Component {
   props: Props;
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       initialize,
       fetchDashboard,
@@ -127,7 +124,7 @@ export default class PublicDashboard extends Component {
     this.props.cancelFetchDashboardCardData();
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }

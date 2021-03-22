@@ -1,12 +1,8 @@
-import {
-  restore,
-  signInAsAdmin,
-  setupLocalHostEmail,
-} from "../../../__support__/cypress";
+import { restore, setupLocalHostEmail } from "__support__/cypress";
 
 function setUpHourlyAlert(question_num) {
   cy.visit(`/question/${question_num}`);
-  cy.get(".Icon-bell").click();
+  cy.icon("bell").click();
   cy.findByText("Set up an alert").click();
   cy.findByText("Daily").click();
   cy.findByText("Hourly").click();
@@ -14,7 +10,7 @@ function setUpHourlyAlert(question_num) {
 
 describe("scenarios > alert > email_alert", () => {
   beforeEach(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(cy.signInAsAdmin);
 
   it("should have no alerts set up initially", () => {
     cy.server();

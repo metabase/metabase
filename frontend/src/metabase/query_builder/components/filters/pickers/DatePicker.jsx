@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -348,7 +346,7 @@ export default class DatePicker extends Component {
     operators: PropTypes.array,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     let operators = this.props.operators || DATE_OPERATORS;
     if (!this.props.hideEmptinessOperators) {
       operators = operators.concat(EMPTINESS_OPERATORS);

@@ -8,6 +8,7 @@
             [metabase.driver.bigquery :as bigquery]
             [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Database Field Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -103,9 +104,11 @@
                rows))))
 
     (testing "let's make sure we're generating correct HoneySQL + SQL for aggregations"
-      (is (= {:select   [[(hx/identifier :field "v3_test_data.venues" "price")
+      (is (= {:select   [[(hx/with-database-type-info (hx/identifier :field "v3_test_data.venues" "price") "integer")
                           (hx/identifier :field-alias "price")]
-                         [(hsql/call :avg (hx/identifier :field "v3_test_data.venues" "category_id"))
+                         [(hsql/call :avg (hx/with-database-type-info
+                                           (hx/identifier :field "v3_test_data.venues" "category_id")
+                                           "integer"))
                           (hx/identifier :field-alias "avg")]]
               :from     [(hx/identifier :table "v3_test_data.venues")]
               :group-by [(hx/identifier :field-alias "price")]
@@ -132,25 +135,21 @@
 
 (deftest join-alias-test
   (mt/test-driver :bigquery
-    (testing (str "make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
-                  "the right alias, e.g. something like `categories__via__category_id`, which is considerably different "
-                  "from what other SQL databases do. (#4218)")
-      (is (= (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
-                  " count(*) AS `count` "
-                  "FROM `v3_test_data.venues` "
-                  "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
-                  " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
-                  "GROUP BY `categories__via__category_id__name` "
-                  "ORDER BY `categories__via__category_id__name` ASC")
-             ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks
-             ;; that and make it return `true` so this test proceeds as expected
-             (with-redefs [driver/supports? (constantly true)]
-               (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:fk_target_field_id (mt/id :categories :id)
-                                                                            :semantic_type      "type/FK"}
-                 (let [results (mt/run-mbql-query venues
-                                 {:aggregation [:count]
-                                  :breakout    [$category_id->categories.name]})]
-                   (get-in results [:data :native_form :query] results)))))))))
+    (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
+                  "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
+                  "different  what other SQL databases do. (#4218)")
+      (mt/with-bigquery-fks
+        (let [results (mt/run-mbql-query venues
+                        {:aggregation [:count]
+                         :breakout    [$category_id->categories.name]})]
+          (is (= (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
+                      " count(*) AS `count` "
+                      "FROM `v3_test_data.venues` "
+                      "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
+                      " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
+                      "GROUP BY `categories__via__category_id__name` "
+                      "ORDER BY `categories__via__category_id__name` ASC")
+                 (get-in results [:data :native_form :query] results))))))))
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query
@@ -276,13 +275,13 @@
    (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :seconds :some_field)]
      {:value unix-ts
       :type  :timestamp
-      :as    {:date     (hx/cast :date unix-ts)
-              :datetime (hx/cast :datetime unix-ts)}})
+      :as    {:date     (hsql/call :cast unix-ts (hsql/raw "date"))
+              :datetime (hsql/call :cast unix-ts (hsql/raw "datetime"))}})
    (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :milliseconds :some_field)]
      {:value unix-ts
       :type  :timestamp
-      :as    {:date     (hx/cast :date unix-ts)
-              :datetime (hx/cast :datetime unix-ts)}})])
+      :as    {:date     (hsql/call :cast unix-ts (hsql/raw "date"))
+              :datetime (hsql/call :cast unix-ts (hsql/raw "datetime"))}})])
 
 (deftest temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
@@ -294,9 +293,9 @@
 
 (deftest reconcile-temporal-types-test
   (mt/with-everything-store
-    (tt/with-temp* [Field [date-field      {:name "date", :base_type :type/Date}]
-                    Field [datetime-field  {:name "datetime", :base_type :type/DateTime}]
-                    Field [timestamp-field {:name "timestamp", :base_type :type/DateTimeWithLocalTZ}]]
+    (tt/with-temp* [Field [date-field      {:name "date", :base_type :type/Date, :database_type "date"}]
+                    Field [datetime-field  {:name "datetime", :base_type :type/DateTime, :database_type "datetime"}]
+                    Field [timestamp-field {:name "timestamp", :base_type :type/DateTimeWithLocalTZ, :database_type "timestamp"}]]
       ;; bind `*table-alias*` so the BigQuery QP doesn't try to look up the current dataset name when converting
       ;; `hx/identifier`s to SQL
       (binding [sql.qp/*table-alias* "ABC"
@@ -334,7 +333,9 @@
                     (testing (format "\nValue = %s %s" (:type value) (pr-str filter-value))
                       (let [filter-clause       (into [(:mbql clause) field]
                                                       (repeat (dec (:args clause)) filter-value))
-                            expected-identifier (hx/identifier :field "ABC" (name temporal-type))
+                            field-literal?      (mbql.u/match-one field [:field (_ :guard string?) _])
+                            expected-identifier (cond-> (hx/identifier :field "ABC" (name temporal-type))
+                                                  (not field-literal?) (hx/with-database-type-info (name temporal-type)))
                             expected-value      (get-in value [:as temporal-type] (:value value))
                             expected-clause     (build-honeysql-clause-head clause
                                                                             expected-identifier
@@ -352,9 +353,9 @@
             (doseq [[temporal-type field] fields
                     :let                  [identifier          (hx/identifier :field "ABC" (name temporal-type))
                                            expected-identifier (case temporal-type
-                                                                 :date      identifier
-                                                                 :datetime  (hx/cast :timestamp identifier)
-                                                                 :timestamp identifier)]]
+                                                                 :date      (hx/with-database-type-info identifier "date")
+                                                                 :datetime  (hsql/call :cast identifier (hsql/raw "timestamp"))
+                                                                 :timestamp (hx/with-database-type-info identifier "timestamp"))]]
               (testing (format "\ntemporal-type = %s" temporal-type)
                 (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
                        (sql.qp/->honeysql :bigquery [:= [:field (:id field) {:temporal-unit :day-of-week}] 1])))))))))))
@@ -369,25 +370,26 @@
              :timestamp [:year "CAST(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year) AS timestamp)"]}]
       (testing t
         (let [reconciled-clause (#'bigquery.qp/->temporal-type t [:relative-datetime -1 unit])]
-          (is (= t
-                 (#'bigquery.qp/temporal-type reconciled-clause))
-              "Should have correct type metadata after reconciliation")
-          (is (= [(str "WHERE " expected-sql)]
-                 (sql.qp/format-honeysql :bigquery
-                   {:where (sql.qp/->honeysql :bigquery reconciled-clause)}))
-              "Should get converted to the correct SQL")))))
+          (testing "Should have correct type metadata after reconciliation"
+            (is (= t
+                   (#'bigquery.qp/temporal-type reconciled-clause))))
+          (testing "Should get converted to the correct SQL"
+            (is (= [(str "WHERE " expected-sql)]
+                   (sql.qp/format-honeysql :bigquery
+                                           {:where (sql.qp/->honeysql :bigquery reconciled-clause)}))))))))
 
   (testing "relative-datetime clauses inside filter clauses"
     (doseq [[expected-type t] {:date      #t "2020-01-31"
                                :datetime  #t "2020-01-31T20:43:00.000"
                                :timestamp #t "2020-01-31T20:43:00.000-08:00"}]
       (testing expected-type
-        (let [[_ _ relative-datetime] (sql.qp/->honeysql :bigquery
-                                        [:=
-                                         t
-                                         [:relative-datetime -1 :year]])]
-          (is (= expected-type
-                 (#'bigquery.qp/temporal-type relative-datetime))))))))
+        (let [[_ _ relative-datetime :as clause] (sql.qp/->honeysql :bigquery
+                                                                    [:=
+                                                                     t
+                                                                     [:relative-datetime -1 :year]])]
+          (testing (format "\nclause = %s" (pr-str clause))
+            (is (= expected-type
+                   (#'bigquery.qp/temporal-type relative-datetime)))))))))
 
 (deftest between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"
@@ -604,6 +606,9 @@
                                                                         [:field (:id f) {:temporal-unit unit}]
                                                                         [:relative-datetime -1 unit]])}))))))))))
 
+;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
+;; filtering purposes against RELATIVE-DATETIMES. `relative-datetime` only supports the unit below -- a subset of all
+;; the MBQL date bucketing units.
 (def ^:private filter-test-table
   [[nil          :minute :hour :day  :week :month :quarter :year]
    [:time        true    true  false false false  false    false]
@@ -613,6 +618,8 @@
 
 (defn- test-table-with-fn [table f]
   (let [units (rest (first table))]
+    ;; this is done in parallel because there are a lot of combinations and doing them one at a time would take the
+    ;; rest of our lives
     (dorun (pmap (fn [[field & vs]]
                    (testing (format "\nfield = %s" field)
                      (dorun (pmap (fn [[unit expected]]
@@ -631,6 +638,8 @@
       (mt/dataset attempted-murders
         (test-table-with-fn filter-test-table can-we-filter-against-relative-datetime?)))))
 
+;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
+;; breakout purposes.
 (def ^:private breakout-test-table
   [[nil          :default :minute :hour :day  :week :month :quarter :year :minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year]
    [:time        true     true    true  false false false  false    false true            true         false        false         false        false         false          false]
@@ -668,5 +677,52 @@
                (mt/formatted-rows [int]
                  (qp/process-query
                   (mt/native-query
-                    {:query  "SELECT count(*) AS `count` FROM `v3_test_data.venues` WHERE `v3_test_data.venues`.`name` = ?"
+                    {:query  (str "SELECT count(*) AS `count` "
+                                  "FROM `v3_test_data.venues` "
+                                  "WHERE `v3_test_data.venues`.`name` = ?")
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
+
+(deftest ->valid-field-identifier-test
+  (testing "`->valid-field-identifier` should generate valid field identifiers"
+    (testing "no need to change anything"
+      (is (= "abc"
+             (#'bigquery.qp/->valid-field-identifier "abc"))))
+    (testing "replace spaces with underscores"
+      (is (= "A_B_C_0ef78513"
+             (#'bigquery.qp/->valid-field-identifier "A B C"))))
+    (testing "trim spaces"
+      (is (= "A_B_61f5f1b3"
+             (#'bigquery.qp/->valid-field-identifier " A B "))))
+    (testing "diacritical marks"
+      (is (= "Organizacao_6c2736cd"
+             (#'bigquery.qp/->valid-field-identifier "Organização")))
+      (testing "we should generate unique suffixes for different strings that get normalized to the same thing"
+        (is (= "Organizacao_f3d24ea0"
+               (#'bigquery.qp/->valid-field-identifier "Organizacaó")))))
+    (testing "cannot start with a number"
+      (is (= "_123_202cb962"
+             (#'bigquery.qp/->valid-field-identifier "123"))))
+    (testing "replace non-letter characters with underscores"
+      (is (= "__02612e19"
+             (#'bigquery.qp/->valid-field-identifier "😍")))
+      (testing "we should generate unique suffixes for different strings that get normalized to the same thing"
+        (is (= "__e88ec744"
+               (#'bigquery.qp/->valid-field-identifier "🥰")))))
+    (testing "trim long strings"
+      (is (= (str (str/join (repeat 119 "a")) "_4e5475d1")
+             (#'bigquery.qp/->valid-field-identifier (str/join (repeat 300 "a"))))))))
+
+(deftest remove-diacriticals-from-field-aliases-test
+  (mt/test-driver :bigquery
+    (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
+      (mt/with-bigquery-fks
+        (let [query (mt/mbql-query checkins
+                      {:fields [$id $venue_id->venues.name]})]
+          (mt/with-temp-vals-in-db Table (mt/id :venues) {:name "Organização"}
+            (is (= (str "SELECT `v3_test_data.checkins`.`id` AS `id`,"
+                        " `Organização__via__venue_id`.`name` AS `Organizacao__via__venue_id__name_560a3449` "
+                        "FROM `v3_test_data.checkins` "
+                        "LEFT JOIN `v3_test_data.Organização` `Organização__via__venue_id`"
+                        " ON `v3_test_data.checkins`.`venue_id` = `Organização__via__venue_id`.`id` "
+                        "LIMIT 1048576")
+                   (:query (qp/query->native query))))))))))

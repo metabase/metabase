@@ -243,8 +243,8 @@
   [field-ids]
   (let [fields (when (seq field-ids)
                  (filter field-should-have-field-values?
-                         (db/select ['Field :name :id :base_type :semantic_type :visibility_type :table_id
-                                     :has_field_values]
+                         (db/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                                     :semantic_type :visibility_type :table_id :has_field_values]
                            :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
     (doseq [{table-id :table_id, :as field} fields]

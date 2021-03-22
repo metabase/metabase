@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
@@ -6,7 +6,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > admin > datamodel > metrics", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.viewport(1400, 860);
   });
 
@@ -27,7 +27,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       });
       cy.findByText("Add filters to narrow your answer").click();
 
-      cy.log("**Fails in v0.36.0 and v0.36.3. It exists in v0.35.4**");
+      cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
       popover().within(() => {
         cy.findByText("Custom Expression");
       });

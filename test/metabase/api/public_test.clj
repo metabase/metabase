@@ -1008,9 +1008,9 @@
           (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
             (is (= [2 3 4 5 6]
                    (take 5 (http/client :get 200 url))))))
-        (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
-          (let [url (format "public/dashboard/%s/params/%s/search/s" uuid (:category-name param-keys))]
-            (is (= ["Scandinavian" "Seafood" "South Pacific"]
+        (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
+          (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
+            (is (= ["Fast Food" "Food Truck" "Seafood"]
                    (take 3 (http/client :get 200 url))))))))))
 
 (deftest chain-filter-ignore-current-user-permissions-test
@@ -1025,11 +1025,11 @@
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
               (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
                 (is (= [2 3 4 5 6]
-                       (take 5 ((mt/user->client :rasta) :get 200 url))))))
+                       (take 5 (mt/user-http-request :rasta :get 200 url))))))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
-              (let [url (format "public/dashboard/%s/params/%s/search/s" uuid (:category-name param-keys))]
-                (is (= ["Scandinavian" "Seafood" "South Pacific"]
-                       (take 3 ((mt/user->client :rasta) :get 200 url))))))))))))
+              (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
+                (is (= ["Fast Food" "Food Truck" "Seafood"]
+                       (take 3 (mt/user-http-request :rasta :get 200 url))))))))))))
 
 ;; Pivot tables
 

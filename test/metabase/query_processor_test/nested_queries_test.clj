@@ -14,6 +14,7 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
@@ -70,7 +71,8 @@
                 (dissoc :description :parent_id :visibility_type))
 
             (not has-source-metadata?)
-            (dissoc :id :semantic_type :settings :fingerprint :table_id))
+            (dissoc :id :semantic_type :settings :fingerprint :table_id
+                    :effective_type :coercion_strategy))
           (qp.test/aggregate-col :count)]})
 
 (deftest mbql-source-query-breakout-aggregation-test
@@ -377,6 +379,7 @@
   (testing "make sure a query using a source query comes back with the correct columns metadata"
     (is (= (map (partial qp.test/col :venues)
                 [:id :name :category_id :latitude :longitude :price])
+           ;; todo: i don't know why the results don't have the information
            (mt/cols
              (mt/with-temp Card [card (venues-mbql-card-def)]
                (qp/process-query (query-with-source-card card)))))))
@@ -398,7 +401,8 @@
                        :unit      :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
-                (dissoc :semantic_type :table_id :id :settings :fingerprint))
+                (dissoc :semantic_type :effective_type :coercion_strategy :table_id
+                        :id :settings :fingerprint))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card {:dataset_query {:database (mt/id)
@@ -534,9 +538,8 @@
                   (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
                           [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
                          (mt/rows
-                           (qp/process-userland-query (assoc (:dataset_query card-2)
-                                                             :info {:executed-by (mt/user->id :rasta)
-                                                                    :card-id     (u/the-id card-2)}))))))))))))))
+                           (binding [qp.perms/*card-id* (u/the-id card-2)]
+                             (qp/process-query (:dataset_query card-2)))))))))))))))
 
 ;; try this in an end-to-end fashion using the API and make sure we can save a Card if we have appropriate read
 ;; permissions for the source query
@@ -809,7 +812,7 @@
                   (get-in result [:data :results_metadata :columns])
                   (u/key-by :name result)
                   (get result "EAN")
-                  (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
+                  (select-keys result [:name :display_name :base_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"
           (let [base-query (mt/mbql-query orders
                              {:source-table $$orders
@@ -827,7 +830,6 @@
                              {:name         "EAN"
                               :display_name "Products → Ean"
                               :base_type    :type/Text
-                              :semantic_type nil
                               :id           %ean
                               :field_ref    &Products.ean})
                            (ean-metadata (qp/process-query query))))))))))))))
@@ -1040,3 +1042,85 @@
                        :parameters [{:type   :category
                                      :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]
                                      :value  "Widget"}]})))))))
+
+(deftest nested-queries-with-expressions-and-joins-test
+  ;; sample-dataset doesn't work on Redshift yet -- see #14784
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
+    (mt/dataset sample-dataset
+      (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
+        ;; not sure why Snowflake has slightly different results
+        (is (= (if (= driver/*driver* :snowflake)
+                 [["Twitter" "Widget" 0 510.82]
+                  ["Twitter" nil 0 407.93]]
+                 (cond-> [["Twitter" "Widget" 0 498.59]
+                          ["Twitter" nil      0 401.51]]
+                   (mt/sorts-nil-first? driver/*driver*) reverse))
+               (mt/formatted-rows [str str int 2.0]
+                 (mt/run-mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :filter       [:= $user_id 1]
+                                   :fields       [$id
+                                                  $user_id
+                                                  $product_id
+                                                  $subtotal
+                                                  $tax
+                                                  $total
+                                                  $discount
+                                                  !default.created_at
+                                                  $quantity]}
+                    :aggregation  [[:sum $total]]
+                    :breakout     [&P.people.source
+                                   &PRODUCTS__via__PRODUCT_ID.products.category
+                                   [:expression "pivot-grouping"]]
+                    :limit        5
+                    :expressions  {:pivot-grouping [:abs 0]}
+                    :order-by     [[:asc &P.people.source]
+                                   [:asc &PRODUCTS__via__PRODUCT_ID.products.category]
+                                   [:asc [:expression "pivot-grouping"]]]
+                    :joins        [{:strategy     :left-join
+                                    :source-table $$people
+                                    :condition    [:= $user_id &P.people.id]
+                                    :alias        "P"}
+                                   {:source-query {:source-table $$products
+                                                   :filter       [:= $products.category "Widget"]
+                                                   :fields       [$products.id
+                                                                  $products.ean
+                                                                  $products.title
+                                                                  $products.category
+                                                                  $products.vendor
+                                                                  $products.price
+                                                                  $products.rating
+                                                                  !default.products.created_at]}
+                                    :strategy     :left-join
+                                    :alias        "PRODUCTS__via__PRODUCT_ID"
+                                    :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                    :fk-field-id  %product_id}]}))))))))
+
+(deftest multi-level-aggregations-with-post-aggregation-filtering-test
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
+    (testing "Multi-level aggregations with filter is the last section (#14872)"
+      (mt/dataset sample-dataset
+        ;; not 100% sure why Snowflake has slightly different results
+        (is (= (if (= driver/*driver* :snowflake)
+                 [["Awesome Bronze Plate" 115.22]
+                  ["Mediocre Rubber Shoes" 101.06]
+                  ["Mediocre Wooden Bench" 117.04]
+                  ["Sleek Steel Table" 134.94]
+                  ["Small Marble Hat" 102.77]]
+                 [["Awesome Bronze Plate" 115.23]
+                  ["Mediocre Rubber Shoes" 101.04]
+                  ["Mediocre Wooden Bench" 117.03]
+                  ["Sleek Steel Table" 134.91]
+                  ["Small Marble Hat" 102.8]])
+               (mt/formatted-rows [str 2.0]
+                 (mt/run-mbql-query orders
+                   {:source-query {:source-query {:source-table $$orders
+                                                  :filter       [:= $user_id 1]
+                                                  :aggregation  [[:sum $total]]
+                                                  :breakout     [!day.created_at
+                                                                 $product_id->products.title
+                                                                 $product_id->products.category]}
+                                   :filter       [:> *sum/Float 100]
+                                   :aggregation  [[:sum *sum/Float]]
+                                   :breakout     [*products.title]}
+                    :filter       [:> *sum/Float 100]}))))))))

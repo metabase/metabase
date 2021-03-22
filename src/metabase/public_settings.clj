@@ -7,7 +7,6 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore :as metastore]
-            [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as password]
@@ -323,18 +322,6 @@
   :setter     :none
   :getter     driver.u/available-drivers-info)
 
-(defsetting types
-  "Field types"
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (types/types->parents :type/*)))
-
-(defsetting entities
-  "Entity types"
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (types/types->parents :entity/*)))
-
 (defsetting has-sample-dataset?
   "Whether this instance has a Sample Dataset database"
   :visibility :authenticated
@@ -395,3 +382,9 @@
   :visibility :public
   :type       :integer
   :default    180)
+
+(defsetting redshift-fetch-size
+  (deferred-tru "Controls the fetch size used for Redshift queries (in PreparedStatement), via defaultRowFetchSize.")
+  :visibility :public
+  :type       :integer
+  :default    5000)

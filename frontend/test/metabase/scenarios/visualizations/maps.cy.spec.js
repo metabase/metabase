@@ -1,10 +1,4 @@
-import {
-  signInAsNormalUser,
-  signInAsAdmin,
-  restore,
-  popover,
-  visitQuestionAdhoc,
-} from "__support__/cypress";
+import { restore, popover, visitQuestionAdhoc } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
@@ -12,11 +6,11 @@ const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 describe("scenarios > visualizations > maps", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should display a pin map for a native query", () => {
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
     // create a native query with lng/lat fields
     cy.visit("/question/new");
     cy.contains("Native query").click();
@@ -27,7 +21,7 @@ describe("scenarios > visualizations > maps", () => {
 
     // switch to a pin map visualization
     cy.contains("Visualization").click();
-    cy.get(".Icon-pinmap").click();
+    cy.icon("pinmap").click();
 
     cy.contains("Map type")
       .next()
@@ -62,16 +56,12 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it.skip("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "14254",
-      dataset_query: {
-        type: "native",
-        native: {
-          query:
-            'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
-          "template-tags": {},
-        },
-        database: 1,
+      native: {
+        query:
+          'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
+        "template-tags": {},
       },
       display: "map",
       visualization_settings: {
@@ -95,7 +85,7 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get("@vizSidebar").within(() => {
       // There should be a unique class for "selected" viz type
-      cy.get(".Icon-pinmap")
+      cy.icon("pinmap")
         .parent()
         .should("have.class", "text-white");
 
@@ -140,7 +130,7 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@texas").click();
     cy.findByText(/View these People/i).click();
 
-    cy.log("**Reported as a regression since v0.37.0**");
+    cy.log("Reported as a regression since v0.37.0");
     cy.wait("@dataset").then(xhr => {
       expect(xhr.request.body.query.filter).not.to.contain("Texas");
     });

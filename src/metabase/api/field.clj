@@ -1,6 +1,5 @@
 (ns metabase.api.field
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
@@ -9,9 +8,10 @@
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.models.table :refer [Table]]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.related :as related]
+            [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
@@ -26,6 +26,11 @@
   "Schema for a valid `Field` type."
   (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :type/*))
     "value must be a valid field type."))
+
+(def ^:private CoercionType
+  "Schema for a valid `Coercion` type."
+  (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :Coercion/*))
+    "value must be a valid coercion type."))
 
 (def ^:private FieldVisibilityType
   "Schema for a valid `Field` visibility type."
@@ -93,7 +98,7 @@
 (api/defendpoint PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
-                   visibility_type has_field_values settings]
+                   coercion_strategy visibility_type has_field_values settings]
             :as   body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
@@ -101,11 +106,14 @@
    fk_target_field_id (s/maybe su/IntGreaterThanZero)
    points_of_interest (s/maybe su/NonBlankString)
    semantic_type      (s/maybe FieldType)
+   coercion_strategy  (s/maybe CoercionType)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
+        effective-type     (or (types/effective_type_for_coercion coercion_strategy)
+                               (:base_type field))
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
@@ -123,8 +131,11 @@
           true)
         (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
         (db/update! Field id
-          (u/select-keys-when (assoc body :fk_target_field_id (when-not removed-fk? fk-target-field-id))
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+          (u/select-keys-when (assoc body
+                                     :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                                     :effective_type effective-type
+                                     :coercion_strategy coercion_strategy)
+            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type :coercion_strategy :effective_type
                        :has_field_values}
             :non-nil #{:display_name :settings})))))
     ;; return updated field
@@ -191,41 +202,17 @@
         (dissoc :human_readable_values :created_at :updated_at :id))
     {:values [], :field_id (:id field)}))
 
-(def ^:private ^{:arglist '([user-id last-updated field])} fetch-sandboxed-field-values*
-  (memoize/ttl
-   (fn [_ _ field]
-     {:values   (map vector (field-values/distinct-values field))
-      :field_id (u/the-id field)})
-   ;; Expire entires older than 30 days so we don't have entries for users and/or fields that
-   ;; no longer exists hanging around.
-   ;; (`clojure.core.cache/TTLCacheQ` (which `memoize` uses underneath) evicts all stale entries on
-   ;; every cache miss)
-   :ttl/threshold (* 1000 60 60 24 30)))
-
-(defn- fetch-sandboxed-field-values
-  [field]
-  (fetch-sandboxed-field-values*
-   api/*current-user-id*
-   (db/select-one-field :updated_at FieldValues :field_id (u/the-id field))
-   field))
+(defn check-perms-and-return-field-values
+  "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
+  so, return its values."
+  [id]
+  (field->values (api/read-check (Field id))))
 
 (api/defendpoint GET "/:id/values"
   "If a Field's value of `has_field_values` is `list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
-  (let [field (api/check-404 (Field id))]
-    (cond
-      ;; if you have normal read permissions, return normal results
-      (mi/can-read? field)
-      (field->values (api/read-check field))
-
-      ;; otherwise if you have Segmented query perms (but not normal read perms) we'll do an ad-hoc query to fetch the
-      ;; results, filtered by your GTAP
-      (has-segmented-query-permissions? (field/table field))
-      (fetch-sandboxed-field-values field)
-
-      :else
-      (api/throw-403))))
+  (check-perms-and-return-field-values id))
 
 ;; match things like GET /field%2Ccreated_at%2options
 ;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)

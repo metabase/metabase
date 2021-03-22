@@ -11,7 +11,9 @@
   "Maximum number of TaskHistory rows."
   100000)
 
-(defn- task-history-cleanup! []
+(defn- task-history-cleanup!
+  "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."
+  []
   (log/debug (trs "Cleaning up task history"))
   (task-history/with-task-history {:task "task-history-cleanup"}
     (let [deleted-rows? (task-history/cleanup-task-history! history-rows-to-keep)]

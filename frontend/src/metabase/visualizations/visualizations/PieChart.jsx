@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
@@ -288,6 +286,7 @@ export default class PieChart extends Component {
     const formatPercent = percent =>
       formatValue(percent, {
         column: cols[metricIndex],
+        number_separators: settings.column(cols[metricIndex]).number_separators,
         jsx: true,
         majorWidth: 0,
         number_style: "percent",

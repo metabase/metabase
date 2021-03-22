@@ -12,7 +12,8 @@
             [metabase.util.ssh :as ssh]
             [metabase.sync :as sync]
             [metabase.test :as mt]
-            [metabase.test.data.interface :as tx])
+            [metabase.test.data.interface :as tx]
+            [metabase.test.util :as tu])
   (:import [java.io BufferedReader InputStreamReader PrintWriter]
            [java.net InetSocketAddress ServerSocket Socket]
            org.apache.sshd.server.forward.AcceptAllForwardingFilter
@@ -247,7 +248,7 @@
    native queries against that table."
   (mt/with-driver :h2
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed (H2 version)"
-      (let [h2-port (+ 49152 (rand-int (- 65535 49152))) ; https://stackoverflow.com/a/2675399
+      (let [h2-port (tu/find-free-port)
             server  (init-h2-tcp-server h2-port)
             uri     (format "tcp://localhost:%d/./test_resources/ssh/tiny-db;USER=GUEST;PASSWORD=guest" h2-port)
             h2-db   {:port               h2-port
@@ -265,12 +266,12 @@
               (sync/sync-database! db)
               (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text
                                                      :display_name "COL1"
-                                                     :field_ref    [:field-literal "COL1" :type/Text]
+                                                     :field_ref    [:field "COL1" {:base-type :type/Text}]
                                                      :name         "COL1"
                                                      :source       :native}
                                                     {:base_type    :type/Decimal
                                                      :display_name "COL2"
-                                                     :field_ref    [:field-literal "COL2" :type/Decimal]
+                                                     :field_ref    [:field "COL2" {:base-type :type/Decimal}]
                                                      :name         "COL2"
                                                      :source       :native}]
                                              :rows [["First Row"  19.10M]

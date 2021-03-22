@@ -86,7 +86,8 @@
     (cond-> (mbql.u/replace form
               [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
               (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
-                                   (throw (ex-info (tru "Cannot find Table ID for Field {0}" (:source-field opts))
+                                   (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
+                                                        (fk-field-id->join-alias (:source-field opts)))
                                                    {:resolving  &match
                                                     :candidates fk-field-id->join-alias})))]
                 [:field id-or-name (assoc opts :join-alias join-alias)]))

@@ -22,6 +22,7 @@
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator))
@@ -121,42 +122,41 @@
             query               {:database (mt/id)
                                  :type     "native"
                                  :native   {:query "foobar"}}
-            result              (mt/suppress-output
-                                  (mt/user-http-request :rasta :post 202 "dataset" query))]
+            result              (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "\nAPI Response"
-          (is (= {:data         {:rows []
-                                 :cols []}
-                  :row_count    0
-                  :status       "failed"
-                  :context      "ad-hoc"
-                  :error        true
-                  :json_query   (merge
-                                 query-defaults
-                                 {:database (mt/id)
-                                  :type     "native"
-                                  :native   {:query "foobar"}})
-                  :database_id  (mt/id)
-                  :state        "42001"
-                  :class        "class org.h2.jdbc.JdbcSQLException"
-                  :started_at   true
-                  :running_time true}
-                 (check-error-message (dissoc (format-response result) :stacktrace)))))
+          (is (schema= {:data        (s/eq {:rows []
+                                            :cols []})
+                        :row_count   (s/eq 0)
+                        :status      (s/eq "failed")
+                        :context     (s/eq "ad-hoc")
+                        :error       #"Syntax error in SQL statement"
+                        :json_query  (s/eq (merge
+                                            query-defaults
+                                            {:database (mt/id)
+                                             :type     "native"
+                                             :native   {:query "foobar"}}))
+                        :database_id (s/eq (mt/id))
+                        :state       (s/eq "42001")
+                        :class       (s/eq "class org.h2.jdbc.JdbcSQLException")
+                        :error_type  (s/eq "invalid-query")
+                        s/Keyword    s/Any}
+                       result)))
+
         (testing "\nSaved QueryExecution"
-          (is (= {:hash         true
-                  :id           true
-                  :result_rows  0
-                  :row_count    0
-                  :context      :ad-hoc
-                  :error        true
-                  :database_id  (mt/id)
-                  :started_at   true
-                  :running_time true
-                  :executor_id  (mt/user->id :rasta)
-                  :native       true
-                  :pulse_id     nil
-                  :card_id      nil
-                  :dashboard_id nil}
-                 (check-error-message (format-response (most-recent-query-execution-for-query query))))))))))
+          (is (schema= {:hash         (Class/forName "[B")
+                        :id           su/IntGreaterThanZero
+                        :result_rows  (s/eq 0)
+                        :row_count    (s/eq 0)
+                        :context      (s/eq :ad-hoc)
+                        :error        (s/eq "Error executing query")
+                        :database_id  (s/eq (mt/id))
+                        :executor_id  (s/eq (mt/user->id :rasta))
+                        :native       (s/eq true)
+                        :pulse_id     (s/eq nil)
+                        :card_id      (s/eq nil)
+                        :dashboard_id (s/eq nil)
+                        s/Keyword     s/Any}
+                       (most-recent-query-execution-for-query query))))))))
 
 
 ;;; Make sure that we're piggybacking off of the JSON encoding logic when encoding strange values in XLSX (#5145,
@@ -249,38 +249,43 @@
            (parse-and-sort-csv result)))))
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
-  (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                            :type     :native
-                                            :native   {:query "SELECT * FROM USERS;"}}}]
-    (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
-                                       :query (json/generate-string
-                                               {:database mbql.s/saved-questions-virtual-database-id
-                                                :type     :query
-                                                :query    {:source-table (str "card__" (u/get-id card))}}))]
-      (is (some? result))
-      (when (some? result)
-        (is (= 16
-               (count (csv/read-csv result))))))))
+  (mt/with-temp-copy-of-db
+    (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+                                              :type     :native
+                                              :native   {:query "SELECT * FROM USERS;"}}}]
+      (letfn [(do-test []
+                (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                                   :query (json/generate-string
+                                                           {:database mbql.s/saved-questions-virtual-database-id
+                                                            :type     :query
+                                                            :query    {:source-table (str "card__" (u/the-id card))}}))]
+                  (is (some? result))
+                  (when (some? result)
+                    (is (= 16
+                           (count (csv/read-csv result)))))))]
+        (testing "with data perms"
+          (do-test))
+        (testing "with collection perms only"
+          (perms/revoke-permissions! (group/all-users) (mt/db))
+          (do-test))))))
 
 ;; POST /api/dataset/:format
-;;
-;; Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints
-;; -- even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
-;; from one that had it -- see #9831)
 (deftest formatted-results-ignore-query-constraints
-  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
-                                       :query (json/generate-string
-                                               {:database   (mt/id)
-                                                :type       :query
-                                                :query      {:source-table (mt/id :venues)}
-                                                :middleware
-                                                {:add-default-userland-constraints? true
-                                                 :userland-query?                   true}}))]
-      (is (some? result))
-      (when (some? result)
-        (is (= 101
-               (count (csv/read-csv result))))))))
+  (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
+    ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
+    (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+      (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                         :query (json/generate-string
+                                                 {:database (mt/id)
+                                                  :type     :query
+                                                  :query    {:source-table (mt/id :venues)}
+                                                  :middleware
+                                                  {:add-default-userland-constraints? true
+                                                   :userland-query?                   true}}))]
+        (is (some? result))
+        (when (some? result)
+          (is (= 101
+                 (count (csv/read-csv result)))))))))
 
 ;; non-"download" queries should still get the default constraints
 ;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)

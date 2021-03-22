@@ -2,8 +2,11 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
+            [metabase.driver.mysql :as mysql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
@@ -14,11 +17,11 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt])
-  (:import [java.time ZonedDateTime ZoneId]
-           java.time.format.DateTimeFormatter))
+            [toucan.util.test :as tt]))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -54,7 +57,7 @@
 (tx/defdataset ^:private tiny-int-ones
   [["number-of-cans"
      [{:field-name "thing",          :base-type :type/Text}
-      {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}}]
+      {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}, :effective-type :type/Integer}]
      [["Six Pack"              6]
       ["Toucan"                2]
       ["Empty Vending Machine" 0]]]])
@@ -86,7 +89,7 @@
 
 (tx/defdataset ^:private year-db
   [["years"
-    [{:field-name "year_column", :base-type {:native "YEAR"}}]
+    [{:field-name "year_column", :base-type {:native "YEAR"}, :effective-type :type/Date}]
     [[2001] [2002] [1999]]]])
 
 (deftest year-test
@@ -283,33 +286,46 @@
                            (map table-fingerprint))))))))))))
 
 (deftest group-on-time-column-test
-  (let [driver :mysql]
-    (mt/test-driver driver
-      (let [db-name "time_test"
-            spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details driver :server nil))]
-        (doseq [stmt ["DROP DATABASE IF EXISTS time_test;"
-                      "CREATE DATABASE time_test;"]]
-          (jdbc/execute! spec [stmt]))
-        (let [details (tx/dbdef->connection-details driver :db {:database-name db-name})
-              spec (sql-jdbc.conn/connection-details->spec driver details)]
-          (doseq [stmt ["DROP TABLE IF EXISTS time_table;"
-                        "CREATE TABLE time_table (id serial, mytime time);"
-                        "INSERT INTO time_table (mytime) VALUES ('00:00'), ('00:00'), ('23:01'), ('23:01'), ('18:43');"]]
-            (jdbc/execute! spec [stmt]))
-          (mt/with-temp Database [db {:engine driver :details details}]
-            (sync/sync-database! db)
-            (mt/with-db db
-              (testing "can group on TIME columns"
-                (let [now (ZonedDateTime/now (ZoneId/of "UTC"))
-                      now-date-str (.format now (DateTimeFormatter/ISO_LOCAL_DATE))
-                      add-date-fn (fn [t] [(str now-date-str "T" t)])]
-                  (is (= (map add-date-fn ["00:00:00Z" "18:43:00Z" "23:01:00Z"])
-                         (mt/rows
-                           (mt/run-mbql-query time_table
-                             {:breakout [[:datetime-field (mt/id :time_table :mytime) :minute]]
-                              :order-by [[:asc [:datetime-field (mt/id :time_table :mytime) :minute]]]}))))
-                  (is (= (map add-date-fn ["23:00:00Z" "18:00:00Z" "00:00:00Z"])
-                         (mt/rows
-                           (mt/run-mbql-query time_table
-                             {:breakout [[:datetime-field (mt/id :time_table :mytime) :hour]]
-                              :order-by [[:desc [:datetime-field (mt/id :time_table :mytime) :hour]]]})))))))))))))
+  (mt/test-driver :mysql
+    (testing "can group on TIME columns (#12846)"
+      (mt/dataset attempted-murders
+        (let [now-date-str (u.date/format (t/local-date (t/zone-id "UTC")))
+              add-date-fn  (fn [t] [(str now-date-str "T" t)])]
+          (testing "by minute"
+            (is (= (map add-date-fn ["00:14:00Z" "00:23:00Z" "00:35:00Z"])
+                   (mt/rows
+                     (mt/run-mbql-query attempts
+                       {:breakout [!minute.time]
+                        :order-by [[:asc !minute.time]]
+                        :limit    3})))))
+          (testing "by hour"
+            (is (= (map add-date-fn ["23:00:00Z" "20:00:00Z" "19:00:00Z"])
+                   (mt/rows
+                     (mt/run-mbql-query attempts
+                       {:breakout [!hour.time]
+                        :order-by [[:desc !hour.time]]
+                        :limit    3}))))))))))
+
+(defn- pretty-sql [s]
+  (str/replace s #"`" ""))
+
+(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+  (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
+    (mt/test-driver :mysql
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!day.date]})]
+          (is (= (str "SELECT attempts.date AS date, count(*) AS count "
+                      "FROM attempts "
+                      "GROUP BY attempts.date "
+                      "ORDER BY attempts.date ASC")
+                 (some-> (qp/query->native query) :query pretty-sql))))))
+
+    (testing "trunc-with-format should not cast a field if it is already a DATETIME"
+      (is (= ["SELECT str_to_date(date_format(CAST(field AS datetime), '%Y'), '%Y')"]
+             (hsql/format {:select [(#'mysql/trunc-with-format "%Y" :field)]})))
+      (is (= ["SELECT str_to_date(date_format(field, '%Y'), '%Y')"]
+             (hsql/format {:select [(#'mysql/trunc-with-format
+                                     "%Y"
+                                     (hx/with-database-type-info :field "datetime"))]}))))))

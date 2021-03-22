@@ -1,11 +1,8 @@
-import {
-  snapshot,
-  restore,
-  USERS,
-  USER_GROUPS,
-  withSampleDataset,
-  signInAsAdmin,
-} from "__support__/cypress";
+import { snapshot, restore, withSampleDataset } from "__support__/cypress";
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
+
+const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
+const { admin } = USERS;
 
 describe("snapshots", () => {
   describe("default", () => {
@@ -27,22 +24,12 @@ describe("snapshots", () => {
     });
   });
 
-  function makeUserObject(name, groupIds) {
-    return {
-      first_name: USERS[name].first_name,
-      last_name: USERS[name].last_name,
-      email: USERS[name].username,
-      password: USERS[name].password,
-      group_ids: groupIds,
-    };
-  }
-
   function setup() {
     cy.request("GET", "/api/session/properties").then(
       ({ body: properties }) => {
         cy.request("POST", "/api/setup", {
           token: properties["setup-token"],
-          user: makeUserObject("admin"),
+          user: admin,
           prefs: {
             site_name: "Epic Team",
             allow_tracking: false,
@@ -51,6 +38,8 @@ describe("snapshots", () => {
         });
       },
     );
+    // Dismiss `it's ok to play around` modal for admin
+    cy.request("PUT", `/api/user/1/qbnewb`, {});
   }
 
   function updateSettings() {
@@ -68,50 +57,38 @@ describe("snapshots", () => {
     });
   }
 
-  const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
-
   function addUsersAndGroups() {
     // groups
-    cy.request("POST", "/api/permissions/group", { name: "collection" }); // 4
-    cy.request("POST", "/api/permissions/group", { name: "data" }); // 5
+    cy.request("POST", "/api/permissions/group", { name: "collection" }).then(
+      ({ body }) => {
+        expect(body.id).to.eq(COLLECTION_GROUP); // 4
+      },
+    );
+    cy.request("POST", "/api/permissions/group", { name: "data" }).then(
+      ({ body }) => {
+        expect(body.id).to.eq(DATA_GROUP); // 5
+      },
+    );
 
     // additional users
-    cy.request(
-      "POST",
-      "/api/user",
-      makeUserObject("normal", [ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP]),
-    );
-    cy.request(
-      "POST",
-      "/api/user",
-      makeUserObject("nodata", [ALL_USERS_GROUP, COLLECTION_GROUP]),
-    );
-    cy.request(
-      "POST",
-      "/api/user",
-      makeUserObject("nocollection", [ALL_USERS_GROUP, DATA_GROUP]),
-    );
-    cy.request("POST", "/api/user", makeUserObject("none", [ALL_USERS_GROUP]));
+    cy.createUser("normal");
+    cy.createUser("nodata");
+    cy.createUser("nocollection");
+    cy.createUser("none");
 
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
 
-    // permissions
-    cy.request("PUT", "/api/permissions/graph", {
-      revision: 0,
-      groups: {
-        [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
-        [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
-        [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
-      },
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
+      [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
+      [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
     });
-    cy.request("PUT", "/api/collection/graph", {
-      revision: 0,
-      groups: {
-        [ALL_USERS_GROUP]: { root: "none" },
-        [DATA_GROUP]: { root: "none" },
-        [COLLECTION_GROUP]: { root: "write" },
-      },
+
+    cy.updateCollectionGraph({
+      [ALL_USERS_GROUP]: { root: "none" },
+      [DATA_GROUP]: { root: "none" },
+      [COLLECTION_GROUP]: { root: "write" },
     });
   }
 
@@ -136,46 +113,26 @@ describe("snapshots", () => {
 
   function createQuestionAndDashboard({ ORDERS, ORDERS_ID }) {
     // question 1: Orders
-    cy.request("POST", "/api/card", {
-      name: "Orders",
-      display: "table",
-      visualization_settings: {},
-      dataset_query: {
-        database: 1,
-        query: { "source-table": ORDERS_ID },
-        type: "query",
-      },
-    });
+    cy.createQuestion({ name: "Orders", query: { "source-table": ORDERS_ID } });
 
     // question 2: Orders, Count
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders, Count",
-      display: "table",
-      visualization_settings: {},
-      dataset_query: {
-        database: 1,
-        query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-        type: "query",
-      },
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
     });
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "Orders, Count, Grouped by Created At (year)",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-        database: 1,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
       display: "line",
-      visualization_settings: {},
     });
 
     // dashboard 1: Orders in a dashboard
-    cy.request("POST", "/api/dashboard", { name: "Orders in a dashboard" });
+    cy.createDashboard("Orders in a dashboard");
     cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
       ({ body: { id: dashCardId } }) => {
         cy.request("PUT", `/api/dashboard/1/cards`, {
@@ -192,11 +149,6 @@ describe("snapshots", () => {
         });
       },
     );
-
-    // dismiss the "it's ok to play around" modal
-    Object.values(USERS).map((_, index) =>
-      cy.request("PUT", `/api/user/${index + 1}/qbnewb`, {}),
-    );
   }
 
   // TODO: It'd be nice to have one file per snapshot.
@@ -204,7 +156,7 @@ describe("snapshots", () => {
   describe("withSqlite", () => {
     it("withSqlite", () => {
       restore("default");
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.request("POST", "/api/database", {
         engine: "sqlite",
         name: "sqlite",

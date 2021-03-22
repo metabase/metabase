@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
 import MetabaseUtils from "metabase/lib/utils";

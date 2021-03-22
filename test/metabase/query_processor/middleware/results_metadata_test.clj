@@ -190,6 +190,8 @@
         :info     {:card-id    (u/the-id card)
                    :query-hash (qputil/query-hash {})}})
       (is (= [{:base_type    :type/DateTime
+               :effective_type    :type/Date
+               :coercion_strategy nil
                :display_name "Date"
                :name         "DATE"
                :unit         :year

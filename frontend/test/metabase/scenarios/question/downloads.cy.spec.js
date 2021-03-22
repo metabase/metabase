@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 const xlsx = require("xlsx");
 
@@ -29,7 +29,7 @@ function testWorkbookDatetimes(workbook, download_type, sheetName) {
 describe("scenarios > question > download", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("downloads Excel and CSV files", () => {
@@ -40,7 +40,7 @@ describe("scenarios > question > download", () => {
     cy.findByText("Saved Questions").click();
     cy.findByText("Orders, Count").click();
     cy.contains("18,760");
-    cy.get(".Icon-download").click();
+    cy.icon("download").click();
 
     // Programatically issue download requests for this query for both CSV and Excel
 
@@ -78,19 +78,13 @@ describe("scenarios > question > download", () => {
     let questionId;
 
     beforeEach(() => {
-      cy.request("POST", "/api/card", {
+      cy.createNativeQuestion({
         name: "10803",
-        dataset_query: {
-          type: "native",
-          native: {
-            query:
-              "SELECT PARSEDATETIME('2020-06-03', 'yyyy-MM-dd') AS \"birth_date\", PARSEDATETIME('2020-06-03 23:41:23', 'yyyy-MM-dd hh:mm:ss') AS \"created_at\"",
-            "template-tags": {},
-          },
-          database: 1,
+        native: {
+          query:
+            "SELECT PARSEDATETIME('2020-06-03', 'yyyy-MM-dd') AS \"birth_date\", PARSEDATETIME('2020-06-03 23:41:23', 'yyyy-MM-dd hh:mm:ss') AS \"created_at\"",
+          "template-tags": {},
         },
-        display: "table",
-        visualization_settings: {},
       }).then(({ body }) => {
         questionId = body.id;
       });
@@ -128,10 +122,10 @@ describe("scenarios > question > download", () => {
         cy.visit(`/question/${questionId}`);
         cy.contains(/open editor/i).click();
         cy.get(".ace_editor").type("{movetoend} "); // Adds a space at the end of the query to make it "dirty"
-        cy.get(".Icon-play")
+        cy.icon("play")
           .first()
           .click();
-        cy.get(".Icon-download").click();
+        cy.icon("download").click();
 
         cy.wrap(testCases).each(testCase => {
           cy.log(`downloading a ${testCase.type} file`);

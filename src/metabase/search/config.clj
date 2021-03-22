@@ -4,15 +4,30 @@
             [honeysql.core :as hsql]
             [metabase.models :refer [Card Collection Dashboard Metric Pulse Segment Table]]))
 
-(def ^:const db-max-results
+(def ^:dynamic db-max-results
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
   returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
-  that results are truncated."
+  that results are truncated.
+
+  Under normal situations it shouldn't be rebound, but it's dynamic to make unit testing easier."
   1000)
 
 (def ^:const max-filtered-results
   "Number of results to return in an API response"
   50)
+
+(def ^:const stale-time-in-days
+  "Results older than this number of days are all considered to be equally old. In other words, there is a ranking
+  bonus for results newer than this (scaled to just how recent they are). c.f. `search.scoring/recency-score`"
+  180)
+
+(def ^:const dashboard-count-ceiling
+  "Results in more dashboards than this are all considered to be equally popular."
+  50)
+
+(def ^:const surrounding-match-context
+  "Show this many words of context before/after matches in long search results"
+  2)
 
 (def searchable-models
   "Models that can be searched. The order of this list also influences the order of the results: items earlier in the
@@ -46,7 +61,13 @@
 (defmethod searchable-columns-for-model (class Card)
   [_]
   [:name
-   :dataset_query])
+   :dataset_query
+   :description])
+
+(defmethod searchable-columns-for-model (class Dashboard)
+  [_]
+  [:name
+   :description])
 
 (defmethod searchable-columns-for-model (class Table)
   [_]
@@ -55,7 +76,7 @@
 
 (def ^:private default-columns
   "Columns returned for all models."
-  [:id :name :description :archived])
+  [:id :name :description :archived :updated_at])
 
 (def ^:private favorite-col
   "Case statement to return boolean values of `:favorite` for Card and Dashboard."
@@ -96,7 +117,7 @@
 
 (defmethod columns-for-model (class Collection)
   [_]
-  (conj default-columns [:id :collection_id] [:name :collection_name]))
+  (conj (remove #{:updated_at} default-columns) [:id :collection_id] [:name :collection_name]))
 
 (defmethod columns-for-model (class Segment)
   [_]
@@ -112,6 +133,7 @@
    :name
    :display_name
    :description
+   :updated_at
    [:id :table_id]
    [:db_id :database_id]
    [:schema :table_schema]

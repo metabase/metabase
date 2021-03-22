@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
@@ -296,11 +294,11 @@ export default class Table extends Component {
     };
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateData(this.props);
   }
 
-  componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps: Props) {
     if (
       newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)

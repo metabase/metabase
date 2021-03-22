@@ -1,15 +1,15 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should display error on failed save", () => {
     // revoke some permissions
     cy.visit("/admin/permissions/databases");
-    cy.get(".Icon-sql")
+    cy.icon("sql")
       .last()
       .click();
     cy.contains("Revoke access").click();

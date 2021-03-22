@@ -1,5 +1,3 @@
-/* @flow */
-
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment-timezone";
@@ -105,7 +103,7 @@ export type FormattingOptions = {
   markdown_template?: string,
 };
 
-type FormattedString = string | React$Element<any>;
+type FormattedString = string | React.Element;
 
 export const FK_SYMBOL = "→";
 
@@ -740,6 +738,18 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
 
   if (value == null) {
     return null;
+  } else if (
+    options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.jsx
+  ) {
+    // Style this like a link if we're in a jsx context.
+    // It's not actually a link since we handle the click differently for dashboard and question targets.
+    return (
+      <div className="link link--wrappable">
+        {formatValueRaw(value, { ...options, jsx: false })}
+      </div>
+    );
   } else if (
     options.click_behavior &&
     options.click_behavior.linkTextTemplate

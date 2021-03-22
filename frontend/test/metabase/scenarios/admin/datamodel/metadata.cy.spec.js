@@ -1,6 +1,5 @@
 import {
   restore,
-  signInAsAdmin,
   openOrdersTable,
   openReviewsTable,
   popover,
@@ -12,7 +11,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should correctly show remapped column value", () => {
@@ -35,7 +34,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
     );
 
-    cy.log("**Name of the product should be displayed instead of its ID**");
+    cy.log("Name of the product should be displayed instead of its ID");
     openOrdersTable();
     cy.findAllByText("Awesome Concrete Shoes");
   });
@@ -74,7 +73,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
     cy.findByText("Save").click();
 
-    cy.log("**Numeric ratings should be remapped to custom strings**");
+    cy.log("Numeric ratings should be remapped to custom strings");
     openReviewsTable();
     Object.values(customMap).forEach(rating => {
       cy.findAllByText(rating);
@@ -86,27 +85,21 @@ describe("scenarios > admin > datamodel > metadata", () => {
       semantic_type: null,
     });
 
-    cy.request("POST", "/api/card", {
+    cy.createQuestion({
       name: "14124",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "hour-of-day" }],
-          ],
-        },
-        type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "hour-of-day" }],
+        ],
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
 
       cy.findByText("Created At: Hour of day");
 
-      cy.log("**Reported failing in v0.37.2**");
+      cy.log("Reported failing in v0.37.2");
       cy.findByText(/^3:00 AM$/);
     });
   });

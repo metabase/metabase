@@ -1,5 +1,3 @@
-/* @flow */
-
 import { MBQLObjectClause } from "./MBQLClause";
 import { t } from "ttag";
 

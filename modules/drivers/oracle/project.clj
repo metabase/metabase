@@ -1,4 +1,4 @@
-(defproject metabase/oracle-driver "1.0.0"
+(defproject metabase/oracle-driver "1.1.0"
   :min-lein-version "2.5.0"
 
   :include-drivers-dependencies [#"^ojdbc\d+\.jar$"]

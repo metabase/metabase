@@ -58,13 +58,17 @@
 
 (models/defmodel Field :metabase_field)
 
-(defn- check-valid-types [{base-type :base_type, semantic-type :semantic_type}]
+(defn- check-valid-types [{base-type :base_type, semantic-type :semantic_type,
+                           coercion-strategy :coercion_strategy}]
   (when base-type
     (assert (isa? (keyword base-type) :type/*)
       (str "Invalid base type: " base-type)))
   (when semantic-type
     (assert (isa? (keyword semantic-type) :type/*)
-      (str "Invalid semantic type: " semantic-type))))
+      (str "Invalid semantic type: " semantic-type)))
+  (when coercion-strategy
+    (assert (isa? (keyword coercion-strategy) :Coercion/*)
+      (str "Invalid coercion strategy: " coercion-strategy))))
 
 (defn- pre-insert [field]
   (check-valid-types field)
@@ -134,6 +138,8 @@
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
           :types          (constantly {:base_type         :keyword
+                                       :effective_type    :keyword
+                                       :coercion_strategy :keyword
                                        :semantic_type     :keyword
                                        :visibility_type   :keyword
                                        :has_field_values  :keyword

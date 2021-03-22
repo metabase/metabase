@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { assoc } from "icepick";
-import { signInAsAdmin, signIn, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
@@ -9,7 +9,7 @@ describe("scenarios > dashboard > permissions", () => {
     restore();
     // This first test creates a dashboard with two questions.
     // One is in Our Analytics the other is in a more locked down collection.
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // The setup is a bunch of nested API calls to create the questions, dashboard, dashcards, collections and link them all up together.
     let firstQuestionId, secondQuestionId;
@@ -52,18 +52,6 @@ describe("scenarios > dashboard > permissions", () => {
         dataset_query: {
           database: 1,
           type: "native",
-          native: { query: "select 'foo'" },
-        },
-        display: "table",
-        visualization_settings: {},
-        name: "First Question",
-        collection_id,
-      }).then(({ body: { id } }) => (firstQuestionId = id));
-
-      cy.request("POST", "/api/card", {
-        dataset_query: {
-          database: 1,
-          type: "native",
           native: { query: "select 'bar'" },
         },
         display: "table",
@@ -73,40 +61,38 @@ describe("scenarios > dashboard > permissions", () => {
       }).then(({ body: { id } }) => (secondQuestionId = id));
     });
 
-    cy.request("POST", "/api/dashboard", { name: "dashboard" }).then(
-      ({ body: { id: dashId } }) => {
+    cy.createDashboard("dashboard").then(({ body: { id: dashId } }) => {
+      cy.request("POST", `/api/dashboard/${dashId}/cards`, {
+        cardId: firstQuestionId,
+      }).then(({ body: { id: dashCardIdA } }) => {
         cy.request("POST", `/api/dashboard/${dashId}/cards`, {
-          cardId: firstQuestionId,
-        }).then(({ body: { id: dashCardIdA } }) => {
-          cy.request("POST", `/api/dashboard/${dashId}/cards`, {
-            cardId: secondQuestionId,
-          }).then(({ body: { id: dashCardIdB } }) => {
-            cy.request("PUT", `/api/dashboard/${dashId}/cards`, {
-              cards: [
-                {
-                  id: dashCardIdA,
-                  card_id: firstQuestionId,
-                  row: 0,
-                  col: 0,
-                  sizeX: 6,
-                  sizeY: 6,
-                },
-                {
-                  id: dashCardIdB,
-                  card_id: secondQuestionId,
-                  row: 0,
-                  col: 6,
-                  sizeX: 6,
-                  sizeY: 6,
-                },
-              ],
-            });
+          cardId: secondQuestionId,
+        }).then(({ body: { id: dashCardIdB } }) => {
+          cy.request("PUT", `/api/dashboard/${dashId}/cards`, {
+            cards: [
+              {
+                id: dashCardIdA,
+                card_id: firstQuestionId,
+                row: 0,
+                col: 0,
+                sizeX: 6,
+                sizeY: 6,
+              },
+              {
+                id: dashCardIdB,
+                card_id: secondQuestionId,
+                row: 0,
+                col: 6,
+                sizeX: 6,
+                sizeY: 6,
+              },
+            ],
           });
         });
-        dashboardId = dashId;
-        cy.visit(`/dashboard/${dashId}`);
-      },
-    );
+      });
+      dashboardId = dashId;
+      cy.visit(`/dashboard/${dashId}`);
+    });
   });
 
   it("should let admins view all cards in a dashboard", () => {
@@ -118,7 +104,7 @@ describe("scenarios > dashboard > permissions", () => {
   });
 
   it("should display dashboards with some cards locked down", () => {
-    signIn("nodata");
+    cy.signIn("nodata");
     cy.visit(`/dashboard/${dashboardId}`);
     cy.findByText("Sorry, you don't have permission to see this card.");
     cy.findByText("Second Question");
@@ -126,7 +112,7 @@ describe("scenarios > dashboard > permissions", () => {
   });
 
   it("should display an error if they don't have perms for the dashboard", () => {
-    signIn("nocollection");
+    cy.signIn("nocollection");
     cy.visit(`/dashboard/${dashboardId}`);
     cy.findByText("Sorry, you don’t have permission to see that.");
   });

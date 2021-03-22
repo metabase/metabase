@@ -10,7 +10,8 @@
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]])
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [schema.core :as s])
   (:import java.text.SimpleDateFormat
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
@@ -301,7 +302,7 @@
 (def ^:private days-of-week
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
-(defn start-of-week-offset
+(s/defn start-of-week-offset :- s/Int
   "Return the offset for start of week to have the week start on `setting/start-of-week` given  `driver`."
   [driver]
   (let [db-start-of-week     (.indexOf ^clojure.lang.PersistentVector days-of-week (driver/db-start-of-week driver))

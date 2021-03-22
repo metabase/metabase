@@ -119,3 +119,36 @@
           (mock-change-set
            :id 200
            :changes [(update (mock-create-table-changes) :createTable dissoc :remarks)]))))))
+
+(deftest allow-multiple-sql-changes-if-dbmses-are-different
+  (testing "Allow multiple SQL changes if DBMSes are different"
+    (is (= :ok
+           (validate
+            (mock-change-set
+             :id 200
+             :changes
+             [{:sql {:dbms "h2", :sql "1"}}
+              {:sql {:dbms "postgresql", :sql "2"}}
+              {:sql {:dbms "mysql,mariadb", :sql "3"}}])))))
+
+  (testing "should fail if *any* change is missing dbms"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #":dbms"
+         (validate
+          (mock-change-set
+           :id 200
+           :changes
+           [{:sql {:dbms "h2", :sql "1"}}
+            {:sql {:sql "2"}}])))))
+
+  (testing "should fail if a DBMS is repeated"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #":changes"
+         (validate
+          (mock-change-set
+           :id 200
+           :changes
+           [{:sql {:dbms "h2", :sql "1"}}
+            {:sql {:dbms "postgresql,h2", :sql "2"}}]))))))

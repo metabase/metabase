@@ -34,15 +34,23 @@
 (def ^:private as-file?
   (comp (set (map type [Pulse Dashboard Metric Segment Field User])) type))
 
+(defn- spit-entity
+  [path entity]
+  (let [filename (if (as-file? entity)
+                   (format "%s%s.yaml" path (fully-qualified-name entity))
+                   (format "%s%s/%s.yaml" path (fully-qualified-name entity) (safe-name entity)))]
+    (when (.exists (io/as-file filename))
+      (log/warn (str filename " is about to be overwritten."))
+      (log/debug (str "With object: " (pr-str entity))))
+
+      (spit-yaml filename (serialize entity))))
+
 (defn dump
   "Serialize entities into a directory structure of YAMLs at `path`."
   [path & entities]
   (doseq [entity (flatten entities)]
     (try
-      (spit-yaml (if (as-file? entity)
-                   (format "%s%s.yaml" path (fully-qualified-name entity))
-                   (format "%s%s/%s.yaml" path (fully-qualified-name entity) (safe-name entity)))
-                 (serialize entity))
+      (spit-entity path entity)
       (catch Throwable _
         (log/error (trs "Error dumping {0}" (name-for-logging entity))))))
   (spit-yaml (str path "/manifest.yaml")

@@ -18,6 +18,7 @@
             [metabase.pulse :as p]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -43,7 +44,7 @@
   "Users can only create a pulse for `cards` they have access to."
   [cards]
   (doseq [card cards
-          :let [card-id (u/get-id card)]]
+          :let [card-id (u/the-id card)]]
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 
@@ -151,10 +152,12 @@
 (defn- pulse-card-query-results
   {:arglists '([card])}
   [{query :dataset_query, card-id :id}]
-  (qp/process-query-and-save-execution! (assoc query :async? false)
-    {:executed-by api/*current-user-id*
-     :context     :pulse
-     :card-id     card-id}))
+  (binding [qp.perms/*card-id* card-id]
+    (qp/process-query-and-save-execution!
+     (assoc query :async? false)
+     {:executed-by api/*current-user-id*
+      :context     :pulse
+      :card-id     card-id})))
 
 (api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."

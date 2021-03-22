@@ -14,6 +14,11 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(def ^:dynamic *card-id*
+  "ID of the Card currently being executed, if there is one. Bind this in a Card-execution context so we will use
+  Card [Collection] perms checking rather than ad-hoc perms checking."
+  nil)
+
 (defn- perms-exception
   ([required-perms]
    (perms-exception (tru "You do not have permissions to run this query.") required-perms))
@@ -37,7 +42,7 @@
     (when-not (mi/can-read? card)
       (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
                               (mi/perms-objects-set card :read)
-                              {:card-id card-id})))))
+                              {:card-id *card-id*})))))
 
 (declare check-query-permissions*)
 
@@ -58,11 +63,11 @@
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{{:keys [card-id]} :info, :as outer-query} :- su/Map context]
+  [outer-query :- su/Map context]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-    (if card-id
-      (check-card-read-perms card-id)
+    (if *card-id*
+      (check-card-read-perms *card-id*)
       (check-ad-hoc-query-perms outer-query context))))
 
 (defn check-query-permissions

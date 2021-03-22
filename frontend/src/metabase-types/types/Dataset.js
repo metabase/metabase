@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { ISO8601Time } from ".";
 import type { FieldId } from "./Field";
 import type { DatasetQuery } from "./Card";

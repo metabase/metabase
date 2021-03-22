@@ -57,14 +57,14 @@ export default class SearchBar extends React.Component {
     searchText: "",
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateSearchTextFromUrl(this.props);
     window.addEventListener("keyup", this.handleKeyUp);
   }
   componentWillUnmount() {
     window.removeEventListener("keyup", this.handleKeyUp);
   }
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.location.pathname !== nextProps.location.pathname) {
       this._updateSearchTextFromUrl(nextProps);
     }
@@ -128,6 +128,7 @@ export default class SearchBar extends React.Component {
             pl={1}
             ref={ref => (this.searchInput = ref)}
             value={searchText}
+            maxLength={200}
             placeholder={t`Search` + "…"}
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
@@ -143,7 +144,11 @@ export default class SearchBar extends React.Component {
           {active && (
             <div className="absolute left right text-dark" style={{ top: 60 }}>
               {searchText.length > 0 ? (
-                <Card className="overflow-y-auto" style={{ maxHeight: 400 }}>
+                <Card
+                  className="overflow-y-auto"
+                  style={{ maxHeight: 400 }}
+                  py={1}
+                >
                   <Search.ListLoader
                     query={{ q: searchText }}
                     wrapped

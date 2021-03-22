@@ -1,9 +1,4 @@
-import {
-  signIn,
-  restore,
-  popover,
-  selectDashboardFilter,
-} from "__support__/cypress";
+import { restore, popover, selectDashboardFilter } from "__support__/cypress";
 
 function filterDashboard(suggests = true) {
   cy.visit("/dashboard/1");
@@ -27,14 +22,14 @@ function filterDashboard(suggests = true) {
 describe("support > permissions (metabase#8472)", () => {
   beforeEach(() => {
     restore();
-    signIn("admin");
+    cy.signInAsAdmin();
 
     // Setup a dashboard with a text filter
     cy.visit("/dashboard/1");
     // click pencil icon to edit
-    cy.get(".Icon-pencil").click();
+    cy.icon("pencil").click();
 
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     popover()
       .contains("Other Categories")
       .click();
@@ -58,7 +53,7 @@ describe("support > permissions (metabase#8472)", () => {
       "/api/dashboard/1/params/*/search/Aerodynamic Bronze Hat",
     ).as("search");
 
-    signIn("nodata");
+    cy.signIn("nodata");
     filterDashboard(false);
   });
 });

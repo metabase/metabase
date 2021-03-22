@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -64,7 +62,7 @@ export default class Parameters extends Component {
     commitImmediately: false,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // sync parameters from URL query string
     const { parameters, setParameterValue, query, metadata } = this.props;
     if (setParameterValue) {

@@ -57,7 +57,7 @@ At the database level, there are two different kinds of access you can set: data
 #### SQL (or native query) access
 
 - **Write raw queries:** can write new SQL/native queries using the SQL editor. This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
-- **No access**: can't write or edit SQL/native queries using the SQL editor. Users with this level of access will still be able to view questions created from SQL/native queries.
+- **No access**: can't view, write, or edit SQL/native queries. Users will still be able to view the results of questions created from SQL/native queries, but not the code itself. They also won't see the "View the SQL" button when composing custom questions in the notebook editor.
 
 If you select `Limit access` for one of your databases, your view will change to show the contents of that database. If the database utilizes namespaces or schemas, you’ll see a list of all the schemas in the database, and the level of data access each group has for them. Similarly, if you select `Limit access` on one of your schemas, you’ll drill down a level and see all the tables within it. From these views, you can navigate back by using the breadcrumb links in the top-left, and you can always drill down into a database or schema using the link under its name in the left column.
 
@@ -65,7 +65,7 @@ If you select `Limit access` for one of your databases, your view will change to
 
 Data access levels for schemas follows the same pattern as for databases:
 
-- **Unrestricted access:** can all tables in this schema, including any tables that might get added in the future.
+- **Unrestricted access:** can access all tables in this schema, including any tables that might get added in the future.
 - **Limited access:** can only access the tables that you explicitly select.
 - **No access:** can’t access any tables in this schema.
 
@@ -74,7 +74,7 @@ Lastly, data access levels for tables are almost exactly the same as well:
 - **Unrestricted access:** can ask questions about this table and see saved questions and dashboard cards using this table.
 - **No access:** can’t ask questions about this table or see saved questions or dashboard cards using this table.
 
-_Note: you’ll notice that tables don’t have the option for limited access. If need to set column-level or row-level data permissions, check out the [data sandboxing](https://www.metabase.com/docs/latest/enterprise-guide/data-sandboxes.html) feature of the [Enterprise Edition](https://www.metabase.com/enterprise/)._
+_Note: you’ll notice that tables don’t have the option for limited access. If you need to set column-level or row-level data permissions, check out the [data sandboxing](https://www.metabase.com/docs/latest/enterprise-guide/data-sandboxes.html) feature of the [Enterprise Edition](https://www.metabase.com/enterprise/)._
 
 ### A note about Pulses
 

@@ -134,7 +134,7 @@ export default class SearchApp extends React.Component {
 }
 
 const SearchResultSection = ({ title, items }) => (
-  <Card>
+  <Card pt={2}>
     {items.map(item => {
       return <SearchResult result={item} />;
     })}

@@ -1,5 +1,3 @@
-/* @flow */
-
 import { t } from "ttag";
 import moment from "moment";
 import _ from "underscore";
