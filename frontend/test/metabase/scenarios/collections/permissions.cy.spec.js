@@ -1,5 +1,5 @@
 import { onlyOn } from "@cypress/skip-test";
-import { restore } from "__support__/cypress";
+import { restore, popover } from "__support__/cypress";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -118,6 +118,30 @@ describe("collection permissions", () => {
                   ).should("not.exist");
                   cy.get(".Modal").should("not.exist");
                 }
+              });
+            });
+          });
+
+          onlyOn(permission === "view", () => {
+            it.skip("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
+              cy.signIn(user);
+              cy.visit("/");
+              cy.icon("add").click();
+              cy.findByText("New dashboard").click();
+              cy.findByLabelText("Name")
+                .click()
+                .type("Foo");
+              cy.get(".AdminSelect").click();
+              popover().within(() => {
+                cy.findByText("My personal collection");
+                // Test will fail on this step first
+                cy.findByText("First collection").should("not.exist");
+                // This is the second step that makes sure not even search returns collections with read-only access
+                cy.icon("search").click();
+                cy.findByPlaceholderText("Search")
+                  .click()
+                  .type("third{Enter}");
+                cy.findByText("Third collection").should("not.exist");
               });
             });
           });
