@@ -155,9 +155,8 @@ export default class ViewFilterPopover extends Component {
           startRule="boolean"
           isValid={filter && filter.isValid()}
           onChange={this.handleFilterChange}
-          onUpdateAndCommit={this.handleUpdateAndCommit}
+          onDone={this.handleUpdateAndCommit}
           onBack={() => this.setState({ editingFilter: false })}
-          onDone={this.handleCommit}
         />
       );
     }
