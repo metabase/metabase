@@ -68,7 +68,7 @@ describe("collection permissions", () => {
 
                   it("archiving sub-collection should redirect to its parent (metabase#12489)", () => {
                     cy.request("GET", "/api/collection").then(xhr => {
-                      // We need its ID to continue nesting below it
+                      // We need to obtain the ID programatically
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
                         collection => collection.slug === "third_collection",
                       );
