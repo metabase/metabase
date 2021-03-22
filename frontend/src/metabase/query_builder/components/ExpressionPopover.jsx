@@ -52,7 +52,6 @@ export default class ExpressionPopover extends React.Component {
             }}
             onCommit={expression => {
               if (!onChangeName) {
-                onChange(expression);
                 onUpdateAndCommit(expression);
               }
             }}
