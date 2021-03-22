@@ -21,9 +21,13 @@
      #(.getString rs "TABLE_SCHEM"))))
 
 (defn- syncable-schemas
-  [driver metadata]
+  [driver conn metadata]
   (eduction (remove (set (i/excluded-schemas driver)))
-            (all-schemas metadata)))
+    (if-let [schema-perm-check-fn (get-method i/have-any-schema-privileges? driver)]
+      ;; the driver has a way to check whether schemas can be excluded entirely, so exploit that
+      (filter (partial schema-perm-check-fn driver conn)
+              (into [] (all-schemas metadata)))
+      (all-schemas metadata))))
 
 (defn simple-select-probe-query
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
@@ -94,7 +98,7 @@
                      (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema, table-name :name}]
                      (i/have-select-privilege? driver conn table-schema table-name))))
-     (syncable-schemas driver metadata))))
+     (syncable-schemas driver conn metadata))))
 
 (defmethod i/active-tables :sql-jdbc
   [driver connection]

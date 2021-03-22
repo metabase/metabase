@@ -27,6 +27,13 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti have-any-schema-privileges?
+  "Check if we have any sort of privileges for the given `schema`. If this method is defined for some driver, and it
+  returns false for the given schema, then we won't attempt to check for any tables within."
+  {:arglists '([driver ^java.sql.Connection connection ^String table-schema])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 (defmulti database-type->base-type
   "Given a native DB column type (as a keyword), return the corresponding `Field` `base-type`, which should derive from
   `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex

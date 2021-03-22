@@ -251,3 +251,10 @@
                               :filter_values       (field->parameter-value query)})
        " */ "
        (qputil/default-query->remark query)))
+
+(defmethod sql-jdbc.sync/have-any-schema-privileges? :redshift [_ ^Connection conn ^String table-schema]
+  (with-open [stmt ^PreparedStatement (prepare-statement conn "SELECT HAS_SCHEMA_PRIVILEGE(?, 'USAGE');")]
+    (.setString stmt 1 table-schema)
+    (with-open [rs ^ResultSet (.executeQuery stmt)]
+      (when (.next rs)
+        (.getBoolean rs 1)))))
