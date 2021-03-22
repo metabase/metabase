@@ -1,5 +1,6 @@
 import { onlyOn } from "@cypress/skip-test";
 import { restore, popover } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -123,25 +124,34 @@ describe("collection permissions", () => {
           });
 
           onlyOn(permission === "view", () => {
-            it.skip("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
+            beforeEach(() => {
               cy.signIn(user);
-              cy.visit("/");
-              cy.icon("add").click();
-              cy.findByText("New dashboard").click();
-              cy.findByLabelText("Name")
-                .click()
-                .type("Foo");
-              cy.get(".AdminSelect").click();
-              popover().within(() => {
-                cy.findByText("My personal collection");
-                // Test will fail on this step first
-                cy.findByText("First collection").should("not.exist");
-                // This is the second step that makes sure not even search returns collections with read-only access
-                cy.icon("search").click();
-                cy.findByPlaceholderText("Search")
+            });
+
+            ["/", "/collection/root"].forEach(route => {
+              it.skip("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
+                const { first_name, last_name } = USERS[user];
+                cy.visit(route);
+                cy.icon("add").click();
+                cy.findByText("New dashboard").click();
+                cy.findByLabelText("Name")
                   .click()
-                  .type("third{Enter}");
-                cy.findByText("Third collection").should("not.exist");
+                  .type("Foo");
+                // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
+                cy.findByText(
+                  `${first_name} ${last_name}'s Personal Collection`,
+                ).click();
+                popover().within(() => {
+                  cy.findByText("My personal collection");
+                  // Test will fail on this step first
+                  cy.findByText("First collection").should("not.exist");
+                  // This is the second step that makes sure not even search returns collections with read-only access
+                  cy.icon("search").click();
+                  cy.findByPlaceholderText("Search")
+                    .click()
+                    .type("third{Enter}");
+                  cy.findByText("Third collection").should("not.exist");
+                });
               });
             });
           });
