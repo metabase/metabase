@@ -25,58 +25,58 @@ describe("scenarios > reference > metrics", () => {
 
   it("should see the listing", () => {
     cy.visit("/reference/metrics");
-    cy.contains(METRIC_NAME);
-    cy.contains(METRIC_DESCRIPTION);
+    cy.findByText(METRIC_NAME);
+    cy.findByText(METRIC_DESCRIPTION);
   });
 
   it("should let the user navigate to details", () => {
     cy.visit("/reference/metrics");
-    cy.contains(METRIC_NAME).click();
-    cy.contains("Why this metric is interesting");
+    cy.findByText(METRIC_NAME).click();
+    cy.findByText("Why this metric is interesting");
   });
 
   it("should let an admin edit details about the metric", () => {
     cy.visit("/reference/metrics");
-    cy.contains(METRIC_NAME).click();
+    cy.findByText(METRIC_NAME).click();
 
-    cy.contains("Edit").click();
-    cy.contains("Description")
+    cy.findByText("Edit").click();
+    cy.findByText("Description")
       .parent()
       .parent()
       .find("textarea")
       .type("Count of orders under $100");
-    cy.contains("button", "Save").click();
-    cy.contains("Reason for changes")
+    cy.findByText("Save").click();
+    cy.findByText("Reason for changes")
       .parent()
       .parent()
       .find("textarea")
       .type("Renaming the description");
-    cy.contains("button", "Save changes").click();
+    cy.findByText("Save changes").click();
 
-    cy.contains("Count of orders under $100");
+    cy.findByText("Count of orders under $100");
   });
 
   it("should let an admin start to edit and cancel without saving", () => {
     cy.visit("/reference/metrics");
-    cy.contains(METRIC_NAME).click();
+    cy.findByText(METRIC_NAME).click();
 
-    cy.contains("Edit").click();
-    cy.contains("Why this metric is interesting")
+    cy.findByText("Edit").click();
+    cy.findByText("Why this metric is interesting")
       .parent()
       .parent()
       .find("textarea")
       .type("Because it's very nice");
-    cy.contains("Cancel").click();
+    cy.findByText("Cancel").click();
 
-    cy.contains("Because it's very nice").should("have.length", 0);
+    cy.findByText("Because it's very nice").should("have.length", 0);
   });
 
   it("should have different URI while editing the metric", () => {
     cy.visit("/reference/metrics");
-    cy.contains(METRIC_NAME).click();
+    cy.findByText(METRIC_NAME).click();
 
     cy.url().should("match", /\/reference\/metrics\/\d+$/);
-    cy.contains("Edit").click();
+    cy.findByText("Edit").click();
     cy.url().should("match", /\/reference\/metrics\/\d+\/edit$/);
   });
 });
