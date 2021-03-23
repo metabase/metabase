@@ -375,7 +375,8 @@ describe("collection permissions", () => {
               });
 
               it("should be able to revert the question", () => {
-                // It's possible that the mechanics of who should be able to revert the question will change, but for now that's not possible for user without data access
+                // It's possible that the mechanics of who should be able to revert the question will change (see https://github.com/metabase/metabase/issues/15131)
+                // For now that's not possible for user without data access (likely it will be again when #11719 is fixed)
                 cy.skipOn(user === "nodata");
                 cy.visit("/question/1");
                 cy.icon("pencil").click();
