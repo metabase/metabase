@@ -66,7 +66,7 @@ describe("collection permissions", () => {
                     cy.icon("edit").should("not.exist");
                   });
 
-                  it("archiving sub-collection should redirect to its parent (metabase#12489)", () => {
+                  it("archiving sub-collection should redirect to its parent", () => {
                     cy.request("GET", "/api/collection").then(xhr => {
                       // We need to obtain the ID programatically
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
@@ -89,7 +89,7 @@ describe("collection permissions", () => {
                         cy.findByText("Second collection");
                         cy.findByText("Third collection").should("not.exist");
                       });
-                    // Although this was not the part of the original issue, it is a good place to test unarchiving collection without duplicating tests
+                    // While we're here, we can test unarchiving the collection as well
                     cy.findByText("Archived collection");
                     cy.findByText("Undo").click();
                     cy.findByText(
@@ -100,6 +100,27 @@ describe("collection permissions", () => {
                     // But unarchived collection is now visible in the sidebar
                     cy.get("@sidebar").within(() => {
                       cy.findByText("Third collection");
+                    });
+                  });
+
+                  it.skip("abandoning archive process should keep you in the same collection (metabase#15289)", () => {
+                    cy.request("GET", "/api/collection").then(xhr => {
+                      const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+                        collection => collection.slug === "third_collection",
+                      );
+                      cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
+                      cy.icon("pencil").click();
+                      cy.findByText("Archive this collection").click();
+                      cy.get(".Modal")
+                        .findByText("Cancel")
+                        .click();
+                      cy.location("pathname").should(
+                        "eq",
+                        `/collection/${THIRD_COLLECTION_ID}`,
+                      );
+                      cy.get("[class*=PageHeading]")
+                        .as("title")
+                        .contains("Third collection");
                     });
                   });
                 });
