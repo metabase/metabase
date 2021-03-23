@@ -12,16 +12,16 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 
 #### Officially supported databases
 
-- Amazon Redshift
-- [BigQuery](databases/bigquery.md)
+- [BigQuery](databases/bigquery.md) (Google Cloud Platform)
 - Druid
-- Google Analytics
+- Google Analytics (version 3; if you're interested in support for version 4, let us know by adding your [+1 to this issue (#12905)](https://github.com/metabase/metabase/issues/12905))
 - H2
 - [MongoDB (version 3.4 or higher)](databases/mongodb.md)
 - [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](databases/mysql.md)
 - [Oracle](databases/oracle.md)
 - PostgreSQL
 - Presto
+- Redshift (Amazon Web Services)
 - [Snowflake](databases/snowflake.md)
 - SparkSQL
 - SQL Server
