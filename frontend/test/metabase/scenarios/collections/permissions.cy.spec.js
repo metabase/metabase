@@ -59,7 +59,7 @@ describe("collection permissions", () => {
                 });
 
                 describe("collections", () => {
-                  it("shouldn't be able to arhive root or personal collection", () => {
+                  it("shouldn't be able to archive/edit root or personal collection", () => {
                     cy.visit("/collection/root");
                     cy.icon("edit").should("not.exist");
                     cy.findByText("Your personal collection").click();
