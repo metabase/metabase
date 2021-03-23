@@ -243,7 +243,7 @@ export default class MetricDetail extends Component {
                           )}
                         databaseId={table && table.db_id}
                         metric={entity}
-                        title="Fields you can group this metric by"
+                        title={t`Fields you can group this metric by`}
                         onChangeLocation={onChangeLocation}
                       />
                     </li>
