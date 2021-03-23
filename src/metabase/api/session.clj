@@ -344,7 +344,7 @@
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
   (if throttling-disabled?
-    (do-google-auth token)
+    (do-google-auth request)
     (http-400-on-error
       (throttle/with-throttling [(login-throttlers :ip-address) (source-address request)]
         (do-google-auth request)))))
