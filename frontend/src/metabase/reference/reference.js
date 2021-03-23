@@ -198,7 +198,6 @@ export const rUpdateMetricDetail = async (metric, formFields, props) => {
     if (!isEmptyObject(editedFields)) {
       const newMetric = { ...metric, ...editedFields };
       await props.updateMetric(newMetric);
-      wrappedFetchMetricDetail(props, metric.id);
     }
   } catch (error) {
     props.setError(error);
