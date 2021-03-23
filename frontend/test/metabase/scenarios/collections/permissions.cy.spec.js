@@ -126,6 +126,8 @@ describe("collection permissions", () => {
                       .contains("Third collection");
                     // Creating new sub-collection at this point shouldn't be possible
                     cy.icon("new_folder").should("not.exist");
+                    // We shouldn't be able to change permissions for an archived collection (the root issue of #12489!)
+                    cy.icon("lock").should("not.exist");
                     /**
                      *  We can take 2 routes from here - it will really depend on the design decision:
                      *    1. Edit icon shouldn't exist at all in which case some other call to action menu/button should exist
@@ -134,11 +136,9 @@ describe("collection permissions", () => {
                      */
 
                     // Option 1
-                    cy.icon("lock").should("not.exist");
                     cy.icon("edit").should("not.exist");
 
                     // Option 2
-                    // cy.icon("lock").click();
                     // cy.icon("edit").click();
                     // popover().within(() => {
                     //   cy.findByText("Edit this collection").should("not.exist");
