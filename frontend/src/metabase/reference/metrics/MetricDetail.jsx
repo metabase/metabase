@@ -5,6 +5,8 @@ import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
+
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -25,7 +27,6 @@ import {
   getError,
   getLoading,
   getUser,
-  getIsEditing,
   getIsFormulaExpanded,
   getForeignKeys,
 } from "../selectors";
@@ -59,7 +60,6 @@ const mapStateToProps = (state, props) => {
     loadingError: getError(state, props),
     user: getUser(state, props),
     foreignKeys: getForeignKeys(state, props),
-    isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
     initialValues,
   };
@@ -67,7 +67,11 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...metadataActions,
-  ...actions,
+
+  // Metric page doesn't use Redux isEditing state and related callbacks
+  // The state and callbacks are received via props
+  ..._.omit(actions, "startEditing", "endEditing"),
+
   onChangeLocation: push,
 };
 

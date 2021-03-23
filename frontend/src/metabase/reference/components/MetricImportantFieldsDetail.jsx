@@ -18,7 +18,7 @@ const MetricImportantFieldsDetail = ({
   onChangeLocation,
   formField,
 }) =>
-  isEditing ? (
+  !fields ? null : isEditing ? (
     <div className={cx(D.detail)}>
       <div className={D.detailBody}>
         <div className={D.detailTitle}>
@@ -44,7 +44,7 @@ const MetricImportantFieldsDetail = ({
         </div>
       </div>
     </div>
-  ) : fields ? (
+  ) : (
     <FieldsToGroupBy
       fields={fields}
       databaseId={table.db_id}
@@ -52,7 +52,8 @@ const MetricImportantFieldsDetail = ({
       title={t`Most useful fields to group this metric by`}
       onChangeLocation={onChangeLocation}
     />
-  ) : null;
+  );
+
 MetricImportantFieldsDetail.propTypes = {
   fields: PropTypes.object,
   metric: PropTypes.object.isRequired,
