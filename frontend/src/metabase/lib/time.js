@@ -79,6 +79,8 @@ export function formatHourAMPM(hour) {
     return t`${newHour}:00 PM`;
   } else if (hour === 0) {
     return t`12:00 AM`;
+  } else if (hour === 12) {
+    return t`12:00 PM`;
   } else {
     return t`${hour}:00 AM`;
   }
