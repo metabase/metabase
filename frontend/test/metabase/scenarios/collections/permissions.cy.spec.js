@@ -240,6 +240,11 @@ describe("collection permissions", () => {
           onlyOn(permission === "curate", () => {
             describe(`${user} user`, () => {
               beforeEach(() => {
+                cy.signInAsAdmin();
+                // Generate some history for the question
+                cy.request("PUT", "/api/card/1", {
+                  name: "Orders renamed",
+                });
                 cy.signIn(user);
               });
 
@@ -255,6 +260,23 @@ describe("collection permissions", () => {
                 cy.findAllByText(/Revert/).should("not.exist");
                 // We reverted the dashboard to the state prior to adding any cards to it
                 cy.findByText("This dashboard is looking empty.");
+              });
+
+              it("should be able to revert the question", () => {
+                // It's possible that the mechanics of who should be able to revert the question will change, but for now that's not possible for user without data access
+                cy.skipOn(user === "nodata");
+                cy.visit("/question/1");
+                cy.icon("pencil").click();
+                cy.findByText("View revision history").click();
+                clickRevert("First revision.");
+                cy.wait("@revert").then(xhr => {
+                  expect(xhr.status).to.eq(200);
+                  expect(xhr.cause).not.to.exist;
+                });
+                cy.findAllByText(/Revert/).should("not.exist");
+                // We need to reload the page because of #12581
+                cy.reload();
+                cy.contains(/^Orders$/);
               });
             });
           });
