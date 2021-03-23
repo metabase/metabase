@@ -168,6 +168,7 @@
       (doseq [[operator form input] [[:string/starts-with {"$regex" "^foo"} ["foo"]]
                                      [:string/ends-with {"$regex" "foo$"} ["foo"]]
                                      [:string/contains {"$regex" "foo"} ["foo"]]
+                                     [:string/does-not-contain {"$not" {"$regex" "foo"}} ["foo"]]
                                      [:string/= {"$eq" "foo"} ["foo"]]]]
         (testing operator
           (is (= (strip (to-bson [{:$match {"description" form}}]))
@@ -190,27 +191,30 @@
     (testing "variadic operators"
       (testing :string/=
         ;; this could be optimized to {:description {:in ["foo" "bar"}}?
-        (is (= (strip (to-bson [{:$match {"$or" [{"description" {"$eq" "foo"}}
-                                                 {"description" {"$eq" "bar"}}]}}]))
+        (is (= (strip (to-bson [{:$match {"$or" [{"$expr" {"$eq" ["$description" "foo"]}}
+                                                 {"$expr" {"$eq" ["$description" "bar"]}}]}}]))
                (strip
                 (substitute {:desc (field-filter "description" :type/Text :string/= ["foo" "bar"])}
                             ["[{$match: " (param :desc) "}]"])))))
       (testing :string/!=
-        ;; this could be optimized to {:description {:in ["foo" "bar"}}?
-        (is (= (strip (to-bson [{:$match {"$and" [{"description" {"$ne" "foo"}}
-                                                  {"description" {"$ne" "bar"}}]}}]))
+        ;; this could be optimized to {:description {:in ["foo" "bar"}}?  one thing is that we pass it through the
+        ;; desugar middleware that does this [:= 1 2] -> [:or [:= 1] [:= 2]] which makes for more complicated (or just
+        ;; verbose?) query where. perhaps we can introduce some notion of what is sugar and what isn't. I bet the line
+        ;; between what the desugar "optimizes" and what the query processors optimize might be a bit blurry
+        (is (= (strip (to-bson [{:$match {"$and" [{"$expr" {"$ne" ["$description" "foo"]}}
+                                                  {"$expr" {"$ne" ["$description" "bar"]}}]}}]))
                (strip
                 (substitute {:desc (field-filter "description" :type/Text :string/!= ["foo" "bar"])}
                             ["[{$match: " (param :desc) "}]"])))))
       (testing :number/=
-        (is (= (strip (to-bson [{:$match {"$or" [{"price" {"$eq" 1}}
-                                                 {"price" {"$eq" 2}}]}}]))
+        (is (= (strip (to-bson [{:$match {"$or" [{"$expr" {"$eq" ["$price" 1]}}
+                                                 {"$expr" {"$eq" ["$price" 2]}}]}}]))
                (strip
                 (substitute {:price (field-filter "price" :type/Integer :number/= [1 2])}
                             ["[{$match: " (param :price) "}]"])))))
       (testing :number/!=
-        (is (= (strip (to-bson [{:$match {"$and" [{"price" {"$ne" 1}}
-                                                  {"price" {"$ne" 2}}]}}]))
+        (is (= (strip (to-bson [{:$match {"$and" [{"$expr" {"$ne" ["$price" 1]}}
+                                                  {"$expr" {"$ne" ["$price" 2]}}]}}]))
                (strip
                 (substitute {:price (field-filter "price" :type/Integer :number/!= [1 2])}
                             ["[{$match: " (param :price) "}]"]))))))))

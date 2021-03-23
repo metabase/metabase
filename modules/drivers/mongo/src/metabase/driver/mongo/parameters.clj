@@ -10,13 +10,15 @@
             [metabase.driver.common.parameters.parse :as parse]
             [metabase.driver.common.parameters.values :as values]
             [metabase.driver.mongo.query-processor :as mongo.qp]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]])
-  (:import java.time.temporal.Temporal
-           [metabase.driver.common.parameters CommaSeparatedNumbers Date]))
+  (:import [metabase.driver.common.parameters CommaSeparatedNumbers Date]
+           java.time.temporal.Temporal))
 
 (defn- ->utc-instant [t]
   (t/instant
@@ -122,6 +124,11 @@
                                             [:field (field->name (:field v) false)
                                              {:base-type (get-in v [:field :base_type])}]])
                                     ops/to-clause
+                                    ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
+                                    ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
+                                    ;; desugars to [:or [:= 'field 1] ...].
+                                    (mbql.u/desugar-filter-clause)
+                                    (wrap-value-literals/wrap-value-literals-in-mbql)
                                     mongo.qp/compile-filter
                                     json/generate-string)]
             [(conj acc compiled-clause) missing])

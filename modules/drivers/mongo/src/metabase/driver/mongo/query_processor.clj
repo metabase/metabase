@@ -309,13 +309,20 @@
   (if (mbql.u/is-clause? ::not value)
     {$not (str-match-pattern options prefix (second value) suffix)}
     (let [case-sensitive? (get options :case-sensitive true)]
-      (re-pattern (str (when-not case-sensitive? "(?i)") prefix (->rvalue value) suffix)))))
+      {$regex (str (when-not case-sensitive? "(?i)") prefix (->rvalue value) suffix)})))
 
 ;; these are changed to {field {$regex "regex"}} instead of {field #regex} for serialization purposes. When doing
 ;; native query substitution we need a string and the explicit regex form is better there
-(defmethod compile-filter :contains    [[_ field v opts]] {(->lvalue field) {$regex (str-match-pattern opts nil v nil)}})
-(defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) {$regex (str-match-pattern opts \^  v nil)}})
-(defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) {$regex (str-match-pattern opts nil v \$)}})
+(defmethod compile-filter :contains    [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v nil)})
+(defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
+(defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
+
+(comment
+  (mbql.u/is-clause? ::not [::not "foo"])
+  (metabase.test/with-db (metabase.models/Database 7)
+    (metabase.test/with-everything-store
+      (compile-filter [:not [:contains [:field 93 nil] "bob"]])))
+  )
 
 (defn- simple-rvalue? [rvalue]
   (and (string? rvalue)
@@ -336,14 +343,8 @@
       ;;    {$expr {$eq [{$add [$field 1]} 100]}}
       {:$expr {operator [field-rvalue value-rvalue]}})))
 
-(defmethod compile-filter :=  [[_ field value & rst]]
-  (if (seq rst)
-    {$or (mapv (partial filter-expr $eq field) (cons value rst))}
-    (filter-expr $eq field value)))
-(defmethod compile-filter :!= [[_ field value & rst]]
-  (if (seq rst)
-    {$and (mapv (partial filter-expr $ne field) (cons value rst))}
-    (filter-expr $ne field value)))
+(defmethod compile-filter :=  [[_ field value]] (filter-expr $eq field value))
+(defmethod compile-filter :!= [[_ field value]] (filter-expr $ne field value))
 (defmethod compile-filter :<  [[_ field value]] (filter-expr $lt field value))
 (defmethod compile-filter :>  [[_ field value]] (filter-expr $gt field value))
 (defmethod compile-filter :<= [[_ field value]] (filter-expr $lte field value))
