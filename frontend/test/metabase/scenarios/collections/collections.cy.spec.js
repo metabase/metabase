@@ -161,26 +161,6 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    describe("managing items", () => {
-
-      it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
-        cy.visit("/collection/root");
-        cy.findByText("Orders")
-          .closest("a")
-          .within(() => {
-            cy.icon("table").trigger("mouseover");
-            cy.findByRole("checkbox")
-              .should("be.visible")
-              .click();
-          });
-
-        cy.findByText("1 item selected").should("be.visible");
-        cy.icon("dash").click();
-        cy.icon("dash").should("not.exist");
-        cy.findByText("4 items selected");
-      });
-    });
-
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
       it("should be in the root collection", () => {
@@ -495,6 +475,23 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("Everything Else");
       cy.findByText("Second Collection").should("not.exist");
       cy.findByText("First Collection");
+    });
+
+    it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
+      cy.visit("/collection/root");
+      cy.findByText("Orders")
+        .closest("a")
+        .within(() => {
+          cy.icon("table").trigger("mouseover");
+          cy.findByRole("checkbox")
+            .should("be.visible")
+            .click();
+        });
+
+      cy.findByText("1 item selected").should("be.visible");
+      cy.icon("dash").click();
+      cy.icon("dash").should("not.exist");
+      cy.findByText("4 items selected");
     });
   });
 });
