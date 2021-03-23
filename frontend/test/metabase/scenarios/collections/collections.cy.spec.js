@@ -189,33 +189,6 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Orders");
       });
 
-      it("pinning an item workflow should work", () => {
-        cy.visit("/collection/root");
-        // Assert that we're starting from a scenario with no pins
-        cy.findByText("Pinned items").should("not.exist");
-
-        pinItem("Orders in a dashboard"); // dashboard
-        pinItem("Orders, Count"); // question
-
-        // Should see "pinned items" and items should be in that section
-        cy.findByText("Pinned items")
-          .parent()
-          .within(() => {
-            cy.findByText("Orders in a dashboard");
-            cy.findByText("Orders, Count");
-          });
-        // Consequently, "Everything else" should now also be visible
-        cy.findByText("Everything else");
-        // Only pinned dashboards should show up on the home page...
-        cy.visit("/");
-        cy.findByText("Orders in a dashboard");
-        cy.findByText("Orders, Count").should("not.exist");
-        // ...but not for the user without permissions to see the root collection
-        cy.signOut();
-        cy.signIn("none");
-        cy.visit("/");
-        cy.findByText("Orders in a dashboard").should("not.exist");
-      });
 
       it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
         cy.visit("/collection/root");
@@ -584,9 +557,4 @@ function openEllipsisMenuFor(item) {
     .closest("a")
     .find(".Icon-ellipsis")
     .click({ force: true });
-}
-
-function pinItem(item) {
-  openEllipsisMenuFor(item);
-  cy.findByText("Pin this item").click();
 }

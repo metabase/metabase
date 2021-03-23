@@ -24,6 +24,36 @@ describe("collection permissions", () => {
                 cy.signIn(user);
               });
 
+              describe("pin", () => {
+                it("pinning should work properly for both questions and dashboards", () => {
+                  cy.visit("/collection/root");
+                  // Assert that we're starting from a scenario with no pins
+                  cy.findByText("Pinned items").should("not.exist");
+
+                  pinItem("Orders in a dashboard"); // dashboard
+                  pinItem("Orders, Count"); // question
+
+                  // Should see "pinned items" and items should be in that section
+                  cy.findByText("Pinned items")
+                    .parent()
+                    .within(() => {
+                      cy.findByText("Orders in a dashboard");
+                      cy.findByText("Orders, Count");
+                    });
+                  // Consequently, "Everything else" should now also be visible
+                  cy.findByText("Everything else");
+                  // Only pinned dashboards should show up on the home page...
+                  cy.visit("/");
+                  cy.findByText("Orders in a dashboard");
+                  cy.findByText("Orders, Count").should("not.exist");
+                  // ...but not for the user without permissions to see the root collection
+                  cy.signOut();
+                  cy.signIn("none");
+                  cy.visit("/");
+                  cy.findByText("Orders in a dashboard").should("not.exist");
+                });
+              });
+
               describe("duplicate", () => {
                 it.skip("should be able to duplicate the dashboard without obstructions from the modal (metabase#15255)", () => {
                   duplicate("Orders in a dashboard");
@@ -365,4 +395,9 @@ function clickButton(name) {
   cy.findByRole("button", { name })
     .should("not.be.disabled")
     .click();
+}
+
+function pinItem(item) {
+  openEllipsisMenuFor(item);
+  cy.findByText("Pin this item").click();
 }
