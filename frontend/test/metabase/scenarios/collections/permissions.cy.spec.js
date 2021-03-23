@@ -103,6 +103,52 @@ describe("collection permissions", () => {
                     });
                   });
 
+                  it.skip("visiting already archived collection by its ID shouldn't let you edit it (metabase#12489)", () => {
+                    cy.request("GET", "/api/collection").then(xhr => {
+                      const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+                        collection => collection.slug === "third_collection",
+                      );
+                      // Archive it
+                      cy.request(
+                        "PUT",
+                        `/api/collection/${THIRD_COLLECTION_ID}`,
+                        {
+                          archived: true,
+                        },
+                      );
+
+                      // What happens if we visit the archived collection by its id?
+                      // This is the equivalent of hitting the back button but it also shows that the same UI is present whenever we visit the collection by its id
+                      cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
+                    });
+                    cy.get("[class*=PageHeading]")
+                      .as("title")
+                      .contains("Third collection");
+                    // Creating new sub-collection at this point shouldn't be possible
+                    cy.icon("new_folder").should("not.exist");
+                    // We shouldn't be able to change permissions for an archived collection (the root issue of #12489!)
+                    cy.icon("lock").should("not.exist");
+                    /**
+                     *  We can take 2 routes from here - it will really depend on the design decision:
+                     *    1. Edit icon shouldn't exist at all in which case some other call to action menu/button should exist
+                     *       notifying the user that this collection is archived and prompting them to unarchive it
+                     *    2. Edit icon stays but with "Unarchive this item" ONLY in the menu
+                     */
+
+                    // Option 1
+                    cy.icon("edit").should("not.exist");
+
+                    // Option 2
+                    // cy.icon("edit").click();
+                    // popover().within(() => {
+                    //   cy.findByText("Edit this collection").should("not.exist");
+                    //   cy.findByText("Archive this collection").should(
+                    //     "not.exist",
+                    //   );
+                    //   cy.findByText("Unarchive this collection");
+                    // });
+                  });
+
                   it.skip("abandoning archive process should keep you in the same collection (metabase#15289)", () => {
                     cy.request("GET", "/api/collection").then(xhr => {
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
