@@ -133,7 +133,7 @@ export default class LegendHeader extends Component {
           <span
             className={cx(
               classNameWidgets,
-              "flex-no-shrink flex-align-right relative",
+              "flex-no-shrink flex-align-left relative",
             )}
           >
             {actionButtons}
