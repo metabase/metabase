@@ -221,7 +221,7 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   describe("Google Analytics ", () => {
-    it.only("should generate well-formed external auth URLs", () => {
+    it("should generate well-formed external auth URLs", () => {
       cy.visit("/admin/databases/create");
       cy.contains("Database type")
         .parents(".Form-field")
