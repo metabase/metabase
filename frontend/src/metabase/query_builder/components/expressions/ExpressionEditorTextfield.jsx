@@ -109,6 +109,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
+    onValidChange: PropTypes.func,
   };
 
   static defaultProps = {
@@ -300,6 +301,9 @@ export default class ExpressionEditorTextfield extends React.Component {
         };
 
     const isValid = expression !== undefined;
+    if (this.props.onValidChange) {
+      this.props.onValidChange(isValid);
+    }
     // don't show suggestions if
     // * there's a selection
     // * we're at the end of a valid expression, unless the user has typed another space

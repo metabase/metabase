@@ -10,6 +10,7 @@ import Icon from "metabase/components/Icon";
 export default class ExpressionPopover extends React.Component {
   state = {
     error: null,
+    isValid: false,
   };
 
   render() {
@@ -27,8 +28,6 @@ export default class ExpressionPopover extends React.Component {
     const { error } = this.state;
 
     // if onChangeName is provided then a name is required
-    const isValid = !error && (!onChangeName || name);
-
     return (
       <div style={{ width: 498 }}>
         <div className="text-medium p1 py2 border-bottom flex align-center">
@@ -55,6 +54,9 @@ export default class ExpressionPopover extends React.Component {
                 onDone();
               }
             }}
+            onValidChange={newValid => {
+              this.setState({ isValid: newValid });
+            }}
           />
           {onChangeName && (
             <input
@@ -62,14 +64,19 @@ export default class ExpressionPopover extends React.Component {
               value={name}
               onChange={e => onChangeName(e.target.value)}
               onKeyPress={e => {
-                if (e.key === "Enter" && isValid) {
+                if (e.key === "Enter" && this.state.isValid) {
                   onDone();
                 }
               }}
               placeholder={t`Name (required)`}
             />
           )}
-          <Button className="full" primary disabled={!isValid} onClick={onDone}>
+          <Button
+            className="full"
+            primary
+            disabled={!this.state.isValid}
+            onClick={onDone}
+          >
             {t`Done`}
           </Button>
         </div>
