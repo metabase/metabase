@@ -18,6 +18,8 @@ import Tables from "metabase/entities/tables";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
+import SavedQuestionPicker from "metabase/query_builder/containers/SavedQuestionPicker";
+
 import _ from "underscore";
 
 // chooses a database
@@ -153,6 +155,7 @@ export class UnconnectedDataSelector extends Component {
       isError: false,
       ...state,
       ...computedState,
+      showSavedQuestions: false,
     };
   }
 
@@ -556,6 +559,9 @@ export class UnconnectedDataSelector extends Component {
       await this.previousStep();
     }
     await this.nextStep({ selectedDatabaseId: database && database.id });
+    if (database.is_saved_questions) {
+      this.setState({ showSavedQuestions: true });
+    }
   };
 
   onChangeSchema = async schema => {
@@ -623,7 +629,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps, onSwitchToSavedQuestions } = this.props;
+    const { combineDatabaseSchemaSteps } = this.props;
     const props = {
       ...this.state,
 
@@ -636,7 +642,6 @@ export class UnconnectedDataSelector extends Component {
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
-      onSwitchToSavedQuestions,
     };
 
     switch (this.state.activeStep) {
@@ -661,7 +666,20 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
+  renderSavedQuestion() {
+    const { query } = this.props;
+    return (
+      <SavedQuestionPicker
+        query={query}
+        onChangeSchema={this.onChangeSchema}
+        onChangeTable={this.onChangeTable}
+        onBack={() => this.setState({ showSavedQuestions: false })}
+      />
+    );
+  }
+
   render() {
+    const { showSavedQuestions } = this.state;
     return (
       <PopoverWithTrigger
         id="DataPopover"
@@ -675,7 +693,9 @@ export class UnconnectedDataSelector extends Component {
         sizeToFit
         isOpen={this.props.isOpen}
       >
-        {this.renderActiveStep()}
+        {showSavedQuestions
+          ? this.renderSavedQuestion()
+          : this.renderActiveStep()}
       </PopoverWithTrigger>
     );
   }
@@ -758,7 +778,6 @@ const DatabaseSchemaPicker = ({
   onChangeDatabase,
   hasNextStep,
   isLoading,
-  onSwitchToSavedQuestions,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
@@ -798,50 +817,35 @@ const DatabaseSchemaPicker = ({
   }
 
   return (
-    <span>
-      <AccordionList
-        id="DatabaseSchemaPicker"
-        key="databaseSchemaPicker"
-        className="text-brand"
-        sections={sections}
-        onChange={item => {
-          console.log(item);
-          onChangeSchema(item.schema);
-        }}
-        onChangeSection={(section, sectionIndex) => {
-          if (
-            selectedDatabase &&
-            selectedDatabase.id === databases[sectionIndex].id
-          ) {
-            // You can't change to the current database. If you click on that,
-            // still return "true" to let the AccordionList collapse that section.
-            console.log(section);
-            return true;
-          }
-          console.log(section);
-          onChangeDatabase(databases[sectionIndex]);
+    <AccordionList
+      id="DatabaseSchemaPicker"
+      key="databaseSchemaPicker"
+      className="text-brand"
+      sections={sections}
+      onChange={item => {
+        onChangeSchema(item.schema);
+      }}
+      onChangeSection={(section, sectionIndex) => {
+        if (
+          selectedDatabase &&
+          selectedDatabase.id === databases[sectionIndex].id
+        ) {
+          // You can't change to the current database. If you click on that,
+          // still return "true" to let the AccordionList collapse that section.
           return true;
-        }}
-        itemIsSelected={schema => schema === selectedSchema}
-        renderSectionIcon={item => (
-          <Icon className="Icon text-default" name={item.icon} size={18} />
-        )}
-        renderItemIcon={() => <Icon name="folder" size={16} />}
-        initiallyOpenSection={openSection}
-        alwaysTogglable={true}
-        showItemArrows={hasNextStep}
-      />
-      {/* TODO - we probably still need a check to make sure that we should show this option */}
-      <div
-        className="List-section bg-light"
-        onClick={() => onSwitchToSavedQuestions()}
-      >
-        <div className="List-section-header mx2 py2 flex align-center text-brand-hover cursor-pointer">
-          <Icon className="List-section-icon mr1" name="all" size={20} />
-          <h3>{t`Saved Questions`}</h3>
-        </div>
-      </div>
-    </span>
+        }
+        onChangeDatabase(databases[sectionIndex]);
+        return true;
+      }}
+      itemIsSelected={schema => schema === selectedSchema}
+      renderSectionIcon={item => (
+        <Icon className="Icon text-default" name={item.icon} size={18} />
+      )}
+      renderItemIcon={() => <Icon name="folder" size={16} />}
+      initiallyOpenSection={openSection}
+      alwaysTogglable={true}
+      showItemArrows={hasNextStep}
+    />
   );
 };
 
