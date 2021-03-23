@@ -189,7 +189,7 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Orders");
       });
 
-      it("should allow a user to pin an item", () => {
+      it("pinning an item workflow should work", () => {
         cy.visit("/collection/root");
         // Assert that we're starting from a scenario with no pins
         cy.findByText("Pinned items").should("not.exist");
@@ -206,10 +206,15 @@ describe("scenarios > collection_defaults", () => {
           });
         // Consequently, "Everything else" should now also be visible
         cy.findByText("Everything else");
-        // Only pinned dashboards should show up on the home page
+        // Only pinned dashboards should show up on the home page...
         cy.visit("/");
         cy.findByText("Orders in a dashboard");
         cy.findByText("Orders, Count").should("not.exist");
+        // ...but not for the user without permissions to see the root collection
+        cy.signOut();
+        cy.signIn("none");
+        cy.visit("/");
+        cy.findByText("Orders in a dashboard").should("not.exist");
       });
 
       it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
