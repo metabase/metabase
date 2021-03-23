@@ -17,7 +17,8 @@
     "react/no-did-update-set-state": 0,
     "react/no-find-dom-node": 0,
     "prefer-const": [1, { "destructuring": "all" }],
-    "no-useless-escape": 0
+    "no-useless-escape": 0,
+    "no-only-tests/no-only-tests": "error"
   },
   "globals": {
     "pending": false,
@@ -32,7 +33,7 @@
     "jest": true
   },
   "parser": "babel-eslint",
-  "plugins": ["react"],
+  "plugins": ["react", "no-only-tests"],
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
