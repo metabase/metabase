@@ -162,33 +162,6 @@ describe("scenarios > collection_defaults", () => {
     });
 
     describe("managing items", () => {
-      it("should let a user move a collection item via modal", () => {
-        cy.visit("/collection/root");
-
-        // 1. Click on the ... menu
-        openEllipsisMenuFor("Orders");
-
-        // 2. Select "move this" from the popover
-        cy.findByText("Move this item").click();
-        modal().within(() => {
-          cy.findByText(`Move "Orders"?`);
-          // 3. Select a collection that has child collections and hit the right chevron to navigate there
-          cy.findByText("First collection")
-            .next() // right chevron icon
-            .click();
-          cy.findByText("Second collection").click();
-          // 4. Move that item
-          cy.findByText("Move").click();
-        });
-        // Assert that the item no longer exists in "Our collection"...
-        cy.findByText("Orders").should("not.exist");
-
-        openDropdownFor("First collection");
-        // ...and that it is indeed moved inside "Second collection"
-        cy.findByText("Second collection").click();
-        cy.findByText("Orders");
-      });
-
 
       it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
         cy.visit("/collection/root");

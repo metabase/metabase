@@ -54,6 +54,42 @@ describe("collection permissions", () => {
                 });
               });
 
+              describe("move", () => {
+                it("should let a user move/undo move a question", () => {
+                  move("Orders");
+                });
+
+                it("should let a user move/undo move a dashboard", () => {
+                  move("Orders in a dashboard");
+                });
+
+                function move(item) {
+                  cy.visit("/collection/root");
+                  openEllipsisMenuFor(item);
+                  cy.findByText("Move this item").click();
+                  cy.get(".Modal").within(() => {
+                    cy.findByText(`Move "${item}"?`);
+                    // Let's move it into a nested collection
+                    cy.findByText("First collection")
+                      .siblings(".Icon-chevronright")
+                      .click();
+                    cy.findByText("Second collection").click();
+                    cy.findByText("Move").click();
+                  });
+                  cy.findByText(item).should("not.exist");
+                  // Make sure item was properly moved to a correct sub-collection
+                  exposeChildrenFor("First collection");
+                  cy.findByText("Second collection").click();
+                  cy.findByText(item);
+                  // Undo the whole thing
+                  cy.findByText(/Moved (question|dashboard)/);
+                  cy.findByText("Undo").click();
+                  cy.findByText(item).should("not.exist");
+                  cy.visit("/collection/root");
+                  cy.findByText(item);
+                }
+              });
+
               describe("duplicate", () => {
                 it.skip("should be able to duplicate the dashboard without obstructions from the modal (metabase#15255)", () => {
                   duplicate("Orders in a dashboard");
@@ -400,4 +436,12 @@ function clickButton(name) {
 function pinItem(item) {
   openEllipsisMenuFor(item);
   cy.findByText("Pin this item").click();
+}
+
+function exposeChildrenFor(collectionName) {
+  cy.findByText(collectionName)
+    .parent()
+    .find(".Icon-chevronright")
+    .eq(0) // there may be more nested icons, but we need the top level one
+    .click();
 }
