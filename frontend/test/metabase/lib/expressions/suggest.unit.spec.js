@@ -148,6 +148,10 @@ describe("metabase/lib/expression/suggest", () => {
       return cleanSuggestions(suggest_(...args).suggestions);
     }
 
+    function uncleanSuggest(...args) {
+      return suggest_(...args).suggestions;
+    }
+
     function helpText(...args) {
       return suggest_(...args).helpText;
     }
@@ -364,6 +368,19 @@ describe("metabase/lib/expression/suggest", () => {
         });
         expect(name).toEqual("sum");
         expect(example).toEqual("Sum([Subtotal])");
+      });
+
+      it("should give us the prefix trim regex in expressions that actually trims", () => {
+        expect(
+          "no".replace(
+            uncleanSuggest({
+              source: "no",
+              query: ORDERS.query(),
+              startRule: "boolean",
+            })[0].prefixTrim,
+            "",
+          ),
+        ).toEqual("");
       });
     });
 
