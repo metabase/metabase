@@ -35,7 +35,7 @@ describe("support > permissions (metabase#8472)", () => {
       .click();
 
     popover()
-      .contains("Matches exactly")
+      .contains("Dropdown")
       .click();
 
     // Filter the first card by product category

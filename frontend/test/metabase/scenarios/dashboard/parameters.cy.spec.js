@@ -15,7 +15,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("pencil").click();
     cy.icon("filter").click();
     cy.findByText("Location").click();
-    cy.findByText("Matches exactly").click();
+    cy.findByText("Dropdown").click();
 
     // Link that filter to the card
     cy.findByText("Select…").click();
@@ -130,7 +130,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     // populate the filter inputs
-    cy.contains("Number - Between").click();
+    cy.contains("Between").click();
     popover()
       .find("input")
       .first()
@@ -147,7 +147,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     // There should be 8849 orders with a rating >= 3 && <= 4
     cy.get(".DashCard").contains("8,849");
-    cy.url().should("include", "number_-_between=3&number_-_between=4");
+    cy.url().should("include", "between=3&between=4");
   });
 
   it("should remove previously deleted dashboard parameter from URL (metabase#10829)", () => {
@@ -171,7 +171,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     // populate the filter input
-    cy.findByText("Category - Ends with").click();
+    cy.findByText("Category ends with").click();
     popover()
       .find("input")
       .type("zmo");
@@ -183,14 +183,14 @@ describe("scenarios > dashboard > parameters", () => {
     cy.log(
       "**URL is updated correctly with the given parameter at this point**",
     );
-    cy.url().should("include", "category_-_ends_with=zmo");
+    cy.url().should("include", "category_ends_with=zmo");
 
     // Remove filter name
     cy.icon("pencil").click();
     cy.get(".Dashboard")
       .find(".Icon-gear")
       .click();
-    cy.findByDisplayValue("Category - Ends with")
+    cy.findByDisplayValue("Category ends with")
       .click()
       .clear();
     cy.findByText("Save").click();
