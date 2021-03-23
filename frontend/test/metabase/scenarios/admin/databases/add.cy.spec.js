@@ -72,6 +72,8 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
+    cy.route("POST", "/api/database").as("createDatabase");
+
     cy.visit("/admin/databases/create");
 
     typeField("Name", "Test db name");
@@ -81,6 +83,8 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByRole("button", { name: "Save" })
       .should("not.be.disabled")
       .click();
+
+    cy.wait("@createDatabase");
 
     toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
 
