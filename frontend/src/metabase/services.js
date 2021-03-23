@@ -341,7 +341,6 @@ export const MetricApi = {
   create: POST("/api/metric"),
   get: GET("/api/metric/:metricId"),
   update: PUT("/api/metric/:id"),
-  update_important_fields: PUT("/api/metric/:metricId/important_fields"),
   delete: DELETE("/api/metric/:metricId"),
 };
 
@@ -383,10 +382,6 @@ export const PermissionsApi = {
   deleteMembership: DELETE("/api/permissions/membership/:id"),
   updateGroup: PUT("/api/permissions/group/:id"),
   deleteGroup: DELETE("/api/permissions/group/:id"),
-};
-
-export const GettingStartedApi = {
-  get: GET("/api/getting_started"),
 };
 
 export const SetupApi = {

@@ -20,8 +20,6 @@ import { getQuestionUrl } from "../utils";
 import {
   getFieldBySegment,
   getTable,
-  getFields,
-  getGuide,
   getError,
   getLoading,
   getUser,
@@ -61,24 +59,10 @@ const interestingQuestions = (table, field) => {
 
 const mapStateToProps = (state, props) => {
   const entity = getFieldBySegment(state, props) || {};
-  const guide = getGuide(state, props);
-  const fields = getFields(state, props);
-
-  const initialValues = {
-    important_fields:
-      (guide &&
-        guide.metric_important_fields &&
-        guide.metric_important_fields[entity.id] &&
-        guide.metric_important_fields[entity.id].map(
-          fieldId => fields[fieldId],
-        )) ||
-      [],
-  };
 
   return {
     entity,
     table: getTable(state, props),
-    guide,
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
@@ -86,7 +70,6 @@ const mapStateToProps = (state, props) => {
     foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
-    initialValues,
   };
 };
 

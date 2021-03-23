@@ -209,8 +209,6 @@ export const getIsEditing = (state, props) => state.reference.isEditing;
 export const getIsFormulaExpanded = (state, props) =>
   state.reference.isFormulaExpanded;
 
-export const getGuide = (state, props) => state.reference.guide;
-
 export const getDashboards = (state, props) => {
   const list = Dashboards.selectors.getList(state);
   return list && resourceListToMap(list);
