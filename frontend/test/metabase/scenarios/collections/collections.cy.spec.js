@@ -194,18 +194,22 @@ describe("scenarios > collection_defaults", () => {
         // Assert that we're starting from a scenario with no pins
         cy.findByText("Pinned items").should("not.exist");
 
-        // 1. Click on the ... menu
-        openEllipsisMenuFor("Orders in a dashboard");
+        pinItem("Orders in a dashboard"); // dashboard
+        pinItem("Orders, Count"); // question
 
-        // 2. Select "pin this" from the popover
-        cy.findByText("Pin this item").click();
-
-        // 3. Should see "pinned items" and the item should be in that section
+        // Should see "pinned items" and items should be in that section
         cy.findByText("Pinned items")
           .parent()
-          .contains("Orders in a dashboard");
-        // 4. Consequently, "Everything else" should now also be visible
+          .within(() => {
+            cy.findByText("Orders in a dashboard");
+            cy.findByText("Orders, Count");
+          });
+        // Consequently, "Everything else" should now also be visible
         cy.findByText("Everything else");
+        // Only pinned dashboards should show up on the home page
+        cy.visit("/");
+        cy.findByText("Orders in a dashboard");
+        cy.findByText("Orders, Count").should("not.exist");
       });
 
       it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
@@ -575,4 +579,9 @@ function openEllipsisMenuFor(item) {
     .closest("a")
     .find(".Icon-ellipsis")
     .click({ force: true });
+}
+
+function pinItem(item) {
+  openEllipsisMenuFor(item);
+  cy.findByText("Pin this item").click();
 }
