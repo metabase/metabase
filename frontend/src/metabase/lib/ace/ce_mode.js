@@ -1,42 +1,18 @@
 /*global ace*/
 /* eslint-disable import/no-commonjs */
 /* eslint-disable no-color-literals */
-ace.define(
-  "ace/mode/mbce",
+define(
   [
     "require",
     "exports",
     "ace/lib/oop",
     "ace/mode/text",
-    "ace/mode/mbce_highlight_rules",
+    "ace/mode/text_highlight_rules",
   ],
   (require, exports) => {
     const oop = require("ace/lib/oop");
     const TextMode = require("ace/mode/text").Mode;
-    const CEHighlightRules = require("ace/mode/mbce_highlight_rules")
-      .CEHighlightRules;
 
-    let Mode = function() {
-      this.HighlightRules = CEHighlightRules;
-    };
-
-    oop.inherits(Mode, TextMode);
-
-    exports.Mode = Mode;
-  },
-);
-
-ace.define(
-  "ace/mode/mbce_highlight_rules",
-  [
-    "require",
-    "exports",
-    "module",
-    "ace/lib/oop",
-    "ace/mode/text_highlight_rules",
-  ],
-  function(require, exports, module) {
-    const oop = require("ace/lib/oop");
     const TextHighlightRules = require("ace/mode/text_highlight_rules")
       .TextHighlightRules;
 
@@ -107,6 +83,12 @@ ace.define(
 
     oop.inherits(CEHighlightRules, TextHighlightRules);
 
-    exports.CEHighlightRules = CEHighlightRules;
+    let CEMode = function() {
+      this.HighlightRules = CEHighlightRules;
+    };
+
+    oop.inherits(CEMode, TextMode);
+
+    exports.CEMode = CEMode;
   },
 );
