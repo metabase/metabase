@@ -58,6 +58,73 @@ describe("collection permissions", () => {
                   archiveUnarchive("Orders in a dashboard");
                 });
 
+                describe("collections", () => {
+                  it("shouldn't be able to archive/edit root or personal collection", () => {
+                    cy.visit("/collection/root");
+                    cy.icon("edit").should("not.exist");
+                    cy.findByText("Your personal collection").click();
+                    cy.icon("edit").should("not.exist");
+                  });
+
+                  it("archiving sub-collection should redirect to its parent", () => {
+                    cy.request("GET", "/api/collection").then(xhr => {
+                      // We need to obtain the ID programatically
+                      const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+                        collection => collection.slug === "third_collection",
+                      );
+                      cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
+                    });
+                    cy.icon("pencil").click();
+                    cy.findByText("Archive this collection").click();
+                    cy.get(".Modal")
+                      .findByText("Archive")
+                      .click();
+                    cy.get("[class*=PageHeading]")
+                      .as("title")
+                      .contains("Second collection");
+                    cy.get("[class*=CollectionSidebar]")
+                      .as("sidebar")
+                      .within(() => {
+                        cy.findByText("First collection");
+                        cy.findByText("Second collection");
+                        cy.findByText("Third collection").should("not.exist");
+                      });
+                    // While we're here, we can test unarchiving the collection as well
+                    cy.findByText("Archived collection");
+                    cy.findByText("Undo").click();
+                    cy.findByText(
+                      "Sorry, you don’t have permission to see that.",
+                    ).should("not.exist");
+                    // We're still in the parent collection
+                    cy.get("@title").contains("Second collection");
+                    // But unarchived collection is now visible in the sidebar
+                    cy.get("@sidebar").within(() => {
+                      cy.findByText("Third collection");
+                    });
+                  });
+
+                  it.skip("abandoning archive process should keep you in the same collection (metabase#15289)", () => {
+                    cy.request("GET", "/api/collection").then(xhr => {
+                      const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+                        collection => collection.slug === "third_collection",
+                      );
+                      cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
+                      cy.icon("pencil").click();
+                      cy.findByText("Archive this collection").click();
+                      cy.get(".Modal")
+                        .findByText("Cancel")
+                        .click();
+                      cy.location("pathname").should(
+                        "eq",
+                        `/collection/${THIRD_COLLECTION_ID}`,
+                      );
+                      cy.get("[class*=PageHeading]")
+                        .as("title")
+                        .contains("Third collection");
+                    });
+                  });
+                });
+
                 function archiveUnarchive(item) {
                   cy.visit("/collection/root");
                   openEllipsisMenuFor(item);
