@@ -1,7 +1,8 @@
 /*global ace*/
 /* eslint-disable import/no-commonjs */
-/* eslint-disable no-color-literals */
-define(
+
+ace.define(
+  "ace/mode/mbce",
   [
     "require",
     "exports",
@@ -9,7 +10,7 @@ define(
     "ace/mode/text",
     "ace/mode/text_highlight_rules",
   ],
-  (require, exports) => {
+  function (require, exports) {
     const oop = require("ace/lib/oop");
     const TextMode = require("ace/mode/text").Mode;
 
@@ -88,6 +89,10 @@ define(
     };
 
     oop.inherits(CEMode, TextMode);
+
+    console.log(oop);
+    console.log(CEHighlightRules);
+    console.log(CEMode);
 
     exports.CEMode = CEMode;
   },
