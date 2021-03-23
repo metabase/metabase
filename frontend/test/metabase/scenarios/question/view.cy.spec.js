@@ -1,11 +1,4 @@
-import {
-  signInAsAdmin,
-  restore,
-  openOrdersTable,
-  popover,
-  signIn,
-} from "__support__/cypress";
-
+import { restore, openOrdersTable, popover } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PRODUCTS } = SAMPLE_DATASET;
@@ -13,7 +6,7 @@ const { PRODUCTS } = SAMPLE_DATASET;
 describe("scenarios > question > view", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("summarize sidebar", () => {
@@ -108,36 +101,31 @@ describe("scenarios > question > view", () => {
       // Native query saved in dasbhoard
       cy.createDashboard("Dashboard");
 
-      cy.request("POST", "/api/card", {
+      cy.createNativeQuestion({
         name: "Question",
-        dataset_query: {
-          type: "native",
-          native: {
-            query: "select * from products where {{category}} and {{vendor}}",
-            "template-tags": {
-              category: {
-                id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
-                name: "category",
-                "display-name": "CATEGORY",
-                type: "dimension",
-                dimension: ["field", PRODUCTS.CATEGORY, null],
-                "widget-type": "id",
-              },
-              vendor: {
-                id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
-                name: "vendor",
-                "display-name": "VENDOR",
-                type: "dimension",
-                dimension: ["field", PRODUCTS.VENDOR, null],
-                "widget-type": "id",
-              },
+        native: {
+          query: "select * from products where {{category}} and {{vendor}}",
+          "template-tags": {
+            category: {
+              id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
+              name: "category",
+              "display-name": "CATEGORY",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "id",
+            },
+            vendor: {
+              id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
+              name: "vendor",
+              "display-name": "VENDOR",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.VENDOR, null],
+              "widget-type": "id",
             },
           },
-          database: 1,
         },
-        display: "table",
-        visualization_settings: {},
       });
+
       cy.request("POST", "/api/dashboard/2/cards", {
         id: 2,
         cardId: 4,
@@ -171,7 +159,7 @@ describe("scenarios > question > view", () => {
     });
 
     it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
-      signIn("nodata");
+      cy.signIn("nodata");
       cy.visit("/question/4");
 
       // Filter by category and vendor
@@ -195,7 +183,7 @@ describe("scenarios > question > view", () => {
 
     it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
-      signIn("nodata");
+      cy.signIn("nodata");
       cy.visit("/dashboard/2");
       cy.findByText("Question").click();
 

@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { assoc } from "icepick";
-import { signInAsAdmin, signIn, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
@@ -9,7 +9,7 @@ describe("scenarios > dashboard > permissions", () => {
     restore();
     // This first test creates a dashboard with two questions.
     // One is in Our Analytics the other is in a more locked down collection.
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // The setup is a bunch of nested API calls to create the questions, dashboard, dashcards, collections and link them all up together.
     let firstQuestionId, secondQuestionId;
@@ -35,18 +35,6 @@ describe("scenarios > dashboard > permissions", () => {
           });
         },
       );
-
-      cy.request("POST", "/api/card", {
-        dataset_query: {
-          database: 1,
-          type: "native",
-          native: { query: "select 'foo'" },
-        },
-        display: "table",
-        visualization_settings: {},
-        name: "First Question",
-        collection_id,
-      }).then(({ body: { id } }) => (firstQuestionId = id));
 
       cy.request("POST", "/api/card", {
         dataset_query: {
@@ -116,7 +104,7 @@ describe("scenarios > dashboard > permissions", () => {
   });
 
   it("should display dashboards with some cards locked down", () => {
-    signIn("nodata");
+    cy.signIn("nodata");
     cy.visit(`/dashboard/${dashboardId}`);
     cy.findByText("Sorry, you don't have permission to see this card.");
     cy.findByText("Second Question");
@@ -124,7 +112,7 @@ describe("scenarios > dashboard > permissions", () => {
   });
 
   it("should display an error if they don't have perms for the dashboard", () => {
-    signIn("nocollection");
+    cy.signIn("nocollection");
     cy.visit(`/dashboard/${dashboardId}`);
     cy.findByText("Sorry, you don’t have permission to see that.");
   });

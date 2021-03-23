@@ -87,6 +87,7 @@
   },
   "devDependencies": {
     "@babel/standalone": "^7.4.5",
+    "@cypress/skip-test": "^2.6.0",
     "@cypress/webpack-preprocessor": "^4.1.0",
     "@slack/client": "^3.5.4",
     "@testing-library/cypress": "^5.0.2",
@@ -170,7 +171,7 @@
     "test-timezones": "yarn && ./frontend/test/__runner__/run_timezone_tests",
     "build:js": "yarn && webpack --bail",
     "build-watch:js": "yarn && webpack --watch",
-    "build-hot:js": "yarn && NODE_ENV=hot webpack-dev-server --progress",
+    "build-hot:js": "yarn && NODE_ENV=hot webpack-dev-server --progress --host 0.0.0.0",
     "build:cljs": "yarn && shadow-cljs release app",
     "build-quick:cljs": "yarn build:cljs",
     "build-watch:cljs": "yarn && shadow-cljs watch app",

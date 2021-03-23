@@ -2,7 +2,7 @@
   "Middleware for redirecting users to HTTPS sessions"
   (:require [clojure.string :as str]
             [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.session :as mw.session]
+            [metabase.server.request.util :as request.u]
             [ring.util.request :as req]
             [ring.util.response :as resp]))
 
@@ -42,7 +42,7 @@
 
       (and
        (public-settings/redirect-all-requests-to-https)
-       (not (mw.session/https-request? request)))
+       (not (request.u/https? request)))
       (respond (ssl-redirect-response request))
 
       :else (handler request respond raise))))

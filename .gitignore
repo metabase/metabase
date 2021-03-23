@@ -49,6 +49,7 @@
 /resources/frontend_client/embed.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
+/resources/i18n/*.edn
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
 /resources/version.properties

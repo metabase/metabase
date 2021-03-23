@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   openOrdersTable,
   openProductsTable,
@@ -24,7 +23,7 @@ const {
 describe("scenarios > question > filter", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("dashboard filter dropdown/search (metabase#12985)", () => {
@@ -435,36 +434,30 @@ describe("scenarios > question > filter", () => {
       { name: "prodid", display_name: "ProdId", type: "number" },
     ];
 
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: QUESTION_NAME,
-      dataset_query: {
-        type: "native",
-        native: {
-          query:
-            "SELECT * FROM PRODUCTS WHERE 1=1 AND {{category}} [[AND ID={{prodid}}]]",
-          "template-tags": {
-            [CATEGORY_FILTER.name]: {
-              id: "00315d5e-4a41-99da-1a41-e5254dacff9d",
-              name: CATEGORY_FILTER.name,
-              "display-name": CATEGORY_FILTER.display_name,
-              type: CATEGORY_FILTER.type,
-              default: "Doohickey",
-              dimension: ["field", PRODUCTS.CATEGORY, null],
-              "widget-type": "category",
-            },
-            [ID_FILTER.name]: {
-              id: "4775bccc-e82a-4069-fc6b-2acc90aadb8b",
-              name: ID_FILTER.name,
-              "display-name": ID_FILTER.display_name,
-              type: ID_FILTER.type,
-              default: null,
-            },
+      native: {
+        query:
+          "SELECT * FROM PRODUCTS WHERE 1=1 AND {{category}} [[AND ID={{prodid}}]]",
+        "template-tags": {
+          [CATEGORY_FILTER.name]: {
+            id: "00315d5e-4a41-99da-1a41-e5254dacff9d",
+            name: CATEGORY_FILTER.name,
+            "display-name": CATEGORY_FILTER.display_name,
+            type: CATEGORY_FILTER.type,
+            default: "Doohickey",
+            dimension: ["field", PRODUCTS.CATEGORY, null],
+            "widget-type": "category",
+          },
+          [ID_FILTER.name]: {
+            id: "4775bccc-e82a-4069-fc6b-2acc90aadb8b",
+            name: ID_FILTER.name,
+            "display-name": ID_FILTER.display_name,
+            type: ID_FILTER.type,
+            default: null,
           },
         },
-        database: 1,
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
 

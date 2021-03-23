@@ -6,6 +6,8 @@ import Button from "metabase/components/Button";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 
+import "./ExpressionPopover.css";
+
 // TODO: combine with ExpressionWidget
 export default class ExpressionPopover extends React.Component {
   state = {
@@ -19,8 +21,8 @@ export default class ExpressionPopover extends React.Component {
       query,
       expression,
       onChange,
-      onBack,
       onDone,
+      onBack,
       name,
       onChangeName,
     } = this.props;
@@ -30,7 +32,7 @@ export default class ExpressionPopover extends React.Component {
     const isValid = !error && (!onChangeName || name);
 
     return (
-      <div style={{ width: 498 }}>
+      <div className="ExpressionPopover">
         <div className="text-medium p1 py2 border-bottom flex align-center">
           <a className="cursor-pointer flex align-center" onClick={onBack}>
             <Icon name="chevronleft" size={18} />
@@ -51,8 +53,7 @@ export default class ExpressionPopover extends React.Component {
             }}
             onCommit={expression => {
               if (!onChangeName) {
-                onChange(expression);
-                onDone();
+                onDone(expression);
               }
             }}
           />
@@ -63,13 +64,18 @@ export default class ExpressionPopover extends React.Component {
               onChange={e => onChangeName(e.target.value)}
               onKeyPress={e => {
                 if (e.key === "Enter" && isValid) {
-                  onDone();
+                  onDone(expression);
                 }
               }}
               placeholder={t`Name (required)`}
             />
           )}
-          <Button className="full" primary disabled={!isValid} onClick={onDone}>
+          <Button
+            className="full"
+            primary
+            disabled={!isValid}
+            onClick={() => onDone(expression)}
+          >
             {t`Done`}
           </Button>
         </div>

@@ -1,11 +1,4 @@
-import {
-  signInAsAdmin,
-  signIn,
-  signOut,
-  restore,
-  popover,
-  modal,
-} from "__support__/cypress";
+import { restore, popover, modal } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -17,9 +10,9 @@ const COUNT_DOOHICKEY = "42";
 const PUBLIC_URL_REGEX = /\/public\/(question|dashboard)\/[0-9a-f-]+$/;
 
 const USERS = {
-  "admin user": () => signInAsAdmin(),
-  "user with no permissions": () => signIn("none"),
-  "anonymous user": () => signOut(),
+  "admin user": () => cy.signInAsAdmin(),
+  "user with no permissions": () => cy.signIn("none"),
+  "anonymous user": () => cy.signOut(),
 };
 
 // [quarantine]: failing almost consistently in CI
@@ -29,38 +22,33 @@ describe.skip("scenarios > public", () => {
   let questionId;
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // setup parameterized question
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "sql param",
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "select count(*) from products where {{c}}",
-          "template-tags": {
-            c: {
-              id: "e126f242-fbaa-1feb-7331-21ac59f021cc",
-              name: "c",
-              "display-name": "Category",
-              type: "dimension",
-              dimension: ["field", PRODUCTS.CATEGORY, null],
-              default: null,
-              "widget-type": "category",
-            },
+      native: {
+        query: "select count(*) from products where {{c}}",
+        "template-tags": {
+          c: {
+            id: "e126f242-fbaa-1feb-7331-21ac59f021cc",
+            name: "c",
+            "display-name": "Category",
+            type: "dimension",
+            dimension: ["field", PRODUCTS.CATEGORY, null],
+            default: null,
+            "widget-type": "category",
           },
         },
-        database: 1,
       },
       display: "scalar",
-      visualization_settings: {},
     }).then(({ body }) => {
       questionId = body.id;
     });
   });
 
   beforeEach(() => {
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.server();
   });
 

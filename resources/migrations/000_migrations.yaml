@@ -8018,12 +8018,14 @@ databaseChangeLog:
       id: 287
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate ISO8601 strings
+      validCheckSum:
+        - 8:ed47b08ec425a34cf66bd1e96c7b2446
+        - 8:0679eedae767a8648383aac2f923e413
       changes:
         - sql:
             sql: >-
               UPDATE metabase_field
-              SET semantic_type     = NULL, -- special type was overriden to provide coercion so no semantic type
-                  effective_type    = (CASE semantic_type
+              SET effective_type    = (CASE semantic_type
                                          WHEN 'type/ISO8601DateTimeString' THEN 'type/DateTime'
                                          WHEN 'type/ISO8601TimeString'     THEN 'type/Time'
                                          WHEN 'type/ISO8601DateString'     THEN 'type/Date'
@@ -8040,12 +8042,14 @@ databaseChangeLog:
       id: 288
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate unix timestamps
+      validCheckSum:
+        - 8:4fa37c8edede4a10c39bf5aca13bd1b5
+        - 8:96af0fae84744857640d029cf4cd4bb6
       changes:
         - sql:
               sql: >-
                 UPDATE metabase_field
-                set semantic_type     = null,
-                    effective_type    = 'type/DateTime',
+                set effective_type    = 'type/DateTime',
                     coercion_strategy = (case semantic_type
                                           WHEN 'type/UNIXTimestampSeconds'      THEN 'Coercion/UNIXSeconds->DateTime'
                                           WHEN 'type/UNIXTimestampMilliSeconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
@@ -8053,7 +8057,170 @@ databaseChangeLog:
                                          END)
                 WHERE semantic_type IN ('type/UNIXTimestampSeconds',
                                         'type/UNIXTimestampMilliSeconds',
-                                        'type/UNIXTimestampMicroSeconds')
+                                        'type/UNIXTimestampMicroSeconds');
+
+  - changeSet:
+      id: 289
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - migrate unix timestamps (corrects typo- seconds was migrated correctly, not millis and micros)
+      changes:
+        - sql:
+              sql: >-
+                UPDATE metabase_field
+                set effective_type    = 'type/DateTime',
+                    coercion_strategy = (case semantic_type
+                                          WHEN 'type/UNIXTimestampMilliseconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                          WHEN 'type/UNIXTimestampMicroseconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
+                                         END)
+                WHERE semantic_type IN ('type/UNIXTimestampMilliseconds',
+                                        'type/UNIXTimestampMicroseconds')
+
+  - changeSet:
+      id: 290
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - Clobber semantic_type where there was a coercion
+      changes:
+        - sql:
+              sql: UPDATE metabase_field set semantic_type = null where coercion_strategy is not null
+
+# 291-297 create the new login history Table
+
+  - changeSet:
+      id: 291
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createTable:
+            tableName: login_history
+            remarks: "Keeps track of various logins for different users and additional info such as location and device"
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  remarks: "When this login occurred."
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: "ID of the User that logged in."
+                  constraints:
+                    foreignKeyName: fk_login_history_user_id
+                    references: core_user(id)
+                    nullable: false
+                    deleteCascade: true
+              # FK constraint is created later, because we can't create it inline with ON DELETE SET NULL
+              - column:
+                  name: session_id
+                  type: varchar(254)
+                  remarks: "ID of the Session created by this login if one is currently active. NULL if Session is no longer active."
+              - column:
+                  name: device_id
+                  type: char(36)
+                  remarks: "Cookie-based unique identifier for the device/browser the user logged in from."
+                  constraints:
+                    nullable: false
+              - column:
+                  name: device_description
+                  type: text
+                  remarks: "Description of the device that login happened from, for example a user-agent string, but this might be something different if we support alternative auth mechanisms in the future."
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ip_address
+                  type: text
+                  remarks: "IP address of the device that login happened from, so we can geocode it and determine approximate location."
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 292
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: 293
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: login_history
+            baseColumnNames: session_id
+            referencedTableName: core_session
+            referencedColumnNames: id
+            constraintName: fk_login_history_session_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: 294
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_session_id
+            columns:
+              - column:
+                  name: session_id
+
+  # index on login history timestamp -- so admin can see *all* recent logins, or we can delete login history after a certain age
+  - changeSet:
+      id: 295
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_timestamp
+            columns:
+              - column:
+                  name: timestamp
+
+  # index on login history user_id + device_id -- so we can easily see if this is the first time a device is used
+  - changeSet:
+      id: 296
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: session_id
+              - column:
+                  name: device_id
+
+  # index on login history user_id + timestamp -- so we can easily see recent logins for a user
+  - changeSet:
+      id: 297
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_timestamp
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: timestamp
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

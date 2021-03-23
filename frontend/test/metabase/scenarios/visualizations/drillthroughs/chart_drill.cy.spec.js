@@ -1,14 +1,11 @@
 import {
-  signInAsAdmin,
-  signInAsNormalUser,
   restore,
   openProductsTable,
   openOrdersTable,
   popover,
   sidebar,
-  USER_GROUPS,
 } from "__support__/cypress";
-
+import { USER_GROUPS } from "__support__/cypress_data";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
@@ -17,7 +14,7 @@ const { DATA_GROUP } = USER_GROUPS;
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should allow brush date filter", () => {
@@ -255,19 +252,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it.skip("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "11907",
-      dataset_query: {
-        type: "native",
-        native: {
-          query:
-            "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 5 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 4 AS \"c\"",
-          "template-tags": {},
-        },
-        database: 1,
+      native: {
+        query:
+          "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 5 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 4 AS \"c\"",
+        "template-tags": {},
       },
       display: "line",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
 
@@ -304,16 +296,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     );
 
-    // Create a native question
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "14495_SQL",
-      dataset_query: {
-        type: "native",
-        native: { query: "SELECT * FROM ORDERS", "template-tags": {} },
-        database: 1,
-      },
-      display: "table",
-      visualization_settings: {},
+      native: { query: "SELECT * FROM ORDERS", "template-tags": {} },
     }).then(({ body: { id: SQL_ID } }) => {
       const ALIAS = `Question ${SQL_ID}`;
 
@@ -351,7 +336,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.route("POST", "/api/dataset").as("dataset");
 
         // Switch to the normal user who has restricted SQL access
-        signInAsNormalUser();
+        cy.signInAsNormalUser();
         cy.visit(`/question/${QUESTION_ID}`);
 
         // Initial visualization has rendered and we can now drill-through

@@ -1,14 +1,18 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  (:require [clojure.test :as t]
+  (:require [cemerick.friend.credentials :as creds]
+            [clojure.test :as t]
             [medley.core :as m]
             [metabase.http-client :as http]
-            [metabase.models.user :as user :refer [User]]
+            [metabase.models.permissions-group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.user :refer [User]]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import clojure.lang.ExceptionInfo
            metabase.models.user.UserInstance))
 
@@ -156,23 +160,68 @@
   (partial client-fn username))
 
 (defn user-http-request
-  "A version of our test HTTP client that issues the request with credentials for `username`."
-  {:arglists '([username credentials? method expected-status-code? endpoint
+  "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
+  redefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original
+  password, this function temporarily overrides the password for that User.)"
+  {:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                 request-options? http-body-map? & {:as query-params}])}
-  [username & args]
-  (fetch-user username)
-  (apply client-fn username args))
+  [user & args]
+  (if (keyword? user)
+    (do
+      (fetch-user user)
+      (apply client-fn user args))
+    (let [user-id             (u/the-id user)
+          user-email          (db/select-one-field :email User :id user-id)
+          [old-password-info] (db/simple-select User {:select [:password :password_salt]
+                                                      :where  [:= :id user-id]})]
+      (when-not user-email
+        (throw (ex-info "User does not exist" {:user user})))
+      (try
+        (db/execute! {:update User
+                      :set    {:password      (creds/hash-bcrypt user-email)
+                               :password_salt ""}
+                      :where  [:= :id user-id]})
+        (apply http/client {:username user-email, :password user-email} args)
+        (finally
+          (db/execute! {:update User
+                        :set    old-password-info
+                        :where  [:= :id user-id]}))))))
+
+(defn do-with-test-user [user-kwd thunk]
+  (t/testing (format "with test user %s\n" user-kwd)
+    (mw.session/with-current-user (some-> user-kwd user->id)
+      (thunk))))
 
 (defmacro with-test-user
-  "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the test User named by
-  `user-kwd`."
+  "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the predefined test User
+  named by `user-kwd`. If you want to bind a non-predefined-test User, use `mt/with-current-user` instead."
   {:style/indent 1}
   [user-kwd & body]
-  `(t/testing ~(format "with test user %s\n" user-kwd)
-     (mw.session/with-current-user (some-> ~user-kwd user->id)
-       ~@body)))
+  `(do-with-test-user ~user-kwd (fn [] ~@body)))
 
 (defn test-user?
   "Does this User or User ID belong to one of the predefined test birds?"
   [user-or-id]
   (contains? (set (vals (user->id))) (u/the-id user-or-id)))
+
+(defn test-user-name-or-user-id->user-id [test-user-name-or-user-id]
+  (if (keyword? test-user-name-or-user-id)
+    (user->id test-user-name-or-user-id)
+    (u/the-id test-user-name-or-user-id)))
+
+(defn do-with-group-for-user [group test-user-name-or-user-id f]
+  (tt/with-temp* [PermissionsGroup           [group group]
+                  PermissionsGroupMembership [_ {:group_id (u/the-id group)
+                                                 :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]]
+    (f group)))
+
+(defmacro with-group
+  "Create a new PermissionsGroup, bound to `group-binding`; add test user Rasta Toucan [RIP] to the
+  group, then execute `body`."
+  [[group-binding group] & body]
+  `(do-with-group-for-user ~group :rasta (fn [~group-binding] ~@body)))
+
+(defmacro with-group-for-user
+  "Like `with-group`, but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
+  [[group-binding test-user-name-or-user-id group] & body]
+  `(do-with-group-for-user ~group ~test-user-name-or-user-id (fn [~group-binding] ~@body)))

@@ -1,14 +1,9 @@
-import {
-  signInAsAdmin,
-  restore,
-  modal,
-  typeAndBlurUsingLabel,
-} from "__support__/cypress";
+import { restore, modal, typeAndBlurUsingLabel } from "__support__/cypress";
 
 describe("postgres > admin > add", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.server();
   });
 

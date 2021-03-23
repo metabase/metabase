@@ -271,14 +271,15 @@
 
     (task/job-info \"metabase.task.sync-and-analyze.job\")"
   [job-key]
-  (let [job-key (->job-key job-key)]
-    (try
-      (assoc (job-detail->info (qs/get-job (scheduler) job-key))
-             :triggers (for [trigger (sort-by #(-> ^Trigger % .getKey .getName)
-                                              (qs/get-triggers-of-job (scheduler) job-key))]
-                         (trigger->info trigger)))
-      (catch Throwable e
-        (log/warn e (trs "Error fetching details for Job: {0}" (.getName job-key)))))))
+  (when-let [scheduler (scheduler)]
+    (let [job-key (->job-key job-key)]
+      (try
+        (assoc (job-detail->info (qs/get-job scheduler job-key))
+               :triggers (for [trigger (sort-by #(-> ^Trigger % .getKey .getName)
+                                                (qs/get-triggers-of-job scheduler job-key))]
+                           (trigger->info trigger)))
+        (catch Throwable e
+          (log/warn e (trs "Error fetching details for Job: {0}" (.getName job-key))))))))
 
 (defn- jobs-info []
   (->> (some-> (scheduler) (.getJobKeys nil))

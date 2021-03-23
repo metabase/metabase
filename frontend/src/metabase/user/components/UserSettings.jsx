@@ -10,6 +10,7 @@ import User from "metabase/entities/users";
 import Radio from "metabase/components/Radio";
 import UserAvatar from "metabase/components/UserAvatar";
 
+import LoginHistoryList from "./LoginHistoryList";
 import SetUserPassword from "./SetUserPassword";
 
 import { PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS } from "metabase/plugins";
@@ -66,6 +67,7 @@ export default class UserSettings extends Component {
                   name: t`Password`,
                   value: "password",
                 },
+                { name: t`Login History`, value: "loginHistory" },
               ]}
               onChange={tab => setTab(tab)}
             />
@@ -87,6 +89,8 @@ export default class UserSettings extends Component {
               submitFn={this.onUpdatePassword.bind(this)}
               {...this.props}
             />
+          ) : tab === "loginHistory" ? (
+            <LoginHistoryList />
           ) : null}
         </Box>
       </Box>

@@ -1,5 +1,6 @@
 (ns metabase.models.task-history
-  (:require [clojure.tools.logging :as log]
+  (:require [cheshire.generate :refer [add-encoder encode-map]]
+            [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.models.interface :as i]
             [metabase.util :as u]
@@ -94,3 +95,10 @@
   {:style/indent 1}
   [info & body]
   `(do-with-task-history ~info (fn [] ~@body)))
+
+;; TaskHistory can contain an exception for logging purposes, so use the built-in
+;; serialization of a `Throwable->map` to make this something that can be JSON encoded.
+(add-encoder
+ Throwable
+ (fn [throwable json-generator]
+   (encode-map (Throwable->map throwable) json-generator)))

@@ -1,7 +1,6 @@
 import {
   createNativeQuestion,
   restore,
-  signInAsAdmin,
   openOrdersTable,
   openProductsTable,
   popover,
@@ -25,7 +24,7 @@ const {
 describe("scenarios > question > notebook", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
@@ -104,6 +103,39 @@ describe("scenarios > question > notebook", () => {
       .should("not.be.disabled")
       .click();
     cy.contains(/^Function contains expects 2 arguments/i);
+  });
+
+  it("should show the correct number of CASE arguments in a custom expression", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']").type("CASE([Price]>0)");
+      cy.findByPlaceholderText("Something nice and descriptive")
+        .click()
+        .type("Sum Divide");
+      cy.contains(/^CASE expects 2 arguments or more/i);
+    });
+  });
+
+  it("should process the updated expression when pressing Enter", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1");
+    cy.findAllByRole("button", { name: "Done" }).click();
+
+    // change the corresponding custom expression
+    cy.findByText("Price is greater than 1").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.contains(/^Price is less than 5/i);
   });
 
   describe("joins", () => {

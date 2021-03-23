@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
@@ -6,7 +6,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     setFirstWeekDayTo("monday");
   });
 
@@ -78,31 +78,25 @@ describe("scenarios > admin > permissions", () => {
 
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
-  it.skip("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
-    cy.request("POST", "/api/card", {
+  it("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
+    cy.createNativeQuestion({
       name: "14294",
-      dataset_query: {
-        database: 1,
-        native: {
-          "template-tags": {
-            date_range: {
-              id: "93961154-c3d5-7c93-7b59-f4e494fda499",
-              name: "date_range",
-              "display-name": "Date range",
-              type: "dimension",
-              dimension: ["field", ORDERS.CREATED_AT, null],
-              "widget-type": "date/all-options",
-              default: "past220weeks",
-              required: true,
-            },
+      native: {
+        query:
+          "select ID, CREATED_AT, dayname(CREATED_AT) as CREATED_AT_DAY\nfrom ORDERS \n[[where {{date_range}}]]\norder by CREATED_AT",
+        "template-tags": {
+          date_range: {
+            id: "93961154-c3d5-7c93-7b59-f4e494fda499",
+            name: "date_range",
+            "display-name": "Date range",
+            type: "dimension",
+            dimension: ["field", ORDERS.CREATED_AT, null],
+            "widget-type": "date/all-options",
+            default: "past220weeks",
+            required: true,
           },
-          query:
-            "select ID, CREATED_AT, dayname(CREATED_AT) as CREATED_AT_DAY\nfrom ORDERS \n[[where {{date_range}}]]\norder by CREATED_AT",
         },
-        type: "native",
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
       cy.get(".TableInteractive-header")

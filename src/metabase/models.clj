@@ -13,6 +13,7 @@
             [metabase.models.dimension :as dimension]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
+            [metabase.models.login-history :as login-history]
             [metabase.models.metric :as metric]
             [metabase.models.metric-important-field :as metric-important-field]
             [metabase.models.native-query-snippet :as native-query-snippet]
@@ -51,6 +52,7 @@
          dimension/keep-me
          field/keep-me
          field-values/keep-me
+         login-history/keep-me
          metric/keep-me
          metric-important-field/keep-me
          native-query-snippet/keep-me
@@ -88,6 +90,7 @@
  [dimension Dimension]
  [field Field]
  [field-values FieldValues]
+ [login-history LoginHistory]
  [metric Metric]
  [metric-important-field MetricImportantField]
  [native-query-snippet NativeQuerySnippet]

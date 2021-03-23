@@ -141,8 +141,9 @@
 (defn ^:command load
   "Load serialized metabase instance as created by `dump` command from directory `path`.
 
-   `mode` can be one of `:update` (default) or `:skip`."
-  ([path] (load path :update))
+   `mode` can be one of `:update` or `:skip` (default)."
+  ([path] (load path {"--mode" :skip
+                      "--on-error" :continue}))
 
   ([path & args]
    (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
@@ -151,11 +152,13 @@
                     (m/map-vals mbql.u/normalize-token))))))
 
 (defn ^:command dump
-  "Serialized metabase instance into directory `path`."
-  [path & args]
-  (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)
-        {:keys [user]} (cmd-args->map args)]
-    (cmd path user)))
+  "Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
+  `active` (default), `all`. With `active` option, do not dump archived entities."
+  ([path] (dump path {"--state" :active}))
+  ([path & args]
+   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)
+         {:keys [user]} (cmd-args->map args)]
+     (cmd path user))))
 
 (defn ^:command rotate-encryption-key
   "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to

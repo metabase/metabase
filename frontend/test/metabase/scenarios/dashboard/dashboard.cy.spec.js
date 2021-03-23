@@ -3,8 +3,6 @@
 import {
   popover,
   restore,
-  signIn,
-  signInAsAdmin,
   selectDashboardFilter,
   expectedRouteCalls,
 } from "__support__/cypress";
@@ -28,7 +26,7 @@ function saveDashboard() {
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should create new dashboard", () => {
@@ -256,17 +254,9 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should display column options for cross-filter (metabase#14473)", () => {
-    cy.log("Create a question");
-
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "14473",
-      dataset_query: {
-        type: "native",
-        native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
-        database: 1,
-      },
-      display: "table",
-      visualization_settings: {},
+      native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard("14473D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add 4 filters to the dashboard");
@@ -326,30 +316,22 @@ describe("scenarios > dashboard", () => {
       ],
     });
 
-    cy.log("Create SQL question with a filter");
-
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "12720_SQL",
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "SELECT * FROM ORDERS WHERE {{filter}}",
-          "template-tags": {
-            filter: {
-              id: "1d006bb7-045f-6c57-e41b-2661a7648276",
-              name: "filter",
-              "display-name": "Filter",
-              type: "dimension",
-              dimension: ["field", ORDERS.CREATED_AT, null],
-              "widget-type": "date/month-year",
-              default: null,
-            },
+      native: {
+        query: "SELECT * FROM ORDERS WHERE {{filter}}",
+        "template-tags": {
+          filter: {
+            id: "1d006bb7-045f-6c57-e41b-2661a7648276",
+            name: "filter",
+            "display-name": "Filter",
+            type: "dimension",
+            dimension: ["field", ORDERS.CREATED_AT, null],
+            "widget-type": "date/month-year",
+            default: null,
           },
         },
-        database: 1,
       },
-      display: "table",
-      visualization_settings: {},
     }).then(({ body: { id: SQL_ID } }) => {
       cy.log("Add SQL question to the dashboard");
 
@@ -401,7 +383,7 @@ describe("scenarios > dashboard", () => {
     cy.server();
     cy.route("POST", "/api/card/*/query").as("cardQuery");
 
-    signIn("nodata");
+    cy.signIn("nodata");
 
     clickThrough("12720_SQL");
     clickThrough("Orders");
@@ -614,6 +596,68 @@ describe("scenarios > dashboard", () => {
     cy.contains("Include this minute").click();
     // make sure the checkbox was checked
     cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
+  });
+
+  it.skip("user without data permissions should be able to use dashboard filter (metabase#15119)", () => {
+    cy.createQuestion({
+      name: "15119",
+      query: { "source-table": 1 },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("15119D").then(({ body: { id: DASHBOARD_ID } }) => {
+        // Add filter to the dashboard
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            {
+              name: "Category",
+              slug: "category",
+              id: "ad1c877e",
+              type: "category",
+            },
+          ],
+        });
+        // Add card to the dashboard
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          // Connect filter to the card
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 12,
+                sizeY: 9,
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: "ad1c877e",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+
+        cy.signIn("nodata");
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+        cy.get("fieldset")
+          .contains("Category")
+          .click();
+
+        cy.findByPlaceholderText("Enter some text")
+          .click()
+          .type("Gizmo", { delay: 10 });
+        cy.findByRole("button", { name: "Add filter" })
+          .should("not.be.disabled")
+          .click();
+        cy.contains("Rustic Paper Wallet");
+      });
+    });
   });
 });
 

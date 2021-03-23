@@ -4,10 +4,12 @@
             [honeysql.core :as hsql]
             [metabase.models :refer [Card Collection Dashboard Metric Pulse Segment Table]]))
 
-(def ^:const db-max-results
+(def ^:dynamic db-max-results
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
   returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
-  that results are truncated."
+  that results are truncated.
+
+  Under normal situations it shouldn't be rebound, but it's dynamic to make unit testing easier."
   1000)
 
 (def ^:const max-filtered-results
@@ -59,7 +61,13 @@
 (defmethod searchable-columns-for-model (class Card)
   [_]
   [:name
-   :dataset_query])
+   :dataset_query
+   :description])
+
+(defmethod searchable-columns-for-model (class Dashboard)
+  [_]
+  [:name
+   :description])
 
 (defmethod searchable-columns-for-model (class Table)
   [_]

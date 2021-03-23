@@ -1,17 +1,11 @@
 import {
   restore,
-  signInAsAdmin,
   setupLocalHostEmail,
-  signInAsNormalUser,
-  signIn,
-  signOut,
   modal,
   popover,
-  USERS,
-  USER_GROUPS,
   openOrdersTable,
 } from "__support__/cypress";
-// Ported from initial_collection.e2e.spec.js
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -39,7 +33,7 @@ describe("scenarios > collection_defaults", () => {
   describe("for admins", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     describe("new collections", () => {
@@ -120,7 +114,7 @@ describe("scenarios > collection_defaults", () => {
     describe("sidebar behavior", () => {
       beforeEach(() => {
         restore();
-        signInAsAdmin();
+        cy.signInAsAdmin();
       });
 
       it("should allow a user to expand a collection without navigating to it", () => {
@@ -236,6 +230,20 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
+    describe("archive", () => {
+      it.skip("should show archived items (metabase#15080)", () => {
+        cy.visit("collection/root");
+        openEllipsisMenuFor("Orders");
+        cy.findByText("Archive this item").click();
+        cy.findByText("Archived question")
+          .siblings(".Icon-close")
+          .click();
+        cy.findByText("View archive").click();
+        cy.location("pathname").should("eq", "/archive");
+        cy.findByText("Orders");
+      });
+    });
+
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
       it("should be in the root collection", () => {
@@ -273,7 +281,7 @@ describe("scenarios > collection_defaults", () => {
   describe("for users", () => {
     beforeEach(() => {
       restore();
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
     });
 
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
@@ -308,7 +316,7 @@ describe("scenarios > collection_defaults", () => {
   describe("Collection related issues reproductions", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     describe("nested collections with revoked parent access", () => {
@@ -344,8 +352,8 @@ describe("scenarios > collection_defaults", () => {
           });
         });
 
-        signOut();
-        signIn("nocollection");
+        cy.signOut();
+        cy.signIn("nocollection");
       });
 
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {

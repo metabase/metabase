@@ -1,15 +1,11 @@
-import {
-  restore,
-  signInAsAdmin,
-  setupDummySMTP,
-  USERS,
-} from "__support__/cypress";
+import { restore, setupDummySMTP } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
 const { admin } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should not allow creation if there are no dashboard cards", () => {
@@ -22,6 +18,24 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.icon("share")
       .closest("a")
       .should("have.class", "cursor-default");
+  });
+
+  it.skip("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
+    cy.createDashboard("15077D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.visit(`/dashboard/${DASHBOARD_ID}`);
+    });
+    cy.icon("pencil").click();
+    cy.icon("string").click();
+    cy.findByPlaceholderText("Write here, and use Markdown if you'd like")
+      .click()
+      .type("Foo");
+    cy.findByRole("button", { name: "Save" }).click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
+    cy.icon("share")
+      .closest("a")
+      .should("have.class", "cursor-pointer")
+      .click();
+    cy.findByText("Dashboard subscriptions").click();
   });
 
   describe("with no channels set up", () => {

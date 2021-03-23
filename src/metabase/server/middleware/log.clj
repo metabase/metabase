@@ -7,7 +7,7 @@
             [metabase.async.streaming-response.thread-pool :as streaming-response.thread-pool]
             [metabase.async.util :as async.u]
             [metabase.server :as server]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
@@ -175,7 +175,7 @@
 (defn- should-log-request? [{:keys [uri], :as request}]
   ;; don't log calls to /health or /util/logs because they clutter up the logs (especially the window in admin) with
   ;; useless lines
-  (and (middleware.u/api-call? request)
+  (and (request.u/api-call? request)
        (not (#{"/api/health" "/api/util/logs"} uri))))
 
 (defn log-api-call

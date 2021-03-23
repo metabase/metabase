@@ -1,10 +1,4 @@
-import {
-  signInAsNormalUser,
-  signInAsAdmin,
-  restore,
-  popover,
-  visitQuestionAdhoc,
-} from "__support__/cypress";
+import { restore, popover, visitQuestionAdhoc } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
@@ -12,11 +6,11 @@ const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 describe("scenarios > visualizations > maps", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should display a pin map for a native query", () => {
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
     // create a native query with lng/lat fields
     cy.visit("/question/new");
     cy.contains("Native query").click();
@@ -62,16 +56,12 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it.skip("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "14254",
-      dataset_query: {
-        type: "native",
-        native: {
-          query:
-            'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
-          "template-tags": {},
-        },
-        database: 1,
+      native: {
+        query:
+          'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
+        "template-tags": {},
       },
       display: "map",
       visualization_settings: {

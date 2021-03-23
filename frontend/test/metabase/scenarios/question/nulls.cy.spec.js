@@ -1,9 +1,4 @@
-import {
-  restore,
-  signInAsAdmin,
-  openOrdersTable,
-  popover,
-} from "__support__/cypress";
+import { restore, openOrdersTable, popover } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -12,7 +7,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > question > null", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should display rows whose value is `null` (metabase#13571)", () => {
@@ -116,29 +111,15 @@ describe("scenarios > question > null", () => {
   });
 
   it("dashboard should handle cards with null values (metabase#13801)", () => {
-    cy.log("Create Question 1");
-
-    cy.request("POST", "/api/card", {
+    cy.createNativeQuestion({
       name: "13801_Q1",
-      dataset_query: {
-        database: 1,
-        native: { query: "SELECT null", "template-tags": {} },
-        type: "native",
-      },
+      native: { query: "SELECT null", "template-tags": {} },
       display: "scalar",
-      visualization_settings: {},
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.log("Create Question 2");
-
-      cy.request("POST", "/api/card", {
+      cy.createNativeQuestion({
         name: "13801_Q2",
-        dataset_query: {
-          database: 1,
-          native: { query: "SELECT 0", "template-tags": {} },
-          type: "native",
-        },
+        native: { query: "SELECT 0", "template-tags": {} },
         display: "scalar",
-        visualization_settings: {},
       }).then(({ body: { id: Q2_ID } }) => {
         cy.createDashboard("13801D").then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add both previously created questions to the dashboard");

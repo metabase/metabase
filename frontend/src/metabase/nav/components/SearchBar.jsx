@@ -98,7 +98,7 @@ export default class SearchBar extends React.Component {
         <li className="flex flex-column align-center justify-center p4 text-medium text-centered">
           <div className="my3">
             <Icon name="search" mb={1} size={24} />
-            <h3 className="text-light">{t`No results found`}</h3>
+            <h3 className="text-light">{t`Didn't find anything`}</h3>
           </div>
         </li>
       );
@@ -128,6 +128,7 @@ export default class SearchBar extends React.Component {
             pl={1}
             ref={ref => (this.searchInput = ref)}
             value={searchText}
+            maxLength={200}
             placeholder={t`Search` + "…"}
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
