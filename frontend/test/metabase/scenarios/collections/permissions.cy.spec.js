@@ -134,9 +134,11 @@ describe("collection permissions", () => {
                      */
 
                     // Option 1
+                    cy.icon("lock").should("not.exist");
                     cy.icon("edit").should("not.exist");
 
                     // Option 2
+                    // cy.icon("lock").click();
                     // cy.icon("edit").click();
                     // popover().within(() => {
                     //   cy.findByText("Edit this collection").should("not.exist");
