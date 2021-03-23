@@ -12,6 +12,8 @@ import Subhead from "metabase/components/type/Subhead";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Tooltip from "metabase/components/Tooltip";
 
+import { formatHourAMPM, formatDay, formatFrame } from "metabase/lib/time";
+
 function PulsesListSidebar({
   pulses,
   createSubscription,
@@ -164,51 +166,6 @@ function friendlySchedule(channel) {
   }
 
   return scheduleString;
-}
-
-function formatHourAMPM(hour) {
-  if (hour > 12) {
-    const newHour = hour - 12;
-    return t`${newHour}:00 PM`;
-  } else if (hour === 0) {
-    return t`12:00 AM`;
-  } else {
-    return t`${hour}:00 AM`;
-  }
-}
-
-function formatDay(day) {
-  switch (day) {
-    case "mon":
-      return t`Monday`;
-    case "tue":
-      return t`Tuesday`;
-    case "wed":
-      return t`Wednesday`;
-    case "thu":
-      return t`Thursday`;
-    case "fri":
-      return t`Friday`;
-    case "sat":
-      return t`Saturday`;
-    case "sun":
-      return t`Sunday`;
-    default:
-      return day;
-  }
-}
-
-function formatFrame(frame) {
-  switch (frame) {
-    case "first":
-      return t`first`;
-    case "last":
-      return t`last`;
-    case "mid":
-      return t`15th (Midpoint)`;
-    default:
-      return frame;
-  }
 }
 
 export default PulsesListSidebar;
