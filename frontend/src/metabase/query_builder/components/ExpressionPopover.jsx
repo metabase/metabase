@@ -21,8 +21,8 @@ export default class ExpressionPopover extends React.Component {
       query,
       expression,
       onChange,
-      onBack,
       onDone,
+      onBack,
       name,
       onChangeName,
     } = this.props;
@@ -53,8 +53,7 @@ export default class ExpressionPopover extends React.Component {
             }}
             onCommit={expression => {
               if (!onChangeName) {
-                onChange(expression);
-                onDone();
+                onDone(expression);
               }
             }}
           />
@@ -65,13 +64,18 @@ export default class ExpressionPopover extends React.Component {
               onChange={e => onChangeName(e.target.value)}
               onKeyPress={e => {
                 if (e.key === "Enter" && isValid) {
-                  onDone();
+                  onDone(expression);
                 }
               }}
               placeholder={t`Name (required)`}
             />
           )}
-          <Button className="full" primary disabled={!isValid} onClick={onDone}>
+          <Button
+            className="full"
+            primary
+            disabled={!isValid}
+            onClick={() => onDone(expression)}
+          >
             {t`Done`}
           </Button>
         </div>
