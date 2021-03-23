@@ -44,6 +44,7 @@ describe("scenarios > reference > metrics", () => {
       .parent()
       .parent()
       .find("textarea")
+      .clear()
       .type("Count of orders under $100");
     cy.findByText("Save").click();
     cy.findByText("Reason for changes")
