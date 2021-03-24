@@ -239,6 +239,11 @@ export function variableFilterForParameter(
 
 function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
   const [type, subtype] = splitType(parameter);
+  const operator = getParameterOperatorName(subtype);
+  if (operator !== "=") {
+    return (tag: TemplateTag) => false;
+  }
+
   switch (type) {
     case "date":
       return (tag: TemplateTag) => subtype === "single" && tag.type === "date";
@@ -249,8 +254,7 @@ function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
     case "category":
       return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
     case "number":
-      return (tag: TemplateTag) =>
-        tag.type === "number" && subtype !== "between"; // only supports single arity subtypes
+      return (tag: TemplateTag) => tag.type === "number";
   }
   return (tag: TemplateTag) => false;
 }
