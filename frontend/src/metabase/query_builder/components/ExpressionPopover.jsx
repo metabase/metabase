@@ -25,7 +25,9 @@ export default class ExpressionPopover extends React.Component {
       name,
       onChangeName,
     } = this.props;
-    const { error } = this.state;
+    const { error, isValid } = this.state;
+
+    const buttonEnabled = !error && isValid && (!onChangeName || name);
 
     // if onChangeName is provided then a name is required
     return (
@@ -64,7 +66,7 @@ export default class ExpressionPopover extends React.Component {
               value={name}
               onChange={e => onChangeName(e.target.value)}
               onKeyPress={e => {
-                if (e.key === "Enter" && this.state.isValid) {
+                if (e.key === "Enter" && buttonEnabled) {
                   onDone();
                 }
               }}
@@ -74,7 +76,7 @@ export default class ExpressionPopover extends React.Component {
           <Button
             className="full"
             primary
-            disabled={!this.state.isValid}
+            disabled={!buttonEnabled}
             onClick={onDone}
           >
             {t`Done`}
