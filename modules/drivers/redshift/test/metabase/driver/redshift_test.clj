@@ -197,11 +197,11 @@
                view-nm))
           (let [table-id (db/select-one-id Table :db_id (u/the-id database), :name view-nm)]
             ;; and its columns' :base_type should have been identified correctly
-            (is (= [{:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}
-                    {:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}]
+            (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
+                    {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
                    (map
                     (partial into {})
-                    (db/select [Field :name :database_type :base_type] :table_id table-id))))))))))
+                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
 
 (defn- assert-jdbc-url-fetch-size [db fetch-size]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource db))]

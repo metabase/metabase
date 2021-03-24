@@ -27,10 +27,10 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti have-any-schema-privileges?
-  "Check if we have any sort of privileges for the given `schema`. If this method is defined for some driver, and it
-  returns false for the given schema, then we won't attempt to check for any tables within."
-  {:arglists '([driver ^java.sql.Connection connection ^String table-schema])}
+(defmulti syncable-schemas
+  "Returns a sequence of all schemas that can be synced for the given database. The default implementation will check
+  the database metadata for a list of all schemas, and filter that to exclude the excluded-schemas."
+  {:added "0.39.0", :arglists '([driver ^java.sql.Connection connection ^java.sql.DatabaseMetaData metadata])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
