@@ -265,7 +265,7 @@ describe("collection permissions", () => {
                     .click()
                     .type("1");
                   clickButton("Save");
-                  assertOnQuestionUpdate();
+                  assertOnRequest("updateQuestion");
                   cy.findByText("Orders1");
                 });
 
@@ -274,30 +274,19 @@ describe("collection permissions", () => {
                   cy.findByText("Move").click();
                   cy.findByText("My personal collection").click();
                   clickButton("Move");
-                  assertOnQuestionUpdate();
+                  assertOnRequest("updateQuestion");
                   cy.contains("37.65");
                 });
 
                 it("should be able to archive the question (metabase#11719-3)", () => {
                   cy.findByText("Archive").click();
                   clickButton("Archive");
-                  assertOnQuestionUpdate();
+                  assertOnRequest("updateQuestion");
                   cy.location("pathname").should("eq", "/collection/root");
                   cy.findByText("Orders").should("not.exist");
                 });
+              });
 
-                /**
-                 * Custom function related to this describe block only
-                 */
-                function assertOnQuestionUpdate() {
-                  cy.wait("@updateQuestion").then(xhr => {
-                    expect(xhr.status).not.to.eq(403);
-                  });
-                  cy.findByText(
-                    "Sorry, you don’t have permission to see that.",
-                  ).should("not.exist");
-                  cy.get(".Modal").should("not.exist");
-                }
               });
             });
           });
@@ -445,4 +434,14 @@ function exposeChildrenFor(collectionName) {
     .find(".Icon-chevronright")
     .eq(0) // there may be more nested icons, but we need the top level one
     .click();
+}
+
+function assertOnRequest(xhr_alias) {
+  cy.wait("@" + xhr_alias).then(xhr => {
+    expect(xhr.status).not.to.eq(403);
+  });
+  cy.findByText("Sorry, you don’t have permission to see that.").should(
+    "not.exist",
+  );
+  cy.get(".Modal").should("not.exist");
 }
