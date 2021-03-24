@@ -99,23 +99,6 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Orders, Count");
   });
 
-  it("should duplicate a dashboard", () => {
-    cy.visit("/dashboard/1");
-    cy.findByText("Orders in a dashboard");
-    cy.icon("ellipsis").click();
-    cy.findByText("Duplicate").click();
-    cy.findByLabelText("Name")
-      .click()
-      .clear()
-      .type("Doppleganger");
-    cy.get(".Button--primary")
-      .contains("Duplicate")
-      .click();
-
-    cy.findByText("Orders in a dashboard").should("not.exist");
-    cy.findByText("Doppleganger");
-  });
-
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
     // programatically create and save a question as per repro instructions in #11007
     cy.request("POST", "/api/card", {

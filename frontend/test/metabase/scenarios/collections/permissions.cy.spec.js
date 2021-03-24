@@ -306,6 +306,19 @@ describe("collection permissions", () => {
                   clickButton("Update");
                   assertOnRequest("updateDashboard");
                 });
+
+                it("should be able to duplicate a dashboard", () => {
+                  cy.route("POST", "/api/dashboard/1/copy").as("copyDashboard");
+                  cy.findByText("Duplicate").click();
+                  cy.location("pathname").should("eq", "/dashboard/1/copy");
+                  cy.get(".Modal").within(() => {
+                    clickButton("Duplicate");
+                    cy.findByText("Failed").should("not.exist");
+                  });
+                  assertOnRequest("copyDashboard");
+                  cy.location("pathname").should("eq", "/dashboard/2");
+                  cy.findByText(`Orders in a dashboard - Duplicate`);
+                });
               });
             });
           });
