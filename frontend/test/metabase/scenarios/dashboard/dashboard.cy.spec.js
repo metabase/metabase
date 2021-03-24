@@ -515,35 +515,6 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  describe("revisions screen", () => {
-    it("should open and close", () => {
-      cy.visit("/dashboard/1");
-      cy.icon("ellipsis").click();
-      cy.findByText("Revision history").click();
-
-      cy.get(".Modal").within(() => {
-        cy.get(".LoadingSpinner").should("not.exist");
-      });
-
-      cy.findAllByText("Bobby Tables");
-      cy.contains(/revert/i);
-
-      cy.get(".Modal .Icon-close").click();
-      cy.findAllByText("Bobby Tables").should("not.exist");
-    });
-
-    it("should open with url", () => {
-      cy.visit("/dashboard/1/history");
-      cy.get(".Modal").within(() => {
-        cy.get(".LoadingSpinner").should("not.exist");
-        cy.findByText("Revision history");
-      });
-
-      cy.findAllByText("Bobby Tables");
-      cy.contains(/revert/i);
-    });
-  });
-
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();

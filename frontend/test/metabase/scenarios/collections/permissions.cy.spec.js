@@ -384,6 +384,12 @@ describe("collection permissions", () => {
                 cy.signIn(user);
               });
 
+              it("should be able to get to the dashboard revision modal directly via url", () => {
+                cy.visit("/dashboard/1/history");
+                cy.findByText("First revision.");
+                cy.findAllByRole("button", { name: "Revert" });
+              });
+
               it.skip("should be able to revert the dashboard (metabase#15237)", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
