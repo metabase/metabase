@@ -177,6 +177,7 @@
   throw-if-called
   with-column-remappings
   with-discarded-collections-perms-changes
+  with-env-keys-renamed-by
   with-locale
   with-log-level
   with-log-messages

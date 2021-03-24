@@ -12,12 +12,12 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor-test.string-extracts-test] ; used for one SSL with PEM connectivity test
+            ;; used for one SSL with PEM connectivity test
+            [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
             [metabase.sync :as sync]
             [metabase.sync.analyze.fingerprint :as fingerprint]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
-            [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
@@ -337,8 +337,9 @@
   (mt/test-driver :mysql
     (if (System/getenv "MB_MYSQL_SSL_TEST_SSL_CERT")
       (testing "MySQL with SSL connectivity using PEM certificate"
-        (tu/with-env-keys-renamed-by #(str/replace-first % "mb-mysql-ssl-test" "mb-mysql-test")
-          (metabase.query-processor-test.string-extracts-test/test-breakout)))
-      (println (u/colorize 'yellow (format "Skipping %s because %s env var is not set\n"
-                                           "mysql-connect-with-ssl-and-pem-cert-test"
-                                           "MB_MYSQL_SSL_TEST_SSL_CERT"))))))
+        (mt/with-env-keys-renamed-by #(str/replace-first % "mb-mysql-ssl-test" "mb-mysql-test")
+          (string-extracts-test/test-breakout)))
+      (println (u/format-color 'yellow
+                               "Skipping %s because %s env var is not set"
+                               "mysql-connect-with-ssl-and-pem-cert-test"
+                               "MB_MYSQL_SSL_TEST_SSL_CERT")))))
