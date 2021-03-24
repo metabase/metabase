@@ -16,7 +16,7 @@
   excluded-schemas
   fallback-metadata-query
   have-select-privilege?
-  have-any-schema-privileges?]
+  syncable-schemas]
 
  [sync.describe-table
   add-table-pks
