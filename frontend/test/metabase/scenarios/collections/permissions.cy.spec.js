@@ -322,6 +322,23 @@ describe("collection permissions", () => {
                   cy.location("pathname").should("eq", "/dashboard/2");
                   cy.findByText(`Orders in a dashboard - Duplicate`);
                 });
+
+                describe("move", () => {
+                  beforeEach(() => {
+                    cy.findByText("Move").click();
+                    cy.location("pathname").should("eq", "/dashboard/1/move");
+                    cy.findByText("First collection").click();
+                    clickButton("Move");
+                  });
+
+                  it("should be able to move/undo move a dashboard", () => {
+                    assertOnRequest("updateDashboard");
+                    // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
+                    cy.findByText("Dashboard moved to");
+                    cy.findByText("Undo").click();
+                    assertOnRequest("updateDashboard");
+                  });
+                });
               });
             });
           });
