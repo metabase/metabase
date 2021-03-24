@@ -1,13 +1,22 @@
 (ns metabase.mbql.util
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
-  (:require [clojure.string :as str]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util.match :as mbql.match]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  #?@
+  (:clj
+   [(:require [clojure.string :as str]
+              [metabase.mbql.schema :as mbql.s]
+              [metabase.mbql.schema.helpers :as schema.helpers]
+              [metabase.mbql.util.match :as mbql.match]
+              [metabase.shared.util.i18n :as i18n]
+              [potemkin :as p]
+              [schema.core :as s])]
+   :cljs
+   [(:require [clojure.string :as str]
+              [metabase.mbql.schema :as mbql.s]
+              [metabase.mbql.schema.helpers :as schema.helpers]
+              [metabase.mbql.util.match :as mbql.match]
+              [metabase.shared.util.i18n :as i18n]
+              [schema.core :as s])]))
 
 (defn qualified-name
   "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
@@ -19,7 +28,7 @@
 (s/defn normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- su/KeywordOrString]
+  [token :- schema.helpers/KeywordOrString]
   (-> (qualified-name token)
       str/lower-case
       (str/replace #"_" "-")
@@ -30,7 +39,7 @@
   `normalize` this handles pre-normalized clauses as well.)"
   [x]
   (and (sequential? x)
-       (not (instance? clojure.lang.MapEntry x))
+       (not (map-entry? x))
        (keyword? (first x))))
 
 (defn is-clause?
@@ -45,160 +54,14 @@
      ((set k-or-ks) (first x))
      (= k-or-ks (first x)))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Match & Replace                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmacro match
-  "Return a sequence of things that match a `pattern` or `patterns` inside `x`, presumably a query, returning `nil` if
-  there are no matches. Recurses through maps and sequences. `pattern` can be one of several things:
-
-  *  Keyword name of an MBQL clause
-  *  Set of keyword names of MBQL clauses. Matches any clauses with those names
-  *  A `core.match` pattern
-  *  A symbol naming a class.
-  *  A symbol naming a predicate function
-  *  `_`, which will match anything
-
-  Examples:
-
-    ;; keyword pattern
-    (match {:fields [[:field 10 nil]]} :field) ; -> [[:field 10 nil]]
-
-    ;; set of keywords
-    (match some-query #{:field :expression}) ; -> [[:field 10 nil], [:expression \"wow\"], ...]
-
-    ;; `core.match` patterns:
-    ;; match any `:field` clause with two args (which should be all of them)
-    (match some-query [:field _ _])
-    ;; match any `:field` clause with integer ID > 100
-    (match some-query [:field (_ :guard (every-pred integer? #(> % 100)))]) ; -> [[:field 200 nil], ...]
-
-    ;; symbol naming a Class
-    ;; match anything that is an instance of that class
-    (match some-query java.util.Date) ; -> [[#inst \"2018-10-08\", ...]
-
-    ;; symbol naming a predicate function
-    ;; match anything that satisfies that predicate
-    (match some-query (every-pred integer? even?)) ; -> [2 4 6 8]
-
-    ;; match anything with `_`
-    (match 100 `_`) ; -> 100
-
-
-  ### Using `core.match` patterns
-
-  See [`core.match` documentation](`https://github.com/clojure/core.match/wiki/Overview`) for more details.
-
-  Pattern-matching works almost exactly the way it does when using `core.match/match` directly, with a few
-  differences:
-
-  *  `mbql.util/match` returns a sequence of everything that matches, rather than the first match it finds
-
-  *  patterns are automatically wrapped in vectors for you when appropriate
-
-  *  things like keywords and classes are automatically converted to appropriate patterns for you
-
-  *  this macro automatically recurses through sequences and maps as a final `:else` clause. If you don't want to
-     automatically recurse, use a catch-all pattern (such as `_`). Our macro implementation will optimize out this
-     `:else` clause if the last pattern is `_`
-
-  ### Returing something other than the exact match with result body
-
-  By default, `match` returns whatever matches the pattern you pass in. But what if you only want to return part of
-  the match? You can, using `core.match` binding facilities. Bind relevant things in your pattern and pass in the
-  optional result body. Whatever result body returns will be returned by `match`:
-
-     ;; just return the IDs of Field ID clauses
-     (match some-query [:field (id :guard integer?) _] id) ; -> [1 2 3]
-
-  You can also use result body to filter results; any `nil` values will be skipped:
-
-    (match some-query [:field (id :guard integer?) _]
-      (when (even? id)
-        id))
-    ;; -> [2 4 6 8]
-
-  Of course, it's more efficient to let `core.match` compile an efficient matching function, so prefer using
-  patterns with `:guard` where possible.
-
-  You can also call `recur` inside result bodies, to use the same matching logic against a different value.
-
-  ### `&match` and `&parents` anaphors
-
-  For more advanced matches, like finding a `:field` clauses nested anywhere inside another clause, `match` binds a
-  pair of anaphors inside the result body for your convenience. `&match` is bound to the entire match, regardless of
-  how you may have destructured it; `&parents` is bound to a sequence of keywords naming the parent top-level keys and
-  clauses of the match.
-
-    (mbql.u/match {:filter [:time-interval [:field 1 nil] :current :month]} :field
-      ;; &parents will be [:filter :time-interval]
-      (when (contains? (set &parents) :time-interval)
-        &match))
-    ;; -> [[:field 1 nil]]"
-  {:style/indent 1}
-  [x & patterns-and-results]
-  ;; Actual implementation of these macros is in `mbql.util.match`. They're in a seperate namespace because they have
-  ;; lots of other functions and macros they use for their implementation (which means they have to be public) that we
-  ;; would like to discourage you from using directly.
-  `(mbql.match/match ~x ~patterns-and-results))
-
-(defmacro match-one
-  "Like `match` but returns a single match rather than a sequence of matches."
-  {:style/indent 1}
-  [x & patterns-and-results]
-  `(first (mbql.match/match ~x ~patterns-and-results)))
-
-;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
-;; e.g. with a query like
-;;
-;;    {:query {:source-table 1, :joins [{:source-table 2, ...}]}}
-;;
-;; it would be useful to be able to do
-;;
-;;
-;;    ;; get *all* the source tables
-;;    (mbql.u/match-all query
-;;      (&match :guard (every-pred map? :source-table))
-;;      (:source-table &match))
-
-(defmacro replace
-  "Like `match`, but replace matches in `x` with the results of result body. The same pattern options are supported,
-  and `&parents` and `&match` anaphors are available in the same way. (`&match` is particularly useful here if you
-  want to use keywords or sets of keywords as patterns.)"
-  {:style/indent 1}
-  [x & patterns-and-results]
-  ;; as with `match` actual impl is in `match` namespace to discourage you from using the constituent functions and
-  ;; macros that power this macro directly
-  `(mbql.match/replace ~x ~patterns-and-results))
-
-(defn update-in-unless-empty
-  "Like `update-in`, but only updates in the existing value is non-empty."
-  [m ks f & args]
-  (if-not (seq (get-in m ks))
-    m
-    (apply update-in m ks f args)))
-
-(defmacro replace-in
-  "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
-  {:style/indent 2}
-  [x ks & patterns-and-results]
-  `(update-in-unless-empty ~x ~ks (fn [x#] (mbql.match/replace x# ~patterns-and-results))))
-
-;; TODO - it would be useful to have something like a `replace-all` function as well
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- combine-compound-filters-of-type [compound-type subclauses]
-
-  (mapcat #(match-one %
+  (mapcat #(mbql.match/match-one %
              [(_ :guard (partial = compound-type)) & args]
              args
-
              _
              [&match])
           subclauses))
@@ -208,7 +71,7 @@
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."
   [filter-clause]
-  (replace filter-clause
+  (mbql.match/replace filter-clause
     seq? (recur (vec &match))
 
     ;; if this an an empty filter, toss it
@@ -267,7 +130,7 @@
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
   [m]
-  (replace m
+  (mbql.match/replace m
     [:inside lat-field lon-field lat-max lon-min lat-min lon-max]
     [:and
      [:between lat-field lat-min lat-max]
@@ -276,21 +139,21 @@
 (defn desugar-is-null-and-not-null
   "Rewrite `:is-null` and `:not-null` filter clauses as simpler `:=` and `:!=`, respectively."
   [m]
-  (replace m
+  (mbql.match/replace m
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
 (defn desugar-is-empty-and-not-empty
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively."
   [m]
-  (replace m
+  (mbql.match/replace m
     [:is-empty field]  [:or  [:=  field nil] [:=  field ""]]
     [:not-empty field] [:and [:!= field nil] [:!= field ""]]))
 
 (defn desugar-time-interval
   "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
   [m]
-  (replace m
+  (mbql.match/replace m
     [:time-interval field n unit] (recur [:time-interval field n unit nil])
 
     ;; replace current/last/next with corresponding value of n and recur
@@ -340,7 +203,7 @@
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `:not` clauses."
   [m]
-  (replace m
+  (mbql.match/replace m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
@@ -350,7 +213,7 @@
      [:= field x y]  -> [:or  [:=  field x] [:=  field y]]
      [:!= field x y] -> [:and [:!= field x] [:!= field y]]"
   [m]
-  (replace m
+  (mbql.match/replace m
     [:= field x y & more]
     (apply vector :or (for [x (concat [x y] more)]
                         [:= field x]))
@@ -363,9 +226,9 @@
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
   [m]
-  (replace m
+  (mbql.match/replace m
     [clause field [:relative-datetime :current & _]]
-    [clause field [:relative-datetime 0 (or (match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))
+    [clause field [:relative-datetime 0 (or (mbql.match/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))
                                             :default)]]))
 
 (s/defn desugar-filter-clause :- mbql.s/Filter
@@ -409,7 +272,7 @@
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
-(s/defn query->source-table-id :- (s/maybe su/IntGreaterThanZero)
+(s/defn query->source-table-id :- (s/maybe schema.helpers/IntGreaterThanZero)
   "Return the source Table ID associated with `query`, if applicable; handles nested queries as well. If `query` is
   `nil`, returns `nil`.
 
@@ -434,15 +297,15 @@
     ;; This is almost certainly an accident, so throw an Exception so we can make the proper fixes
     ((every-pred string? (partial re-matches mbql.s/source-table-card-id-regex)) source-table-id)
     (throw
-     (Exception.
-      (str
-       (tru "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."))))
+     (ex-info
+      (i18n/tru "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first.")
+      {}))
 
     ;; otherwise resolve the source Table
     :else
     source-table-id))
 
-(s/defn join->source-table-id :- (s/maybe su/IntGreaterThanZero)
+(s/defn join->source-table-id :- (s/maybe schema.helpers/IntGreaterThanZero)
   "Like `query->source-table-id`, but for a join."
   [join]
   (query->source-table-id {:type :query, :query join}))
@@ -459,29 +322,19 @@
       ;; otherwise add new clause at the end
       (update inner-query :order-by (comp vec distinct conj) order-by-clause))))
 
-(s/defn add-datetime-units :- mbql.s/DateTimeValue
-  "Return a `relative-datetime` clause with `n` units added to it."
-  [absolute-or-relative-datetime :- mbql.s/DateTimeValue
-   n                             :- s/Num]
-  (if (is-clause? :relative-datetime absolute-or-relative-datetime)
-    (let [[_ original-n unit] absolute-or-relative-datetime]
-      [:relative-datetime (+ n original-n) unit])
-    (let [[_ t unit] absolute-or-relative-datetime]
-      [:absolute-datetime (u.date/add t unit n) unit])))
-
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
    (if (mbql-clause? x)
      (first x)
-     (class x)))
+     (type x)))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
-  [inner-query, expression-name :- (s/cond-pre s/Keyword su/NonBlankString)]
+  [inner-query, expression-name :- (s/cond-pre s/Keyword schema.helpers/NonBlankString)]
   (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
       (or
@@ -493,7 +346,7 @@
            (recur source-query found)
            ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
            ;; were
-           (throw (ex-info (str (tru "No expression named ''{0}''" (qualified-name expression-name)))
+           (throw (ex-info (i18n/tru "No expression named ''{0}''" (qualified-name expression-name))
                            {:type            :invalid-query
                             :expression-name expression-name
                             :tried           allowed-names
@@ -507,10 +360,12 @@
   ([query index]
    (aggregation-at-index query index 0))
 
-  ([query :- mbql.s/Query, index :- su/NonNegativeInt, nesting-level :- su/NonNegativeInt]
+  ([query         :- mbql.s/Query
+    index         :- schema.helpers/IntGreaterThanOrEqualToZero
+    nesting-level :- schema.helpers/IntGreaterThanOrEqualToZero]
    (if (zero? nesting-level)
      (or (nth (get-in query [:query :aggregation]) index)
-         (throw (Exception. (str (tru "No aggregation at index: {0}" index)))))
+         (throw (ex-info (i18n/tru "No aggregation at index: {0}" index) {:index index})))
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
 
@@ -552,7 +407,7 @@
 (defn datetime-arithmetics?
   "Is a given artihmetics clause operating on datetimes?"
   [clause]
-  (match-one clause
+  (mbql.match/match-one clause
     #{:interval :relative-datetime}
     true
 
@@ -645,7 +500,7 @@
   the `metabase.mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
   {:style/indent 1}
   [aggregation->name-fn :- (s/pred fn?), aggregations :- [mbql.s/Aggregation]]
-  (replace aggregations
+  (mbql.match/replace aggregations
     [:aggregation-options _ (_ :guard :name)]
     &match
 
@@ -738,3 +593,11 @@
   "Set the `:temporal-unit` of a `:field` clause to `unit`."
   [field-clause unit]
   (assoc-field-options field-clause :temporal-unit unit))
+
+#?(:clj
+   (p/import-vars
+    [mbql.match
+     match
+     match-one
+     replace
+     replace-in]))

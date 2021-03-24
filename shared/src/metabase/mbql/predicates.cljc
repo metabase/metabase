@@ -10,17 +10,13 @@
   "Is `unit` a datetime bucketing unit referring only to time, such as `hour` or `minute`?"
   (complement (s/checker mbql.s/TimeUnit)))
 
-(def ^{:arglists '([unit])} ^:deprecated DateUnit?
+(def ^{:arglists '([unit])} DateUnit?
   "Is `unit` a valid date bucketing unit?"
   (complement (s/checker mbql.s/DateUnit)))
 
-(def ^{:arglists '([unit])} ^:deprecated DateTimeUnit?
+(def ^{:arglists '([unit])} DateTimeUnit?
   "Is `unit` a valid datetime bucketing unit?"
   (complement (s/checker mbql.s/DateTimeUnit)))
-
-(def ^{:arglists '([unit])} ^{:deprecated "0.39.0"} DatetimeFieldUnit?
-  "Is `unit` a valid datetime bucketing unit? DEPRECATED -- use `DateUnit?` or `DateTimeUnit?` instead."
-  (complement (s/checker mbql.s/DatetimeFieldUnit)))
 
 (def ^{:arglists '([ag-clause])} Aggregation?
   "Is this a valid Aggregation clause?"
