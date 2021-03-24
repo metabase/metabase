@@ -248,6 +248,9 @@ function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
       return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
     case "category":
       return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
+    case "number":
+      return (tag: TemplateTag) =>
+        tag.type === "number" && subtype !== "between"; // only supports single arity subtypes
   }
   return (tag: TemplateTag) => false;
 }
