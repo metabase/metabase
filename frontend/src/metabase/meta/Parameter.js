@@ -200,7 +200,7 @@ function fieldFilterForParameterType(
         field.isZipCode() ||
         field.isCountry();
     case "number":
-      return (field: Field) => field.isNumber();
+      return (field: Field) => field.isNumber() && !field.isCoordinate();
   }
 
   return (field: Field) => false;
