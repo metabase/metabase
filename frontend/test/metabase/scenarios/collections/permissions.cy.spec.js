@@ -287,6 +287,25 @@ describe("collection permissions", () => {
                 });
               });
 
+              describe("managing dashboard from the dashboard's edit menu", () => {
+                beforeEach(() => {
+                  cy.route("PUT", "/api/dashboard/1").as("updateDashboard");
+                  cy.visit("/dashboard/1");
+                  cy.icon("ellipsis").click();
+                });
+
+                it("should be able to change title and description", () => {
+                  cy.findByText("Change title and description").click();
+                  cy.location("pathname").should("eq", "/dashboard/1/details");
+                  cy.findByLabelText("Name")
+                    .click()
+                    .type("1");
+                  cy.findByLabelText("Description")
+                    .click()
+                    .type("Foo");
+                  clickButton("Update");
+                  assertOnRequest("updateDashboard");
+                });
               });
             });
           });
