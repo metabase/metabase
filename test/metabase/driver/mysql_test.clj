@@ -2,8 +2,10 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [environ.core :as env]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.mysql :as mysql]
@@ -12,6 +14,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor-test.string-extracts-test] ; used for one SSL with PEM connectivity test
             [metabase.sync :as sync]
             [metabase.sync.analyze.fingerprint :as fingerprint]
             [metabase.test :as mt]
@@ -22,6 +25,7 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.util.test :as tt]))
+
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -164,7 +168,7 @@
                       :type       :native
                       :settings   {:report-timezone "UTC"}
                       :native     {:query         "SELECT cast({{date}} as date)"
-                                   :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
+                                   :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
                       :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))]
         (testing "date formatting when system-timezone == report-timezone"
           (is (= ["2018-04-18T00:00:00+08:00"]
@@ -200,8 +204,9 @@
 
 (deftest connection-spec-test
   (testing "Do `:ssl` connection details give us the connection spec we'd expect?"
-    (= (assoc sample-jdbc-spec :useSSL true)
-       (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl true))))
+    (is (= (assoc sample-jdbc-spec :useSSL true :serverSslCert "sslCert")
+           (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl      true
+                                                                                           :ssl-cert "sslCert")))))
 
   (testing "what about non-SSL connections?"
     (is (= (assoc sample-jdbc-spec :useSSL false)
@@ -329,3 +334,18 @@
              (hsql/format {:select [(#'mysql/trunc-with-format
                                      "%Y"
                                      (hx/with-database-type-info :field "datetime"))]}))))))
+
+(deftest mysql-connect-with-ssl-and-pem-cert-test
+  (mt/test-driver :mysql
+    (if (System/getenv "MB_MYSQL_SSL_TEST_SSL_CERT")
+      (testing "MySQL with SSL connectivity using PEM certificate"
+        (let [e      env/env
+              key-fn (fn [k]
+                       (keyword (str/replace-first (name k) "mb-mysql-ssl-test" "mb-mysql-test")))
+              new-e  (m/map-keys key-fn e)]
+          (with-redefs [env/env new-e]
+            ;; with the mysql-test vars having been set to the mysql-ssl variants, run some test to verify connectivity
+            (metabase.query-processor-test.string-extracts-test/test-breakout))))
+      (println (u/colorize 'yellow (format "Skipping %s because %s env var is not set\n"
+                                           "mysql-connect-with-ssl-and-pem-cert-test"
+                                           "MB_MYSQL_SSL_TEST_SSL_CERT"))))))
