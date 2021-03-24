@@ -344,6 +344,19 @@ describe("collection permissions", () => {
                     cy.get(".DashboardHeader a").contains("First collection");
                   });
                 });
+
+                it("should be able to archive/unarchive a dashboard", () => {
+                  cy.findByText("Archive").click();
+                  cy.location("pathname").should("eq", "/dashboard/1/archive");
+                  cy.findByText("Archive this dashboard?"); //Without this, there is some race condition and the button click fails
+                  clickButton("Archive");
+                  assertOnRequest("updateDashboard");
+                  cy.location("pathname").should("eq", "/collection/root");
+                  cy.findByText("Orders in a dashboard").should("not.exist");
+                  cy.findByText("Archived dashboard");
+                  cy.findByText("Undo").click();
+                  assertOnRequest("updateDashboard");
+                });
               });
             });
           });
