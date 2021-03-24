@@ -127,8 +127,8 @@
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
                                     ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
                                     ;; desugars to [:or [:= 'field 1] ...].
-                                    (mbql.u/desugar-filter-clause)
-                                    (wrap-value-literals/wrap-value-literals-in-mbql)
+                                    mbql.u/desugar-filter-clause
+                                    wrap-value-literals/wrap-value-literals-in-mbql
                                     mongo.qp/compile-filter
                                     json/generate-string)]
             [(conj acc compiled-clause) missing])

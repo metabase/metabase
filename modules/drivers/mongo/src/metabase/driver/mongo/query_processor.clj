@@ -292,6 +292,7 @@
 (defmulti compile-filter
   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
   compiling the \"where\" clause equivalent."
+  {:arglists '([clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (def ^:private ^:dynamic *top-level-filter?*

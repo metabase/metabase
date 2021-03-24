@@ -246,10 +246,10 @@
             (->> (ops/to-clause (assoc params :target
                                        [:template-tag [:field (:name field)
                                                        {:base-type (:base_type field)}]]))
-                 (mbql.u/desugar-filter-clause)
-                 (wrap-value-literals/wrap-value-literals-in-mbql)
+                 mbql.u/desugar-filter-clause
+                 wrap-value-literals/wrap-value-literals-in-mbql
                  (sql.qp/->honeysql driver/*driver*)
-                 (hsql/format-predicate))]
+                 hsql/format-predicate)]
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
       ;; convert date ranges to DateRange record types
       (date-params/date-range-type? param-type) (prepend-field
