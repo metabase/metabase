@@ -2,7 +2,6 @@
   (:require [clj-http.client :as http]
             [clojure.core.async :as a]
             [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [java-time :as t]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
@@ -125,22 +124,22 @@
                      (constantly conj)))))))
 
 
-;;; APPLY-PAGE
-(expect
-  {:select ["name" "id"]
-   :from   [{:select   [[:default.categories.name "name"]
-                        [:default.categories.id "id"]
-                        [{:s "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)"} :__rownum__]]
-             :from     [:default.categories]
-             :order-by [[:default.categories.id :asc]]}]
-   :where  [:> :__rownum__ 5]
-   :limit  5}
-  (sql.qp/apply-top-level-clause :presto :page
-    {:select   [[:default.categories.name "name"] [:default.categories.id "id"]]
-     :from     [:default.categories]
-     :order-by [[:default.categories.id :asc]]}
-    {:page {:page  2
-            :items 5}}))
+(deftest page-test
+  (testing ":page clause"
+    (is (= {:select ["name" "id"]
+            :from   [{:select   [[:default.categories.name "name"]
+                                 [:default.categories.id "id"]
+                                 [{:s "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)"} :__rownum__]]
+                      :from     [:default.categories]
+                      :order-by [[:default.categories.id :asc]]}]
+            :where  [:> :__rownum__ 5]
+            :limit  5}
+           (sql.qp/apply-top-level-clause :presto :page
+                                          {:select   [[:default.categories.name "name"] [:default.categories.id "id"]]
+                                           :from     [:default.categories]
+                                           :order-by [[:default.categories.id :asc]]}
+                                          {:page {:page  2
+                                                  :items 5}})))))
 
 (deftest test-connect-via-tunnel
   (testing "connection fails as expected"
