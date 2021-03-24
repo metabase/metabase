@@ -338,6 +338,11 @@ describe("collection permissions", () => {
                     cy.findByText("Undo").click();
                     assertOnRequest("updateDashboard");
                   });
+
+                  it.skip("should update dashboard's collection after the move without page reload (metabase#13059)", () => {
+                    cy.contains("37.65");
+                    cy.get(".DashboardHeader a").contains("First collection");
+                  });
                 });
               });
             });
