@@ -373,7 +373,6 @@
             (is (= #{"bob" "tupac"}
                    (into #{} (map second)
                          (run-query! :string/=))))
-            ;; the dis-equality aren't variadic yet
             (is (= #{}
                      (set/intersection
                       #{"bob" "tupac"}

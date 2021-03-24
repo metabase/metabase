@@ -112,10 +112,10 @@
   [:not [:contains [:field 13 {:base_type :type/Text}] \"foo\"]]
   ->
   [:not [:contains [:field 13 {:base_type :type/Text}]
-                   [:value \"foo\" {:base_type :type/Integer,
-                                    :semantic_type :type/FK,
-                                    :database_type \"INTEGER\",
-                                    :name \"PRODUCT_ID\"}]]]"
+                   [:value \"foo\" {:base_type :type/Text,
+                                    :semantic_type nil,
+                                    :database_type \"VARCHAR\",
+                                    :name \"description\"}]]]"
   [mbql]
   (mbql.u/replace mbql
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]

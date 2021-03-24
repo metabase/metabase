@@ -317,13 +317,6 @@
 (defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
 (defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
 
-(comment
-  (mbql.u/is-clause? ::not [::not "foo"])
-  (metabase.test/with-db (metabase.models/Database 7)
-    (metabase.test/with-everything-store
-      (compile-filter [:not [:contains [:field 93 nil] "bob"]])))
-  )
-
 (defn- simple-rvalue? [rvalue]
   (and (string? rvalue)
        (str/starts-with? rvalue "$")))
