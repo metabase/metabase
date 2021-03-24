@@ -45,25 +45,6 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Test Dash");
   });
 
-  it("should update title and description", () => {
-    cy.visit("/dashboard/1");
-    cy.icon("ellipsis").click();
-    cy.findByText("Change title and description").click();
-    cy.findByLabelText("Name")
-      .click()
-      .clear()
-      .type("Test Title");
-    cy.findByLabelText("Description")
-      .click()
-      .clear()
-      .type("Test description");
-
-    cy.findByText("Update").click();
-    cy.findByText("Test Title");
-    cy.icon("info").click();
-    cy.findByText("Test description");
-  });
-
   it("should add a filter", () => {
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();

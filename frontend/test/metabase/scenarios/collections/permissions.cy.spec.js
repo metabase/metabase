@@ -305,6 +305,9 @@ describe("collection permissions", () => {
                     .type("Foo");
                   clickButton("Update");
                   assertOnRequest("updateDashboard");
+                  cy.findByText("Orders in a dashboard1");
+                  cy.icon("info").click();
+                  cy.findByText("Foo");
                 });
 
                 it("should be able to duplicate a dashboard", () => {
