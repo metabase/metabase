@@ -403,29 +403,46 @@ describe("collection permissions", () => {
       cy.route("POST", "/api/revision/revert").as("revert");
     });
 
-    it.skip("dashboard should update properly on revert (metabase#6884)", () => {
-      cy.signInAsAdmin();
-      cy.visit("/dashboard/1");
-      cy.icon("pencil").click();
-      // Add another question without changing its size or moving it afterwards
-      cy.icon("add")
-        .last()
-        .click();
-      cy.findByText("Orders, Count").click();
-      clickButton("Save");
-      cy.findByText("You're editing this dashboard.").should("not.exist");
-      // Revert the card to the state when the second card was added
-      cy.icon("ellipsis").click();
-      cy.findByText("Revision history").click();
-      clickRevert("added a card.", 0); // the top-most string or the latest card addition
-      cy.wait("@revert");
-      cy.request("GET", "/api/dashboard/1").then(xhr => {
-        const SECOND_CARD = xhr.body.ordered_cards[1];
-        const { col, sizeX, sizeY } = SECOND_CARD;
-        // The second card shrunk its size and changed the position completely to the left covering the first one
-        expect(col).not.to.eq(0);
-        expect(sizeX).to.eq(4);
-        expect(sizeY).to.eq(4);
+    describe("reproductions", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+      });
+
+      it.skip("shouldn't record history steps when there was no diff (metabase#1926)", () => {
+        cy.signInAsAdmin();
+        cy.createDashboard("foo").then(({ body }) => {
+          visitAndEditDashboard(body.id);
+        });
+        // Save the dashboard without any changes made to it (TODO: we should probably disable "Save" button in the first place)
+        saveDashboard();
+        // Take a look at the generated history - there shouldn't be anything other than "First revision" (dashboard created)
+        cy.icon("ellipsis").click();
+        cy.findByText("Revision history").click();
+        cy.findAllByRole("button", { name: "Revert" }).should("not.exist");
+      });
+
+      it.skip("dashboard should update properly on revert (metabase#6884)", () => {
+        cy.signInAsAdmin();
+        visitAndEditDashboard(1);
+        // Add another question without changing its size or moving it afterwards
+        cy.icon("add")
+          .last()
+          .click();
+        cy.findByText("Orders, Count").click();
+        saveDashboard();
+        // Revert the card to the state when the second card was added
+        cy.icon("ellipsis").click();
+        cy.findByText("Revision history").click();
+        clickRevert("added a card.", 0); // the top-most string or the latest card addition
+        cy.wait("@revert");
+        cy.request("GET", "/api/dashboard/1").then(xhr => {
+          const SECOND_CARD = xhr.body.ordered_cards[1];
+          const { col, sizeX, sizeY } = SECOND_CARD;
+          // The second card shrunk its size and changed the position completely to the left covering the first one
+          expect(col).not.to.eq(0);
+          expect(sizeX).to.eq(4);
+          expect(sizeY).to.eq(4);
+        });
       });
     });
 
@@ -547,4 +564,14 @@ function assertOnRequest(xhr_alias) {
     "not.exist",
   );
   cy.get(".Modal").should("not.exist");
+}
+
+function visitAndEditDashboard(id) {
+  cy.visit(`/dashboard/${id}`);
+  cy.icon("pencil").click();
+}
+
+function saveDashboard() {
+  clickButton("Save");
+  cy.findByText("You're editing this dashboard.").should("not.exist");
 }
