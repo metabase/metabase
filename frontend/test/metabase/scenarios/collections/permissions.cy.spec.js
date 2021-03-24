@@ -24,6 +24,72 @@ describe("collection permissions", () => {
                 cy.signIn(user);
               });
 
+              describe("pin", () => {
+                it("pinning should work properly for both questions and dashboards", () => {
+                  cy.visit("/collection/root");
+                  // Assert that we're starting from a scenario with no pins
+                  cy.findByText("Pinned items").should("not.exist");
+
+                  pinItem("Orders in a dashboard"); // dashboard
+                  pinItem("Orders, Count"); // question
+
+                  // Should see "pinned items" and items should be in that section
+                  cy.findByText("Pinned items")
+                    .parent()
+                    .within(() => {
+                      cy.findByText("Orders in a dashboard");
+                      cy.findByText("Orders, Count");
+                    });
+                  // Consequently, "Everything else" should now also be visible
+                  cy.findByText("Everything else");
+                  // Only pinned dashboards should show up on the home page...
+                  cy.visit("/");
+                  cy.findByText("Orders in a dashboard");
+                  cy.findByText("Orders, Count").should("not.exist");
+                  // ...but not for the user without permissions to see the root collection
+                  cy.signOut();
+                  cy.signIn("none");
+                  cy.visit("/");
+                  cy.findByText("Orders in a dashboard").should("not.exist");
+                });
+              });
+
+              describe("move", () => {
+                it("should let a user move/undo move a question", () => {
+                  move("Orders");
+                });
+
+                it("should let a user move/undo move a dashboard", () => {
+                  move("Orders in a dashboard");
+                });
+
+                function move(item) {
+                  cy.visit("/collection/root");
+                  openEllipsisMenuFor(item);
+                  cy.findByText("Move this item").click();
+                  cy.get(".Modal").within(() => {
+                    cy.findByText(`Move "${item}"?`);
+                    // Let's move it into a nested collection
+                    cy.findByText("First collection")
+                      .siblings(".Icon-chevronright")
+                      .click();
+                    cy.findByText("Second collection").click();
+                    cy.findByText("Move").click();
+                  });
+                  cy.findByText(item).should("not.exist");
+                  // Make sure item was properly moved to a correct sub-collection
+                  exposeChildrenFor("First collection");
+                  cy.findByText("Second collection").click();
+                  cy.findByText(item);
+                  // Undo the whole thing
+                  cy.findByText(/Moved (question|dashboard)/);
+                  cy.findByText("Undo").click();
+                  cy.findByText(item).should("not.exist");
+                  cy.visit("/collection/root");
+                  cy.findByText(item);
+                }
+              });
+
               describe("duplicate", () => {
                 it.skip("should be able to duplicate the dashboard without obstructions from the modal (metabase#15255)", () => {
                   duplicate("Orders in a dashboard");
@@ -199,7 +265,7 @@ describe("collection permissions", () => {
                     .click()
                     .type("1");
                   clickButton("Save");
-                  assertOnQuestionUpdate();
+                  assertOnRequest("updateQuestion");
                   cy.findByText("Orders1");
                 });
 
@@ -208,30 +274,89 @@ describe("collection permissions", () => {
                   cy.findByText("Move").click();
                   cy.findByText("My personal collection").click();
                   clickButton("Move");
-                  assertOnQuestionUpdate();
+                  assertOnRequest("updateQuestion");
                   cy.contains("37.65");
                 });
 
                 it("should be able to archive the question (metabase#11719-3)", () => {
                   cy.findByText("Archive").click();
                   clickButton("Archive");
-                  assertOnQuestionUpdate();
+                  assertOnRequest("updateQuestion");
                   cy.location("pathname").should("eq", "/collection/root");
                   cy.findByText("Orders").should("not.exist");
                 });
+              });
 
-                /**
-                 * Custom function related to this describe block only
-                 */
-                function assertOnQuestionUpdate() {
-                  cy.wait("@updateQuestion").then(xhr => {
-                    expect(xhr.status).not.to.eq(403);
+              describe("managing dashboard from the dashboard's edit menu", () => {
+                beforeEach(() => {
+                  cy.route("PUT", "/api/dashboard/1").as("updateDashboard");
+                  cy.visit("/dashboard/1");
+                  cy.icon("ellipsis").click();
+                });
+
+                it("should be able to change title and description", () => {
+                  cy.findByText("Change title and description").click();
+                  cy.location("pathname").should("eq", "/dashboard/1/details");
+                  cy.findByLabelText("Name")
+                    .click()
+                    .type("1");
+                  cy.findByLabelText("Description")
+                    .click()
+                    .type("Foo");
+                  clickButton("Update");
+                  assertOnRequest("updateDashboard");
+                  cy.findByText("Orders in a dashboard1");
+                  cy.icon("info").click();
+                  cy.findByText("Foo");
+                });
+
+                it("should be able to duplicate a dashboard", () => {
+                  cy.route("POST", "/api/dashboard/1/copy").as("copyDashboard");
+                  cy.findByText("Duplicate").click();
+                  cy.location("pathname").should("eq", "/dashboard/1/copy");
+                  cy.get(".Modal").within(() => {
+                    clickButton("Duplicate");
+                    cy.findByText("Failed").should("not.exist");
                   });
-                  cy.findByText(
-                    "Sorry, you don’t have permission to see that.",
-                  ).should("not.exist");
-                  cy.get(".Modal").should("not.exist");
-                }
+                  assertOnRequest("copyDashboard");
+                  cy.location("pathname").should("eq", "/dashboard/2");
+                  cy.findByText(`Orders in a dashboard - Duplicate`);
+                });
+
+                describe("move", () => {
+                  beforeEach(() => {
+                    cy.findByText("Move").click();
+                    cy.location("pathname").should("eq", "/dashboard/1/move");
+                    cy.findByText("First collection").click();
+                    clickButton("Move");
+                  });
+
+                  it("should be able to move/undo move a dashboard", () => {
+                    assertOnRequest("updateDashboard");
+                    // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
+                    cy.findByText("Dashboard moved to");
+                    cy.findByText("Undo").click();
+                    assertOnRequest("updateDashboard");
+                  });
+
+                  it.skip("should update dashboard's collection after the move without page reload (metabase#13059)", () => {
+                    cy.contains("37.65");
+                    cy.get(".DashboardHeader a").contains("First collection");
+                  });
+                });
+
+                it("should be able to archive/unarchive a dashboard", () => {
+                  cy.findByText("Archive").click();
+                  cy.location("pathname").should("eq", "/dashboard/1/archive");
+                  cy.findByText("Archive this dashboard?"); //Without this, there is some race condition and the button click fails
+                  clickButton("Archive");
+                  assertOnRequest("updateDashboard");
+                  cy.location("pathname").should("eq", "/collection/root");
+                  cy.findByText("Orders in a dashboard").should("not.exist");
+                  cy.findByText("Archived dashboard");
+                  cy.findByText("Undo").click();
+                  assertOnRequest("updateDashboard");
+                });
               });
             });
           });
@@ -294,6 +419,12 @@ describe("collection permissions", () => {
                 cy.signIn(user);
               });
 
+              it("should be able to get to the dashboard revision modal directly via url", () => {
+                cy.visit("/dashboard/1/history");
+                cy.findByText("First revision.");
+                cy.findAllByRole("button", { name: "Revert" });
+              });
+
               it.skip("should be able to revert the dashboard (metabase#15237)", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
@@ -309,7 +440,8 @@ describe("collection permissions", () => {
               });
 
               it("should be able to revert the question", () => {
-                // It's possible that the mechanics of who should be able to revert the question will change, but for now that's not possible for user without data access
+                // It's possible that the mechanics of who should be able to revert the question will change (see https://github.com/metabase/metabase/issues/15131)
+                // For now that's not possible for user without data access (likely it will be again when #11719 is fixed)
                 cy.skipOn(user === "nodata");
                 cy.visit("/question/1");
                 cy.icon("pencil").click();
@@ -365,4 +497,27 @@ function clickButton(name) {
   cy.findByRole("button", { name })
     .should("not.be.disabled")
     .click();
+}
+
+function pinItem(item) {
+  openEllipsisMenuFor(item);
+  cy.findByText("Pin this item").click();
+}
+
+function exposeChildrenFor(collectionName) {
+  cy.findByText(collectionName)
+    .parent()
+    .find(".Icon-chevronright")
+    .eq(0) // there may be more nested icons, but we need the top level one
+    .click();
+}
+
+function assertOnRequest(xhr_alias) {
+  cy.wait("@" + xhr_alias).then(xhr => {
+    expect(xhr.status).not.to.eq(403);
+  });
+  cy.findByText("Sorry, you don’t have permission to see that.").should(
+    "not.exist",
+  );
+  cy.get(".Modal").should("not.exist");
 }

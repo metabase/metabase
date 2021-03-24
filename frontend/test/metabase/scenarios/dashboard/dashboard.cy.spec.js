@@ -45,25 +45,6 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Test Dash");
   });
 
-  it("should update title and description", () => {
-    cy.visit("/dashboard/1");
-    cy.icon("ellipsis").click();
-    cy.findByText("Change title and description").click();
-    cy.findByLabelText("Name")
-      .click()
-      .clear()
-      .type("Test Title");
-    cy.findByLabelText("Description")
-      .click()
-      .clear()
-      .type("Test description");
-
-    cy.findByText("Update").click();
-    cy.findByText("Test Title");
-    cy.icon("info").click();
-    cy.findByText("Test description");
-  });
-
   it("should add a filter", () => {
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();
@@ -97,23 +78,6 @@ describe("scenarios > dashboard", () => {
     saveDashboard();
 
     cy.findByText("Orders, Count");
-  });
-
-  it("should duplicate a dashboard", () => {
-    cy.visit("/dashboard/1");
-    cy.findByText("Orders in a dashboard");
-    cy.icon("ellipsis").click();
-    cy.findByText("Duplicate").click();
-    cy.findByLabelText("Name")
-      .click()
-      .clear()
-      .type("Doppleganger");
-    cy.get(".Button--primary")
-      .contains("Duplicate")
-      .click();
-
-    cy.findByText("Orders in a dashboard").should("not.exist");
-    cy.findByText("Doppleganger");
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
@@ -548,35 +512,6 @@ describe("scenarios > dashboard", () => {
           expectedRouteCalls({ route_alias: "cardQuery", calls: 1 });
         });
       });
-    });
-  });
-
-  describe("revisions screen", () => {
-    it("should open and close", () => {
-      cy.visit("/dashboard/1");
-      cy.icon("ellipsis").click();
-      cy.findByText("Revision history").click();
-
-      cy.get(".Modal").within(() => {
-        cy.get(".LoadingSpinner").should("not.exist");
-      });
-
-      cy.findAllByText("Bobby Tables");
-      cy.contains(/revert/i);
-
-      cy.get(".Modal .Icon-close").click();
-      cy.findAllByText("Bobby Tables").should("not.exist");
-    });
-
-    it("should open with url", () => {
-      cy.visit("/dashboard/1/history");
-      cy.get(".Modal").within(() => {
-        cy.get(".LoadingSpinner").should("not.exist");
-        cy.findByText("Revision history");
-      });
-
-      cy.findAllByText("Bobby Tables");
-      cy.contains(/revert/i);
     });
   });
 
