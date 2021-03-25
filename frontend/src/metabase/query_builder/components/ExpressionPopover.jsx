@@ -1,5 +1,6 @@
 import React from "react";
 
+
 import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
 import Button from "metabase/components/Button";
 
@@ -10,7 +11,7 @@ import Icon from "metabase/components/Icon";
 export default class ExpressionPopover extends React.Component {
   state = {
     error: null,
-    isValid: false,
+    isBlank: true,
   };
 
   render() {
@@ -25,9 +26,9 @@ export default class ExpressionPopover extends React.Component {
       name,
       onChangeName,
     } = this.props;
-    const { error, isValid } = this.state;
+    const { error, isBlank } = this.state;
 
-    const buttonEnabled = !error && isValid && (!onChangeName || name);
+    const buttonEnabled = !error && !isBlank && (!onChangeName || name);
 
     // if onChangeName is provided then a name is required
     return (
@@ -56,8 +57,8 @@ export default class ExpressionPopover extends React.Component {
                 onDone();
               }
             }}
-            onValidChange={newValid => {
-              this.setState({ isValid: newValid });
+            onBlankChange={newBlank => {
+              this.setState({ isBlank: newBlank });
             }}
           />
           {onChangeName && (

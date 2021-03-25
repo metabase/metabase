@@ -526,7 +526,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText(AGGREGATED_FILTER);
   });
 
-  it("in a simple question should display popup for custom expression options (metabase#14341)", () => {
+  it("in a simple question should display popup for custom expression options (metabase#14341) (metabase#15244)", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -543,6 +543,7 @@ describe("scenarios > question > filter", () => {
       .click()
       .type("contains(");
     cy.findByText(/Checks to see if string1 contains string2 within it./i);
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
     cy.get(".text-error").should("not.exist");
     cy.findAllByText(/Expected one of these possible Token sequences:/i).should(
       "not.exist",
