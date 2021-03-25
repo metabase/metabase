@@ -256,6 +256,10 @@ export const getRoutes = store => (
         <Route path="metrics" component={MetricListContainer} />
         <Route path="metrics/:metricId" component={MetricDetailContainer} />
         <Route
+          path="metrics/:metricId/edit"
+          component={MetricDetailContainer}
+        />
+        <Route
           path="metrics/:metricId/questions"
           component={MetricQuestionsContainer}
         />

@@ -276,7 +276,7 @@
         :Coercion/UNIXSeconds->DateTime :type/DateTime}
        (keyword coercion)))
 
-(defn ^:export coercions_for_type
+(defn ^:export coercions-for-type
   "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
   clojure will return a sequence of keywords."
    [base-type]

@@ -148,16 +148,16 @@
   (testing "it includes all columns"
     (is (= (hsql/call
             :case
-            [:like :model "%foo%"] 0
-            [:like :name "%foo%"] 0
-            [:like :display_name "%foo%"] 0
-            [:like :description "%foo%"] 0
-            [:like :collection_name "%foo%"] 0
-            [:like :dataset_query "%foo%"] 0
-            [:like :table_schema "%foo%"] 0
-            [:like :table_name "%foo%"] 0
-            [:like :table_description "%foo%"] 0
-            :else 1)
+             [:like (hsql/call :lower :model) "%foo%"] 0
+             [:like (hsql/call :lower :name) "%foo%"] 0
+             [:like (hsql/call :lower :display_name) "%foo%"] 0
+             [:like (hsql/call :lower :description) "%foo%"] 0
+             [:like (hsql/call :lower :collection_name) "%foo%"] 0
+             [:like (hsql/call :lower :dataset_query) "%foo%"] 0
+             [:like (hsql/call :lower :table_schema) "%foo%"] 0
+             [:like (hsql/call :lower :table_name) "%foo%"] 0
+             [:like (hsql/call :lower :table_description) "%foo%"] 0
+             :else 1)
            (api.search/order-clause "foo")))))
 
 (deftest basic-test

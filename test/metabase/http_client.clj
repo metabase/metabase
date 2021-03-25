@@ -4,8 +4,8 @@
             [clj-http.client :as client]
             [clojure.string :as str]
             [clojure.test :as t]
-            [clojure.walk :as walk]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [environ.core :as env]
             [java-time :as java-time]
             [metabase.config :as config]
@@ -93,7 +93,7 @@
 (def ^:private Credentials
   {:username su/NonBlankString, :password su/NonBlankString})
 
-(def ^:private UUIDString
+(def UUIDString
   "Schema for a canonical string representation of a UUID."
   (s/constrained
    su/NonBlankString
@@ -253,7 +253,7 @@
 
   Args:
 
-   *  `credentials`          Optional map of `:username` and `:password` or `X-METABASE-SESSION` token of a User who we
+   *  `credentials`          Optional map of `:username` and `:password` or Session token of a User who we
                              should perform the request as
    *  `method`               `:get`, `:post`, `:delete`, or `:put`
    *  `expected-status-code` When passed, throw an exception if the response has a different status code.

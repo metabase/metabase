@@ -42,7 +42,7 @@
                                :last_name    last-name
                                :password     (str (UUID/randomUUID))
                                :is_superuser true)
-        user-id    (u/get-id new-user)]
+        user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process

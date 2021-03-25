@@ -5,7 +5,7 @@
             metabase.async.streaming-response
             [metabase.db :as mdb]
             [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.request.util :as request.u]
             [metabase.util.i18n :refer [trs]])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            metabase.async.streaming_response.StreamingResponse))
@@ -25,7 +25,7 @@
   [handler]
   (fn [request respond raise]
     (handler request
-             (if-not (middleware.u/api-call? request)
+             (if-not (request.u/api-call? request)
                respond
                (comp respond (partial add-content-type* request)))
              raise)))

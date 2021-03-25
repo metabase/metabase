@@ -160,7 +160,6 @@
   (testing :install
     (mt/with-model-cleanup [Activity]
       (events.activity-feed/process-activity-event! {:topic :install, :item {}})
-      (println (db/select Activity :topic "install"))
       (is (= {:topic       :install
               :user_id     nil
               :database_id nil

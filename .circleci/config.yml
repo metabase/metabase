@@ -496,7 +496,7 @@ jobs:
       # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
-          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name '*.cljc' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db"
+          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name '*.cljc' -or -name '*.cljs' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db"
       # .MODULES-CHECKSUMS is every Clojure source file in the modules/ directory as well as plugin manifests
       - create-checksum-file:
           filename: .MODULES-CHECKSUMS
@@ -733,6 +733,14 @@ jobs:
       - run-yarn-command:
           command-name: Run frontend unit tests
           command: run test-unit
+          skip-when-no-change: true
+
+  shared-tests-cljs:
+    executor: node
+    steps:
+      - run-yarn-command:
+          command-name: Run Cljs tests for shared/ code
+          command: run test-cljs
           skip-when-no-change: true
 
   fe-tests-timezones:
@@ -1038,6 +1046,18 @@ workflows:
           e:
             name: mysql-latest
           driver: mysql
+          # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
+          # they are deliberately given a different name to prevent them from affecting the regular test run against
+          # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
+          # that overrides the MB_MYSQL_TEST_* values with them
+          # the MYSQL_RDS_SSL_INSTANCE vars are secret and/or changeable, so they are defined in the CircleCI settings
+          extra-env: >-
+            MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
+            MB_MYSQL_SSL_TEST_SSL=true
+            MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS='verifyServerCertificate=true'
+            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
+            MB_MYSQL_SSL_TEST_USER=metabase
+            MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
 
       - test-driver:
           name: be-tests-mariadb-ee
@@ -1182,6 +1202,9 @@ workflows:
           requires:
             - checkout
       - fe-tests-unit:
+          requires:
+            - fe-deps
+      - shared-tests-cljs:
           requires:
             - fe-deps
       - fe-tests-timezones:

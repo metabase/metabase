@@ -29,11 +29,12 @@
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
   (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
-            [metabase.util.i18n :refer [tru]]))
+            [metabase.mbql.util.match :as mbql.match]
+            [metabase.shared.util.i18n :as i18n]
+            [metabase.shared.util.log :as log]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -41,7 +42,7 @@
   namespace.)"
   [x]
   (and (sequential? x)
-       (not (instance? clojure.lang.MapEntry x))
+       (not (map-entry? x))
        ((some-fn keyword? string?) (first x))))
 
 (defn- maybe-normalize-token
@@ -325,8 +326,8 @@
 
         :else
         x)
-      (catch Throwable e
-        (throw (ex-info (tru "Error normalizing form.")
+      (catch #?(:clj Throwable :cljs js/Error) e
+        (throw (ex-info (i18n/tru "Error normalizing form.")
                         {:form x, :path path, :special-fn special-fn}
                         e))))))
 
@@ -548,9 +549,9 @@
        :else
        (try
          (canonicalize-mbql-clause x)
-         (catch Throwable e
-           (log/error (tru "Invalid clause:") x)
-           (throw (ex-info (tru "Invalid MBQL clause")
+         (catch #?(:clj Throwable :cljs js/Error) e
+           (log/error (i18n/tru "Invalid clause:") x)
+           (throw (ex-info (i18n/tru "Invalid MBQL clause")
                            {:clause x}
                            e))))))
    mbql-query))
@@ -559,7 +560,7 @@
   "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
   multiple-aggregation syntax (e.g. `{:aggregation [[:count]]}`)."
   [aggregations]
-  (mbql.u/replace aggregations
+  (mbql.match/replace aggregations
     seq? (recur (vec &match))
 
     ;; something like {:aggregations :count} -- MBQL 95 single aggregation
@@ -596,7 +597,7 @@
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"
   [clauses]
-  (mbql.u/replace clauses
+  (mbql.match/replace clauses
     seq? (recur (vec &match))
 
     ;; MBQL 95 reversed [<field> <direction>] clause
@@ -671,8 +672,8 @@
       parameters      (update :parameters (partial mapv canonicalize-mbql-clauses))
       native          (update :native canonicalize-native-query)
       true            canonicalize-mbql-clauses)
-    (catch Throwable e
-      (throw (ex-info (tru "Error canonicalizing query")
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error canonicalizing query")
                       {:query query}
                       e)))))
 
@@ -700,7 +701,7 @@
     query
     ;; get a set of all Field clauses (of any type) in the breakout. For temporal-bucketed fields, we'll include both
     ;; the bucketed `[:datetime-field <field> ...]` clause and the `<field>` clause it wraps
-    (let [breakout-fields (set (reduce concat (mbql.u/match breakout
+    (let [breakout-fields (set (reduce concat (mbql.match/match breakout
                                                 [:field id-or-name opts]
                                                 [&match
                                                  [:field id-or-name (dissoc opts :temporal-unit)]])))]
@@ -713,8 +714,8 @@
   [query]
   (try
     (remove-breakout-fields-from-fields query)
-    (catch Throwable e
-      (throw (ex-info (tru "Error performing whole query transformations")
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error performing whole query transformations")
                       {:query query}
                       e)))))
 
@@ -769,7 +770,7 @@
          (map? x)         (remove-empty-clauses-in-map x path)
          (sequential? x)  (remove-empty-clauses-in-sequence x path)
          :else            x))
-     (catch Throwable e
+     (catch #?(:clj Throwable :cljs js/Error) e
        (throw (ex-info "Error removing empty clauses from form."
                        {:form x, :path path}
                        e))))))
@@ -789,8 +790,8 @@
     (fn [query]
       (try
         (normalize* query)
-        (catch Throwable e
-          (throw (ex-info (tru "Error normalizing query")
+        (catch #?(:clj Throwable :cljs js/Error) e
+          (throw (ex-info (i18n/tru "Error normalizing query")
                           {:query query}
                           e)))))))
 

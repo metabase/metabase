@@ -292,9 +292,9 @@
                                (filter (fn [[k v]] (= v :text)))
                                (map first))
         case-clauses      (as-> columns-to-search <>
-                               (map (fn [col] [:like col match]) <>)
-                               (interleave <> (repeat 0))
-                               (concat <> [:else 1] ))]
+                                (map (fn [col] [:like (hsql/call :lower col) match]) <>)
+                                (interleave <> (repeat 0))
+                                (concat <> [:else 1] ))]
     (apply hsql/call :case case-clauses)))
 
 (defmulti ^:private check-permissions-for-model
