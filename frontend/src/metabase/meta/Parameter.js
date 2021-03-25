@@ -486,14 +486,24 @@ export function getParameterIconName(parameterType: ?ParameterType) {
   }
 }
 
-export function mapUITypeToParameterType(parameter) {
-  const [fieldType, maybeOperatorName] = splitType(parameter);
-  switch (fieldType) {
-    case "location":
-    case "category":
-      return `string/${getParameterOperatorName(maybeOperatorName)}`;
-    default:
-      return parameter.type;
+export function mapUIParameterToQueryParameter(type, value, target) {
+  const [fieldType, maybeOperatorName] = splitType(type);
+  const operatorName = getParameterOperatorName(maybeOperatorName);
+
+  if (fieldType === "location" || fieldType === "category") {
+    return {
+      type: `string/${operatorName}`,
+      value: [].concat(value),
+      target,
+    };
+  } else if (fieldType === "number") {
+    return {
+      type,
+      value: [].concat(value),
+      target,
+    };
+  } else {
+    return { type, value, target };
   }
 }
 

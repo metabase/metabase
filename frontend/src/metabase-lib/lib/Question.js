@@ -33,7 +33,7 @@ import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
 import {
   parameterToMBQLFilter,
-  mapUITypeToParameterType,
+  mapUIParameterToQueryParameter,
 } from "metabase/meta/Parameter";
 import {
   aggregate,
@@ -827,11 +827,8 @@ export default class Question {
       .filter(param => _.has(param, "value"))
       // only the superset of parameters object that API expects
       .map(param => _.pick(param, "type", "target", "value"))
-      .map(param => {
-        return {
-          ...param,
-          type: mapUITypeToParameterType(param),
-        };
+      .map(({ type, value, target }) => {
+        return mapUIParameterToQueryParameter(type, value, target);
       });
 
     if (canUseCardApiEndpoint) {

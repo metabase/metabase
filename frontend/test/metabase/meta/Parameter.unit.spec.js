@@ -4,7 +4,7 @@ import {
   numberParameterValueToMBQL,
   parameterOptionsForField,
   getParametersBySlug,
-  mapUITypeToParameterType,
+  mapUIParameterToQueryParameter,
   deriveFieldOperatorFromParameter,
 } from "metabase/meta/Parameter";
 
@@ -215,28 +215,61 @@ describe("metabase/meta/Parameter", () => {
 
   describe("mapParameterTypeToFieldType", () => {
     it("should return the proper parameter type of location/category parameters", () => {
-      expect(mapUITypeToParameterType({ type: "category" })).toEqual(
-        "string/=",
-      );
+      expect(mapUIParameterToQueryParameter("category", "foo", "bar")).toEqual({
+        type: "string/=",
+        value: ["foo"],
+        target: "bar",
+      });
       expect(
-        mapUITypeToParameterType({ type: "category/starts-with" }),
-      ).toEqual("string/starts-with");
-      expect(mapUITypeToParameterType({ type: "location/city" })).toEqual(
-        "string/=",
-      );
-      expect(mapUITypeToParameterType({ type: "location/contains" })).toEqual(
-        "string/contains",
-      );
+        mapUIParameterToQueryParameter("category/starts-with", ["foo"], "bar"),
+      ).toEqual({
+        type: "string/starts-with",
+        value: ["foo"],
+        target: "bar",
+      });
+      expect(
+        mapUIParameterToQueryParameter("location/city", "foo", "bar"),
+      ).toEqual({
+        type: "string/=",
+        value: ["foo"],
+        target: "bar",
+      });
+      expect(
+        mapUIParameterToQueryParameter("location/contains", ["foo"], "bar"),
+      ).toEqual({
+        type: "string/contains",
+        value: ["foo"],
+        target: "bar",
+      });
     });
 
     it("should return given type when not a location/category option", () => {
-      expect(mapUITypeToParameterType({ type: "foo/bar" })).toEqual("foo/bar");
-      expect(mapUITypeToParameterType({ type: "date/single" })).toEqual(
-        "date/single",
-      );
-      expect(mapUITypeToParameterType({ type: "number/=" })).toEqual(
-        "number/=",
-      );
+      expect(mapUIParameterToQueryParameter("foo/bar", "foo", "bar")).toEqual({
+        type: "foo/bar",
+        value: "foo",
+        target: "bar",
+      });
+      expect(
+        mapUIParameterToQueryParameter("date/single", "foo", "bar"),
+      ).toEqual({
+        type: "date/single",
+        value: "foo",
+        target: "bar",
+      });
+    });
+
+    it("should wrap number values in an array", () => {
+      expect(mapUIParameterToQueryParameter("number/=", [123], "bar")).toEqual({
+        type: "number/=",
+        value: [123],
+        target: "bar",
+      });
+
+      expect(mapUIParameterToQueryParameter("number/=", 123, "bar")).toEqual({
+        type: "number/=",
+        value: [123],
+        target: "bar",
+      });
     });
   });
 
