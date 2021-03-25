@@ -90,27 +90,22 @@ describe("personal collections", () => {
             .click();
           cy.get("@sidebar").findByText("Bar1");
         });
+
+        it.skip("should be able to archive collection(s) inside personal collection (metabase#15343)", () => {
+          cy.icon("pencil").click();
+          cy.findByText("Archive this collection").click();
+          modal()
+            .findByRole("button", { name: "Archive" })
+            .click();
+          cy.findByText("Archived collection");
+          cy.get("@sidebar")
+            .findByText("Foo")
+            .should("not.exist");
+        });
       });
     });
   });
 });
-
-function visitCollectionByOwnersId(owners_id) {
-  cy.request("GET", "/api/collection").then(({ body }) => {
-    // We need to obtain the ID programatically
-    // const { id } = body.find(
-    //   collection => collection.personal_owner_id === owners_id,
-    // );
-    // cy.visit(`/collection/${id}`);
-    cy.log(JSON.stringify(body));
-  });
-}
-
-function getUserByEmail(email) {
-  cy.request("GET", "/api/user").then(({ body: ALL_USERS }) => {
-    ALL_USERS.find(user => user.email === email);
-  });
-}
 
 function addNewCollection(name) {
   cy.icon("new_folder").click();
