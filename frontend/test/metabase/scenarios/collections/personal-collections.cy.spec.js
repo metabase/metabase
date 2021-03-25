@@ -28,15 +28,30 @@ describe("personal collections", () => {
       });
     });
 
-    it("shouldn't be able to change permission levels on or edit personal collections", () => {
+    it("shouldn't be able to change permission levels or edit personal collections", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection").click();
+      cy.icon("new_folder");
       cy.icon("lock").should("not.exist");
       cy.icon("pencil").should("not.exist");
       // Visit random user's personal collection
       cy.visit("/collection/5");
+      cy.icon("new_folder");
       cy.icon("lock").should("not.exist");
       cy.icon("pencil").should("not.exist");
+    });
+
+    it.skip("shouldn't be able to change permission levels for sub-collections in personal collections (metabase#8406)", () => {
+      cy.visit("/collection/root");
+      cy.findByText("Your personal collection").click();
+      // Create new collection inside admin's personal collection and navigate to it
+      addNewCollection("Foo");
+      cy.get("[class*=CollectionSidebar]")
+        .findByText("Foo")
+        .click();
+      cy.icon("new_folder");
+      cy.icon("pencil");
+      cy.icon("lock").should("not.exist");
     });
   });
 
