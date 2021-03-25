@@ -477,21 +477,22 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("First Collection");
     });
 
-    it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
+    it.skip("should let be possible to select all items using checkbox (metabase#14705)", () => {
       cy.visit("/collection/root");
-      cy.findByText("Orders")
-        .closest("a")
-        .within(() => {
-          cy.icon("table").trigger("mouseover");
-          cy.findByRole("checkbox")
-            .should("be.visible")
-            .click();
-        });
-
+      selectItemUsingCheckbox("Orders");
       cy.findByText("1 item selected").should("be.visible");
       cy.icon("dash").click();
       cy.icon("dash").should("not.exist");
       cy.findByText("4 items selected");
+    });
+
+    it.skip("should be possible to select pinned item using checkbox (metabase#15338)", () => {
+      cy.visit("/collection/root");
+      openEllipsisMenuFor("Orders");
+      cy.findByText("Pin this item").click();
+      cy.findByText(/Pinned items/i);
+      selectItemUsingCheckbox("Orders");
+      cy.findByText("1 item selected");
     });
   });
 });
@@ -527,4 +528,15 @@ function openEllipsisMenuFor(item) {
     .closest("a")
     .find(".Icon-ellipsis")
     .click({ force: true });
+}
+
+function selectItemUsingCheckbox(item, icon = "table") {
+  cy.findByText(item)
+    .closest("a")
+    .within(() => {
+      cy.icon(icon).trigger("mouseover");
+      cy.findByRole("checkbox")
+        .should("be.visible")
+        .click();
+    });
 }
