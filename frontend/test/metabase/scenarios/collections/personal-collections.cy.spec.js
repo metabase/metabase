@@ -53,6 +53,15 @@ describe("personal collections", () => {
       cy.icon("pencil");
       cy.icon("lock").should("not.exist");
     });
+
+    it.skip("should be able view other users' personal sub-collections (metabase#15339)", () => {
+      cy.visit("/collection/5");
+      cy.icon("new_folder").click();
+      cy.findByLabelText("Name").type("Foo");
+      cy.findByText("Create").click();
+      // This repro could possibly change depending on the design decision for this feature implementation
+      cy.get("[class*=CollectionSidebar]").findByText("Foo");
+    });
   });
 
   describe("all users", () => {
