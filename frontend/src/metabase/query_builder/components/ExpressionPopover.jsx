@@ -1,6 +1,5 @@
 import React from "react";
 
-
 import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
 import Button from "metabase/components/Button";
 
