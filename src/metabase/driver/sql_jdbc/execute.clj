@@ -259,7 +259,8 @@
 
 (defmethod prepared-statement :sql-jdbc
   [driver ^Connection conn ^String sql params]
-  (let [stmt (.prepareStatement conn sql
+  (let [stmt (.prepareStatement conn
+                                sql
                                 ResultSet/TYPE_FORWARD_ONLY
                                 ResultSet/CONCUR_READ_ONLY
                                 ResultSet/CLOSE_CURSORS_AT_COMMIT)]
@@ -267,7 +268,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -289,7 +290,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
       stmt
       (catch Throwable e
         (.close stmt)
