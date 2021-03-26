@@ -77,6 +77,7 @@
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
+   :namespace   s/Symbol
    :description s/Any            ; description is validated via the macro, not schema
    :default     s/Any
    :type        Type             ; all values are stored in DB as Strings,
@@ -441,10 +442,11 @@
 (defn register-setting!
   "Register a new Setting with a map of `SettingDefinition` attributes. Returns the map it was passed. This is used
   internally be `defsetting`; you shouldn't need to use it yourself."
-  [{setting-name :name, setting-type :type, default :default, :as setting}]
+  [{setting-name :name, setting-type :type, default :default, :as setting} namespace-sym]
   (u/prog1 (let [setting-type         (s/validate Type (or setting-type :string))]
              (merge
               {:name        setting-name
+               :namespace   namespace-sym
                :description nil
                :type        setting-type
                :default     default
@@ -457,6 +459,10 @@
                :cache?      true}
               (dissoc setting :name :type :default)))
     (s/validate SettingDefinition <>)
+    (when-let [registered-setting (setting-name @registered-settings)]
+      (when (not= namespace-sym (:namespace registered-setting))
+        (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
+                        {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
     (swap! registered-settings assoc setting-name <>)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -581,7 +587,8 @@
                   (validate-description description))
          setting# (register-setting! (assoc ~options
                                             :name ~(keyword setting-symb)
-                                            :description desc#))]
+                                            :description desc#)
+                                     (ns-name *ns*))]
      (-> (def ~setting-symb (setting-fn setting#))
          (alter-meta! merge (metadata-for-setting-fn setting#)))))
 
