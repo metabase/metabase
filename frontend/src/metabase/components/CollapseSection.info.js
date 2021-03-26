@@ -1,5 +1,6 @@
 import React from "react";
 import CollapseSection from "metabase/components/CollapseSection";
+import Icon from "metabase/components/Icon";
 
 export const component = CollapseSection;
 export const category = "layout";
@@ -9,24 +10,31 @@ A collapsible section with a clickable header.
 
 export const examples = {
   "Closed by default": (
-    <CollapseSection headerText="Section header">
+    <CollapseSection header="Section header">
       foo foo foo foo foo foo foo foo
     </CollapseSection>
   ),
   "Settable initial state": (
-    <CollapseSection initialState="open" headerText="Foo">
+    <CollapseSection initialState="open" header="Foo">
       foo foo foo foo foo
     </CollapseSection>
   ),
-  "Header Icon": (
-    <CollapseSection headerIconName="folder" headerText="<-- folder icon">
+  "Components in header": (
+    <CollapseSection
+      header={
+        <div>
+          <Icon className="mr1" name="folder" size={12} />
+          Component header
+        </div>
+      }
+    >
       foo foo foo foo foo
     </CollapseSection>
   ),
   "Header and body classes": (
     <CollapseSection
       initialState="open"
-      headerText="Section header"
+      header="Section header"
       headerClass="text-brand flex-reverse justify-between p1 border-bottom"
       bodyClass="p2"
     >

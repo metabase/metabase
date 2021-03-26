@@ -8,8 +8,7 @@ import Icon from "metabase/components/Icon";
 
 function CollapseSection({
   children,
-  headerIconName,
-  headerText,
+  header,
   headerClass,
   bodyClass,
   initialState = "closed",
@@ -38,10 +37,7 @@ function CollapseSection({
           size={12}
         />
         <span className="collapse-section__header-text flex align-center">
-          {headerIconName && (
-            <Icon className="mr1" name={headerIconName} size={12} />
-          )}
-          {headerText}
+          {header}
         </span>
       </div>
       <div role="tabpanel" className="collapse-section__body-container">
@@ -57,8 +53,7 @@ function CollapseSection({
 
 CollapseSection.propTypes = {
   children: PropTypes.node,
-  headerIconName: PropTypes.string,
-  headerText: PropTypes.string,
+  header: PropTypes.node,
   headerClass: PropTypes.string,
   bodyClass: PropTypes.string,
   initialState: PropTypes.oneOf(["open", "closed"]),
