@@ -107,7 +107,7 @@
    [hiccup "1.0.5"]                                                   ; HTML templating
    [honeysql "1.0.461" :exclusions [org.clojure/clojurescript]]       ; Transform Clojure data structures to SQL
    [instaparse "1.4.10"]                                              ; Make your own parser
-   [io.forward/yaml "1.0.9"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
+   [io.forward/yaml "1.0.9"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquibase)
     :exclusions [org.clojure/clojure
                  org.flatland/ordered
                  org.yaml/snakeyaml]]

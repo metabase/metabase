@@ -38,13 +38,22 @@
 
 (models/defmodel Pulse :pulse)
 
-(defn- pre-insert [notification]
-  (u/prog1 notification
-    (collection/check-collection-namespace Pulse (:collection_id notification))))
+(defn- assert-valid-parameters [{:keys [parameters]}]
+  (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
+    (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
+                    {:parameters parameters}))))
 
-(defn- pre-update [updates]
-  (u/prog1 updates
-    (collection/check-collection-namespace Pulse (:collection_id updates))))
+(defn- pre-insert [notification]
+  (let [defaults     {:parameters []}
+        notification (apply merge defaults (for [[k v] notification :when (some? v)] {k v}))]
+    (u/prog1 notification
+      (assert-valid-parameters notification)
+      (collection/check-collection-namespace Pulse (:collection_id notification)))))
+
+(defn- pre-update [notification]
+  (u/prog1 notification
+    (assert-valid-parameters notification)
+    (collection/check-collection-namespace Pulse (:collection_id notification))))
 
 (defn- alert->card
   "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."
@@ -80,7 +89,8 @@
    {:hydration-keys (constantly [:pulse])
     :properties     (constantly {:timestamped? true})
     :pre-insert     pre-insert
-    :pre-update     pre-update})
+    :pre-update     pre-update
+    :types          (constantly {:parameters :json})})
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
@@ -378,7 +388,8 @@
                 (s/optional-key :skip_if_empty)       (s/maybe s/Bool)
                 (s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
                 (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
-                (s/optional-key :dashboard_id)        (s/maybe su/IntGreaterThanZero)}]
+                (s/optional-key :dashboard_id)        (s/maybe su/IntGreaterThanZero)
+                (s/optional-key :parameters)          [su/Map]}]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event)
     (events/publish-event! :pulse-create (retrieve-pulse pulse-id))))
