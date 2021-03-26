@@ -133,6 +133,25 @@
                (mt/mbql-query venues
                  {:aggregation [[:avg $category_id]], :breakout [$price], :order-by [[:asc [:aggregation 0]]]})))))))
 
+(deftest multiple-counts-test
+  (mt/test-driver :bigquery
+    (testing "Count of count grouping works (#15074)"
+      (is (= {:query      (str "SELECT `source`.`count` AS `count`, count(*) AS `count` "
+                               "FROM (SELECT date_trunc(`v3_test_data.checkins`.`date`, month) AS `date`, "
+                               "count(*) AS `count` FROM `v3_test_data.checkins` "
+                               "GROUP BY `date` ORDER BY `date` ASC) `source` GROUP BY `source`.`count`"
+                               "ORDER BY `source`.`count` ASC")
+              :params     nil
+              :table-name "source"
+              :mbql?      true}
+             (qp/query->native
+               (mt/mbql-query checkins
+                 {:aggregation  [[:count]],
+                  :breakout     [[:field "count" {:base-type :type/Integer}]],
+                  :source-query {:source-table (mt/id :checkins)
+                                 :aggregation  [[:count]]
+                                 :breakout     [!month.date]}})))))))
+
 (deftest join-alias-test
   (mt/test-driver :bigquery
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
