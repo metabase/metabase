@@ -306,7 +306,7 @@ AddEditSlackSidebar.propTypes = {
 function CaveatMessage() {
   return (
     <Text className="mx4 my2 p2 bg-light text-dark rounded">
-      <span className="text-bold">{t`Note`}:</span>
+      <span className="text-bold">{t`Note`}:&nbsp;</span>
       {t`charts in your subscription won't look the same as in your dashboard.`}
       &nbsp;
       <ExternalLink
