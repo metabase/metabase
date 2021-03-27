@@ -11,15 +11,18 @@ function CollapseSection({
   header,
   headerClass,
   bodyClass,
-  initialState = "closed",
+  initialState = "collapsed",
 }) {
-  const [isOpen, setIsOpen] = useState(initialState === "open");
+  const [isExpanded, setIsExpanded] = useState(initialState === "expanded");
 
   return (
     <div
-      className={cx("collapse-section", isOpen && "collapse-section--open")}
+      className={cx(
+        "collapse-section",
+        isExpanded && "collapse-section--expanded",
+      )}
       role="tab"
-      aria-expanded={isOpen}
+      aria-expanded={isExpanded}
     >
       <div
         role="button"
@@ -28,12 +31,14 @@ function CollapseSection({
           "collapse-section__header cursor-pointer flex align-center",
           headerClass,
         )}
-        onClick={() => setIsOpen(isOpen => !isOpen)}
-        onKeyDown={e => e.key === "Enter" && setIsOpen(isOpen => !isOpen)}
+        onClick={() => setIsExpanded(isExpanded => !isExpanded)}
+        onKeyDown={e =>
+          e.key === "Enter" && setIsExpanded(isExpanded => !isExpanded)
+        }
       >
         <Icon
           className="mr1"
-          name={isOpen ? "chevrondown" : "chevronright"}
+          name={isExpanded ? "chevrondown" : "chevronright"}
           size={12}
         />
         <span className="collapse-section__header-text flex align-center">
@@ -41,7 +46,7 @@ function CollapseSection({
         </span>
       </div>
       <div role="tabpanel" className="collapse-section__body-container">
-        {isOpen && (
+        {isExpanded && (
           <div className={cx("collapse-section__body-container", bodyClass)}>
             {children}
           </div>
@@ -56,7 +61,7 @@ CollapseSection.propTypes = {
   header: PropTypes.node,
   headerClass: PropTypes.string,
   bodyClass: PropTypes.string,
-  initialState: PropTypes.oneOf(["open", "closed"]),
+  initialState: PropTypes.oneOf(["expanded", "collapsed"]),
 };
 
 export default CollapseSection;

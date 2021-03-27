@@ -9,13 +9,13 @@ A collapsible section with a clickable header.
 `;
 
 export const examples = {
-  "Closed by default": (
+  "Collapsed by default": (
     <CollapseSection header="Section header">
       foo foo foo foo foo foo foo foo
     </CollapseSection>
   ),
-  "Settable initial state": (
-    <CollapseSection initialState="open" header="Foo">
+  "Settable collpased/expanded initial state": (
+    <CollapseSection initialState="expanded" header="Foo">
       foo foo foo foo foo
     </CollapseSection>
   ),
@@ -33,7 +33,7 @@ export const examples = {
   ),
   "Header and body classes": (
     <CollapseSection
-      initialState="open"
+      initialState="expanded"
       header="Section header"
       headerClass="text-brand flex-reverse justify-between p1 border-bottom"
       bodyClass="p2"
