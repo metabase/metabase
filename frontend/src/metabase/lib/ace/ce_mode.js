@@ -94,6 +94,6 @@ ace.define(
     console.log(CEHighlightRules);
     console.log(CEMode);
 
-    exports.CEMode = CEMode;
+    module.exports.CEMode = CEMode;
   },
 );

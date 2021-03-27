@@ -15,7 +15,7 @@ import colors from "metabase/lib/colors";
 import AceEditor from "metabase/components/TextEditor";
 import "ace/ace";
 
-const CEMode = require("metabase/lib/ace/ce_mode");
+import CEMode from "metabase/lib/ace/ce_mode";
 
 import memoize from "lodash.memoize";
 
