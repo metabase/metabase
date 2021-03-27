@@ -538,6 +538,6 @@
                    :namespace current-ns
                    :visibility :public}}
                  (ex-data e)))
-          (is (= "Setting :foo already registered in metabase.models.setting-test"
+          (is (= (str "Setting :foo already registered in " current-ns)
                  (ex-message e))))
         (finally (in-ns current-ns))))))
