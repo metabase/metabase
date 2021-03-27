@@ -3,7 +3,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
+import cx from "classnames";
 import { t, jt, ngettext, msgid } from "ttag";
+import { connect } from "react-redux";
 
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
@@ -20,26 +22,43 @@ import Select, { Option } from "metabase/components/Select";
 
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
+import { conjunct } from "metabase/lib/formatting";
 
-const Heading = ({ children }) => <h4>{children}</h4>;
-Heading.propTypes = { children: PropTypes.any };
+import {
+  getDefaultParametersById,
+  getParameters,
+} from "metabase/dashboard/selectors";
 
-export const CHANNEL_ICONS = {
-  email: "mail",
-  slack: "slack",
+const mapStateToProps = (state, props) => {
+  return {
+    parameters: getParameters(state, props),
+    defaultParametersById: getDefaultParametersById(state, props),
+  };
 };
+
+export const Heading = ({ children }) => <h4>{children}</h4>;
+Heading.propTypes = { children: PropTypes.any };
 
 const CHANNEL_NOUN_PLURAL = {
   email: t`Emails`,
   slack: t`Slack messages`,
 };
 
-export function AddEditEmailSidebar({
+export const AddEditEmailSidebar = connect(mapStateToProps)(
+  _AddEditEmailSidebar,
+);
+export const AddEditSlackSidebar = connect(mapStateToProps)(
+  _AddEditSlackSidebar,
+);
+
+function _AddEditEmailSidebar({
   pulse,
   formInput,
   channel,
   channelSpec,
   users,
+  parameters,
+  defaultParametersById,
 
   // form callbacks
   handleSave,
@@ -108,7 +127,12 @@ export function AddEditEmailSidebar({
             testPulse={testPulse}
           />
         </div>
-        <div className="text-bold py3 mt2 flex justify-between align-center border-top">
+        <DefaultParametersSection
+          className="py3 mt2 border-top"
+          parameters={parameters}
+          defaultParametersById={defaultParametersById}
+        />
+        <div className="text-bold py3 flex justify-between align-center border-top">
           <Heading>{t`Don't send if there aren't results`}</Heading>
           <Toggle
             value={pulse.skip_if_empty || false}
@@ -142,12 +166,14 @@ export function AddEditEmailSidebar({
   );
 }
 
-AddEditEmailSidebar.propTypes = {
+_AddEditEmailSidebar.propTypes = {
   pulse: PropTypes.object.isRequired,
   formInput: PropTypes.object.isRequired,
   channel: PropTypes.object.isRequired,
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
+  parameters: PropTypes.array.isRequired,
+  defaultParametersById: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,
@@ -220,11 +246,13 @@ function getConfirmItems(pulse) {
   );
 }
 
-export function AddEditSlackSidebar({
+function _AddEditSlackSidebar({
   pulse,
   formInput,
   channel,
   channelSpec,
+  parameters,
+  defaultParametersById,
 
   // form callbacks
   handleSave,
@@ -271,7 +299,12 @@ export function AddEditSlackSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <div className="text-bold py2 mt2 flex justify-between align-center border-top">
+        <DefaultParametersSection
+          className="py3 mt2 border-top"
+          parameters={parameters}
+          defaultParametersById={defaultParametersById}
+        />
+        <div className="text-bold py2 flex justify-between align-center border-top">
           <Heading>{t`Don't send if there aren't results`}</Heading>
           <Toggle
             value={pulse.skip_if_empty || false}
@@ -289,12 +322,14 @@ export function AddEditSlackSidebar({
   );
 }
 
-AddEditSlackSidebar.propTypes = {
+_AddEditSlackSidebar.propTypes = {
   pulse: PropTypes.object.isRequired,
   formInput: PropTypes.object.isRequired,
   channel: PropTypes.object.isRequired,
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
+  parameters: PropTypes.array.isRequired,
+  defaultParametersById: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,
@@ -363,3 +398,55 @@ ChannelFields.propTypes = {
   channelSpec: PropTypes.object.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,
 };
+
+function DefaultParametersSection({
+  className,
+  parameters,
+  defaultParametersById,
+}) {
+  const formattedParameterValues = formatDefaultParamValues(
+    parameters,
+    defaultParametersById,
+  );
+
+  return (
+    <div className={cx(className, "text-bold")}>
+      <Heading>
+        {t`Filter values`}
+        <Icon
+          name="info"
+          className="text-medium ml1"
+          size={12}
+          tooltip={t`You can customize filter values for each subscription with the Enterprise edition.`}
+        />
+      </Heading>
+      <div className="pt1 text-small text-normal text-medium">{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
+      {formattedParameterValues.map(formattedValue => {
+        return (
+          <div className="pt1 text-medium" key={formattedValue}>
+            {formattedValue}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+DefaultParametersSection.propTypes = {
+  className: PropTypes.string,
+  parameters: PropTypes.array.isRequired,
+  defaultParametersById: PropTypes.object.isRequired,
+};
+
+// TODO: will need improved formatting for operator parameter filters
+function formatDefaultParamValues(parameters, defaultParametersById) {
+  return parameters
+    .map(parameter => {
+      const value = conjunct(
+        [].concat(defaultParametersById[parameter.id]),
+        t`and`,
+      );
+      return value && `${parameter.name} is ${value}`;
+    })
+    .filter(Boolean);
+}
