@@ -8,6 +8,7 @@ import Icon from "metabase/components/Icon";
 
 function CollapseSection({
   children,
+  className,
   header,
   headerClass,
   bodyClass,
@@ -20,6 +21,7 @@ function CollapseSection({
       className={cx(
         "collapse-section",
         isExpanded && "collapse-section--expanded",
+        className,
       )}
       role="tab"
       aria-expanded={isExpanded}
@@ -58,6 +60,7 @@ function CollapseSection({
 
 CollapseSection.propTypes = {
   children: PropTypes.node,
+  className: PropTypes.string,
   header: PropTypes.node,
   headerClass: PropTypes.string,
   bodyClass: PropTypes.string,
