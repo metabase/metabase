@@ -4,6 +4,7 @@ import {
   openOrdersTable,
   popover,
   sidebar,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
 import { USER_GROUPS } from "__support__/cypress_data";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -363,6 +364,32 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByText("Macy Olson");
       });
     });
+  });
+
+  it.skip("count of rows from drill-down on binned results should match the number of records (metabase#15324)", () => {
+    visitQuestionAdhoc({
+      name: "15324",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["binning-strategy", ["field-id", ORDERS.QUANTITY], "num-bins", 10],
+          ],
+        },
+        type: "query",
+      },
+      display: "table",
+    });
+    cy.findByText(/^10 –/)
+      .closest(".TableInteractive-cellWrapper")
+      .next()
+      .contains("85")
+      .click();
+    cy.findByText("View these Orders").click();
+    cy.findByText("Quantity between 10 20");
+    cy.findByText("Showing 85 rows");
   });
 
   describe("for an unsaved question", () => {
