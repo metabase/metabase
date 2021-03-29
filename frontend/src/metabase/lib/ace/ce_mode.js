@@ -10,7 +10,7 @@ ace.define(
     "ace/mode/text",
     "ace/mode/text_highlight_rules",
   ],
-  function (require, exports) {
+  function(require, exports) {
     const oop = require("ace/lib/oop");
     const TextMode = require("ace/mode/text").Mode;
 
