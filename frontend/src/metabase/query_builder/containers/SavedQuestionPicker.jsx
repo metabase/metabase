@@ -1,15 +1,20 @@
 import React from "react";
 import Icon from "metabase/components/Icon";
-import { Flex } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
 import cx from "classnames";
 
 import Collection from "metabase/entities/collections";
 import Schemas from "metabase/entities/schemas";
-import CollectionsList from "metabase/collections/components/CollectionsList";
 
 import { generateSchemaId } from "metabase/schema";
 import { MetabaseApi } from "metabase/services";
+
+import * as Urls from "metabase/lib/urls";
+
+import CollectionLink from "metabase/collections/components/CollectionLink";
+import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
+import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 // TODO - chastise Cam for this :P
 const SAVED_QUESTION_DB_ID = -1337;
@@ -131,7 +136,7 @@ class SavedQuestionPicker extends React.Component {
                 selected={this.state.currentSchema === "Everything else"}
                 depth={1}
               />
-              <CollectionsList
+              <SavedQuestionCollectionList
                 openCollections={this.state.openCollections}
                 collections={collections}
                 filter={filter}
@@ -160,7 +165,7 @@ class SavedQuestionPicker extends React.Component {
                         selected={this.state.currentSchema === collection.name}
                       />
                       {isOpen && collection.children && (
-                        <CollectionsList
+                        <SavedQuestionCollectionList
                           openCollections={props.openCollections}
                           onOpen={props.onOpen}
                           onClose={props.onClose}
@@ -242,3 +247,103 @@ function CollectionFolder({
 export default Collection.loadList({
   query: () => ({ tree: true }),
 })(SavedQuestionPicker);
+
+// TODO - this is duplicated w/ the code in CollectionList
+// possible merge this with metabase/collections/components/CollectionsList
+class SavedQuestionCollectionList extends React.Component {
+  render() {
+    const {
+      filter = () => true,
+      // hack to support using nested collections in the data selector, we should
+      // move to a more elegant so
+      // this is a function that accepts a collection item and returns what we want to have happen based on that
+      useTriggerComponent,
+    } = this.props;
+    const collections = this.props.collections.filter(filter);
+
+    return (
+      <Box>
+        {collections.map(c => {
+          return useTriggerComponent(c, this.props);
+        })}
+      </Box>
+    );
+  }
+}
+
+SavedQuestionCollectionList.defaultProps = {
+  initialIcon: "folder",
+  depth: 1,
+  // named function here avoids eslint error
+  useTriggerComponent: function collectionTrigger(c, props) {
+    const isOpen = props.openCollections.indexOf(c.id) >= 0;
+    const action = isOpen ? props.onClose : props.onOpen;
+    return (
+      <Box key={c.id}>
+        <CollectionDropTarget collection={c}>
+          {({ highlighted, hovered }) => {
+            return (
+              <CollectionLink
+                to={Urls.collection(c.id)}
+                // TODO - need to make sure the types match here
+                selected={String(c.id) === props.currentCollection}
+                depth={props.depth}
+                // when we click on a link, if there are children, expand to show sub collections
+                onClick={() => c.children && action(c.id)}
+                hovered={hovered}
+                highlighted={highlighted}
+              >
+                <Flex
+                  className="relative"
+                  align={
+                    // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
+                    // visual
+                    c.name.length > 25 ? "flex-start" : "center"
+                  }
+                >
+                  {c.children && (
+                    <Flex
+                      className="absolute text-brand cursor-pointer"
+                      align="center"
+                      justifyContent="center"
+                      style={{ left: -20 }}
+                    >
+                      <Icon
+                        name={isOpen ? "chevrondown" : "chevronright"}
+                        onClick={ev => {
+                          ev.preventDefault();
+                          action(c.id);
+                        }}
+                        size={12}
+                      />
+                    </Flex>
+                  )}
+                  <Icon
+                    name={props.initialIcon}
+                    mr={"6px"}
+                    style={{ opacity: 0.4 }}
+                  />
+                  {c.name}
+                </Flex>
+              </CollectionLink>
+            );
+          }}
+        </CollectionDropTarget>
+        {c.children && isOpen && (
+          <Box ml={-SIDEBAR_SPACER} pl={SIDEBAR_SPACER + 10}>
+            <SavedQuestionCollectionList
+              openCollections={props.openCollections}
+              onOpen={props.onOpen}
+              onClose={props.onClose}
+              collections={c.children}
+              filter={props.filter}
+              currentCollection={props.currentCollection}
+              depth={props.depth + 1}
+              useTriggerComponent={props.useTriggerComponent}
+            />
+          </Box>
+        )}
+      </Box>
+    );
+  },
+};
