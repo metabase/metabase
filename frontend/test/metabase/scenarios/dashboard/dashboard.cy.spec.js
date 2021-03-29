@@ -604,9 +604,6 @@ describe("scenarios > dashboard", () => {
   });
 
   it.skip("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
-    cy.server();
-    cy.route("GET", "/api/dashboard/2").as("loadDashboard");
-
     cy.request("GET", "/api/user/current").then(
       ({ body: { personal_collection_id } }) => {
         // Save new dashboard in admin's personal collection
@@ -642,6 +639,11 @@ describe("scenarios > dashboard", () => {
               },
             ],
           });
+
+          cy.server();
+          cy.route("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
+            "loadDashboard",
+          );
         });
       },
     );
