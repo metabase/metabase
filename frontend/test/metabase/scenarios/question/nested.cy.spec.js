@@ -421,6 +421,32 @@ describe("scenarios > question > nested", () => {
         });
     }
   });
+
+  it.skip("should use the same query for date filter in both base and nested questions (metabase#15352)", () => {
+    cy.createQuestion({
+      name: "15352",
+      query: {
+        "source-table": ORDERS_ID,
+        filter: [
+          "between",
+          ["field-id", ORDERS.CREATED_AT],
+          "2020-02-01",
+          "2020-02-29",
+        ],
+        aggregation: [["count"]],
+      },
+      display: "scalar",
+    }).then(({ body }) => {
+      cy.visit(`/question/${body.id}`);
+      cy.get(".ScalarValue").findByText("543");
+    });
+    // Start new question based on the saved one
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("15352").click();
+    cy.get(".ScalarValue").findByText("543");
+  });
 });
 
 function ordersJoinProducts(name) {
