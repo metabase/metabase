@@ -13,8 +13,6 @@ import colors from "metabase/lib/colors";
 import AceEditor from "metabase/components/TextEditor";
 import * as ace from "ace-builds/src-noconflict/ace";
 
-import CEMode from "metabase/lib/ace/ce_mode";
-
 import memoize from "lodash.memoize";
 
 import {
@@ -164,14 +162,13 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   componentDidMount() {
-    console.log(CEMode)
-    console.log(CEMode.CEMode)
-    console.log(new CEMode.CEMode)
     this._setCaretPosition(
       this.state.source.length,
       this.state.source.length === 0,
     );
-    this.input.current._editor.focus();
+    if (this.input.current && this.input.current._editor) {
+      this.input.current._editor.focus();
+    }
   }
 
   onSuggestionSelected = index => {
@@ -368,7 +365,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           value={source}
           style={{ ...inputStyle, paddingLeft: 26 }}
           theme="ace/theme/metabase"
-          mode="ace/mode/mbce"
+          mode="ace/mode/text"
           ref={this.input}
           onChange={e => this.onExpressionChange(e)}
           sizeToFit
