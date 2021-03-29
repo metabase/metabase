@@ -743,4 +743,30 @@ describe("scenarios > question > filter", () => {
     });
     cy.findByText("wilma-muller");
   });
+
+  it.skip("column filters should work for metrics (metabase#15333)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field-id", PRODUCTS.CATEGORY]],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+
+    cy.get(".cellData")
+      .contains("Count")
+      .click();
+    cy.findByText("Filter by this column").click();
+    cy.findByPlaceholderText("Enter a number").type("42");
+    cy.findByRole("button", { name: "Update filter" })
+      .should("not.be.disabled")
+      .click();
+    cy.findByText("Doohickey");
+    cy.findByText("Gizmo").should("not.exist");
+  });
 });
