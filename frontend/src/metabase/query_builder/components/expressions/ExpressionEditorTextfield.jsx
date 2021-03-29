@@ -13,7 +13,7 @@ import colors from "metabase/lib/colors";
 import AceEditor from "metabase/components/TextEditor";
 import * as ace from "ace-builds/src-noconflict/ace";
 
-// import CEMode from "metabase/lib/ace/ce_mode";
+import CEMode from "metabase/lib/ace/ce_mode";
 
 import memoize from "lodash.memoize";
 
@@ -164,6 +164,9 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   componentDidMount() {
+    console.log(CEMode)
+    console.log(CEMode.CEMode)
+    console.log(new CEMode.CEMode)
     this._setCaretPosition(
       this.state.source.length,
       this.state.source.length === 0,
