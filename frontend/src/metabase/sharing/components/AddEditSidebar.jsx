@@ -421,9 +421,9 @@ function DefaultParametersSection({
         />
       </Heading>
       <div className="pt1 text-small text-normal text-medium">{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
-      {formattedParameterValues.map(formattedValue => {
+      {formattedParameterValues.map((formattedValue, index) => {
         return (
-          <div className="pt1 text-medium" key={formattedValue}>
+          <div className="pt1 text-medium" key={index}>
             {formattedValue}
           </div>
         );
