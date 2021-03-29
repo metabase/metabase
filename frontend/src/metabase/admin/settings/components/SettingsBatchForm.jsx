@@ -40,6 +40,7 @@ export default class SettingsBatchForm extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
+      pristine: true,
       dirty: false,
       formData: {},
       submitting: "default",
@@ -68,7 +69,7 @@ export default class SettingsBatchForm extends Component {
     for (const element of props.elements) {
       formData[element.key] = element.value;
     }
-    this.setState({ formData });
+    this.setState({ formData, pristine: true });
   }
 
   componentDidMount() {
@@ -164,7 +165,12 @@ export default class SettingsBatchForm extends Component {
         );
       }
 
+      const pristine = this.props.elements.every(
+        ({ key, value }) => settingsValues[key] === value,
+      );
+
       return {
+        pristine,
         dirty: true,
         formData: settingsValues,
       };
@@ -221,6 +227,7 @@ export default class SettingsBatchForm extends Component {
       formData,
       formErrors,
       submitting,
+      pristine,
       valid,
       dirty,
       validationErrors,
@@ -255,6 +262,7 @@ export default class SettingsBatchForm extends Component {
           settingValues={settingValues}
           onChangeSetting={(key, value) => this.handleChangeEvent(key, value)}
           errorMessage={errorMessage}
+          fireOnChange
         />
       );
     };
@@ -287,7 +295,7 @@ export default class SettingsBatchForm extends Component {
             mr={1}
             primary={!disabled}
             success={submitting === "success"}
-            disabled={disabled}
+            disabled={disabled || pristine}
             onClick={this.updateSettings}
           >
             {SAVE_SETTINGS_BUTTONS_STATES[submitting]}
