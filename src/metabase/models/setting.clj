@@ -459,7 +459,8 @@
                :cache?      true}
               (dissoc setting :name :type :default)))
     (s/validate SettingDefinition <>)
-    (when-let [registered-setting (setting-name @registered-settings)]
+    ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
+    (when-let [registered-setting (clojure.core/get @registered-settings setting-name)]
       (when (not= namespace-sym (:namespace registered-setting))
         (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
                         {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
