@@ -602,6 +602,59 @@ describe("scenarios > dashboard", () => {
       });
     });
   });
+
+  it.skip("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
+    cy.server();
+    cy.route("GET", "/api/dashboard/2").as("loadDashboard");
+
+    cy.request("GET", "/api/user/current").then(
+      ({ body: { personal_collection_id } }) => {
+        // Save new dashboard in admin's personal collection
+        cy.request("POST", "/api/dashboard", {
+          name: "15368D",
+          collection_id: personal_collection_id,
+        }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
+          const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
+          // Add click behavior to the existing "Orders in a dashboard" dashboard
+          cy.request("PUT", "/api/dashboard/1/cards", {
+            cards: [
+              {
+                id: 1,
+                card_id: 1,
+                row: 0,
+                col: 0,
+                sizeX: 12,
+                sizeY: 8,
+                series: [],
+                visualization_settings: {
+                  column_settings: {
+                    [COLUMN_REF]: {
+                      click_behavior: {
+                        type: "link",
+                        linkType: "dashboard",
+                        parameterMapping: {},
+                        targetId: NEW_DASHBOARD_ID,
+                      },
+                    },
+                  },
+                },
+                parameter_mappings: [],
+              },
+            ],
+          });
+        });
+      },
+    );
+    cy.signInAsNormalUser();
+    cy.visit("/dashboard/1");
+
+    cy.wait("@loadDashboard").then(xhr => {
+      expect(xhr.status).not.to.eq(403);
+      expect(xhr.response.body).not.to.contain("You don't have permissions");
+    });
+    cy.findByText("Orders in a dashboard");
+    cy.contains("37.65");
+  });
 });
 
 function checkOptionsForFilter(filter) {
