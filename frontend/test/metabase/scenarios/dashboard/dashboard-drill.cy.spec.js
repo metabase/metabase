@@ -7,7 +7,14 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATASET;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATASET;
 
 describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(() => {
@@ -579,6 +586,91 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get(".DashCard").findAllByText(LINK_NAME);
       });
     });
+  });
+
+  it.skip('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    cy.createQuestion({
+      name: "15331",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ],
+            alias: "Products",
+          },
+        ],
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("15331D").then(({ body: { id: DASHBOARD_ID } }) => {
+        // Add filter to the dashboard
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            {
+              name: "Date Filter",
+              slug: "date_filter",
+              id: "354cb21f",
+              type: "date/all-options",
+            },
+          ],
+        });
+        // Add question to the dashboard
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          // Connect dashboard filter to the question
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 14,
+                sizeY: 10,
+                series: [],
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: "354cb21f",
+                    card_id: QUESTION_ID,
+                    target: [
+                      "dimension",
+                      [
+                        "joined-field",
+                        "Products",
+                        ["field-id", PRODUCTS.CREATED_AT],
+                      ],
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+        // Set the filter to `previous 30 years` directly through the url
+        cy.visit(`/dashboard/${DASHBOARD_ID}?date_filter=past30years`);
+      });
+    });
+    cy.get(".Table-ID")
+      .first()
+      // Mid-point check that this cell actually contains ID = 1
+      .contains("1")
+      .click();
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).to.not.exist;
+    });
+    cy.findByText("37.65");
+    cy.findByText("No relationships found.");
   });
 });
 
