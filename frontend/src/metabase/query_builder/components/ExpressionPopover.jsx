@@ -12,6 +12,7 @@ import "./ExpressionPopover.css";
 export default class ExpressionPopover extends React.Component {
   state = {
     error: null,
+    isBlank: true,
   };
 
   render() {
@@ -26,11 +27,11 @@ export default class ExpressionPopover extends React.Component {
       name,
       onChangeName,
     } = this.props;
-    const { error } = this.state;
+    const { error, isBlank } = this.state;
+
+    const buttonEnabled = !error && !isBlank && (!onChangeName || name);
 
     // if onChangeName is provided then a name is required
-    const isValid = !error && (!onChangeName || name);
-
     return (
       <div className="ExpressionPopover">
         <div className="text-medium p1 py2 border-bottom flex align-center">
@@ -56,6 +57,9 @@ export default class ExpressionPopover extends React.Component {
                 onDone(expression);
               }
             }}
+            onBlankChange={newBlank => {
+              this.setState({ isBlank: newBlank });
+            }}
           />
           {onChangeName && (
             <input
@@ -63,7 +67,7 @@ export default class ExpressionPopover extends React.Component {
               value={name}
               onChange={e => onChangeName(e.target.value)}
               onKeyPress={e => {
-                if (e.key === "Enter" && isValid) {
+                if (e.key === "Enter" && buttonEnabled) {
                   onDone(expression);
                 }
               }}
@@ -73,7 +77,7 @@ export default class ExpressionPopover extends React.Component {
           <Button
             className="full"
             primary
-            disabled={!isValid}
+            disabled={!buttonEnabled}
             onClick={() => onDone(expression)}
           >
             {t`Done`}
