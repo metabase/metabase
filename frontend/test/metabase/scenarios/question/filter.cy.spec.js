@@ -762,7 +762,7 @@ describe("scenarios > question > filter", () => {
       .contains("Count")
       .click();
     cy.findByText("Filter by this column").click();
-    cy.findByPlaceholderText("Enter desired number").type("42");
+    cy.findByPlaceholderText("Enter a number").type("42");
     cy.findByRole("button", { name: "Update filter" })
       .should("not.be.disabled")
       .click();
