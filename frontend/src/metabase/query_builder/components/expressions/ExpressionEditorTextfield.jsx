@@ -167,7 +167,6 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   componentDidMount() {
-    console.log(CEMode);
     this._setCaretPosition(
       this.state.source.length,
       this.state.source.length === 0,

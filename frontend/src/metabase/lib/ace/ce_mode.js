@@ -90,10 +90,6 @@ ace.define(
 
     oop.inherits(CEMode, TextMode);
 
-    console.log(oop);
-    console.log(CEHighlightRules);
-    console.log(CEMode);
-
     module.exports.CEMode = CEMode;
   },
 );
