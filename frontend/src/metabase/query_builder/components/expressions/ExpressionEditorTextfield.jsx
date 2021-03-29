@@ -13,7 +13,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
 
 import AceEditor from "metabase/components/TextEditor";
-import "ace/ace";
+import * as ace from "ace-builds/src-noconflict/ace";
 
 import CEMode from "metabase/lib/ace/ce_mode";
 
