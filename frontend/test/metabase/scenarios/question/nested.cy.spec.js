@@ -421,6 +421,63 @@ describe("scenarios > question > nested", () => {
         });
     }
   });
+
+  describe.skip("should use the same query for date filter in both base and nested questions (metabase#15352)", () => {
+    it("should work with 'between' date filter (metabase#15352-1)", () => {
+      assertOnFilter({
+        name: "15352-1",
+        filter: [
+          "between",
+          ["field-id", ORDERS.CREATED_AT],
+          "2020-02-01",
+          "2020-02-29",
+        ],
+        value: "543",
+      });
+    });
+
+    it("should work with 'after/before' date filter (metabase#15352-2)", () => {
+      assertOnFilter({
+        name: "15352-2",
+        filter: [
+          "and",
+          [">", ["field-id", ORDERS.CREATED_AT], "2020-01-31"],
+          ["<", ["field-id", ORDERS.CREATED_AT], "2020-03-01"],
+        ],
+        value: "543",
+      });
+    });
+
+    it("should work with 'on' date filter (metabase#15352-3)", () => {
+      assertOnFilter({
+        name: "15352-3",
+        filter: ["=", ["field-id", ORDERS.CREATED_AT], "2020-02-01"],
+        value: "17",
+      });
+    });
+
+    function assertOnFilter({ name, filter, value } = {}) {
+      cy.createQuestion({
+        name,
+        query: {
+          "source-table": ORDERS_ID,
+          filter,
+          aggregation: [["count"]],
+        },
+        type: "query",
+        display: "scalar",
+      }).then(({ body }) => {
+        cy.visit(`/question/${body.id}`);
+        cy.get(".ScalarValue").findByText(value);
+      });
+      // Start new question based on the saved one
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText(name).click();
+      cy.get(".ScalarValue").findByText(value);
+    }
+  });
 });
 
 function ordersJoinProducts(name) {
