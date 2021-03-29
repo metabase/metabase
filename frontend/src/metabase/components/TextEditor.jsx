@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import * as ace from 'ace-builds/src-noconflict/ace';
+import * as ace from "ace-builds/src-noconflict/ace";
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;

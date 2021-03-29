@@ -17,15 +17,15 @@ ace.define(
     const TextHighlightRules = require("ace/mode/text_highlight_rules")
       .TextHighlightRules;
 
-    let CEHighlightRules = function() {
-      let keywords = "AND|OR|NOT";
+    const CEHighlightRules = function() {
+      const keywords = "AND|OR|NOT";
 
-      let builtinFunctions =
+      const builtinFunctions =
         "abs|between|case|ceil|coalesce|concat|contains|endsWith|exp|floor|interval|length|log|lower|ltrim|power|regexextract|replace|" +
         "round|rtrim|sqrt|startsWith|substring|trim|upper|" +
         "Average|Count|CountIf|CumulativeCount|CumulativeSum|Distinct|Max|Median|Min|Percentile|Share|StandardDeviation|Sum|Variance";
 
-      let keywordMapper = this.createKeywordMapper(
+      const keywordMapper = this.createKeywordMapper(
         {
           "support.function": builtinFunctions,
           keyword: keywords,
@@ -34,7 +34,7 @@ ace.define(
         true,
       );
 
-      let sqlRules = [
+      const sqlRules = [
         {
           token: "string", // single line string -- assume dollar strings if multi-line for now
           regex: "['](?:(?:\\\\.)|(?:[^'\\\\]))*?[']",
@@ -84,7 +84,7 @@ ace.define(
 
     oop.inherits(CEHighlightRules, TextHighlightRules);
 
-    let CEMode = function() {
+    const CEMode = function() {
       this.HighlightRules = CEHighlightRules;
     };
 

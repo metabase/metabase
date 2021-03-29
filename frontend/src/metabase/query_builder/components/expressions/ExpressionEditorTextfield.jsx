@@ -117,7 +117,6 @@ export default class ExpressionEditorTextfield extends React.Component {
   static defaultProps = {
     expression: [null, ""],
     startRule: "expression",
-    placeholder: "write some math!",
   };
 
   getAcePosition(editor) {
@@ -297,13 +296,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     const endsWithWhitespace = /\s$/.test(source);
     const targetOffset = !hasSelection ? selectionEnd : null;
 
-    const {
-      expression,
-      compileError,
-      suggestions,
-      helpText,
-      syntaxTree,
-    } = source
+    const { expression, compileError, suggestions, helpText } = source
       ? this._processSource({
           source,
           targetOffset,
@@ -314,7 +307,6 @@ export default class ExpressionEditorTextfield extends React.Component {
           compileError: null,
           suggestions: [],
           helpText: null,
-          syntaxTree: null,
         };
 
     const isValid = expression !== undefined;
@@ -345,13 +337,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   render() {
-    const { placeholder } = this.props;
-    const {
-      compileError,
-      displayCompileError,
-      source,
-      suggestions,
-    } = this.state;
+    const { displayCompileError, source, suggestions } = this.state;
 
     const inputClassName = cx("input text-bold text-monospace", {
       "text-dark": source,
@@ -381,7 +367,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           value={source}
           style={{ ...inputStyle, paddingLeft: 26 }}
           theme="ace/theme/metabase"
-          mode="ace/mode/mbce"
+          mode={CEMode}
           ref={this.input}
           onChange={e => this.onExpressionChange(e)}
           sizeToFit
