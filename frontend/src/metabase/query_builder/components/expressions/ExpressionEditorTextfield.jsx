@@ -13,7 +13,7 @@ import colors from "metabase/lib/colors";
 import AceEditor from "metabase/components/TextEditor";
 import * as ace from "ace-builds/src-noconflict/ace";
 
-import CEMode from "metabase/lib/ace/ce_mode";
+// import CEMode from "metabase/lib/ace/ce_mode";
 
 import memoize from "lodash.memoize";
 
@@ -365,7 +365,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           value={source}
           style={{ ...inputStyle, paddingLeft: 26 }}
           theme="ace/theme/metabase"
-          mode={CEMode}
+          mode="ace/mode/mbce"
           ref={this.input}
           onChange={e => this.onExpressionChange(e)}
           sizeToFit
