@@ -17,8 +17,8 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]])
-  (:import [metabase.driver.common.parameters CommaSeparatedNumbers Date]
-           java.time.temporal.Temporal))
+  (:import java.time.temporal.Temporal
+           [metabase.driver.common.parameters CommaSeparatedNumbers Date]))
 
 (defn- ->utc-instant [t]
   (t/instant
