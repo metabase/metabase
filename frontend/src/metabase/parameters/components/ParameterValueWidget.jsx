@@ -22,7 +22,10 @@ import {
   makeGetMergedParameterFieldValues,
 } from "metabase/selectors/metadata";
 
-import { getParameterIconName } from "metabase/meta/Parameter";
+import {
+  getParameterIconName,
+  deriveFieldOperatorFromParameter,
+} from "metabase/meta/Parameter";
 
 import S from "./ParameterWidget.css";
 
@@ -138,7 +141,6 @@ export default class ParameterValueWidget extends Component {
       metadata,
       parameter,
       value,
-      values,
       setValue,
       isEditing,
       placeholder,
@@ -191,9 +193,7 @@ export default class ParameterValueWidget extends Component {
             >
               {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}
               <div className="mr1 text-nowrap">
-                {hasValue
-                  ? WidgetDefinition.format(value, values)
-                  : placeholderText}
+                {hasValue ? WidgetDefinition.format(value) : placeholderText}
               </div>
               <WidgetStatusIcon
                 isFullscreen={isFullscreen}
@@ -263,12 +263,11 @@ function Widget({
         dashboard={dashboard}
         placeholder={placeholder}
         value={value}
-        values={values}
         fields={fields}
         setValue={setValue}
         isEditing={isEditing}
-        commitImmediately={commitImmediately}
         focusChanged={onFocusChanged}
+        operator={deriveFieldOperatorFromParameter(parameter)}
       />
     );
   } else {

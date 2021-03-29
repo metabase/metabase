@@ -136,6 +136,31 @@
                                  :target $price
                                  :value  "4"}]}))))))))
 
+(deftest operations-e2e-test
+  (mt/test-drivers (params-test-drivers)
+    (testing "check that operations works correctly"
+      (let [f #(mt/formatted-rows [int]
+                 (qp/process-query %))]
+        (testing "binary numeric"
+          (is (= [[78]]
+                 (f (mt/query venues
+                      {:query      {:aggregation [[:count]]}
+                       :parameters [{:name   "price"
+                                     :type   :number/between
+                                     :target $price
+                                     :value [2 5]}]})))))
+        (testing "unary string"
+          (is (= [(case driver/*driver*
+                    ;; no idea why this count is off...
+                    (:mysql :sqlite :sqlserver) [12]
+                    [11])]
+                 (f (mt/query venues
+                      {:query      {:aggregation [[:count]]}
+                       :parameters [{:name   "name"
+                                     :type   :string/starts-with
+                                     :target $name
+                                     :value ["B"]}]})))))))))
+
 (deftest basic-where-test
   (mt/test-drivers (params-test-drivers)
     (testing "test that we can inject a basic `WHERE field = value` type param"
@@ -158,7 +183,17 @@
                      :parameters [{:name   "price"
                                    :type   :category
                                    :target $price
-                                   :value  4}]})))))))))
+                                   :value  4}]}))))))
+      (testing "`:number/>=` param type"
+        (is (= [[78]]
+               (mt/formatted-rows [int]
+                 (qp/process-query
+                  (mt/query venues
+                    {:query      {:aggregation [[:count]]}
+                     :parameters [{:name   "price"
+                                   :type   :number/>=
+                                   :target $price
+                                   :value  [2]}]})))))))))
 
 ;; Make sure that *multiple* values work. This feature was added in 0.28.0. You are now allowed to pass in an array of
 ;; parameter values instead of a single value, which should stick them together in a single MBQL `:=` clause, which
@@ -190,6 +225,30 @@
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
                                  :type   :category
+                                 :target $price
+                                 :value  [3 4]}]})))))))
+  (testing "Make sure multiple values with operators works"
+    (let [query (mt/query venues
+                  {:query      {:aggregation [[:count]]}
+                   :parameters [{:name   "price"
+                                 :type   :number/between
+                                 :target $price
+                                 :value  [3 4]}]})]
+      (mt/test-drivers (params-test-drivers)
+        (is (= [[19]]
+               (mt/formatted-rows [int]
+                 (qp/process-query query)))))
+
+      (testing "Make sure correct query is generated"
+        (is (= {:query  (str "SELECT count(*) AS \"count\" "
+                             "FROM \"PUBLIC\".\"VENUES\" "
+                             "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 3 AND 4")
+                :params nil}
+               (qp/query->native
+                (mt/query venues
+                  {:query      {:aggregation [[:count]]}
+                   :parameters [{:name   "price"
+                                 :type   :number/between
                                  :target $price
                                  :value  [3 4]}]}))))))))
 
@@ -242,7 +301,22 @@
                   {:query      {:order-by [[:asc $id]]}
                    :parameters [{:type   :id
                                  :target [:dimension $category_id->categories.name]
-                                 :value  ["BBQ"]}]}))))))))
+                                 :value  ["BBQ"]}]}))))))
+    (testing "Operators work on fk"
+      (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
+              [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
+              [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
+              [35 "Smoke City Market" 5 34.1661 -118.448 1]
+              [37 "bigmista's barbecue" 5 34.118 -118.26 2]
+              [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
+              [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
+             (mt/formatted-rows :venues
+               (qp/process-query
+                (mt/query venues
+                  {:query      {:order-by [[:asc $id]]}
+                   :parameters [{:type   :string/starts-with
+                                 :target [:dimension $category_id->categories.name]
+                                 :value  ["BB"]}]}))))))))
 
 (deftest test-mbql-parameters
   (testing "Should be able to pass parameters in to an MBQL query"

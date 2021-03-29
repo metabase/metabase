@@ -106,7 +106,7 @@ export default class TagEditorParam extends Component {
   }
 
   render() {
-    const { tag, database, databases, metadata } = this.props;
+    const { tag, database, databases, metadata, parameter } = this.props;
     let widgetOptions = [],
       table,
       fieldMetadataLoaded = false;
@@ -241,11 +241,20 @@ export default class TagEditorParam extends Component {
           <div className="pb3">
             <h4 className="text-medium pb1">{t`Default filter widget value`}</h4>
             <ParameterValueWidget
-              parameter={{
-                type:
-                  tag["widget-type"] ||
-                  (tag.type === "date" ? "date/single" : null),
-              }}
+              parameter={
+                tag.type === "dimension"
+                  ? parameter || {
+                      ...tag,
+                      type:
+                        tag["widget-type"] ||
+                        (tag.type === "date" ? "date/single" : null),
+                    }
+                  : {
+                      type:
+                        tag["widget-type"] ||
+                        (tag.type === "date" ? "date/single" : null),
+                    }
+              }
               value={tag.default}
               setValue={value => this.setParameterAttribute("default", value)}
               className="AdminSelect p1 text-bold text-medium bordered border-medium rounded bg-white"

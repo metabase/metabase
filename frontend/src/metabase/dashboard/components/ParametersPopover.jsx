@@ -1,6 +1,9 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";
+import Icon from "metabase/components/Icon";
+import { getParameterIconName } from "metabase/meta/Parameter";
+import styled from "styled-components";
 
 import type {
   Parameter,
@@ -10,6 +13,10 @@ import type {
 import _ from "underscore";
 
 import type { ParameterSection } from "metabase/meta/Dashboard";
+
+const PopoverBody = styled.div`
+  max-width: 300px;
+`;
 
 export default class ParametersPopover extends Component {
   props: {
@@ -68,7 +75,11 @@ export const ParameterOptionsSection = ({
   onClick: () => any,
 }) => (
   <li onClick={onClick} className="p1 px3 cursor-pointer brand-hover">
-    <div className="text-brand text-bold" style={{ marginBottom: 4 }}>
+    <div
+      className="text-brand text-bold flex align-center"
+      style={{ marginBottom: 4 }}
+    >
+      <Icon size="16" name={getParameterIconName(section.id)} className="mr1" />
       {section.name}
     </div>
     <div className="text-medium">{section.description}</div>
@@ -82,7 +93,7 @@ export const ParameterOptionsSectionsPane = ({
   sections: Array<ParameterSection>,
   onSelectSection: ParameterSection => any,
 }) => (
-  <div className="pb2">
+  <PopoverBody className="pb2">
     <h3 className="pb2 pt3 px3">{t`What do you want to filter?`}</h3>
     <ul>
       {sections.map(section => (
@@ -92,7 +103,7 @@ export const ParameterOptionsSectionsPane = ({
         />
       ))}
     </ul>
-  </div>
+  </PopoverBody>
 );
 
 export const ParameterOptionItem = ({
@@ -117,7 +128,7 @@ export const ParameterOptionsPane = ({
   options: ?Array<ParameterOption>,
   onSelectOption: ParameterOption => any,
 }) => (
-  <div className="pb2">
+  <PopoverBody className="pb2">
     <h3 className="pb2 pt3 px3">{t`What kind of filter?`}</h3>
     <ul>
       {options &&
@@ -128,5 +139,5 @@ export const ParameterOptionsPane = ({
           />
         ))}
     </ul>
-  </div>
+  </PopoverBody>
 );

@@ -124,7 +124,7 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.icon("filter").click();
       popover().within(() => {
         cy.findByText("Location").click();
-        cy.findByText("State").click();
+        cy.findByText("Dropdown").click();
       });
 
       // connect that to people.state
@@ -142,7 +142,7 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.findByText("add another dashboard filter").click();
       popover().within(() => {
         cy.findByText("Location").click();
-        cy.findByText("City").click();
+        cy.findByText("Starts with").click();
       });
 
       // connect that to person.city
@@ -160,14 +160,14 @@ describe("scenarios > dashboard > chained filter", () => {
         .parent()
         .within(() => {
           // turn on the toggle
-          cy.findByText("State")
+          cy.findByText("Location")
             .parent()
             .within(() => {
               cy.get("a").click();
             });
 
           // open up the list of linked columns
-          cy.findByText("State").click();
+          cy.findByText("Location").click();
           // It's hard to assert on the "table.column" pairs.
           // We just assert that the headers are there to know that something appeared.
           cy.findByText("Filtering column");
@@ -179,12 +179,12 @@ describe("scenarios > dashboard > chained filter", () => {
 
       // now test that it worked!
       // Select Alaska as a state. We should see Anchorage as a option but not Anacoco
-      cy.findByText("State").click();
+      cy.findByText("Location").click();
       popover().within(() => {
         cy.findByText("AK").click();
         cy.findByText("Add filter").click();
       });
-      cy.findByText("City").click();
+      cy.findByText("Location starts with").click();
       popover().within(() => {
         cy.findByPlaceholderText(
           has_field_values === "search" ? "Search by City" : "Search the list",

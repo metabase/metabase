@@ -289,7 +289,11 @@
 (defmethod ->rvalue ::not [[_ value]]
   {$not (->rvalue value)})
 
-(defmulti ^:private compile-filter mbql.u/dispatch-by-clause-name-or-class)
+(defmulti compile-filter
+  "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
+  compiling the \"where\" clause equivalent."
+  {:arglists '([clause])}
+  mbql.u/dispatch-by-clause-name-or-class)
 
 (def ^:private ^:dynamic *top-level-filter?*
   "Whether we are compiling a top-level filter clause. This means we can generate somewhat simpler `$match` clauses that
@@ -306,8 +310,10 @@
   (if (mbql.u/is-clause? ::not value)
     {$not (str-match-pattern options prefix (second value) suffix)}
     (let [case-sensitive? (get options :case-sensitive true)]
-      (re-pattern (str (when-not case-sensitive? "(?i)") prefix (->rvalue value) suffix)))))
+      {$regex (str (when-not case-sensitive? "(?i)") prefix (->rvalue value) suffix)})))
 
+;; these are changed to {field {$regex "regex"}} instead of {field #regex} for serialization purposes. When doing
+;; native query substitution we need a string and the explicit regex form is better there
 (defmethod compile-filter :contains    [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v nil)})
 (defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
 (defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})

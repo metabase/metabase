@@ -1,4 +1,5 @@
 import Question from "metabase-lib/lib/Question";
+import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type { Card } from "metabase-types/types/Card";
@@ -43,6 +44,12 @@ export const PARAMETER_SECTIONS: ParameterSection[] = [
     id: "id",
     name: t`ID`,
     description: t`User ID, product ID, event ID, etc.`,
+    options: [],
+  },
+  {
+    id: "number",
+    name: t`Number`,
+    description: t`Subtotal, Age, Price, Quantity, etc.`,
     options: [],
   },
   {
@@ -92,7 +99,10 @@ export function getParameterMappingOptions(
             name: dimension.displayName(),
             icon: dimension.icon(),
             target: ["dimension", dimension.mbql()],
-            isForeign: !!(dimension.fk() || dimension.joinAlias()),
+            // these methods don't exist on instances of ExpressionDimension
+            isForeign: !!(dimension instanceof ExpressionDimension
+              ? false
+              : dimension.fk() || dimension.joinAlias()),
           })),
         ),
     );
@@ -133,7 +143,7 @@ export function createParameter(
   option: ParameterOption,
   parameters: Parameter[] = [],
 ): Parameter {
-  let name = option.name;
+  let name = option.combinedName || option.name;
   let nameIndex = 0;
   // get a unique name
   while (_.any(parameters, p => p.name === name)) {
