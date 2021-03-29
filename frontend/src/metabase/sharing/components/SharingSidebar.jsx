@@ -748,8 +748,8 @@ class SharingSidebar extends React.Component {
     }
 
     if (editingMode === "new-pulse" || pulses.length === 0) {
-      const emailSpec = formInput.channels.email;
-      const slackSpec = formInput.channels.slack;
+      const emailSpec = formInput.channels.email || {};
+      const slackSpec = formInput.channels.slack || {};
 
       return (
         <Sidebar onCancel={this.onCancel}>

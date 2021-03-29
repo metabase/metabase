@@ -85,7 +85,7 @@ export function cleanPulse(pulse, channelSpecs) {
 
 export function getDefaultChannel(channelSpecs) {
   // email is the first choice
-  if (channelSpecs.email.configured) {
+  if (channelSpecs.email && channelSpecs.email.configured) {
     return channelSpecs.email;
   }
   // otherwise just pick the first configured
