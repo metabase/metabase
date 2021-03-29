@@ -648,10 +648,7 @@ describe("scenarios > dashboard", () => {
     cy.signInAsNormalUser();
     cy.visit("/dashboard/1");
 
-    cy.wait("@loadDashboard").then(xhr => {
-      expect(xhr.status).not.to.eq(403);
-      expect(xhr.response.body).not.to.contain("You don't have permissions");
-    });
+    cy.wait("@loadDashboard");
     cy.findByText("Orders in a dashboard");
     cy.contains("37.65");
   });
