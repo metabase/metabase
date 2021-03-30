@@ -9,7 +9,14 @@ import {
 import { USER_GROUPS } from "__support__/cypress_data";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+} = SAMPLE_DATASET;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
@@ -380,6 +387,61 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("View these Orders").click();
     cy.findByText("Quantity between 10 20");
     cy.findByText("Showing 85 rows");
+  });
+
+  it.skip("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
+    cy.createQuestion({
+      name: "15250",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [["field-id", PRODUCTS.CATEGORY]],
+      },
+      display: "pie",
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("15250D").then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          // Add click through to the custom destination on a card
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 16,
+                sizeY: 10,
+                series: [],
+                visualization_settings: {
+                  click_behavior: {
+                    type: "link",
+                    linkType: "url",
+                    linkTemplate: "question/{{count}}",
+                  },
+                },
+                parameter_mappings: [],
+              },
+            ],
+          });
+        });
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      });
+    });
+
+    cy.get("[class*=PieChart__Donut]")
+      .find("path")
+      .first()
+      .as("doohickeyChart")
+      .trigger("mousemove");
+    popover().within(() => {
+      cy.findByText("Doohickey");
+      cy.findByText("42");
+    });
+    cy.get("@doohickeyChart").click();
+    cy.location("pathname").should("eq", "/question/42");
   });
 
   describe("for an unsaved question", () => {
