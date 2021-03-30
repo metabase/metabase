@@ -790,9 +790,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get(".ace_content").contains(
-      'NOT contains([Title], "Wallet")',
-    );
+    cy.get(".ace_content").contains('NOT contains([Title], "Wallet")');
   });
 
   it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
@@ -844,9 +842,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Reviewer contains MULLER").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get(".ace_content").contains(
-      'contains([Reviewer], "MULLER")',
-    );
+    cy.get(".ace_content").contains('contains([Reviewer], "MULLER")');
     cy.findByRole("button", { name: "Done" }).click();
     cy.wait("@dataset.2").then(xhr => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
