@@ -4,6 +4,7 @@ import {
   createNativeQuestion,
   openOrdersTable,
   remapDisplayValueToFK,
+  sidebar,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -422,6 +423,49 @@ describe("scenarios > question > nested", () => {
           expect(className).to.contain("selected");
         });
     }
+  });
+
+  ["count", "average"].forEach(test => {
+    it.skip(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.createNativeQuestion({
+        name: "15397",
+        native: {
+          query:
+            "select count(*), orders.product_id from orders group by orders.product_id;",
+        },
+      });
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("15397").click();
+      cy.wait("@dataset");
+      cy.findAllByText("Summarize")
+        .first()
+        .click();
+      if (test === "count") {
+        cy.findByText("Group by")
+          .parent()
+          .findByText("COUNT(*)")
+          .click();
+      } else {
+        sidebar()
+          .findByText("Count")
+          .should("be.visible")
+          .click();
+        cy.findByText("Average of ...").click();
+        popover()
+          .findByText("COUNT(*)")
+          .click();
+      }
+
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+      cy.get(".bar").should("have.length.of.at.least", 20);
+    });
   });
 });
 
