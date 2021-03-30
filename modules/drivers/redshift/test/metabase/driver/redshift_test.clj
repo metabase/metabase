@@ -1,8 +1,12 @@
 (ns metabase.driver.redshift-test
-  (:require [clojure.string :as str]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
-            [environ.core :as env]
+            [metabase.driver.redshift :as redshift]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-database :as sync.describe-database]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.setting :as setting]
@@ -17,7 +21,7 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import (java.sql ResultSetMetaData ResultSet)
+  (:import [java.sql ResultSet ResultSetMetaData]
            metabase.plugins.jdbc_proxy.ProxyDriver))
 
 (use-fixtures :once (fixtures/initialize :plugins))
@@ -230,3 +234,30 @@
                   (= [1] (-> {:query "SELECT 1"}
                              (mt/native-query)
                              (qp/process-query))))))))))))
+
+(deftest syncable-schemas-test
+  (mt/test-driver :redshift
+    (testing "Should filter out schemas for which the DB has no perms"
+      ;; Don't know how to create a schema with no perms for testing, so instead we'll just test a schema that doesn't
+      ;; exist, since you can't have perms for something that doesn't exist.
+      (let [fake-schema-name (u/qualified-name ::fake-schema)]
+        ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
+        (with-redefs [sync.describe-database/all-schemas (let [orig sync.describe-database/all-schemas]
+                                                           (fn [metadata]
+                                                             (eduction
+                                                              cat
+                                                              [(orig metadata) [fake-schema-name]])))]
+          (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+            (with-open [conn (jdbc/get-connection jdbc-spec)]
+              (letfn [(schemas []
+                        (reduce
+                         conj
+                         #{}
+                         (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn))))]
+                (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
+                  (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
+                                                                                    reducible)]
+                    (is (contains? (schemas) fake-schema-name))))
+                ;; TODO -- not sure if there's a way to actually test a REAL schema without permissions as well.
+                (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
+                  (is (not (contains? (schemas) fake-schema-name))))))))))))
