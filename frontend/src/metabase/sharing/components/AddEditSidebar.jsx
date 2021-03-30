@@ -19,6 +19,8 @@ import SendTestEmail from "metabase/components/SendTestEmail";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Toggle from "metabase/components/Toggle";
 import Select, { Option } from "metabase/components/Select";
+import CollapseSection from "metabase/components/CollapseSection";
+import ParametersList from "metabase/parameters/components/ParametersList";
 
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
@@ -59,6 +61,7 @@ function _AddEditEmailSidebar({
   users,
   parameters,
   defaultParametersById,
+  dashboard,
 
   // form callbacks
   handleSave,
@@ -69,6 +72,7 @@ function _AddEditEmailSidebar({
   toggleSkipIfEmpty,
   setPulse,
   handleArchive,
+  setPulseParameters,
 }) {
   return (
     <Sidebar
@@ -127,11 +131,22 @@ function _AddEditEmailSidebar({
             testPulse={testPulse}
           />
         </div>
-        <DefaultParametersSection
-          className="py3 mt2 border-top"
-          parameters={parameters}
-          defaultParametersById={defaultParametersById}
-        />
+        {MetabaseSettings.isEnterprise() ? (
+          <ParametersSection
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            dashboard={dashboard}
+            pulse={pulse}
+            setPulseParameters={setPulseParameters}
+            defaultParametersById={defaultParametersById}
+          />
+        ) : (
+          <DefaultParametersSection
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            defaultParametersById={defaultParametersById}
+          />
+        )}
         <div className="text-bold py3 flex justify-between align-center border-top">
           <Heading>{t`Don't send if there aren't results`}</Heading>
           <Toggle
@@ -174,6 +189,7 @@ _AddEditEmailSidebar.propTypes = {
   users: PropTypes.array,
   parameters: PropTypes.array.isRequired,
   defaultParametersById: PropTypes.object.isRequired,
+  dashboard: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,
@@ -182,6 +198,7 @@ _AddEditEmailSidebar.propTypes = {
   toggleSkipIfEmpty: PropTypes.func.isRequired,
   setPulse: PropTypes.func.isRequired,
   handleArchive: PropTypes.func.isRequired,
+  setPulseParameters: PropTypes.func.isRequired,
 };
 
 function DeleteSubscriptionAction({ pulse, handleArchive }) {
@@ -253,7 +270,7 @@ function _AddEditSlackSidebar({
   channelSpec,
   parameters,
   defaultParametersById,
-
+  dashboard,
   // form callbacks
   handleSave,
   onCancel,
@@ -261,6 +278,7 @@ function _AddEditSlackSidebar({
   onChannelScheduleChange,
   toggleSkipIfEmpty,
   handleArchive,
+  setPulseParameters,
 }) {
   return (
     <Sidebar
@@ -299,11 +317,22 @@ function _AddEditSlackSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <DefaultParametersSection
-          className="py3 mt2 border-top"
-          parameters={parameters}
-          defaultParametersById={defaultParametersById}
-        />
+        {MetabaseSettings.isEnterprise() ? (
+          <ParametersSection
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            dashboard={dashboard}
+            pulse={pulse}
+            setPulseParameters={setPulseParameters}
+            defaultParametersById={defaultParametersById}
+          />
+        ) : (
+          <DefaultParametersSection
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            defaultParametersById={defaultParametersById}
+          />
+        )}
         <div className="text-bold py2 flex justify-between align-center border-top">
           <Heading>{t`Don't send if there aren't results`}</Heading>
           <Toggle
@@ -330,12 +359,14 @@ _AddEditSlackSidebar.propTypes = {
   users: PropTypes.array,
   parameters: PropTypes.array.isRequired,
   defaultParametersById: PropTypes.object.isRequired,
+  dashboard: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,
   onChannelScheduleChange: PropTypes.func.isRequired,
   toggleSkipIfEmpty: PropTypes.func.isRequired,
   handleArchive: PropTypes.func.isRequired,
+  setPulseParameters: PropTypes.func.isRequired,
 };
 
 function CaveatMessage() {
@@ -450,3 +481,63 @@ function formatDefaultParamValues(parameters, defaultParametersById) {
     })
     .filter(Boolean);
 }
+
+function ParametersSection({
+  className,
+  parameters,
+  defaultParametersById,
+  dashboard,
+  pulse,
+  setPulseParameters,
+}) {
+  const pulseParameters = pulse.parameters || [];
+  const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
+    map[parameter.id] = parameter.value;
+    return map;
+  }, {});
+
+  const collatedParameters = parameters.map(parameter => {
+    const pulseParamValue = pulseParamValuesById[parameter.id];
+    return {
+      ...parameter,
+      value: pulseParamValue == null ? parameter.default : pulseParamValue,
+    };
+  });
+
+  const setParameterValue = (id, value) => {
+    const parameter = parameters.find(parameter => parameter.id === id);
+    setPulseParameters([
+      ...pulseParameters.filter(parameter => parameter.id !== id),
+      {
+        ...parameter,
+        value,
+      },
+    ]);
+  };
+
+  return (
+    <CollapseSection
+      header={<Heading>{t`Set filter values for when this gets sent`}</Heading>}
+      className={cx(className)}
+      initialState={parameters.length && "expanded"}
+      bodyClass="mt2"
+    >
+      <ParametersList
+        className="align-stretch row-gap-1"
+        vertical
+        dashboard={dashboard}
+        parameters={collatedParameters}
+        setParameterValue={setParameterValue}
+      />
+    </CollapseSection>
+  );
+}
+
+ParametersSection.propTypes = {
+  className: PropTypes.string,
+  parameters: PropTypes.array.isRequired,
+  defaultParametersById: PropTypes.object.isRequired,
+  dashboard: PropTypes.object.isRequired,
+  pulse: PropTypes.object.isRequired,
+  setPulseParameters: PropTypes.func.isRequired,
+};
