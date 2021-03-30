@@ -463,4 +463,62 @@ describe("scenarios > question > native", () => {
       });
     });
   });
+
+  it.skip("field id should update when database source is changed (metabase#14145)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+    cy.signInAsAdmin();
+    // Add another H2 sample dataset DB
+    cy.request("POST", "/api/database", {
+      engine: "h2",
+      name: "Sample2",
+      details: {
+        db:
+          "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+      },
+      auto_run_queries: true,
+      is_full_sync: true,
+      schedules: {},
+    });
+
+    cy.createNativeQuestion({
+      name: "14145",
+      native: {
+        query: "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}",
+        "template-tags": {
+          FILTER: {
+            id: "774521fb-e03f-3df1-f2ae-e952c97035e3",
+            name: "FILTER",
+            "display-name": "Filter",
+            type: "dimension",
+            dimension: ["field-id", PRODUCTS.CATEGORY],
+            "widget-type": "category",
+            default: null,
+          },
+        },
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+    // Change the source from "Sample Dataset" to the other database
+    cy.findByText(/Open Editor/i).click();
+    cy.get(".GuiBuilder-data")
+      .as("source")
+      .contains("Sample Dataset")
+      .click();
+    cy.findByText("Sample2").click();
+    // First assert on the UI
+    cy.icon("variable").click();
+    cy.findByText(/Field to map to/)
+      .siblings("a")
+      .contains("Category");
+    // Rerun the query and assert on the dimension (field-id) that didn't change
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").then(xhr => {
+      const { dimension } = xhr.response.body.json_query.native[
+        "template-tags"
+      ].FILTER;
+      expect(dimension).not.to.contain(PRODUCTS.CATEGORY);
+    });
+  });
 });
