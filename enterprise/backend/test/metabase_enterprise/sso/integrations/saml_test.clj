@@ -469,6 +469,7 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
 (deftest relay-state-e2e-test
   (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"
     (with-saml-default-setup
+      ;; The test HTTP client will automatically URL encode these for us.
       (doseq [redirect-url ["/collection/root"
                             default-redirect-uri
                             "/"]]
