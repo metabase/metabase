@@ -155,7 +155,6 @@ export class UnconnectedDataSelector extends Component {
       isError: false,
       ...state,
       ...computedState,
-      showSavedQuestions: false,
     };
   }
 
@@ -558,9 +557,8 @@ export class UnconnectedDataSelector extends Component {
       // data before advancing to the next step.
       await this.previousStep();
     }
-    await this.nextStep({ selectedDatabaseId: database && database.id });
-    if (database.is_saved_questions) {
-      this.setState({ showSavedQuestions: true });
+    if (database) {
+      await this.nextStep({ selectedDatabaseId: database && database.id });
     }
   };
 
@@ -644,6 +642,21 @@ export class UnconnectedDataSelector extends Component {
       onBack: this.getPreviousStep() ? this.previousStep : null,
     };
 
+    const { activeStep, selectedDatabase } = this.state;
+    if (selectedDatabase && selectedDatabase.is_saved_questions) {
+      if (activeStep === SCHEMA_STEP && combineDatabaseSchemaSteps) {
+        const { query } = this.props;
+        return (
+          <SavedQuestionPicker
+            query={query}
+            onChangeSchema={this.onChangeSchema}
+            onChangeTable={this.onChangeTable}
+            {...props}
+          />
+        );
+      }
+    }
+
     switch (this.state.activeStep) {
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
@@ -666,20 +679,7 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
-  renderSavedQuestion() {
-    const { query } = this.props;
-    return (
-      <SavedQuestionPicker
-        query={query}
-        onChangeSchema={this.onChangeSchema}
-        onChangeTable={this.onChangeTable}
-        onBack={() => this.setState({ showSavedQuestions: false })}
-      />
-    );
-  }
-
   render() {
-    const { showSavedQuestions } = this.state;
     return (
       <PopoverWithTrigger
         id="DataPopover"
@@ -693,9 +693,7 @@ export class UnconnectedDataSelector extends Component {
         sizeToFit
         isOpen={this.props.isOpen}
       >
-        {showSavedQuestions
-          ? this.renderSavedQuestion()
-          : this.renderActiveStep()}
+        {this.renderActiveStep()}
       </PopoverWithTrigger>
     );
   }

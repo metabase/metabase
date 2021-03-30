@@ -24,10 +24,6 @@ const SAVED_QUESTION_DB_ID = -1337;
     generateSchemaId(SAVED_QUESTION_DB_ID, props.schemaName),
 })
 class SavedQuestionTableList extends React.Component {
-  async componentDidMount() {
-    const { schema, onChangeSchema } = this.props;
-    onChangeSchema(schema); // FIXME: is this the right moment?
-  }
   render() {
     const { schema, onChangeTable } = this.props;
     const { tables = [] } = schema;
@@ -75,9 +71,6 @@ class SavedQuestionPicker extends React.Component {
     });
   };
   async componentDidMount() {
-    // IMPORTANT
-    // set the database to be the saved question database when we mount
-    this.props.query.setDatabaseId(SAVED_QUESTION_DB_ID);
     // TODO api response is unfortunate so we'll absolutely need to make this
     // respond better
     const collectionSchemas = await MetabaseApi.db_schemas({
