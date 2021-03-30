@@ -1,8 +1,8 @@
 (ns metabase.sync.analyze.classifiers.no-preview-display-test
   "Tests for the category classifier."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.models.field :as field]
-            [metabase.sync.analyze.classifiers.no-preview-display :refer :all]))
+            [metabase.sync.analyze.classifiers.no-preview-display :as no-preview-display]))
 
 (def ^:private long-text-field
   (field/map->FieldInstance
@@ -24,21 +24,27 @@
                             :average-length 130.516}}}
     :base_type           :type/Text}))
 
-;; Leave short text fields intact
-(expect
-  nil
-  (:preview_display (infer-no-preview-display long-text-field
-                                              (-> long-text-field
-                                                  :fingerprint
-                                                  (assoc-in [:type :type/Text :average-length] 2)))))
+(deftest short-fields-test
+  (testing "Leave short text fields intact"
+    (is (= nil
+           (:preview_display
+            (no-preview-display/infer-no-preview-display
+             long-text-field
+             (-> long-text-field
+                 :fingerprint
+                 (assoc-in [:type :type/Text :average-length] 2))))))))
 
-;; Don't preview generic long text fields
-(expect
-  false
-  (:preview_display (infer-no-preview-display long-text-field (:fingerprint long-text-field))))
+(deftest generic-long-text-fields-test
+  (testing "Don't preview generic long text fields"
+    (is (= false
+           (:preview_display
+            (no-preview-display/infer-no-preview-display
+             long-text-field (:fingerprint long-text-field)))))))
 
-;; If the field has a semantic type, show it regardless of it's length
-(expect
-  nil
-  (:preview_display (infer-no-preview-display (assoc long-text-field :semantic_type :type/Name)
-                                              (:fingerprint long-text-field))))
+(deftest semantic-type-test
+  (testing "If the field has a semantic type, show it regardless of it's length"
+    (is (= nil
+           (:preview_display
+            (no-preview-display/infer-no-preview-display
+             (assoc long-text-field :semantic_type :type/Name)
+             (:fingerprint long-text-field)))))))

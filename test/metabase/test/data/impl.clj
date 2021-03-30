@@ -40,9 +40,12 @@
       (let [driver (driver/the-driver driver)]
         (or
          (@locks driver)
-         (do
-           (swap! locks update driver #(or % (Object.)))
-           (@locks driver)))))))
+         (locking driver->create-database-lock
+           (or
+            (@locks driver)
+            (do
+              (swap! locks update driver #(or % (Object.)))
+              (@locks driver)))))))))
 
 (defmulti get-or-create-database!
   "Create DBMS database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
