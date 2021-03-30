@@ -526,7 +526,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText(AGGREGATED_FILTER);
   });
 
-  it("in a simple question should display popup for custom expression options (metabase#14341)", () => {
+  it.skip("in a simple question should display popup for custom expression options (metabase#14341)", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -633,7 +633,7 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  it("should offer case expression in the auto-complete suggestions", () => {
+  it.skip("should offer case expression in the auto-complete suggestions", () => {
     openReviewsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -691,7 +691,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Rye").should("not.exist");
   });
 
-  it("should filter using IsNull() and IsEmpty()", () => {
+  it.skip("should filter using IsNull() and IsEmpty()", () => {
     openReviewsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -722,7 +722,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Showing 1,112 rows");
   });
 
-  it("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
+  it.skip("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
     openReviewsTable();
     cy.contains("Reviewer").click();
     cy.findByText("Filter by this column").click();
@@ -746,7 +746,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Showing 1,112 rows");
   });
 
-  it("should convert 'is empty' on a numeric column to a custom expression using IsNull()", () => {
+  it.skip("should convert 'is empty' on a numeric column to a custom expression using IsNull()", () => {
     openReviewsTable();
     cy.contains("Rating").click();
     cy.findByText("Filter by this column").click();
@@ -770,7 +770,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Showing 1,112 rows");
   });
 
-  it("should convert negative filter to custom expression (metabase#14880)", () => {
+  it.skip("should convert negative filter to custom expression (metabase#14880)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -850,7 +850,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("wilma-muller");
   });
 
-  it("should reject a number literal", () => {
+  it.skip("should reject a number literal", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -864,7 +864,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Expecting boolean but found 3.14159");
   });
 
-  it("should reject a string literal", () => {
+  it.skip("should reject a string literal", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();

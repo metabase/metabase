@@ -91,7 +91,7 @@ describe("scenarios > question > notebook", () => {
     cy.get("[contenteditable='true']").contains("between([ID], 96, 97)");
   });
 
-  it("should show the correct number of function arguments in a custom expression", () => {
+  it.skip("should show the correct number of function arguments in a custom expression", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -105,7 +105,7 @@ describe("scenarios > question > notebook", () => {
     cy.contains(/^Function contains expects 2 arguments/i);
   });
 
-  it("should show the correct number of CASE arguments in a custom expression", () => {
+  it.skip("should show the correct number of CASE arguments in a custom expression", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     popover().within(() => {
@@ -117,7 +117,7 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  it("should process the updated expression when pressing Enter", () => {
+  it.skip("should process the updated expression when pressing Enter", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -584,7 +584,7 @@ describe("scenarios > question > notebook", () => {
       openOrdersTable({ mode: "notebook" });
     });
 
-    it("should work on custom column with `case`", () => {
+    it.skip("should work on custom column with `case`", () => {
       cy.icon("add_data").click();
       cy.get(".ace_content")
         .click()
@@ -604,7 +604,7 @@ describe("scenarios > question > notebook", () => {
       cy.contains("Small");
     });
 
-    it("should work on custom filter", () => {
+    it.skip("should work on custom filter", () => {
       cy.findByText("Filter").click();
       cy.findByText("Custom Expression").click();
 
@@ -630,7 +630,7 @@ describe("scenarios > question > notebook", () => {
 
     Object.entries(CASES).forEach(([filter, formula]) => {
       const [expression, result] = formula;
-      it(`should work on custom aggregation with ${filter}`, () => {
+      it.skip(`should work on custom aggregation with ${filter}`, () => {
         cy.findByText("Summarize").click();
         cy.findByText("Custom Expression").click();
 

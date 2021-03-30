@@ -201,7 +201,7 @@ describe("scenarios > question > new", () => {
       cy.contains("37.65");
     });
 
-    it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
+    it.skip("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       popover()

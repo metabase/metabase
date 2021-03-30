@@ -25,7 +25,7 @@ describe("scenarios > question > custom columns", () => {
     cy.signInAsNormalUser();
   });
 
-  it("can create a custom column (metabase#13241)", () => {
+  it.skip("can create a custom column (metabase#13241)", () => {
     const columnName = "Simple Math";
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
@@ -46,7 +46,7 @@ describe("scenarios > question > custom columns", () => {
     cy.get(".Visualization").contains(columnName);
   });
 
-  it("can create a custom column with an existing column name", () => {
+  it.skip("can create a custom column with an existing column name", () => {
     customFormulas.forEach(({ customFormula, columnName }) => {
       openOrdersTable({ mode: "notebook" });
       cy.icon("add_data").click();
@@ -67,7 +67,7 @@ describe("scenarios > question > custom columns", () => {
     });
   });
 
-  it("should create custom column with fields from aggregated data (metabase#12762)", () => {
+  it.skip("should create custom column with fields from aggregated data (metabase#12762)", () => {
     openOrdersTable({ mode: "notebook" });
 
     cy.findByText("Summarize").click();
@@ -167,7 +167,7 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("There was a problem with your question").should("not.exist");
   });
 
-  it("should not return same results for columns with the same name (metabase#12649)", () => {
+  it.skip("should not return same results for columns with the same name (metabase#12649)", () => {
     openOrdersTable({ mode: "notebook" });
     // join with Products
     cy.findByText("Join data").click();
