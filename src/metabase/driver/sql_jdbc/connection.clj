@@ -75,8 +75,8 @@
    ;; Connections acquired are no longer needed. If maxIdleTime is set, maxIdleTimeExcessConnections should be smaller
    ;; if the parameter is to have any effect.
    ;;
-   ;; Kill idle connections above the minPoolSize after 15 minutes.
-   "maxIdleTimeExcessConnections" (* 15 60)})
+   ;; Kill idle connections above the minPoolSize after 5 minutes.
+   "maxIdleTimeExcessConnections" (* 5 60)})
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
