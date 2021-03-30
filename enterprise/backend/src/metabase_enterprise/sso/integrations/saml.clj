@@ -1,5 +1,21 @@
 (ns metabase-enterprise.sso.integrations.saml
-  "Implementation of the SAML backend for SSO"
+  "Implementation of the SAML backend for SSO.
+
+  The basic flow of of a SAML login is:
+
+  1. User attempts to access some `url` but is not authenticated
+
+  2. User is redirected to `GET /auth/sso`
+
+  3. Metabase issues another redirect to the identity provider URI
+
+  4. User logs into their identity provider (i.e. Auth0)
+
+  5. Identity provider POSTs to Metabase with successful auth info
+
+  6. Metabase parses/validates the SAML response
+
+  7. Metabase inits the user session, responds with a redirect to back to the original `url`"
   (:require [buddy.core.codecs :as codecs]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -78,10 +94,10 @@
 (defmethod sso/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
-  [req]
+  [request]
   (check-saml-enabled)
   (try
-    (let [redirect-url (or (get-in req [:params :redirect])
+    (let [redirect-url (or (get-in request [:params :redirect])
                            (log/warn (trs "Warning: expected `redirect` param, but none is present"))
                            (public-settings/site-url))
           idp-url      (sso-settings/saml-identity-provider-uri)
@@ -92,9 +108,7 @@
                          :acs-url    (acs-url)
                          :idp-url    idp-url
                          :credential (sp-cert-keystore-details)})
-          ;; encode the redirect URL to base-64 if it's not already encoded.
-          relay-state  (cond-> redirect-url
-                         (not (u/base64-string? redirect-url)) saml/str->base64)]
+          relay-state  (saml/str->base64 redirect-url)]
       (saml/idp-redirect-response saml-request idp-url relay-state))
     (catch Throwable e
       (let [msg (trs "Error generating SAML request")]
