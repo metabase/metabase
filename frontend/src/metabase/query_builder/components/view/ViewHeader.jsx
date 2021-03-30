@@ -5,11 +5,9 @@ import { Box } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
-import Question from "metabase-lib/lib/Question";
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
 import QuestionDataSource from "./QuestionDataSource";
@@ -262,13 +260,6 @@ export class ViewTitleHeader extends React.Component {
               />
             </Box>
           )}
-          {question.query().database() && isNative && isSaved && (
-            <Link to={getExploreResultsUrl(question)}>
-              <ViewButton medium p={[2, 1]} icon="insight" labelBreakpoint="sm">
-                {t`Explore results`}
-              </ViewButton>
-            </Link>
-          )}
           {isRunnable && !isNativeEditorOpen && (
             <RunButtonWithTooltip
               className={cx("text-brand-hover hide", {
@@ -291,21 +282,6 @@ export class ViewTitleHeader extends React.Component {
       </ViewSection>
     );
   }
-}
-
-function getExploreResultsUrl(question) {
-  return new Question(
-    {
-      dataset_query: {
-        database: question.query().database().id,
-        query: { "source-table": `card__${question.id()}` },
-        type: "query",
-      },
-      display: "table",
-      visualization_settings: {},
-    },
-    question.metadata(),
-  ).getUrl();
 }
 
 export class ViewSubHeader extends React.Component {
