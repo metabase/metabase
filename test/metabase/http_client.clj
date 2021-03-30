@@ -36,10 +36,9 @@
   {:pre [(string? url) (u/maybe? map? query-parameters)]}
   (str *url-prefix* url (when (seq query-parameters)
                           (str "?" (str/join \& (letfn [(url-encode [s]
-                                                          (let [s (if (keyword? s) (u/qualified-name s) s)]
-                                                            (if *url-encode-query-parameters?*
-                                                              (codec/url-encode s)
-                                                              s)))]
+                                                          (cond-> s
+                                                            (keyword? s)                   u/qualified-name
+                                                            *url-encode-query-parameters?* codec/url-encode))]
                                                   (for [[k v] query-parameters]
                                                     (str (url-encode k) \= (url-encode v)))))))))
 
