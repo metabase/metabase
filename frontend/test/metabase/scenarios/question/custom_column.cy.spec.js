@@ -31,7 +31,7 @@ describe("scenarios > question > custom columns", () => {
     cy.icon("add_data").click();
 
     popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1");
+      _typeUsingGet(".ace_content", "1 + 1");
       _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
       cy.findByText("Done").click();
@@ -52,7 +52,7 @@ describe("scenarios > question > custom columns", () => {
       cy.icon("add_data").click();
 
       popover().within(() => {
-        _typeUsingGet("[contenteditable='true']", customFormula);
+        _typeUsingGet(".ace_content", customFormula);
         _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
         cy.findByText("Done").click();
@@ -95,7 +95,7 @@ describe("scenarios > question > custom columns", () => {
     const columnName = "MegaTotal";
     cy.findByText("Custom column").click();
     popover().within(() => {
-      cy.get("[contenteditable='true']")
+      cy.get(".ace_content")
         .click()
         .type("[Sum of Subtotal] + [Sum of Total]");
       cy.findByPlaceholderText("Something nice and descriptive")
@@ -122,7 +122,7 @@ describe("scenarios > question > custom columns", () => {
     // Add custom column that will be used later in summarize (group by)
     cy.findByText("Custom column").click();
     popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1");
+      _typeUsingGet(".ace_content", "1 + 1");
       _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
       cy.findByText("Done").click();
@@ -175,7 +175,7 @@ describe("scenarios > question > custom columns", () => {
 
     // add custom column
     cy.findByText("Custom column").click();
-    _typeUsingGet("[contenteditable='true']", "1 + 1");
+    _typeUsingGet(".ace_content", "1 + 1");
     _typeUsingPlaceholder("Something nice and descriptive", "X");
     cy.findByText("Done").click();
 

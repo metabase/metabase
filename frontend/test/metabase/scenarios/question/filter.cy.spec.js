@@ -539,7 +539,7 @@ describe("scenarios > question > filter", () => {
     });
 
     cy.log("Should not display error prematurely");
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .click()
       .type("contains(");
     cy.findByText(/Checks to see if string1 contains string2 within it./i);
@@ -592,7 +592,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText(/^Created At is after/i)
       .should("not.contain", "Unknown")
       .click();
-    cy.get("[contenteditable='true']").contains(
+    cy.get(".ace_content").contains(
       /\[Created At\] > \[Products? -> Created At\]/,
     );
   });
@@ -640,7 +640,7 @@ describe("scenarios > question > filter", () => {
     popover().contains(/case/i);
 
     // "case" is still there after typing a bit
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .click()
       .type("c");
     popover().contains(/case/i);
@@ -660,7 +660,7 @@ describe("scenarios > question > filter", () => {
     });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .as("inputField")
       .click()
       .type("su");
@@ -696,7 +696,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .click()
       .clear()
       .type("NOT IsNull([Rating])", { delay: 50 });
@@ -708,7 +708,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".QueryBuilder .Icon-add").click();
 
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .click()
       .clear()
       .type("NOT IsEmpty([Reviewer])", { delay: 50 });
@@ -737,8 +737,8 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Reviewer is empty").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']").contains("isempty([Reviewer])");
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content").contains("isempty([Reviewer])");
+    cy.get(".ace_content")
       .click()
       .clear()
       .type("NOT IsEmpty([Reviewer])", { delay: 50 });
@@ -761,8 +761,8 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Rating is empty").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']").contains("isnull([Rating])");
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content").contains("isnull([Rating])");
+    cy.get(".ace_content")
       .click()
       .clear()
       .type("NOT IsNull([Rating])", { delay: 50 });
@@ -790,7 +790,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']").contains(
+    cy.get(".ace_content").contains(
       'NOT contains([Title], "Wallet")',
     );
   });
@@ -816,7 +816,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
-    cy.get("[contenteditable='true']");
+    cy.get(".ace_content");
   });
 
   it.skip("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
@@ -844,7 +844,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Reviewer contains MULLER").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']").contains(
+    cy.get(".ace_content").contains(
       'contains([Reviewer], "MULLER")',
     );
     cy.findByRole("button", { name: "Done" }).click();
@@ -859,7 +859,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .click()
       .type("3.14159");
     cy.findAllByRole("button", { name: "Done" })
@@ -873,7 +873,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .click()
       .type('"TheAnswer"');
     cy.findAllByRole("button", { name: "Done" })

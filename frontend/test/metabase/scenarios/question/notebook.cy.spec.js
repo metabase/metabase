@@ -95,7 +95,7 @@ describe("scenarios > question > notebook", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .click()
       .clear()
       .type("contains([Category])", { delay: 50 });
@@ -109,7 +109,7 @@ describe("scenarios > question > notebook", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     popover().within(() => {
-      cy.get("[contenteditable='true']").type("CASE([Price]>0)");
+      cy.get(".ace_content").type("CASE([Price]>0)");
       cy.findByPlaceholderText("Something nice and descriptive")
         .click()
         .type("Sum Divide");
@@ -121,7 +121,7 @@ describe("scenarios > question > notebook", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .click()
       .clear()
       .type("[Price] > 1");
@@ -131,7 +131,7 @@ describe("scenarios > question > notebook", () => {
     cy.findByText("Price is greater than 1").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_content")
       .click()
       .clear()
       .type("[Price] > 1 AND [Price] < 5{enter}");
@@ -586,7 +586,7 @@ describe("scenarios > question > notebook", () => {
 
     it("should work on custom column with `case`", () => {
       cy.icon("add_data").click();
-      cy.get("[contenteditable='true']")
+      cy.get(".ace_content")
         .click()
         .clear()
         .type("case([Subtotal] + Tax > 100, 'Big', 'Small')", { delay: 50 });
@@ -608,7 +608,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Filter").click();
       cy.findByText("Custom Expression").click();
 
-      cy.get("[contenteditable='true']")
+      cy.get(".ace_content")
         .click()
         .clear()
         .type("[Subtotal] - Tax > 140", { delay: 50 });
@@ -634,7 +634,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Summarize").click();
         cy.findByText("Custom Expression").click();
 
-        cy.get("[contenteditable='true']")
+        cy.get(".ace_content")
           .click()
           .clear()
           .type(expression, { delay: 50 });
