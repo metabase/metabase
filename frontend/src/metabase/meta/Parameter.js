@@ -540,3 +540,14 @@ function splitType(parameterOrType) {
     : (parameterOrType || {}).type || "";
   return parameterType.split("/");
 }
+
+export function collateParametersWithValues(parameters, parameterValues) {
+  if (parameterValues) {
+    return parameters.map(p => ({
+      ...p,
+      value: parameterValues[p.id],
+    }));
+  } else {
+    return parameters;
+  }
+}
