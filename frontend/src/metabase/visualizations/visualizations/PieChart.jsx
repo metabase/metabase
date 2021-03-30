@@ -195,13 +195,15 @@ export default class PieChart extends Component {
   };
 
   componentDidUpdate() {
-    const groupElement = ReactDOM.findDOMNode(this.refs.group);
-    const detailElement = ReactDOM.findDOMNode(this.refs.detail);
-    if (groupElement.getBoundingClientRect().width < 120) {
-      detailElement.classList.add("hide");
-    } else {
-      detailElement.classList.remove("hide");
-    }
+    requestAnimationFrame(() => {
+      const groupElement = ReactDOM.findDOMNode(this.refs.group);
+      const detailElement = ReactDOM.findDOMNode(this.refs.detail);
+      if (groupElement.getBoundingClientRect().width < 120) {
+        detailElement.classList.add("hide");
+      } else {
+        detailElement.classList.remove("hide");
+      }
+    });
   }
 
   render() {
