@@ -21,7 +21,7 @@
 
 (defn- catalog ^Catalog [locale]
   (let [parser (PoParser.)]
-    (.parseCatalog parser (io/file (locale-source-po-filename "es")))))
+    (.parseCatalog parser (io/file (locale-source-po-filename locale)))))
 
 (defn po-headers [locale]
   (when-let [^Message message (.locateHeader (catalog locale))]
