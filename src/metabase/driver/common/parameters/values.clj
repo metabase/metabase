@@ -108,6 +108,10 @@
      :target [:dimension [:template-tag (:name tag)]]
      :value  default}))
 
+(s/defn ^:private defaulted-param
+  [{:keys [default value] :as param}]
+  (assoc param :value (or value default)))
+
 (s/defn ^:private field-filter->field-id :- su/IntGreaterThanZero
   [field-filter]
   (second field-filter))
@@ -121,22 +125,28 @@
                    :id field-id)
                  (throw (ex-info (str (deferred-tru "Can''t find field with ID: {0}" field-id))
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
-    :value (if-let [value-info-or-infos (or
-                                         ;; look in the sequence of params we were passed to see if there's anything
-                                         ;; that matches
-                                         (param-with-target params [:dimension [:template-tag (:name tag)]])
-                                         ;; if not, check and see if we have a default param
-                                         (default-value-for-field-filter tag))]
-             ;; `value-info` will look something like after we remove `:target` which is not needed after this point
-             ;;
-             ;;    {:type   :date/single
-             ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
-             ;;
-             ;; (or it will be a vector of these maps for multiple values)
-             (cond
-               (map? value-info-or-infos)        (dissoc value-info-or-infos :target)
-               (sequential? value-info-or-infos) (mapv #(dissoc % :target) value-info-or-infos))
-             i/no-value)}))
+    :value (or (when-let [value-info-or-infos (or
+                                               ;; look in the sequence of params we were passed to see if there's anything
+                                               ;; that matches
+                                               (param-with-target (map defaulted-param params) [:dimension [:template-tag (:name tag)]])
+                                               ;; if not, check and see if we have a default param
+                                               (default-value-for-field-filter tag))]
+                 ;; `value-info` will look something like after we remove `:target` which is not needed after this point
+                 ;;
+                 ;;    {:type   :date/single
+                 ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
+                 ;;
+                 ;; (or it will be a vector of these maps for multiple values)
+                 (let [has-value?    (some-fn :value :default)
+                       dissoc-target #(dissoc % :target)]
+                   (cond
+                     (map? value-info-or-infos)
+                     (when (has-value? value-info-or-infos)
+                       (dissoc-target value-info-or-infos))
+                     (sequential? value-info-or-infos)
+                     (when (every? has-value? value-info-or-infos)
+                       (mapv dissoc-target value-info-or-infos)))))
+               i/no-value)}))
 
 (s/defmethod parse-tag :card :- ReferencedCardQuery
   [{:keys [card-id], :as tag} :- TagParam, params :- (s/maybe [i/ParamValue])]
