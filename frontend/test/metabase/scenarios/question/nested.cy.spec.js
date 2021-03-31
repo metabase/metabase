@@ -445,12 +445,7 @@ describe("scenarios > question > nested", () => {
       cy.findAllByText("Summarize")
         .first()
         .click();
-      if (test === "count") {
-        cy.findByText("Group by")
-          .parent()
-          .findByText("COUNT(*)")
-          .click();
-      } else {
+      if (test === "average") {
         sidebar()
           .findByText("Count")
           .should("be.visible")
@@ -459,7 +454,12 @@ describe("scenarios > question > nested", () => {
         popover()
           .findByText("COUNT(*)")
           .click();
+        cy.wait("@dataset");
       }
+      cy.findByText("Group by")
+        .parent()
+        .findByText("COUNT(*)")
+        .click();
 
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
