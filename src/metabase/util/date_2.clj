@@ -408,7 +408,7 @@
 
 (p.types/defprotocol+ WithTimeZoneSameInstant
   "Protocol for converting a temporal value to an equivalent one in a given timezone."
-  (with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
+  (^{:style/indent 0} with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
     "Convert a temporal value to an equivalent one in a given timezone. For local temporal values, this simply
     converts it to the corresponding offset/zoned type; for offset/zoned types, this applies an appropriate timezone
     shift."))
