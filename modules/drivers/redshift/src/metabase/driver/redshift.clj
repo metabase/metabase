@@ -254,26 +254,33 @@
        " */ "
        (qputil/default-query->remark query)))
 
-(defn- make-schema-usage-filter-xf [conn]
-  (fn [xf]
-    (let [stmt (prepare-statement conn "SELECT HAS_SCHEMA_PRIVILEGE(?, 'USAGE');")]
-      (fn
-        ([]
-         (xf))
-        ([result]
-         (.close stmt)
-         (xf result))
-        ([result table-schema]
-         (with-open [rs (.executeQuery (doto stmt (.setString 1 table-schema)))]
-           (let [has-perm? (and (.next rs)
-                                (.getBoolean rs 1))]
-             (if has-perm?
-               (xf result table-schema)
-               (do (log/tracef "Ignoring schema %s because no USAGE privilege on it" table-schema)
-                   result)))))))))
+(defn- reducible-schemas-with-usage-permissions
+  "Takes something `reducible` that returns a collection of string schema names (e.g. an `Eduction`) and returns an
+  `IReduceInit` that filters out schemas for which the DB user has no schema privileges."
+  [^Connection conn reducible]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (with-open [stmt (prepare-statement conn "SELECT HAS_SCHEMA_PRIVILEGE(?, 'USAGE');")]
+        (reduce
+         rf
+         init
+         (eduction
+          (filter (fn [^String table-schema]
+                    (try
+                      (with-open [rs (.executeQuery (doto stmt (.setString 1 table-schema)))]
+                        (let [has-perm? (and (.next rs)
+                                             (.getBoolean rs 1))]
+                          (or has-perm?
+                              (log/tracef "Ignoring schema %s because no USAGE privilege on it" table-schema))))
+                      (catch Throwable e
+                        (log/error e (trs "Error checking schema permissions"))
+                        false))))
+          reducible))))))
 
 (defmethod sql-jdbc.sync/syncable-schemas :redshift
   [driver conn metadata]
-  (eduction (remove (set (sql-jdbc.sync/excluded-schemas driver)))
-            (make-schema-usage-filter-xf conn)
-            (sync.describe-database/all-schemas metadata)))
+  (reducible-schemas-with-usage-permissions
+   conn
+   (eduction
+    (remove (set (sql-jdbc.sync/excluded-schemas driver)))
+    (sync.describe-database/all-schemas metadata))))

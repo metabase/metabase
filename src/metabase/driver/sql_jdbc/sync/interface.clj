@@ -28,8 +28,9 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti syncable-schemas
-  "Returns a sequence of all schemas that can be synced for the given database. The default implementation will check
-  the database metadata for a list of all schemas, and filter that to exclude the excluded-schemas."
+  "Return a reducible sequence of string names of schemas that should be synced for the given database. Schemas for
+  which the current DB user has no `SELECT` permissions should be filtered out. The default implementation will fetch
+  a sequence of all schema names from the JDBC database metadata and filter out any schemas in `excluded-schemas`."
   {:added "0.39.0", :arglists '([driver ^java.sql.Connection connection ^java.sql.DatabaseMetaData metadata])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

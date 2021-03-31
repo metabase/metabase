@@ -14,7 +14,7 @@
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
 
 (defn all-schemas
-  "Gets all schemas from the given database metadata."
+  "Get a *reducible* sequence of all string schema names for the current database from its JDBC database metadata."
   [^DatabaseMetaData metadata]
   {:added "0.39.0", :pre [(instance? DatabaseMetaData metadata)]}
   (common/reducible-results
