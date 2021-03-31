@@ -188,10 +188,24 @@
       (qp.async/result-metadata-for-query-async query))))
 
 (defn check-data-permissions-for-query
-  "Check that we have *data* permissions to run the QUERY in question."
+  "Make sure the Current User has the appropriate *data* permissions to run `query`. We don't want Users saving Cards
+  with queries they wouldn't be allowed to run!"
   [query]
   {:pre [(map? query)]}
-  (api/check-403 (query-perms/can-run-query? query)))
+  (when-not (query-perms/can-run-query? query)
+    (let [required-perms (try
+                           (query-perms/perms-set query :throw-exceptions? true)
+                           (catch Throwable e
+                             e))]
+      (throw (ex-info (tru "You cannot save this Question because you do not permissions to run its query.")
+                      {:status-code    403
+                       :query          query
+                       :required-perms (if (instance? Throwable required-perms)
+                                         :error
+                                         required-perms)
+                       :actual-perms   @api/*current-user-permissions-set*}
+                      (when (instance? Throwable required-perms)
+                        required-perms))))))
 
 (defn- save-new-card-async!
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
