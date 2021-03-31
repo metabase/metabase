@@ -3,7 +3,6 @@
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.collection :as collection]
@@ -13,7 +12,6 @@
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
-            [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision :as revision]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
