@@ -13,6 +13,7 @@ import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import SearchResult from "metabase/search/components/SearchResult";
 
 import { DefaultSearchColor } from "metabase/nav/constants";
+import MetabaseSettings from "metabase/lib/settings";
 
 const ActiveSearchColor = lighten(color("nav"), 0.1);
 
@@ -141,7 +142,7 @@ export default class SearchBar extends React.Component {
               }
             }}
           />
-          {active && (
+          {active && MetabaseSettings.searchTypeaheadEnabled() && (
             <div className="absolute left right text-dark" style={{ top: 60 }}>
               {searchText.length > 0 ? (
                 <Card

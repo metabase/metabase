@@ -41,4 +41,5 @@
                   ;; prefer keeping source width about ~118, GitHub seems to cut off stuff at either 119 or 120 and
                   ;; it's nicer to look at code in GH when you don't have to scroll back and forth
                   (fill-column . 118)
-                  (clojure-docstring-fill-column . 118))))
+                  (clojure-docstring-fill-column . 118)
+                  (cider-preferred-build-tool . lein))))

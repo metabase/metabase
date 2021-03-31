@@ -103,7 +103,7 @@ function _init(reducers, getRoutes, callback) {
   MetabaseSettings.on("anon-tracking-enabled", () => {
     window[
       "ga-disable-" + MetabaseSettings.get("ga-code")
-    ] = MetabaseSettings.isTrackingEnabled() ? null : true;
+    ] = MetabaseSettings.trackingEnabled() ? null : true;
   });
 
   MetabaseSettings.on("user-locale", async locale => {

@@ -23,6 +23,7 @@ export type SettingName =
   | "ldap-configured?"
   | "map-tile-server-url"
   | "password-complexity"
+  | "search-typeahead-enabled"
   | "setup-token"
   | "site-url"
   | "types"
@@ -90,10 +91,6 @@ class Settings {
     return /.+\.metabaseapp.com\/?$/i.test(this.get("site-url"));
   }
 
-  isTrackingEnabled() {
-    return this.get("anon-tracking-enabled") || false;
-  }
-
   googleAuthEnabled() {
     return this.get("google-auth-client-id") != null;
   }
@@ -102,16 +99,24 @@ class Settings {
     return this.get("setup-token") != null;
   }
 
-  ssoEnabled() {
-    return this.get("google-auth-client-id") != null;
+  hideEmbedBranding() {
+    return this.get("hide-embed-branding?");
   }
 
   ldapEnabled() {
     return this.get("ldap-configured?");
   }
 
-  hideEmbedBranding() {
-    return this.get("hide-embed-branding?");
+  searchTypeaheadEnabled() {
+    return this.get("search-typeahead-enabled");
+  }
+
+  ssoEnabled() {
+    return this.get("google-auth-client-id") != null;
+  }
+
+  trackingEnabled() {
+    return this.get("anon-tracking-enabled") || false;
   }
 
   docsUrl(page = "", anchor = "") {

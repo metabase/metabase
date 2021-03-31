@@ -2,7 +2,14 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [honeysql.core :as hsql]
-            [metabase.models :refer [Card Collection Dashboard Metric Pulse Segment Table]]))
+            [metabase.models :refer [Card Collection Dashboard Metric Pulse Segment Table]]
+            [metabase.models.setting :refer [defsetting]]
+            [metabase.util.i18n :refer [deferred-tru]]))
+
+(defsetting search-typeahead-enabled
+  (deferred-tru "Enable typeahead search in the Metabase navbar?")
+  :type    :boolean
+  :default true)
 
 (def ^:dynamic db-max-results
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
