@@ -32,6 +32,12 @@ export default class Setup extends Component {
     databaseDetails: PropTypes.object,
   };
 
+  constructor(props) {
+    super(props);
+
+    this.databaseSchedulingStepContainer = React.createRef();
+  }
+
   completeWelcome() {
     this.props.setActiveStep(LANGUAGE_STEP_NUMBER);
     MetabaseAnalytics.trackEvent("Setup", "Welcome");
@@ -77,9 +83,9 @@ export default class Setup extends Component {
       nextProps.activeStep === 3
     ) {
       setTimeout(() => {
-        if (this.refs.databaseSchedulingStepContainer) {
+        if (this.databaseSchedulingStepContainer.current) {
           const node = ReactDOM.findDOMNode(
-            this.refs.databaseSchedulingStepContainer,
+            this.databaseSchedulingStepContainer.current,
           );
           node && node.scrollIntoView && node.scrollIntoView();
         }
@@ -145,7 +151,7 @@ export default class Setup extends Component {
               />
 
               {/* Have the ref for scrolling in UNSAFE_componentWillReceiveProps */}
-              <div ref="databaseSchedulingStepContainer">
+              <div ref={this.databaseSchedulingStepContainer}>
                 {/* Show db scheduling step only if the user has explicitly set the "Let me choose when Metabase syncs and scans" toggle to true */}
                 {databaseDetails &&
                   databaseDetails.details &&
