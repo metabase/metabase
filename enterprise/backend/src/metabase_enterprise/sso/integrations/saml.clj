@@ -137,7 +137,8 @@
     attrs))
 
 (defn- base64-decode [s]
-  (codecs/bytes->str (codec/base64-decode s)))
+  (when (u/base64-string? s)
+    (codecs/bytes->str (codec/base64-decode s))))
 
 (defmethod sso/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:

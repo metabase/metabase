@@ -12,7 +12,6 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.parameters.substitution :as params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
@@ -369,4 +368,4 @@
         (t/local-date t))
       (catch Throwable _
         (when-let [s (.getString rs i)]
-          (u.date/parse s (qp.timezone/results-timezone-id)))))))
+          (u.date/parse s))))))

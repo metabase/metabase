@@ -32,15 +32,15 @@
     ;; so, short of turning all `:type/Integer` derived values into strings, this is the best approximation
     ;; of a fix that can be accomplished.
     (let [field-indexes (keep-indexed
-                          (fn [idx val]
-                            (let [field-id (mbql.u/field-clause->id-or-literal val)]
-                              (when-let [field (when (number? field-id)
-                                                 (Field field-id))]
-                                (when (and (or (isa? (:special_type field) :type/PK)
-                                               (isa? (:special_type field) :type/FK))
-                                           (isa? (:base_type field) :type/Integer))
-                                  idx))))
-                          (:fields (:query query)))]
+                         (fn [idx val]
+                           (let [field-id (mbql.u/field-clause->id-or-literal val)]
+                             (when-let [field (when (number? field-id)
+                                                (Field field-id))]
+                               (when (and (or (isa? (:special_type field) :type/PK)
+                                              (isa? (:special_type field) :type/FK))
+                                          (isa? (:base_type field) :type/Integer))
+                                 idx))))
+                         (:fields (:query query)))]
       (qp query (if (and js-int-to-string? (seq field-indexes))
                   #(result-int->string field-indexes (rff %))
                   rff)
