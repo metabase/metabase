@@ -715,5 +715,5 @@
                         "FROM `v3_test_data.checkins` "
                         "LEFT JOIN `v3_test_data.Organização` `Organização__via__venue_id`"
                         " ON `v3_test_data.checkins`.`venue_id` = `Organização__via__venue_id`.`id` "
-                        "LIMIT 1048576")
+                        "LIMIT 1048575")
                    (:query (qp/query->native query))))))))))
