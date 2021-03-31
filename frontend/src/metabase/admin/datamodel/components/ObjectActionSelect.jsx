@@ -11,6 +11,11 @@ import ObjectRetireModal from "./ObjectRetireModal";
 import { capitalize } from "metabase/lib/formatting";
 
 export default class ObjectActionsSelect extends Component {
+  constructor(props) {
+    super(props);
+
+    this.retireModal = React.createRef();
+  }
   static propTypes = {
     object: PropTypes.object.isRequired,
     objectType: PropTypes.string.isRequired,
@@ -19,7 +24,7 @@ export default class ObjectActionsSelect extends Component {
 
   async onRetire(object) {
     await this.props.onRetire(object);
-    this.refs.retireModal.close();
+    this.retireModal.current.close();
   }
 
   render() {
@@ -27,7 +32,6 @@ export default class ObjectActionsSelect extends Component {
     return (
       <div>
         <PopoverWithTrigger
-          ref="popover"
           triggerElement={
             <span className="text-light text-brand-hover">
               <Icon name={"ellipsis"} />
@@ -61,7 +65,7 @@ export default class ObjectActionsSelect extends Component {
             </li>
             <li className="mt1 border-top">
               <ModalWithTrigger
-                ref="retireModal"
+                ref={this.retireModal}
                 triggerElement={"Retire " + capitalize(objectType)}
                 triggerClasses="block p2 bg-error-hover text-error text-white-hover cursor-pointer"
               >
@@ -69,7 +73,7 @@ export default class ObjectActionsSelect extends Component {
                   object={object}
                   objectType={objectType}
                   onRetire={this.onRetire.bind(this)}
-                  onClose={() => this.refs.retireModal.close()}
+                  onClose={() => this.retireModal.current.close()}
                 />
               </ModalWithTrigger>
             </li>
