@@ -47,7 +47,6 @@ export const getDashboardActions = (
 
     buttons.push(
       <PopoverWithTrigger
-        ref="popover"
         disabled={!canShareDashboard}
         triggerElement={
           <Tooltip
