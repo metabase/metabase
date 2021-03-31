@@ -24,10 +24,6 @@
   "Prefix to automatically prepend to the URL of calls made with `client`."
   (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
 
-(def ^:dynamic *url-encode-query-parameters?*
-  "Whether to automatically URL-encode query parameter keys and values."
-  true)
-
 (defn build-url
   "Build an API URL for `localhost` and `MB_JETTY_PORT` with `query-parameters`.
 
@@ -37,8 +33,8 @@
   (str *url-prefix* url (when (seq query-parameters)
                           (str "?" (str/join \& (letfn [(url-encode [s]
                                                           (cond-> s
-                                                            (keyword? s)                   u/qualified-name
-                                                            *url-encode-query-parameters?* codec/url-encode))]
+                                                            (keyword? s) u/qualified-name
+                                                            true         codec/url-encode))]
                                                   (for [[k v] query-parameters]
                                                     (str (url-encode k) \= (url-encode v)))))))))
 
