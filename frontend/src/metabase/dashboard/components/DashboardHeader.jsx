@@ -76,7 +76,12 @@ type State = {
 };
 
 export default class DashboardHeader extends Component {
-  props: Props;
+  constructor(props: Props) {
+    super(props);
+
+    this.addQuestionModal = React.createRef();
+  }
+
   state: State = {
     modal: null,
   };
@@ -197,7 +202,7 @@ export default class DashboardHeader extends Component {
       buttons.push(
         <ModalWithTrigger
           key="add-a-question"
-          ref="addQuestionModal"
+          ref={this.addQuestionModal}
           triggerElement={
             <Tooltip tooltip={t`Add question`}>
               <Icon name="add" data-metabase-event="Dashboard;Add Card Modal" />
@@ -208,7 +213,7 @@ export default class DashboardHeader extends Component {
             dashboard={dashboard}
             addCardToDashboard={this.props.addCardToDashboard}
             onEditingChange={this.props.onEditingChange}
-            onClose={() => this.refs.addQuestionModal.toggle()}
+            onClose={() => this.addQuestionModal.current.toggle()}
           />
         </ModalWithTrigger>,
       );
