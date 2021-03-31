@@ -41,7 +41,6 @@ export default class SettingsBatchForm extends Component {
     super(props, context);
     this.state = {
       pristine: true,
-      dirty: false,
       formData: {},
       submitting: "default",
       valid: false,
@@ -171,7 +170,6 @@ export default class SettingsBatchForm extends Component {
 
       return {
         pristine,
-        dirty: true,
         formData: settingsValues,
       };
     });
@@ -206,7 +204,7 @@ export default class SettingsBatchForm extends Component {
 
       this.props.updateSettings(formData).then(
         () => {
-          this.setState({ dirty: false, submitting: "success" });
+          this.setState({ pristine: true, submitting: "success" });
 
           // show a confirmation for 3 seconds, then return to normal
           setTimeout(() => this.setState({ submitting: "default" }), 3000);
@@ -229,7 +227,6 @@ export default class SettingsBatchForm extends Component {
       submitting,
       pristine,
       valid,
-      dirty,
       validationErrors,
     } = this.state;
 
@@ -306,7 +303,7 @@ export default class SettingsBatchForm extends Component {
               valid,
               submitting,
               disabled,
-              dirty,
+              pristine,
             })}
         </div>
       </div>
