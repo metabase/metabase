@@ -73,9 +73,9 @@
 
 (deftest mark-inactive-test
   (testing "make sure sync correctly marks a Field as active = false when it gets dropped from the DB"
-    (is (= {:before-drop #{{:name "species",      :active true}
+    (is (= {:before-sync #{{:name "species",      :active true}
                            {:name "example_name", :active true}}
-            :after-drop  #{{:name "species",      :active true}
+            :after-sync  #{{:name "species",      :active true}
                            {:name "example_name", :active false}}}
            (with-test-db-before-and-after-altering
             "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
@@ -87,8 +87,8 @@
 
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
-    (is (= {:before-drop #{"species" "example_name"}
-            :after-drop  #{"species"}}
+    (is (= {:before-sync #{"species" "example_name"}
+            :after-sync  #{"species"}}
            (with-test-db-before-and-after-altering
             "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
             (fn [database]
@@ -102,11 +102,11 @@
                 "could be seen as covering both QP and sync "
                 "(my and others' assumption when first coming across bug #6146 was that this was a sync issue), this "
                 "test can stay here for now along with the other test we have testing sync after dropping a column.")
-    (is (= {:before-drop (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\", "
+    (is (= {:before-sync (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\", "
                               "\"PUBLIC\".\"birds\".\"example_name\" AS \"example_name\" "
                               "FROM \"PUBLIC\".\"birds\" "
                               "LIMIT 1048576")
-            :after-drop  (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\" "
+            :after-sync  (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\" "
                               "FROM \"PUBLIC\".\"birds\" "
                               "LIMIT 1048576")}
            (with-test-db-before-and-after-altering
