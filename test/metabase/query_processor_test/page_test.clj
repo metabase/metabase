@@ -22,9 +22,9 @@
                  (get-page 1))))
 
         (testing "get the second page"
-          (= [[ 6 "Bakery"]
-              [ 7 "Bar"]
-              [ 8 "Beer Garden"]
-              [ 9 "Breakfast / Brunch"]
-              [10 "Brewery"]]
-             (get-page 2)))))))
+          (is (= [[ 6 "Bakery"]
+                  [ 7 "Bar"]
+                  [ 8 "Beer Garden"]
+                  [ 9 "Breakfast / Brunch"]
+                  [10 "Brewery"]]
+                 (get-page 2))))))))

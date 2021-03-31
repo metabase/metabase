@@ -215,21 +215,21 @@
             email     (mt/random-email)]
         (mt/with-model-cleanup [User]
           (mt/with-fake-inbox
-            (= (merge user-defaults
-                      (merge
-                       user-defaults
-                       {:email            email
-                        :first_name       user-name
-                        :last_name        user-name
-                        :common_name      (str user-name " " user-name)
-                        :group_ids        [(u/the-id (group/all-users))]
-                        :login_attributes {:test "value"}}))
-               (mt/boolean-ids-and-timestamps
-                (mt/user-http-request :crowberto :post 200 "user"
-                                      {:first_name       user-name
-                                       :last_name        user-name
-                                       :email            email
-                                       :login_attributes {:test "value"}})))))))
+            (is (= (merge user-defaults
+                          (merge
+                           user-defaults
+                           {:email            email
+                            :first_name       user-name
+                            :last_name        user-name
+                            :common_name      (str user-name " " user-name)
+                            :group_ids        [(u/the-id (group/all-users))]
+                            :login_attributes {:test "value"}}))
+                   (mt/boolean-ids-and-timestamps
+                    (mt/user-http-request :crowberto :post 200 "user"
+                                          {:first_name       user-name
+                                           :last_name        user-name
+                                           :email            email
+                                           :login_attributes {:test "value"}}))))))))
 
     (testing "Check that non-superusers are denied access"
       (is (= "You don't have permissions to do that."
