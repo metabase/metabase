@@ -19,6 +19,7 @@
             [metabase.test.data.interface :as tx]
             [metabase.test.data.redshift :as rstest]
             [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
   (:import [java.sql ResultSet ResultSetMetaData]
@@ -238,9 +239,39 @@
 
 (deftest syncable-schemas-test
   (mt/test-driver :redshift
-    (testing "Should filter out schemas for which the DB has no perms"
-      ;; Don't know how to create a schema with no perms for testing, so instead we'll just test a schema that doesn't
-      ;; exist, since you can't have perms for something that doesn't exist.
+    (testing "Should filter out schemas for which the user has no perms"
+      ;; create a random username and random schema name, and grant the user USAGE permission for it
+      (let [temp-username (str/lower-case (tu/random-name))
+            random-schema (str/lower-case (tu/random-name))
+            user-pw       "Password1234"
+            db-det        (:details (mt/db))]
+        (#'rstest/execute! (str "CREATE SCHEMA %s;"
+                                "CREATE USER %s PASSWORD '%s';%n"
+                                "GRANT USAGE ON SCHEMA %s TO %s;%n")
+                           random-schema
+                           temp-username
+                           user-pw
+                           random-schema
+                           temp-username)
+        (try
+          (mt/with-temp Database [db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
+            (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
+              (let [schemas (reduce conj
+                                    #{}
+                                    (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn)))]
+                ;; the syncable-schemas for the user should contain the newly created random schema
+                (is (contains? schemas random-schema))
+                ;; but it should not contain the current session-schema name (since that was never granted)
+                (is (not (contains? schemas rstest/session-schema-name))))))
+          (finally
+            (#'rstest/execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
+                                    "DROP USER IF EXISTS %s;%n"
+                                    "DROP SCHEMA IF EXISTS %s;%n")
+             random-schema
+             temp-username
+             temp-username
+             random-schema)))))
+    (testing "Should filter out non-existent schemas (for which nobody has permissions)"
       (let [fake-schema-name (u/qualified-name ::fake-schema)]
         ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
         (with-redefs [sync.describe-database/all-schemas (let [orig sync.describe-database/all-schemas]
@@ -259,6 +290,5 @@
                   (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
                                                                                     reducible)]
                     (is (contains? (schemas) fake-schema-name))))
-                ;; TODO -- not sure if there's a way to actually test a REAL schema without permissions as well.
                 (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
                   (is (not (contains? (schemas) fake-schema-name))))))))))))
