@@ -22,7 +22,6 @@ class EditBar extends Component {
         className={cx("EditHeader wrapper py1 flex align-center", {
           "EditHeader--admin": admin,
         })}
-        ref="editHeader"
       >
         <span className="EditHeader-title">{title}</span>
         {subtitle && (
