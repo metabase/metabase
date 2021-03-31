@@ -2,10 +2,8 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [environ.core :as env]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [medley.core :as m]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.mysql :as mysql]
@@ -14,7 +12,8 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor-test.string-extracts-test] ; used for one SSL with PEM connectivity test
+            ;; used for one SSL with PEM connectivity test
+            [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
             [metabase.sync :as sync]
             [metabase.sync.analyze.fingerprint :as fingerprint]
             [metabase.test :as mt]
@@ -25,7 +24,6 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.util.test :as tt]))
-
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -339,13 +337,9 @@
   (mt/test-driver :mysql
     (if (System/getenv "MB_MYSQL_SSL_TEST_SSL_CERT")
       (testing "MySQL with SSL connectivity using PEM certificate"
-        (let [e      env/env
-              key-fn (fn [k]
-                       (keyword (str/replace-first (name k) "mb-mysql-ssl-test" "mb-mysql-test")))
-              new-e  (m/map-keys key-fn e)]
-          (with-redefs [env/env new-e]
-            ;; with the mysql-test vars having been set to the mysql-ssl variants, run some test to verify connectivity
-            (metabase.query-processor-test.string-extracts-test/test-breakout))))
-      (println (u/colorize 'yellow (format "Skipping %s because %s env var is not set\n"
-                                           "mysql-connect-with-ssl-and-pem-cert-test"
-                                           "MB_MYSQL_SSL_TEST_SSL_CERT"))))))
+        (mt/with-env-keys-renamed-by #(str/replace-first % "mb-mysql-ssl-test" "mb-mysql-test")
+          (string-extracts-test/test-breakout)))
+      (println (u/format-color 'yellow
+                               "Skipping %s because %s env var is not set"
+                               "mysql-connect-with-ssl-and-pem-cert-test"
+                               "MB_MYSQL_SSL_TEST_SSL_CERT")))))

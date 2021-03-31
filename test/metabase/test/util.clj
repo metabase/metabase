@@ -1,11 +1,13 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [colorize.core :as colorize]
+            [environ.core :as env]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
@@ -794,3 +796,27 @@
   []
   (with-open [socket (ServerSocket. 0)]
     (.getLocalPort socket)))
+
+(defn do-with-env-keys-renamed-by
+  "Evaluates the thunk with the current core.environ/env being redefined, its keys having been renamed by the given
+  rename-fn. Prefer to use the with-env-keys-renamed-by macro version instead."
+  [rename-fn thunk]
+  (let [orig-e     env/env
+        renames-fn (fn [m k _]
+                     (let [k-str (name k)
+                           new-k (rename-fn k-str)]
+                       (if (not= k-str new-k)
+                         (assoc m k (keyword new-k))
+                         m)))
+        renames    (reduce-kv renames-fn {} orig-e)
+        new-e      (set/rename-keys orig-e renames)]
+    (testing (colorize/blue (format "\nRenaming env vars by map: %s\n" (u/pprint-to-str renames)))
+      (with-redefs [env/env new-e]
+        (thunk)))))
+
+(defmacro with-env-keys-renamed-by
+  "Evaluates body with the current core.environ/env being redefined, its keys having been renamed by the given
+  rename-fn."
+  {:arglists '([rename-fn & body])}
+  [rename-fn & body]
+  `(do-with-env-keys-renamed-by ~rename-fn (fn [] ~@body)))
