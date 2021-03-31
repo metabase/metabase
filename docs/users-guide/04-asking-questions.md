@@ -117,13 +117,13 @@ You can download or export the results of a question by clicking on the Download
 
 ![Download Button](./images/download-button.png)
 
-## Duplicating questions
+## Starting new explorations from saved questions
 
-Every time you edit a saved question, Metabase will create a copy of that question for you. Metabase will generate a placeholder title for the question, and let you know which question you started from. 
+Every time you start modifying a saved question, Metabase will start a new question for you, with a placeholder title, and let you know which question you started from. 
 
 ![Starting from a saved question](./images/notebook/started-from-saved-question.png)
 
-So feel free to play around with any existing question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can either overwrite the existing question.
+So feel free to play around with any existing question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
 You can also explicitly **Duplicate this question** from the edit menu (the pencil icon).
 
