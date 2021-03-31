@@ -1,0 +1,368 @@
+import { onlyOn } from "@cypress/skip-test";
+import { restore, popover } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
+
+const PERMISSIONS = {
+  curate: ["admin", "normal", "nodata"],
+  view: ["readonly"],
+  no: ["nocollection", "nosql", "none"],
+};
+
+describe("collection permissions", () => {
+  beforeEach(() => {
+    restore();
+    cy.server();
+  });
+
+  describe("item management", () => {
+    Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
+      context(`${permission} access`, () => {
+        userGroup.forEach(user => {
+          onlyOn(permission === "curate", () => {
+            describe(`${user} user`, () => {
+              beforeEach(() => {
+                cy.signIn(user);
+              });
+
+              describe("duplicate", () => {
+                it.skip("should be able to duplicate the dashboard without obstructions from the modal (metabase#15255)", () => {
+                  duplicate("Orders in a dashboard");
+                });
+
+                it.skip("should be able to duplicate the question (metabase#15255)", () => {
+                  duplicate("Orders");
+                });
+
+                function duplicate(item) {
+                  cy.visit("/collection/root");
+                  openEllipsisMenuFor(item);
+                  cy.findByText("Duplicate this item").click();
+                  cy.get(".Modal")
+                    .as("modal")
+                    .within(() => {
+                      clickButton("Duplicate");
+                      cy.findByText("Failed").should("not.exist");
+                    });
+                  cy.get("@modal").should("not.exist");
+                  cy.findByText(`${item} - Duplicate`);
+                }
+              });
+
+              describe("archive", () => {
+                it("should be able to archive/unarchive question (metabase#15253)", () => {
+                  cy.skipOn(user === "nodata");
+                  archiveUnarchive("Orders");
+                });
+
+                it("should be able to archive/unarchive dashboard", () => {
+                  archiveUnarchive("Orders in a dashboard");
+                });
+
+                describe("collections", () => {
+                  it("shouldn't be able to archive/edit root or personal collection", () => {
+                    cy.visit("/collection/root");
+                    cy.icon("edit").should("not.exist");
+                    cy.findByText("Your personal collection").click();
+                    cy.icon("edit").should("not.exist");
+                  });
+
+                  it("archiving sub-collection should redirect to its parent", () => {
+                    cy.request("GET", "/api/collection").then(xhr => {
+                      // We need to obtain the ID programatically
+                      const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+                        collection => collection.slug === "third_collection",
+                      );
+                      cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
+                    });
+                    cy.icon("pencil").click();
+                    cy.findByText("Archive this collection").click();
+                    cy.get(".Modal")
+                      .findByText("Archive")
+                      .click();
+                    cy.get("[class*=PageHeading]")
+                      .as("title")
+                      .contains("Second collection");
+                    cy.get("[class*=CollectionSidebar]")
+                      .as("sidebar")
+                      .within(() => {
+                        cy.findByText("First collection");
+                        cy.findByText("Second collection");
+                        cy.findByText("Third collection").should("not.exist");
+                      });
+                    // While we're here, we can test unarchiving the collection as well
+                    cy.findByText("Archived collection");
+                    cy.findByText("Undo").click();
+                    cy.findByText(
+                      "Sorry, you don’t have permission to see that.",
+                    ).should("not.exist");
+                    // We're still in the parent collection
+                    cy.get("@title").contains("Second collection");
+                    // But unarchived collection is now visible in the sidebar
+                    cy.get("@sidebar").within(() => {
+                      cy.findByText("Third collection");
+                    });
+                  });
+
+                  it.skip("visiting already archived collection by its ID shouldn't let you edit it (metabase#12489)", () => {
+                    cy.request("GET", "/api/collection").then(xhr => {
+                      const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+                        collection => collection.slug === "third_collection",
+                      );
+                      // Archive it
+                      cy.request(
+                        "PUT",
+                        `/api/collection/${THIRD_COLLECTION_ID}`,
+                        {
+                          archived: true,
+                        },
+                      );
+
+                      // What happens if we visit the archived collection by its id?
+                      // This is the equivalent of hitting the back button but it also shows that the same UI is present whenever we visit the collection by its id
+                      cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
+                    });
+                    cy.get("[class*=PageHeading]")
+                      .as("title")
+                      .contains("Third collection");
+                    // Creating new sub-collection at this point shouldn't be possible
+                    cy.icon("new_folder").should("not.exist");
+                    // We shouldn't be able to change permissions for an archived collection (the root issue of #12489!)
+                    cy.icon("lock").should("not.exist");
+                    /**
+                     *  We can take 2 routes from here - it will really depend on the design decision:
+                     *    1. Edit icon shouldn't exist at all in which case some other call to action menu/button should exist
+                     *       notifying the user that this collection is archived and prompting them to unarchive it
+                     *    2. Edit icon stays but with "Unarchive this item" ONLY in the menu
+                     */
+
+                    // Option 1
+                    cy.icon("edit").should("not.exist");
+
+                    // Option 2
+                    // cy.icon("edit").click();
+                    // popover().within(() => {
+                    //   cy.findByText("Edit this collection").should("not.exist");
+                    //   cy.findByText("Archive this collection").should(
+                    //     "not.exist",
+                    //   );
+                    //   cy.findByText("Unarchive this collection");
+                    // });
+                  });
+
+                  it.skip("abandoning archive process should keep you in the same collection (metabase#15289)", () => {
+                    cy.request("GET", "/api/collection").then(xhr => {
+                      const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+                        collection => collection.slug === "third_collection",
+                      );
+                      cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
+                      cy.icon("pencil").click();
+                      cy.findByText("Archive this collection").click();
+                      cy.get(".Modal")
+                        .findByText("Cancel")
+                        .click();
+                      cy.location("pathname").should(
+                        "eq",
+                        `/collection/${THIRD_COLLECTION_ID}`,
+                      );
+                      cy.get("[class*=PageHeading]")
+                        .as("title")
+                        .contains("Third collection");
+                    });
+                  });
+                });
+
+                function archiveUnarchive(item) {
+                  cy.visit("/collection/root");
+                  openEllipsisMenuFor(item);
+                  cy.findByText("Archive this item").click();
+                  cy.findByText(item).should("not.exist");
+                  cy.findByText(/Archived (question|dashboard)/);
+                  cy.findByText("Undo").click();
+                  cy.findByText(
+                    "Sorry, you don’t have permission to see that.",
+                  ).should("not.exist");
+                  cy.findByText(item);
+                }
+              });
+
+              describe("managing question from the question's edit dropdown (metabase#11719)", () => {
+                beforeEach(() => {
+                  cy.route("PUT", "/api/card/1").as("updateQuestion");
+                  cy.visit("/question/1");
+                  cy.icon("pencil").click();
+                });
+
+                it("should be able to edit question details (metabase#11719-1)", () => {
+                  cy.skipOn(user === "nodata");
+                  cy.findByText("Edit this question").click();
+                  cy.findByLabelText("Name")
+                    .click()
+                    .type("1");
+                  clickButton("Save");
+                  assertOnQuestionUpdate();
+                  cy.findByText("Orders1");
+                });
+
+                it("should be able to move the question (metabase#11719-2)", () => {
+                  cy.skipOn(user === "nodata");
+                  cy.findByText("Move").click();
+                  cy.findByText("My personal collection").click();
+                  clickButton("Move");
+                  assertOnQuestionUpdate();
+                  cy.contains("37.65");
+                });
+
+                it("should be able to archive the question (metabase#11719-3)", () => {
+                  cy.findByText("Archive").click();
+                  clickButton("Archive");
+                  assertOnQuestionUpdate();
+                  cy.location("pathname").should("eq", "/collection/root");
+                  cy.findByText("Orders").should("not.exist");
+                });
+
+                /**
+                 * Custom function related to this describe block only
+                 */
+                function assertOnQuestionUpdate() {
+                  cy.wait("@updateQuestion").then(xhr => {
+                    expect(xhr.status).not.to.eq(403);
+                  });
+                  cy.findByText(
+                    "Sorry, you don’t have permission to see that.",
+                  ).should("not.exist");
+                  cy.get(".Modal").should("not.exist");
+                }
+              });
+            });
+          });
+
+          onlyOn(permission === "view", () => {
+            beforeEach(() => {
+              cy.signIn(user);
+            });
+
+            ["/", "/collection/root"].forEach(route => {
+              it.skip("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
+                const { first_name, last_name } = USERS[user];
+                cy.visit(route);
+                cy.icon("add").click();
+                cy.findByText("New dashboard").click();
+                cy.findByLabelText("Name")
+                  .click()
+                  .type("Foo");
+                // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
+                cy.findByText(
+                  `${first_name} ${last_name}'s Personal Collection`,
+                ).click();
+                popover().within(() => {
+                  cy.findByText("My personal collection");
+                  // Test will fail on this step first
+                  cy.findByText("First collection").should("not.exist");
+                  // This is the second step that makes sure not even search returns collections with read-only access
+                  cy.icon("search").click();
+                  cy.findByPlaceholderText("Search")
+                    .click()
+                    .type("third{Enter}");
+                  cy.findByText("Third collection").should("not.exist");
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+
+  describe("revision history", () => {
+    beforeEach(() => {
+      cy.route("POST", "/api/revision/revert").as("revert");
+    });
+
+    Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
+      context(`${permission} access`, () => {
+        userGroup.forEach(user => {
+          // This function `onlyOn` will not generate tests for any other condition.
+          // It helps to make both our tests and Cypress runner sidebar clean
+          onlyOn(permission === "curate", () => {
+            describe(`${user} user`, () => {
+              beforeEach(() => {
+                cy.signInAsAdmin();
+                // Generate some history for the question
+                cy.request("PUT", "/api/card/1", {
+                  name: "Orders renamed",
+                });
+                cy.signIn(user);
+              });
+
+              it.skip("should be able to revert the dashboard (metabase#15237)", () => {
+                cy.visit("/dashboard/1");
+                cy.icon("ellipsis").click();
+                cy.findByText("Revision history").click();
+                clickRevert("First revision.");
+                cy.wait("@revert").then(xhr => {
+                  expect(xhr.status).to.eq(200);
+                  expect(xhr.cause).not.to.exist;
+                });
+                cy.findAllByText(/Revert/).should("not.exist");
+                // We reverted the dashboard to the state prior to adding any cards to it
+                cy.findByText("This dashboard is looking empty.");
+              });
+
+              it("should be able to revert the question", () => {
+                // It's possible that the mechanics of who should be able to revert the question will change, but for now that's not possible for user without data access
+                cy.skipOn(user === "nodata");
+                cy.visit("/question/1");
+                cy.icon("pencil").click();
+                cy.findByText("View revision history").click();
+                clickRevert("First revision.");
+                cy.wait("@revert").then(xhr => {
+                  expect(xhr.status).to.eq(200);
+                  expect(xhr.cause).not.to.exist;
+                });
+                cy.findAllByText(/Revert/).should("not.exist");
+                // We need to reload the page because of #12581
+                cy.reload();
+                cy.contains(/^Orders$/);
+              });
+            });
+          });
+
+          onlyOn(permission === "view", () => {
+            describe(`${user} user`, () => {
+              it.skip("should not see revert buttons (metabase#13229)", () => {
+                cy.signIn(user);
+                cy.visit("/dashboard/1");
+                cy.icon("ellipsis").click();
+                cy.findByText("Revision history").click();
+                cy.findAllByRole("button", { name: "Revert" }).should(
+                  "not.exist",
+                );
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+function clickRevert(event_name) {
+  cy.findByText(event_name)
+    .closest("tr")
+    .findByText(/Revert/i)
+    .click();
+}
+
+function openEllipsisMenuFor(item, index = 0) {
+  cy.findAllByText(item)
+    .eq(index)
+    .closest("a")
+    .find(".Icon-ellipsis")
+    .click({ force: true });
+}
+
+function clickButton(name) {
+  cy.findByRole("button", { name })
+    .should("not.be.disabled")
+    .click();
+}

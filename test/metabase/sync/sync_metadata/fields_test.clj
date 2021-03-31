@@ -3,6 +3,7 @@
   behavior in the namespace `metabase.sync-database.sync-dynamic-test`, which is sort of a misnomer.)"
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.models :refer [Field Table]]
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
@@ -13,19 +14,15 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Dropping & Undropping Columns                                          |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- with-test-db-before-and-after-dropping-a-column
+(defn- with-test-db-before-and-after-altering
   "Testing function that performs the following steps:
-
    1.  Create a temporary test database & syncs it
    2.  Executes `(f database)`
    3.  Drops one of the columns from the test DB & syncs it again
    4.  Executes `(f database)` a second time
    5.  Returns a map containing results from both calls to `f` for comparison."
-  [f]
+  {:style/indent [:fn]}
+  [alter-sql f]
   ;; first, create a new in-memory test DB and add some data to it
   (one-off-dbs/with-blank-db
     (doseq [statement [ ;; H2 needs that 'guest' user for QP purposes. Set that up
@@ -46,34 +43,57 @@
     ;; ok, let's see what (f) gives us
     (let [f-before (f (mt/db))]
       ;; ok cool! now delete one of those columns...
-      (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"])
+      (jdbc/execute! one-off-dbs/*conn* [alter-sql])
       ;; ...and re-sync...
       (sync/sync-database! (mt/db))
       ;; ...now let's see how (f) may have changed! Compare to original.
-      {:before-drop f-before
-       :after-drop  (f (mt/db))})))
+      {:before-sync f-before
+       :after-sync  (f (mt/db))})))
+
+(deftest renaming-fields-test
+  (testing "make sure we can identify case changes on a field (#7923)"
+    (let [db-state (with-test-db-before-and-after-altering
+                    "ALTER TABLE \"birds\" RENAME COLUMN \"example_name\" to \"Example_Name\";"
+                    (fn [database]
+                      (set
+                       (map (partial into {})
+                            (db/select [Field :id :name :active]
+                              :table_id [:in (db/select-ids Table :db_id (u/the-id database))])))))]
+      (is (= {:before-sync #{{:name "species",      :active true}
+                             {:name "example_name", :active true}}
+              :after-sync #{{:name "species",      :active true}
+                            {:name "Example_Name", :active true}}}
+             (m/map-vals (fn [results] (into (empty results)
+                                             (map #(dissoc % :id))
+                                             results))
+                         db-state)))
+      (testing "It sees this as the same field and not a new field"
+        (let [ids-of (fn [k] (->> db-state k (into #{} (map :id))))]
+          (is (= (ids-of :before-sync) (ids-of :after-sync))))))))
 
 (deftest mark-inactive-test
   (testing "make sure sync correctly marks a Field as active = false when it gets dropped from the DB"
-    (is (= {:before-drop #{{:name "species", :active true}
+    (is (= {:before-drop #{{:name "species",      :active true}
                            {:name "example_name", :active true}}
-            :after-drop  #{{:name "species", :active true}
+            :after-drop  #{{:name "species",      :active true}
                            {:name "example_name", :active false}}}
-           (with-test-db-before-and-after-dropping-a-column
-             (fn [database]
-               (set
-                (map (partial into {})
-                     (db/select [Field :name :active]
-                       :table_id [:in (db/select-ids Table :db_id (u/the-id database))])))))))))
+           (with-test-db-before-and-after-altering
+            "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
+            (fn [database]
+              (set
+               (map (partial into {})
+                    (db/select [Field :name :active]
+                      :table_id [:in (db/select-ids Table :db_id (u/the-id database))])))))))))
 
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
     (is (= {:before-drop #{"species" "example_name"}
             :after-drop  #{"species"}}
-           (with-test-db-before-and-after-dropping-a-column
-             (fn [database]
-               (let [table (hydrate (db/select-one Table :db_id (u/the-id database)) :fields)]
-                 (set (map :name (:fields table))))))))))
+           (with-test-db-before-and-after-altering
+            "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
+            (fn [database]
+              (let [table (hydrate (db/select-one Table :db_id (u/the-id database)) :fields)]
+                (set (map :name (:fields table))))))))))
 
 (deftest dont-splice-inactive-columns-into-queries-test
   (testing (str "make sure that inactive columns don't end up getting spliced into queries! This test arguably "
@@ -89,7 +109,8 @@
             :after-drop  (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\" "
                               "FROM \"PUBLIC\".\"birds\" "
                               "LIMIT 1048576")}
-           (with-test-db-before-and-after-dropping-a-column
+           (with-test-db-before-and-after-altering
+             "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
              (fn [database]
                (-> (qp/process-query {:database (u/the-id database)
                                       :type     :query
@@ -98,6 +119,7 @@
                    :data
                    :native_form
                    :query)))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                PK & FK Syncing                                                 |
@@ -127,7 +149,6 @@
           (sync/sync-table! (Table (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))))))
-
 
 (deftest fk-relationships-test
   (testing "Check that Foreign Key relationships were created on sync as we expect"
