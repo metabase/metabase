@@ -94,10 +94,10 @@
 (defmethod sso/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
-  [request]
+  [req]
   (check-saml-enabled)
   (try
-    (let [redirect-url (or (get-in request [:params :redirect])
+    (let [redirect-url (or (get-in req [:params :redirect])
                            (log/warn (trs "Warning: expected `redirect` param, but none is present"))
                            (public-settings/site-url))
           idp-url      (sso-settings/saml-identity-provider-uri)
@@ -151,7 +151,8 @@
     attrs))
 
 (defn- base64-decode [s]
-  (codecs/bytes->str (codec/base64-decode s)))
+  (when (u/base64-string? s)
+    (codecs/bytes->str (codec/base64-decode s))))
 
 (defmethod sso/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
