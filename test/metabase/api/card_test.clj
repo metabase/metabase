@@ -1426,8 +1426,10 @@
 
       (testing "Cannot share an archived Card"
         (mt/with-temp Card [card {:archived true}]
-          (is (= {:message "The object has been archived.", :error_code "archived"}
-                 (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" (u/the-id card)))))))
+          (is (schema= {:message    (s/eq "The object has been archived.")
+                        :error_code (s/eq "archived")
+                        s/Keyword   s/Any}
+                       (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" (u/the-id card)))))))
 
       (testing "Cannot share a Card that doesn't exist"
         (is (= "Not found."
