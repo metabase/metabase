@@ -32,45 +32,33 @@ export const PARAMETER_SECTIONS: ParameterSection[] = [
     id: "date",
     name: t`Time`,
     description: t`Date range, relative date, time of day, etc.`,
-    options: [],
+    options: PARAMETER_OPTIONS["date"],
   },
   {
     id: "location",
     name: t`Location`,
     description: t`City, State, Country, ZIP code.`,
-    options: [],
+    options: PARAMETER_OPTIONS["string"],
   },
   {
     id: "id",
     name: t`ID`,
     description: t`User ID, product ID, event ID, etc.`,
-    options: [],
+    options: [PARAMETER_OPTIONS["id"]],
   },
   {
     id: "number",
     name: t`Number`,
     description: t`Subtotal, Age, Price, Quantity, etc.`,
-    options: [],
+    options: PARAMETER_OPTIONS["number"],
   },
   {
     id: "category",
     name: t`Other Categories`,
     description: t`Category, Type, Model, Rating, etc.`,
-    options: [],
+    options: PARAMETER_OPTIONS["string"],
   },
 ];
-
-for (const option of PARAMETER_OPTIONS) {
-  const sectionId = option.type.split("/")[0];
-  let section = _.findWhere(PARAMETER_SECTIONS, { id: sectionId });
-  if (!section) {
-    section = _.findWhere(PARAMETER_SECTIONS, { id: "category" });
-  }
-  if (section) {
-    section.options = section.options || [];
-    section.options.push(option);
-  }
-}
 
 export function getParameterMappingOptions(
   metadata: Metadata,

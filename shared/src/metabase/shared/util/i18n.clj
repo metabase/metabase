@@ -13,3 +13,14 @@
 
     :cljs
     `(js-i18n ~format-string ~@args)))
+
+(defmacro trs
+  "Applies `str` to `deferred-trs`'s expansion.
+  Prefer this over `deferred-trs`. Use `deferred-trs` only in code executed at compile time, or where `str` is manually
+  applied to the result."
+  [format-string & args]
+  (macros/case
+    :clj
+    `(metabase.util.i18n/trs ~format-string ~@args)
+    :cljs
+    `(js-i18n ~format-string ~@args)))

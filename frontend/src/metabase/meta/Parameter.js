@@ -15,6 +15,7 @@ import type {
   ParameterValues,
   ParameterType,
 } from "metabase-types/types/Parameter";
+import { PARAMETER_OPERATOR_TYPES } from "cljs/metabase.driver.common.parameters.operators.js";
 import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Field from "metabase-lib/lib/metadata/Field";
@@ -39,73 +40,6 @@ type TemplateTagFilter = (tag: TemplateTag) => boolean;
 type FieldPredicate = (field: Field) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 
-export const PARAMETER_OPERATOR_TYPES = {
-  number: [
-    {
-      operator: "=",
-      name: t`Equal to`,
-    },
-    {
-      operator: "!=",
-      name: t`Not equal to`,
-    },
-    {
-      operator: "between",
-      name: t`Between`,
-    },
-    {
-      operator: ">=",
-      name: t`Greater than or equal to`,
-    },
-    {
-      operator: "<=",
-      name: t`Less than or equal to`,
-    },
-    // {
-    //   operator: "all-options",
-    //   name: t`All options`,
-    //   description: t`Contains all of the above`,
-    // },
-  ],
-  string: [
-    {
-      operator: "=",
-      name: t`Dropdown`,
-      description: t`Select one or more values from a list or search box.`,
-    },
-    {
-      operator: "!=",
-      name: t`Is not`,
-      description: t`Exclude one or more specific values.`,
-    },
-    {
-      operator: "contains",
-      name: t`Contains`,
-      description: t`Match values that contain the entered text.`,
-    },
-    {
-      operator: "does-not-contain",
-      name: t`Does not contain`,
-      description: t`Filter out values that contain the entered text.`,
-    },
-    {
-      operator: "starts-with",
-      name: t`Starts with`,
-      description: t`Match values that begin with the entered text.`,
-    },
-    {
-      operator: "ends-with",
-      name: t`Ends with`,
-      description: t`Match values that end with the entered text.`,
-    },
-    // {
-    //   operator: "all-options",
-    //   name: t`All options`,
-    //   description: t`Users can pick from any of the above`,
-    // },
-  ],
-};
-
 const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   {
     section: "location",
@@ -124,59 +58,48 @@ const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   },
 ];
 
-export const PARAMETER_OPTIONS: ParameterOption[] = [
-  {
-    type: "date/month-year",
-    name: t`Month and Year`,
-    description: t`Like January, 2016`,
-  },
-  {
-    type: "date/quarter-year",
-    name: t`Quarter and Year`,
-    description: t`Like Q1, 2016`,
-  },
-  {
-    type: "date/single",
-    name: t`Single Date`,
-    description: t`Like January 31, 2016`,
-  },
-  {
-    type: "date/range",
-    name: t`Date Range`,
-    description: t`Like December 25, 2015 - February 14, 2016`,
-  },
-  {
-    type: "date/relative",
-    name: t`Relative Date`,
-    description: t`Like "the last 7 days" or "this month"`,
-  },
-  {
-    type: "date/all-options",
-    name: t`Date Filter`,
-    menuName: t`All Options`,
-    description: t`Contains all of the above`,
-  },
-  {
-    type: "id",
-    name: t`ID`,
-  },
-  ...OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
-    buildOperatorSubtypeOptions(option),
-  ),
-].flat();
-
-function buildOperatorSubtypeOptions({ section, operatorType, sectionName }) {
-  return PARAMETER_OPERATOR_TYPES[operatorType].map(option => ({
-    ...option,
-    combinedName:
-      operatorType === "string" && option.operator === "="
-        ? `${sectionName}`
-        : sectionName === "Number"
-        ? `${option.name}`
-        : `${sectionName} ${option.name.toLowerCase()}`,
-    type: `${section}/${option.operator}`,
-  }));
-}
+export const PARAMETER_OPTIONS: ParameterOption[] = {
+  date: [
+    {
+      type: "date/month-year",
+      name: t`Month and Year`,
+      description: t`Like January, 2016`,
+    },
+    {
+      type: "date/quarter-year",
+      name: t`Quarter and Year`,
+      description: t`Like Q1, 2016`,
+    },
+    {
+      type: "date/single",
+      name: t`Single Date`,
+      description: t`Like January 31, 2016`,
+    },
+    {
+      type: "date/range",
+      name: t`Date Range`,
+      description: t`Like December 25, 2015 - February 14, 2016`,
+    },
+    {
+      type: "date/relative",
+      name: t`Relative Date`,
+      description: t`Like "the last 7 days" or "this month"`,
+    },
+    {
+      type: "date/all-options",
+      name: t`Date Filter`,
+      menuName: t`All Options`,
+      description: t`Contains all of the above`,
+    },
+  ],
+  id: [
+    {
+      type: "id",
+      name: t`ID`,
+    },
+  ],
+  ...PARAMETER_OPERATOR_TYPES,
+};
 
 function fieldFilterForParameter(parameter: Parameter) {
   return fieldFilterForParameterType(parameter.type);

@@ -3,37 +3,39 @@
   is one of the types here. If you see an Exception in QP code that doesn't return an `:type`, add it!
 
     (throw (ex-info (tru \"Don''t know how to parse {0} {1}\" (class x) x)
-                    {:type qp.error-type/invalid-parameter}))")
+                    {:type qp.error-type/invalid-parameter}))"
+  #?(:cljs (:require-macros [metabase.query-processor.error-type :refer [deferror]])))
 
 (def ^:private hierarchy
-  (make-hierarchy))
+  (atom (make-hierarchy)))
 
 (defn known-error-types
   "Set of all known QP error types."
   []
-  (descendants hierarchy :error))
+  (descendants @hierarchy :error))
 
 (defn known-error-type?
   "Is `error-type` a known QP error type (i.e., one defined with `deferror` above)?"
   [error-type]
-  (isa? hierarchy error-type :error))
+  (isa? @hierarchy error-type :error))
 
 (defn show-in-embeds?
   "Should errors of this type be shown to users of Metabase in embedded Cards or Dashboards? Normally, we return a
   generic 'Query Failed' error message for embedded queries, so as not to leak information. Some errors (like missing
   parameter errors), however, should be shown even in these situations."
   [error-type]
-  (isa? hierarchy error-type :show-in-embeds?))
+  (isa? @hierarchy error-type :show-in-embeds?))
 
-(defmacro ^:private deferror
-  {:style/indent 1}
-  [error-name docstring & {:keys [parent show-in-embeds?]}]
-  {:pre [(some? parent)]}
-  `(do
-     (def ~error-name ~docstring ~(keyword error-name))
-     (alter-var-root #'hierarchy derive ~(keyword error-name) ~(keyword parent))
-     ~(when show-in-embeds?
-        `(alter-var-root #'hierarchy derive ~(keyword error-name) :show-in-embeds?))))
+#?(:clj
+   (defmacro ^:private deferror
+     {:style/indent 1}
+     [error-name docstring & {:keys [parent show-in-embeds?]}]
+     {:pre [(some? parent)]}
+     `(do
+        (def ~error-name ~docstring ~(keyword error-name))
+        (swap! hierarchy derive ~(keyword error-name) ~(keyword parent))
+        ~(when show-in-embeds?
+           `(swap! hierarchy derive ~(keyword error-name) :show-in-embeds?)))))
 
 ;;;; ### Client Errors
 
@@ -44,7 +46,7 @@
 (defn client-error?
   "Is `error-type` a client error type, the equivalent of an HTTP 4xx status code?"
   [error-type]
-  (isa? hierarchy error-type :client))
+  (isa? @hierarchy error-type :client))
 
 (deferror missing-required-permissions
   "The current user does not have required permissions to run the current query."
@@ -82,7 +84,7 @@
 (defn server-error?
   "Is `error-type` a server error type, the equivalent of an HTTP 5xx status code?"
   [error-type]
-  (isa? hierarchy error-type :server))
+  (isa? @hierarchy error-type :server))
 
 (deferror timed-out
   "Error type if query fails to return the first row of results after some timeout."

@@ -1,22 +1,13 @@
 (ns metabase.mbql.util
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
-  #?@
-  (:clj
-   [(:require [clojure.string :as str]
-              [metabase.mbql.schema :as mbql.s]
-              [metabase.mbql.schema.helpers :as schema.helpers]
-              [metabase.mbql.util.match :as mbql.match]
-              [metabase.shared.util.i18n :as i18n]
-              [potemkin :as p]
-              [schema.core :as s])]
-   :cljs
-   [(:require [clojure.string :as str]
-              [metabase.mbql.schema :as mbql.s]
-              [metabase.mbql.schema.helpers :as schema.helpers]
-              [metabase.mbql.util.match :as mbql.match]
-              [metabase.shared.util.i18n :as i18n]
-              [schema.core :as s])]))
+  (:require [clojure.string :as str]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.schema.helpers :as schema.helpers]
+            [metabase.mbql.util.match :as mbql.match]
+            [metabase.shared.util.i18n :as i18n :refer [trs tru]]
+            #?(:clj [potemkin :as p])
+            [schema.core :as s]))
 
 (defn qualified-name
   "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
@@ -593,6 +584,31 @@
   "Set the `:temporal-unit` of a `:field` clause to `unit`."
   [field-clause unit]
   (assoc-field-options field-clause :temporal-unit unit))
+
+(s/defn unwrap-field-clause :- mbql.s/field
+  "Unwrap something that contains a `:field` clause, such as a template tag, Also handles unwrapped integers for
+  legacy compatibility.
+
+    (unwrap-field-clause [:field-id 100]) ; -> [:field-id 100]"
+  [field-form]
+  (if (integer? field-form)
+    [:field field-form nil]
+    (mbql.match/match-one field-form :field)))
+
+(defn wrap-field-id-if-needed
+  "Wrap a raw Field ID in a `:field-id` clause if needed."
+  [field-id-or-form]
+  (cond
+    (mbql-clause? field-id-or-form)
+    field-id-or-form
+
+    (integer? field-id-or-form)
+    [:field field-id-or-form nil]
+
+    :else
+    (throw (ex-info (trs "Don''t know how to wrap Field ID.")
+                    {:form field-id-or-form}))))
+
 
 #?(:clj
    (p/import-vars
