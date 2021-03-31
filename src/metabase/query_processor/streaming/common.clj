@@ -3,7 +3,8 @@
   (:require [java-time :as t]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util.date-2 :as u.date]))
+            [metabase.util.date-2 :as u.date])
+  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (defn in-result-time-zone
   "Set the time zone of a temporal value `t` to result timezone without changing the actual moment in time. e.g.
@@ -28,25 +29,28 @@
   Object
   (format-value [this] this)
 
-  java.time.temporal.Temporal
-  (format-value [this]
-    (u.date/format this))
-
-  java.time.LocalDateTime
-  (format-value [this]
-    (u.date/format
-     (if (= (t/local-time this) (t/local-time 0))
-       (t/local-date this)
-       this)))
-
-  java.time.OffsetDateTime
+  LocalDate
   (format-value [t]
-    (let [t (in-result-time-zone t)]
-      (u.date/format
-       (if (= (t/local-time t) (t/local-time 0))
-         (t/local-date t)
-         t))))
+    (u.date/format t))
 
-  java.time.ZonedDateTime
-  (format-value [this]
-    (format-value (t/offset-date-time this))))
+  LocalDateTime
+  (format-value [t]
+    (if (= (t/local-time t) (t/local-time 0))
+      (format-value (t/local-date t))
+      (u.date/format t)))
+
+  LocalTime
+  (format-value [t]
+    (u.date/format t))
+
+  OffsetTime
+  (format-value [t]
+    (u.date/format (in-result-time-zone t)))
+
+  OffsetDateTime
+  (format-value [t]
+    (u.date/format (in-result-time-zone t)))
+
+  ZonedDateTime
+  (format-value [t]
+    (u.date/format (t/offset-date-time t))))

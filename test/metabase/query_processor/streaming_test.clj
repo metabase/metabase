@@ -4,7 +4,6 @@
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
-            [metabase.models :refer [Card]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.test :as mt]
@@ -20,7 +19,9 @@
 (defmethod parse-result* :api
   [_ ^InputStream is _]
   (with-open [reader (InputStreamReader. is)]
-    (json/parse-stream reader true)))
+    (let [response (json/parse-stream reader true)]
+      (cond-> response
+        (map? response) (dissoc :database_id :started_at :json_query :average_execution_time :context :running_time)))))
 
 (defmethod parse-result* :json
   [export-format is column-names]
@@ -65,14 +66,15 @@
   "Process `query` as an API request, exporting it as `export-format` (in-memory), then parse the results."
   {:arglists '([export-format query] [export-format query column-names])}
   [export-format query & args]
-  (mt/with-temp Card [card {:dataset_query query}]
-    (let [byytes (mt/user-http-request :crowberto :post
-                                       (if (= export-format :api)
-                                         (format "card/%d/query" (u/the-id card))
-                                         (format "card/%d/query/%s" (u/the-id card) (name export-format)))
-                                       {:request-options {:as :byte-array}})]
-      (with-open [is (ByteArrayInputStream. byytes)]
-        (apply parse-result export-format is args)))))
+  (let [byytes (if (= export-format :api)
+                 (mt/user-http-request :crowberto :post "dataset"
+                                       {:request-options {:as :byte-array}}
+                                       (assoc-in query [:middleware :js-int-to-string?] false))
+                 (mt/user-http-request :crowberto :post (format "dataset/%s" (name export-format))
+                                       {:request-options {:as :byte-array}}
+                                       :query (json/generate-string query)))]
+    (with-open [is (ByteArrayInputStream. byytes)]
+      (apply parse-result export-format is args))))
 
 (defmulti ^:private expected-results
   {:arglists '([export-format normal-results])}
@@ -125,7 +127,7 @@
                   {:order-by [[:asc $id]]
                    :limit    5})]
       (doseq [export-format (qp.streaming/export-formats)]
-        (testing export-format
+        (testing (u/colorize :yellow export-format)
           (is (= (expected-results* export-format query)
                  (basic-actual-results* export-format query))))))))
 
@@ -139,13 +141,13 @@
 (deftest streaming-response-test
   (testing "Test that the actual results going thru the same steps as an API response are correct."
     (doseq [export-format (qp.streaming/export-formats)]
-      (testing export-format
+      (testing (u/colorize :yellow export-format)
         (compare-results export-format (mt/mbql-query venues {:limit 5}))))))
 
 (deftest utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
   (doseq [export-format (disj (qp.streaming/export-formats) :xlsx)]
-    (testing export-format
+    (testing (u/colorize :yellow export-format)
       (testing "Make sure our various streaming formats properly write values as UTF-8."
         (testing "A query that will have a little → in its name"
           (compare-results export-format (mt/mbql-query venues
@@ -179,21 +181,20 @@
   (zipmap col-names row))
 
 (defmethod first-row-map :json
-  [_ [row] _]
-  row)
+  [_ [row] col-names]
+  ;; this only works if the map is small enough that it's an still an array map and thus preserving the original order
+  (zipmap col-names (vals row)))
 
 ;; see also `metabase.query-processor.streaming.xlsx-test/report-timezone-test`
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)\n"
     (mt/test-driver :postgres
-      (let [sql       (str "select  '2021-01-25'::date,"
-                           " date_trunc('day', '2021-01-25'::date) as day,"
-                           " date_trunc('week', '2021-01-25'::date) as week,"
-                           " date_trunc('month', '2021-01-25'::date) as month,"
-                           " date_trunc('quarter', '2021-01-25'::date) as quarter,"
-                           " current_setting('TIMEZONE') AS tz")
-            query     {:database (mt/id), :type :native, :native {:query sql}}
-            col-names [:date :day :week :month :quarter :tz]]
+      (let [query     (mt/dataset attempted-murders
+                        (mt/mbql-query attempts
+                          {:fields   [$date $datetime $datetime_ltz $datetime_tz $datetime_tz_id $time $time_ltz $time_tz]
+                           :order-by [[:asc $id]]
+                           :limit    1}))
+            col-names [:date :datetime :datetime-ltz :datetime-tz :datetime-tz-id :time :time-ltz :time-tz]]
         (doseq [export-format (qp.streaming/export-formats)]
           (letfn [(test-results [expected]
                     (testing (u/colorize :yellow export-format)
@@ -204,51 +205,65 @@
               (test-results
                (case export-format
                  (:csv :json)
-                 {:date    "2021-01-25"
-                  :day     "2021-01-25"
-                  :week    "2021-01-25"
-                  :month   "2021-01-01"
-                  :quarter "2021-01-01"
-                  :tz      "UTC"}
+                 {:date           "2019-11-01"
+                  :datetime       "2019-11-01T00:23:18.331"
+                  :datetime-ltz   "2019-11-01T07:23:18.331Z"
+                  :datetime-tz    "2019-11-01T07:23:18.331Z"
+                  :datetime-tz-id "2019-11-01T07:23:18.331Z"
+                  :time           "00:23:18.331"
+                  :time-ltz       "07:23:18.331Z"
+                  :time-tz        "07:23:18.331Z"}
 
                  :api
-                 {:date    "2021-01-25T00:00:00Z"
-                  :day     "2021-01-25T00:00:00Z"
-                  :week    "2021-01-25T00:00:00Z"
-                  :month   "2021-01-01T00:00:00Z"
-                  :quarter "2021-01-01T00:00:00Z"
-                  :tz      "UTC"}
+                 {:date           "2019-11-01T00:00:00Z"
+                  :datetime       "2019-11-01T00:23:18.331Z"
+                  :datetime-ltz   "2019-11-01T07:23:18.331Z"
+                  :datetime-tz    "2019-11-01T07:23:18.331Z"
+                  :datetime-tz-id "2019-11-01T07:23:18.331Z"
+                  :time           "00:23:18.331Z"
+                  :time-ltz       "07:23:18.331Z"
+                  :time-tz        "07:23:18.331Z"}
 
                  :xlsx
-                 {:date    #inst "2021-01-25T00:00:00.000-00:00"
-                  :day     #inst "2021-01-25T00:00:00.000-00:00"
-                  :week    #inst "2021-01-25T00:00:00.000-00:00"
-                  :month   #inst "2021-01-01T00:00:00.000-00:00"
-                  :quarter #inst "2021-01-01T00:00:00.000-00:00"
-                  :tz      "UTC"})))
+                 {:date           #inst "2019-11-01T00:00:00.000-00:00"
+                  :datetime       #inst "2019-11-01T00:23:18.331-00:00"
+                  :datetime-ltz   #inst "2019-11-01T07:23:18.331-00:00"
+                  :datetime-tz    #inst "2019-11-01T07:23:18.331-00:00"
+                  :datetime-tz-id #inst "2019-11-01T07:23:18.331-00:00"
+                  ;; Excel actually displays these without the date info (which is zero), but since Docjure returns
+                  ;; java.util.Dates by default when parsing an XLSX doc, they have the date info here.
+                  :time           #inst "1899-12-31T00:23:18.000-00:00"
+                  :time-ltz       #inst "1899-12-31T07:23:18.000-00:00"
+                  :time-tz        #inst "1899-12-31T07:23:18.000-00:00"})))
             (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
               (test-results
                (case export-format
                  (:csv :json)
-                 {:date    "2021-01-25"
-                  :day     "2021-01-25"
-                  :week    "2021-01-25"
-                  :month   "2021-01-01"
-                  :quarter "2021-01-01"
-                  :tz      "US/Pacific"}
+                 {:date           "2019-11-01"
+                  :datetime       "2019-11-01T00:23:18.331"
+                  :datetime-ltz   "2019-11-01T00:23:18.331-07:00"
+                  :datetime-tz    "2019-11-01T00:23:18.331-07:00"
+                  :datetime-tz-id "2019-11-01T00:23:18.331-07:00"
+                  :time           "00:23:18.331"
+                  :time-ltz       "23:23:18.331-08:00"
+                  :time-tz        "23:23:18.331-08:00"}
 
                  :api
-                 {:date    "2021-01-25T00:00:00-08:00"
-                  :day     "2021-01-25T00:00:00-08:00"
-                  :week    "2021-01-25T00:00:00-08:00"
-                  :month   "2021-01-01T00:00:00-08:00"
-                  :quarter "2021-01-01T00:00:00-08:00"
-                  :tz      "US/Pacific"}
+                 {:date           "2019-11-01T00:00:00-07:00"
+                  :datetime       "2019-11-01T00:23:18.331-07:00"
+                  :datetime-ltz   "2019-11-01T00:23:18.331-07:00"
+                  :datetime-tz    "2019-11-01T00:23:18.331-07:00"
+                  :datetime-tz-id "2019-11-01T00:23:18.331-07:00"
+                  :time           "00:23:18.331-08:00"
+                  :time-ltz       "23:23:18.331-08:00"
+                  :time-tz        "23:23:18.331-08:00"}
 
                  :xlsx
-                 {:date    #inst "2021-01-25T00:00:00.000-00:00"
-                  :day     #inst "2021-01-25T00:00:00.000-00:00"
-                  :week    #inst "2021-01-25T00:00:00.000-00:00"
-                  :month   #inst "2021-01-01T00:00:00.000-00:00"
-                  :quarter #inst "2021-01-01T00:00:00.000-00:00"
-                  :tz      "US/Pacific"})))))))))
+                 {:date           #inst "2019-11-01T00:00:00.000-00:00"
+                  :datetime       #inst "2019-11-01T00:23:18.331-00:00"
+                  :datetime-ltz   #inst "2019-11-01T00:23:18.331-00:00"
+                  :datetime-tz    #inst "2019-11-01T00:23:18.331-00:00"
+                  :datetime-tz-id #inst "2019-11-01T00:23:18.331-00:00"
+                  :time           #inst "1899-12-31T00:23:18.000-00:00"
+                  :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
+                  :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
