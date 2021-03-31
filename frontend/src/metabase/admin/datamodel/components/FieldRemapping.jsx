@@ -33,6 +33,8 @@ export default class FieldRemapping extends React.Component {
 
   constructor(props, context) {
     super(props, context);
+
+    this.fkPopover = React.createRef();
   }
 
   getMappingTypeForField = field => {
@@ -191,7 +193,7 @@ export default class FieldRemapping extends React.Component {
 
       await fetchTableMetadata({ id: table.id }, { reload: true });
 
-      this.refs.fkPopover.close();
+      this.fkPopover.current.close();
     } else {
       throw new Error(t`The selected field isn't a foreign key`);
     }
@@ -268,7 +270,7 @@ export default class FieldRemapping extends React.Component {
           {mappingType === MAP_OPTIONS.foreign && [
             <SelectSeparator classname="flex" key="foreignKeySeparator" />,
             <PopoverWithTrigger
-              ref="fkPopover"
+              ref={this.fkPopover}
               triggerElement={
                 <SelectButton
                   hasValue={hasFKMappingValue}
