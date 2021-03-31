@@ -53,4 +53,4 @@
 
   ZonedDateTime
   (format-value [t]
-    (u.date/format (t/offset-date-time t))))
+    (format-value (t/offset-date-time t))))
