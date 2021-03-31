@@ -360,7 +360,7 @@
 
 (deftest native-query-with-default-params-as-source-test
   (testing "make sure using a native query with default params as a source works"
-    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) \"source\" LIMIT 1048576",
+    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) \"source\" LIMIT 1048575"
             :params ["Widget"]}
            (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                      :type     :native

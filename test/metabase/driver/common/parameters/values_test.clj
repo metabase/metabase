@@ -230,7 +230,7 @@
                                 "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                 "FROM \"PUBLIC\".\"VENUES\" "
                                 "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
-                                "LIMIT 1048576")]
+                                "LIMIT 1048575")]
           (mt/with-temp Card [card {:dataset_query mbql-query}]
             (is (= (i/->ReferencedCardQuery (:id card) expected-sql)
                    (#'values/value-for-tag

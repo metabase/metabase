@@ -31,7 +31,7 @@
 (def ^:private bad-query-native-schema
   {:query  (s/eq (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') AS \"ID\" "
                       "FROM \"PUBLIC\".\"VENUES\" "
-                      "LIMIT 1048576"))
+                      "LIMIT 1048575"))
    :params (s/eq nil)})
 
 (deftest process-userland-query-test
