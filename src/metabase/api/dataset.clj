@@ -59,10 +59,7 @@
   "Execute a query and retrieve the results in the usual format."
   [:as {{:keys [database], query-type :type, :as query} :body}]
   {database (s/maybe s/Int)}
-  (run-query-async (update-in query [:middleware :js-int-to-string?] (fn [existing-value]
-                                                                       (if (some? existing-value)
-                                                                         existing-value
-                                                                         true)))))
+  (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
