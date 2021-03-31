@@ -70,18 +70,9 @@
    :headers {"Content-Type" "text/html"}
    :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
               (let [message    (.getMessage e)
-                    stacktrace (u/pprint-to-str (vec (.getStackTrace e)))
                     data       (u/pprint-to-str (ex-data e))]
-                {:mailto         (str "mailto:support@metabase.com"
-                                      (str "?subject=" (codec/url-encode (str "[Login Error] " message)))
-                                      (str "&body=" (codec/url-encode
-                                                     (str/join "\n" ["Stacktrace:"
-                                                                     stacktrace
-                                                                     "Additional Info:"
-                                                                     data]))))
-                 :errorMessage   message
+                {:errorMessage   message
                  :exceptionClass (.getName Exception)
-                 :stacktrace     stacktrace
                  :additionalData data}))})
 
 (api/defendpoint POST "/"
