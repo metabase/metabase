@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import HeaderModal from "metabase/components/HeaderModal";
@@ -24,6 +23,7 @@ export default class Header extends Component {
     this.state = {
       headerHeight: 0,
     };
+    this.header = React.createRef();
   }
 
   componentDidMount() {
@@ -38,11 +38,11 @@ export default class Header extends Component {
   }
 
   updateHeaderHeight() {
-    if (!this.refs.header) {
+    if (!this.header.current) {
       return;
     }
 
-    const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
+    const rect = this.header.current.getBoundingClientRect();
     const headerHeight = rect.top + getScrollY();
     if (this.state.headerHeight !== headerHeight) {
       this.setState({ headerHeight });
@@ -141,7 +141,7 @@ export default class Header extends Component {
             "QueryBuilder-section flex align-center " +
             this.props.headerClassName
           }
-          ref="header"
+          ref={this.header}
         >
           <div className="Entity py3">
             <span className="inline-block mb1">{titleAndDescription}</span>
