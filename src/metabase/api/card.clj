@@ -10,6 +10,7 @@
             [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -272,8 +273,9 @@
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates card-updates]
-  (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-    (check-data-permissions-for-query (:dataset_query card-updates))))
+  (let [card-updates (m/update-existing card-updates :dataset_query mbql.normalize/normalize)]
+    (when (api/column-will-change? :dataset_query card-before-updates card-updates)
+      (check-data-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-unarchive
   "When unarchiving a Card, make sure we have data permissions for the Card query before doing so."
