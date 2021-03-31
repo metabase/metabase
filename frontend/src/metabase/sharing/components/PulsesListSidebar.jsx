@@ -17,15 +17,11 @@ import Tooltip from "metabase/components/Tooltip";
 import { formatHourAMPM, formatDay, formatFrame } from "metabase/lib/time";
 import { conjunct } from "metabase/lib/formatting";
 
-import {
-  getDefaultParametersById,
-  getParameters,
-} from "metabase/dashboard/selectors";
+import { getParameters } from "metabase/dashboard/selectors";
 
 const mapStateToProps = (state, props) => {
   return {
     parameters: getParameters(state, props),
-    defaultParametersById: getDefaultParametersById(state, props),
   };
 };
 
@@ -37,7 +33,6 @@ function _PulsesListSidebar({
   onCancel,
   editPulse,
   parameters,
-  defaultParametersById,
 }) {
   return (
     <Sidebar>
@@ -87,11 +82,7 @@ function _PulsesListSidebar({
                   {friendlySchedule(pulse.channels[0])}
                 </Label>
               </div>
-              <PulseDetails
-                pulse={pulse}
-                parameters={parameters}
-                defaultParametersById={defaultParametersById}
-              />
+              <PulseDetails pulse={pulse} parameters={parameters} />
             </div>
           </Card>
         ))}
@@ -106,7 +97,6 @@ _PulsesListSidebar.propTypes = {
   onCancel: PropTypes.func.isRequired,
   editPulse: PropTypes.func.isRequired,
   parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
 };
 
 function buildRecipientText(pulse) {
@@ -128,13 +118,23 @@ function buildRecipientText(pulse) {
       )}`;
 }
 
-function buildFilterText(pulse, parameters, defaultParametersById) {
+function hasDefaultParameterValue(parameter) {
+  return parameter.default != null;
+}
+
+function hasParameterValue(parameter) {
+  return parameter && parameter.value != null;
+}
+
+function buildFilterText(pulse, parameters) {
   const pulseParameters = pulse.parameters || [];
-  const defaultParamsNotInPulseParams = parameters.filter(
-    parameter =>
-      parameter.default != null &&
-      !pulseParameters.includes(pulseParam => pulseParam.id === parameter.id),
-  );
+  const pulseParametersById = _.indexBy(pulseParameters, "id");
+  const defaultParamsNotInPulseParams = parameters.filter(parameter => {
+    const pulseParameter = pulseParametersById[parameter.id];
+    return (
+      hasDefaultParameterValue(parameter) && !hasParameterValue(pulseParameter)
+    );
+  });
 
   const activeParameters = [
     ...pulseParameters,
@@ -161,9 +161,9 @@ function buildFilterText(pulse, parameters, defaultParametersById) {
       )}`;
 }
 
-function PulseDetails({ pulse, parameters, defaultParametersById }) {
+function PulseDetails({ pulse, parameters }) {
   const recipientText = buildRecipientText(pulse);
-  const filterText = buildFilterText(pulse, parameters, defaultParametersById);
+  const filterText = buildFilterText(pulse, parameters);
 
   return (
     <div className="text-medium hover-child">
@@ -209,7 +209,6 @@ function PulseDetails({ pulse, parameters, defaultParametersById }) {
 PulseDetails.propTypes = {
   pulse: PropTypes.object.isRequired,
   parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
 };
 
 function friendlySchedule(channel) {

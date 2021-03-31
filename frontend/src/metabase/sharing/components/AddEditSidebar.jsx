@@ -506,13 +506,18 @@ function ParametersSection({
 
   const setParameterValue = (id, value) => {
     const parameter = parameters.find(parameter => parameter.id === id);
-    setPulseParameters([
-      ...pulseParameters.filter(parameter => parameter.id !== id),
-      {
-        ...parameter,
-        value,
-      },
-    ]);
+    const filteredParameters = pulseParameters.filter(
+      parameter => parameter.id !== id,
+    );
+    const newParameters =
+      value == null
+        ? filteredParameters
+        : filteredParameters.concat({
+            ...parameter,
+            value,
+          });
+
+    setPulseParameters(newParameters);
   };
 
   return (

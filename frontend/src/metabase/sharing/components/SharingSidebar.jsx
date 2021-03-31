@@ -204,7 +204,6 @@ class SharingSidebar extends React.Component {
   setPulseParameters = parameters => {
     const { pulse } = this.props;
 
-    console.log("setPulseParameters", parameters);
     this.setPulse({
       ...pulse,
       parameters,
