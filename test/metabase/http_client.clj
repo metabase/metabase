@@ -4,8 +4,8 @@
             [clj-http.client :as client]
             [clojure.string :as str]
             [clojure.test :as t]
-            [clojure.walk :as walk]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [environ.core :as env]
             [java-time :as java-time]
             [metabase.config :as config]
@@ -15,6 +15,7 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
+            [ring.util.codec :as codec]
             [schema.core :as s]))
 
 ;;; build-url
@@ -24,16 +25,18 @@
   (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
 
 (defn build-url
-  "Build an API URL for `localhost` and `MB_JETTY_PORT` with `url-param-kwargs`.
+  "Build an API URL for `localhost` and `MB_JETTY_PORT` with `query-parameters`.
 
     (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
-  [url url-param-kwargs]
-  {:pre [(string? url) (u/maybe? map? url-param-kwargs)]}
-  (str *url-prefix* url (when (seq url-param-kwargs)
-                          (str "?" (str/join \& (for [[k v] url-param-kwargs]
-                                                (str (if (keyword? k) (name k) k)
-                                                     \=
-                                                     (if (keyword? v) (name v) v))))))))
+  [url query-parameters]
+  {:pre [(string? url) (u/maybe? map? query-parameters)]}
+  (str *url-prefix* url (when (seq query-parameters)
+                          (str "?" (str/join \& (letfn [(url-encode [s]
+                                                          (cond-> s
+                                                            (keyword? s) u/qualified-name
+                                                            true         codec/url-encode))]
+                                                  (for [[k v] query-parameters]
+                                                    (str (url-encode k) \= (url-encode v)))))))))
 
 
 ;;; parse-response
@@ -164,7 +167,7 @@
    (s/optional-key :expected-status)  (s/maybe su/IntGreaterThanZero)
    :url                               su/NonBlankString
    (s/optional-key :http-body)        (s/maybe su/Map)
-   (s/optional-key :url-param-kwargs) (s/maybe su/Map)
+   (s/optional-key :query-parameters) (s/maybe su/Map)
    (s/optional-key :request-options)  (s/maybe su/Map)})
 
 (defn derecordize
@@ -179,12 +182,12 @@
 
 (s/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them
-  [{:keys [credentials method expected-status url http-body url-param-kwargs request-options]} :- ClientParamsMap]
+  [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
   (let [http-body   (derecordize http-body)
         request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
-        url         (build-url url url-param-kwargs)
+        url         (build-url url query-parameters)
         method-name (str/upper-case (name method))
         _           (log/debug method-name (pr-str url) (pr-str request-map))
         thunk       (fn []
@@ -216,13 +219,13 @@
   (let [[credentials [method & args]]     (u/optional #(or (map? %) (string? %)) args)
         [expected-status [url & args]]    (u/optional integer? args)
         [{:keys [request-options]} args]  (u/optional (every-pred map? :request-options) args {:request-options {}})
-        [body [& {:as url-param-kwargs}]] (u/optional map? args)]
+        [body [& {:as query-parameters}]] (u/optional map? args)]
     {:credentials      credentials
      :method           method
      :expected-status  expected-status
      :url              url
      :http-body        body
-     :url-param-kwargs url-param-kwargs
+     :query-parameters query-parameters
      :request-options  request-options}))
 
 (def ^:private response-timeout-ms
@@ -233,7 +236,7 @@
 
 (defn client-full-response
   "Identical to `client` except returns the full HTTP response map, not just the body of the response"
-  {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & url-kwargs])}
+  {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
   [& args]
   (let [parsed (parse-http-client-args args)]
     (log/trace (pr-str (parse-http-client-args args)))
@@ -261,7 +264,7 @@
    *  `request-options`      Optional map of options to pass as part of request to `clj-http.client`, e.g. `:headers`.
                              The map must be wrapped in `{:request-options}` e.g. `{:request-options {:headers ...}}`
    *  `http-body-map`        Optional map to send as the JSON-serialized HTTP body of the request
-   *  `query-params`           key-value pairs that will be encoded and added to the URL as query params"
+   *  `query-params`         Key-value pairs that will be encoded and added to the URL as query params"
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
   (:body (apply client-full-response args)))

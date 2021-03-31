@@ -218,7 +218,7 @@ default_parameters: &Params
 # uncontrollably since old deps would continue to accumulate. Restoring big caches is really slow in Circle. It's
 # actually faster to recreate the deps cache from scratch whenever we need to which keeps the size down.
 cache-key-backend-deps: &CacheKeyBackendDeps
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "project.clj" }}
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "project.clj" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
 
 cache-key-frontend-deps: &CacheKeyFrontendDeps
   key: v1-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
@@ -493,6 +493,10 @@ jobs:
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
           find-args: ". -type f -name '*.clj' -or -name '*.java' -or -name deps.edn -or -name metabase-plugin.yaml"
+      # .SCRIPTS-DEPS-CHECKSUMS is all the deps.edn files inside ./bin
+      - create-checksum-file:
+          filename: .SCRIPTS-DEPS-CHECKSUMS
+          find-args: "bin -type f -name 'deps.edn'"
       # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
@@ -593,7 +597,7 @@ jobs:
 ########################################################################################################################
 
   be-deps:
-    executor: clojure
+    executor: metabase-ci
     parameters:
       <<: *Params
     steps:
@@ -601,10 +605,12 @@ jobs:
       # This step is pretty slow, even with the cache, so only run it if project.clj has changed
       # TODO -- we should cache the build script deps as well, and driver deps?
       - run-on-change:
-          checksum: '{{ checksum "project.clj" }}'
+          checksum: '{{ checksum "project.clj" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
           steps:
             - restore-be-deps-cache
-            - run: lein with-profile +include-all-drivers,+cloverage,+junit,+<< parameters.edition >> deps
+            - run: lein with-profile +include-all-drivers,+cloverage,+junit,+dev,+<< parameters.edition >> deps
+            - run: |
+                cd /home/circleci/metabase/metabase/bin/build-mb && clojure -P
             - save_cache:
                 name: Cache backend dependencies
                 <<: *CacheKeyBackendDeps
