@@ -1,6 +1,5 @@
 import React from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -102,6 +101,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       // except currently we exclude `startRule` and `query` since they shouldn't change
       [source, targetOffset].join(","),
     );
+    this.input = React.createRef();
   }
 
   static propTypes = {
@@ -262,14 +262,14 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   _setCaretPosition = (position, autosuggest) => {
-    setCaretPosition(ReactDOM.findDOMNode(this.refs.input), position);
+    setCaretPosition(this.input.current, position);
     if (autosuggest) {
       setTimeout(() => this._triggerAutosuggest());
     }
   };
 
   onExpressionChange(source) {
-    const inputElement = ReactDOM.findDOMNode(this.refs.input);
+    const inputElement = this.input.current;
     if (!inputElement) {
       return;
     }
@@ -360,7 +360,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           {"= "}
         </div>
         <TokenizedInput
-          ref="input"
+          ref={this.input}
           type="text"
           className={cx(inputClassName, {
             "border-error": compileError,
