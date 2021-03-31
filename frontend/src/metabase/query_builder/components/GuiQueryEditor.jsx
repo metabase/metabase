@@ -47,7 +47,13 @@ type State = {
 };
 
 export default class GuiQueryEditor extends React.Component {
-  props: Props;
+  constructor(props: Props) {
+    super(props);
+
+    this.filterPopover = React.createRef();
+    this.guiBuilder = React.createRef();
+  }
+
   state: State = {
     expanded: true,
   };
@@ -150,7 +156,7 @@ export default class GuiQueryEditor extends React.Component {
         <div className="mx2">
           <PopoverWithTrigger
             id="FilterPopover"
-            ref="filterPopover"
+            ref={this.filterPopover}
             triggerElement={addFilterButton}
             triggerClasses="flex align-center"
             getTarget={() => this.refs.addFilterTarget}
@@ -163,7 +169,7 @@ export default class GuiQueryEditor extends React.Component {
               onChangeFilter={filter =>
                 query.filter(filter).update(setDatasetQuery)
               }
-              onClose={() => this.refs.filterPopover.close()}
+              onClose={() => this.filterPopover.current.close()}
               showCustom={false}
             />
           </PopoverWithTrigger>
@@ -333,7 +339,7 @@ export default class GuiQueryEditor extends React.Component {
     return (
       <div
         className="GuiBuilder-section GuiBuilder-filtered-by flex align-center"
-        ref="filterSection"
+        ref={this.filterSection}
       >
         <span className="GuiBuilder-section-label Query-label">{t`Filtered by`}</span>
         {this.renderFilters()}
@@ -376,7 +382,7 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   componentDidUpdate() {
-    const guiBuilder = ReactDOM.findDOMNode(this.refs.guiBuilder);
+    const guiBuilder = this.guiBuilder.current;
     if (!guiBuilder) {
       return;
     }
@@ -404,7 +410,7 @@ export default class GuiQueryEditor extends React.Component {
         className={cx("GuiBuilder rounded shadowed", {
           "GuiBuilder--expand": this.state.expanded,
         })}
-        ref="guiBuilder"
+        ref={this.guiBuilder}
       >
         <div className="GuiBuilder-row flex">
           {this.renderDataSection()}
