@@ -14,13 +14,13 @@ When you click the Ask a Question button, you'll see that there are three ways t
 
 This page will cover the simple mode.
 
-### Asking a simple question
+## Asking a simple question
 
 After you select the Simple Question option, you'll need to pick some data that you have a question about. Just pick one of the databases that's connected to Metabase, and you'll see a list of all the tables inside of it. Pick the one that you have a question about; it could be a Users table, or maybe it's something like Events, Orders, or Downloads.
 
 To ask a question about a table of data, we usually do some **filtering** and/or **summarizing**.
 
-#### Filtering
+### Filtering
 
 Filtering just means narrowing things down based on certain criteria. You're probably already familiar with filtering when looking for something online, like when shopping. Maybe you only want to see olive-colored pants, or books where the author's last name is "Steinbeck," or pictures of people wearing olive-colored pants reading John Steinbeck.
 
@@ -38,7 +38,7 @@ One important thing to understand when filtering on a date column is the differe
 
 **Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you for example how many users visited your website in the last 7 days.
 
-##### Filtering by a segment
+#### Filtering by a segment
 
 If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called "segments," and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
 
@@ -46,7 +46,7 @@ Once you're happy with your filter, click Done, and your data will be updated wi
 
 ![An active filter](./images/notebook/filter-badge.png)
 
-#### Summarizing
+### Summarizing
 
 When we have a question like "how many people downloaded our app each day this week?" or "what's the average age of customers who visit each of our stores on the weekend?", we're asking for a **summary** of the data. A summary is usually made up of two parts: one or more _numbers_ we care about (called a "metric" in data-speak), and how we want to see that number _grouped_ or _broken out_. So in our first example:
 
@@ -69,7 +69,7 @@ To do this in Metabase, click the Summarize button in the top-right of the scree
 
 ![The Summarize sidebar](./images/notebook/summarize-sidebar.png)
 
-##### Picking metrics
+#### Picking metrics
 
 The sidebar has two main parts: the top is where you pick the number ("metric") you want to see, and the part below it is where you pick how to group that number (or how to "break it out").
 
@@ -87,7 +87,7 @@ By default the "count of rows" metric will be selected, since it's super common,
 
 If your admins have created any named metrics that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
 
-##### Picking a grouping for your metrics
+#### Picking a grouping for your metrics
 
 Depending on the grouping column you select, Metabase will show you what it thinks is the best default visualization or chart for this summary. So if you select a date column, you'll see a line chart like this:
 
@@ -105,17 +105,29 @@ Once you're done setting your metrics and groupings, click Done to close the Sum
 
 If you want to jump ahead and learn about [how to change the visualization](05-visualizing-results.md) of your results, by all means, feel free.
 
-### Viewing an individual record's details
+## Viewing an individual record's details
 
 Click on a record's ID number (or primary key) to see more information about a given user, order, venue, etc. You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. Press the right or left arrow keys, or click on the arrows to the right or left of the screen to page through the other records in the current list.
 
 ![Record details](./images/notebook/record-details.png)
 
-### Downloading Your Results
+## Downloading Your Results
 
 You can download or export the results of a question by clicking on the Download arrow in the lower right of the screen. Results can be downloaded into .csv, .xlsx, or .json files. The maximum download size is 1 million rows.
 
 ![Download Button](./images/download-button.png)
+
+## Starting new explorations from saved questions
+
+Each time you start modifying a saved question, Metabase will create a new question for you. It'll give the new question a placeholder title, and let you know which question you started from. 
+
+![Starting from a saved question](./images/notebook/started-from-saved-question.png)
+
+So feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
+
+You can also explicitly **Duplicate this question** from the edit menu (the pencil icon).
+
+![Duplicate a question](./images/notebook/duplicate-question.png)
 
 ---
 
