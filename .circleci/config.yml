@@ -496,7 +496,7 @@ jobs:
       # .SCRIPTS-DEPS-CHECKSUMS is all the deps.edn files inside ./bin
       - create-checksum-file:
           filename: .SCRIPTS-DEPS-CHECKSUMS
-          find-args: "bin -type -f -name 'deps.edn'"
+          find-args: "bin -type f -name 'deps.edn'"
       # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
