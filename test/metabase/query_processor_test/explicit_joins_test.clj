@@ -23,7 +23,7 @@
                 "FROM \"PUBLIC\".\"VENUES\" "
                 "LEFT JOIN \"PUBLIC\".\"CATEGORIES\" \"source\""
                 " ON \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 1 "
-                "LIMIT 1048576")
+                "LIMIT 1048575")
            (native-form
             (mt/mbql-query venues
               {:joins [{:source-table $$categories

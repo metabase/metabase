@@ -110,10 +110,10 @@
     (is (= {:before-sync (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\", "
                               "\"PUBLIC\".\"birds\".\"example_name\" AS \"example_name\" "
                               "FROM \"PUBLIC\".\"birds\" "
-                              "LIMIT 1048576")
+                              "LIMIT 1048575")
             :after-sync  (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\" "
                               "FROM \"PUBLIC\".\"birds\" "
-                              "LIMIT 1048576")}
+                              "LIMIT 1048575")}
            (with-test-db-before-and-after-altering
              "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
              (fn [database]
