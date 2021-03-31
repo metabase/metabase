@@ -71,7 +71,7 @@ export default class UserSettings extends Component {
             />
           )}
         </Flex>
-        <Box w={["100%", 540]} ml="auto" mr="auto" px={[1, 2]} pt={[1, 3]}>
+        <Box w={["100%", 540]} ml="auto" mr="auto" px={[1, 2]} py={[1, 3]}>
           {tab === "details" || !showChangePassword ? (
             <User.Form
               {...this.props}

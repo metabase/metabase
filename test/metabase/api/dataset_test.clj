@@ -242,7 +242,7 @@
     (testing "\nCan we fetch a native version of an MBQL query?"
       (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
                            "FROM \"PUBLIC\".\"VENUES\" "
-                           "LIMIT 1048576")
+                           "LIMIT 1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (mt/mbql-query venues
@@ -252,7 +252,7 @@
         (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
                              "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z'"
                              " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
-                             "LIMIT 1048576")
+                             "LIMIT 1048575")
                 :params nil}
                (mt/user-http-request :rasta :post 200 "dataset/native"
                                      (mt/mbql-query checkins
