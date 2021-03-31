@@ -430,11 +430,12 @@
                     (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
                     (s/optional-key :cards)               [CoercibleToCardRef]
                     (s/optional-key :channels)            [su/Map]
-                    (s/optional-key :archived)            s/Bool}]
+                    (s/optional-key :archived)            s/Bool
+                    (s/optional-key :parameters)          [su/Map]}]
   (db/update! Pulse (u/the-id notification)
     (u/select-keys-when notification
       :present [:collection_id :collection_position :archived]
-      :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty]))
+      :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
   ;; update Cards if the 'refs' have changed
   (when (contains? notification :cards)
     (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))
