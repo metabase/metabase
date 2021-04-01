@@ -19,10 +19,8 @@
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test :as mt]
-            [metabase.test.util :as tu]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.db :as db])
   (:import java.io.ByteArrayInputStream))
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
@@ -33,19 +31,19 @@
 
 (defn do-with-new-secret-key [f]
   (binding [*secret-key* (random-embedding-secret-key)]
-    (tu/with-temporary-setting-values [embedding-secret-key *secret-key*]
+    (mt/with-temporary-setting-values [embedding-secret-key *secret-key*]
       (f))))
 
 (defmacro with-new-secret-key {:style/indent 0} [& body]
   `(do-with-new-secret-key (fn [] ~@body)))
 
 (defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
-  (sign (merge {:resource {:question (u/get-id card-or-id)}
+  (sign (merge {:resource {:question (u/the-id card-or-id)}
                 :params   {}}
                additional-token-params)))
 
 (defn dash-token {:style/indent 1} [dash-or-id & [additional-token-params]]
-  (sign (merge {:resource {:dashboard (u/get-id dash-or-id)}
+  (sign (merge {:resource {:dashboard (u/the-id dash-or-id)}
                 :params   {}}
                additional-token-params)))
 
@@ -54,42 +52,52 @@
          card-settings# (merge (when-not (:dataset_query card-defaults#)
                                  (public-test/count-of-venues-card))
                                card-defaults#)]
-     (tt/with-temp Card [~card-binding card-settings#]
+     (mt/with-temp Card [~card-binding card-settings#]
        ~@body)))
 
 (defmacro with-temp-dashcard {:style/indent 1} [[dashcard-binding {:keys [dash card dashcard]}] & body]
   `(with-temp-card [card# ~card]
-     (tt/with-temp* [Dashboard     [dash# ~dash]
-                     DashboardCard [~dashcard-binding (merge {:card_id      (u/get-id card#)
-                                                              :dashboard_id (u/get-id dash#)}
+     (mt/with-temp* [Dashboard     [dash# ~dash]
+                     DashboardCard [~dashcard-binding (merge {:card_id      (u/the-id card#)
+                                                              :dashboard_id (u/the-id dash#)}
                                                              ~dashcard)]]
        ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key {:style/indent 0} [& body]
-  `(tu/with-temporary-setting-values [~'enable-embedding true]
+  `(mt/with-temporary-setting-values [~'enable-embedding true]
      (with-new-secret-key
        ~@body)))
 
-(defn successful-query-results
-  ([]
-   {:data       {:cols             [(tu/obj->json->obj (qp.test/aggregate-col :count))]
-                 :rows             [[100]]
-                 :insights         nil
-                 :results_timezone "UTC"}
-    :json_query {}
-    :status     "completed"})
+(defn test-query-results
+  ([actual]
+   (is (= {:data       {:cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
+                        :rows             [[100]]
+                        :insights         nil
+                        :results_timezone "UTC"}
+           :json_query {}
+           :status     "completed"}
+          actual)))
 
-  ([results-format]
+  ([results-format actual]
    (case results-format
-     ""      (successful-query-results)
-     "/json" [{:Count 100}]
-     "/csv"  "Count\n100\n"
-     "/xlsx" (fn [body]
-               (->> (ByteArrayInputStream. body)
-                    spreadsheet/load-workbook
-                    (spreadsheet/select-sheet "Query result")
-                    (spreadsheet/select-columns {:A :col})
-                    (= [{:col "Count"} {:col 100.0}]))))))
+     ""
+     (test-query-results actual)
+
+     "/json"
+     (is (= [{:Count 100}]
+            actual))
+
+     "/csv"
+     (is (= "Count\n100\n"
+            actual))
+
+     "/xlsx"
+     (let [actual (->> (ByteArrayInputStream. actual)
+                       spreadsheet/load-workbook
+                       (spreadsheet/select-sheet "Query result")
+                       (spreadsheet/select-columns {:A :col}))]
+       (is (= [{:col "Count"} {:col 100.0}]
+              actual))))))
 
 (defn dissoc-id-and-name {:style/indent 0} [obj]
   (dissoc obj :id :name))
@@ -129,7 +137,7 @@
                (http/client :get 400 (card-url card {:exp (buddy-util/to-timestamp yesterday)})))))))
 
 (deftest check-that-the-endpoint-doesn-t-work-if-embedding-isn-t-enabled
-  (tu/with-temporary-setting-values [enable-embedding false]
+  (mt/with-temporary-setting-values [enable-embedding false]
     (with-new-secret-key
       (with-temp-card [card]
         (is (= "Embedding is not enabled."
@@ -194,7 +202,7 @@
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
     (do-response-formats [response-format request-options]
       (testing "check that the endpoint doesn't work if embedding isn't enabled"
-        (tu/with-temporary-setting-values [enable-embedding false]
+        (mt/with-temporary-setting-values [enable-embedding false]
           (with-new-secret-key
             (with-temp-card [card]
               (is (= "Embedding is not enabled."
@@ -204,17 +212,20 @@
         (let [expected-status (response-format->status-code response-format)]
           (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
             (with-temp-card [card {:enable_embedding true}]
-              (is (expect= (successful-query-results response-format)
-                           (http/client :get expected-status (card-query-url card response-format) {:request-options request-options})))))
+              (test-query-results
+               response-format
+               (http/client :get expected-status (card-query-url card response-format)
+                            {:request-options request-options}))))
 
           (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
                         "exception (rather than leaking query info)")
-            (mt/suppress-output
-             (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
-                                                                            :type     :native
-                                                                            :native   {:query "SELECT * FROM XYZ"}}}]
-               (is (= {:status "failed" :error "An error occurred while running the query."}
-                      (http/client :get expected-status (card-query-url card response-format))))))))
+            (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT * FROM XYZ"}}}]
+              (is (= {:status     "failed"
+                      :error      "An error occurred while running the query."
+                      :error_type "invalid-query"}
+                     (http/client :get expected-status (card-query-url card response-format)))))))
 
         (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
           (with-temp-card [card]
@@ -253,10 +264,11 @@
                  (http/client :get 400 (card-query-url card response-format)))))
 
         (testing "if `:locked` param is present, request should succeed"
-          (is (expect= (successful-query-results response-format)
-                       (http/client :get (response-format->status-code response-format)
-                                    (card-query-url card response-format {:params {:abc 100}})
-                                    {:request-options request-options}))))
+          (test-query-results
+           response-format
+           (http/client :get (response-format->status-code response-format)
+                        (card-query-url card response-format {:params {:abc 100}})
+                        {:request-options request-options})))
 
         (testing "If `:locked` parameter is present in URL params, request should fail"
           (is (= "You can only specify a value for :abc in the JWT."
@@ -285,16 +297,18 @@
                  (http/client :get 400 (str (card-query-url card response-format {:params {:abc 100}}) "?abc=200")))))
 
         (testing "If an `:enabled` param is present in the JWT, that's ok"
-          (is (expect= (successful-query-results response-format)
-                       (http/client :get (response-format->status-code response-format)
-                                    (card-query-url card response-format {:params {:abc "enabled"}})
-                                    {:request-options request-options}))))
+          (test-query-results
+           response-format
+           (http/client :get (response-format->status-code response-format)
+                        (card-query-url card response-format {:params {:abc "enabled"}})
+                        {:request-options request-options})))
 
         (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
-          (is (expect= (successful-query-results response-format)
-                       (http/client :get (response-format->status-code response-format)
-                                    (str (card-query-url card response-format) "?abc=200")
-                                    {:request-options request-options}))))))))
+          (test-query-results
+           response-format
+           (http/client :get (response-format->status-code response-format)
+                        (str (card-query-url card response-format) "?abc=200")
+                        {:request-options request-options})))))))
 
 (defn- card-with-date-field-filter []
   {:dataset_query    {:database (mt/id)
@@ -303,7 +317,7 @@
                                  :template-tags {:date {:name         "date"
                                                         :display-name "Date"
                                                         :type         "dimension"
-                                                        :dimension    [:field-id (mt/id :checkins :date)]
+                                                        :dimension    [:field (mt/id :checkins :date) nil]
                                                         :widget-type  "date/quarter-year"}}}}
    :enable_embedding true
    :embedding_params {:date :enabled}})
@@ -311,16 +325,16 @@
 (deftest csv-reports-count
   (testing "make sure CSV (etc.) downloads take editable params into account (#6407)"
     (with-embedding-enabled-and-new-secret-key
-      (tt/with-temp Card [card (card-with-date-field-filter)]
+      (mt/with-temp Card [card (card-with-date-field-filter)]
         (is (= "count\n107\n"
                (http/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (with-embedding-enabled-and-new-secret-key
-    (tt/with-temp Card [card (card-with-date-field-filter)]
+    (mt/with-temp Card [card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
-        (tu/with-temporary-setting-values [site-url http/*url-prefix*]
+        (mt/with-temporary-setting-values [site-url http/*url-prefix*]
           (is (= "count\n107\n"
                  (http/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
 
@@ -332,27 +346,27 @@
 
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
   (with-embedding-enabled-and-new-secret-key
-    (tt/with-temp Dashboard [dash {:enable_embedding true}]
+    (mt/with-temp Dashboard [dash {:enable_embedding true}]
       (is (= successful-dashboard-info
              (dissoc-id-and-name
                (http/client :get 200 (dashboard-url dash))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key
-    (tt/with-temp Dashboard [dash {:enable_embedding true}]
+    (mt/with-temp Dashboard [dash {:enable_embedding true}]
       (is (re= #"^Token is expired.*"
                (http/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))))
 
 (deftest check-that-the-dashboard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
-  (tu/with-temporary-setting-values [enable-embedding false]
+  (mt/with-temporary-setting-values [enable-embedding false]
     (with-new-secret-key
-      (tt/with-temp Dashboard [dash]
+      (mt/with-temp Dashboard [dash]
         (is (= "Embedding is not enabled."
                (http/client :get 400 (dashboard-url dash))))))))
 
 (deftest check-that-if-embedding--is--enabled-globally-but-not-for-the-dashboard-the-request-fails
   (with-embedding-enabled-and-new-secret-key
-    (tt/with-temp Dashboard [dash]
+    (mt/with-temp Dashboard [dash]
       (is (= "Embedding is not enabled for this object."
              (http/client :get 400 (dashboard-url dash)))))))
 
@@ -360,14 +374,14 @@
   (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are signed "
                 "with the wrong key")
     (with-embedding-enabled-and-new-secret-key
-      (tt/with-temp Dashboard [dash {:enable_embedding true}]
+      (mt/with-temp Dashboard [dash {:enable_embedding true}]
         (is (= "Message seems corrupt or manipulated."
                (http/client :get 400 (with-new-secret-key (dashboard-url dash)))))))))
 
 (deftest only-enabled-params-that-are-not-present-in-the-jwt-come-back
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key
-      (tt/with-temp Dashboard [dash {:enable_embedding true
+      (mt/with-temp Dashboard [dash {:enable_embedding true
                                      :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
                                      :parameters       [{:id "_a", :slug "a", :name "a", :type "date"}
                                                         {:id "_b", :slug "b", :name "b", :type "date"}
@@ -381,15 +395,14 @@
 
 (defn- dashcard-url [dashcard & [additional-token-params]]
   (str "embed/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-params)
-       "/dashcard/" (u/get-id dashcard)
+       "/dashcard/" (u/the-id dashcard)
        "/card/" (:card_id dashcard)))
 
-;; it should be possible to run a Card successfully if you jump through the right hoops...
 (deftest it-should-be-possible-to-run-a-card-successfully-if-you-jump-through-the-right-hoops---
-  (is (expect= (successful-query-results)
-               (with-embedding-enabled-and-new-secret-key
-                 (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-                   (http/client :get 202 (dashcard-url dashcard)))))))
+  (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (test-query-results (http/client :get 202 (dashcard-url dashcard)))))))
 
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-shouldn-t-be-subject-to-the-default-query-constraints
@@ -409,16 +422,16 @@
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "
                 "(rather than leaking query info)")
-    (mt/suppress-output
-      (with-embedding-enabled-and-new-secret-key
-        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
-                                       :card {:dataset_query (mt/native-query {:query "SELECT * FROM XYZ"})}}]
-          (is (= {:status "failed"
-                  :error  "An error occurred while running the query." }
-                 (http/client :get 202 (dashcard-url dashcard)))))))))
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                     :card {:dataset_query (mt/native-query {:query "SELECT * FROM XYZ"})}}]
+        (is (= {:status     "failed"
+                :error      "An error occurred while running the query."
+                :error_type "invalid-query"}
+               (http/client :get 202 (dashcard-url dashcard))))))))
 
 (deftest check-that-the-dashcard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
-  (tu/with-temporary-setting-values [enable-embedding false]
+  (mt/with-temporary-setting-values [enable-embedding false]
     (with-new-secret-key
       (with-temp-dashcard [dashcard]
         (is (= "Embedding is not enabled."
@@ -447,8 +460,7 @@
                (http/client :get 400 (dashcard-url dashcard)))))
 
       (testing "if `:locked` param is supplied, request should succeed"
-        (is (expect= (successful-query-results)
-                     (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}})))))
+        (test-query-results (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}}))))
 
       (testing "if `:locked` parameter is present in URL params, request should fail"
         (is (= "You must specify a value for :abc in the JWT."
@@ -475,12 +487,10 @@
 
 
       (testing "If an `:enabled` param is present in the JWT, that's ok"
-        (is (expect= (successful-query-results)
-                     (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}})))))
+        (test-query-results (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}}))))
 
       (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
-        (is (expect= (successful-query-results)
-                     (http/client :get 202 (str (dashcard-url dashcard) "?abc=200"))))))))
+        (test-query-results (http/client :get 202 (str (dashcard-url dashcard) "?abc=200")))))))
 
 
 ;;; -------------------------------------------------- Other Tests ---------------------------------------------------
@@ -495,17 +505,17 @@
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
     (with-embedding-enabled-and-new-secret-key
-      (tt/with-temp Card [series-card {:dataset_query {:database (mt/id)
+      (mt/with-temp Card [series-card {:dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (mt/id :venues)}}}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-          (tt/with-temp DashboardCardSeries [series {:dashboardcard_id (u/get-id dashcard)
-                                                     :card_id          (u/get-id series-card)
+          (mt/with-temp DashboardCardSeries [series {:dashboardcard_id (u/the-id dashcard)
+                                                     :card_id          (u/the-id series-card)
                                                      :position         0}]
             (is (= "completed"
-                   (:status (http/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/get-id series-card))))))))))))))
+                   (:status (http/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
 
-;;; ------------------------------- GET /api/embed/card/:token/field/:field-id/values --------------------------------
+;;; ------------------------------- GET /api/embed/card/:token/field/:field/values nil --------------------------------
 
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str
@@ -514,12 +524,12 @@
      (class Card)      (str "card/"      (card-token card-or-dashboard))
      (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
    "/field/"
-   (u/get-id field-or-id)
+   (u/the-id field-or-id)
    "/values"))
 
 (defn- do-with-embedding-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
-    (tt/with-temp Card [card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+    (mt/with-temp Card [card (assoc (public-test/mbql-card-referencing table-kw field-kw)
                                :enable_embedding true)]
       (f card))))
 
@@ -552,27 +562,27 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
-           (tu/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding false]
              (http/client :get 400 (field-values-url card (mt/id :venues :name))))))))
 
 (deftest embedding-not-enabled-message
   (is (= "Embedding is not enabled for this object."
          (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
-           (db/update! Card (u/get-id card) :enable_embedding false)
+           (db/update! Card (u/the-id card) :enable_embedding false)
            (http/client :get 400 (field-values-url card (mt/id :venues :name)))))))
 
-;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field-id/values -----------------------------
+;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
 
 (defn- do-with-embedding-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
-    (tt/with-temp* [Dashboard     [dashboard {:enable_embedding true}]
+    (mt/with-temp* [Dashboard     [dashboard {:enable_embedding true}]
                     Card          [card      (public-test/mbql-card-referencing table-kw field-kw)]
-                    DashboardCard [dashcard  {:dashboard_id       (u/get-id dashboard)
-                                              :card_id            (u/get-id card)
-                                              :parameter_mappings [{:card_id (u/get-id card)
+                    DashboardCard [dashcard  {:dashboard_id       (u/the-id dashboard)
+                                              :card_id            (u/the-id card)
+                                              :parameter_mappings [{:card_id (u/the-id card)
                                                                     :target  [:dimension
-                                                                              [:field-id
-                                                                               (mt/id table-kw field-kw)]]}]}]]
+                                                                              [:field
+                                                                               (mt/id table-kw field-kw) nil]]}]}]]
       (f dashboard card dashcard))))
 
 
@@ -605,7 +615,7 @@
 (deftest field-values-endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
-           (tu/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding false]
              (http/client :get 400 (field-values-url dashboard (mt/id :venues :name))))))))
 
 
@@ -613,7 +623,7 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled-for-the-dashboard
   (is (= "Embedding is not enabled for this object."
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
-           (db/update! Dashboard (u/get-id dashboard) :enable_embedding false)
+           (db/update! Dashboard (u/the-id dashboard) :enable_embedding false)
            (http/client :get 400 (field-values-url dashboard (mt/id :venues :name)))))))
 
 
@@ -624,8 +634,8 @@
        (condp instance? card-or-dashboard
          (class Card)      (str "card/"      (card-token card-or-dashboard))
          (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
-       "/field/" (u/get-id field-or-id)
-       "/search/" (u/get-id search-field-or-id)))
+       "/field/" (u/the-id field-or-id)
+       "/search/" (u/the-id search-field-or-id)))
 
 (deftest field-search-test
   (testing
@@ -640,35 +650,35 @@
                                     :value "33 T"))))
 
               (testing "Endpoint should fail if embedding is disabled"
-                (tu/with-temporary-setting-values [enable-embedding false]
+                (mt/with-temporary-setting-values [enable-embedding false]
                   (is (= "Embedding is not enabled."
                          (http/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
                                       :value "33 T")))))
 
               (testing "Endpoint should fail if embedding is disabled for the object"
-                (db/update! model (u/get-id object) :enable_embedding false)
+                (db/update! model (u/the-id object) :enable_embedding false)
                 (is (= "Embedding is not enabled for this object."
                        (http/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
                                     :value "33 T")))))]
-      (testing "GET /api/embed/card/:token/field/:field-id/search/:search-field-id"
+      (testing "GET /api/embed/card/:token/field/:field/search/:search-field-id nil"
         (testing "Search for Field values for a Card"
           (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
             (tests Card card))))
-      (testing "GET /api/embed/dashboard/:token/field/:field-id/search/:search-field-id"
+      (testing "GET /api/embed/dashboard/:token/field/:field/search/:search-field-id nil"
         (testing "Search for Field values for a Dashboard"
           (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
             (tests Dashboard dashboard)))))))
 
 
-;;; ----------------------- GET /api/embed/card/:token/field/:field-id/remapping/:remapped-id ------------------------
+;;; ----------------------- GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil ------------------------
 
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "embed/"
        (condp instance? card-or-dashboard
          (class Card)      (str "card/"      (card-token card-or-dashboard))
          (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
-       "/field/" (u/get-id field-or-id)
-       "/remapping/" (u/get-id remapped-field-or-id)))
+       "/field/" (u/the-id field-or-id)
+       "/remapping/" (u/the-id remapped-field-or-id)))
 
 (deftest field-remapping-test
   (letfn [(tests [model object]
@@ -683,18 +693,18 @@
                                   :value "10"))))
 
             (testing " ...or if embedding is disabled"
-              (tu/with-temporary-setting-values [enable-embedding false]
+              (mt/with-temporary-setting-values [enable-embedding false]
                 (is (= "Embedding is not enabled."
                        (http/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
                                     :value "10")))))
 
             (testing " ...or if embedding is disabled for the Card/Dashboard"
-              (db/update! model (u/get-id object) :enable_embedding false)
+              (db/update! model (u/the-id object) :enable_embedding false)
               (is (= "Embedding is not enabled for this object."
                      (http/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
                                   :value "10")))))]
 
-    (testing "GET /api/embed/card/:token/field/:field-id/remapping/:remapped-id"
+    (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
       (testing "Get remapped Field values for a Card"
         (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
           (tests Card card)))
@@ -704,7 +714,7 @@
                  (http/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
                               :value "10"))))))
 
-    (testing "GET /api/embed/dashboard/:token/field/:field-id/remapping/:remapped-id"
+    (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
       (testing "Get remapped Field values for a Dashboard"
         (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
           (tests Dashboard dashboard)))
@@ -719,13 +729,13 @@
 (defn- do-with-chain-filter-fixtures [f]
   (with-embedding-enabled-and-new-secret-key
     (dashboard-api-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
-      (db/update! Dashboard (u/get-id dashboard) :enable_embedding true)
+      (db/update! Dashboard (u/the-id dashboard) :enable_embedding true)
       (letfn [(token [params]
                 (dash-token dashboard (when params {:params params})))
               (values-url [& [params]]
                 (format "embed/dashboard/%s/params/_CATEGORY_ID_/values" (token params)))
               (search-url [& [params]]
-                (format "embed/dashboard/%s/params/_CATEGORY_NAME_/search/s" (token params)))]
+                (format "embed/dashboard/%s/params/_CATEGORY_NAME_/search/food" (token params)))]
         (f (assoc m
                   :token token
                   :values-url values-url
@@ -737,11 +747,11 @@
 (deftest chain-filter-embedding-disabled-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "without embedding enabled for dashboard"
-      (db/update! Dashboard (u/get-id dashboard) :enable_embedding false)
+      (db/update! Dashboard (u/the-id dashboard) :enable_embedding false)
       (testing "GET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Embedding is not enabled for this object."
                (http/client :get 400 (values-url)))))
-      (testing "GET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
+      (testing "GET /api/embed/dashboard/:token/params/:param-key/search/:query"
         (is (= "Embedding is not enabled for this object."
                (http/client :get 400 (search-url))))))))
 
@@ -751,7 +761,7 @@
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Cannot search for values: \"category_id\" is not an enabled parameter."
                (http/client :get 400 (values-url)))))
-      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
         (is (= "Cannot search for values: \"category_name\" is not an enabled parameter."
                (http/client :get 400 (search-url))))))))
 
@@ -763,24 +773,24 @@
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= [2 3 4 5 6]
                (take 5 (http/client :get 200 (values-url))))))
-      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
-        (is (= ["Scandinavian" "Seafood" "South Pacific"]
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+        (is (= ["Fast Food" "Food Truck" "Seafood"]
                (take 3 (http/client :get 200 (search-url)))))))
 
     (testing "If an ENABLED constraint param is present in the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= [40 67]
                (http/client :get 200 (values-url {"price" 4})))))
-      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
-        (is (= ["Steakhouse"]
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+        (is (= []
                (http/client :get 200 (search-url {"price" 4}))))))
 
     (testing "If an ENABLED param is present in query params but *not* the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= [40 67]
                (http/client :get 200 (str (values-url) "?_PRICE_=4")))))
-      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
-        (is (= ["Steakhouse"]
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+        (is (= []
                (http/client :get 200 (str (search-url) "?_PRICE_=4"))))))
 
     (testing "If ENABLED param is present in both JWT and the URL, the request should fail"
@@ -800,10 +810,10 @@
         (testing "Should work if the param we're fetching values for is enabled"
           (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
             (is (= [2 3 4 5 6]
-                   (take 5 ((mt/user->client :rasta) :get 200 (values-url))))))
-          (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
-            (is (= ["Scandinavian" "Seafood" "South Pacific"]
-                   (take 3 ((mt/user->client :rasta) :get 200 (search-url)))))))))))
+                   (take 5 (mt/user-http-request :rasta :get 200 (values-url))))))
+          (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+            (is (= ["Fast Food" "Food Truck" "Seafood"]
+                   (take 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
 
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
@@ -829,8 +839,8 @@
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
           (is (= [40 67]
                  (http/client :get 200 (values-url {"price" 4})))))
-        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
-          (is (= ["Steakhouse"]
+        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+          (is (= []
                  (http/client :get 200 (search-url {"price" 4}))))))
 
       (testing "if `:locked` parameter is present in URL params, request should fail"
@@ -881,7 +891,7 @@
     (mt/dataset sample-dataset
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (tu/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding false]
             (with-new-secret-key
               (with-temp-card [card (pivots/pivot-card)]
                 (is (= "Embedding is not enabled."
@@ -911,7 +921,7 @@
 
 (defn- pivot-dashcard-url [dashcard & [additional-token-params]]
   (str "embed/pivot/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-params)
-       "/dashcard/" (u/get-id dashcard)
+       "/dashcard/" (u/the-id dashcard)
        "/card/" (:card_id dashcard)))
 
 (deftest pivot-dashcard-success-test
@@ -929,7 +939,7 @@
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset sample-dataset
-    (tu/with-temporary-setting-values [enable-embedding false]
+    (mt/with-temporary-setting-values [enable-embedding false]
       (with-new-secret-key
         (with-temp-dashcard [dashcard {:card (pivots/pivot-card)}]
           (is (= "Embedding is not enabled."

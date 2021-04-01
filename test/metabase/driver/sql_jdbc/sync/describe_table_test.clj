@@ -58,13 +58,13 @@
                                          base-type)}))
                     set)))))))
 
-(deftest calculated-special-type-test
+(deftest calculated-semantic-type-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
-    (with-redefs [i/column->special-type (fn [_ _ column-name]
+    (with-redefs [i/column->semantic-type (fn [_ _ column-name]
                                            (when (= (str/lower-case column-name) "longitude")
                                              :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
              (->> (describe-table/describe-table (or driver/*driver* :h2) (mt/id) (Table (mt/id :venues)))
                   :fields
-                  (filter :special-type)
-                  (map (juxt (comp str/lower-case :name) :special-type))))))))
+                  (filter :semantic-type)
+                  (map (juxt (comp str/lower-case :name) :semantic-type))))))))

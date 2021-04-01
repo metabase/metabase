@@ -24,7 +24,7 @@ describe.skip("mysql > user > question > custom column", () => {
           expressions: {
             [CC_NAME]: [
               "substring",
-              ["field-id", PEOPLE.SOURCE],
+              ["field", PEOPLE.SOURCE, null],
               0,
               4, // we want 4 letter abbreviation
             ],

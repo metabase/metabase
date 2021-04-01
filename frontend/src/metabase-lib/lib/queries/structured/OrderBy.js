@@ -1,5 +1,3 @@
-/* @flow */
-
 import MBQLClause from "./MBQLClause";
 
 import type { OrderBy as OrderByObject } from "metabase-types/types/Query";

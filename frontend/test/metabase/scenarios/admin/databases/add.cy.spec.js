@@ -40,6 +40,7 @@ describe("scenarios > admin > databases > add", () => {
     ).should("have.attr", "aria-checked", "true");
 
     typeField("Name", "Test db name");
+    typeField("Host", "localhost");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
@@ -51,7 +52,28 @@ describe("scenarios > admin > databases > add", () => {
     cy.url().should("match", /\/admin\/databases\?created=42$/);
   });
 
+  it("should trim fields needed to connect to the database", () => {
+    cy.route("POST", "/api/database", { id: 42 }).as("createDatabase");
+
+    cy.visit("/admin/databases/create");
+
+    typeField("Name", "Test db name");
+    typeField("Host", "localhost  \n  ");
+    typeField("Database name", " test_postgres_db");
+    typeField("Username", "   uberadmin   ");
+
+    cy.findByText("Save").click();
+
+    cy.wait("@createDatabase").then(({ request }) => {
+      expect(request.body.details.host).to.equal("localhost");
+      expect(request.body.details.dbname).to.equal("test_postgres_db");
+      expect(request.body.details.user).to.equal("uberadmin");
+    });
+  });
+
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
+    cy.route("POST", "/api/database").as("createDatabase");
+
     cy.visit("/admin/databases/create");
 
     typeField("Name", "Test db name");
@@ -61,6 +83,8 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByRole("button", { name: "Save" })
       .should("not.be.disabled")
       .click();
+
+    cy.wait("@createDatabase");
 
     toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
 
@@ -197,6 +221,29 @@ describe("scenarios > admin > databases > add", () => {
 
       cy.contains("Connect to a Service Account instead");
       cy.contains("generate a Client ID and Client Secret for your project");
+    });
+  });
+
+  describe("Google Analytics ", () => {
+    it("should generate well-formed external auth URLs", () => {
+      cy.visit("/admin/databases/create");
+      cy.contains("Database type")
+        .parents(".Form-field")
+        .find(".AdminSelect")
+        .click();
+      popover()
+        .contains("Google Analytics")
+        .click({ force: true });
+
+      typeField("Client ID", "   999  ");
+
+      cy.findByText("get an auth code", { exact: false })
+        .findByRole("link")
+        .then(el => {
+          expect(el.attr("href")).to.equal(
+            "https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=999",
+          );
+        });
     });
   });
 });

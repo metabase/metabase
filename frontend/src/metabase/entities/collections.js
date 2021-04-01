@@ -1,5 +1,3 @@
-/* @flow */
-
 import { createEntity, undo } from "metabase/lib/entities";
 
 import { color } from "metabase/lib/colors";
@@ -150,6 +148,14 @@ export const canonicalCollectionId = (
   collectionId == null || collectionId === "root"
     ? null
     : parseInt(collectionId, 10);
+
+// $FlowFixMe
+export function normalizedCollection(collection) {
+  if (canonicalCollectionId(collection.id) === null) {
+    return ROOT_COLLECTION;
+  }
+  return collection;
+}
 
 export const getCollectionType = (collectionId: string, state: {}) =>
   collectionId === null || collectionId === "root"

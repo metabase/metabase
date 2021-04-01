@@ -1,12 +1,10 @@
 (ns release.check-prereqs
   (:require [clojure.string :as str]
             [environ.core :as env]
-            [metabuild-common
-             [core :as u]
-             [java :as java]]))
+            [metabuild-common.core :as u]))
 
 (def ^:private required-commands
-  ["git" "node" "yarn" "aws" "docker" "java" "wget" "shasum" "gettext" "zip"])
+  ["git" "node" "yarn" "aws" "docker" "java" "wget" "zip"])
 
 (defn- check-for-required-commands []
   (u/step "Verify required external commands are available"
@@ -49,5 +47,4 @@
   (u/step "Check prereqs"
     (check-for-required-commands)
     (check-for-required-env-vars)
-    (check-docker-is-running)
-    (java/check-java-8)))
+    (check-docker-is-running)))

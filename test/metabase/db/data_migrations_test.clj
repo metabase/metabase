@@ -492,13 +492,13 @@
                                   :linkTemplate "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
                                  :column_settings
                                  ;; the model keywordizes the json parsing yielding this monstrosity below
-                                 {(keyword "[\"ref\",[\"field-id\",2]]")
+                                 {"[\"ref\",[\"field\",2,null]]"
                                   {:click_behavior
                                    {:type             "link",
                                     :linkType         "url",
                                     :linkTemplate     "http://example.com/{{ID}}",
                                     :linkTextTemplate "here's an id: {{ID}}"}},
-                                  (keyword "[\"ref\",[\"field-id\",6]]")
+                                  "[\"ref\",[\"field\",6,null]]"
                                   {:click_behavior
                                    {:type             "link",
                                     :linkType         "url",

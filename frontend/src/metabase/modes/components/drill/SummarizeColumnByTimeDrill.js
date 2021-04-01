@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";

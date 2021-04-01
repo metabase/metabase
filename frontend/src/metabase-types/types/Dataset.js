@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { ISO8601Time } from ".";
 import type { FieldId } from "./Field";
 import type { DatasetQuery } from "./Card";
@@ -19,7 +17,7 @@ export type Column = {
   name: ColumnName,
   display_name: string,
   base_type: string,
-  special_type: ?string,
+  semantic_type: ?string,
   source?: "fields" | "aggregation" | "breakout",
   unit?: DatetimeUnit,
   binning_info?: BinningInfo,

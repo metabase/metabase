@@ -76,8 +76,8 @@
             :type   {:type/DateTime {:earliest "2013-01-01"
                                      :latest   "2018-01-01"}}}
            (transduce identity
-                      (f/fingerprinter (field/map->FieldInstance {:base_type    :type/DateTime
-                                                                  :special_type :type/FK}))
+                      (f/fingerprinter (field/map->FieldInstance {:base_type     :type/DateTime
+                                                                  :semantic_type :type/FK}))
                       [#t "2013" #t "2018" #t "2015"])))))
 
 (deftest fingerprint-numeric-values-test

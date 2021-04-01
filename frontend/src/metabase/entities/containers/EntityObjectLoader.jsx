@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
@@ -26,7 +24,7 @@ export type Props = {
   // selectorName overrides the default getObject selector
   selectorName?: string,
   // Children render prop
-  children?: (props: RenderProps) => ?React$Element<any>,
+  children?: (props: RenderProps) => ?React.Element,
 };
 
 export type RenderProps = {
@@ -95,7 +93,7 @@ export default class EntityObjectLoader extends React.Component {
     );
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // $FlowFixMe: provided by @connect
     const { entityId, fetch } = this.props;
     if (entityId != null) {
@@ -105,7 +103,7 @@ export default class EntityObjectLoader extends React.Component {
       );
     }
   }
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (
       nextProps.entityId !== this.props.entityId &&
       this.props.entityId != null

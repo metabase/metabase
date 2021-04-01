@@ -15,11 +15,11 @@ export default class SortWidget extends React.Component {
     tableMetadata: PropTypes.object.isRequired,
   };
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     this.setState({
       field: newProps.sort[1], // id of the field
       direction: newProps.sort[0], // sort direction

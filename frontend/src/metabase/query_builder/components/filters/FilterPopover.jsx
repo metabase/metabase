@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 
 import { t } from "ttag";
@@ -73,7 +71,7 @@ export default class ViewFilterPopover extends Component {
     };
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     const { filter } = this.state;
     // HACK?: if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
     if (filter && this.props.query !== nextProps.query) {
@@ -89,6 +87,14 @@ export default class ViewFilterPopover extends Component {
       this.props.onChange(filter);
     }
   }
+
+  handleUpdateAndCommit = (newFilter: ?Filter) => {
+    const base = this.state.filter || new Filter([], null, this.props.query);
+    const filter = base.set(newFilter);
+    this.setState({ filter }, () => {
+      this.handleCommitFilter(filter, this.props.query);
+    });
+  };
 
   handleCommit = () => {
     this.handleCommitFilter(this.state.filter, this.props.query);
@@ -109,7 +115,11 @@ export default class ViewFilterPopover extends Component {
   handleDimensionChange = (dimension: Dimension) => {
     let filter = this.state.filter;
     if (!filter || filter.query() !== dimension.query()) {
-      filter = new Filter([], null, dimension.query());
+      filter = new Filter(
+        [],
+        null,
+        dimension.query() || (filter && filter.query()) || this.props.query,
+      );
     }
     this.setFilter(
       filter.setDimension(dimension.mbql(), { useDefaultOperator: true }),
@@ -145,8 +155,8 @@ export default class ViewFilterPopover extends Component {
           startRule="boolean"
           isValid={filter && filter.isValid()}
           onChange={this.handleFilterChange}
+          onDone={this.handleUpdateAndCommit}
           onBack={() => this.setState({ editingFilter: false })}
-          onDone={this.handleCommit}
         />
       );
     }

@@ -10,7 +10,7 @@
   (->> {:expressions {"test" expr}
         :fields      [[:expression "test"]]
         ;; To ensure stable ordering
-        :order-by    [[:asc [:field-id (data/id :venues :id)]]]
+        :order-by    [[:asc [:field (data/id :venues :id) nil]]]
         :limit       1}
        (mt/run-mbql-query venues)
        rows
@@ -58,7 +58,7 @@
 (deftest test-filter
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 59 (->> {:aggregation [[:count]]
-                    :filter      [:between [:- [:round [:power [:field-id (data/id :venues :price)] 2]] 1] 1 5]}
+                    :filter      [:between [:- [:round [:power [:field (data/id :venues :price) nil] 2]] 1] 1 5]}
                    (mt/run-mbql-query venues)
                    rows
                    ffirst
@@ -76,17 +76,17 @@
 
 (deftest test-variance
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
-    (is (= 0.59 (test-aggregation [:var [:field-id (data/id :venues :price)]])))))
+    (is (= 0.59 (test-aggregation [:var [:field (data/id :venues :price) nil]])))))
 
 (deftest test-median
   (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations)
-    (is (= 2.0 (test-aggregation [:median [:field-id (data/id :venues :price)]])))))
+    (is (= 2.0 (test-aggregation [:median [:field (data/id :venues :price) nil]])))))
 
 (deftest test-percentile
   (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations)
-    (is (= 3.0 (test-aggregation [:percentile [:field-id (data/id :venues :price)] 0.9])))))
+    (is (= 3.0 (test-aggregation [:percentile [:field (data/id :venues :price) nil] 0.9])))))
 
 (deftest test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 2.0 (test-math-expression [:sqrt [:power 2.0 2]])))
-    (is (= 59.0 (test-aggregation [:count-where [:between [:- [:round [:power [:field-id (data/id :venues :price)] 2]] 1] 1 5]])))))
+    (is (= 59.0 (test-aggregation [:count-where [:between [:- [:round [:power [:field (data/id :venues :price) nil] 2]] 1] 1 5]])))))

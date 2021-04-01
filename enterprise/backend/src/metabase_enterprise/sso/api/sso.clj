@@ -3,8 +3,7 @@
 
   Implements the SSO routes needed for SAML and JWT. This namespace primarily provides hooks for those two backends so
   we can have a uniform interface both via the API and code"
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase.api.common :as api]
@@ -12,7 +11,6 @@
             [metabase.public-settings.metastore :as metastore]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.codec :as codec]
             [stencil.core :as stencil]))
 
 (defn- sso-backend
@@ -70,18 +68,9 @@
    :headers {"Content-Type" "text/html"}
    :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
               (let [message    (.getMessage e)
-                    stacktrace (u/pprint-to-str (vec (.getStackTrace e)))
                     data       (u/pprint-to-str (ex-data e))]
-                {:mailto         (str "mailto:support@metabase.com"
-                                      (str "?subject=" (codec/url-encode (str "[Login Error] " message)))
-                                      (str "&body=" (codec/url-encode
-                                                     (str/join "\n" ["Stacktrace:"
-                                                                     stacktrace
-                                                                     "Additional Info:"
-                                                                     data]))))
-                 :errorMessage   message
+                {:errorMessage   message
                  :exceptionClass (.getName Exception)
-                 :stacktrace     stacktrace
                  :additionalData data}))})
 
 (api/defendpoint POST "/"

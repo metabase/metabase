@@ -10,7 +10,16 @@ export default class TokenizedExpression extends React.Component {
     if (syntaxTree) {
       return renderSyntaxTree(syntaxTree);
     } else {
-      return <span className="Expression-node">{source}</span>;
+      if (source && source.length > 0) {
+        return <span className="Expression-node">{source}</span>;
+      } else {
+        // <br> is inserted to workaround Firefox caret position issue
+        return (
+          <span className="Expression-node">
+            <br />
+          </span>
+        );
+      }
     }
   }
 }

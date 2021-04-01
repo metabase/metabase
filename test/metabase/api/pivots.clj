@@ -15,9 +15,9 @@
   (mt/dataset sample-dataset
     (-> (mt/mbql-query orders
           {:aggregation [[:count] [:sum $orders.quantity]]
-           :breakout    [[:fk-> $orders.user_id $people.state]
-                         [:fk-> $orders.user_id $people.source]
-                         [:fk-> $orders.product_id $products.category]]})
+           :breakout    [$orders.user_id->people.state
+                         $orders.user_id->people.source
+                         $orders.product_id->products.category]})
         (assoc :pivot_rows [1 0]
                :pivot_cols [2]))))
 
@@ -26,9 +26,9 @@
   []
   (-> (mt/mbql-query orders
         {:aggregation [[:count]]
-         :breakout    [[:fk-> $orders.user_id $people.state]
-                       [:fk-> $orders.user_id $people.source]]
-         :filter      [:and [:= [:fk-> $orders.user_id $people.source] "Google" "Organic"]]})
+         :breakout    [$orders.user_id->people.state
+                       $orders.user_id->people.source]
+         :filter      [:and [:= $orders.user_id->people.source "Google" "Organic"]]})
       (assoc :pivot_rows [0]
              :pivot_cols [1])))
 
@@ -37,11 +37,11 @@
   []
   (-> (mt/mbql-query orders
         {:aggregation [[:count]]
-         :breakout    [[:fk-> $orders.user_id $people.state]
-                       [:fk-> $orders.user_id $people.source]]
-         :filter      [:and [:= [:fk-> $orders.user_id $people.source] "Google" "Organic"]]
+         :breakout    [$orders.user_id->people.state
+                       $orders.user_id->people.source]
+         :filter      [:and [:= $orders.user_id->people.source "Google" "Organic"]]
          :parameters  [{:type   "category"
-                        :target [:dimension [:fk-> $orders.product_id $products.category]]
+                        :target [:dimension $orders.product_id->products.category]
                         :value  "Gadget"}]})
       (assoc :pivot_rows [0]
              :pivot_cols [1])))

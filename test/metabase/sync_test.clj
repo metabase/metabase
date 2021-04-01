@@ -29,12 +29,12 @@
              :fields #{{:name              "id"
                         :database-type     "SERIAL"
                         :base-type         :type/Integer
-                        :special-type      :type/PK
+                        :semantic-type     :type/PK
                         :database-position 0}
                        {:name              "title"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :special-type      :type/Title
+                        :semantic-type     :type/Title
                         :database-position 1}
                        {:name              "studio"
                         :database-type     "VARCHAR"
@@ -45,7 +45,7 @@
              :fields #{{:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :special-type      :type/PK
+                        :semantic-type     :type/PK
                         :database-position 0}
                        {:name              "name"
                         :database-type     "VARCHAR"
@@ -127,7 +127,8 @@
     :display_name      "ID"
     :database_type     "SERIAL"
     :base_type         :type/Integer
-    :special_type      :type/PK
+    :effective_type    :type/Integer
+    :semantic_type     :type/PK
     :database_position 0
     :position          0}))
 
@@ -138,8 +139,9 @@
     :display_name       "Studio"
     :database_type      "VARCHAR"
     :base_type          :type/Text
+    :effective_type          :type/Text
     :fk_target_field_id true
-    :special_type       :type/FK
+    :semantic_type      :type/FK
     :database_position  2
     :position           2}))
 
@@ -150,7 +152,8 @@
     :display_name      "Title"
     :database_type     "VARCHAR"
     :base_type         :type/Text
-    :special_type      :type/Title
+    :effective_type    :type/Text
+    :semantic_type     :type/Title
     :database_position 1
     :position          1}))
 
@@ -161,7 +164,8 @@
     :display_name      "Name"
     :database_type     "VARCHAR"
     :base_type         :type/Text
-    :special_type      :type/Name
+    :effective_type    :type/Text
+    :semantic_type     :type/Name
     :database_position 1
     :position          1}))
 
@@ -173,7 +177,8 @@
     :display_name      "Studio"
     :database_type     "VARCHAR"
     :base_type         :type/Text
-    :special_type      :type/PK
+    :effective_type    :type/Text
+    :semantic_type     :type/PK
     :database_position 0
     :position          0}))
 
@@ -213,7 +218,7 @@
              :name         "movie"
              :display_name "Movie"
              :fields       [field:movie-id
-                            (assoc (field:movie-studio) :fk_target_field_id false :special_type nil)
+                            (assoc (field:movie-studio) :fk_target_field_id false :semantic_type nil)
                             (field:movie-title)]})
            (table-details (Table (:id table)))))))
 

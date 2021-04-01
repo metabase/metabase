@@ -1,4 +1,3 @@
-/* @flow */
 import React from "react";
 import cx from "classnames";
 import pure from "recompose/pure";

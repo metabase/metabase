@@ -11,7 +11,7 @@
             [metabase.db.setup :as mdb.setup]
             [metabase.models :refer [Activity Card CardFavorite Collection CollectionRevision Dashboard DashboardCard
                                      DashboardCardSeries DashboardFavorite Database Dependency Dimension Field
-                                     FieldValues Metric MetricImportantField NativeQuerySnippet Permissions
+                                     FieldValues LoginHistory Metric MetricImportantField NativeQuerySnippet Permissions
                                      PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Segment Session Setting Table User
                                      ViewLog]]
@@ -76,6 +76,7 @@
    DashboardFavorite
    Dimension
    NativeQuerySnippet
+   LoginHistory
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])

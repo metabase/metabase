@@ -50,7 +50,7 @@
                :source-metadata source-metadata}))))))
 
 (deftest support-legacy-filter-clauses-test
-  (testing "We should handle legacy usage of field-literal inside filter clauses"
+  (testing "We should handle legacy usage of `:field` w/ name inside filter clauses"
     (mt/dataset sample-dataset
       (testing "against explicit joins (#14809)"
         (let [source-query    (mt/mbql-query orders

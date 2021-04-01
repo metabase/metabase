@@ -27,7 +27,7 @@ export default class Calendar extends Component {
     isRangePicker: true,
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (
       // `selected` became null or not null
       (nextProps.selected == null) !== (this.props.selected == null) ||

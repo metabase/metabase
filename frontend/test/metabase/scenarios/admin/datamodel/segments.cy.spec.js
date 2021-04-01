@@ -55,7 +55,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
-          filter: ["<", ["field-id", ORDERS.TOTAL], 100],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });
     });

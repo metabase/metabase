@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import { withRouter } from "react-router";
 
@@ -48,7 +46,7 @@ export default class EmbedFrame extends Component {
     innerScroll: true,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     initializeIframeResizer(() => this.setState({ innerScroll: false }));
   }
 

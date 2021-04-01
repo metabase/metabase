@@ -52,7 +52,7 @@ describe("scenarios > dashboard", () => {
     // Adding location/state doesn't make much sense for this case,
     // but we're testing just that the filter is added to the dashboard
     cy.findByText("Location").click();
-    cy.findByText("State").click();
+    cy.findByText("Dropdown").click();
     cy.findByText("Select…").click();
 
     popover().within(() => {
@@ -67,7 +67,7 @@ describe("scenarios > dashboard", () => {
 
     cy.log("Assert that the selected filter is present in the dashboard");
     cy.icon("location");
-    cy.findByText("State");
+    cy.findByText("Location");
   });
 
   it("should add a question", () => {
@@ -86,24 +86,16 @@ describe("scenarios > dashboard", () => {
       name: "11007",
       dataset_query: {
         database: 1,
-        filter: [">", ["field-literal", "sum", "type/Float"], 100],
+        filter: [">", ["field", "sum", { "base-type": "type/Float" }], 100],
         query: {
           "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
           breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
-            [
-              "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.ID],
-            ],
-            [
-              "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.CATEGORY],
-            ],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+            ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
-          filter: ["=", ["field-id", ORDERS.USER_ID], 1],
+          filter: ["=", ["field", ORDERS.USER_ID, null], 1],
         },
         type: "query",
       },
@@ -145,6 +137,7 @@ describe("scenarios > dashboard", () => {
     cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Other Categories").click();
+      cy.findByText("Starts with").click();
     });
     // and connect it to the card
     selectDashboardFilter(cy.get(".DashCard"), "Category");
@@ -193,7 +186,7 @@ describe("scenarios > dashboard", () => {
                   {
                     parameter_id: "92eb69ea",
                     card_id: questionId,
-                    target: ["dimension", ["field-id", PEOPLE.ID]],
+                    target: ["dimension", ["field", PEOPLE.ID, null]],
                   },
                 ],
                 visualization_settings: {
@@ -298,7 +291,7 @@ describe("scenarios > dashboard", () => {
             name: "filter",
             "display-name": "Filter",
             type: "dimension",
-            dimension: ["field-id", ORDERS.CREATED_AT],
+            dimension: ["field", ORDERS.CREATED_AT, null],
             "widget-type": "date/month-year",
             default: null,
           },
@@ -327,7 +320,7 @@ describe("scenarios > dashboard", () => {
                 {
                   parameter_id: "d3b78b27",
                   card_id: 1,
-                  target: ["dimension", ["field-id", ORDERS.CREATED_AT]],
+                  target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
                 },
               ],
               visualization_settings: {},
@@ -406,9 +399,9 @@ describe("scenarios > dashboard", () => {
               target: [
                 "dimension",
                 [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
             },
@@ -484,17 +477,17 @@ describe("scenarios > dashboard", () => {
                   {
                     parameter_id: "9f20a0d5",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.TITLE]],
+                    target: ["dimension", ["field", PRODUCTS.TITLE, null]],
                   },
                   {
                     parameter_id: "719fe1c2",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
                   },
                   {
                     parameter_id: "a73b7c9",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.VENDOR]],
+                    target: ["dimension", ["field", PRODUCTS.VENDOR, null]],
                   },
                 ],
                 visualization_settings: {},

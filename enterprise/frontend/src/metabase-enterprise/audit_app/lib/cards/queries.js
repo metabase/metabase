@@ -1,5 +1,3 @@
-/* @flow */
-
 export const viewsAndAvgExecutionTimeByDay = () => ({
   card: {
     name: "Query views and speed per day",

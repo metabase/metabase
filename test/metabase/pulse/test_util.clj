@@ -1,5 +1,6 @@
 (ns metabase.pulse.test-util
   (:require [clojure.walk :as walk]
+            [metabase.integrations.slack :as slack]
             [metabase.models.pulse :as models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.pulse :as pulse]

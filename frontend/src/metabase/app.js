@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 
@@ -62,6 +60,7 @@ const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
 api.basename = BASENAME;
 
+// eslint-disable-next-line react-hooks/rules-of-hooks
 const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });
@@ -104,7 +103,7 @@ function _init(reducers, getRoutes, callback) {
   MetabaseSettings.on("anon-tracking-enabled", () => {
     window[
       "ga-disable-" + MetabaseSettings.get("ga-code")
-    ] = MetabaseSettings.isTrackingEnabled() ? null : true;
+    ] = MetabaseSettings.trackingEnabled() ? null : true;
   });
 
   MetabaseSettings.on("user-locale", async locale => {

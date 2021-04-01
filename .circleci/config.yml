@@ -492,11 +492,11 @@ jobs:
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
-          find-args: ". -type f -name '*.clj' -or -name '*.java' -or -name deps.edn -or -name metabase-plugin.yaml"
+          find-args: ". -type f -name '*.clj' -or -name '*.cljc' -or -name '*.java' -or -name '*.edn' -or -name '*.yaml' -or -name sample-dataset.db.mv.db"
       # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
-          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db"
+          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name '*.cljc' -or -name '*.cljs' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db"
       # .MODULES-CHECKSUMS is every Clojure source file in the modules/ directory as well as plugin manifests
       - create-checksum-file:
           filename: .MODULES-CHECKSUMS
@@ -524,49 +524,6 @@ jobs:
           root: /home/circleci/
           paths:
             - metabase/metabase
-
-  yaml-linter:
-    executor: node
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: .YAML-CHECKSUMS
-          find-args: ". -type f -name '*.yaml' -or -name '*.yml'"
-      - run-on-change:
-          # package.json is included in the cache key in case the yamllint dependency changes
-          checksum: '{{ checksum ".YAML-CHECKSUMS" }}-{{ checksum "package.json" }}'
-          steps:
-            - run-yarn-command:
-                command-name: Lint YAML files
-                command: lint-yaml `find resources -name '*.yaml' -or -name '*.yml'`
-
-  verify-i18n-files:
-    executor: metabase-ci
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: .I18N-CHECKSUMS
-          find-args: "locales -type f -name '*.po'"
-      # In case the i18n scripts themselves change
-      - create-checksum-file:
-          filename: .I18N-SCRIPT-CHECKSUMS
-          find-args: "bin/i18n -type f"
-      - run-on-change:
-          checksum: '{{ checksum ".I18N-CHECKSUMS" }}-{{ checksum ".I18N-SCRIPT-CHECKSUMS" }}'
-          steps:
-            - restore-fe-deps-cache
-            - run:
-                name: Check i18n tags/make sure template can be built
-                # fix OOM when running -- see https://stackoverflow.com/a/59572966/1198455
-                # without this option, sometimes this step will fail with an OOM error.
-                environment:
-                  NODE_OPTIONS: '--max-old-space-size=2048'
-                command: ./bin/i18n/update-translation-template
-                no_output_timeout: 2m
-            - run:
-                name: Verify i18n translations (.po files)
-                command: ./bin/i18n/build-translation-resources
-                no_output_timeout: 2m
 
   check-migrations:
     executor:
@@ -680,6 +637,9 @@ jobs:
       description:
         type: string
         default: ""
+      extra-env:
+        type: string
+        default: ""
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -693,7 +653,7 @@ jobs:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: << parameters.driver >>
-                command: lein with-profile +ci,+junit,+ee test
+                command: << parameters.extra-env >> lein with-profile +ci,+junit,+ee test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/junit
@@ -715,6 +675,11 @@ jobs:
                 name: Run build-drivers build script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
+                no_output_timeout: 15m
+            - run:
+                name: Run i18n script tests
+                command: |
+                  cd /home/circleci/metabase/metabase/bin/i18n && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run build-mb build script tests
@@ -759,50 +724,20 @@ jobs:
                   - /home/circleci/metabase/metabase/node_modules
                   - /home/circleci/.cache/Cypress
 
-  fe-linter-eslint:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run ESLint linter
-          command: lint-eslint
-          skip-when-no-change: true
-
-  fe-linter-prettier:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run Prettier formatting linter
-          command: lint-prettier
-          skip-when-no-change: true
-
-  fe-linter-flow:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run Flow type checker
-          command: lint-flow
-          skip-when-no-change: true
-
-  fe-linter-docs-links:
-    executor: node
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: ".MARKDOWN-CHECKSUMS"
-          find-args: ". -type f -name '*.md'"
-      - run-on-change:
-          checksum: '{{ checksum ".MARKDOWN-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}'
-          steps:
-            - run-yarn-command:
-                command-name: Run docs links checker
-                command: lint-docs-links
-
   fe-tests-unit:
     executor: node
     steps:
       - run-yarn-command:
           command-name: Run frontend unit tests
           command: run test-unit
+          skip-when-no-change: true
+
+  shared-tests-cljs:
+    executor: node
+    steps:
+      - run-yarn-command:
+          command-name: Run Cljs tests for shared/ code
+          command: run test-cljs
           skip-when-no-change: true
 
   fe-tests-timezones:
@@ -1030,14 +965,6 @@ workflows:
     jobs:
       - checkout
 
-      - yaml-linter:
-          requires:
-            - fe-deps
-
-      - verify-i18n-files:
-          requires:
-            - fe-deps
-
       - check-migrations:
           requires:
             - checkout
@@ -1064,34 +991,6 @@ workflows:
           <<: *Matrix
 
       - lein:
-          name: be-linter-eastwood
-          requires:
-            - be-deps
-          lein-command: eastwood
-          skip-when-no-change: true
-
-      - lein:
-          name: be-linter-docstring-checker
-          requires:
-            - be-deps
-          lein-command: docstring-checker
-          skip-when-no-change: true
-
-      - lein:
-          name: be-linter-namespace-decls
-          requires:
-            - be-deps
-          lein-command: check-namespace-decls
-          skip-when-no-change: true
-
-      - lein:
-          name: be-linter-bikeshed
-          requires:
-            - be-deps
-          lein-command: bikeshed
-          skip-when-no-change: true
-
-      - lein:
           name: be-linter-cloverage
           requires:
             - be-deps
@@ -1101,10 +1000,6 @@ workflows:
                 name: Upload code coverage to codecov.io
                 command: bash <(curl -s https://codecov.io/bash)
           skip-when-no-change: true
-
-      - be-linter-reflection-warnings:
-          requires:
-            - be-deps
 
       - test-driver:
           name: be-tests-bigquery-ee
@@ -1148,6 +1043,18 @@ workflows:
           e:
             name: mysql-latest
           driver: mysql
+          # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
+          # they are deliberately given a different name to prevent them from affecting the regular test run against
+          # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
+          # that overrides the MB_MYSQL_TEST_* values with them
+          # the MYSQL_RDS_SSL_INSTANCE vars are secret and/or changeable, so they are defined in the CircleCI settings
+          extra-env: >-
+            MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
+            MB_MYSQL_SSL_TEST_SSL=true
+            MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS='verifyServerCertificate=true'
+            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
+            MB_MYSQL_SSL_TEST_USER=metabase
+            MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
 
       - test-driver:
           name: be-tests-mariadb-ee
@@ -1176,6 +1083,12 @@ workflows:
                 source: ORACLE_JDBC_JAR
                 dest: ojdbc8.jar
           driver: oracle
+          extra-env: >-
+            MB_ORACLE_SSL_TEST_SSL=true
+            MB_ORACLE_SSL_TEST_PORT=2484
+            JVM_OPTS="-Djavax.net.ssl.trustStore=/home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
+                      -Djavax.net.ssl.trustStoreType=JKS
+                      -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
 
       - test-driver:
           name: be-tests-postgres-ee
@@ -1277,19 +1190,10 @@ workflows:
       - fe-deps:
           requires:
             - checkout
-      - fe-linter-eslint:
-          requires:
-            - fe-deps
-      - fe-linter-prettier:
-          requires:
-            - fe-deps
-      - fe-linter-flow:
-          requires:
-            - fe-deps
-      - fe-linter-docs-links:
-          requires:
-            - fe-deps
       - fe-tests-unit:
+          requires:
+            - fe-deps
+      - shared-tests-cljs:
           requires:
             - fe-deps
       - fe-tests-timezones:

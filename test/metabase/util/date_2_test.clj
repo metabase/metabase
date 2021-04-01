@@ -133,8 +133,8 @@
             "Passing `nil` should return `nil`"))
       (testing "blank strings"
         (is (= nil
-               (u.date/parse ""))
-            (= nil
+               (u.date/parse "")))
+        (is (= nil
                (u.date/parse "   ")))))))
 
 ;; TODO - more tests!

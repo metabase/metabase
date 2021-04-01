@@ -1,5 +1,3 @@
-/* @flow */
-
 // Reducers needed for main application
 
 import { combineReducers } from "redux";

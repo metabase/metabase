@@ -79,7 +79,7 @@ describe("scenarios > question > notebook", () => {
         database: 1,
         query: {
           "source-table": ORDERS_ID,
-          filter: ["between", ["field-id", ORDERS.ID], 96, 97],
+          filter: ["between", ["field", ORDERS.ID, null], 96, 97],
         },
         type: "query",
       },
@@ -89,6 +89,53 @@ describe("scenarios > question > notebook", () => {
     cy.wait("@dataset");
     cy.findByText("ID 96 97").click();
     cy.get("[contenteditable='true']").contains("between([ID], 96, 97)");
+  });
+
+  it("should show the correct number of function arguments in a custom expression", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("contains([Category])", { delay: 50 });
+    cy.findAllByRole("button", { name: "Done" })
+      .should("not.be.disabled")
+      .click();
+    cy.contains(/^Function contains expects 2 arguments/i);
+  });
+
+  it("should show the correct number of CASE arguments in a custom expression", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']").type("CASE([Price]>0)");
+      cy.findByPlaceholderText("Something nice and descriptive")
+        .click()
+        .type("Sum Divide");
+      cy.contains(/^CASE expects 2 arguments or more/i);
+    });
+  });
+
+  it("should process the updated expression when pressing Enter", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1");
+    cy.findAllByRole("button", { name: "Done" }).click();
+
+    // change the corresponding custom expression
+    cy.findByText("Price is greater than 1").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.contains(/^Price is less than 5/i);
   });
 
   describe("joins", () => {
@@ -262,16 +309,16 @@ describe("scenarios > question > notebook", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
-            ["joined-field", "People - User", ["field-id", PEOPLE.SOURCE]],
+            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+            ["field", PEOPLE.SOURCE, { "join-alias": "People - User" }],
           ],
           joins: [
             {
               alias: "Products",
               condition: [
                 "=",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
               ],
               fields: "all",
               "source-table": PRODUCTS_ID,
@@ -280,8 +327,8 @@ describe("scenarios > question > notebook", () => {
               alias: "People - User",
               condition: [
                 "=",
-                ["field-id", ORDERS.USER_ID],
-                ["joined-field", "People - User", ["field-id", PEOPLE.ID]],
+                ["field", ORDERS.USER_ID, null],
+                ["field", PEOPLE.ID, { "join-alias": "People - User" }],
               ],
               fields: "all",
               "source-table": PEOPLE_ID,
@@ -295,17 +342,17 @@ describe("scenarios > question > notebook", () => {
         name: "12928_Q2",
         query: {
           "source-table": REVIEWS_ID,
-          aggregation: [["avg", ["field-id", REVIEWS.RATING]]],
+          aggregation: [["avg", ["field", REVIEWS.RATING, null]]],
           breakout: [
-            ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
+            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
           ],
           joins: [
             {
               alias: "Products",
               condition: [
                 "=",
-                ["field-id", REVIEWS.PRODUCT_ID],
-                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ["field", REVIEWS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
               ],
               fields: "all",
               "source-table": PRODUCTS_ID,
@@ -351,7 +398,7 @@ describe("scenarios > question > notebook", () => {
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
-          breakout: [["field-id", PRODUCTS.CATEGORY]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
           "order-by": [["asc", ["aggregation", 0]]],
         },
       }).then(({ body: { id: questionId } }) => {
@@ -367,11 +414,11 @@ describe("scenarios > question > notebook", () => {
                 fields: "all",
                 condition: [
                   "=",
-                  ["field-id", PRODUCTS.CATEGORY],
+                  ["field", PRODUCTS.CATEGORY, null],
                   [
-                    "joined-field",
-                    ALIAS,
-                    ["field-literal", "CATEGORY", "type/Text"],
+                    "field",
+                    "CATEGORY",
+                    { "base-type": "type/Text", "join-alias": ALIAS },
                   ],
                 ],
                 "source-table": `card__${questionId}`,
@@ -409,16 +456,19 @@ describe("scenarios > question > notebook", () => {
             aggregation: [
               [
                 "aggregation-options",
-                ["sum", ["field-id", ORDERS.SUBTOTAL]],
+                ["sum", ["field", ORDERS.SUBTOTAL, null]],
                 { "display-name": "Revenue" },
               ],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
           },
-          aggregation: [["min", ["field-literal", "Revenue", "type/Float"]]],
+          aggregation: [
+            ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
+          ],
         },
+
         display: "scalar",
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.server();
@@ -449,20 +499,17 @@ describe("scenarios > question > notebook", () => {
                 "source-table": PRODUCTS_ID,
                 condition: [
                   "=",
-                  ["field-id", REVIEWS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ["field", REVIEWS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
                 ],
                 alias: "Products",
               },
             ],
             aggregation: [
-              [
-                "sum",
-                ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
-              ],
+              ["sum", ["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
             ],
             breakout: [
-              ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "year"],
+              ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           database: 1,
@@ -532,8 +579,7 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  // TODO: add positive assertions to all 4 tests when we figure out implementation details
-  describe.skip("arithmetic (metabase#13175)", () => {
+  describe("arithmetic (metabase#13175)", () => {
     beforeEach(() => {
       openOrdersTable({ mode: "notebook" });
     });
@@ -548,9 +594,14 @@ describe("scenarios > question > notebook", () => {
         .click()
         .type("Example", { delay: 100 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
-        .should("not.be.disabled");
+      cy.findAllByRole("button", { name: "Done" })
+        .should("not.be.disabled")
+        .click();
+
+      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.contains("Example");
+      cy.contains("Big");
+      cy.contains("Small");
     });
 
     it("should work on custom filter", () => {
@@ -560,22 +611,25 @@ describe("scenarios > question > notebook", () => {
       cy.get("[contenteditable='true']")
         .click()
         .clear()
-        .type("[Subtotal] - Tax > 20", { delay: 50 });
+        .type("[Subtotal] - Tax > 140", { delay: 50 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
+      cy.contains(/^redundant input/i).should("not.exist");
+
+      cy.findAllByRole("button", { name: "Done" })
         .should("not.be.disabled")
         .click();
 
-      cy.contains(/^redundant input/i).should("not.exist");
+      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.contains("Showing 97 rows");
     });
 
     const CASES = {
-      CountIf: "CountIf(([Subtotal] + [Tax]) > 10)",
-      SumIf: "SumIf([Subtotal], ([Subtotal] + [Tax] > 20))",
+      CountIf: ["CountIf(([Subtotal] + [Tax]) > 10)", "18,760"],
+      SumIf: ["SumIf([Subtotal], ([Subtotal] + [Tax] > 20))", "1,447,850.28"],
     };
 
     Object.entries(CASES).forEach(([filter, formula]) => {
+      const [expression, result] = formula;
       it(`should work on custom aggregation with ${filter}`, () => {
         cy.findByText("Summarize").click();
         cy.findByText("Custom Expression").click();
@@ -583,14 +637,22 @@ describe("scenarios > question > notebook", () => {
         cy.get("[contenteditable='true']")
           .click()
           .clear()
-          .type(formula, { delay: 50 });
+          .type(expression, { delay: 50 });
 
         cy.findByPlaceholderText("Name (required)")
           .click()
-          .type("Ex", { delay: 100 });
+          .type(filter, { delay: 100 });
 
         cy.contains(/^expected closing parenthesis/i).should("not.exist");
         cy.contains(/^redundant input/i).should("not.exist");
+
+        cy.findAllByRole("button", { name: "Done" })
+          .should("not.be.disabled")
+          .click();
+
+        cy.findAllByRole("button", { name: "Visualize" }).click();
+        cy.contains(filter);
+        cy.contains(result);
       });
     });
   });
@@ -603,16 +665,16 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
   cy.createQuestion({
     name: "Q1",
     query: {
-      aggregation: ["sum", ["field-id", ORDERS.TOTAL]],
-      breakout: [["field-id", ORDERS.PRODUCT_ID]],
+      aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
+      breakout: [["field", ORDERS.PRODUCT_ID, null]],
       "source-table": ORDERS_ID,
     },
   }).then(({ body: { id: Q1_ID } }) => {
     cy.createQuestion({
       name: "Q2",
       query: {
-        aggregation: ["sum", ["field-id", PRODUCTS.RATING]],
-        breakout: [["field-id", PRODUCTS.ID]],
+        aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
+        breakout: [["field", PRODUCTS.ID, null]],
         "source-table": PRODUCTS_ID,
       },
     }).then(({ body: { id: Q2_ID } }) => {
@@ -625,11 +687,11 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
               alias: ALIAS,
               condition: [
                 "=",
-                ["field-literal", "PRODUCT_ID", "type/Integer"],
+                ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
                 [
-                  "joined-field",
-                  ALIAS,
-                  ["field-literal", "ID", "type/BigInteger"],
+                  "field",
+                  "ID",
+                  { "base-type": "type/BigInteger", "join-alias": ALIAS },
                 ],
               ],
               fields: "all",

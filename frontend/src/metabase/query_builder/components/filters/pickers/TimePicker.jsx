@@ -6,6 +6,8 @@ import HoursMinutesInput from "./HoursMinutesInput";
 
 import { parseTime } from "metabase/lib/time";
 
+import type { Operator } from "./DatePicker";
+
 const TimeInput = ({ value, onChange }) => {
   const time = parseTime(value);
   return (

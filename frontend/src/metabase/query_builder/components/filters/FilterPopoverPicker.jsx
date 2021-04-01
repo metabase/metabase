@@ -5,7 +5,7 @@ import TimePicker from "../filters/pickers/TimePicker";
 import DefaultPicker from "../filters/pickers/DefaultPicker";
 
 export default class FilterPopoverPicker extends React.Component {
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     window.addEventListener("keydown", this.handleKeyDown);
   }
 

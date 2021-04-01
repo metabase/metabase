@@ -50,6 +50,8 @@ export function format(mbql: any, options: FormatterOptions = {}) {
     return formatSegment(mbql, options);
   } else if (isCase(mbql)) {
     return formatCase(mbql, options);
+  } else if (isNegativeFilter(mbql)) {
+    return formatNegativeFilter(mbql, options);
   }
   throw new Error("Unknown MBQL clause " + JSON.stringify(mbql));
 }
@@ -131,4 +133,21 @@ function formatCase([_, clauses, caseOptions = {}], options) {
       ? ", " + format(caseOptions.default, options)
       : "";
   return `${formattedName}(${formattedClauses}${defaultExpression})`;
+}
+
+const NEGATIVE_FILTERS = {
+  "does-not-contain": "contains",
+  "not-empty": "is-empty",
+  "not-null": "is-null",
+};
+
+function isNegativeFilter(expr) {
+  const [fn, ...args] = expr;
+  return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
+}
+
+function formatNegativeFilter(mbql, options) {
+  const [fn, ...args] = mbql;
+  const baseFn = NEGATIVE_FILTERS[fn];
+  return "NOT " + format([baseFn, ...args], options);
 }

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 import { setIn } from "icepick";
 
@@ -253,3 +251,15 @@ export const makeGetParameterMappingOptions = () => {
   );
   return getParameterMappingOptions;
 };
+
+export const getDefaultParametersById = createSelector(
+  [getDashboard],
+  dashboard =>
+    ((dashboard && dashboard.parameters) || []).reduce((map, parameter) => {
+      if (parameter.default) {
+        map[parameter.id] = parameter.default;
+      }
+
+      return map;
+    }, {}),
+);

@@ -32,7 +32,7 @@ export default class MetadataTable extends Component {
     updateField: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { database } = this.props;
     if (database) {
       database.fetchIdfields();
