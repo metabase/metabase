@@ -1,4 +1,10 @@
-import { restore, setupDummySMTP } from "__support__/cypress";
+import {
+  restore,
+  setupDummySMTP,
+  describeWithToken,
+  describeOpenSourceOnly,
+  popover,
+} from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
 const { admin } = USERS;
 
@@ -113,36 +119,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("with Slack set up", () => {
     beforeEach(() => {
-      // Stubbing the response in advance (Cypress will intercept it when we navigate to "Dashboard subscriptions")
-      cy.server();
-      cy.route("GET", "/api/pulse/form_input", {
-        channels: {
-          email: {
-            type: "email",
-            name: "Email",
-            allows_recipients: false,
-            recipients: ["user", "email"],
-            schedules: ["daily", "weekly", "monthly"],
-            configured: false,
-          },
-          slack: {
-            type: "slack",
-            name: "Slack",
-            allows_recipients: true,
-            schedules: ["hourly", "daily", "weekly", "monthly"],
-            fields: [
-              {
-                name: "channel",
-                type: "select",
-                displayName: "Post to",
-                options: ["#work", "#play"],
-                required: true,
-              },
-            ],
-            configured: true,
-          },
-        },
-      });
+      mockSlackConfigured();
       openDashboardSubscriptions();
       cy.findByText("Send it to Slack").click();
       cy.findByText("Send this dashboard to Slack");
@@ -162,6 +139,93 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByText("Pick a user or channel...").click();
       cy.findByText("#work").click();
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
+    });
+  });
+
+  describeOpenSourceOnly.only("OSS email subscriptions", () => {
+    beforeEach(() => {
+      cy.visit(`/dashboard/1`);
+      setupDummySMTP();
+    });
+
+    describe("with parameters", () => {
+      beforeEach(() => {
+        addParametersToDashboard();
+      });
+
+      it("should have a list of the default parameters applied to the subscription", () => {
+        assignRecipient();
+        cy.findByText("Category is Corbin Mertz");
+        clickButton("Done");
+
+        cy.findByText("Category is Corbin Mertz");
+      });
+    });
+  });
+
+  describeWithToken("EE email subscriptions", () => {
+    beforeEach(() => {
+      cy.visit(`/dashboard/1`);
+      setupDummySMTP();
+    });
+
+    describe("with no parameters", () => {
+      it("should have no parameters section", () => {
+        openDashboardSubscriptions();
+        cy.findByText("Email it").click();
+
+        cy.findByText("Set filter values for when this gets sent").should(
+          "not.exist",
+        );
+      });
+    });
+
+    describe("with parameters", () => {
+      beforeEach(() => {
+        addParametersToDashboard();
+      });
+
+      it("should show a filter description containing default values, even when not explicitly added to subscription", () => {
+        assignRecipient();
+        clickButton("Done");
+
+        cy.findByText("Category is Corbin Mertz");
+      });
+
+      it("should allow for setting parameters in subscription", () => {
+        assignRecipient();
+        clickButton("Done");
+
+        cy.findByText("Emailed daily at 8:00 AM").click();
+
+        cy.findAllByText("Corbin Mertz")
+          .last()
+          .click();
+        popover()
+          .find("input")
+          .type("Bob");
+        popover()
+          .findByText("Bobby Kessler")
+          .click();
+        popover()
+          .contains("Update filter")
+          .click();
+
+        cy.findAllByText("Dropdown 1")
+          .last()
+          .click();
+        popover()
+          .findByText("Gizmo")
+          .click();
+        popover()
+          .contains("Add filter")
+          .click();
+
+        clickButton("Done");
+        cy.findByText(
+          "Category is Corbin Mertz and Bobby Kessler and 1 more filter",
+        );
+      });
     });
   });
 });
@@ -192,4 +256,77 @@ function clickButton(button_name) {
 function createEmailSubscription() {
   assignRecipient();
   clickButton("Done");
+}
+
+function addParametersToDashboard() {
+  // edit dashboard
+  cy.icon("pencil").click();
+
+  // add Category > Dropdown "Name" filter
+  cy.icon("filter").click();
+  cy.findByText("Other Categories").click();
+  cy.findByText("Dropdown").click();
+
+  cy.findByText("Select…").click();
+  popover().within(() => {
+    cy.findByText("Name").click();
+  });
+
+  // add default value to the above filter
+  cy.findByText("No default").click();
+  popover()
+    .find("input")
+    .type("Corbin");
+  popover()
+    .findByText("Corbin Mertz")
+    .click();
+  popover()
+    .contains("Add filter")
+    .click();
+
+  // add Category > Dropdown "Category" filter
+  cy.icon("filter").click();
+  cy.findByText("Other Categories").click();
+  cy.findByText("Dropdown").click();
+  cy.findByText("Select…").click();
+  popover().within(() => {
+    cy.findByText("Category").click();
+  });
+
+  cy.findByText("Save").click();
+  // wait for dashboard to save
+  cy.contains("You're editing this dashboard.").should("not.exist");
+}
+
+function mockSlackConfigured() {
+  // Stubbing the response in advance (Cypress will intercept it when we navigate to "Dashboard subscriptions")
+  cy.server();
+  cy.route("GET", "/api/pulse/form_input", {
+    channels: {
+      email: {
+        type: "email",
+        name: "Email",
+        allows_recipients: false,
+        recipients: ["user", "email"],
+        schedules: ["daily", "weekly", "monthly"],
+        configured: false,
+      },
+      slack: {
+        type: "slack",
+        name: "Slack",
+        allows_recipients: true,
+        schedules: ["hourly", "daily", "weekly", "monthly"],
+        fields: [
+          {
+            name: "channel",
+            type: "select",
+            displayName: "Post to",
+            options: ["#work", "#play"],
+            required: true,
+          },
+        ],
+        configured: true,
+      },
+    },
+  });
 }
