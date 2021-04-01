@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
 import React from "react";

@@ -1,7 +1,7 @@
 /*
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
 

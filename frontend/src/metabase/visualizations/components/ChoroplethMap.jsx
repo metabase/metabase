@@ -1,5 +1,5 @@
 /* eslint-disable no-color-literals */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";

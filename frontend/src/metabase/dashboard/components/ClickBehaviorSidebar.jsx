@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t, jt, ngettext, msgid } from "ttag";
 import { getIn } from "icepick";

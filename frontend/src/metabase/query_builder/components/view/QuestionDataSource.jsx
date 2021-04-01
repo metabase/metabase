@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import Badge, { MaybeLink } from "metabase/components/Badge";
