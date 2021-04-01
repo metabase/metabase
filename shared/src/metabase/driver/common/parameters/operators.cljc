@@ -12,7 +12,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.shared.util.i18n :as i18n :refer [tru]]
+            [metabase.shared.util.i18n :as i18n :refer [tru trs]]
             [schema.core :as s]))
 
 (def operators
