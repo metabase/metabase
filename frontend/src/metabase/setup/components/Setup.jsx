@@ -1,6 +1,5 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import ExternalLink from "metabase/components/ExternalLink";
@@ -84,9 +83,7 @@ export default class Setup extends Component {
     ) {
       setTimeout(() => {
         if (this.databaseSchedulingStepContainer.current) {
-          const node = ReactDOM.findDOMNode(
-            this.databaseSchedulingStepContainer.current,
-          );
+          const node = this.databaseSchedulingStepContainer.current;
           node && node.scrollIntoView && node.scrollIntoView();
         }
       }, 10);
