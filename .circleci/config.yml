@@ -9,7 +9,7 @@ executors:
   clojure-and-node:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
 
   # CircleCI base (Lein 2.9.5) + Node + Headless browsers + Clojure CLI - big one
   clojure-and-node-and-browsers:
@@ -23,14 +23,14 @@ executors:
   java-11:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -46,7 +46,7 @@ executors:
   postgres-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -63,7 +63,7 @@ executors:
   mysql-5-7:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -76,7 +76,7 @@ executors:
   mysql-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -89,7 +89,7 @@ executors:
   mariadb-10-2:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -102,7 +102,7 @@ executors:
   mariadb-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -119,13 +119,13 @@ executors:
   mongo:
      working_directory: /home/circleci/metabase/metabase/
      docker:
-       - image: metabase/ci:latest
+       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
        - image: circleci/mongo:4.0
 
   presto:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: metabase/presto-mb-ci
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx1g"
@@ -133,19 +133,19 @@ executors:
   sparksql:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: metabase/spark:2.1.1
 
   vertica:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: sumitchawla/vertica
 
   sqlserver:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:latest
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_SQLSERVER_TEST_HOST: localhost
           MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
