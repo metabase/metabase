@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -11,27 +11,29 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/components/Tooltip";
 
-export const getDashboardActions = ({
-  dashboard,
-  isAdmin,
-  isEditing = false,
-  isEmpty = false,
-  isFullscreen,
-  isNightMode,
-  isPublic = false,
-  onNightModeChange,
-  onFullscreenChange,
-  refreshPeriod,
-  setRefreshElapsedHook,
-  onRefreshPeriodChange,
-  onSharingClick,
-  onEmbeddingClick,
-  dashcardData,
-}) => {
+export const getDashboardActions = (
+  self,
+  {
+    dashboard,
+    isAdmin,
+    isEditing = false,
+    isEmpty = false,
+    isFullscreen,
+    isNightMode,
+    isPublic = false,
+    onNightModeChange,
+    onFullscreenChange,
+    refreshPeriod,
+    setRefreshElapsedHook,
+    onRefreshPeriodChange,
+    onSharingClick,
+    onEmbeddingClick,
+    dashcardData,
+  },
+) => {
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
   const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
-  const popover = useRef();
   const buttons = [];
 
   /* we consider the dashboard to be shareable if there is at least one card with data in it on the dashboard
@@ -45,7 +47,7 @@ export const getDashboardActions = ({
 
     buttons.push(
       <PopoverWithTrigger
-        ref={popover}
+        ref="popover"
         disabled={!canShareDashboard}
         triggerElement={
           <Tooltip
@@ -71,7 +73,7 @@ export const getDashboardActions = ({
               className={extraButtonClassNames}
               data-metabase-event={"Dashboard;Subscriptions"}
               onClick={() => {
-                popover.current.close();
+                self.refs.popover.close();
                 onSharingClick();
               }}
             >
@@ -80,7 +82,7 @@ export const getDashboardActions = ({
           </div>
           <div>
             <DashboardSharingEmbeddingModal
-              additionalClickActions={() => popover.current.close()}
+              additionalClickActions={() => self.refs.popover.close()}
               dashboard={dashboard}
               enabled={
                 !isEditing &&
