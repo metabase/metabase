@@ -13,13 +13,11 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
             [metabase.util :as u]
             [ring.util.codec :as codec]
             [saml20-clj.core :as saml20]
             [saml20-clj.encode-decode :as encode-decode]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.db :as db])
   (:import java.net.URL
            java.nio.charset.StandardCharsets
            org.apache.http.client.utils.URLEncodedUtils
@@ -123,31 +121,19 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
 
   (testing "SSO requests fail if SAML is enabled but hasn't been configured"
     (with-valid-metastore-token
-      (tu/with-temporary-setting-values [saml-enabled               true
+      (mt/with-temporary-setting-values [saml-enabled               true
                                          saml-identity-provider-uri nil]
         (is (some? (client :get 400 "/auth/sso"))))))
 
   (testing "The IDP provider certificate must also be included for SSO to be configured"
     (with-valid-metastore-token
-      (tu/with-temporary-setting-values [saml-enabled                       true
+      (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate nil]
         (is (some? (client :get 400 "/auth/sso")))))))
 
-;;
-;; The basic flow of of a SAML login is below
-;;
-;; 1. User attempts to access <URL> but is not authenticated
-;; 2. User is redirected to GET /auth/sso
-;; 3. Metabase issues another redirect to the identity provider URI
-;; 4. User logs into their identity provider (i.e. Auth0)
-;; 5. Identity provider POSTs to Metabase with successful auth info
-;; 6. Metabase parses/validates the SAML response
-;; 7. Metabase inits the user session, responds with a redirect to back to the original <URL>
-;;
-
 (defn- call-with-default-saml-config [f]
-  (tu/with-temporary-setting-values [saml-enabled                       true
+  (mt/with-temporary-setting-values [saml-enabled                       true
                                      saml-identity-provider-uri         default-idp-uri
                                      saml-identity-provider-certificate default-idp-cert]
     (f)))
@@ -169,6 +155,20 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
          (fn []
            ~@body))))))
 
+;; TODO - maybe this belongs in a util namespace?
+(defn- uri->params-map
+  "Parse the URI string, creating a map from the key/value pairs in the query string"
+  [uri-str]
+  (assert (string? uri-str))
+  (into
+   {}
+   (for [^BasicNameValuePair pair (-> (URL. uri-str) .getQuery (URLEncodedUtils/parse StandardCharsets/UTF_8))]
+     [(keyword (.getName pair)) (.getValue pair)])))
+
+(deftest uri->params-map-test
+  (is (= {:a "b", :c "d"}
+         (uri->params-map "http://localhost?a=b&c=d"))))
+
 (deftest request-xml-test
   (testing "Make sure the requests we generate look correct"
     (with-saml-default-setup
@@ -180,16 +180,16 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
                                                     (:request-id m))))
                                          (mt/with-clock #t "2020-09-30T17:53:32Z"
                                            (orig (assoc m :request-id "id-419507d5-1d2a-43c4-bcde-3e5b9746bb47"))))]
-            (let [request     (client-full-response :get 302 "/auth/sso"
-                                                    {:request-options {:redirect-strategy :none}}
-                                                    :redirect default-redirect-uri)
-                  location    (get-in request [:headers "Location"])
-                  [_ base-64] (re-find #"SAMLRequest=([^&]+)" location)
-                  xml         (-> base-64
-                                  codec/url-decode
-                                  encode-decode/base64->inflate->str
-                                  (str/replace #"\n+" "")
-                                  (str/replace #">\s+<" "><"))]
+            (let [request  (client-full-response :get 302 "/auth/sso"
+                                                 {:request-options {:redirect-strategy :none}}
+                                                 :redirect default-redirect-uri)
+                  location (get-in request [:headers "Location"])
+                  base-64  (-> location uri->params-map :SAMLRequest)
+                  xml      (-> base-64
+                               codec/url-decode
+                               encode-decode/base64->inflate->str
+                               (str/replace #"\n+" "")
+                               (str/replace #">\s+<" "><"))]
               (is (= (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                           "<samlp:AuthnRequest"
                           " xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\""
@@ -213,25 +213,11 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
             redirect-url (get-in result [:headers "Location"])]
         (is (str/starts-with? redirect-url default-idp-uri))))))
 
-;; TODO - maybe this belongs in a util namespace?
-(defn- uri->params-map
-  "Parse the URI string, creating a map from the key/value pairs in the query string"
-  [uri-str]
-  (assert (string? uri-str))
-  (into
-   {}
-   (for [^BasicNameValuePair pair (-> (URL. uri-str) .getQuery (URLEncodedUtils/parse StandardCharsets/UTF_8))]
-     [(keyword (.getName pair)) (.getValue pair)])))
-
-(deftest uri->params-map-test
-  (is (= {:a "b", :c "d"}
-         (uri->params-map "http://localhost?a=b&c=d"))))
-
 (deftest redirect-append-paramters-test
   (testing (str "When the identity provider already includes a query parameter, the SAML code should spot that and "
                 "append more parameters onto the query string (rather than always include a `?newparam=here`).")
     (with-saml-default-setup
-      (tu/with-temporary-setting-values [saml-identity-provider-uri default-idp-uri-with-param]
+      (mt/with-temporary-setting-values [saml-identity-provider-uri default-idp-uri-with-param]
         (let [result       (client-full-response :get 302 "/auth/sso"
                                                  {:request-options {:redirect-strategy :none}}
                                                  :redirect default-redirect-uri)
@@ -245,15 +231,15 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
 (deftest relay-state-test
   (with-saml-default-setup
     (do-with-some-validators-disabled
-     (fn []
-       (let [result       (client-full-response :get 302 "/auth/sso"
-                                                {:request-options {:redirect-strategy :none}}
-                                                :redirect default-redirect-uri)
-             redirect-url (get-in result [:headers "Location"])]
-         (testing (format "result = %s" (pr-str result))
-           (is (string? redirect-url))
-           (is (= default-redirect-uri
-                  (saml20/base64->str (:RelayState (uri->params-map redirect-url)))))))))))
+      (fn []
+        (let [result       (client-full-response :get 302 "/auth/sso"
+                                                 {:request-options {:redirect-strategy :none}}
+                                                 :redirect default-redirect-uri)
+              redirect-url (get-in result [:headers "Location"])]
+          (testing (format "result = %s" (pr-str result))
+            (is (string? redirect-url))
+            (is (= default-redirect-uri
+                   (saml20/base64->str (:RelayState (uri->params-map redirect-url)))))))))))
 
 (defn- saml-response-from-file [filename]
   (u/encode-base64 (slurp filename)))
@@ -290,48 +276,48 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
   (testing "Sample response shoudl fail because _1 isn't a request ID that we issued."
     (with-saml-default-setup
       (do-with-some-validators-disabled
-       (fn []
-         (testing (str "After a successful login with the identity provider, the SAML provider will POST to the "
-                       "`/auth/sso` route.")
-           (let [req-options (saml-post-request-options (saml-test-response)
-                                                        (saml20/str->base64 default-redirect-uri))
-                 response    (client-full-response :post 302 "/auth/sso" req-options)]
-             (is (successful-login? response))
-             (is (= default-redirect-uri
-                    (get-in response [:headers "Location"])))
-             (is (= (some-saml-attributes "rasta")
-                    (saml-login-attributes "rasta@metabase.com"))))))))))
+        (fn []
+          (testing (str "After a successful login with the identity provider, the SAML provider will POST to the "
+                        "`/auth/sso` route.")
+            (let [req-options (saml-post-request-options (saml-test-response)
+                                                         (saml20/str->base64 default-redirect-uri))
+                  response    (client-full-response :post 302 "/auth/sso" req-options)]
+              (is (successful-login? response))
+              (is (= default-redirect-uri
+                     (get-in response [:headers "Location"])))
+              (is (= (some-saml-attributes "rasta")
+                     (saml-login-attributes "rasta@metabase.com"))))))))))
 
 (deftest validate-signatures-test
   ;; they were edited by hand I think, so the signatures are now incorrect (?)
   (testing "The sample responses should normally fail because the <Assertion> signatures don't match"
     (with-saml-default-setup
       (do-with-some-validators-disabled nil #{:not-on-or-after :recipient :issuer}
-       (fn []
-         (let [req-options (saml-post-request-options (saml-test-response)
-                                                      default-redirect-uri)
-               response    (client-full-response :post 401 "/auth/sso" req-options)]
-           (testing (format "response =\n%s" (u/pprint-to-str response))
-             (is (not (successful-login? response))))))))))
+        (fn []
+          (let [req-options (saml-post-request-options (saml-test-response)
+                                                       default-redirect-uri)
+                response    (client-full-response :post 401 "/auth/sso" req-options)]
+            (testing (format "response =\n%s" (u/pprint-to-str response))
+              (is (not (successful-login? response))))))))))
 
 (deftest validate-not-on-or-after-test
   (with-saml-default-setup
     (testing "The sample responses should normally fail because the <Assertion> NotOnOrAfter has passed"
       (do-with-some-validators-disabled nil #{:signature :recipient}
-       (fn []
-         (let [req-options (saml-post-request-options (saml-test-response)
-                                                      (saml20/str->base64 default-redirect-uri))]
-           (is (not (successful-login? (client-full-response :post 401 "/auth/sso" req-options))))))))
+        (fn []
+          (let [req-options (saml-post-request-options (saml-test-response)
+                                                       (saml20/str->base64 default-redirect-uri))]
+            (is (not (successful-login? (client-full-response :post 401 "/auth/sso" req-options))))))))
     (testing "If we time-travel then the sample responses *should* work"
       (let [orig saml20/validate]
         (with-redefs [saml20/validate (fn [& args]
                                         (mt/with-clock #t "2018-07-01T00:00:00.000Z"
                                           (apply orig args)))]
           (do-with-some-validators-disabled nil #{:signature :recipient :issuer}
-           (fn []
-             (let [req-options (saml-post-request-options (saml-test-response)
-                                                          (saml20/str->base64 default-redirect-uri))]
-               (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))))))))))
+            (fn []
+              (let [req-options (saml-post-request-options (saml-test-response)
+                                                           (saml20/str->base64 default-redirect-uri))]
+                (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))))))))))
 
 (deftest validate-recipient-test
   (with-saml-default-setup
@@ -374,16 +360,16 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
 (deftest login-test
   (with-saml-default-setup
     (do-with-some-validators-disabled
-     (fn []
-       (testing "After a successful login with the identity provider, the SAML provider will POST to the `/auth/sso` route."
-         (let [req-options (saml-post-request-options (saml-test-response)
-                                                      (saml20/str->base64 default-redirect-uri))
-               response    (client-full-response :post 302 "/auth/sso" req-options)]
-           (is (successful-login? response))
-           (is (= default-redirect-uri
-                  (get-in response [:headers "Location"])))
-           (is (= (some-saml-attributes "rasta")
-                  (saml-login-attributes "rasta@metabase.com")))))))))
+      (fn []
+        (testing "After a successful login with the identity provider, the SAML provider will POST to the `/auth/sso` route."
+          (let [req-options (saml-post-request-options (saml-test-response)
+                                                       (saml20/str->base64 default-redirect-uri))
+                response    (client-full-response :post 302 "/auth/sso" req-options)]
+            (is (successful-login? response))
+            (is (= default-redirect-uri
+                   (get-in response [:headers "Location"])))
+            (is (= (some-saml-attributes "rasta")
+                   (saml-login-attributes "rasta@metabase.com")))))))))
 
 (deftest login-invalid-relay-state-test
   (testing (str "if the RelayState is not set or is invalid, you are redirected back to the home page rather than "
@@ -422,7 +408,7 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
                        :last_name    "User"
                        :date_joined  true
                        :common_name  "New User"}]
-                     (->> (tu/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login)))))
               (is (= (some-saml-attributes "newuser")
                      (saml-login-attributes "newuser@metabase.com"))))
@@ -430,52 +416,80 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
               (db/delete! User :%lower.email "newuser@metabase.com"))))))))
 
 (defn- group-memberships [user-or-id]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/get-id user-or-id)))]
+  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
     (db/select-field :name PermissionsGroup :id [:in group-ids])))
 
 (deftest login-should-sync-single-group-membership
   (testing "saml group sync works when there's just a single group, which gets interpreted as a string"
     (with-saml-default-setup
       (do-with-some-validators-disabled
-       (fn []
-         (tt/with-temp PermissionsGroup [group-1 {:name (str ::group-1)}]
-           (tu/with-temporary-setting-values [saml-group-sync      true
-                                              saml-group-mappings  {"group_1" [(u/get-id group-1)]}
-                                              saml-attribute-group "GroupMembership"]
-             (try
-               ;; user doesn't exist until SAML request
-               (is (not (db/select-one-id User :%lower.email "newuser@metabase.com")))
-               (let [req-options (saml-post-request-options (new-user-with-single-group-saml-test-response)
-                                                            (saml20/str->base64 default-redirect-uri))
-                     response    (client-full-response :post 302 "/auth/sso" req-options)]
-                 (is (successful-login? response))
-                 (is (= #{"All Users"
-                          ":metabase-enterprise.sso.integrations.saml-test/group-1"}
-                        (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
-               (finally
-                 (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
+        (fn []
+          (mt/with-temp PermissionsGroup [group-1 {:name (str ::group-1)}]
+            (mt/with-temporary-setting-values [saml-group-sync      true
+                                               saml-group-mappings  {"group_1" [(u/the-id group-1)]}
+                                               saml-attribute-group "GroupMembership"]
+              (try
+                ;; user doesn't exist until SAML request
+                (is (not (db/select-one-id User :%lower.email "newuser@metabase.com")))
+                (let [req-options (saml-post-request-options (new-user-with-single-group-saml-test-response)
+                                                             (saml20/str->base64 default-redirect-uri))
+                      response    (client-full-response :post 302 "/auth/sso" req-options)]
+                  (is (successful-login? response))
+                  (is (= #{"All Users"
+                           ":metabase-enterprise.sso.integrations.saml-test/group-1"}
+                         (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
+                (finally
+                  (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
 
 (deftest login-should-sync-multiple-group-membership
   (testing "saml group sync works when there are multiple groups, which gets interpreted as a list of strings"
     (with-saml-default-setup
       (do-with-some-validators-disabled
-       (fn []
-         (tt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
-                         PermissionsGroup [group-2 {:name (str ::group-2)}]]
-           (tu/with-temporary-setting-values [saml-group-sync      true
-                                              saml-group-mappings  {"group_1" [(u/get-id group-1)]
-                                                                    "group_2" [(u/get-id group-2)]}
-                                              saml-attribute-group "GroupMembership"]
-             (try
-               (testing "user doesn't exist until SAML request"
-                 (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
-               (let [req-options (saml-post-request-options (new-user-with-groups-saml-test-response)
-                                                            (saml20/str->base64 default-redirect-uri))
-                     response    (client-full-response :post 302 "/auth/sso" req-options)]
-                 (is (successful-login? response))
-                 (is (= #{"All Users"
-                          ":metabase-enterprise.sso.integrations.saml-test/group-1"
-                          ":metabase-enterprise.sso.integrations.saml-test/group-2"}
-                        (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
-               (finally
-                 (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
+        (fn []
+          (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
+                          PermissionsGroup [group-2 {:name (str ::group-2)}]]
+            (mt/with-temporary-setting-values [saml-group-sync      true
+                                               saml-group-mappings  {"group_1" [(u/the-id group-1)]
+                                                                     "group_2" [(u/the-id group-2)]}
+                                               saml-attribute-group "GroupMembership"]
+              (try
+                (testing "user doesn't exist until SAML request"
+                  (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
+                (let [req-options (saml-post-request-options (new-user-with-groups-saml-test-response)
+                                                             (saml20/str->base64 default-redirect-uri))
+                      response    (client-full-response :post 302 "/auth/sso" req-options)]
+                  (is (successful-login? response))
+                  (is (= #{"All Users"
+                           ":metabase-enterprise.sso.integrations.saml-test/group-1"
+                           ":metabase-enterprise.sso.integrations.saml-test/group-2"}
+                         (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
+                (finally
+                  (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
+
+(deftest relay-state-e2e-test
+  (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"
+    (with-saml-default-setup
+      ;; The test HTTP client will automatically URL encode these for us.
+      (doseq [redirect-url ["/collection/root"
+                            default-redirect-uri
+                            "/"]]
+        (testing (format "\nredirect URL = %s" redirect-url)
+          (let [result     (client-full-response :get 302 "/auth/sso"
+                                                 {:request-options {:redirect-strategy :none}}
+                                                 :redirect redirect-url)
+                location   (get-in result [:headers "Location"])
+                _          (is (string? location))
+                params-map (uri->params-map location)]
+            (testing (format "\nresult =\n%s" (u/pprint-to-str params-map))
+              (testing "\nRelay state URL should be base-64 encoded"
+                (is (= (saml20/str->base64 redirect-url)
+                       (:RelayState params-map))))
+              (testing "\nPOST request should redirect to the original redirect URL"
+                (do-with-some-validators-disabled
+                  (fn []
+                    (let [req-options (saml-post-request-options (saml-test-response)
+                                                                 (:RelayState params-map))
+                          response    (client-full-response :post 302 "/auth/sso" req-options)]
+                      (is (successful-login? response))
+                      (is (= redirect-url
+                             (get-in response [:headers "Location"]))))))))))))))

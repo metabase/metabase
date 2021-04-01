@@ -367,7 +367,7 @@ describe("scenarios > admin > settings", () => {
       );
     });
 
-    it.skip("should not offer to save email changes when there aren't any (metabase#14749)", () => {
+    it("should not offer to save email changes when there aren't any (metabase#14749)", () => {
       // Make sure some settings are already there
       setupDummySMTP();
 
