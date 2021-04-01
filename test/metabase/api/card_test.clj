@@ -531,7 +531,7 @@
           (is (some? (create-card! :crowberto 202))))
         (testing "non-admin should get an error"
           (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-            (is (schema= {:message        (s/eq "You cannot save this Question because you do not permissions to run its query.")
+            (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           :query          (s/eq (mt/obj->json->obj query))
                           :required-perms [perms/ObjectPath]
                           :actual-perms   [perms/UserPath]
@@ -983,7 +983,7 @@
 
             (testing "should *not* be allowed to update query"
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-                (is (schema= {:message        (s/eq "You cannot save this Question because you do not permissions to run its query.")
+                (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                               :query          (s/eq (mt/obj->json->obj (mt/mbql-query :users)))
                               :required-perms [perms/ObjectPath]
                               :actual-perms   [perms/UserPath]

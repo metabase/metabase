@@ -572,7 +572,7 @@
         (testing "Card in the Root Collection"
           (mt/with-temp Collection [dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-            (is (schema= {:message  (s/eq "You cannot save this Question because you do not permissions to run its query.")
+            (is (schema= {:message  (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           s/Keyword s/Any}
                          (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
@@ -580,7 +580,7 @@
           (mt/with-temp* [Collection [source-card-collection]
                           Collection [dest-card-collection]]
             (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-            (is (schema= {:message  (s/eq "You cannot save this Question because you do not permissions to run its query.")
+            (is (schema= {:message  (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           s/Keyword s/Any}
                          (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
 
