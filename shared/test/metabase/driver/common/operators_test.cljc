@@ -1,5 +1,5 @@
 (ns metabase.driver.common.parameters.operators-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest testing is run-tests]]
             [metabase.driver.common.parameters.operators :as ops]
             [metabase.query-processor.error-type :as qp.error-type]
             [schema.core :as s]))
@@ -43,23 +43,34 @@
                                      {:source-field 5}]]
                            :value ["foo"]})
            [:does-not-contain [:field 26 {:source-field 5}] "foo"])))
-  (testing "arity errors"
-    (letfn [(f [op values]
-              (try
-                (ops/to-clause {:type op
-                                :target [:dimension
-                                         [:field
-                                          26
-                                          {:source-field 5}]]
-                                :value values})
-                (is false "Did not throw")
-                (catch Exception e
-                  (ex-data e))))]
-      (doseq [[op values] [[:string/starts-with ["a" "b"]]
-                           [:number/between [1]]
-                           [:number/between [1 2 3]]]]
-        (is (schema= {:param-type (s/eq op)
-                      :param-value (s/eq values)
-                      :field-id s/Any
-                      :type (s/eq qp.error-type/invalid-parameter)}
-                     (f op values)))))))
+  #?(:clj
+     (testing "arity errors"
+       (letfn [(f [op values]
+                 (try
+                   (ops/to-clause {:type op
+                                   :target [:dimension
+                                            [:field
+                                             26
+                                             {:source-field 5}]]
+                                   :value values})
+                   (is false "Did not throw")
+                   (catch Exception e
+                     (ex-data e))))]
+         (doseq [[op values] [[:string/starts-with ["a" "b"]]
+                              [:number/between [1]]
+                              [:number/between [1 2 3]]]]
+           (is (schema= {:param-type (s/eq op)
+                         :param-value (s/eq values)
+                         :field-id s/Any
+                         :type (s/eq qp.error-type/invalid-parameter)}
+                        (f op values))))))))
+#?(:cljs
+   (deftest parameter_to_mbql_test
+     ;; comparisons of js objects are reference equality, annoyingly
+     (is (= ["=" ["field" 1 nil] "1" "2"]
+            (js->clj
+             (ops/parameter_to_mbql
+              (clj->js
+               {:type "string/=" :value ["1" "2"]
+                ;; this really just tests that dimension and field get keyworded
+                :target ["dimension" ["field" 1 nil]]})))))))

@@ -342,7 +342,7 @@ export function dateParameterValueToMBQL(
 export function parameterToMBQLFilter(
   parameter: ParameterInstance,
   metadata: Metadata,
-): ?FieldFilter {
+) {
   if (
     !parameter.target ||
     parameter.target[0] !== "dimension" ||
@@ -357,7 +357,7 @@ export function parameterToMBQLFilter(
       parameter.target[1];
     return dateParameterValueToMBQL(parameter.value, fieldRef);
   } else if (is_operator(parameter.type)) {
-    parameter_to_mbql(parameter);
+    return parameter_to_mbql(parameter);
   }
 }
 

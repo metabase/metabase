@@ -7,7 +7,8 @@
              26
              {:source-field 5}]]
    :value [3 5]}"
-  (:require [medley.core :as m]
+  (:require [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
@@ -153,7 +154,11 @@
      (clj->js
       (to-clause (-> param
                      (js->clj :keywordize-keys true)
-                     (update :type keyword))))))
+                     (update :type keyword)
+                     (update :target #(walk/postwalk (fn [form] (if (vector? form)
+                                                                  (update form 0 keyword)
+                                                                  form))
+                                                     %)))))))
 #?(:cljs
    (defn ^:export is_operator [param]
      (operator? (keyword param))))

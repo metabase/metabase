@@ -1,7 +1,6 @@
 import {
   dateParameterValueToMBQL,
-  stringParameterValueToMBQL,
-  numberParameterValueToMBQL,
+  parameterToMBQLFilter,
   parameterOptionsForField,
   getParametersBySlug,
   mapUIParameterToQueryParameter,
@@ -94,67 +93,6 @@ describe("metabase/meta/Parameter", () => {
         "2017-05-01",
         "2017-05-02",
       ]);
-    });
-  });
-
-  describe("stringParameterValueToMBQL", () => {
-    describe("when given an array parameter value", () => {
-      it("should flatten the array parameter values", () => {
-        expect(
-          stringParameterValueToMBQL(
-            { type: "category/=", value: ["1", "2"] },
-            null,
-          ),
-        ).toEqual(["=", null, "1", "2"]);
-      });
-    });
-
-    describe("when given a string parameter value", () => {
-      it("should return the correct MBQL", () => {
-        expect(
-          stringParameterValueToMBQL(
-            { type: "category/starts-with", value: "1" },
-            null,
-          ),
-        ).toEqual(["starts-with", null, "1"]);
-      });
-    });
-
-    it("should default the operator to `=`", () => {
-      expect(
-        stringParameterValueToMBQL(
-          { type: "category", value: ["1", "2"] },
-          null,
-        ),
-      ).toEqual(["=", null, "1", "2"]);
-
-      expect(
-        stringParameterValueToMBQL(
-          { type: "location/city", value: ["1", "2"] },
-          null,
-        ),
-      ).toEqual(["=", null, "1", "2"]);
-    });
-  });
-
-  describe("numberParameterValueToMBQL", () => {
-    describe("when given an array parameter value", () => {
-      it("should flatten the array parameter values", () => {
-        expect(
-          numberParameterValueToMBQL(
-            { type: "number/between", value: [1, 2] },
-            null,
-          ),
-        ).toEqual(["between", null, 1, 2]);
-      });
-    });
-
-    describe("when given a string parameter value", () => {
-      it("should parse the parameter value as a float", () => {
-        expect(
-          numberParameterValueToMBQL({ type: "number/=", value: "1.1" }, null),
-        ).toEqual(["=", null, 1.1]);
-      });
     });
   });
 
