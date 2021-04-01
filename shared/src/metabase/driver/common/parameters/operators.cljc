@@ -132,7 +132,7 @@
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [{param-type :type [a b :as param-value] :value [_ field :as _target] :target :as param}]
   (verify-type-and-arity field param-type param-value)
-  (let [field' (mbql.u/wrap-field-id-if-needed field)]
+  (let [field' (some-> field mbql.u/wrap-field-id-if-needed)]
     (cond (contains? binary param-type)
           [(binary param-type) field' a b]
 
@@ -147,3 +147,13 @@
                                  :param-value param-value
                                  :field-id    (second field)
                                  :type        qp.error-type/invalid-parameter})))))
+
+#?(:cljs
+   (defn ^:export parameter_to_mbql [param]
+     (clj->js
+      (to-clause (-> param
+                     (js->clj :keywordize-keys true)
+                     (update :type keyword))))))
+#?(:cljs
+   (defn ^:export is_operator [param]
+     (operator? (keyword param))))

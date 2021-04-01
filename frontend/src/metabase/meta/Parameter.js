@@ -11,11 +11,14 @@ import type {
   ParameterInstance,
   ParameterTarget,
   ParameterValue,
-  ParameterValueOrArray,
   ParameterValues,
   ParameterType,
 } from "metabase-types/types/Parameter";
-import { PARAMETER_OPERATOR_TYPES } from "cljs/metabase.driver.common.parameters.operators.js";
+import {
+  parameter_to_mbql,
+  is_operator,
+  PARAMETER_OPERATOR_TYPES,
+} from "cljs/metabase.driver.common.parameters.operators.js";
 import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Field from "metabase-lib/lib/metadata/Field";
@@ -25,7 +28,6 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as FIELD_REF from "metabase/lib/query/field_ref";
 import {
-  isNumericBaseType,
   doesOperatorExist,
   getOperatorByTypeAndName,
   STRING,
@@ -336,30 +338,6 @@ export function dateParameterValueToMBQL(
   }
 }
 
-export function stringParameterValueToMBQL(
-  parameter: Parameter,
-  fieldRef: LocalFieldReference | ForeignFieldReference,
-): ?FieldFilter {
-  const parameterValue: ParameterValueOrArray = parameter.value;
-  const [, subtype] = splitType(parameter);
-  const operatorName = getParameterOperatorName(subtype);
-
-  return [operatorName, fieldRef].concat(parameterValue);
-}
-
-export function numberParameterValueToMBQL(
-  parameter: ParameterInstance,
-  fieldRef: LocalFieldReference | ForeignFieldReference,
-): ?FieldFilter {
-  const parameterValue: ParameterValue = parameter.value;
-  const [, subtype] = splitType(parameter);
-  const operatorName = getParameterOperatorName(subtype);
-
-  return [operatorName, fieldRef].concat(
-    [].concat(parameterValue).map(v => parseFloat(v)),
-  );
-}
-
 /** compiles a parameter with value to an MBQL clause */
 export function parameterToMBQLFilter(
   parameter: ParameterInstance,
@@ -374,21 +352,12 @@ export function parameterToMBQLFilter(
     return null;
   }
 
-  // $FlowFixMe: doesn't understand parameter.target[1] is a field reference
-  const fieldRef: LocalFieldReference | ForeignFieldReference =
-    parameter.target[1];
-
   if (parameter.type.indexOf("date/") === 0) {
+    const fieldRef: LocalFieldReference | ForeignFieldReference =
+      parameter.target[1];
     return dateParameterValueToMBQL(parameter.value, fieldRef);
-  } else {
-    const fieldId = FIELD_REF.getFieldTargetId(fieldRef);
-    const field = metadata.field(fieldId);
-    // if the field is numeric, parse the value as a number
-    if (isNumericBaseType(field)) {
-      return numberParameterValueToMBQL(parameter, fieldRef);
-    } else {
-      return stringParameterValueToMBQL(parameter, fieldRef);
-    }
+  } else if (is_operator(parameter.type)) {
+    parameter_to_mbql(parameter);
   }
 }
 
