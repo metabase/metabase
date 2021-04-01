@@ -760,7 +760,7 @@ Set a minimum password length to increase security for regular logins. This only
 Type: string<br>
 Default: `"plugins"`
 
-Path of the "plugins" directory, which is used for the Metabase database drivers. The path should be to a writable directory in which the user that runs Metabase has permissions. When using JAR, the default directory is `plugins`, created in the same location as the JAR file. When using Docker, the default directory is `/plugins`.
+Path of the "plugins" directory, which is used to store the Metabase database drivers. The user who is running Metabase should have permission to write to the directory. When running the JAR, the default directory is `plugins`, created in the same location as the JAR file. When running Docker, the default directory is `/plugins`.
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
 
