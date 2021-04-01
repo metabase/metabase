@@ -42,7 +42,7 @@ RUN lein deps
 
 FROM adoptopenjdk/openjdk11:alpine as builder
 
-ARG MB_EDITION=$MB_EDITION
+ARG MB_EDITION=oss
 
 WORKDIR /app/source
 
