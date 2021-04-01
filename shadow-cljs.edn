@@ -23,7 +23,8 @@
  {:app
   {:target     :npm-module
    :output-dir "frontend/src/cljs/"
-   :entries    [metabase.mbql.js
+   :entries    [metabase.driver.common.parameters.operators
+                metabase.mbql.js
                 metabase.types]}
 
   :test
