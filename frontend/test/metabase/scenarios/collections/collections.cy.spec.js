@@ -132,13 +132,9 @@ describe("scenarios > collection_defaults", () => {
       describe("deeply nested collection navigation", () => {
         it("should correctly display deep nested collections", () => {
           cy.request("GET", "/api/collection").then(xhr => {
-            // "Third collection" is the last nested collection in the snapshot (data set)
-            // we need its ID to continue nesting below it
-            const THIRD_COLLECTION_ID = xhr.body.length - 1;
-
-            // sanity check and early alarm if the initial data set changes in the future
-            expect(xhr.body[THIRD_COLLECTION_ID].name).to.eq(
-              "Third collection",
+            // We need its ID to continue nesting below it
+            const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+              collection => collection.slug === "third_collection",
             );
 
             cy.log("Create two more nested collections");
@@ -193,23 +189,32 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Orders");
       });
 
-      it("should allow a user to pin an item", () => {
+      it("pinning an item workflow should work", () => {
         cy.visit("/collection/root");
         // Assert that we're starting from a scenario with no pins
         cy.findByText("Pinned items").should("not.exist");
 
-        // 1. Click on the ... menu
-        openEllipsisMenuFor("Orders in a dashboard");
+        pinItem("Orders in a dashboard"); // dashboard
+        pinItem("Orders, Count"); // question
 
-        // 2. Select "pin this" from the popover
-        cy.findByText("Pin this item").click();
-
-        // 3. Should see "pinned items" and the item should be in that section
+        // Should see "pinned items" and items should be in that section
         cy.findByText("Pinned items")
           .parent()
-          .contains("Orders in a dashboard");
-        // 4. Consequently, "Everything else" should now also be visible
+          .within(() => {
+            cy.findByText("Orders in a dashboard");
+            cy.findByText("Orders, Count");
+          });
+        // Consequently, "Everything else" should now also be visible
         cy.findByText("Everything else");
+        // Only pinned dashboards should show up on the home page...
+        cy.visit("/");
+        cy.findByText("Orders in a dashboard");
+        cy.findByText("Orders, Count").should("not.exist");
+        // ...but not for the user without permissions to see the root collection
+        cy.signOut();
+        cy.signIn("none");
+        cy.visit("/");
+        cy.findByText("Orders in a dashboard").should("not.exist");
       });
 
       it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
@@ -593,4 +598,9 @@ function openEllipsisMenuFor(item) {
     .closest("a")
     .find(".Icon-ellipsis")
     .click({ force: true });
+}
+
+function pinItem(item) {
+  openEllipsisMenuFor(item);
+  cy.findByText("Pin this item").click();
 }

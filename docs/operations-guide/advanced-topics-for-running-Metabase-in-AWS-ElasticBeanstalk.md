@@ -81,7 +81,7 @@ Before trying to enable HTTPS support, you must upload a server certificate to y
 
 Your Environment will begin updating with your new change. You will have to wait for this to complete before making additional updates.
  
- Once this change is made you will no longer be able to access your Metabase instance at the *.elasticbeanstalk.com URL provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Set up a DNS CNAME](#setup-dns-cname).
+ Once this change is made you will no longer be able to access your Metabase instance at the *.elasticbeanstalk.com URL provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Set up a DNS CNAME](#setup-dns-cname-using-aws).
 
 Once your application is working properly over HTTPS, we recommend setting an additional property to force non-HTTPS clients to use the HTTPS endpoint.
 
@@ -99,7 +99,7 @@ Once your application is working properly over HTTPS, we recommend setting an ad
 - In SSL Policy select `ELBSecurityPolicy-TLS-1-2-2017-01`
 - Scroll to the bottom of the page and click `Save` in the lower right.
   - _NOTE: Your Environment will begin updating with your new change. You will have to wait for this to complete before making additional updates._
-  - _IMPORTANT: Once this change is made you will no longer be able to access your Metabase instance at the `*.elasticbeanstalk.com` URL provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname)._
+  - _IMPORTANT: Once this change is made you will no longer be able to access your Metabase instance at the `*.elasticbeanstalk.com` URL provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname-using-aws)._
 
 Once your application is working properly over HTTPS, we recommend setting an additional property to force non-HTTPS clients to use the HTTPS endpoint.
 
