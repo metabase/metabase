@@ -7,12 +7,11 @@
              26
              {:source-field 5}]]
    :value [3 5]}"
-  (:require [clojure.string :as str]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.shared.util.i18n :as i18n :refer [tru trs]]
+            [metabase.shared.util.i18n :as i18n :refer [tru]]
             [schema.core :as s]))
 
 (def operators
@@ -21,87 +20,81 @@
   frontend and backend can have the exact same information."
   {:number [{:operator      :number/=
              :arity         :variadic
-             :mbql-operator :=
-             :name          (trs "Equal to")}
+             :mbql-operator :=}
             {:operator      :number/!=
              :arity         :variadic
-             :mbql-operator :!=
-             :name          (trs "Not equal to")}
+             :mbql-operator :!=}
             {:operator      :number/between
              :arity         :two
-             :mbql-operator :between
-             :name          (trs "Between")}
+             :mbql-operator :between}
             {:operator      :number/>=
              :arity         :one
-             :mbql-operator :>=
-             :name          (trs "Greater than or equal to")}
+             :mbql-operator :>=}
             {:operator      :number/<=
              :arity         :one
-             :mbql-operator :<=
-             :name          (trs "Less than or equal to")}]
+             :mbql-operator :<=}]
    :string [{:operator      :string/=
              :arity         :variadic
-             :mbql-operator :=
-             :name          (trs "Equals")
-             :description   (trs "Equals a specific value.")}
+             :mbql-operator :=}
             {:operator      :string/!=
              :arity         :variadic
-             :mbql-operator :!=
-             :name          (trs "Is not")
-             :description   (trs "Exclude one or more values.")}
+             :mbql-operator :!=}
             {:operator      :string/contains
              :arity         :one
-             :mbql-operator :contains
-             :name          (trs "Contains")
-             :description   (trs "Match values that contain the entered text.")}
+             :mbql-operator :contains}
             {:operator      :string/does-not-contain
              :arity         :one
-             :mbql-operator :does-not-contain
-             :name          (trs "Does not contain")
-             :description   (trs "Filter out values that contain the entered text.")}
+             :mbql-operator :does-not-contain}
             {:operator      :string/starts-with
              :arity         :one
-             :mbql-operator :starts-with
-             :name          (trs "Starts with")
-             :description   (trs "Match values that begin with the entered text.")}
+             :mbql-operator :starts-with}
             {:operator      :string/ends-with
              :arity         :one
-             :mbql-operator :ends-with
-             :name          (trs "Ends with")
-             :description   (trs "Match values that end with the entered text.")}]})
+             :mbql-operator :ends-with}]})
 
 #?(:cljs
    (def ^:export PARAMETER_OPERATOR_TYPES
      "Operators for the frontend
   {\"number\": {\"name\": \"string/=\" ...}}"
-     (clj->js (m/map-vals (fn [ops]
-                            (into [] (map (fn [{:keys [operator] :as op}]
-                                            (let [stringed (str (namespace operator) "/" (name operator))]
-                                              (assoc op
-                                                     :operator stringed
-                                                     :type stringed))))
-                                  ops))
-                          operators))))
+     ;; these `tru` calls can't be top level on the backend
+     (let [annotations {:string/=           {:name (tru "Equals"), :description (tru "Equals a specific value.")}
+                        :string/!=          {:name (tru "Is not"), :description (tru "Exclude one or more values.")},
+                        :string/starts-with {:name (tru "Starts with"), :description (tru "Match values that begin with the entered text.")}
+                        :string/ends-with   {:name (tru "Ends with"), :description (tru "Match values that end with the entered text.")},
+                        :string/contains    {:name (tru "Contains"), :description (tru "Match values that contain the entered text.")}
+                        :string/does-not-contain
+                        {:name (tru "Does not contain"), :description (tru "Filter out values that contain the entered text.")},
+                        :number/=           {:name (tru "Equal to")},
+                        :number/!=          {:name (tru "Not equal to")},
+                        :number/>=          {:name (tru "Greater than or equal to")}
+                        :number/<=          {:name (tru "Less than or equal to")}
+                        :number/between     {:name (tru "Between")}}]
+       (clj->js (m/map-vals (fn [ops]
+                              (into [] (map (fn [{:keys [operator] :as op}]
+                                              (let [stringed (str (namespace operator) "/" (name operator))]
+                                                (merge
+                                                 (assoc op
+                                                        :operator stringed
+                                                        :type stringed)
+                                                 (annotations operator)))))
+                                    ops))
+                            operators)))))
 
-(def ^:private unary (into {}
-                           (comp cat
-                                 (filter (comp #{:one} :arity))
-                                 (map (juxt :operator :mbql-operator)))
-                           (-> operators vals)))
+(defn- operators-for-arity
+  "Given an arity (:one, :two, :variadic), and the operators information, filter for that arity, and return key value
+  pairs of [operator mbql-operator]."
+  [arity operators]
+  (into {}
+        (comp cat
+              (filter (comp #{arity} :arity))
+              (map (juxt :operator :mbql-operator)))
+        (-> operators vals)))
 
+(def ^:private unary (operators-for-arity :one operators))
 
+(def ^:private binary (operators-for-arity :two operators))
 
-(def ^:private binary (into {}
-                            (comp cat
-                                  (filter (comp #{:two} :arity))
-                                  (map (juxt :operator :mbql-operator)))
-                            (-> operators vals)))
-
-(def ^:private variadic (into {}
-                              (comp cat
-                                    (filter (comp #{:variadic} :arity))
-                                    (map (juxt :operator :mbql-operator)))
-                              (-> operators vals)))
+(def ^:private variadic (operators-for-arity :variadic operators))
 
 (def ^:private all-ops (into #{} (comp cat (map :operator)) (->> operators vals)))
 

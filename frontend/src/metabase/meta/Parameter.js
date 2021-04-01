@@ -40,24 +40,6 @@ type TemplateTagFilter = (tag: TemplateTag) => boolean;
 type FieldPredicate = (field: Field) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 
-const OPTIONS_WITH_OPERATOR_SUBTYPES = [
-  {
-    section: "location",
-    operatorType: "string",
-    sectionName: t`Location`,
-  },
-  {
-    section: "category",
-    operatorType: "string",
-    sectionName: t`Category`,
-  },
-  {
-    section: "number",
-    operatorType: "number",
-    sectionName: t`Number`,
-  },
-];
-
 export const PARAMETER_OPTIONS: ParameterOption[] = {
   date: [
     {
