@@ -142,7 +142,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describeOpenSourceOnly.only("OSS email subscriptions", () => {
+  describeOpenSourceOnly("OSS email subscriptions", () => {
     beforeEach(() => {
       cy.visit(`/dashboard/1`);
       setupDummySMTP();
