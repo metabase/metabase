@@ -161,94 +161,6 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    describe("managing items", () => {
-      it("should let a user move a collection item via modal", () => {
-        cy.visit("/collection/root");
-
-        // 1. Click on the ... menu
-        openEllipsisMenuFor("Orders");
-
-        // 2. Select "move this" from the popover
-        cy.findByText("Move this item").click();
-        modal().within(() => {
-          cy.findByText(`Move "Orders"?`);
-          // 3. Select a collection that has child collections and hit the right chevron to navigate there
-          cy.findByText("First collection")
-            .next() // right chevron icon
-            .click();
-          cy.findByText("Second collection").click();
-          // 4. Move that item
-          cy.findByText("Move").click();
-        });
-        // Assert that the item no longer exists in "Our collection"...
-        cy.findByText("Orders").should("not.exist");
-
-        openDropdownFor("First collection");
-        // ...and that it is indeed moved inside "Second collection"
-        cy.findByText("Second collection").click();
-        cy.findByText("Orders");
-      });
-
-      it("pinning an item workflow should work", () => {
-        cy.visit("/collection/root");
-        // Assert that we're starting from a scenario with no pins
-        cy.findByText("Pinned items").should("not.exist");
-
-        pinItem("Orders in a dashboard"); // dashboard
-        pinItem("Orders, Count"); // question
-
-        // Should see "pinned items" and items should be in that section
-        cy.findByText("Pinned items")
-          .parent()
-          .within(() => {
-            cy.findByText("Orders in a dashboard");
-            cy.findByText("Orders, Count");
-          });
-        // Consequently, "Everything else" should now also be visible
-        cy.findByText("Everything else");
-        // Only pinned dashboards should show up on the home page...
-        cy.visit("/");
-        cy.findByText("Orders in a dashboard");
-        cy.findByText("Orders, Count").should("not.exist");
-        // ...but not for the user without permissions to see the root collection
-        cy.signOut();
-        cy.signIn("none");
-        cy.visit("/");
-        cy.findByText("Orders in a dashboard").should("not.exist");
-      });
-
-      it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
-        cy.visit("/collection/root");
-        cy.findByText("Orders")
-          .closest("a")
-          .within(() => {
-            cy.icon("table").trigger("mouseover");
-            cy.findByRole("checkbox")
-              .should("be.visible")
-              .click();
-          });
-
-        cy.findByText("1 item selected").should("be.visible");
-        cy.icon("dash").click();
-        cy.icon("dash").should("not.exist");
-        cy.findByText("4 items selected");
-      });
-    });
-
-    describe("archive", () => {
-      it.skip("should show archived items (metabase#15080)", () => {
-        cy.visit("collection/root");
-        openEllipsisMenuFor("Orders");
-        cy.findByText("Archive this item").click();
-        cy.findByText("Archived question")
-          .siblings(".Icon-close")
-          .click();
-        cy.findByText("View archive").click();
-        cy.location("pathname").should("eq", "/archive");
-        cy.findByText("Orders");
-      });
-    });
-
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
       it("should be in the root collection", () => {
@@ -564,6 +476,24 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("Second Collection").should("not.exist");
       cy.findByText("First Collection");
     });
+
+    it.skip("should let be possible to select all items using checkbox (metabase#14705)", () => {
+      cy.visit("/collection/root");
+      selectItemUsingCheckbox("Orders");
+      cy.findByText("1 item selected").should("be.visible");
+      cy.icon("dash").click();
+      cy.icon("dash").should("not.exist");
+      cy.findByText("4 items selected");
+    });
+
+    it.skip("should be possible to select pinned item using checkbox (metabase#15338)", () => {
+      cy.visit("/collection/root");
+      openEllipsisMenuFor("Orders");
+      cy.findByText("Pin this item").click();
+      cy.findByText(/Pinned items/i);
+      selectItemUsingCheckbox("Orders");
+      cy.findByText("1 item selected");
+    });
   });
 });
 
@@ -600,7 +530,13 @@ function openEllipsisMenuFor(item) {
     .click({ force: true });
 }
 
-function pinItem(item) {
-  openEllipsisMenuFor(item);
-  cy.findByText("Pin this item").click();
+function selectItemUsingCheckbox(item, icon = "table") {
+  cy.findByText(item)
+    .closest("a")
+    .within(() => {
+      cy.icon(icon).trigger("mouseover");
+      cy.findByRole("checkbox")
+        .should("be.visible")
+        .click();
+    });
 }
