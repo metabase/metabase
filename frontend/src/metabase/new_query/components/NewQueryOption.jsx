@@ -22,13 +22,13 @@ export default class NewQueryOption extends Component {
     return (
       <Link
         {...props}
-        className="block no-decoration bg-white px3 pt4 align-center bordered rounded cursor-pointer transition-all text-centered"
+        className="block no-decoration bg-white px3 py4 align-center bordered rounded cursor-pointer transition-all full-height text-centered"
         style={{
           boxSizing: "border-box",
           boxShadow: hover
             ? `0 3px 8px 0 ${color("text-light")}`
             : `0 1px 3px 0 ${color("text-light")}`,
-          height: 340,
+          "min-height": 340,
         }}
         onMouseOver={() => this.setState({ hover: true })}
         onMouseLeave={() => this.setState({ hover: false })}
