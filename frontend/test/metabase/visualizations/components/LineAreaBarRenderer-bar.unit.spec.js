@@ -39,11 +39,13 @@ function MainSeries(chartType, settings = {}, { key = "A", value = 1 } = {}) {
     data: {
       cols: [
         StringColumn({
+          name: "Category",
           display_name: "Category",
           source: "breakout",
           field_ref: ["field-id", 1],
         }),
         NumberColumn({
+          name: "Sum",
           display_name: "Sum",
           source: "aggregation",
           field_ref: ["field-id", 2],
@@ -226,6 +228,9 @@ describe("LineAreaBarRenderer-bar", () => {
       [
         MainSeries("bar", {
           series: () => ({ ...DEFAULT_SERIES_SETTINGS, title: "Foo" }),
+          series_settings: {
+            Sum: { title: "Foo" },
+          },
         }),
       ],
       { onHoverChange },
