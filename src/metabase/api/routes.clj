@@ -1,11 +1,14 @@
 (ns metabase.api.routes
   (:require [clojure.tools.logging :as log]
+            [compojure.core :as compojure]
+            [compojure.route :as route]
             [metabase.api.routes.lazy :as lazy]
             [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
             [metabase.server.middleware.auth :as middleware.auth]
             [metabase.server.middleware.exceptions :as middleware.exceptions]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru]]))
 
 (def ^:private +generic-exceptions
   "Wrap `routes` so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
@@ -47,3 +50,46 @@
            (log/trace "Lazy-loaded Metabase Enterprise API routes")
            (resolve 'metabase-enterprise.sandbox.api.routes/routes) var-get)
          pass-thru-handler))))
+
+(def ^{:arglists '([request respond raise])} routes
+  "Ring routes for API endpoints."
+  (compojure/routes
+   lazy-ee-handler
+   (lazy/routes metabase.api
+    (+auth activity)
+    (+auth alert)
+    (+auth automagic-dashboards)
+    (+auth card)
+    (+auth collection)
+    (+auth dashboard)
+    (+auth database)
+    (+auth dataset)
+    (+auth email)
+    (+message-only-exceptions embed)
+    (+auth field)
+    geojson
+    (+auth ldap)
+    (+auth login-history)
+    (+auth metastore)
+    (+auth metric)
+    (+auth native-query-snippet)
+    (+apikey notify)
+    (+auth permissions)
+    (+auth preview-embed)
+    (+generic-exceptions public)
+    (+auth pulse)
+    (+auth revision)
+    (+auth search)
+    (+auth segment)
+    session
+    (+auth setting)
+    setup
+    (+auth slack)
+    (+auth table)
+    (+auth task)
+    (+enable-for-testing testing)
+    (+auth tiles)
+    (+auth transform)
+    (+auth user)
+    util)
+   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")}))))
