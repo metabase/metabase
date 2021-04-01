@@ -520,11 +520,11 @@ function ParametersSection({
     setPulseParameters(newParameters);
   };
 
-  return (
+  return _.isEmpty(parameters) ? null : (
     <CollapseSection
       header={<Heading>{t`Set filter values for when this gets sent`}</Heading>}
       className={cx(className)}
-      initialState={parameters.length && "expanded"}
+      initialState="expanded"
       bodyClass="mt2"
     >
       <ParametersList
