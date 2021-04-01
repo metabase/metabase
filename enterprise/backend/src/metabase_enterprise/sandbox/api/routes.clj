@@ -1,10 +1,7 @@
 (ns metabase-enterprise.sandbox.api.routes
   "Multi-tenant API routes."
   (:require [compojure.core :as compojure]
-            [metabase-enterprise.sandbox.api.field :as field]
-            [metabase-enterprise.sandbox.api.gtap :as gtap]
-            [metabase-enterprise.sandbox.api.table :as table]
-            [metabase-enterprise.sandbox.api.user :as user]
+            [metabase.api.routes.lazy :as lazy]
             [metabase.server.middleware.auth :as middleware.auth]))
 
 ;; this is copied from `metabase.api.routes` because if we require that above we will destroy startup times for `lein
@@ -14,12 +11,9 @@
   middleware.auth/enforce-authentication)
 
 (compojure/defroutes ^{:doc "Ring routes for mt API endpoints."} routes
-  (compojure/context
-   "/mt"
-   []
-
-   (compojure/routes
-    (compojure/context "/gtap" [] (+auth gtap/routes))
-    (compojure/context "/user" [] (+auth user/routes))))
-  (compojure/context "/field" [] (+auth field/routes))
-  (compojure/context "/table" [] (+auth table/routes)))
+  (lazy/context "/mt" (lazy/routes metabase-enterprise.sandbox.api
+                        (+auth gtap)
+                        (+auth user)))
+  (lazy/routes metabase-enterprise.sandbox.api
+    (+auth field)
+    (+auth table)))

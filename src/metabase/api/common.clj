@@ -321,7 +321,9 @@
   [& middleware]
   (let [api-route-fns (namespace->api-route-fns *ns*)
         routes        `(compojure/routes ~@api-route-fns)]
-    `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+    `(def ~(vary-meta 'routes assoc
+                      :doc (api-routes-docstring *ns* api-route-fns middleware)
+                      :arglists ''([request respond raise]))
        ~(if (seq middleware)
           `(-> ~routes ~@middleware)
           routes))))
