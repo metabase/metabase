@@ -23,7 +23,6 @@
   (handler
    (fn []
      (log/debugf "Lazy-loading API routes in %s" ns-symb)
-     (println (format "Lazy-loading API routes in %s" ns-symb)) ;; NOCOMMIT
      ;; classloader/require is thread-safe
      (classloader/require ns-symb)
      (ns-resolve ns-symb 'routes))))
