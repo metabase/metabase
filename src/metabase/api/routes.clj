@@ -48,7 +48,7 @@
      (or (u/ignore-exceptions
            (classloader/require 'metabase-enterprise.sandbox.api.routes)
            (log/trace "Lazy-loaded Metabase Enterprise API routes")
-           (resolve 'metabase-enterprise.sandbox.api.routes/routes) var-get)
+           (resolve 'metabase-enterprise.sandbox.api.routes/routes))
          pass-thru-handler))))
 
 (def ^{:arglists '([request respond raise])} routes
