@@ -22,53 +22,53 @@
   {:number [{:operator      :number/=
              :arity         :variadic
              :mbql-operator :=
-             :name          (tru "Equal to")}
+             :name          (trs "Equal to")}
             {:operator      :number/!=
              :arity         :variadic
              :mbql-operator :!=
-             :name          (tru "Not equal to")}
+             :name          (trs "Not equal to")}
             {:operator      :number/between
              :arity         :two
              :mbql-operator :between
-             :name          (tru "Between")}
+             :name          (trs "Between")}
             {:operator      :number/>=
              :arity         :one
              :mbql-operator :>=
-             :name          (tru "Greater than or equal to")}
+             :name          (trs "Greater than or equal to")}
             {:operator      :number/<=
              :arity         :one
              :mbql-operator :<=
-             :name          (tru "Less than or equal to")}]
+             :name          (trs "Less than or equal to")}]
    :string [{:operator      :string/=
              :arity         :variadic
              :mbql-operator :=
-             :name          (tru "Equals")
-             :description   (tru "Equals a specific value.")}
+             :name          (trs "Equals")
+             :description   (trs "Equals a specific value.")}
             {:operator      :string/!=
              :arity         :variadic
              :mbql-operator :!=
-             :name          (tru "Is not")
-             :description   (tru "Exclude one or more values.")}
+             :name          (trs "Is not")
+             :description   (trs "Exclude one or more values.")}
             {:operator      :string/contains
              :arity         :one
              :mbql-operator :contains
-             :name          (tru "Contains")
-             :description   (tru "Match values that contain the entered text.")}
+             :name          (trs "Contains")
+             :description   (trs "Match values that contain the entered text.")}
             {:operator      :string/does-not-contain
              :arity         :one
              :mbql-operator :does-not-contain
-             :name          (tru "Does not contain")
-             :description   (tru "Filter out values that contain the entered text.")}
+             :name          (trs "Does not contain")
+             :description   (trs "Filter out values that contain the entered text.")}
             {:operator      :string/starts-with
              :arity         :one
              :mbql-operator :starts-with
-             :name          (tru "Starts with")
-             :description   (tru "Match values that begin with the entered text.")}
+             :name          (trs "Starts with")
+             :description   (trs "Match values that begin with the entered text.")}
             {:operator      :string/ends-with
              :arity         :one
              :mbql-operator :ends-with
-             :name          (tru "Ends with")
-             :description   (tru "Match values that end with the entered text.")}]})
+             :name          (trs "Ends with")
+             :description   (trs "Match values that end with the entered text.")}]})
 
 #?(:cljs
    (def ^:export PARAMETER_OPERATOR_TYPES
