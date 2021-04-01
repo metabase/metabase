@@ -8,13 +8,13 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
-;;; --------------------------------------- GET /api/preview_embed/card/:token ---------------------------------------
+;;; --------------------------------------- GET /api/preview-embed/card/:token ---------------------------------------
 
 (defn- card-url [card & [additional-token-params]]
-  (str "preview_embed/card/" (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))))
+  (str "preview-embed/card/" (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))))
 
 (deftest card-test
-  (testing "GET /api/preview_embed/card/:token"
+  (testing "GET /api/preview-embed/card/:token"
     (embed-test/with-embedding-enabled-and-new-secret-key
       (embed-test/with-temp-card [card]
         (testing "it should be possible to use this endpoint successfully if all the conditions are met"
@@ -57,15 +57,15 @@
                                                                                       :params            {:c 100}}))
                        :parameters)))))))))
 
-;;; ------------------------------------ GET /api/preview_embed/card/:token/query ------------------------------------
+;;; ------------------------------------ GET /api/preview-embed/card/:token/query ------------------------------------
 
 (defn- card-query-url [card & [additional-token-params]]
-  (str "preview_embed/card/"
+  (str "preview-embed/card/"
        (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))
        "/query"))
 
 (deftest query-test
-  (testing "GET /api/preview_embed/card/:token/query"
+  (testing "GET /api/preview-embed/card/:token/query"
     (embed-test/with-embedding-enabled-and-new-secret-key
       (embed-test/with-temp-card [card]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
@@ -86,7 +86,7 @@
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (card-query-url card))))))))))
 
 (deftest query-locked-params-test
-  (testing "GET /api/preview_embed/card/:token/query"
+  (testing "GET /api/preview-embed/card/:token/query"
     (testing "LOCKED params"
       (embed-test/with-embedding-enabled-and-new-secret-key
         (embed-test/with-temp-card [card]
@@ -106,7 +106,7 @@
                                                                   "?abc=200"))))))))))
 
 (deftest query-disabled-params-test
-  (testing "GET /api/preview_embed/card/:token/query"
+  (testing "GET /api/preview-embed/card/:token/query"
     (testing "DISABLED params"
       (embed-test/with-embedding-enabled-and-new-secret-key
         (embed-test/with-temp-card [card]
@@ -121,7 +121,7 @@
                                                                   "?abc=200"))))))))))
 
 (deftest query-enabled-params-test
-  (testing "GET /api/preview_embed/card/:token/query"
+  (testing "GET /api/preview-embed/card/:token/query"
     (testing "ENABLED params"
       (embed-test/with-embedding-enabled-and-new-secret-key
         (embed-test/with-temp-card [card]
@@ -141,14 +141,14 @@
                                                             "?abc=200")))))))))
 
 
-;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
+;;; ------------------------------------ GET /api/preview-embed/dashboard/:token -------------------------------------
 
 (defn- dashboard-url {:style/indent 1} [dashboard & [additional-token-params]]
-  (str "preview_embed/dashboard/" (embed-test/dash-token dashboard (merge {:_embedding_params {}}
+  (str "preview-embed/dashboard/" (embed-test/dash-token dashboard (merge {:_embedding_params {}}
                                                                           additional-token-params))))
 
 (deftest dashboard-test
-  (testing "GET /api/preview_embed/dashboard/:token"
+  (testing "GET /api/preview-embed/dashboard/:token"
     (embed-test/with-embedding-enabled-and-new-secret-key
       (mt/with-temp Dashboard [dash]
         (testing "it should be possible to call this endpoint successfully..."
@@ -184,16 +184,16 @@
                                                                                              :c "enabled"
                                                                                              :d "enabled"}})))))))))
 
-;;; ------------------ GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -------------------
+;;; ------------------ GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -------------------
 
 (defn- dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
-  (str "preview_embed/dashboard/" (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
+  (str "preview-embed/dashboard/" (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
                                                                                          additional-token-params))
        "/dashcard/" (u/the-id dashcard)
        "/card/" (:card_id dashcard)))
 
 (deftest dashcard-test
-  (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  (testing "/api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
     (embed-test/with-embedding-enabled-and-new-secret-key
       (embed-test/with-temp-dashcard [dashcard]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
@@ -214,7 +214,7 @@
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (dashcard-url dashcard))))))))))
 
 (deftest dashcard-locked-params-test
-  (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  (testing "/api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
     (testing "LOCKED params"
       (embed-test/with-embedding-enabled-and-new-secret-key
         (embed-test/with-temp-dashcard [dashcard]
@@ -235,7 +235,7 @@
                                                                   "?abc=200"))))))))))
 
 (deftest dashcard-disabled-params-test
-  (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  (testing "/api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
     (testing "DISABLED params"
       (embed-test/with-embedding-enabled-and-new-secret-key
         (embed-test/with-temp-dashcard [dashcard]
@@ -250,7 +250,7 @@
                                                                   "?abc=200"))))))))))
 
 (deftest dashcard-disabled-params-test
-  (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  (testing "/api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
     (testing "ENABLED params"
       (embed-test/with-embedding-enabled-and-new-secret-key
         (embed-test/with-temp-dashcard [dashcard]
@@ -335,14 +335,14 @@
 ;; pivot tables
 
 (defn- pivot-card-query-url [card & [additional-token-params]]
-  (str "preview_embed/pivot/card/"
+  (str "preview-embed/pivot/card/"
        (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))
        "/query"))
 
 (deftest pivot-query-test
   (mt/test-drivers pivots/applicable-drivers
     (mt/dataset sample-dataset
-      (testing "GET /api/preview_embed/pivot/card/:token/query"
+      (testing "GET /api/preview-embed/pivot/card/:token/query"
         (testing "successful preview"
           (let [result (embed-test/with-embedding-enabled-and-new-secret-key
                          (embed-test/with-temp-card [card (pivots/pivot-card)]
@@ -373,7 +373,7 @@
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-card-query-url card))))))))))))
 
 (defn- pivot-dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
-  (str "preview_embed/pivot/dashboard/"
+  (str "preview-embed/pivot/dashboard/"
        (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
                                                               additional-token-params))
        "/dashcard/" (u/the-id dashcard)
@@ -382,7 +382,7 @@
 (deftest pivot-card-id-test
   (mt/test-drivers pivots/applicable-drivers
     (mt/dataset sample-dataset
-      (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+      (testing "GET /api/preview-embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
         (testing "successful preview"
           (let [result (embed-test/with-embedding-enabled-and-new-secret-key
                          (embed-test/with-temp-dashcard [dashcard {:card (pivots/pivot-card)}]

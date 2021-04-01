@@ -193,7 +193,7 @@
   (m/map-keys keyword query-params))
 
 
-;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
+;;; ---------------------------- Card Fns used by both /api/embed and /api/preview-embed -----------------------------
 
 (defn card-for-unsigned-token
   "Return the info needed for embedding about Card specified in `token`. Additional `constraints` can be passed to the
@@ -226,7 +226,7 @@
               options)))
 
 
-;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
+;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview-embed --------------------------
 
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to

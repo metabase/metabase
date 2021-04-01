@@ -7,7 +7,7 @@ import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 // use different endpoints for embed previews
-const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
+const embedBase = IS_EMBED_PREVIEW ? "/api/preview-embed" : "/api/embed";
 
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
