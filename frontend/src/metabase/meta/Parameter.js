@@ -112,14 +112,32 @@ function fieldFilterForParameterType(
 }
 
 export function parameterOptionsForField(field: Field): ParameterOption[] {
-  return PARAMETER_OPTIONS.filter(option =>
-    fieldFilterForParameterType(option.type)(field),
-  ).map(option => {
-    return {
-      ...option,
-      name: option.combinedName || option.name,
-    };
-  });
+  // this largely duplicates the information in metabase/meta/Dashboard.js
+  if (!field) {
+    return [];
+  }
+  if (field.isDate()) {
+    return PARAMETER_OPTIONS["date"];
+  }
+  if (field.isID()) {
+    return PARAMETER_OPTIONS["id"];
+  }
+  if (field.isCategory()) {
+    return PARAMETER_OPTIONS["string"];
+  }
+  if (
+    field.isCity() ||
+    field.isState() ||
+    field.isZipCode() ||
+    field.isCountry()
+  ) {
+    return PARAMETER_OPTIONS["string"];
+  }
+  // why do we care to prevent numeric filtering on coordinates?
+  if (field.isNumber() && !field.isCoordinate()) {
+    return PARAMETER_OPTIONS["number"];
+  }
+  return [];
 }
 
 export function dimensionFilterForParameter(
