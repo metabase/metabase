@@ -16,6 +16,9 @@
             [schema.core :as s]))
 
 (def operators
+  "Operator information source of truth for frontend and backend. This is annotated and changed and used on the frontend
+  and collapsed and used on the backend. Ideally all information about an operator can go in this map so that the
+  frontend and backend can have the exact same information."
   {:number [{:operator      :number/=
              :arity         :variadic
              :mbql-operator :=
@@ -67,17 +70,18 @@
              :name          (tru "Ends with")
              :description   (tru "Match values that end with the entered text.")}]})
 
-(def ^:export PARAMETER_OPERATOR_TYPES
-  "Operators for the frontend
+#?(:cljs
+   (def ^:export PARAMETER_OPERATOR_TYPES
+     "Operators for the frontend
   {\"number\": {\"name\": \"string/=\" ...}}"
-  (clj->js (m/map-vals (fn [ops]
-                         (into [] (map (fn [{:keys [operator] :as op}]
-                                         (let [stringed (str (namespace operator) "/" (name operator))]
-                                           (assoc op
-                                                  :operator stringed
-                                                  :type stringed))))
-                               ops))
-                       operators)))
+     (clj->js (m/map-vals (fn [ops]
+                            (into [] (map (fn [{:keys [operator] :as op}]
+                                            (let [stringed (str (namespace operator) "/" (name operator))]
+                                              (assoc op
+                                                     :operator stringed
+                                                     :type stringed))))
+                                  ops))
+                          operators))))
 
 (def ^:private unary (into {}
                            (comp cat
