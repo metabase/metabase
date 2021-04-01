@@ -11,7 +11,7 @@ export default class Confirm extends Component {
 
     this.modal = React.createRef();
   }
-  
+
   static propTypes = {
     action: PropTypes.func.isRequired,
     title: PropTypes.string.isRequired,
