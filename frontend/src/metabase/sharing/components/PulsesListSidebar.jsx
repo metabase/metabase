@@ -141,6 +141,10 @@ function buildFilterText(pulse, parameters) {
     ...defaultParamsNotInPulseParams,
   ];
 
+  if (_.isEmpty(activeParameters)) {
+    return "";
+  }
+
   const [firstParameter, ...otherParameters] = activeParameters;
   const firstParamValue =
     firstParameter.value == null
