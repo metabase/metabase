@@ -189,7 +189,7 @@ describe("metabase/meta/Parameter", () => {
       const availableOptions = parameterOptionsForField(countryField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("location")),
+          availableOptions.every(option => option.type.startsWith("string")),
       ).toBe(true);
     });
   });
