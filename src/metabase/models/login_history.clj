@@ -1,10 +1,11 @@
 (ns metabase.models.login-history
-  (:require [metabase.email.messages :as email.messages]
+  (:require [clojure.tools.logging :as log]
+            [metabase.email.messages :as email.messages]
             [metabase.models.setting :refer [defsetting]]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as i18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [trs tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -55,7 +56,10 @@
   (u/prog1 login-history
     (when (and (send-email-on-first-login-from-new-device)
                (first-login-for-user-on-this-device? login-history))
-      (email.messages/send-login-from-new-device-email! (human-friendly-info login-history))))
+      (try
+        (email.messages/send-login-from-new-device-email! (human-friendly-info login-history))
+        (catch Throwable e
+          (log/error e (trs "Error sending ''login from new device'' notification email"))))))
   login-history)
 
 (defn- pre-update [login-history]

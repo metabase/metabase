@@ -155,34 +155,48 @@
         "Passing `nil` should return `nil`")))
 
 (deftest format-human-readable-test
-  (doseq [[t expected] {#t "2021-04-02T14:42:09.524392-07:00[US/Pacific]"
-                        {:en "April 2 2:42 PM (Pacific Daylight Time)"
-                         :es "abril 2 2:42 PM (Hora de verano del Pacífico)"}
+  ;; strings are localized slightly differently on Java 8. Note the weird Unicode space in `p. m.` below -- not a
+  ;; normal space.
+  (let [java-8? (str/starts-with? (System/getProperty "java.version") "1.8")]
+    (doseq [[t expected] {#t "2021-04-02T14:42:09.524392-07:00[US/Pacific]"
+                          {:en-US "April 2 2:42 PM (Pacific Daylight Time)"
+                           :es-MX (if java-8?
+                                    "abril 2 2:42 PM (Hora de verano del Pacífico)"
+                                    "abril 2 2:42 p. m. (hora de verano del Pacífico)")}
 
-                        #t "2021-04-02T14:42:09.524392-07:00"
-                        {:en "April 2 2:42 PM (GMT-07:00)"
-                         :es "abril 2 2:42 PM (GMT-07:00)"}
+                          #t "2021-04-02T14:42:09.524392-07:00"
+                          {:en-US "April 2 2:42 PM (GMT-07:00)"
+                           :es-MX (if java-8?
+                                    "abril 2 2:42 PM (GMT-07:00)"
+                                    "abril 2 2:42 p. m. (GMT-07:00)")}
 
-                        #t "2021-04-02T14:42:09.524392"
-                        {:en "April 2 at 2:42 PM"
-                         :es "abril 2 2:42 PM"}
+                          #t "2021-04-02T14:42:09.524392"
+                          {:en-US "April 2 2:42 PM"
+                           :es-MX (if java-8?
+                                    "abril 2 2:42 PM"
+                                    "abril 2 2:42 p. m.")}
 
-                        #t "2021-04-02"
-                        {:en "April 2"
-                         :es "abril 2"}
+                          #t "2021-04-02"
+                          {:en-US "April 2"
+                           :es-MX "abril 2"}
 
-                        #t "14:42:09.524392-07:00"
-                        {:en "2:42 PM (GMT-07:00)"
-                         :es "2:42 PM (GMT-07:00)"}
+                          #t "14:42:09.524392-07:00"
+                          {:en-US "2:42 PM (GMT-07:00)"
+                           :es-MX (if java-8?
+                                    "2:42 PM (GMT-07:00)"
+                                    "2:42 p. m. (GMT-07:00)")}
 
-                        #t "14:42:09.524392"
-                        {:en "2:42 PM"
-                         :es "2:42 PM"}}
-          [locale expected] expected]
-    (mt/with-user-locale locale
-      (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))
-        (is (= expected
-               (u.date/format-human-readable t)))))))
+                          #t "14:42:09.524392"
+                          {:en-US "2:42 PM"
+                           :es-MX (if java-8?
+                                    "2:42 PM"
+                                    "2:42 p. m.")}}
+            [locale expected] expected]
+      (mt/with-user-locale locale
+        (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))
+          (testing (str "(class (u.date/format-human-readable t)): " (class (u.date/format-human-readable t))) ; NOCOMMIT
+            (is (= expected
+                   (u.date/format-human-readable t)))))))))
 
 (deftest format-sql-test
   (testing "LocalDateTime"
