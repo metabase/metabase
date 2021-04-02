@@ -67,7 +67,45 @@
                        (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
         (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
           (is (= expected
-                 (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
+                 (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))
+    (testing "describe-database respects schema from db-details"
+      (let [db-name  "DB_WITH_SCHEMAS"
+            details  (mt/dbdef->connection-details :snowflake :db {:database-name db-name})
+            spec     (sql-jdbc.conn/connection-details->spec :snowflake details)
+            schema-1 "SCHEMA1"
+            schema-2 "SCHEMA2"
+            table-1  "TABLE1"
+            table-2  "TABLE2"
+            table-3  "TABLE3"
+            table-4  "TABLE4"
+            cleanup  (fn []
+                       (doseq [stmt [(format "DROP SCHEMA IF EXISTS %s.%s" db-name schema-1)
+                                     (format "DROP SCHEMA IF EXISTS %s.%s" db-name schema-2)]]
+                         (jdbc/execute! spec stmt {:transaction? false})))]
+        ;; create a separate Snowflake DB for all of this
+        (jdbc/execute! spec (format "CREATE DATABASE IF NOT EXISTS %s" db-name) {:transaction? false})
+        ;; clean up any existing tables/schemas
+        (cleanup)
+        ;; finally, create two tables in each of two schemas
+        (doseq [stmt [(format "CREATE SCHEMA %s.%s" db-name schema-1)
+                      (format "CREATE SCHEMA %s.%s" db-name schema-2)
+                      (format "CREATE TABLE %s.%s.%s (val1 NUMBER)" db-name schema-1 table-1)
+                      (format "CREATE TABLE %s.%s.%s (val2 NUMBER)" db-name schema-1 table-2)
+                      (format "CREATE TABLE %s.%s.%s (val3 NUMBER)" db-name schema-2 table-3)
+                      (format "CREATE TABLE %s.%s.%s (val4 NUMBER)" db-name schema-2 table-4)]]
+          (jdbc/execute! spec stmt {:transaction? false}))
+        ;; create the DB object, only for one of the schemas (SCHEMA2), and sync
+        (try
+          (mt/with-temp Database [database {:engine :snowflake, :details (assoc details :db db-name :schema schema-2)}]
+            (sync/sync-database! database)
+            ;; only TABLE3 and TABLE4 should have been synced
+            (is (= [{:name table-3}
+                    {:name table-4}]
+                   (map (partial into {})
+                        (db/select [Table :name] :db_id (u/the-id database) {:order-by [:name]})))))
+          (finally
+            (cleanup)
+            (jdbc/execute! spec (format "DROP DATABASE IF EXISTS %s" db-name) {:transaction? false})))))))
 
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
