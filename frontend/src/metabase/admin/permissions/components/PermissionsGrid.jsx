@@ -1,5 +1,5 @@
 /* eslint-disable react/display-name */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 

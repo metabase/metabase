@@ -3,7 +3,7 @@
  *
  * TODO Atte Keinänen 7/6/17: This uses the standard metadata API; we should migrate also other parts of admin section
  */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Link } from "react-router";
 import { connect } from "react-redux";
