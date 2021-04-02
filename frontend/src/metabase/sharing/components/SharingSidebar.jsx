@@ -360,7 +360,7 @@ class SharingSidebar extends React.Component {
           emailConfigured={emailSpec}
           slackConfigured={slackSpec}
           onNewEmailPulse={() => {
-            if (emailSpec != {}) {
+            if (emailSpec !== {}) {
               this.setState(({ returnMode }) => {
                 return {
                   editingMode: "add-edit-email",
@@ -371,7 +371,7 @@ class SharingSidebar extends React.Component {
             }
           }}
           onNewSlackPulse={() => {
-            if (slackSpec != {}) {
+            if (slackSpec !== {}) {
               this.setState(({ returnMode }) => {
                 return {
                   editingMode: "add-edit-slack",
