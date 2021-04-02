@@ -14,7 +14,10 @@ import {
 describe("getClickHoverObject", () => {
   it("should return data for tooltip", () => {
     const d = { data: { key: "foobar", value: 123 } };
-    const cols = [StringColumn(), NumberColumn()];
+    const cols = [
+      StringColumn({ field_ref: "key" }),
+      NumberColumn({ field_ref: "value" }),
+    ];
     const rows = [["foobar", 123]];
     const otherArgs = {
       ...seriesAndData({ cols, rows }),
@@ -32,10 +35,13 @@ describe("getClickHoverObject", () => {
     const d = {
       data: {
         key: moment("2016-04-01T00:00:00.000Z", "YYYY-MM-DDTHH:mm:ss.SSSSZ"),
-        value: 123,
+        value: 2,
       },
     };
-    const cols = [DateTimeColumn({ unit: "month" }), NumberColumn()];
+    const cols = [
+      DateTimeColumn({ unit: "month" }, { field_ref: "key" }),
+      NumberColumn({ field_ref: "value" }),
+    ];
     const rows = [
       ["2016-03-01T00:00:00.000Z", 1],
       ["2016-04-01T00:00:00.000Z", 2],
@@ -57,10 +63,14 @@ describe("getClickHoverObject", () => {
     const d = {
       data: {
         key: moment("2016-04-01T00:00:00.000Z", "YYYY-MM-DDTHH:mm:ss.SSSSZ"),
-        value: 123,
+        value: 2,
       },
     };
-    const cols = [DateTimeColumn({ unit: "month" }), NumberColumn()];
+
+    const cols = [
+      DateTimeColumn({ unit: "month" }, { field_ref: "key" }),
+      NumberColumn({ field_ref: "value" }),
+    ];
     const rows = [["2016-03", 1], ["2016-04", 2], ["2016-05", 3]];
     const otherArgs = {
       ...seriesAndData({ cols, rows }),
@@ -133,7 +143,10 @@ describe("getClickHoverObject", () => {
 
   it("should parse boolean strings in boolean columns", () => {
     const d = { data: { key: "foobar", value: "true" } };
-    const cols = [StringColumn(), BooleanColumn()];
+    const cols = [
+      StringColumn({ field_ref: "key" }),
+      BooleanColumn({ field_ref: "value" }),
+    ];
     const rows = [["foobar", "true"]];
     const otherArgs = {
       ...seriesAndData({ cols, rows }),
@@ -153,8 +166,11 @@ describe("getClickHoverObject", () => {
   });
 
   it("should show correct tooltip for nulls", () => {
-    const d = { data: { key: "(empty)", value: "true" } };
-    const cols = [StringColumn(), NumberColumn()];
+    const d = { data: { key: "(empty)", value: "2" } };
+    const cols = [
+      StringColumn({ field_ref: "key" }),
+      NumberColumn({ field_ref: "value" }),
+    ];
     const rows = [["foobar", 1], [null, 2], ["barfoo", 3]];
     const otherArgs = {
       ...seriesAndData({ cols, rows }),

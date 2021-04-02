@@ -95,7 +95,9 @@ export function getClickHoverObject(
     // Loop over *all* of the columns and create the new array
     if (rawRow) {
       data = rawCols.map((col, i) => {
-        if (isNormalized && cols[1].field_ref === col.field_ref) {
+        const isSeriesValueColumn = cols[1].field_ref === col.field_ref;
+
+        if (isNormalized && isSeriesValueColumn) {
           return {
             key: getColumnDisplayName(cols[1]),
             value: formatValue(d.data.value, {
@@ -106,9 +108,13 @@ export function getClickHoverObject(
             col: col,
           };
         }
+
+        const value = formatNull(
+          isSeriesValueColumn ? d.data.value : rawRow[i],
+        );
         return {
           key: getColumnDisplayName(col),
-          value: formatNull(rawRow[i]),
+          value,
           col: col,
         };
       });

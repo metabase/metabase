@@ -124,9 +124,10 @@ describe("LineAreaBarRenderer", () => {
     const dateColumn = DateTimeColumn({
       unit: "week",
       name: Math.random().toString(36),
+      field_ref: "key",
     });
 
-    const cols = [dateColumn, NumberColumn()];
+    const cols = [dateColumn, NumberColumn({ field_ref: "value" })];
     const chartType = "line";
     const series = [{ data: { cols, rows }, card: { display: chartType } }];
     const settings = getComputedSettingsForSeries(series);
@@ -156,9 +157,13 @@ describe("LineAreaBarRenderer", () => {
     // column settings are cached based on name.
     // we need something unique to not conflict with other tests.
     const columnName = Math.random().toString(36);
-    const dateColumn = DateTimeColumn({ unit: "month", name: columnName });
+    const dateColumn = DateTimeColumn({
+      unit: "month",
+      name: columnName,
+      field_ref: "key",
+    });
 
-    const cols = [dateColumn, NumberColumn()];
+    const cols = [dateColumn, NumberColumn({ field_ref: "value" })];
     const chartType = "line";
     const column_settings = {
       [`["name","${columnName}"]`]: {
