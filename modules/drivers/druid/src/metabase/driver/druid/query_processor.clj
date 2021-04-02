@@ -1085,11 +1085,18 @@
   {:arglists '([query-type original-query druid-query])}
   query-type-dispatch-fn)
 
+(defn- adjust-limit
+  "No joke, Druid queries do not work if limit is `1048575`, but they work if limit is `1048576`. They fail with an
+  'Invalid type marker byte 0x3c for expected value token` error. So if we see the updated `absolute-max-results` from
+  #15414, adjust it back to the old known working value. had to work around."
+  [limit]
+  (cond-> limit
+    (= limit i/absolute-max-results) inc))
+
 (defmethod handle-limit ::scan
   [_ {limit :limit} druid-query]
-  (if-not limit
-    druid-query
-    (assoc-in druid-query [:query :limit] limit)))
+  (cond-> druid-query
+    limit (assoc-in [:query :limit] (adjust-limit limit))))
 
 (defmethod handle-limit ::timeseries
   [_ {limit :limit} druid-query]
@@ -1101,18 +1108,14 @@
 
 (defmethod handle-limit ::topN
   [_ {limit :limit} druid-query]
-  (if-not limit
-    druid-query
-    (assoc-in druid-query [:query :threshold] limit)))
+  (cond-> druid-query
+    limit (assoc-in [:query :threshold] (adjust-limit limit))))
 
 (defmethod handle-limit ::groupBy
   [_ {limit :limit} druid-query]
-  (if-not limit
-    (-> druid-query
-        (assoc-in [:query :limitSpec :type]  :default))
-    (-> druid-query
-        (assoc-in [:query :limitSpec :type]  :default)
-        (assoc-in [:query :limitSpec :limit] limit))))
+  (cond-> druid-query
+    true  (assoc-in [:query :limitSpec :type]  :default)
+    limit (assoc-in [:query :limitSpec :limit] (adjust-limit limit))))
 
 
 ;;; -------------------------------------------------- handle-page ---------------------------------------------------
