@@ -30,3 +30,35 @@
                        :args args})))
     ;; calls with framents, arg, arg, ... and they are recombined frag, arg, frag, arg... frag
     (.apply ttag/t nil (clj->js (into [fragments] args)))))
+
+;; thheller added support for template literals in shadow 2.12.0 with
+
+;; (:require [shadow.cljs.modern :refer [js-template]])
+;; (let [x "soundcard"]
+;;   (js-template "your " x " works pefectly"))
+
+;; which emits:
+;; var x_48110 = "soundcard";
+;; `your ${x_48110} works pefectly`;
+
+;; In the future we could leverage this
+
+;; (let [x "soundcard"]
+;;   (js-template ttag/t "your " x " works pefectly"))
+
+;; ->
+
+;; var x_49888 = "soundcard";
+;; shadow.js.shim.module$ttag.t`your ${x_49888} works pefectly`;
+
+;; would emit the proper tagged literal for this to work. The problem is that this changes the signature of how we use
+;; these from
+
+;; (tru "foo {0} bar" variable)
+
+;; to
+
+;; (tru "foo " variable " bar")
+;; but the emitted would be t`foo {variable} bar` (actually a shim around t but for clarity)
+
+;; and we need to decide if this kind of change is warranted/desired/nicer on the frontend
