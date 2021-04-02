@@ -1,7 +1,6 @@
 /*global ace*/
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 import cx from "classnames";
 
 import "./NativeQueryEditor.css";
@@ -148,6 +147,9 @@ export default class NativeQueryEditor extends Component {
     // e.x. https://github.com/metabase/metabase/issues/2801
     // $FlowFixMe
     this.onChange = _.debounce(this.onChange.bind(this), 1);
+
+    this.editor = React.createRef();
+    this.resizeBox = React.createRef();
   }
 
   maxAutoSizeLines() {
@@ -218,7 +220,7 @@ export default class NativeQueryEditor extends Component {
       this._localUpdate = false;
     }
 
-    const editorElement = ReactDOM.findDOMNode(this.refs.editor);
+    const editorElement = this.editor.current;
     if (query.hasWritePermission()) {
       this._editor.setReadOnly(false);
       editorElement.classList.remove("read-only");
@@ -310,7 +312,7 @@ export default class NativeQueryEditor extends Component {
   loadAceEditor() {
     const { query } = this.props;
 
-    const editorElement = ReactDOM.findDOMNode(this.refs.editor);
+    const editorElement = this.editor.current;
 
     // $FlowFixMe
     if (typeof ace === "undefined" || !ace || !ace.edit) {
@@ -412,7 +414,7 @@ export default class NativeQueryEditor extends Component {
 
   _updateSize() {
     const doc = this._editor.getSession().getDocument();
-    const element = ReactDOM.findDOMNode(this.refs.resizeBox);
+    const element = this.resizeBox.current;
     // set the newHeight based on the line count, but ensure it's within
     // [MIN_HEIGHT_LINES, this.maxAutoSizeLines()]
     const newHeight = getEditorLineHeight(
@@ -605,7 +607,7 @@ export default class NativeQueryEditor extends Component {
           )}
         </div>
         <ResizableBox
-          ref="resizeBox"
+          ref={this.resizeBox}
           className={cx("border-top flex ", { hide: !isNativeEditorOpen })}
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
@@ -617,14 +619,10 @@ export default class NativeQueryEditor extends Component {
           }}
           resizeHandles={["s"]}
         >
-          <div className="flex-full" id="id_sql" ref="editor" />
+          <div className="flex-full" id="id_sql" ref={this.editor} />
           <Popover
             isOpen={this.state.isSelectedTextPopoverOpen}
-            target={() =>
-              ReactDOM.findDOMNode(this.refs.editor).querySelector(
-                ".ace_selection",
-              )
-            }
+            target={() => this.editor.current.querySelector(".ace_selection")}
           >
             <div className="flex flex-column">
               <a className="p2 bg-medium-hover flex" onClick={this.runQuery}>

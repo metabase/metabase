@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+/* eslint-disable react/no-string-refs */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./Legend.css";
@@ -64,10 +65,7 @@ export default class LegendVertical extends Component {
       items = titles;
     }
     return (
-      <ol
-        ref="container"
-        className={cx(className, styles.Legend, styles.vertical)}
-      >
+      <ol className={cx(className, styles.Legend, styles.vertical)}>
         {items.map((title, index) => (
           <li
             key={index}

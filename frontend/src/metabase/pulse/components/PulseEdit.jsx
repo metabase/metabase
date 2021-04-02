@@ -42,6 +42,12 @@ export default class PulseEdit extends Component {
     initialCollectionId: PropTypes.number,
   };
 
+  constructor(props) {
+    super(props);
+
+    this.pulseInfo = React.createRef();
+  }
+
   componentDidMount() {
     this.props.setEditingPulse(
       this.props.pulseId,
@@ -140,18 +146,18 @@ export default class PulseEdit extends Component {
         <div className="PulseEdit-header flex align-center border-bottom py3">
           <h1>{pulse && pulse.id != null ? t`Edit pulse` : t`New pulse`}</h1>
           <ModalWithTrigger
-            ref="pulseInfo"
+            ref={this.pulseInfo}
             className="Modal WhatsAPulseModal"
             triggerElement={t`What's a Pulse?`}
             triggerClasses="text-brand text-bold flex-align-right"
           >
-            <ModalContent onClose={() => this.refs.pulseInfo.close()}>
+            <ModalContent onClose={() => this.pulseInfo.current.close()}>
               <div className="mx4 mb4">
                 <WhatsAPulse
                   button={
                     <button
                       className="Button Button--primary"
-                      onClick={() => this.refs.pulseInfo.close()}
+                      onClick={() => this.pulseInfo.current.close()}
                     >{t`Got it`}</button>
                   }
                 />

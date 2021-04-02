@@ -1,7 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
@@ -27,6 +26,8 @@ export default class NewsletterForm extends Component {
         top: "-12px",
       },
     };
+
+    this.email = React.createRef();
   }
 
   static propTypes = {
@@ -37,7 +38,7 @@ export default class NewsletterForm extends Component {
     e.preventDefault();
 
     const formData = new FormData();
-    formData.append("EMAIL", ReactDOM.findDOMNode(this.refs.email).value);
+    formData.append("EMAIL", this.email.current.value);
     formData.append("b_869fec0e4689e8fd1db91e795_b9664113a8", "");
 
     const req = new XMLHttpRequest();
@@ -86,7 +87,7 @@ export default class NewsletterForm extends Component {
                 {!submitted ? (
                   <div className="">
                     <input
-                      ref="email"
+                      ref={this.email}
                       style={this.styles.input}
                       className="AdminInput bordered rounded h3 inline-block"
                       type="email"
