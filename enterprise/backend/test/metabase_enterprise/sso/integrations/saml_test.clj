@@ -424,25 +424,6 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
   (testing "saml group sync works when there's just a single group, which gets interpreted as a string"
     (with-saml-default-setup
       (do-with-some-validators-disabled
-<<<<<<< HEAD
-       (fn []
-         (tt/with-temp PermissionsGroup [group-1 {:name (str ::group-1)}]
-           (tu/with-temporary-setting-values [saml-group-sync      true
-                                              saml-group-mappings  {"group_1" [(u/the-id group-1)]}
-                                              saml-attribute-group "GroupMembership"]
-             (try
-               ;; user doesn't exist until SAML request
-               (is (not (db/select-one-id User :%lower.email "newuser@metabase.com")))
-               (let [req-options (saml-post-request-options (new-user-with-single-group-saml-test-response)
-                                                            (saml20/str->base64 default-redirect-uri))
-                     response    (client-full-response :post 302 "/auth/sso" req-options)]
-                 (is (successful-login? response))
-                 (is (= #{"All Users"
-                          ":metabase-enterprise.sso.integrations.saml-test/group-1"}
-                        (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
-               (finally
-                 (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
-=======
         (fn []
           (mt/with-temp PermissionsGroup [group-1 {:name (str ::group-1)}]
             (mt/with-temporary-setting-values [saml-group-sync      true
@@ -460,7 +441,6 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
                          (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
                 (finally
                   (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
->>>>>>> 18d1e9cf3 (Fix SAML redirect to with certain URLs e.g. /collection/root (#15410))
 
 (deftest login-should-sync-multiple-group-membership
   (testing "saml group sync works when there are multiple groups, which gets interpreted as a list of strings"
