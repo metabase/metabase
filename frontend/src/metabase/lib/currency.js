@@ -512,6 +512,15 @@ export default {
     code: "KES",
     name_plural: "Kenyan shillings",
   },
+  KGS: {
+    symbol: "KGS",
+    name: "Kyrgyz Som",
+    symbol_native: "сом",
+    decimal_digits: 2,
+    rounding: 0,
+    code: "KGS",
+    name_plural: "Kyrgyz soms",
+  },
   KHR: {
     symbol: "KHR",
     name: "Cambodian Riel",
