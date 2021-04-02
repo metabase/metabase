@@ -360,7 +360,7 @@
 
 (deftest native-query-with-default-params-as-source-test
   (testing "make sure using a native query with default params as a source works"
-    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) \"source\" LIMIT 1048576",
+    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) \"source\" LIMIT 1048575"
             :params ["Widget"]}
            (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                      :type     :native
@@ -576,15 +576,17 @@
         (testing "Card in the Root Collection"
           (mt/with-temp Collection [dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-            (is (= "You don't have permissions to do that."
-                   (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
+            (is (schema= {:message  (s/eq "You cannot save this Question because you do not have permissions to run its query.")
+                          s/Keyword s/Any}
+                         (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
           (mt/with-temp* [Collection [source-card-collection]
                           Collection [dest-card-collection]]
             (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-            (is (= "You don't have permissions to do that."
-                   (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
+            (is (schema= {:message  (s/eq "You cannot save this Question because you do not have permissions to run its query.")
+                          s/Keyword s/Any}
+                         (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"

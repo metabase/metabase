@@ -1,11 +1,11 @@
 (ns metabase.api.dataset-test
-  "Unit tests for /api/dataset endpoints."
+  "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
+  `metabase.query-processor.streaming-test` and specifically for each format in
+  `metabase.query-processor.streaming.csv-test` etc."
   (:require [cheshire.core :as json]
-            [cheshire.generate :as generate]
             [clojure.data.csv :as csv]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
             [metabase.api.pivots :as pivots]
             [metabase.http-client :as http-client]
@@ -18,14 +18,12 @@
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.util :as qp-util]
             [metabase.test :as mt]
-            [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+            [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -158,48 +156,6 @@
                         s/Keyword     s/Any}
                        (most-recent-query-execution-for-query query))))))))
 
-
-;;; Make sure that we're piggybacking off of the JSON encoding logic when encoding strange values in XLSX (#5145,
-;;; #5220, #5459)
-(defrecord ^:private SampleNastyClass [^String v])
-
-(generate/add-encoder
- SampleNastyClass
- (fn [obj, ^JsonGenerator json-generator]
-   (.writeString json-generator (str (:v obj)))))
-
-(defrecord ^:private AnotherNastyClass [^String v])
-
-(deftest export-spreadsheet
-  (is (= [{"Values" "values"}
-          {"Values" "Hello XLSX World!"}       ; should use the JSON encoding implementation for object
-          {"Values" "{:v \"No Encoder\"}"} ; fall back to the implementation of `str` for an object if no JSON encoder exists rather than barfing
-          {"Values" "ABC"}]
-         (->> (spreadsheet/create-workbook "Results" [["values"]
-                                                      [(SampleNastyClass. "Hello XLSX World!")]
-                                                      [(AnotherNastyClass. "No Encoder")]
-                                                      ["ABC"]])
-              (spreadsheet/select-sheet "Results")
-              (spreadsheet/select-columns {:A "Values"})))))
-
-(defn- parse-and-sort-csv [response]
-  (assert (some? response))
-  (sort-by
-   ;; ID in CSV is a string, parse it and sort it to get the first 5
-   (comp #(Integer/parseInt %) first)
-   ;; First row is the header
-   (rest (csv/read-csv response))))
-
-(deftest date-columns-should-be-emitted-without-time
-  (is (= [["1" "2014-04-07" "5" "12"]
-          ["2" "2014-09-18" "1" "31"]
-          ["3" "2014-09-15" "8" "56"]
-          ["4" "2014-03-11" "5" "4"]
-          ["5" "2013-05-05" "3" "49"]]
-         (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
-                                            (json/generate-string (mt/mbql-query checkins)))]
-           (take 5 (parse-and-sort-csv result))))))
-
 (deftest download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
     (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
@@ -214,39 +170,6 @@
                (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
                (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
                                                                                    "query_result_<timestamp>$1"))))))))
-
-(deftest check-an-empty-date-column
-  (mt/dataset defs/test-data-with-null-date-checkins
-    (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
-                                       (json/generate-string (mt/mbql-query checkins)))]
-      (is (= [["1" "2014-04-07" "" "5" "12"]
-              ["2" "2014-09-18" "" "1" "31"]
-              ["3" "2014-09-15" "" "8" "56"]
-              ["4" "2014-03-11" "" "5" "4"]
-              ["5" "2013-05-05" "" "3" "49"]]
-             (take 5 (parse-and-sort-csv result)))))))
-
-(deftest sqlite-datetime-test
-  (mt/test-driver :sqlite
-    (testing "SQLite doesn't return proper date objects but strings, they just pass through the qp untouched"
-      (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
-                                         (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
-        (is (= [["1" "2014-04-07" "5" "12"]
-                ["2" "2014-09-18" "1" "31"]
-                ["3" "2014-09-15" "8" "56"]
-                ["4" "2014-03-11" "5" "4"]
-                ["5" "2013-05-05" "3" "49"]]
-               (parse-and-sort-csv result)))))))
-
-(deftest datetime-fields-are-untouched-when-exported
-  (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
-                                     (json/generate-string (mt/mbql-query users {:order-by [[:asc $id]], :limit 5})))]
-    (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00"]
-            ["2" "Felipinho Asklepios" "2014-12-05T15:15:00"]
-            ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00"]
-            ["4" "Simcha Yan"          "2014-01-01T08:30:00"]
-            ["5" "Quentin Sören"       "2014-10-03T17:30:00"]]
-           (parse-and-sort-csv result)))))
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
@@ -269,35 +192,36 @@
           (perms/revoke-permissions! (group/all-users) (mt/db))
           (do-test))))))
 
-;; POST /api/dataset/:format
 (deftest formatted-results-ignore-query-constraints
-  (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
-    ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
-    (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-      (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
-                                         :query (json/generate-string
-                                                 {:database (mt/id)
-                                                  :type     :query
-                                                  :query    {:source-table (mt/id :venues)}
-                                                  :middleware
-                                                  {:add-default-userland-constraints? true
-                                                   :userland-query?                   true}}))]
-        (is (some? result))
-        (when (some? result)
-          (is (= 101
-                 (count (csv/read-csv result)))))))))
+  (testing "POST /api/dataset/:format"
+    (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
+      ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
+      (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+        (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                           :query (json/generate-string
+                                                   {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (mt/id :venues)}
+                                                    :middleware
+                                                    {:add-default-userland-constraints? true
+                                                     :userland-query?                   true}}))]
+          (is (some? result))
+          (when (some? result)
+            (is (= 101
+                   (count (csv/read-csv result))))))))))
 
-;; non-"download" queries should still get the default constraints
-;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)
+
 (deftest non--download--queries-should-still-get-the-default-constraints
-  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (let [{row-count :row_count, :as result}
-          (mt/user-http-request :rasta :post 202 "dataset"
-                                {:database (mt/id)
-                                 :type     :query
-                                 :query    {:source-table (mt/id :venues)}})]
-      (is (= 10
-             (or row-count result))))))
+  (testing (str "non-\"download\" queries should still get the default constraints "
+                "(this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)")
+    (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+      (let [{row-count :row_count, :as result}
+            (mt/user-http-request :rasta :post 202 "dataset"
+                                  {:database (mt/id)
+                                   :type     :query
+                                   :query    {:source-table (mt/id :venues)}})]
+        (is (= 10
+               (or row-count result)))))))
 
 (deftest check-permissions-test
   (testing "make sure `POST /dataset` calls check user permissions"
@@ -318,7 +242,7 @@
     (testing "\nCan we fetch a native version of an MBQL query?"
       (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
                            "FROM \"PUBLIC\".\"VENUES\" "
-                           "LIMIT 1048576")
+                           "LIMIT 1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (mt/mbql-query venues
@@ -328,7 +252,7 @@
         (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
                              "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z'"
                              " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
-                             "LIMIT 1048576")
+                             "LIMIT 1048575")
                 :params nil}
                (mt/user-http-request :rasta :post 200 "dataset/native"
                                      (mt/mbql-query checkins

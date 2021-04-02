@@ -160,7 +160,8 @@
 
  [tt
   with-temp
-  with-temp*]
+  with-temp*
+  with-temp-defaults]
 
  [tu
   boolean-ids-and-timestamps

@@ -31,12 +31,13 @@ describe("user > settings", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show user details", () => {
+  it("should show user details with disabled submit button", () => {
     cy.visit("/user/edit_current");
     cy.findByText("Account settings");
     cy.findByDisplayValue(first_name);
     cy.findByDisplayValue(last_name);
     cy.findByDisplayValue(email);
+    cy.findByRole("button", { name: "Update" }).should("be.disabled");
   });
 
   it("should update the user without fetching memberships", () => {

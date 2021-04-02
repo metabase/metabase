@@ -288,7 +288,7 @@
     (let [query {:type     :native
                  :native   {:projections ["_id" "user_id" "venue_id"],
                             :query       [{:$project {:_id "$_id"}}
-                                          {:$limit 1048576}]
+                                          {:$limit 1048575}]
                             :collection  "checkins"
                             :mbql?       true}
                  :database (mt/id)}]

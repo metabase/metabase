@@ -448,4 +448,29 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText(CC_NAME);
     cy.contains("37.65");
   });
+
+  it.skip("should handle brackets in the name of the custom column (metabase#15316)", () => {
+    cy.createQuestion({
+      name: "15316",
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: { "MyCC [2021]": ["+", 1, 1] },
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}/notebook`);
+    });
+    cy.findByText("Summarize").click();
+    cy.findByText("Sum of ...").click();
+    popover()
+      .findByText("MyCC [2021]")
+      .click();
+    cy.get("[class*=NotebookCellItem]")
+      .contains("Sum of MyCC [2021]")
+      .click();
+    popover().within(() => {
+      cy.icon("chevronleft").click();
+      cy.findByText("Custom Expression").click();
+    });
+    cy.get("[contenteditable='true']").contains("Sum([MyCC [2021]])");
+  });
 });

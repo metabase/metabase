@@ -1,7 +1,20 @@
 (ns metabase.query-processor.streaming.common
   "Shared util fns for various export (download) streaming formats."
   (:require [java-time :as t]
-            [metabase.util.date-2 :as u.date]))
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util.date-2 :as u.date])
+  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+
+(defn in-result-time-zone
+  "Set the time zone of a temporal value `t` to result timezone without changing the actual moment in time. e.g.
+
+    ;; if result timezone is `US/Pacific`
+    (apply-timezone #t \"2021-03-30T20:06:00Z\") -> #t \"2021-03-30T13:06:00-07:00\""
+  [t]
+  (u.date/with-time-zone-same-instant
+   t
+   (qp.store/cached ::results-timezone (t/zone-id (qp.timezone/results-timezone-id)))))
 
 (defprotocol FormatValue
   "Protocol for specifying how objects of various classes in QP result rows should be formatted in various download
@@ -16,24 +29,28 @@
   Object
   (format-value [this] this)
 
-  java.time.temporal.Temporal
-  (format-value [this]
-    (u.date/format this))
+  LocalDate
+  (format-value [t]
+    (u.date/format t))
 
-  java.time.LocalDateTime
-  (format-value [this]
-    (u.date/format
-     (if (= (t/local-time this) (t/local-time 0))
-       (t/local-date this)
-       this)))
+  LocalDateTime
+  (format-value [t]
+    (if (= (t/local-time t) (t/local-time 0))
+      (format-value (t/local-date t))
+      (u.date/format t)))
 
-  java.time.OffsetDateTime
-  (format-value [this]
-    (u.date/format
-     (if (= (t/local-time this) (t/local-time 0))
-       (t/local-date this)
-       this)))
+  LocalTime
+  (format-value [t]
+    (u.date/format t))
 
-  java.time.ZonedDateTime
-  (format-value [this]
-    (format-value (t/offset-date-time this))))
+  OffsetTime
+  (format-value [t]
+    (u.date/format (in-result-time-zone t)))
+
+  OffsetDateTime
+  (format-value [t]
+    (u.date/format (in-result-time-zone t)))
+
+  ZonedDateTime
+  (format-value [t]
+    (format-value (t/offset-date-time t))))

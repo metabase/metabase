@@ -114,7 +114,6 @@
 
         (testing "An error should be written to the output stream"
           (is (schema= {:message (s/eq "Input channel unexpectedly closed.")
-                        :type    (s/eq "class java.lang.InterruptedException")
                         :_status (s/eq 500)
                         :trace   s/Any
                         s/Any    s/Any}
@@ -161,7 +160,6 @@
         (a/>!! input-chan (Exception. "Broken"))
         (wait-for-close os-closed-chan)
         (is (schema= {:message  (s/eq "Broken")
-                      :type     (s/eq "class java.lang.Exception")
                       :trace    s/Any
                       :_status  (s/eq 500)
                       s/Keyword s/Any}
@@ -180,7 +178,6 @@
                  (wait-for-close os-closed-chan)))
           (testing "error should be written to output stream"
             (is (schema= {:message  (s/eq "No response after waiting 50.0 ms. Canceling request.")
-                          :type     (s/eq "class java.util.concurrent.TimeoutException")
                           :_status  (s/eq 500)
                           :trace    s/Any
                           s/Keyword s/Any}
