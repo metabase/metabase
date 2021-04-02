@@ -351,16 +351,18 @@ class SharingSidebar extends React.Component {
     }
 
     if (editingMode === "new-pulse" || pulses.length === 0) {
-      const emailSpec = formInput.channels.email || {};
-      const slackSpec = formInput.channels.slack || {};
+      const { configured: emailConfigured = false } =
+        formInput.channels.email || {};
+      const { configured: slackConfigured = false } =
+        formInput.channels.slack || {};
 
       return (
         <NewPulseSidebar
           onCancel={this.onCancel}
-          emailConfigured={emailSpec}
-          slackConfigured={slackSpec}
+          emailConfigured={emailConfigured}
+          slackConfigured={slackConfigured}
           onNewEmailPulse={() => {
-            if (emailSpec !== {}) {
+            if (emailConfigured) {
               this.setState(({ returnMode }) => {
                 return {
                   editingMode: "add-edit-email",
@@ -371,7 +373,7 @@ class SharingSidebar extends React.Component {
             }
           }}
           onNewSlackPulse={() => {
-            if (slackSpec !== {}) {
+            if (slackConfigured) {
               this.setState(({ returnMode }) => {
                 return {
                   editingMode: "add-edit-slack",
