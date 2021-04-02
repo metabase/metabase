@@ -1095,9 +1095,8 @@
 
 (defmethod handle-limit ::scan
   [_ {limit :limit} druid-query]
-  (if-not limit
-    druid-query
-    (assoc-in druid-query [:query :limit] (adjust-limit limit))))
+  (cond-> druid-query
+    limit (assoc-in [:query :limit] (adjust-limit limit))))
 
 (defmethod handle-limit ::timeseries
   [_ {limit :limit} druid-query]
@@ -1109,13 +1108,13 @@
 
 (defmethod handle-limit ::topN
   [_ {limit :limit} druid-query]
-  (if-not limit
-    druid-query
-    (assoc-in druid-query [:query :threshold] (adjust-limit limit))))
+  (cond-> druid-query
+    limit (assoc-in [:query :threshold] (adjust-limit limit))))
 
 (defmethod handle-limit ::groupBy
   [_ {limit :limit} druid-query]
-  (cond-> (assoc-in [:query :limitSpec :type]  :default)
+  (cond-> druid-query
+    true  (assoc-in [:query :limitSpec :type]  :default)
     limit (assoc-in [:query :limitSpec :limit] (adjust-limit limit))))
 
 
