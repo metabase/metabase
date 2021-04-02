@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import YearPicker from "./YearPicker";
 import { Flex } from "grid-styled";

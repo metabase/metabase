@@ -16,7 +16,6 @@ describeWithToken("postgres > user > query", () => {
     restore();
     cy.signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
-    cy.createUser("sandboxed");
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {

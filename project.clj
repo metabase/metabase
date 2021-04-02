@@ -256,7 +256,7 @@
      :format-result metabase.junit/format-result}}
 
    :ci
-   {:jvm-opts ["-Xmx2000m"]}
+   {}
 
    :install
    {}

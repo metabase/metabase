@@ -1,4 +1,5 @@
 /* eslint-disable react/display-name */
+/* eslint-disable react/prop-types */
 
 import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";

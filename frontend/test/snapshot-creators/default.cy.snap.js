@@ -1,7 +1,14 @@
+import _ from "underscore";
 import { snapshot, restore, withSampleDataset } from "__support__/cypress";
 import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
-const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
+const {
+  ALL_USERS_GROUP,
+  COLLECTION_GROUP,
+  DATA_GROUP,
+  READONLY_GROUP,
+  NOSQL_GROUP,
+} = USER_GROUPS;
 const { admin } = USERS;
 
 describe("snapshots", () => {
@@ -69,12 +76,21 @@ describe("snapshots", () => {
         expect(body.id).to.eq(DATA_GROUP); // 5
       },
     );
+    cy.request("POST", "/api/permissions/group", { name: "readonly" }).then(
+      ({ body }) => {
+        expect(body.id).to.eq(READONLY_GROUP); // 6
+      },
+    );
+    cy.request("POST", "/api/permissions/group", { name: "nosql" }).then(
+      ({ body }) => {
+        expect(body.id).to.eq(NOSQL_GROUP); // 7
+      },
+    );
 
-    // additional users
-    cy.createUser("normal");
-    cy.createUser("nodata");
-    cy.createUser("nocollection");
-    cy.createUser("none");
+    // Create all users except admin, who was already created in one of the previous steps
+    Object.keys(_.omit(USERS, "admin")).forEach(user => {
+      cy.createUser(user);
+    });
 
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
@@ -82,13 +98,17 @@ describe("snapshots", () => {
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: { "1": { schemas: "none", native: "none" } },
       [DATA_GROUP]: { "1": { schemas: "all", native: "write" } },
+      [NOSQL_GROUP]: { "1": { schemas: "all", native: "none" } },
       [COLLECTION_GROUP]: { "1": { schemas: "none", native: "none" } },
+      [READONLY_GROUP]: { "1": { schemas: "none", native: "none" } },
     });
 
     cy.updateCollectionGraph({
       [ALL_USERS_GROUP]: { root: "none" },
       [DATA_GROUP]: { root: "none" },
+      [NOSQL_GROUP]: { root: "none" },
       [COLLECTION_GROUP]: { root: "write" },
+      [READONLY_GROUP]: { root: "read" },
     });
   }
 

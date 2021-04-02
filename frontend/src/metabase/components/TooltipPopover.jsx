@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import pure from "recompose/pure";
 import cx from "classnames";

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { t } from "ttag";

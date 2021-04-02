@@ -24,23 +24,8 @@ For more information check out [metabase.com](https://metabase.com/)
 
 ## Supported databases
 
-- Amazon Redshift
-- Druid
-- Google Analytics
-- Google BigQuery
-- H2
-- MongoDB
-- MySQL
-- Oracle
-- PostgreSQL
-- Presto
-- Snowflake
-- SparkSQL
-- SQL Server
-- SQLite
-- Vertica
-
-Don't see your favorite database? Check the list of [community supported drivers](https://www.metabase.com/docs/latest/developers-guide-drivers.html#how-to-use-a-community-built-driver).
+- [Officially supported databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#officially-supported-databases).
+- [Community-supported drivers](https://www.metabase.com/docs/latest/developers-guide-drivers.html#how-to-use-a-community-built-driver).
 
 ## Installation
 

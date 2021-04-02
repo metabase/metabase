@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -365,7 +366,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           className={cx(inputClassName, {
             "border-error": compileError,
           })}
-          style={{ ...inputStyle, paddingLeft: 26 }}
+          style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
           placeholder={placeholder}
           value={source}
           syntaxTree={syntaxTree}

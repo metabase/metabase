@@ -258,13 +258,13 @@ describe("formatting", () => {
         formatValue(24, {
           date_style: null,
           time_enabled: "minutes",
-          time_style: "k:mm",
+          time_style: "HH:mm",
           column: {
             base_type: "type/DateTime",
             unit: "hour-of-day",
           },
         }),
-      ).toEqual("24:00");
+      ).toEqual("00:00");
     });
   });
 

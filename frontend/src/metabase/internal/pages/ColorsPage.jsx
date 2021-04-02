@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
 import { Box, Flex } from "grid-styled";

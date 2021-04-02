@@ -1,9 +1,9 @@
 import { restore, describeWithToken } from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
-import _ from "underscore";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { normal } = USERS;
 const { PRODUCTS } = SAMPLE_DATASET;
+const TOTAL_USERS = Object.entries(USERS).length;
 
 const year = new Date().getFullYear();
 
@@ -84,24 +84,23 @@ describeWithToken("audit > auditing", () => {
         .as("charts")
         .should("have.length", 2);
 
-      // For queries viewed, we have 2 users that haven't viewed anything
+      // For queries viewed, only 3 viewed something
       cy.get("@charts")
         .first()
         .find("[width='0']")
-        .should("have.length", 2);
+        .should("have.length", TOTAL_USERS - 3);
 
-      // For queries created, we have 3 users that haven't created anything
+      // For queries created, only 2 users created something
       cy.get("@charts")
         .last()
         .find("[width='0']")
-        .should("have.length", 3);
+        .should("have.length", TOTAL_USERS - 2);
     });
 
     it("should load the All Members tab", () => {
       cy.visit("/admin/audit/members/all");
 
-      const CREATED_USERS = _.omit(USERS, "sandboxed");
-      Object.values(CREATED_USERS).forEach(({ first_name, last_name }) => {
+      Object.values(USERS).forEach(({ first_name, last_name }) => {
         cy.findByText(`${first_name} ${last_name}`);
       });
 
