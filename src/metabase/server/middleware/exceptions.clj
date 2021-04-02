@@ -35,44 +35,46 @@
           (raise e))))))
 
 (defmulti api-exception-response
-  "Convert an exception from an API endpoint into an appropriate HTTP response."
+  "Convert an uncaught exception from an API endpoint into an appropriate format to be returned by the REST API (e.g. a
+  map, which eventually gets serialized to JSON, or a plain string message)."
   {:arglists '([e])}
   class)
 
-(defmethod api-exception-response Throwable [^Throwable e]
-  (let [{:keys [status-code] :as info} (ex-data e)
+(defmethod api-exception-response Throwable
+  [^Throwable e]
+  (let [{:keys [status-code], :as info} (ex-data e)
+        other-info                      (dissoc info :status-code :schema :type)
+        body                            (cond
+                                          (and status-code (empty? other-info))
+                                          ;; If status code was specified but other data wasn't, it's something like a
+                                          ;; 404. Return message as the (plain-text) body.
+                                          (.getMessage e)
 
-        other-info (dissoc info :status-code :schema :type)
-        message    (.getMessage e)
-        body       (cond
-                     ;; Exceptions that include a status code *and* other info are things like
-                     ;; Field validation exceptions. Return those as is
-                     (and status-code (seq other-info))
-                     (ui18n/localized-strings->strings other-info)
+                                          ;; if the response includes `:errors`, (e.g., it's something like a generic
+                                          ;; parameter validation exception), just return the `other-info` from the
+                                          ;; ex-data.
+                                          (and status-code (:errors other-info))
+                                          other-info
 
-                     ;; If status code was specified but other data wasn't, it's something like a
-                     ;; 404. Return message as the (plain-text) body.
-                     status-code
-                     (str message)
-
-                     ;; Otherwise it's a 500. Return the full Exception for debugging purposes
-                     :else
-                     (merge
-                      other-info
-                      (Throwable->map e)
-                      {:message message
-                       :type    (class e)}))]
-
+                                          ;; Otherwise return the full `Throwable->map` representation with Stacktrace
+                                          ;; and ex-data
+                                          :else
+                                          (merge
+                                           (Throwable->map e)
+                                           {:message (.getMessage e)}
+                                           other-info))]
     {:status  (or status-code 500)
      :headers (mw.security/security-headers)
      :body    body}))
 
-(defmethod api-exception-response SQLException [e]
+(defmethod api-exception-response SQLException
+  [e]
   (-> ((get-method api-exception-response (.getSuperclass SQLException)) e)
       (assoc-in [:body :sql-exception-chain] (str/split (with-out-str (jdbc/print-sql-exception-chain e))
                                                         #"\s*\n\s*"))))
 
-(defmethod api-exception-response EofException [e]
+(defmethod api-exception-response EofException
+  [e]
   (log/info (trs "Request canceled before finishing."))
   {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
