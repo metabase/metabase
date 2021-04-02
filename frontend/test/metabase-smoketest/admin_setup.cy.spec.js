@@ -154,9 +154,8 @@ describe("smoketest > admin_setup", () => {
         .first()
         .click();
 
-      cy.findByText("Marketing");
-      cy.get("td")
-        .eq("-2")
+      cy.findByText("Marketing")
+        .closest("tr")
         .contains("2");
     });
 
@@ -174,10 +173,10 @@ describe("smoketest > admin_setup", () => {
       cy.findAllByText("Default")
         .last()
         .click();
-      cy.findAllByText("collection")
-        .last()
-        .click();
-      cy.findByText("Marketing").click();
+      popover().within(() => {
+        cy.findByText("collection").click({ force: true });
+        cy.findByText("Marketing").click({ force: true });
+      });
       cy.findByText("Create").click();
       cy.findByText("Done").click();
 
@@ -197,8 +196,8 @@ describe("smoketest > admin_setup", () => {
       cy.findAllByText("Groups")
         .first()
         .click();
-      cy.get("td")
-        .eq("-2")
+      cy.findByText("Marketing")
+        .closest("tr")
         .contains("3");
 
       cy.findByText("Marketing").click();
