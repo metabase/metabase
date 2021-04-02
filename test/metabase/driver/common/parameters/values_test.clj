@@ -174,12 +174,12 @@
               :widget-type  :date/all-options}
              nil))))
   (testing "Make sure nil values result in no value"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name              "DATE"
+                     :parent_id         nil
+                     :table_id          (mt/id :checkins)
+                     :base_type         :type/Date
+                     :effective_type    :type/Date})
             :value i/no-value}
            (parse-tag
              {:name         "checkin_date"
