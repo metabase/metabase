@@ -84,7 +84,7 @@ export default class TableSimple extends Component {
 
   componentDidUpdate() {
     const headerHeight = this.headerRef.current.getBoundingClientRect().height;
-    const footerHeight = this.footerRef
+    const footerHeight = this.footerRef.current
       ? this.footerRef.current.getBoundingClientRect().height
       : 0;
     const rowHeight =
