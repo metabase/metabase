@@ -58,7 +58,7 @@
      "Operators for the frontend
   {\"number\": {\"name\": \"string/=\" ...}}"
      ;; these `tru` calls can't be top level on the backend
-     (let [annotations {:string/=           {:name (tru "Equals"), :description (tru "Equals a specific value.")}
+     (let [annotations {:string/=           {:name (tru "Dropdown"), :description (tru "Select one or more values from a list or search box.")}
                         :string/!=          {:name (tru "Is not"), :description (tru "Exclude one or more values.")},
                         :string/starts-with {:name (tru "Starts with"), :description (tru "Match values that begin with the entered text.")}
                         :string/ends-with   {:name (tru "Ends with"), :description (tru "Match values that end with the entered text.")},
