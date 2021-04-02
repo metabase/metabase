@@ -62,7 +62,7 @@ export default class TableSimple extends Component {
     };
 
     this.headerRef = React.createRef();
-    this.foooterRef = React.createRef();
+    this.footerRef = React.createRef();
     this.firstRowRef = React.createRef();
   }
 
