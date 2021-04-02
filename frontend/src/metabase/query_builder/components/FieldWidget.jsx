@@ -50,7 +50,7 @@ export default class FieldWidget extends React.Component {
   renderPopover() {
     if (this.state.isOpen) {
       return (
-        <Popover ref="popover" className="FieldPopover" onClose={this.toggle}>
+        <Popover className="FieldPopover" onClose={this.toggle}>
           <FieldList
             className={"text-" + this.props.color}
             field={this.props.field}

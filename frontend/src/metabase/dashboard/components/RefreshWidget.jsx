@@ -21,6 +21,11 @@ const OPTIONS = [
 ];
 
 export default class RefreshWidget extends Component {
+  constructor(props) {
+    super(props);
+
+    this.popover = React.createRef();
+  }
   state = { elapsed: null };
 
   UNSAFE_componentWillMount() {
@@ -46,7 +51,7 @@ export default class RefreshWidget extends Component {
     const remaining = period - elapsed;
     return (
       <PopoverWithTrigger
-        ref="popover"
+        ref={this.popover}
         triggerElement={
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
@@ -84,7 +89,7 @@ export default class RefreshWidget extends Component {
                 period={option.period}
                 selected={option.period === period}
                 onClick={() => {
-                  this.refs.popover.close();
+                  this.popover.current.close();
                   onChangePeriod(option.period);
                 }}
               />

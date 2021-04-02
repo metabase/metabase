@@ -106,6 +106,8 @@ export default class TokenField extends Component {
       isAllSelected: false,
       listIsHovered: false,
     };
+
+    this.inputRef = React.createRef();
   }
 
   static defaultProps = {
@@ -325,7 +327,7 @@ export default class TokenField extends Component {
 
   onInputBlur = () => {
     if (this.props.updateOnInputBlur && this.props.parseFreeformValue) {
-      const input = findDOMNode(this.refs.input);
+      const input = this.inputRef.current;
       const value = this.props.parseFreeformValue(input.value);
       if (
         value != null &&
@@ -358,7 +360,7 @@ export default class TokenField extends Component {
   };
 
   onMouseDownCapture = e => {
-    const input = findDOMNode(this.refs.input);
+    const input = this.inputRef.current;
     input.focus();
     // prevents clicks from blurring input while still allowing text selection:
     if (input !== e.target) {
@@ -373,7 +375,7 @@ export default class TokenField extends Component {
   addSelectedOption(e) {
     const { multi } = this.props;
     const { filteredOptions, selectedOptionValue } = this.state;
-    const input = findDOMNode(this.refs.input);
+    const input = this.inputRef.current;
     const option = _.find(filteredOptions, option =>
       this._valueIsEqual(selectedOptionValue, this._value(option)),
     );
@@ -461,7 +463,7 @@ export default class TokenField extends Component {
     }
     // if we added a value then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
-      const input = findDOMNode(this.refs.input);
+      const input = this.inputRef.current;
       if (input && isObscured(input)) {
         input.scrollIntoView({ block: "nearest" });
       }
@@ -566,7 +568,7 @@ export default class TokenField extends Component {
         ))}
         <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
           <input
-            ref="input"
+            ref={this.inputRef}
             style={{ ...defaultStyleValue, ...valueStyle }}
             className={cx("full no-focus borderless px1")}
             // set size to be small enough that it fits in a parameter.
@@ -598,11 +600,6 @@ export default class TokenField extends Component {
           {filteredOptions.map(option => (
             <li className="mr1" key={this._key(option)}>
               <div
-                ref={
-                  this._valueIsEqual(selectedOptionValue, this._value(option))
-                    ? _ => (this.scrollElement = _)
-                    : null
-                }
                 className={cx(
                   `py1 pl1 pr2 block rounded text-bold text-${color}-hover inline-block full cursor-pointer`,
                   `bg-light-hover`,

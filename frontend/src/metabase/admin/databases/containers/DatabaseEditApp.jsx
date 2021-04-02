@@ -94,6 +94,9 @@ export default class DatabaseEditApp extends Component {
     this.state = {
       currentTab: TABS[0].value,
     };
+
+    this.discardSavedFieldValuesModal = React.createRef();
+    this.deleteDatabaseModal = React.createRef();
   }
 
   static propTypes = {
@@ -233,14 +236,14 @@ export default class DatabaseEditApp extends Component {
                   <ol>
                     <li>
                       <ModalWithTrigger
-                        ref="discardSavedFieldValuesModal"
+                        ref={this.discardSavedFieldValuesModal}
                         triggerClasses="Button Button--danger Button--discardSavedFieldValues"
                         triggerElement={t`Discard saved field values`}
                       >
                         <ConfirmContent
                           title={t`Discard saved field values`}
                           onClose={() =>
-                            this.refs.discardSavedFieldValuesModal.toggle()
+                            this.discardSavedFieldValuesModal.current.toggle()
                           }
                           onAction={() =>
                             this.props.discardSavedFieldValues(database.id)
@@ -251,13 +254,15 @@ export default class DatabaseEditApp extends Component {
 
                     <li className="mt2">
                       <ModalWithTrigger
-                        ref="deleteDatabaseModal"
+                        ref={this.deleteDatabaseModal}
                         triggerClasses="Button Button--deleteDatabase Button--danger"
                         triggerElement={t`Remove this database`}
                       >
                         <DeleteDatabaseModal
                           database={database}
-                          onClose={() => this.refs.deleteDatabaseModal.toggle()}
+                          onClose={() =>
+                            this.deleteDatabaseModal.current.toggle()
+                          }
                           onDelete={() =>
                             this.props.deleteDatabase(database.id, true)
                           }

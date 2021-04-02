@@ -37,18 +37,6 @@ export default class MetadataHeader extends Component {
     this.setDatabaseIdIfUnset();
   }
 
-  setSaving() {
-    this.refs.status.setSaving.apply(this, arguments);
-  }
-
-  setSaved() {
-    this.refs.status.setSaved.apply(this, arguments);
-  }
-
-  setSaveError() {
-    this.refs.status.setSaveError.apply(this, arguments);
-  }
-
   // Show a gear to access Table settings page if we're currently looking at a Table. Otherwise show nothing.
   // TODO - it would be nicer just to disable the gear so the page doesn't jump around once you select a Table.
   renderTableSettingsButton() {
@@ -81,7 +69,7 @@ export default class MetadataHeader extends Component {
           />
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
-          <SaveStatus ref="status" />
+          <SaveStatus />
           <div className="mr1 text-medium">{t`Show original schema`}</div>
           <Toggle
             value={this.props.isShowingSchema}

@@ -98,7 +98,6 @@ export default class SpecificDatePicker extends Component {
                 this.onChange(null);
               }
             }}
-            ref="value"
           />
 
           {calendar && (

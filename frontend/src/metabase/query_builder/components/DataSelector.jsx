@@ -154,6 +154,7 @@ export class UnconnectedDataSelector extends Component {
       ...state,
       ...computedState,
     };
+    this.popover = React.createRef();
   }
 
   static propTypes = {
@@ -432,7 +433,7 @@ export class UnconnectedDataSelector extends Component {
     const nextStep = this.getNextStep();
     if (!nextStep) {
       await this.setStateWithComputedState(stateChange);
-      this.refs.popover.toggle();
+      this.popover.current.toggle();
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
     }
@@ -664,7 +665,7 @@ export class UnconnectedDataSelector extends Component {
     return (
       <PopoverWithTrigger
         id="DataPopover"
-        ref="popover"
+        ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
         triggerElement={this.getTriggerElement()}
         triggerClasses={this.getTriggerClasses()}

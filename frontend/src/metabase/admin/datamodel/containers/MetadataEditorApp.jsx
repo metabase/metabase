@@ -79,7 +79,6 @@ export default class MetadataEditor extends Component {
     return (
       <div className="p4">
         <MetadataHeader
-          ref="header"
           databaseId={databaseId}
           selectDatabase={this.props.selectDatabase}
           isShowingSchema={this.state.isShowingSchema}

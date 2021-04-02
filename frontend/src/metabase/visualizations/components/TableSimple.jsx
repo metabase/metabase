@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 
 import styles from "./Table.css";
 
@@ -62,6 +61,10 @@ export default class TableSimple extends Component {
       sortColumn: null,
       sortDescending: false,
     };
+
+    this.headerRef = React.createRef();
+    this.footerRef = React.createRef();
+    this.firstRowRef = React.createRef();
   }
 
   static propTypes = {
@@ -81,15 +84,12 @@ export default class TableSimple extends Component {
   }
 
   componentDidUpdate() {
-    const headerHeight = ReactDOM.findDOMNode(
-      this.refs.header,
-    ).getBoundingClientRect().height;
-    const footerHeight = this.refs.footer
-      ? ReactDOM.findDOMNode(this.refs.footer).getBoundingClientRect().height
+    const headerHeight = this.headerRef.current.getBoundingClientRect().height;
+    const footerHeight = this.footerRef.current
+      ? this.footerRef.current.getBoundingClientRect().height
       : 0;
     const rowHeight =
-      ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height +
-      1;
+      this.firstRowRef.current.getBoundingClientRect().height + 1;
     const pageSize = Math.max(
       1,
       Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight),
@@ -163,7 +163,7 @@ export default class TableSimple extends Component {
                 "fullscreen-night-text",
               )}
             >
-              <thead ref="header">
+              <thead ref={this.headerRef}>
                 <tr>
                   {cols.map((col, colIndex) => (
                     <th
@@ -197,7 +197,10 @@ export default class TableSimple extends Component {
               </thead>
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
-                  <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
+                  <tr
+                    key={rowIndex}
+                    ref={index === 0 ? this.firstRowRef : null}
+                  >
                     {rows[rowIndex].map((value, columnIndex) => {
                       const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(
@@ -289,7 +292,7 @@ export default class TableSimple extends Component {
         </div>
         {pageSize < rows.length ? (
           <div
-            ref="footer"
+            ref={this.footerRef}
             className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text"
           >
             <span className="text-bold">{paginateMessage}</span>
