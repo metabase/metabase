@@ -534,7 +534,7 @@ jobs:
 ########################################################################################################################
 
   be-deps:
-    executor: metabase-ci
+    executor: clojure-and-node
     parameters:
       <<: *Params
     steps:
