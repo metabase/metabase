@@ -551,3 +551,11 @@ export function collateParametersWithValues(parameters, parameterValues) {
     return parameters;
   }
 }
+
+export function hasDefaultParameterValue(parameter) {
+  return parameter.default != null;
+}
+
+export function hasParameterValue(parameter) {
+  return parameter && parameter.value != null;
+}

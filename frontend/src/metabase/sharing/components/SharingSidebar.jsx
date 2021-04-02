@@ -18,7 +18,11 @@ import { mapUIParameterToQueryParameter } from "metabase/meta/Parameter";
 
 import { connect } from "react-redux";
 
-import { cleanPulse, createChannel } from "metabase/lib/pulse";
+import {
+  cleanPulse,
+  createChannel,
+  getPulseParameters,
+} from "metabase/lib/pulse";
 
 import {
   getPulseId,
@@ -215,21 +219,30 @@ class SharingSidebar extends React.Component {
 
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
-    cleanedPulse.parameters = (cleanedPulse.parameters || []).map(parameter => {
-      const { default: defaultValue, name, slug, type, value, id } = parameter;
-      const {
-        type: mappedType,
-        value: mappedValue,
-      } = mapUIParameterToQueryParameter(type, value);
-      return {
-        default: defaultValue,
-        id,
-        name,
-        slug,
-        type: mappedType,
-        value: mappedValue,
-      };
-    });
+    cleanedPulse.parameters = getPulseParameters(cleanedPulse).map(
+      parameter => {
+        const {
+          default: defaultValue,
+          name,
+          slug,
+          type,
+          value,
+          id,
+        } = parameter;
+        const {
+          type: mappedType,
+          value: mappedValue,
+        } = mapUIParameterToQueryParameter(type, value);
+        return {
+          default: defaultValue,
+          id,
+          name,
+          slug,
+          type: mappedType,
+          value: mappedValue,
+        };
+      },
+    );
 
     await this.props.updateEditingPulse(cleanedPulse);
 

@@ -1,3 +1,9 @@
+import _ from "underscore";
+import {
+  hasDefaultParameterValue,
+  hasParameterValue,
+} from "metabase/meta/Parameter";
+
 export function channelIsValid(channel, channelSpec) {
   if (!channelSpec) {
     return false;
@@ -109,4 +115,29 @@ export function createChannel(channelSpec) {
     schedule_hour: 8,
     schedule_frame: "first",
   };
+}
+
+export function getPulseParameters(pulse) {
+  return (pulse && pulse.parameters) || [];
+}
+
+// default parameters are applied but may not be included in a pulse's parameters list
+export function getActivePulseParameters(pulse, parameters) {
+  const pulseParameters = getPulseParameters(pulse);
+  const pulseParametersById = _.indexBy(pulseParameters, "id");
+  const defaultParamsNotInPulseParams = parameters.filter(parameter => {
+    const pulseParameter = pulseParametersById[parameter.id];
+    return (
+      hasDefaultParameterValue(parameter) && !hasParameterValue(pulseParameter)
+    );
+  });
+
+  return [...pulseParameters, ...defaultParamsNotInPulseParams].map(
+    parameter => {
+      return {
+        ...parameter,
+        value: parameter.value == null ? parameter.default : parameter.value,
+      };
+    },
+  );
 }

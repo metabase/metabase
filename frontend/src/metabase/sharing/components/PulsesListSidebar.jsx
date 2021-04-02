@@ -16,6 +16,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import { formatHourAMPM, formatDay, formatFrame } from "metabase/lib/time";
 import { conjunct } from "metabase/lib/formatting";
+import { getActivePulseParameters } from "metabase/lib/pulse";
 
 import { getParameters } from "metabase/dashboard/selectors";
 
@@ -118,41 +119,16 @@ function buildRecipientText(pulse) {
       )}`;
 }
 
-function hasDefaultParameterValue(parameter) {
-  return parameter.default != null;
-}
-
-function hasParameterValue(parameter) {
-  return parameter && parameter.value != null;
-}
-
 function buildFilterText(pulse, parameters) {
-  const pulseParameters = pulse.parameters || [];
-  const pulseParametersById = _.indexBy(pulseParameters, "id");
-  const defaultParamsNotInPulseParams = parameters.filter(parameter => {
-    const pulseParameter = pulseParametersById[parameter.id];
-    return (
-      hasDefaultParameterValue(parameter) && !hasParameterValue(pulseParameter)
-    );
-  });
-
-  const activeParameters = [
-    ...pulseParameters,
-    ...defaultParamsNotInPulseParams,
-  ];
+  const activeParameters = getActivePulseParameters(pulse, parameters);
 
   if (_.isEmpty(activeParameters)) {
     return "";
   }
 
   const [firstParameter, ...otherParameters] = activeParameters;
-  const firstParamValue =
-    firstParameter.value == null
-      ? firstParameter.default
-      : firstParameter.value;
-
   const firstFilterText = `${firstParameter.name} is ${conjunct(
-    [].concat(firstParamValue),
+    [].concat(firstParameter.value),
     t`and`,
   )}`;
 

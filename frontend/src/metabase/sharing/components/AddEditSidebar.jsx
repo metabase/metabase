@@ -22,9 +22,14 @@ import Select, { Option } from "metabase/components/Select";
 import CollapseSection from "metabase/components/CollapseSection";
 import ParametersList from "metabase/parameters/components/ParametersList";
 
-import { dashboardPulseIsValid } from "metabase/lib/pulse";
+import {
+  dashboardPulseIsValid,
+  getPulseParameters,
+  getActivePulseParameters,
+} from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
 import { conjunct } from "metabase/lib/formatting";
+import { collateParametersWithValues } from "metabase/meta/Parameter";
 
 import {
   getDefaultParametersById,
@@ -490,19 +495,17 @@ function ParametersSection({
   pulse,
   setPulseParameters,
 }) {
-  const pulseParameters = pulse.parameters || [];
-  const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
+  const pulseParameters = getPulseParameters(pulse);
+  const activeParameters = getActivePulseParameters(pulse, parameters);
+  const pulseParamValuesById = activeParameters.reduce((map, parameter) => {
     map[parameter.id] = parameter.value;
     return map;
   }, {});
 
-  const collatedParameters = parameters.map(parameter => {
-    const pulseParamValue = pulseParamValuesById[parameter.id];
-    return {
-      ...parameter,
-      value: pulseParamValue == null ? parameter.default : pulseParamValue,
-    };
-  });
+  const collatedParameters = collateParametersWithValues(
+    parameters,
+    pulseParamValuesById,
+  );
 
   const setParameterValue = (id, value) => {
     const parameter = parameters.find(parameter => parameter.id === id);
