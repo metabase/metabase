@@ -1,4 +1,9 @@
-import { restore, popover, modal } from "__support__/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  visitQuestionAdhoc,
+} from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 import { USER_GROUPS } from "__support__/cypress_data";
 
@@ -461,6 +466,48 @@ describe("scenarios > question > native", () => {
           cy.findByText("Showing 1 row");
         });
       });
+    });
+  });
+
+  it.skip("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    visitQuestionAdhoc({
+      name: "15460",
+      dataset_query: {
+        database: 1,
+        native: {
+          query:
+            "select p.created_at, products.category\nfrom products\nleft join products p on p.id=products.id\nwhere {{category}}\n",
+          "template-tags": {
+            category: {
+              id: "d98c3875-e0f1-9270-d36a-5b729eef938e",
+              name: "category",
+              "display-name": "Category",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "category/=",
+              default: null,
+            },
+          },
+        },
+        type: "native",
+      },
+    });
+
+    // Set the filter value
+    cy.get("fieldset")
+      .contains("Category")
+      .click();
+    popover()
+      .findByText("Doohickey")
+      .click();
+    cy.findByRole("button", { name: "Add filter" }).click();
+    // Rerun the query
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").wait("@dataset");
+    cy.get(".Visualization").within(() => {
+      cy.findAllByText("Doohickey");
+      cy.findAllByText("Gizmo").should("not.exist");
     });
   });
 });
