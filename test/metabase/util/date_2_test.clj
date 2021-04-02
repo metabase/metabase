@@ -194,7 +194,6 @@
             [locale expected] expected]
       (mt/with-user-locale locale
         (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))
-          (testing (str "(class (u.date/format-human-readable t)): " (class (u.date/format-human-readable t))) ; NOCOMMIT
             (is (= expected
                    (u.date/format-human-readable t)))))))))
 

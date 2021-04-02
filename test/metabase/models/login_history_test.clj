@@ -52,7 +52,7 @@
                 (is (= {}
                        @mt/inbox)))))))))
 
-  (testing "don't send email if the setting is disabled"
+  (testing "don't send email if the setting is disabled by setting MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE=FALSE"
     (mt/with-temp User [{user-id :id, email :email, first-name :first_name}]
       (testing "send email on first login from new device"
         (try
