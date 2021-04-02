@@ -325,8 +325,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     default: "USD",
     getHidden: (column: Column, settings: ColumnSettings) =>
-      // NOTE: ideally we'd hide this if number_style != "currency" but that would result in a circular dependency
-      !isCurrency(column),
+      settings["number_style"] !== "currency",
   },
   currency_style: {
     title: t`Currency label style`,
