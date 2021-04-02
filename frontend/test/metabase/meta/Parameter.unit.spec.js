@@ -1,6 +1,5 @@
 import {
   dateParameterValueToMBQL,
-  parameterToMBQLFilter,
   parameterOptionsForField,
   getParametersBySlug,
   mapUIParameterToQueryParameter,
