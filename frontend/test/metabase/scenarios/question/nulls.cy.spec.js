@@ -145,16 +145,12 @@ describe("scenarios > question > null", () => {
               });
             });
           });
-          cy.server();
-          cy.route("POST", "/api/card/*/query").as("cardQuery");
 
           cy.visit(`/dashboard/${DASHBOARD_ID}`);
-          // wait for the second cardQuery to finish
-          cy.wait("@cardQuery.2");
-
           cy.log("P0 regression in v0.37.1!");
           cy.get(".LoadingSpinner").should("not.exist");
           cy.findByText("13801_Q1");
+          cy.get(".ScalarValue").contains("0");
           cy.findByText("13801_Q2");
         });
       });
