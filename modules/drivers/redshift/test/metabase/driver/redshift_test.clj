@@ -1,8 +1,12 @@
 (ns metabase.driver.redshift-test
-  (:require [clojure.string :as str]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
-            [environ.core :as env]
+            [metabase.driver.redshift :as redshift]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-database :as sync.describe-database]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.setting :as setting]
@@ -15,9 +19,10 @@
             [metabase.test.data.interface :as tx]
             [metabase.test.data.redshift :as rstest]
             [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import (java.sql ResultSetMetaData ResultSet)
+  (:import [java.sql ResultSet ResultSetMetaData]
            metabase.plugins.jdbc_proxy.ProxyDriver))
 
 (use-fixtures :once (fixtures/initialize :plugins))
@@ -197,11 +202,11 @@
                view-nm))
           (let [table-id (db/select-one-id Table :db_id (u/the-id database), :name view-nm)]
             ;; and its columns' :base_type should have been identified correctly
-            (is (= [{:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}
-                    {:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}]
+            (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
+                    {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
                    (map
                     (partial into {})
-                    (db/select [Field :name :database_type :base_type] :table_id table-id))))))))))
+                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
 
 (defn- assert-jdbc-url-fetch-size [db fetch-size]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource db))]
@@ -231,3 +236,59 @@
                                    (mt/native-query)
                                    (qp/process-query)
                                    (mt/rows)))))))))))))
+
+(deftest syncable-schemas-test
+  (mt/test-driver :redshift
+    (testing "Should filter out schemas for which the user has no perms"
+      ;; create a random username and random schema name, and grant the user USAGE permission for it
+      (let [temp-username (str/lower-case (tu/random-name))
+            random-schema (str/lower-case (tu/random-name))
+            user-pw       "Password1234"
+            db-det        (:details (mt/db))]
+        (#'rstest/execute! (str "CREATE SCHEMA %s;"
+                                "CREATE USER %s PASSWORD '%s';%n"
+                                "GRANT USAGE ON SCHEMA %s TO %s;%n")
+                           random-schema
+                           temp-username
+                           user-pw
+                           random-schema
+                           temp-username)
+        (try
+          (mt/with-temp Database [db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
+            (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
+              (let [schemas (reduce conj
+                                    #{}
+                                    (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn)))]
+                ;; the syncable-schemas for the user should contain the newly created random schema
+                (is (contains? schemas random-schema))
+                ;; but it should not contain the current session-schema name (since that was never granted)
+                (is (not (contains? schemas rstest/session-schema-name))))))
+          (finally
+            (#'rstest/execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
+                                    "DROP USER IF EXISTS %s;%n"
+                                    "DROP SCHEMA IF EXISTS %s;%n")
+             random-schema
+             temp-username
+             temp-username
+             random-schema)))))
+    (testing "Should filter out non-existent schemas (for which nobody has permissions)"
+      (let [fake-schema-name (u/qualified-name ::fake-schema)]
+        ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
+        (with-redefs [sync.describe-database/all-schemas (let [orig sync.describe-database/all-schemas]
+                                                           (fn [metadata]
+                                                             (eduction
+                                                              cat
+                                                              [(orig metadata) [fake-schema-name]])))]
+          (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+            (with-open [conn (jdbc/get-connection jdbc-spec)]
+              (letfn [(schemas []
+                        (reduce
+                         conj
+                         #{}
+                         (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn))))]
+                (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
+                  (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
+                                                                                    reducible)]
+                    (is (contains? (schemas) fake-schema-name))))
+                (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
+                  (is (not (contains? (schemas) fake-schema-name))))))))))))

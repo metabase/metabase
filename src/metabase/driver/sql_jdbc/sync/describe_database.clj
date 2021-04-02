@@ -13,15 +13,17 @@
 
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
 
-(defn- all-schemas [^DatabaseMetaData metadata]
-  {:pre [(instance? DatabaseMetaData metadata)]}
+(defn all-schemas
+  "Get a *reducible* sequence of all string schema names for the current database from its JDBC database metadata."
+  [^DatabaseMetaData metadata]
+  {:added "0.39.0", :pre [(instance? DatabaseMetaData metadata)]}
   (common/reducible-results
    #(.getSchemas metadata)
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
 
-(defn- syncable-schemas
-  [driver metadata]
+(defmethod i/syncable-schemas :sql-jdbc
+  [driver _ metadata]
   (eduction (remove (set (i/excluded-schemas driver)))
             (all-schemas metadata)))
 
@@ -94,7 +96,7 @@
                      (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema, table-name :name}]
                      (i/have-select-privilege? driver conn table-schema table-name))))
-     (syncable-schemas driver metadata))))
+     (i/syncable-schemas driver conn metadata))))
 
 (defmethod i/active-tables :sql-jdbc
   [driver connection]
