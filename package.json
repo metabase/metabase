@@ -114,7 +114,7 @@
     "banner-webpack-plugin": "^0.2.3",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "cypress": "^5.5.0",
+    "cypress": "^6.8.0",
     "documentation": "^4.0.0-rc.1",
     "eslint": "7.12.1",
     "eslint-import-resolver-webpack": "^0.8.3",
@@ -209,7 +209,7 @@
     ]
   },
   "resolutions": {
-    "cypress": "5.5.0",
+    "cypress": "6.8.0",
     "styled-components": "3.2.6",
     "styled-system": "2.2.5"
   }
