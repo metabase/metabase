@@ -154,6 +154,36 @@
            (u.date/format nil))
         "Passing `nil` should return `nil`")))
 
+(deftest format-human-readable-test
+  (doseq [[t expected] {#t "2021-04-02T14:42:09.524392-07:00[US/Pacific]"
+                        {:en "April 2 2:42 PM (Pacific Daylight Time)"
+                         :es "abril 2 2:42 PM (Hora de verano del Pacífico)"}
+
+                        #t "2021-04-02T14:42:09.524392-07:00"
+                        {:en "April 2 2:42 PM (GMT-07:00)"
+                         :es "abril 2 2:42 PM (GMT-07:00)"}
+
+                        #t "2021-04-02T14:42:09.524392"
+                        {:en "April 2 at 2:42 PM"
+                         :es "abril 2 2:42 PM"}
+
+                        #t "2021-04-02"
+                        {:en "April 2"
+                         :es "abril 2"}
+
+                        #t "14:42:09.524392-07:00"
+                        {:en "2:42 PM (GMT-07:00)"
+                         :es "2:42 PM (GMT-07:00)"}
+
+                        #t "14:42:09.524392"
+                        {:en "2:42 PM"
+                         :es "2:42 PM"}}
+          [locale expected] expected]
+    (mt/with-user-locale locale
+      (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))
+        (is (= expected
+               (u.date/format-human-readable t)))))))
+
 (deftest format-sql-test
   (testing "LocalDateTime"
     (is (= "2019-11-05 19:27:00"

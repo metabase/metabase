@@ -8,7 +8,7 @@
             [java-time.core :as t.core]
             [metabase.util.date-2.common :as common]
             [metabase.util.date-2.parse :as parse]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [tru]]
             [potemkin.types :as p.types]
             [schema.core :as s])
   (:import [java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period ZonedDateTime]
@@ -76,10 +76,18 @@
      (format (temporal->iso-8601-formatter t) t)))
 
   (^String [formatter t]
-   (when t
-     (if (t/instant? t)
-       (recur formatter (t/zoned-date-time t (t/zone-id "UTC")))
-       (t/format formatter t)))))
+   (format formatter t nil))
+
+  (^String [formatter t locale]
+   (cond
+     (t/instant? t)
+     (recur formatter (t/zoned-date-time t (t/zone-id "UTC")) locale)
+
+     locale
+     (recur (.withLocale (t/formatter formatter) (i18n/locale locale)) t nil)
+
+     :else
+     (t/format formatter t))))
 
 (defn format-sql
   "Format a temporal value `t` as a SQL-style literal string (for most SQL databases). This is the same as ISO-8601 but
@@ -87,6 +95,25 @@
   ^String [t]
   ;; replace the `T` with a space. Easy!
   (str/replace-first (format t) #"(\d{2})T(\d{2})" "$1 $2"))
+
+(defn format-human-readable
+  "Format a temporal value `t` in a human-friendly way for `locale` (by default, the current User's locale).
+
+    (format-human-readable #t \"2021-04-02T14:42:09.524392-07:00[US/Pacific]\" \"es-MX\")
+    ;; -> \"abril 2 2:42 PM (Hora de verano del Pacífico)\""
+  ;; TODO -- need to figure out how to have this do 12-hour vs 24-hour time depending on Locale.
+  ([t]
+   (format-human-readable t (i18n/user-locale)))
+
+  ([t locale]
+   (let [format-str (condp instance? t
+                      LocalDate      "MMMM d"
+                      LocalTime      "h:mm a"
+                      LocalDateTime  "MMMM d h:mm a"
+                      OffsetTime     "h:mm a (OOOO)"
+                      OffsetDateTime "MMMM d h:mm a (OOOO)"
+                      ZonedDateTime  "MMMM d h:mm a (zzzz)")]
+     (format format-str t locale))))
 
 (def ^:private add-units
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})

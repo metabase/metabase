@@ -1,6 +1,42 @@
 (ns metabase.models.login-history
-  (:require [metabase.util.i18n :as i18n :refer [tru]]
+  (:require [metabase.email.messages :as email.messages]
+            [metabase.models.setting :refer [defsetting]]
+            [metabase.server.request.util :as request.u]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :as i18n :refer [tru]]
+            [toucan.db :as db]
             [toucan.models :as models]))
+
+(defn- timezone-display-name [^java.time.ZoneId zone-id]
+  (when zone-id
+    (.getDisplayName zone-id
+                     java.time.format.TextStyle/SHORT_STANDALONE
+                     (i18n/user-locale))))
+
+(defn human-friendly-info
+  "Return a human-friendly version of the info in a LoginHistory instance. Powers the login history API endpoint and
+  login on new device email."
+  [history-item]
+  (let [{location-description :description, timezone :timezone} (request.u/geocode-ip-address (:ip_address history-item))]
+    (-> history-item
+        (assoc :location location-description
+               :timezone (timezone-display-name timezone))
+        (update :timestamp (fn [timestamp]
+                             (if (and timestamp timezone)
+                               (u.date/with-time-zone-same-instant timestamp timezone)
+                               timestamp)))
+        (update :device_description request.u/describe-user-agent))))
+
+(defsetting send-email-on-first-login-from-new-device
+  ;; no need to i18n -- this isn't user-facing
+  "Should we send users a notification email the first time they log in from a new device? (Default: true). This is
+  currently only configurable via environment variable so users who gain access to an admin's credentials cannot
+  disable this Setting and access their account without them knowing."
+  :type       :boolean
+  :visibility :internal
+  :setter     :none
+  :default    true)
 
 (models/defmodel LoginHistory :login_history)
 
@@ -10,6 +46,18 @@
     (contains? login-history :session_id) (assoc :active (boolean session-id))
     true                                  (dissoc :session_id)))
 
+(defn- first-login-for-user-on-this-device? [{user-id :user_id, device-id :device_id}]
+  (some-> (db/select LoginHistory :user_id user-id, :device_id device-id, {:limit 2})
+          count
+          (= 1)))
+
+(defn- post-insert [{user-id :user_id, device-id :device_id, :as login-history}]
+  (u/prog1 login-history
+    (when (and (send-email-on-first-login-from-new-device)
+               (first-login-for-user-on-this-device? login-history))
+      (email.messages/send-login-from-new-device-email! (human-friendly-info login-history))))
+  login-history)
+
 (defn- pre-update [login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
 
@@ -18,4 +66,5 @@
   (merge
    models/IModelDefaults
    {:post-select post-select
+    :post-insert post-insert
     :pre-update  pre-update}))

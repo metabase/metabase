@@ -11,7 +11,8 @@
             [metabase.util.i18n :as ui18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [user-agent :as user-agent]))
+            [user-agent :as user-agent]
+            [metabase.config :as config]))
 
 (defn api-call?
   "Is this ring request an API call (does path start with `/api`)?"
@@ -135,7 +136,7 @@
   (when-not (str/blank? ip-address)
     (try
       (let [url  (format "https://get.geojs.io/v1/ip/geo/%s.json" ip-address)
-            info (-> (http/get url)
+            info (-> (http/get url {:headers {"User-Agent" config/mb-app-id-string}})
                      :body
                      (json/parse-string true))]
         {:description (or (describe-location info)
