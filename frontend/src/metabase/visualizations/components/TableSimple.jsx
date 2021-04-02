@@ -84,8 +84,8 @@ export default class TableSimple extends Component {
 
   componentDidUpdate() {
     const headerHeight = this.headerRef.current.getBoundingClientRect().height;
-    const footerHeight = this.foooterRef
-      ? this.foooterRef.current.getBoundingClientRect().height
+    const footerHeight = this.footerRef
+      ? this.footerRef.current.getBoundingClientRect().height
       : 0;
     const rowHeight =
       this.firstRowRef.current.getBoundingClientRect().height + 1;
@@ -291,7 +291,7 @@ export default class TableSimple extends Component {
         </div>
         {pageSize < rows.length ? (
           <div
-            ref={this.foooterRef}
+            ref={this.footerRef}
             className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text"
           >
             <span className="text-bold">{paginateMessage}</span>
