@@ -4,7 +4,16 @@
 
     (throw (ex-info (tru \"Don''t know how to parse {0} {1}\" (class x) x)
                     {:type qp.error-type/invalid-parameter}))"
-  #?(:cljs (:require-macros [metabase.query-processor.error-type :refer [deferror]])))
+  #?@(:clj [(:require [clojure.string :as str])]
+      :cljs [(:require-macros [metabase.query-processor.error-type :refer [deferror]])]))
+
+#?(:clj
+   (comment str/keep-me)
+
+   ;; there's a bug in our namespace checker: when we only have the :cljs branch above (and without the splice) that
+   ;; there's no need for a reader conditional. This is obviously false though as require-macros is valid only for
+   ;; cljs
+   )
 
 (def ^:private hierarchy
   (atom (make-hierarchy)))

@@ -7,13 +7,23 @@
              26
              {:source-field 5}]]
    :value [3 5]}"
-  (:require [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.shared.util.i18n :as i18n :refer [tru]]
-            [schema.core :as s]))
+  #?@
+   (:clj
+    [(:require
+      [metabase.mbql.schema :as mbql.s]
+      [metabase.mbql.util :as mbql.u]
+      [metabase.query-processor.error-type :as qp.error-type]
+      [metabase.shared.util.i18n :as i18n :refer [tru]]
+      [schema.core :as s])]
+    :cljs
+    [(:require
+      [clojure.walk :as walk]
+      [medley.core :as m]
+      [metabase.mbql.schema :as mbql.s]
+      [metabase.mbql.util :as mbql.u]
+      [metabase.query-processor.error-type :as qp.error-type]
+      [metabase.shared.util.i18n :as i18n :refer [tru]]
+      [schema.core :as s])]))
 
 (def operators
   "Operator information source of truth for frontend and backend. This is annotated and changed and used on the frontend
