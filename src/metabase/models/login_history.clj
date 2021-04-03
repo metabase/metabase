@@ -47,15 +47,21 @@
     (contains? login-history :session_id) (assoc :active (boolean session-id))
     true                                  (dissoc :session_id)))
 
-(defn- first-login-for-user-on-this-device? [{user-id :user_id, device-id :device_id}]
-  (some-> (db/select LoginHistory :user_id user-id, :device_id device-id, {:limit 2})
+(defn- first-login-ever? [{user-id :user_id}]
+  (some-> (db/select [LoginHistory :id] :user_id user-id {:limit 2})
+          count
+          (= 1)))
+
+(defn- first-login-on-this-device? [{user-id :user_id, device-id :device_id}]
+  (some-> (db/select [LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
           count
           (= 1)))
 
 (defn- post-insert [{user-id :user_id, device-id :device_id, :as login-history}]
   (u/prog1 login-history
     (when (and (send-email-on-first-login-from-new-device)
-               (first-login-for-user-on-this-device? login-history))
+               (first-login-on-this-device? login-history)
+               (not (first-login-ever? login-history)))
       (try
         (email.messages/send-login-from-new-device-email! (human-friendly-info login-history))
         (catch Throwable e
