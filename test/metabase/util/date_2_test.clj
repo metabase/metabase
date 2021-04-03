@@ -194,8 +194,8 @@
             [locale expected] expected]
       (mt/with-user-locale locale
         (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))
-            (is (= expected
-                   (u.date/format-human-readable t)))))))))
+          (is (= expected
+                 (u.date/format-human-readable t))))))))
 
 (deftest format-sql-test
   (testing "LocalDateTime"
