@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [environ.core :as env]
+            [metabase.db :as mdb]
             [metabase.models :refer [LoginHistory User]]
             [metabase.models.login-history :as login-history]
             [metabase.models.setting.cache :as setting.cache]
@@ -54,7 +55,9 @@
                   (is (str/includes? message (format "We've Noticed a New Login, %s" first-name)))
                   (is (str/includes? message "We noticed a login from a device you don't usually use."))
                   (is (str/includes? message "Browser (Chrome/Windows) - Unknown location"))
-                  (is (str/includes? message "April 2 10:52 PM (GMT)")))))
+                  (if (= (mdb/db-type) :h2)
+                    (str/includes? message "April 2 3:52 PM (GMT-07:00)")
+                    (str/includes? message "April 2 10:52 PM (GMT)")))))
 
             (testing "don't send email on subsequent login from same device"
               (mt/reset-inbox!)
