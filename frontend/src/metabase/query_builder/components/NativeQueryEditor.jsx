@@ -411,10 +411,14 @@ export default class NativeQueryEditor extends Component {
   };
 
   _updateSize() {
-    const doc = this._editor.getSession().getDocument();
     const element = ReactDOM.findDOMNode(this.refs.resizeBox);
     // set the newHeight based on the line count, but ensure it's within
     // [MIN_HEIGHT_LINES, this.maxAutoSizeLines()]
+
+    if (!element) {
+      return;
+    }
+    const doc = this._editor.getSession().getDocument();
     const newHeight = getEditorLineHeight(
       Math.max(
         Math.min(doc.getLength(), this.maxAutoSizeLines()),
