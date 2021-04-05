@@ -186,7 +186,7 @@
 
 (defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
-  login history infomation as returned by `metabase.models.login-history/human-friendly-info`."
+  login history infomation as returned by `metabase.models.login-history/human-friendly-infos`."
   [{user-id :user_id, :keys [timestamp timezone], :as login-history}]
   (let [user-info    (db/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
         timestamp    (cond-> timestamp

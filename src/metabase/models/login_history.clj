@@ -14,22 +14,25 @@
                      java.time.format.TextStyle/SHORT_STANDALONE
                      (i18n/user-locale))))
 
-(defn human-friendly-info
-  "Return a human-friendly version of the info in a LoginHistory instance. Powers the login history API endpoint and
-  login on new device email.
+(defn human-friendly-infos
+  "Return human-friendly versions of the info in one or more LoginHistory instances. Powers the login history API
+  endpoint and login on new device email.
 
   This can potentially take a few seconds to complete, if the request to geocode the API request hangs for one reason
   or another -- keep that in mind when using this."
-  [history-item]
-  (let [{location-description :description, timezone :timezone} (request.u/geocode-ip-address (:ip_address history-item))]
-    (-> history-item
-        (assoc :location location-description
-               :timezone (timezone-display-name timezone))
-        (update :timestamp (fn [timestamp]
-                             (if (and timestamp timezone)
-                               (u.date/with-time-zone-same-instant timestamp timezone)
-                               timestamp)))
-        (update :device_description request.u/describe-user-agent))))
+  [history-items]
+  (let [ip-addresses (map :ip_address history-items)
+        ip->info     (request.u/geocode-ip-addresses ip-addresses)]
+    (for [history-item history-items
+          :let         [{location-description :description, timezone :timezone} (get ip->info (:ip_address history-item))]]
+      (-> history-item
+          (assoc :location location-description
+                 :timezone (timezone-display-name timezone))
+          (update :timestamp (fn [timestamp]
+                               (if (and timestamp timezone)
+                                 (u.date/with-time-zone-same-instant timestamp timezone)
+                                 timestamp)))
+          (update :device_description request.u/describe-user-agent)))))
 
 (defsetting send-email-on-first-login-from-new-device
   ;; no need to i18n -- this isn't user-facing
@@ -64,7 +67,8 @@
              (first-login-on-this-device? login-history)
              (not (first-login-ever? login-history)))
     (try
-      (email.messages/send-login-from-new-device-email! (human-friendly-info login-history))
+      (let [[info] (human-friendly-infos [login-history])]
+        (email.messages/send-login-from-new-device-email! info))
       (catch Throwable e
         (log/error e (trs "Error sending ''login from new device'' notification email")))))
   login-history)

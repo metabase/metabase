@@ -11,10 +11,10 @@
   ;; TODO -- should this only return history in some window, e.g. last 3 months? I think for auditing purposes it's
   ;; nice to be able to see every log in that's every happened with an account. Maybe we should page this, or page the
   ;; API endpoint?
-  (for [history-item (db/select [LoginHistory :timestamp :session_id :device_description :ip_address]
-                                :user_id (u/the-id user-or-id)
-                                {:order-by [[:timestamp :desc]]})]
-    (login-history/human-friendly-info history-item)))
+  (login-history/human-friendly-infos
+   (db/select [LoginHistory :timestamp :session_id :device_description :ip_address]
+              :user_id (u/the-id user-or-id)
+              {:order-by [[:timestamp :desc]]})))
 
 (api/defendpoint GET "/current"
   "Fetch recent logins for the current user."

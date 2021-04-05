@@ -50,33 +50,34 @@
     nil
     nil))
 
-(deftest geocode-ip-address-test
-  (are [ip-address expected] (= expected (request.u/geocode-ip-address ip-address))
-    "8.8.8.8"
-    {:description "United States", :timezone (t/zone-id "America/Chicago")}
+(deftest geocode-ip-addresses-test
+  (are [ip-addresses expected] (= expected (request.u/geocode-ip-addresses ip-addresses))
+    ["8.8.8.8"]
+    {"8.8.8.8" {:description "United States", :timezone (t/zone-id "America/Chicago")}}
 
     ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
-    "185.233.100.23"
-    {:description "Begles, Nouvelle-Aquitaine, France", :timezone (t/zone-id "Europe/Paris")}
+    ["185.233.100.23"]
+    {"185.233.100.23" {:description "Begles, Nouvelle-Aquitaine, France", :timezone (t/zone-id "Europe/Paris")}}
 
-    "127.0.0.1"
-    {:description "Unknown location", :timezone nil}
+    ["127.0.0.1"]
+    {"127.0.0.1" {:description "Unknown location", :timezone nil}}
 
-    "0:0:0:0:0:0:0:1"
-    {:description "Unknown location", :timezone nil}
+    ["0:0:0:0:0:0:0:1"]
+    {"0:0:0:0:0:0:0:1" {:description "Unknown location", :timezone nil}}
 
-    ;; store.metabase.com
-    "52.206.149.9"
-    {:description "Ashburn, Virginia, United States", :timezone (t/zone-id "America/New_York")}
+    ;; multiple addresses at once
+    ;; store.metabase.com, Google DNS
+    ["52.206.149.9" "2001:4860:4860::8844"]
+    {"52.206.149.9"         {:description "Ashburn, Virginia, United States", :timezone (t/zone-id "America/New_York")}
+     "2001:4860:4860::8844" {:description "United States", :timezone (t/zone-id "America/Chicago")}}
 
-    ;; Google DNS
-    "2001:4860:4860::8844"
-    {:description "United States", :timezone (t/zone-id "America/Chicago")}
-
-    "wow"
+    ["wow"]
     nil
 
-    "   "
+    ["   "]
+    nil
+
+    []
     nil
 
     nil

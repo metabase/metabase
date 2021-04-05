@@ -2,7 +2,6 @@
   "Utility functions for Ring requests."
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
@@ -137,24 +136,29 @@
   reason or another."
   5000)
 
-;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
-(defn- geocode-ip-address* [ip-address]
-  (when-not (str/blank? ip-address)
-    (try
-      (let [url  (format "https://get.geojs.io/v1/ip/geo/%s.json" ip-address)
-            info (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
-                                    :socket-timeout     gecode-ip-address-timeout-ms
-                                    :connection-timeout gecode-ip-address-timeout-ms})
-                     :body
-                     (json/parse-string true))]
-        {:description (or (describe-location info)
-                          "Unknown location")
-         :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))})
-      (catch Throwable e
-        (log/error e (trs "Error geocoding IP addresss"))
-        nil))))
+(def ^:private IPAddress
+  (s/constrained su/NonBlankString u/ip-address? "valid IP address string"))
 
-(def ^{:arglists '([ip-address])} geocode-ip-address
-  "Geocode an IP address, returning a human-friendly `:description` of the location and a `java.time.ZoneId`
-  `:timezone`, if that information is available."
-  (memoize/ttl geocode-ip-address* :ttl/threshold (u/minutes->ms 30)))
+;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
+(s/defn geocode-ip-addresses :- (s/maybe {IPAddress {:description su/NonBlankString
+                                                     :timezone    (s/maybe java.time.ZoneId)}})
+  "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
+  `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."
+  [ip-addresses :- [s/Str]]
+  (let [ip-addresses (set (filter u/ip-address? ip-addresses))]
+    (when (seq ip-addresses)
+      (try
+        (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
+          (try
+            (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+                                              :socket-timeout     gecode-ip-address-timeout-ms
+                                              :connection-timeout gecode-ip-address-timeout-ms})
+                               :body
+                               (json/parse-string true))]
+              (into {} (for [info response]
+                         [(:ip info) {:description (or (describe-location info)
+                                                       "Unknown location")
+                                      :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+            (catch Throwable e
+              (log/error e (trs "Error geocoding IP addresses") {:url url})
+              nil)))))))
