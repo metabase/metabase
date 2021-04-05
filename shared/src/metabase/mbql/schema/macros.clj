@@ -30,6 +30,10 @@
                                   [clause-name (or (:clause-name (meta clause-name)) clause-name)])]
     `(def ~(vary-meta symb-name assoc
                       :clause-name (keyword clause-name)
+                      :clause-form (into [(keyword clause-name)]
+                                         (mapcat (fn [[arg schema]]
+                                                   [(keyword arg) `'~schema])
+                                                 (partition 2 arg-names-and-schemas)))
                       :doc         (format "Schema for a valid %s clause." clause-name))
        (metabase.mbql.schema.helpers/clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))))
 
