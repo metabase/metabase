@@ -259,8 +259,8 @@
     (is (nil? (u/or-with even? 1 3 5)))))
 
 (deftest ip-address?-test
-  (mt/are+ [x expected] (is (= expected
-                               (u/ip-address? x)))
+  (mt/are+ [x expected] (= expected
+                           (u/ip-address? x))
     "8.8.8.8"              true
     "185.233.100.23"       true
     "500.1.1.1"            false
