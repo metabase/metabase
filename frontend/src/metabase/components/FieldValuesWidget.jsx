@@ -175,7 +175,10 @@ export class FieldValuesWidget extends Component {
   }
 
   shouldList() {
-    return this.props.fields.every(field => field.has_field_values === "list");
+    return (
+      !this.props.disableSearch &&
+      this.props.fields.every(field => field.has_field_values === "list")
+    );
   }
 
   hasList() {
