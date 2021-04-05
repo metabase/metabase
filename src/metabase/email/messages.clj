@@ -201,7 +201,7 @@
         message-body (stencil/render-file "metabase/email/login_from_new_device"
                        context)]
     (email/send-message!
-      :subject      (trs "We''ve Noticed a New Login, {0}" (:first-name user-info))
+      :subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
       :recipients   [(:email user-info)]
       :message-type :html
       :message      message-body)))

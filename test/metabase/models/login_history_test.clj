@@ -43,7 +43,7 @@
             (is (schema= {(s/eq email)
                           [{:from    su/Email
                             :to      (s/eq [email])
-                            :subject (s/eq (format "We've Noticed a New Login, %s" first-name))
+                            :subject (s/eq (format "We've Noticed a New Metabase Login, %s" first-name))
                             :body    [(s/one {:type    (s/eq "text/html; charset=utf-8")
                                               :content s/Str}
                                              "HTML body")]}]}
@@ -52,8 +52,8 @@
               (testing (format "\nMessage = %s" (pr-str message))
                 (is (string? message))
                 (when (string? message)
-                  (is (str/includes? message (format "We've Noticed a New Login, %s" first-name)))
-                  (is (str/includes? message "We noticed a login from a device you don't usually use."))
+                  (is (str/includes? message "We've noticed a new login on your Metabase account."))
+                  (is (str/includes? message "We noticed a login on your Metabase account from a new device."))
                   (is (str/includes? message "Browser (Chrome/Windows) - Unknown location"))
                   (if (= (mdb/db-type) :h2)
                     (str/includes? message "April 2 3:52 PM (GMT-07:00)")
