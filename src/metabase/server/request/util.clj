@@ -6,13 +6,13 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.config :as config]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [user-agent :as user-agent]
-            [metabase.config :as config]))
+            [user-agent :as user-agent]))
 
 (defn api-call?
   "Is this ring request an API call (does path start with `/api`)?"
@@ -131,12 +131,20 @@
   (when-let [info (not-empty (remove str/blank? [city region country]))]
     (str/join ", " info)))
 
+(def ^:private gecode-ip-address-timeout-ms
+  "Max amount of time to wait for a IP address geocoding request to complete. We send emails on the first login from a
+  new device using this information, so the timeout has to be fairly short in case the request is hanging for one
+  reason or another."
+  5000)
+
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
 (defn- geocode-ip-address* [ip-address]
   (when-not (str/blank? ip-address)
     (try
       (let [url  (format "https://get.geojs.io/v1/ip/geo/%s.json" ip-address)
-            info (-> (http/get url {:headers {"User-Agent" config/mb-app-id-string}})
+            info (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+                                    :socket-timeout     gecode-ip-address-timeout-ms
+                                    :connection-timeout gecode-ip-address-timeout-ms})
                      :body
                      (json/parse-string true))]
         {:description (or (describe-location info)
