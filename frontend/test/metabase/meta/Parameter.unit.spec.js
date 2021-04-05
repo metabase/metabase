@@ -168,8 +168,9 @@ describe("metabase/meta/Parameter", () => {
       isZipCode: () => false,
       isCountry: () => false,
       isNumber: () => false,
+      isString: () => false,
     };
-    it("should relevantly typed options for date field", () => {
+    it("should return relevantly typed options for date field", () => {
       const dateField = {
         ...field,
         isDate: () => true,
@@ -181,15 +182,15 @@ describe("metabase/meta/Parameter", () => {
       ).toBe(true);
     });
 
-    it("should relevantly typed options for location field", () => {
-      const countryField = {
+    it("should return relevantly typed options for location field", () => {
+      const stringField = {
         ...field,
-        isCountry: () => true,
+        isString: () => true,
       };
-      const availableOptions = parameterOptionsForField(countryField);
+      const availableOptions = parameterOptionsForField(stringField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("location")),
+          availableOptions.every(option => option.type.startsWith("string")),
       ).toBe(true);
     });
   });

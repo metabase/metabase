@@ -193,9 +193,9 @@ export function getOperatorDisplayName(option, operatorType, sectionName) {
 // OR it is a PARAMETER_OPTION entry. In those situations,
 // a `type` will exist like "category" or "location/city" or "string/="
 // we split on the `/` and take the first entry to get the field type
-function getParameterType(parameterOrParameterOption) {
-  const { sectionId, type } = parameterOrParameterOption;
-  return sectionId || splitType(type)[0];
+function getParameterType(parameter) {
+  const { sectionId } = parameter;
+  return sectionId || splitType(parameter)[0];
 }
 
 function getParameterSubType(parameter) {
@@ -493,8 +493,8 @@ export function parameterToMBQLFilter(
   }
 }
 
-export function getParameterIconName(parameterType: ?ParameterType) {
-  const [type] = splitType(parameterType);
+export function getParameterIconName(parameter: ?Parameter) {
+  const type = getParameterType(parameter);
   switch (type) {
     case "date":
       return "calendar";
