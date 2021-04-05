@@ -534,6 +534,56 @@ describe("scenarios > question > notebook", () => {
       // Make sure at least one card is rendered
       cy.get(".DashCard");
     });
+
+    it.skip("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
+      cy.createQuestion({
+        name: "15446",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+              alias: "Products",
+            },
+          ],
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.visit(`/question/${QUESTION_ID}/notebook`);
+      });
+      cy.findByText("Pick a column to group by").click();
+      // In the first popover we'll choose the breakout method
+      popover().within(() => {
+        cy.findByText("User").click();
+        cy.findByPlaceholderText("Find...").type("cr");
+        cy.findByText("Created At")
+          .closest(".List-item")
+          .findByText("by month")
+          .click({ force: true });
+      });
+      // The second popover shows up and offers binning options
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("Hour of Day").scrollIntoView();
+          // This is an implicit assertion - test fails when there is more than one string when using `findByText` instead of `findAllByText`
+          cy.findByText("Minute").click();
+        });
+      // Given that the previous step passes, we should now see this in the UI
+      cy.findByText("User → Created At: Minute");
+    });
   });
 
   describe("nested", () => {
