@@ -349,5 +349,12 @@
       (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
         (do-google-auth request)))))
 
+(defn- +log-all-request-failures [handler]
+  (fn [request respond raise]
+    (try
+      (handler request respond raise)
+      (catch Throwable e
+        (log/error e (trs "Authentication endpoint error"))
+        (throw e)))))
 
-(api/define-routes)
+(api/define-routes +log-all-request-failures)

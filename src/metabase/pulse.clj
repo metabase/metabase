@@ -82,7 +82,7 @@
 (defn execute-dashboard
   "Execute all the cards in a dashboard for a Pulse"
   [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
-  (let [dashboard-id (u/get-id dashboard-or-id)
+  (let [dashboard-id (u/the-id dashboard-or-id)
         dashboard (Dashboard :id dashboard-id)]
     (for [dashcard (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])]
       (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard)))))

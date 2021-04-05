@@ -1,4 +1,9 @@
-import { restore, popover, modal } from "__support__/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  visitQuestionAdhoc,
+} from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 import { USER_GROUPS } from "__support__/cypress_data";
 
@@ -461,6 +466,106 @@ describe("scenarios > question > native", () => {
           cy.findByText("Showing 1 row");
         });
       });
+    });
+  });
+
+  it.skip("field id should update when database source is changed (metabase#14145)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+    cy.signInAsAdmin();
+    // Add another H2 sample dataset DB
+    cy.request("POST", "/api/database", {
+      engine: "h2",
+      name: "Sample2",
+      details: {
+        db:
+          "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+      },
+      auto_run_queries: true,
+      is_full_sync: true,
+      schedules: {},
+    });
+
+    cy.createNativeQuestion({
+      name: "14145",
+      native: {
+        query: "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}",
+        "template-tags": {
+          FILTER: {
+            id: "774521fb-e03f-3df1-f2ae-e952c97035e3",
+            name: "FILTER",
+            "display-name": "Filter",
+            type: "dimension",
+            dimension: ["field-id", PRODUCTS.CATEGORY],
+            "widget-type": "category",
+            default: null,
+          },
+        },
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+    // Change the source from "Sample Dataset" to the other database
+    cy.findByText(/Open Editor/i).click();
+    cy.get(".GuiBuilder-data")
+      .as("source")
+      .contains("Sample Dataset")
+      .click();
+    cy.findByText("Sample2").click();
+    // First assert on the UI
+    cy.icon("variable").click();
+    cy.findByText(/Field to map to/)
+      .siblings("a")
+      .contains("Category");
+    // Rerun the query and assert on the dimension (field-id) that didn't change
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").then(xhr => {
+      const { dimension } = xhr.response.body.json_query.native[
+        "template-tags"
+      ].FILTER;
+      expect(dimension).not.to.contain(PRODUCTS.CATEGORY);
+    });
+  });
+
+  it.skip("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    visitQuestionAdhoc({
+      name: "15460",
+      dataset_query: {
+        database: 1,
+        native: {
+          query:
+            "select p.created_at, products.category\nfrom products\nleft join products p on p.id=products.id\nwhere {{category}}\n",
+          "template-tags": {
+            category: {
+              id: "d98c3875-e0f1-9270-d36a-5b729eef938e",
+              name: "category",
+              "display-name": "Category",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "category/=",
+              default: null,
+            },
+          },
+        },
+        type: "native",
+      },
+    });
+
+    // Set the filter value
+    cy.get("fieldset")
+      .contains("Category")
+      .click();
+    popover()
+      .findByText("Doohickey")
+      .click();
+    cy.findByRole("button", { name: "Add filter" }).click();
+    // Rerun the query
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").wait("@dataset");
+    cy.get(".Visualization").within(() => {
+      cy.findAllByText("Doohickey");
+      cy.findAllByText("Gizmo").should("not.exist");
     });
   });
 });

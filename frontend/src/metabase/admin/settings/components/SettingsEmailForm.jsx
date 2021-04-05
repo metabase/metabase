@@ -78,9 +78,9 @@ export default class SettingsEmailForm extends Component {
           {...this.props}
           updateSettings={this.props.updateEmailSettings}
           disable={sendingEmail !== "default"}
-          renderExtraButtons={({ disabled, valid, dirty, submitting }) => {
+          renderExtraButtons={({ disabled, valid, pristine, submitting }) => {
             return [
-              valid && !dirty && submitting === "default" ? (
+              valid && pristine && submitting === "default" ? (
                 <Button
                   mr={1}
                   success={sendingEmail === "success"}

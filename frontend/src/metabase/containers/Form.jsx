@@ -66,6 +66,7 @@ type FormObject = {
   initial: () => FormValues,
   normalize: (values: FormValues) => FormValues,
   validate: (values: FormValues, props: FormProps) => FormErrors,
+  disablePristineSubmit?: boolean,
 };
 
 type FormProps = {
@@ -77,7 +78,10 @@ type Props = {
   initialValues?: ?FormValues,
   formName?: string,
   onSubmit: (values: FormValues) => Promise<any>,
+  onSubmitSuccess: (action: any) => Promise<any>,
   formComponent?: React.Component,
+  dispatch: Function,
+  values: FormValues,
 };
 
 type State = {
@@ -240,7 +244,6 @@ export default class Form extends React.Component {
       Object.keys(prevState.inlineFields),
     );
     if (newFields.length > 0) {
-      // $FlowFixMe: dispatch provided by connect
       this.props.dispatch(
         initialize(this.props.formName, this._getInitialValues(), newFields),
       );
@@ -317,8 +320,14 @@ export default class Form extends React.Component {
     }
   };
 
+  _handleSubmitSuccess = async (action: any) => {
+    await this.props.onSubmitSuccess(action);
+    this.props.dispatch(
+      initialize(this.props.formName, this.props.values, this._getFieldNames()),
+    );
+  };
+
   _handleChangeField = (fieldName: FormFieldName, value: FormValue) => {
-    // $FlowFixMe: dispatch provided by @connect
     return this.props.dispatch(change(this.props.formName, fieldName, value));
   };
 
@@ -339,6 +348,7 @@ export default class Form extends React.Component {
         initialValues={initialValues}
         validate={this._validate}
         onSubmit={this._onSubmit}
+        onSubmitSuccess={this._handleSubmitSuccess}
         onChangeField={this._handleChangeField}
         // HACK: _state is a mutable object so we can pass by reference into the ReduxFormComponent
         submitState={this._state}

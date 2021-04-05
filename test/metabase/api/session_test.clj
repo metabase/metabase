@@ -62,7 +62,17 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
                         s/Keyword s/Any}
-                       (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))))
+                       (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+    (testing "failure should log an error(#14317)"
+      (mt/with-temp User [user]
+        (is (schema= [(s/one (s/eq :error)
+                             "log type")
+                      (s/one clojure.lang.ExceptionInfo
+                             "exception")
+                      (s/one (s/eq "Authentication endpoint error")
+                             "log message")]
+                     (first (mt/with-log-messages-for-level :error
+                              (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))))))))
 
 (deftest login-validation-test
   (testing "POST /api/session"
@@ -93,10 +103,19 @@
                       :username))]
       ;; attempt to log in 10 times
       (dorun (repeatedly 10 login))
-      (is (re= #"^Too many attempts! You must wait 1\d seconds before trying again\.$"
-               (login))
-          "throttling should now be triggered")
-      (is (re= #"^Too many attempts! You must wait 4\d seconds before trying again\.$"
+      (testing "throttling should now be triggered"
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                 (login))))
+      (testing "Error should be logged (#14317)"
+        (is (schema= [(s/one (s/eq :error)
+                             "log type")
+                      (s/one clojure.lang.ExceptionInfo
+                             "exception")
+                      (s/one (s/eq "Authentication endpoint error")
+                             "log message")]
+                     (first (mt/with-log-messages-for-level :error
+                              (login))))))
+      (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
           "Trying to login immediately again should still return throttling error"))))
 
