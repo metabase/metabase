@@ -569,7 +569,7 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it.skip("should run with the default field filter set (metabase#15444)", () => {
+  it("should run with the default field filter set (metabase#15444)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     cy.visit("/");
