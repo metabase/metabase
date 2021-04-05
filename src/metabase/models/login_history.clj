@@ -58,14 +58,13 @@
           (= 1)))
 
 (defn- post-insert [{user-id :user_id, device-id :device_id, :as login-history}]
-  (u/prog1 login-history
-    (when (and (send-email-on-first-login-from-new-device)
-               (first-login-on-this-device? login-history)
-               (not (first-login-ever? login-history)))
-      (try
-        (email.messages/send-login-from-new-device-email! (human-friendly-info login-history))
-        (catch Throwable e
-          (log/error e (trs "Error sending ''login from new device'' notification email"))))))
+  (when (and (send-email-on-first-login-from-new-device)
+             (first-login-on-this-device? login-history)
+             (not (first-login-ever? login-history)))
+    (try
+      (email.messages/send-login-from-new-device-email! (human-friendly-info login-history))
+      (catch Throwable e
+        (log/error e (trs "Error sending ''login from new device'' notification email")))))
   login-history)
 
 (defn- pre-update [login-history]
