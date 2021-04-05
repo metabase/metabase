@@ -110,11 +110,8 @@ function quoteString(string, character) {
   } else if (character === "'") {
     return swapQuotes(JSON.stringify(swapQuotes(string)));
   } else if (character === "[") {
-    // TODO: escape brackets
-    if (string.match(/\[|\]/)) {
-      throw new Error("String currently can't contain brackets: " + string);
-    }
-    return `[${string}]`;
+    const newString = string.replace(/\[/g, '\[').replace(/\]/g, '\]')
+    return `[${newString}]`;
   } else if (character === "") {
     // unquoted
     return string;
