@@ -140,7 +140,7 @@
       (perms/grant-native-readwrite-permissions! (group/all-users) (data/id))
       ;; this is not actually a valid query
       (is (schema= {:native       (s/eq {:query  (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') "
-                                                      "AS \"ID\" FROM \"PUBLIC\".\"VENUES\" LIMIT 1048576")
+                                                      "AS \"ID\" FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
                                          :params nil})
                     :preprocessed (s/pred map?)
                     s/Any         s/Any}

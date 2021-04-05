@@ -62,9 +62,9 @@
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
-      (is (= {:query (str "SELECT TOP 1048576 \"source\".\"name\" AS \"name\" "
+      (is (= {:query (str "SELECT TOP 1048575 \"source\".\"name\" AS \"name\" "
                           "FROM ("
-                          "SELECT TOP 1048576 "
+                          "SELECT TOP 1048575 "
                           "\"dbo\".\"venues\".\"name\" AS \"name\" "
                           "FROM \"dbo\".\"venues\" "
                           "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
@@ -112,7 +112,7 @@
       (mt/with-everything-store
         (is (= {:query  (str "SELECT \"source\".\"name\" AS \"name\" "
                              "FROM ("
-                             "SELECT TOP 1048576 "
+                             "SELECT TOP 1048575 "
                              "\"dbo\".\"venues\".\"name\" AS \"name\" "
                              "FROM \"dbo\".\"venues\" "
                              "ORDER BY \"dbo\".\"venues\".\"id\" ASC"

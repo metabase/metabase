@@ -909,7 +909,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Row totals");
     });
 
-    it.skip("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
+    it("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {

@@ -351,8 +351,10 @@ class SharingSidebar extends React.Component {
     }
 
     if (editingMode === "new-pulse" || pulses.length === 0) {
-      const emailConfigured = formInput.channels.email.configured;
-      const slackConfigured = formInput.channels.slack.configured;
+      const { configured: emailConfigured = false } =
+        formInput.channels.email || {};
+      const { configured: slackConfigured = false } =
+        formInput.channels.slack || {};
 
       return (
         <NewPulseSidebar

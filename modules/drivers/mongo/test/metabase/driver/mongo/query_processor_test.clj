@@ -171,7 +171,7 @@
                   {"$sort" {"_id" 1}}
                   {"$project" {"_id" false, "date~~~day" "$_id.date~~~day"}}
                   {"$sort" {"date~~~day" 1}}
-                  {"$limit" 1048576}]
+                  {"$limit" 1048575}]
                  (:query
                   (qp/query->native
                    (mt/mbql-query checkins

@@ -22,6 +22,8 @@
         col-names (volatile! nil)]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
+        ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
+        ;; probably going to be parsed programatically
         (vreset! col-names (mapv (some-fn :display_name :name) cols))
         (.write writer "[\n"))
 

@@ -4,8 +4,6 @@
 
 FROM node:12.20.1-alpine as frontend
 
-ARG MB_EDITION=oss
-
 WORKDIR /app/source
 
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
@@ -19,8 +17,6 @@ RUN yarn install --frozen-lockfile
 ###################
 
 FROM adoptopenjdk/openjdk11:alpine as backend
-
-ARG MB_EDITION=oss
 
 WORKDIR /app/source
 

@@ -12,6 +12,7 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :as hydrate :refer [hydrate]]))
 
@@ -665,8 +666,9 @@
                (mt/user-http-request :crowberto :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
 
       (testing " Attempting to reactivate an already active user should fail"
-        (is (= {:message "Not able to reactivate an active user"}
-               (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
+        (is (schema= {:message  (s/eq "Not able to reactivate an active user")
+                      s/Keyword s/Any}
+                     (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
 
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")

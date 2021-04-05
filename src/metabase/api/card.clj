@@ -10,6 +10,7 @@
             [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -188,10 +189,24 @@
       (qp.async/result-metadata-for-query-async query))))
 
 (defn check-data-permissions-for-query
-  "Check that we have *data* permissions to run the QUERY in question."
+  "Make sure the Current User has the appropriate *data* permissions to run `query`. We don't want Users saving Cards
+  with queries they wouldn't be allowed to run!"
   [query]
   {:pre [(map? query)]}
-  (api/check-403 (query-perms/can-run-query? query)))
+  (when-not (query-perms/can-run-query? query)
+    (let [required-perms (try
+                           (query-perms/perms-set query :throw-exceptions? true)
+                           (catch Throwable e
+                             e))]
+      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                      {:status-code    403
+                       :query          query
+                       :required-perms (if (instance? Throwable required-perms)
+                                         :error
+                                         required-perms)
+                       :actual-perms   @api/*current-user-permissions-set*}
+                      (when (instance? Throwable required-perms)
+                        required-perms))))))
 
 (defn- save-new-card-async!
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
@@ -258,8 +273,9 @@
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates card-updates]
-  (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-    (check-data-permissions-for-query (:dataset_query card-updates))))
+  (let [card-updates (m/update-existing card-updates :dataset_query mbql.normalize/normalize)]
+    (when (api/column-will-change? :dataset_query card-before-updates card-updates)
+      (check-data-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-unarchive
   "When unarchiving a Card, make sure we have data permissions for the Card query before doing so."
