@@ -157,39 +157,45 @@
 (deftest format-human-readable-test
   ;; strings are localized slightly differently on Java 8.
   (let [java-8? (str/starts-with? (System/getProperty "java.version") "1.8")]
-    (doseq [[t expected] {#t "2021-04-02T14:42:09.524392-07:00[US/Pacific]"
-                          {:en-US "April 2 2:42 PM (Pacific Daylight Time)"
+    (doseq [[t expected] {#t "2021-04-02T14:42:09.524392-07:00[US/Pacific]" ; ZonedDateTime
+                          {:en-US (if java-8?
+                                    "April 2, 2021 2:42:09 PM PDT"
+                                    "April 2, 2021 at 2:42:09 PM PDT")
                            :es-MX (if java-8?
-                                    "abril 2 2:42 PM (Hora de verano del Pacífico)"
-                                    "abril 2 2:42 p. m. (hora de verano del Pacífico)")}
+                                    "2 de abril de 2021 02:42:09 PM PDT"
+                                    "2 de abril de 2021 a las 14:42:09 PDT")}
 
-                          #t "2021-04-02T14:42:09.524392-07:00"
-                          {:en-US "April 2 2:42 PM (GMT-07:00)"
+                          #t "2021-04-02T14:42:09.524392-07:00" ; OffsetDateTime
+                          {:en-US (if java-8?
+                                    "April 2, 2021 2:42:09 PM (GMT-07:00)"
+                                    "April 2, 2021, 2:42:09 PM (GMT-07:00)")
                            :es-MX (if java-8?
-                                    "abril 2 2:42 PM (GMT-07:00)"
-                                    "abril 2 2:42 p. m. (GMT-07:00)")}
+                                    "2 de abril de 2021 02:42:09 PM (GMT-07:00)"
+                                    "2 de abril de 2021 14:42:09 (GMT-07:00)")}
 
-                          #t "2021-04-02T14:42:09.524392"
-                          {:en-US "April 2 2:42 PM"
+                          #t "2021-04-02T14:42:09.524392" ; LocalDateTime
+                          {:en-US (if java-8?
+                                    "April 2, 2021 2:42:09 PM"
+                                    "April 2, 2021, 2:42:09 PM")
                            :es-MX (if java-8?
-                                    "abril 2 2:42 PM"
-                                    "abril 2 2:42 p. m.")}
+                                    "2 de abril de 2021 02:42:09 PM"
+                                    "2 de abril de 2021 14:42:09")}
 
-                          #t "2021-04-02"
-                          {:en-US "April 2"
-                           :es-MX "abril 2"}
+                          #t "2021-04-02" ; LocalDate
+                          {:en-US "April 2, 2021"
+                           :es-MX "2 de abril de 2021"}
 
-                          #t "14:42:09.524392-07:00"
-                          {:en-US "2:42 PM (GMT-07:00)"
+                          #t "14:42:09.524392-07:00" ; OffsetTime
+                          {:en-US "2:42:09 PM (GMT-07:00)"
                            :es-MX (if java-8?
-                                    "2:42 PM (GMT-07:00)"
-                                    "2:42 p. m. (GMT-07:00)")}
+                                    "02:42:09 PM (GMT-07:00)"
+                                    "14:42:09 (GMT-07:00)")}
 
-                          #t "14:42:09.524392"
-                          {:en-US "2:42 PM"
+                          #t "14:42:09.524392" ; LocalTime
+                          {:en-US "2:42:09 PM"
                            :es-MX (if java-8?
-                                    "2:42 PM"
-                                    "2:42 p. m.")}}
+                                    "02:42:09 PM"
+                                    "14:42:09")}}
             [locale expected] expected]
       (mt/with-user-locale locale
         (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))

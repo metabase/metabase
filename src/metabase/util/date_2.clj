@@ -11,7 +11,9 @@
             [metabase.util.i18n :as i18n :refer [tru]]
             [potemkin.types :as p.types]
             [schema.core :as s])
-  (:import [java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period ZonedDateTime]
+  (:import [java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period
+            ZonedDateTime]
+           [java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle]
            [java.time.temporal Temporal TemporalAdjuster WeekFields]
            org.threeten.extra.PeriodDuration))
 
@@ -96,24 +98,40 @@
   ;; replace the `T` with a space. Easy!
   (str/replace-first (format t) #"(\d{2})T(\d{2})" "$1 $2"))
 
+(def ^:private ^{:arglists '(^java.time.format.DateTimeFormatter [klass])} class->human-readable-formatter
+  {LocalDate      (DateTimeFormatter/ofLocalizedDate FormatStyle/LONG)
+   LocalTime      (DateTimeFormatter/ofLocalizedTime FormatStyle/MEDIUM)
+   LocalDateTime  (.toFormatter
+                   (doto (DateTimeFormatterBuilder.)
+                     (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM)))
+   OffsetTime     (.toFormatter
+                   (doto (DateTimeFormatterBuilder.)
+                     (.append (DateTimeFormatter/ofLocalizedTime FormatStyle/MEDIUM))
+                     (.appendPattern " (OOOO)")))
+   OffsetDateTime (.toFormatter
+                   (doto (DateTimeFormatterBuilder.)
+                     (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM)
+                     (.appendPattern " (OOOO)")))
+   ZonedDateTime  (DateTimeFormatter/ofLocalizedDateTime FormatStyle/LONG)})
+
 (defn format-human-readable
   "Format a temporal value `t` in a human-friendly way for `locale` (by default, the current User's locale).
 
     (format-human-readable #t \"2021-04-02T14:42:09.524392-07:00[US/Pacific]\" \"es-MX\")
-    ;; -> \"abril 2 2:42 PM (Hora de verano del Pacífico)\""
-  ;; TODO -- need to figure out how to have this do 12-hour vs 24-hour time depending on Locale.
+    ;; -> \"2 de abril de 2021 02:42:09 PM PDT\""
   ([t]
    (format-human-readable t (i18n/user-locale)))
 
   ([t locale]
-   (let [format-str (condp instance? t
-                      LocalDate      "MMMM d"
-                      LocalTime      "h:mm a"
-                      LocalDateTime  "MMMM d h:mm a"
-                      OffsetTime     "h:mm a (OOOO)"
-                      OffsetDateTime "MMMM d h:mm a (OOOO)"
-                      ZonedDateTime  "MMMM d h:mm a (zzzz)")]
-     (format format-str t locale))))
+   (when t
+     (if-let [formatter (some (fn [[klass formatter]]
+                                (when (instance? klass t)
+                                  formatter))
+                              class->human-readable-formatter)]
+       (format formatter t locale)
+       (throw (ex-info (tru "Don''t know how to format a {0} as a human-readable date/time"
+                            (some-> t class .getCanonicalName))
+                       {:t t}))))))
 
 (def ^:private add-units
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})
