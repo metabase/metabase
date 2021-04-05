@@ -123,6 +123,7 @@
                                            [:template-tag
                                             [:field (field->name (:field v) false)
                                              {:base-type (get-in v [:field :base_type])}]])
+                                    params/throw-if-field-filter-operators-not-enabled
                                     ops/to-clause
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
                                     ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that

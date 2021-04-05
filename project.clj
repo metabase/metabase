@@ -237,6 +237,7 @@
 
     :env
     {:mb-run-mode       "dev"
+     :mb-field-filter-operators-enabled? true
      :mb-test-setting-1 "ABCDEFG"}
 
     :jvm-opts
@@ -330,6 +331,7 @@
     {:mb-run-mode     "test"
      :mb-db-in-memory "true"
      :mb-jetty-join   "false"
+     :mb-field-filter-operators-enabled? true
      :mb-api-key      "test-api-key"
      ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
      ;; they won't stomp on each other
