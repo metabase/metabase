@@ -145,8 +145,12 @@ export default class SelectPicker extends Component {
             </ul>
           ) : (
             <div className="flex flex-wrap py1">
-              {validOptions.map((option, index) => (
-                <div className="half" style={{ padding: "0.15em" }}>
+              {validOptions.map(option => (
+                <div
+                  key={option.key}
+                  className="half"
+                  style={{ padding: "0.15em" }}
+                >
                   <button
                     style={{ height: "95px" }}
                     className={cx(

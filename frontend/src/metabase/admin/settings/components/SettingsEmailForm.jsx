@@ -78,9 +78,9 @@ export default class SettingsEmailForm extends Component {
           {...this.props}
           updateSettings={this.props.updateEmailSettings}
           disable={sendingEmail !== "default"}
-          renderExtraButtons={({ disabled, valid, pristine, submitting }) => {
-            return [
-              valid && pristine && submitting === "default" ? (
+          renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
+            <React.Fragment>
+              {valid && pristine && submitting === "default" ? (
                 <Button
                   mr={1}
                   success={sendingEmail === "success"}
@@ -89,16 +89,16 @@ export default class SettingsEmailForm extends Component {
                 >
                   {SEND_TEST_BUTTON_STATES[sendingEmail]}
                 </Button>
-              ) : null,
+              ) : null}
               <Button
                 mr={1}
                 disabled={disabled}
                 onClick={() => this.clearEmailSettings()}
               >
                 {t`Clear`}
-              </Button>,
-            ];
-          }}
+              </Button>
+            </React.Fragment>
+          )}
         />
         {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
           <MarginHostingCTA tagline={t`Have your email configured for you.`} />

@@ -59,14 +59,14 @@ export default class ExpressionEditorSuggestions extends React.Component {
         sizeToFit
       >
         <ul className="pb1" style={{ minWidth: 150, overflowY: "auto" }}>
-          {suggestions.map((suggestion, i) =>
+          {suggestions.map((suggestion, i) => (
             // insert section title. assumes they're sorted by type
-            [
-              (i === 0 || suggestion.type !== suggestions[i - 1].type) && (
+            <React.Fragment key={i}>
+              {(i === 0 || suggestion.type !== suggestions[i - 1].type) && (
                 <li className="mx2 h6 text-uppercase text-bold text-medium py1 pt2">
                   {SUGGESTION_SECTION_NAMES[suggestion.type] || suggestion.type}
                 </li>
-              ),
+              )}
               <li
                 ref={r => {
                   if (i === highlightedIndex) {
@@ -100,9 +100,9 @@ export default class ExpressionEditorSuggestions extends React.Component {
                 ) : (
                   suggestion.name
                 )}
-              </li>,
-            ],
-          )}
+              </li>
+            </React.Fragment>
+          ))}
         </ul>
       </Popover>
     );

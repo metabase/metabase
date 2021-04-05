@@ -21,10 +21,11 @@ const DetailPane = ({ name, description, extra, values }) => (
         <h5 className="text-uppercase mt4 mb2">{t`Sample values`}</h5>
         <Card>
           <ul>
-            {values.map((value, i) => (
+            {values.map((value, index) => (
               <li
+                key={index}
                 className={cx("p1 text-wrap", {
-                  "border-bottom": i < values.length - 1,
+                  "border-bottom": index < values.length - 1,
                 })}
               >
                 {value[0]}

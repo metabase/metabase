@@ -348,8 +348,9 @@ export default class AccordionList extends Component {
             ...style,
           }}
         >
-          {rows.map(row => (
+          {rows.map((row, index) => (
             <AccordionListCell
+              key={index}
               {...this.props}
               row={row}
               sections={sections}

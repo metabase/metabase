@@ -189,8 +189,8 @@ const PermissionsCell = ({
 
 const ActionsList = connect()(({ actions, dispatch }) => (
   <ul className="border-top">
-    {actions.map(action => (
-      <li>
+    {actions.map((action, index) => (
+      <li key={index}>
         {typeof action === "function" ? (
           action()
         ) : (

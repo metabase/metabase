@@ -19,15 +19,15 @@ export default class TextDiff extends Component {
         &quot;
         {before != null && after != null ? (
           diffWords(before, after).map((section, index) => (
-            <span>
+            <span key={index}>
               {section.added ? (
-                <strong key={index}>{section.value}</strong>
+                <strong>{section.value}</strong>
               ) : section.removed ? (
-                <span key={index} style={{ textDecoration: "line-through" }}>
+                <span style={{ textDecoration: "line-through" }}>
                   {section.value}
                 </span>
               ) : (
-                <span key={index}>{section.value}</span>
+                <span>{section.value}</span>
               )}{" "}
             </span>
           ))

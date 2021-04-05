@@ -20,7 +20,7 @@ export const examples = {
       <ModalContent
         title="Do something crazy?"
         onClose={() => alert("close!")}
-        footer={[<Button danger>Ok</Button>]}
+        footer={<Button danger>Ok</Button>}
       >
         Are you sure?
       </ModalContent>

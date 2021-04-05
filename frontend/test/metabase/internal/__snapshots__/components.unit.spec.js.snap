@@ -957,24 +957,20 @@ exports[`ModalContent should render "default" correctly 1`] = `
           }
         }
       >
-        <span
-          className="ml2"
+        <button
+          className="Button Button-ygn2tx-0 biecp flex-no-shrink Button--danger"
         >
-          <button
-            className="Button Button-ygn2tx-0 biecp flex-no-shrink Button--danger"
+          <div
+            className="flex layout-centered"
+            style={null}
           >
             <div
-              className="flex layout-centered"
-              style={null}
+              className=""
             >
-              <div
-                className=""
-              >
-                Ok
-              </div>
+              Ok
             </div>
-          </button>
-        </span>
+          </div>
+        </button>
       </div>
     </div>
   </div>

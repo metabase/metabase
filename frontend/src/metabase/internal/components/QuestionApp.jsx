@@ -45,7 +45,9 @@ export default class QuestionApp extends React.Component {
   }
 }
 
-QuestionApp.routes = [
-  <Route path="question" component={QuestionApp} />,
-  <Route path="question/:questionId" component={QuestionApp} />,
-];
+QuestionApp.routes = (
+  <React.Fragment>
+    <Route path="question" component={QuestionApp} />
+    <Route path="question/:questionId" component={QuestionApp} />
+  </React.Fragment>
+);

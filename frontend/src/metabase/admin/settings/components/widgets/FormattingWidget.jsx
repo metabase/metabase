@@ -50,6 +50,7 @@ class FormattingWidget extends React.Component {
       <div className="mt2">
         {SETTING_TYPES.map(({ type, name, column, settings }) => (
           <div
+            key={type}
             className="border-bottom pb2 mb4 flex-full"
             style={{ minWidth: 400 }}
           >

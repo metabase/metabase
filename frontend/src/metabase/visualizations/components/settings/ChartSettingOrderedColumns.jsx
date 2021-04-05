@@ -151,8 +151,8 @@ export default class ChartSettingOrderedColumns extends Component {
                 onAdd={() => this.handleAddNewField(dimension.mbql())}
               />
             ))}
-            {additionalFieldOptions.fks.map(fk => (
-              <div>
+            {additionalFieldOptions.fks.map((fk, index) => (
+              <div key={fk.id}>
                 <div className="my2 text-medium text-bold text-uppercase text-small">
                   {fk.name ||
                     (fk.field.target
