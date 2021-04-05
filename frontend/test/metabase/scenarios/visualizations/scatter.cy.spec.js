@@ -1,14 +1,20 @@
 import { restore, visitQuestionAdhoc, popover } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
 
 const testQuery = {
   database: 1,
   query: {
     "source-table": ORDERS_ID,
-    aggregation: [["count"], ["distinct", ["field-id", ORDERS.PRODUCT_ID]]],
-    breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"]],
+    aggregation: [
+      ["count"],
+      [
+        "distinct",
+        ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
+      ],
+    ],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
   },
   type: "query",
 };
