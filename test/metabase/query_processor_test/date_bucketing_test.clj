@@ -1106,7 +1106,7 @@
                   "CHECKINS.DATE < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM')) "
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
-                  "LIMIT 1048576")
+                  "LIMIT 1048575")
              (sql.qp.test/pretty-sql
               (:query
                (qp/query->native

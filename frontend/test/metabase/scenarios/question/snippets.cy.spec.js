@@ -92,4 +92,66 @@ describe("scenarios > question > snippets", () => {
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.get(".ScalarValue").contains("2");
   });
+
+  it.skip("should update the snippet and apply it to the current query (metabase#15387)", () => {
+    // Create snippet 1
+    cy.request("POST", "/api/native-query-snippet", {
+      content: "ORDERS",
+      name: "Table: Orders",
+      collection_id: null,
+    }).then(({ body: { id: SNIPPET_ID } }) => {
+      // Create snippet 2
+      cy.request("POST", "/api/native-query-snippet", {
+        content: "REVIEWS",
+        name: "Table: Reviews",
+        collection_id: null,
+      });
+
+      // Create native question using snippet 1
+      cy.createNativeQuestion({
+        name: "15387",
+        native: {
+          "template-tags": {
+            "snippet: Table: Orders": {
+              id: "14a923c5-83a2-b359-64f7-5e287c943caf",
+              name: "snippet: Table: Orders",
+              "display-name": "Snippet: table: orders",
+              type: "snippet",
+              "snippet-name": "Table: Orders",
+              "snippet-id": SNIPPET_ID,
+            },
+          },
+          query: "select * from {{snippet: Table: Orders}} limit 1",
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.visit(`/question/${QUESTION_ID}`);
+      });
+    });
+
+    cy.get(".Visualization")
+      .as("results")
+      .findByText("37.65");
+    cy.findByText(/Open Editor/i).click();
+    // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
+    // Check 1
+    cy.get(".ace_content")
+      .as("editor")
+      .contains(/^select \* from {{snippet: Table: Orders}} limit 1$/);
+    // Replace "Orders" with "Reviews"
+    cy.get("@editor")
+      .click()
+      .type(
+        "{end}" +
+        "{leftarrow}".repeat("}} limit 1".length) + // move left to "reach" the "Orders"
+        "{backspace}".repeat("Orders".length) + // Delete orders character by character
+          "Reviews",
+      );
+    // Check 2
+    cy.get("@editor").contains(
+      /^select \* from {{snippet: Table: Reviews}} limit 1$/,
+    );
+    // Rerun the query
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.get("@results").contains(/christ/i);
+  });
 });

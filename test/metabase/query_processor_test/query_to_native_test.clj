@@ -16,7 +16,7 @@
                          " \"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\","
                          " \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                          "FROM \"PUBLIC\".\"VENUES\" "
-                         "LIMIT 1048576")
+                         "LIMIT 1048575")
             :params nil}
            (qp/query->native (mt/mbql-query venues))))))
 
