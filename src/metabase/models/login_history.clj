@@ -3,7 +3,6 @@
             [metabase.email.messages :as email.messages]
             [metabase.models.setting :refer [defsetting]]
             [metabase.server.request.util :as request.u]
-            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [trs tru]]
             [toucan.db :as db]
@@ -17,7 +16,10 @@
 
 (defn human-friendly-info
   "Return a human-friendly version of the info in a LoginHistory instance. Powers the login history API endpoint and
-  login on new device email."
+  login on new device email.
+
+  This can potentially take a few seconds to complete, if the request to geocode the API request hangs for one reason
+  or another -- keep that in mind when using this."
   [history-item]
   (let [{location-description :description, timezone :timezone} (request.u/geocode-ip-address (:ip_address history-item))]
     (-> history-item
