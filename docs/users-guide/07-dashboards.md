@@ -143,7 +143,7 @@ Some tips:
 - **Add filters to your dashboard**. [Adding filters](08-dashboard-filters.md) to dashboards makes them more useful. For example, instead of your dashboard being full of questions that are restricted to a specific time span, you can make more general questions and use dashboard filters to change the time span you're looking at.
 - **Make your dashboards interactive.** [Customize what happens when users click on a chart or table in your dashboard](interactive-dashboards.md).
 
-For more tips on building great dashboards, check out [Best practices for BI dashboards](https://www.metabase.com/blog/dashboard-filters/index.html). For tips on improving dashboard performance, see [Making dashboards faster](https://www.metabase.com/blog/faster-dashboards/index.html).
+See [Making dashboards faster](https://www.metabase.com/blog/faster-dashboards/index.html) for tips on improving dashboard performance.
 
 ---
 
