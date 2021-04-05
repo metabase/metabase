@@ -40,13 +40,13 @@ describe("scenarios > visualizations > scatter", () => {
     cy.wait("@dataset");
 
     cy.get(".bubble")
-      .last()
+      .eq(13) // Random bubble
       .trigger("mousemove");
 
     popover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Count:");
-      cy.findByText("Distinct values of Product ID:");
+      cy.findByText(/Distinct values of Products? → ID:/);
     });
   });
 
@@ -71,7 +71,7 @@ describe("scenarios > visualizations > scatter", () => {
     cy.wait("@dataset");
 
     cy.get(".bubble")
-      .last()
+      .eq(13)
       .trigger("mousemove");
 
     popover().within(() => {
