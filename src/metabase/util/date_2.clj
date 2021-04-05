@@ -101,17 +101,17 @@
 (def ^:private ^{:arglists '(^java.time.format.DateTimeFormatter [klass])} class->human-readable-formatter
   {LocalDate      (DateTimeFormatter/ofLocalizedDate FormatStyle/LONG)
    LocalTime      (DateTimeFormatter/ofLocalizedTime FormatStyle/MEDIUM)
-   LocalDateTime  (.toFormatter
-                   (doto (DateTimeFormatterBuilder.)
-                     (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM)))
-   OffsetTime     (.toFormatter
-                   (doto (DateTimeFormatterBuilder.)
-                     (.append (DateTimeFormatter/ofLocalizedTime FormatStyle/MEDIUM))
-                     (.appendPattern " (OOOO)")))
-   OffsetDateTime (.toFormatter
-                   (doto (DateTimeFormatterBuilder.)
-                     (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM)
-                     (.appendPattern " (OOOO)")))
+   LocalDateTime  (let [builder (doto (DateTimeFormatterBuilder.)
+                                  (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM))]
+                    (.toFormatter builder))
+   OffsetTime     (let [builder (doto (DateTimeFormatterBuilder.)
+                                  (.append (DateTimeFormatter/ofLocalizedTime FormatStyle/MEDIUM))
+                                  (.appendPattern " (OOOO)"))]
+                    (.toFormatter builder))
+   OffsetDateTime (let [builder (doto (DateTimeFormatterBuilder.)
+                                  (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM)
+                                  (.appendPattern " (OOOO)"))]
+                    (.toFormatter builder))
    ZonedDateTime  (DateTimeFormatter/ofLocalizedDateTime FormatStyle/LONG)})
 
 (defn format-human-readable
