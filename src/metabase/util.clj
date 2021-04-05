@@ -890,3 +890,9 @@
       (if (pred# x#)
         x#
         (or-with pred# ~@more)))))
+
+(defn ip-address?
+  "Whether string `s` is a valid IP (v4 or v6) address."
+  [^String s]
+  (and (string? s)
+       (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) s)))
