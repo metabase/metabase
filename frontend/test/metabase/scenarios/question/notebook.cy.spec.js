@@ -584,6 +584,28 @@ describe("scenarios > question > notebook", () => {
       // Given that the previous step passes, we should now see this in the UI
       cy.findByText("User → Created At: Minute");
     });
+
+    it.skip("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
+      cy.visit("/question/1/notebook");
+      cy.findByText("Summarize").click();
+      cy.findByText("Count of rows").click();
+      // We first need to visualize results because it seems that this renders second popover very low on the screen
+      cy.findByText("Summarize")
+        .parent()
+        .find(".Icon-play")
+        .click();
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText("Created At")
+        .closest(".List-item")
+        .findByText("by month")
+        .click({ force: true });
+      popover()
+        .last()
+        .invoke("height")
+        // Although you can see only "Minute" in the UI, Cypress "sees" all list items in the DOM so assertion like `element.should(be.visible)` will not work here
+        // I couldn't think of other assertion than that the height of this popover should be greater than 200px
+        .should("be.gt", 200);
+    });
   });
 
   describe("nested", () => {
