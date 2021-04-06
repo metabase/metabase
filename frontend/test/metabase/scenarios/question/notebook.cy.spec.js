@@ -589,22 +589,19 @@ describe("scenarios > question > notebook", () => {
       cy.visit("/question/1/notebook");
       cy.findByText("Summarize").click();
       cy.findByText("Count of rows").click();
-      // We first need to visualize results because it seems that this renders second popover very low on the screen
-      cy.findByText("Summarize")
-        .parent()
-        .find(".Icon-play")
-        .click();
       cy.findByText("Pick a column to group by").click();
       cy.findByText("Created At")
         .closest(".List-item")
         .findByText("by month")
         .click({ force: true });
-      popover()
-        .last()
-        .invoke("height")
-        // Although you can see only "Minute" in the UI, Cypress "sees" all list items in the DOM so assertion like `element.should(be.visible)` will not work here
-        // I couldn't think of other assertion than that the height of this popover should be greater than 200px
-        .should("be.gt", 200);
+      // First a reality check - "Minute" is the only string visible in UI and this should pass
+      cy.findAllByText("Minute")
+        .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15446) gets fixed
+        .isVisibleInPopover();
+      // The actual check that will fail until this issue gets fixed
+      cy.findAllByText("Week")
+        .first()
+        .isVisibleInPopover();
     });
   });
 
