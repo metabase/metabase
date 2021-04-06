@@ -15,7 +15,6 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 import Tooltip from "metabase/components/Tooltip";
 
 import { formatHourAMPM, formatDay, formatFrame } from "metabase/lib/time";
-import { conjunct } from "metabase/lib/formatting";
 import { getActivePulseParameters } from "metabase/lib/pulse";
 
 import { getParameters } from "metabase/dashboard/selectors";
@@ -127,10 +126,10 @@ function buildFilterText(pulse, parameters) {
   }
 
   const [firstParameter, ...otherParameters] = activeParameters;
-  const firstFilterText = `${firstParameter.name} is ${conjunct(
-    [].concat(firstParameter.value),
-    t`and`,
-  )}`;
+  const numValues = [].concat(firstParameter.value).length;
+  const firstFilterText = `${firstParameter.name} is ${
+    numValues > 1 ? t`${numValues} selections` : firstParameter.value
+  }`;
 
   return _.isEmpty(otherParameters)
     ? firstFilterText
