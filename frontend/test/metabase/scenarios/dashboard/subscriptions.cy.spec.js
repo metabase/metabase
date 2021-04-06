@@ -222,9 +222,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           .click();
 
         clickButton("Done");
-        cy.findByText(
-          "Category is Corbin Mertz and Bobby Kessler and 1 more filter",
-        );
+        cy.findByText("Category is 2 selections and 1 more filter");
       });
     });
   });
