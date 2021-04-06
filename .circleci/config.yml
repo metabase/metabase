@@ -854,6 +854,7 @@ jobs:
                   - /home/circleci/metabase/metabase/resources/version.properties
 
   fe-tests-cypress:
+    parallelism: 10
     parameters:
       e:
         type: executor
@@ -892,7 +893,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
-                  run test-cypress-no-build <<# parameters.only-single-database >> --folder << parameters.test-files-location >> <</ parameters.only-single-database >>
+                  add cypress --dev && yarn run test-cypress-no-build <<# parameters.only-single-database >> --folder << parameters.test-files-location >> <</ parameters.only-single-database >> --group << parameters.cypress-group >> --record --parallel --key=$CYPRESS_RECORD_KEY
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -1161,16 +1162,15 @@ workflows:
           <<: *Matrix
 
       - build-uberjar-frontend:
-          name: build-uberjar-frontend-<< matrix.edition >>
+          name: build-uberjar-frontend
           requires:
             - fe-deps
-          <<: *Matrix
 
       - build-uberjar:
           name: build-uberjar-<< matrix.edition >>
           requires:
             - build-uberjar-drivers-<< matrix.edition >>
-            - build-uberjar-frontend-<< matrix.edition >>
+            - build-uberjar-frontend
           <<: *Matrix
 
       - fe-deps:
@@ -1259,9 +1259,11 @@ workflows:
       - build-uberjar-drivers:
           requires:
             - be-deps
+
       - build-uberjar-frontend:
           requires:
             - fe-deps
+
       - build-uberjar:
           requires:
             - build-uberjar-drivers
