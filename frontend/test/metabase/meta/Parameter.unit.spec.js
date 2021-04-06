@@ -7,6 +7,7 @@ import {
   mapUIParameterToQueryParameter,
   deriveFieldOperatorFromParameter,
 } from "metabase/meta/Parameter";
+import MetabaseSettings from "metabase/lib/settings";
 
 describe("metabase/meta/Parameter", () => {
   describe("dateParameterValueToMBQL", () => {
@@ -214,7 +215,15 @@ describe("metabase/meta/Parameter", () => {
     });
   });
 
-  describe("mapParameterTypeToFieldType", () => {
+  describe("mapParameterTypeToFieldType (field-filter-operators-enabled? === true)", () => {
+    beforeAll(() => {
+      MetabaseSettings.set("field-filter-operators-enabled?", true);
+    });
+
+    afterAll(() => {
+      MetabaseSettings.set("field-filter-operators-enabled?", false);
+    });
+
     it("should return the proper parameter type of location/category parameters", () => {
       expect(mapUIParameterToQueryParameter("category", "foo", "bar")).toEqual({
         type: "string/=",
@@ -269,6 +278,24 @@ describe("metabase/meta/Parameter", () => {
       expect(mapUIParameterToQueryParameter("number/=", 123, "bar")).toEqual({
         type: "number/=",
         value: [123],
+        target: "bar",
+      });
+    });
+  });
+
+  describe("mapParameterTypeToFieldType (field-filter-operators-enabled? === false)", () => {
+    it("return given args in a map", () => {
+      expect(mapUIParameterToQueryParameter("category", "foo", "bar")).toEqual({
+        type: "category",
+        value: "foo",
+        target: "bar",
+      });
+
+      expect(
+        mapUIParameterToQueryParameter("location/city", ["foo"], "bar"),
+      ).toEqual({
+        type: "location/city",
+        value: ["foo"],
         target: "bar",
       });
     });
