@@ -287,7 +287,7 @@
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
-  (let [match             (wildcard-match query)
+  (let [match             (wildcard-match (scoring/normalize query))
         columns-to-search (->> all-search-columns
                                (filter (fn [[k v]] (= v :text)))
                                (map first))
@@ -354,6 +354,8 @@
   [q archived]
   {q        (s/maybe su/NonBlankString)
    archived (s/maybe su/BooleanString)}
-  (search (search-context q archived)))
+  (if q
+    (search (search-context q archived))
+    []))
 
 (api/define-routes)
