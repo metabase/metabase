@@ -121,23 +121,25 @@ export function getPulseParameters(pulse) {
   return (pulse && pulse.parameters) || [];
 }
 
-// default parameters are applied but may not be included in a pulse's parameters list
+// pulse parameters list cannot be trusted for existence/up-to-date defaults
+// rely on given parameters list but take pulse parameter values if they are not null
 export function getActivePulseParameters(pulse, parameters) {
   const pulseParameters = getPulseParameters(pulse);
   const pulseParametersById = _.indexBy(pulseParameters, "id");
-  const defaultParamsNotInPulseParams = parameters.filter(parameter => {
-    const pulseParameter = pulseParametersById[parameter.id];
-    return (
-      hasDefaultParameterValue(parameter) && !hasParameterValue(pulseParameter)
-    );
-  });
 
-  return [...pulseParameters, ...defaultParamsNotInPulseParams].map(
-    parameter => {
+  return parameters
+    .map(parameter => {
+      const pulseParameter = pulseParametersById[parameter.id];
+      if (!pulseParameter && !hasDefaultParameterValue(parameter)) {
+        return;
+      }
+
       return {
         ...parameter,
-        value: parameter.value == null ? parameter.default : parameter.value,
+        value: hasParameterValue(pulseParameter)
+          ? pulseParameter.value
+          : parameter.default,
       };
-    },
-  );
+    })
+    .filter(Boolean);
 }
