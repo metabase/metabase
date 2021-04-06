@@ -19,3 +19,4 @@ import "./whitelabel";
 import "./embedding";
 import "./store";
 import "./snippets";
+import "./sharing";

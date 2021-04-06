@@ -19,17 +19,12 @@ import SendTestEmail from "metabase/components/SendTestEmail";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Toggle from "metabase/components/Toggle";
 import Select, { Option } from "metabase/components/Select";
-import CollapseSection from "metabase/components/CollapseSection";
-import ParametersList from "metabase/parameters/components/ParametersList";
 
-import {
-  dashboardPulseIsValid,
-  getPulseParameters,
-  getActivePulseParameters,
-} from "metabase/lib/pulse";
+import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
 import { conjunct } from "metabase/lib/formatting";
-import { collateParametersWithValues } from "metabase/meta/Parameter";
+
+import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 
 import {
   getDefaultParametersById,
@@ -136,8 +131,8 @@ function _AddEditEmailSidebar({
             testPulse={testPulse}
           />
         </div>
-        {MetabaseSettings.isEnterprise() ? (
-          <ParametersSection
+        {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
+          <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
             className="py3 mt2 border-top"
             parameters={parameters}
             dashboard={dashboard}
@@ -322,8 +317,8 @@ function _AddEditSlackSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        {MetabaseSettings.isEnterprise() ? (
-          <ParametersSection
+        {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
+          <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
             className="py3 mt2 border-top"
             parameters={parameters}
             dashboard={dashboard}
@@ -486,66 +481,3 @@ function formatDefaultParamValues(parameters, defaultParametersById) {
     })
     .filter(Boolean);
 }
-
-function ParametersSection({
-  className,
-  parameters,
-  defaultParametersById,
-  dashboard,
-  pulse,
-  setPulseParameters,
-}) {
-  const pulseParameters = getPulseParameters(pulse);
-  const activeParameters = getActivePulseParameters(pulse, parameters);
-  const pulseParamValuesById = activeParameters.reduce((map, parameter) => {
-    map[parameter.id] = parameter.value;
-    return map;
-  }, {});
-
-  const collatedParameters = collateParametersWithValues(
-    parameters,
-    pulseParamValuesById,
-  );
-
-  const setParameterValue = (id, value) => {
-    const parameter = parameters.find(parameter => parameter.id === id);
-    const filteredParameters = pulseParameters.filter(
-      parameter => parameter.id !== id,
-    );
-    const newParameters =
-      value == null
-        ? filteredParameters
-        : filteredParameters.concat({
-            ...parameter,
-            value,
-          });
-
-    setPulseParameters(newParameters);
-  };
-
-  return _.isEmpty(parameters) ? null : (
-    <CollapseSection
-      header={<Heading>{t`Set filter values for when this gets sent`}</Heading>}
-      className={cx(className)}
-      initialState="expanded"
-      bodyClass="mt2"
-    >
-      <ParametersList
-        className="align-stretch row-gap-1"
-        vertical
-        dashboard={dashboard}
-        parameters={collatedParameters}
-        setParameterValue={setParameterValue}
-      />
-    </CollapseSection>
-  );
-}
-
-ParametersSection.propTypes = {
-  className: PropTypes.string,
-  parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
-  dashboard: PropTypes.object.isRequired,
-  pulse: PropTypes.object.isRequired,
-  setPulseParameters: PropTypes.func.isRequired,
-};
