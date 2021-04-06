@@ -166,6 +166,10 @@ export const describeWithToken = Cypress.env("HAS_ENTERPRISE_TOKEN")
   ? describe
   : describe.skip;
 
+export const describeOpenSourceOnly = Cypress.env("HAS_ENTERPRISE_TOKEN")
+  ? describe.skip
+  : describe;
+
 export const itOpenSourceOnly = Cypress.env("HAS_ENTERPRISE_TOKEN")
   ? it.skip
   : it;

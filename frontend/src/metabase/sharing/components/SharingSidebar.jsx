@@ -14,10 +14,15 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
+import { mapUIParameterToQueryParameter } from "metabase/meta/Parameter";
 
 import { connect } from "react-redux";
 
-import { cleanPulse, createChannel } from "metabase/lib/pulse";
+import {
+  cleanPulse,
+  createChannel,
+  getPulseParameters,
+} from "metabase/lib/pulse";
 
 import {
   getPulseId,
@@ -142,6 +147,7 @@ class SharingSidebar extends React.Component {
     onCancel: PropTypes.func.isRequired,
     setPulseArchived: PropTypes.func.isRequired,
     users: PropTypes.array,
+    params: PropTypes.object,
   };
 
   setPulse = pulse => {
@@ -199,11 +205,45 @@ class SharingSidebar extends React.Component {
     this.setPulse({ ...pulse, skip_if_empty: !pulse.skip_if_empty });
   };
 
+  setPulseParameters = parameters => {
+    const { pulse } = this.props;
+
+    this.setPulse({
+      ...pulse,
+      parameters,
+    });
+  };
+
   handleSave = async () => {
     const { pulse, dashboard, formInput } = this.props;
 
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
+    cleanedPulse.parameters = getPulseParameters(cleanedPulse).map(
+      parameter => {
+        const {
+          default: defaultValue,
+          name,
+          slug,
+          type,
+          value,
+          id,
+        } = parameter;
+        const {
+          type: mappedType,
+          value: mappedValue,
+        } = mapUIParameterToQueryParameter(type, value);
+        return {
+          default: defaultValue,
+          id,
+          name,
+          slug,
+          type: mappedType,
+          value: mappedValue,
+        };
+      },
+    );
+
     await this.props.updateEditingPulse(cleanedPulse);
 
     // The order below matters; it hides the "Done" button faster and prevents two pulses from being made if it's double-clicked
@@ -255,7 +295,14 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const { pulse, pulses, formInput, testPulse, users } = this.props;
+    const {
+      pulse,
+      pulses,
+      formInput,
+      testPulse,
+      users,
+      dashboard,
+    } = this.props;
 
     // protect from empty values that will mess this up
     if (!formInput.channels || !pulse) {
@@ -309,6 +356,8 @@ class SharingSidebar extends React.Component {
           setPulse={this.setPulse}
           users={users}
           handleArchive={this.handleArchive}
+          dashboard={dashboard}
+          setPulseParameters={this.setPulseParameters}
         />
       );
     }
@@ -346,6 +395,8 @@ class SharingSidebar extends React.Component {
           )}
           toggleSkipIfEmpty={this.toggleSkipIfEmpty}
           handleArchive={this.handleArchive}
+          dashboard={dashboard}
+          setPulseParameters={this.setPulseParameters}
         />
       );
     }
