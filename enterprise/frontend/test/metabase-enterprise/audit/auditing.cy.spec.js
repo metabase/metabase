@@ -140,7 +140,8 @@ describeWithToken("audit > auditing", () => {
       cy.contains(year);
     });
 
-    it("should load both tabs in Schemas", () => {
+    // [quarantine] flaky
+    it.skip("should load both tabs in Schemas", () => {
       // Overview tab
       cy.visit("/admin/audit/schemas/overview");
       cy.get("svg").should("have.length", 2);
