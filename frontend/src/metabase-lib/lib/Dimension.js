@@ -748,6 +748,23 @@ export class FieldDimension extends Dimension {
       dimensions = [...dimensions, ...temporalDimensions];
     }
 
+    if (this.joinAlias()) {
+      const matchAlias = this.joinAlias();
+      const filtered = dimensions.filter(d => {
+        const alias = d.joinAlias();
+        return alias && alias === matchAlias;
+      });
+      dimensions = filtered;
+    }
+    if (this.fk()) {
+      const matchFK = this.fk().key();
+      const filtered = dimensions.filter(d => {
+        const fk = d.fk();
+        return fk && fk.key() === matchFK;
+      });
+      dimensions = filtered;
+    }
+
     return dimensions;
   }
 
