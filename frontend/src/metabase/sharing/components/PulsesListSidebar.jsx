@@ -151,7 +151,7 @@ function PulseDetails({ pulse, parameters }) {
         style={{ maxHeight: 130 }}
       >
         {recipientText && (
-          <li className="flex align-center mr1 text-bold text-medium hover-child hover--inherit">
+          <li className="flex align-start mr1 text-bold text-medium hover-child hover--inherit">
             <Icon
               name="group"
               className="text-medium hover-child hover--inherit"
@@ -166,7 +166,7 @@ function PulseDetails({ pulse, parameters }) {
           </li>
         )}
         {filterText && (
-          <li className="flex align-center mr1 text-bold text-medium hover-child hover--inherit">
+          <li className="flex align-start mt1 mr1 text-bold text-medium hover-child hover--inherit">
             <Icon
               name="filter"
               className="text-medium hover-child hover--inherit"
