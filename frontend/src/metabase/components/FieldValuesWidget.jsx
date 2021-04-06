@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
@@ -256,6 +257,8 @@ export class FieldValuesWidget extends Component {
           ),
         ),
       );
+
+      results = results.map(result => [].concat(result));
     }
 
     if (this.showRemapping()) {

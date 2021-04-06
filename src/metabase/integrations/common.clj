@@ -15,14 +15,14 @@
   ;; if you AREN'T syncing the admin group, it's a "special group", which means it's excluded from being added
   ;; or removed from a user
   (let [special-group-ids  (if (false? sync-admin-group?)
-                             #{(u/get-id (group/admin)) (u/get-id (group/all-users))}
-                             #{(u/get-id (group/all-users))})
-        user-id            (u/get-id user-or-id)
+                             #{(u/the-id (group/admin)) (u/the-id (group/all-users))}
+                             #{(u/the-id (group/all-users))})
+        user-id            (u/the-id user-or-id)
         ;; Get a set of Group IDs the user currently belongs to
         current-group-ids  (db/select-field :group_id PermissionsGroupMembership
                                             :user_id  user-id
                                             :group_id [:not-in special-group-ids])
-        new-group-ids      (set (map u/get-id new-groups-or-ids))
+        new-group-ids      (set (map u/the-id new-groups-or-ids))
         ;; determine what's different between current groups and new groups
         [to-remove to-add] (data/diff current-group-ids new-group-ids)]
     ;; remove membership from any groups as needed

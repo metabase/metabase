@@ -31,7 +31,10 @@ import * as Card_DEPRECATED from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
-import { parameterToMBQLFilter } from "metabase/meta/Parameter";
+import {
+  parameterToMBQLFilter,
+  mapUIParameterToQueryParameter,
+} from "metabase/meta/Parameter";
 import {
   aggregate,
   breakout,
@@ -823,7 +826,10 @@ export default class Question {
       // include only parameters that have a value applied
       .filter(param => _.has(param, "value"))
       // only the superset of parameters object that API expects
-      .map(param => _.pick(param, "type", "target", "value"));
+      .map(param => _.pick(param, "type", "target", "value"))
+      .map(({ type, value, target }) => {
+        return mapUIParameterToQueryParameter(type, value, target);
+      });
 
     if (canUseCardApiEndpoint) {
       const queryParams = {

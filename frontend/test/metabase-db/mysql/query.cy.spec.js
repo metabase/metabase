@@ -1,22 +1,16 @@
-import {
-  signInAsAdmin,
-  restore,
-  modal,
-  signInAsNormalUser,
-  addMySQLDatabase,
-} from "__support__/cypress";
+import { restore, modal, addMySQLDatabase } from "__support__/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
 describe("mysql > user > query", () => {
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addMySQLDatabase(MYSQL_DB_NAME);
   });
 
   beforeEach(() => {
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it("can query a MySQL database as a user", () => {

@@ -1,9 +1,9 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > admin > troubleshooting > tasks", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it.skip("pagination should work (metabase#14636)", () => {

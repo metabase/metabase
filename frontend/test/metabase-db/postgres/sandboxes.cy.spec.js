@@ -1,45 +1,21 @@
 import {
-  signInAsAdmin,
-  signOut,
   restore,
   addPostgresDatabase,
   withDatabase,
-  USER_GROUPS,
   describeWithToken,
 } from "__support__/cypress";
+import { USER_GROUPS } from "__support__/cypress_data";
 
 const PG_DB_NAME = "QA Postgres12";
 const PG_DB_ID = 2;
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
-const sandboxed_user = {
-  first_name: "User",
-  last_name: "1",
-  email: "u1@metabase.test",
-  password: "12341234",
-  login_attributes: {
-    user_id: "1",
-    user_cat: "Widget",
-  },
-  // Because of the specific restrictions and the way testing dataset was set up,
-  // this user needs to also have access to "collections" (group_id: 4) in order to see saved questions
-  group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
-};
-
-function createUser(user) {
-  return cy.request("POST", "/api/user", user);
-}
-
 describeWithToken("postgres > user > query", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
-    createUser(sandboxed_user).then(({ body: { id: USER_ID } }) => {
-      cy.log("Dismiss `it's ok to play around` modal for new users");
-      cy.request("PUT", `/api/user/${USER_ID}/qbnewb`, {});
-    });
     // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -79,27 +55,15 @@ describeWithToken("postgres > user > query", () => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
-        cy.log("Sandbox `People` table");
-        cy.request("POST", "/api/mt/gtap", {
-          attribute_remappings: {
-            user_id: ["dimension", ["field-id", PEOPLE.ID]],
-          },
-          card_id: null,
+        cy.sandboxTable({
           table_id: PEOPLE_ID,
-          group_id: COLLECTION_GROUP,
-        });
-
-        cy.updatePermissionsSchemas({
-          database_id: PG_DB_ID,
-          schemas: {
-            public: {
-              [PEOPLE_ID]: { query: "segmented", read: "all" },
-            },
+          attribute_remappings: {
+            attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
           },
         });
 
-        signOut();
-        signInAsSandboxedUser();
+        cy.signOut();
+        cy.signInAsSandboxedUser();
         cy.visit(`/question/${QUESTION_ID}`);
 
         cy.wait("@cardQuery").then(xhr => {
@@ -112,11 +76,3 @@ describeWithToken("postgres > user > query", () => {
     });
   });
 });
-
-function signInAsSandboxedUser() {
-  cy.log("Logging in as sandboxed user");
-  cy.request("POST", "/api/session", {
-    username: sandboxed_user.email,
-    password: sandboxed_user.password,
-  });
-}

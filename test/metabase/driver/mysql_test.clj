@@ -12,6 +12,8 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
+            ;; used for one SSL with PEM connectivity test
+            [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
             [metabase.sync :as sync]
             [metabase.sync.analyze.fingerprint :as fingerprint]
             [metabase.test :as mt]
@@ -164,7 +166,7 @@
                       :type       :native
                       :settings   {:report-timezone "UTC"}
                       :native     {:query         "SELECT cast({{date}} as date)"
-                                   :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
+                                   :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
                       :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))]
         (testing "date formatting when system-timezone == report-timezone"
           (is (= ["2018-04-18T00:00:00+08:00"]
@@ -200,8 +202,9 @@
 
 (deftest connection-spec-test
   (testing "Do `:ssl` connection details give us the connection spec we'd expect?"
-    (= (assoc sample-jdbc-spec :useSSL true)
-       (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl true))))
+    (is (= (assoc sample-jdbc-spec :useSSL true :serverSslCert "sslCert")
+           (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl      true
+                                                                                           :ssl-cert "sslCert")))))
 
   (testing "what about non-SSL connections?"
     (is (= (assoc sample-jdbc-spec :useSSL false)
@@ -329,3 +332,14 @@
              (hsql/format {:select [(#'mysql/trunc-with-format
                                      "%Y"
                                      (hx/with-database-type-info :field "datetime"))]}))))))
+
+(deftest mysql-connect-with-ssl-and-pem-cert-test
+  (mt/test-driver :mysql
+    (if (System/getenv "MB_MYSQL_SSL_TEST_SSL_CERT")
+      (testing "MySQL with SSL connectivity using PEM certificate"
+        (mt/with-env-keys-renamed-by #(str/replace-first % "mb-mysql-ssl-test" "mb-mysql-test")
+          (string-extracts-test/test-breakout)))
+      (println (u/format-color 'yellow
+                               "Skipping %s because %s env var is not set"
+                               "mysql-connect-with-ssl-and-pem-cert-test"
+                               "MB_MYSQL_SSL_TEST_SSL_CERT")))))

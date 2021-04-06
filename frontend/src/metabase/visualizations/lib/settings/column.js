@@ -269,7 +269,7 @@ export const DATE_COLUMN_SETTINGS = {
         ...(column.unit === "hour-of-day"
           ? [timeStyleOption("h A", "12-hour clock without minutes")]
           : []),
-        timeStyleOption("k:mm", t`24-hour clock`),
+        timeStyleOption("HH:mm", t`24-hour clock`),
       ],
     }),
     getHidden: (column: Column, settings: ColumnSettings) =>
@@ -325,8 +325,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     default: "USD",
     getHidden: (column: Column, settings: ColumnSettings) =>
-      // NOTE: ideally we'd hide this if number_style != "currency" but that would result in a circular dependency
-      !isCurrency(column),
+      settings["number_style"] !== "currency",
   },
   currency_style: {
     title: t`Currency label style`,

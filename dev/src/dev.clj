@@ -22,6 +22,9 @@
 
 (comment debug-qp/keep-me)
 
+(defn tap>-spy [x]
+  (doto x tap>))
+
 (p/import-vars
  [debug-qp process-query-debug])
 

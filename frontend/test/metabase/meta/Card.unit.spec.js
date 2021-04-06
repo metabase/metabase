@@ -28,8 +28,8 @@ describe("metabase/meta/Card", () => {
       },
       {
         id: 2,
-        slug: "param_number",
-        type: "category",
+        slug: "param_operator",
+        type: "category/starts-with",
       },
       {
         id: 3,
@@ -40,6 +40,11 @@ describe("metabase/meta/Card", () => {
         id: 4,
         slug: "param_fk",
         type: "date/month",
+      },
+      {
+        id: 5,
+        slug: "param_number",
+        type: "number/=",
       },
     ];
 
@@ -116,6 +121,11 @@ describe("metabase/meta/Card", () => {
           parameter_id: 4,
           target: ["dimension", ["field", 5, { "source-field": 4 }]],
         },
+        {
+          card_id: 1,
+          parameter_id: 5,
+          target: ["dimension", ["field", 2, null]],
+        },
       ];
       it("should return question URL with no parameters", () => {
         const url = Card.questionUrlWithParameters(card, metadata, []);
@@ -167,12 +177,13 @@ describe("metabase/meta/Card", () => {
           ),
         });
       });
+
       it("should return question URL with number MBQL filter added", () => {
         const url = Card.questionUrlWithParameters(
           card,
           metadata,
           parameters,
-          { "2": 123 },
+          { "5": 123 },
           parameterMappings,
         );
         expect(parseUrl(url)).toEqual({
@@ -185,6 +196,7 @@ describe("metabase/meta/Card", () => {
           ),
         });
       });
+
       it("should return question URL with date MBQL filter added", () => {
         const url = Card.questionUrlWithParameters(
           card,

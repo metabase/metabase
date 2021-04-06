@@ -1,6 +1,5 @@
 import {
   browse,
-  signInAsAdmin,
   restore,
   openOrdersTable,
   visitQuestionAdhoc,
@@ -12,7 +11,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 describe("scenarios > question > settings", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("column settings", () => {

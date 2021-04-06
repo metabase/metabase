@@ -1,18 +1,19 @@
 import {
-  signInAsNormalUser,
   restore,
   popover,
   modal,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
-
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { USER_GROUPS } from "__support__/cypress_data";
 
-const { ORDERS } = SAMPLE_DATASET;
+const { ORDERS, PRODUCTS } = SAMPLE_DATASET;
+const { COLLECTION_GROUP } = USER_GROUPS;
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it("lets you create and run a SQL question", () => {
@@ -379,5 +380,230 @@ describe("scenarios > question > native", () => {
     cy.get("@variableField")
       .last()
       .findByText("firstparameter");
+  });
+
+  ["nodata+nosql", "nosql"].forEach(test => {
+    it.skip(`${test.toUpperCase()} version:\n should be able to view SQL question when accessing via dashboard with filters connected to modified card without SQL permissions (metabase#15163)`, () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.signInAsAdmin();
+      cy.createNativeQuestion({
+        name: "15163",
+        native: {
+          query: 'SELECT COUNT(*) FROM "PRODUCTS" WHERE {{cat}}',
+          "template-tags": {
+            cat: {
+              id: "dd7f3e66-b659-7d1c-87b3-ab627317581c",
+              name: "cat",
+              "display-name": "Cat",
+              type: "dimension",
+              dimension: ["field-id", PRODUCTS.CATEGORY],
+              "widget-type": "category",
+              default: null,
+            },
+          },
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.createDashboard("15163D").then(({ body: { id: DASHBOARD_ID } }) => {
+          // Add filter to the dashboard
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+            parameters: [
+              {
+                name: "Category",
+                slug: "category",
+                id: "fd723065",
+                type: "category",
+              },
+            ],
+          });
+
+          // Add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            // Connect filter to that question
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 10,
+                  sizeY: 8,
+                  series: [],
+                  visualization_settings: {
+                    "card.title": "New Title",
+                  },
+                  parameter_mappings: [
+                    {
+                      parameter_id: "fd723065",
+                      card_id: QUESTION_ID,
+                      target: ["dimension", ["template-tag", "cat"]],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+
+          if (test === "nosql") {
+            cy.updatePermissionsGraph({
+              [COLLECTION_GROUP]: { "1": { schemas: "all", native: "none" } },
+            });
+          }
+
+          cy.signIn("nodata");
+
+          // Visit dashboard and set the filter through URL
+          cy.visit(`/dashboard/${DASHBOARD_ID}?category=Gizmo`);
+          cy.findByText("New Title").click();
+          cy.wait("@dataset", { timeout: 5000 }).then(xhr => {
+            expect(xhr.response.body.error).not.to.exist;
+          });
+          cy.get(".ace_content").should("not.exist");
+          cy.findByText("Showing 1 row");
+        });
+      });
+    });
+  });
+
+  it.skip("field id should update when database source is changed (metabase#14145)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+    cy.signInAsAdmin();
+    // Add another H2 sample dataset DB
+    cy.request("POST", "/api/database", {
+      engine: "h2",
+      name: "Sample2",
+      details: {
+        db:
+          "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+      },
+      auto_run_queries: true,
+      is_full_sync: true,
+      schedules: {},
+    });
+
+    cy.createNativeQuestion({
+      name: "14145",
+      native: {
+        query: "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}",
+        "template-tags": {
+          FILTER: {
+            id: "774521fb-e03f-3df1-f2ae-e952c97035e3",
+            name: "FILTER",
+            "display-name": "Filter",
+            type: "dimension",
+            dimension: ["field-id", PRODUCTS.CATEGORY],
+            "widget-type": "category",
+            default: null,
+          },
+        },
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+    // Change the source from "Sample Dataset" to the other database
+    cy.findByText(/Open Editor/i).click();
+    cy.get(".GuiBuilder-data")
+      .as("source")
+      .contains("Sample Dataset")
+      .click();
+    cy.findByText("Sample2").click();
+    // First assert on the UI
+    cy.icon("variable").click();
+    cy.findByText(/Field to map to/)
+      .siblings("a")
+      .contains("Category");
+    // Rerun the query and assert on the dimension (field-id) that didn't change
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").then(xhr => {
+      const { dimension } = xhr.response.body.json_query.native[
+        "template-tags"
+      ].FILTER;
+      expect(dimension).not.to.contain(PRODUCTS.CATEGORY);
+    });
+  });
+
+  it.skip("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    visitQuestionAdhoc({
+      name: "15460",
+      dataset_query: {
+        database: 1,
+        native: {
+          query:
+            "select p.created_at, products.category\nfrom products\nleft join products p on p.id=products.id\nwhere {{category}}\n",
+          "template-tags": {
+            category: {
+              id: "d98c3875-e0f1-9270-d36a-5b729eef938e",
+              name: "category",
+              "display-name": "Category",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "category/=",
+              default: null,
+            },
+          },
+        },
+        type: "native",
+      },
+    });
+
+    // Set the filter value
+    cy.get("fieldset")
+      .contains("Category")
+      .click();
+    popover()
+      .findByText("Doohickey")
+      .click();
+    cy.findByRole("button", { name: "Add filter" }).click();
+    // Rerun the query
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").wait("@dataset");
+    cy.get(".Visualization").within(() => {
+      cy.findAllByText("Doohickey");
+      cy.findAllByText("Gizmo").should("not.exist");
+    });
+  });
+
+  it.skip("should run with the default field filter set (metabase#15444)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.visit("/");
+    cy.icon("sql").click();
+    cy.get(".ace_content").type("select * from products where {{category}}", {
+      parseSpecialCharSequences: false,
+    });
+    // Change filter type from "Text" to Field Filter
+    cy.get(".AdminSelect")
+      .contains("Text")
+      .click();
+    popover()
+      .findByText("Field Filter")
+      .click();
+    popover()
+      .findByText("Products")
+      .click();
+    popover()
+      .findByText("Category")
+      .click();
+    cy.findByText("Required?").scrollIntoView();
+    // Add the default value
+    cy.findByText("Enter a default value...").click();
+    popover()
+      .findByText("Doohickey")
+      .click();
+    cy.findByRole("button", { name: "Add filter" }).click();
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+    cy.get(".Visualization").within(() => {
+      cy.findAllByText("Doohickey");
+      cy.findAllByText("Gizmo").should("not.exist");
+    });
   });
 });

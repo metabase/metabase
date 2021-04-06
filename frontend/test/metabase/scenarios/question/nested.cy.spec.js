@@ -1,10 +1,10 @@
 import {
-  signInAsAdmin,
   restore,
   popover,
   createNativeQuestion,
   openOrdersTable,
   remapDisplayValueToFK,
+  sidebar,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -14,7 +14,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 describe("scenarios > question > nested (metabase#12568)", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // Create a simple question of orders by week
     cy.createQuestion({
@@ -49,7 +49,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
             FROM
               ORDERS o
           ),
-  
+
           tmp_prior_orders_by_date as (
             select
                 tbod.USER_ID,
@@ -58,7 +58,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
                 (select count(*) from tmp_user_order_dates tbod2 where tbod2.USER_ID = tbod.USER_ID and tbod2.CREATED_AT < tbod.CREATED_AT ) as PRIOR_ORDERS
             from tmp_user_order_dates tbod
           )
-  
+
           select
             date_trunc('day', tpobd.CREATED_AT) as "Date",
             case when tpobd.PRIOR_ORDERS > 0 then 'Return' else 'New' end as "Customer Type",
@@ -130,7 +130,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
 describe("scenarios > question > nested", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {
@@ -422,6 +422,106 @@ describe("scenarios > question > nested", () => {
 
           expect(className).to.contain("selected");
         });
+    }
+  });
+
+  ["count", "average"].forEach(test => {
+    it.skip(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.createNativeQuestion({
+        name: "15397",
+        native: {
+          query:
+            "select count(*), orders.product_id from orders group by orders.product_id;",
+        },
+      });
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("15397").click();
+      cy.wait("@dataset");
+      cy.findAllByText("Summarize")
+        .first()
+        .click();
+      if (test === "average") {
+        sidebar()
+          .findByText("Count")
+          .should("be.visible")
+          .click();
+        cy.findByText("Average of ...").click();
+        popover()
+          .findByText("COUNT(*)")
+          .click();
+        cy.wait("@dataset");
+      }
+      cy.findByText("Group by")
+        .parent()
+        .findByText("COUNT(*)")
+        .click();
+
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+      cy.get(".bar").should("have.length.of.at.least", 20);
+    });
+  });
+
+  describe.skip("should use the same query for date filter in both base and nested questions (metabase#15352)", () => {
+    it("should work with 'between' date filter (metabase#15352-1)", () => {
+      assertOnFilter({
+        name: "15352-1",
+        filter: [
+          "between",
+          ["field-id", ORDERS.CREATED_AT],
+          "2020-02-01",
+          "2020-02-29",
+        ],
+        value: "543",
+      });
+    });
+
+    it("should work with 'after/before' date filter (metabase#15352-2)", () => {
+      assertOnFilter({
+        name: "15352-2",
+        filter: [
+          "and",
+          [">", ["field-id", ORDERS.CREATED_AT], "2020-01-31"],
+          ["<", ["field-id", ORDERS.CREATED_AT], "2020-03-01"],
+        ],
+        value: "543",
+      });
+    });
+
+    it("should work with 'on' date filter (metabase#15352-3)", () => {
+      assertOnFilter({
+        name: "15352-3",
+        filter: ["=", ["field-id", ORDERS.CREATED_AT], "2020-02-01"],
+        value: "17",
+      });
+    });
+
+    function assertOnFilter({ name, filter, value } = {}) {
+      cy.createQuestion({
+        name,
+        query: {
+          "source-table": ORDERS_ID,
+          filter,
+          aggregation: [["count"]],
+        },
+        type: "query",
+        display: "scalar",
+      }).then(({ body }) => {
+        cy.visit(`/question/${body.id}`);
+        cy.get(".ScalarValue").findByText(value);
+      });
+      // Start new question based on the saved one
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText(name).click();
+      cy.get(".ScalarValue").findByText(value);
     }
   });
 });

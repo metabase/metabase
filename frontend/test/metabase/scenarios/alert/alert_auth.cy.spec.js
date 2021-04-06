@@ -1,10 +1,8 @@
 import {
   restore,
-  signInAsAdmin,
-  signInAsNormalUser,
   setupLocalHostEmail,
   createBasicAlert,
-} from "../../../__support__/cypress";
+} from "__support__/cypress";
 // Port from alert.e2e.spec.js
 
 // [quarantine]: cannot run tests that rely on email setup in CI (yet)
@@ -13,11 +11,11 @@ import {
 describe.skip("scenarios > alert > auth for alerts", () => {
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
 
     // Setup email
     // NOTE: Must run `python -m smtpd -n -c DebuggingServer localhost:1025` before these tests
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.visit("/admin/settings/email");
     setupLocalHostEmail();
 
@@ -30,13 +28,13 @@ describe.skip("scenarios > alert > auth for alerts", () => {
     createBasicAlert({ includeNormal: true });
 
     // Create alert as normal user
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
     cy.visit("/question/3");
     createBasicAlert();
   });
 
   describe("as an admin", () => {
-    beforeEach(signInAsAdmin);
+    beforeEach(cy.signInAsAdmin);
 
     it("should let you see all created alerts", () => {
       cy.request("/api/alert").then(response => {
@@ -70,7 +68,7 @@ describe.skip("scenarios > alert > auth for alerts", () => {
     });
   });
   describe("as a non-admin / normal user", () => {
-    beforeEach(signInAsNormalUser);
+    beforeEach(cy.signInAsNormalUser);
 
     it("should not let you see other people's alerts", () => {
       cy.visit("/question/1");

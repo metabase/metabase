@@ -8,6 +8,7 @@
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.sync :as sync]
             [metabase.sync.util :as sync-util :refer :all]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -188,3 +189,59 @@
         (testing "has-step-duration?"
           (is (= true
                  (str/includes? results "4.0 s"))))))))
+
+(deftest error-handling-test
+  (testing "A ConnectException will cause sync to stop"
+    (mt/dataset sample-dataset
+      (let [expected           (java.io.IOException.
+                                "outer"
+                                (java.net.ConnectException.
+                                 "inner, this one triggers the failure"))
+            actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+                                 (sync-util/run-sync-operation
+                                  "sync"
+                                  (mt/db)
+                                  [(sync-util/create-sync-step "failure-step"
+                                                               (fn [_]
+                                                                 (throw expected)))
+                                   (sync-util/create-sync-step "should-not-run"
+                                                               (fn [_]
+                                                                 {}))]))
+            [step-name result] (first (:steps actual))]
+        (is (= 1 (count (:steps actual))))
+        (is (= "failure-step" step-name))
+        (is (= {:throwable expected :log-summary-fn nil}
+               (dissoc result :start-time :end-time))))))
+
+  (doseq [ex [(java.io.IOException.
+               "outer, does not trigger"
+               (java.net.SocketException. "inner, this one does not trigger"))
+              (java.lang.IllegalArgumentException. "standalone, does not trigger")
+              (java.sql.SQLException.
+               "outer, does not trigger"
+               (java.sql.SQLException.
+                "inner, does not trigger"
+                (java.lang.IllegalArgumentException.
+                 "third level, does not trigger")))]]
+    (testing "Other errors will not cause sync to stop"
+      (let [actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+                                 (sync-util/run-sync-operation
+                                  "sync"
+                                  (mt/db)
+                                  [(sync-util/create-sync-step "failure-step"
+                                                               (fn [_]
+                                                                 (throw ex)))
+                                   (sync-util/create-sync-step "should-continue"
+                                                               (fn [_]
+                                                                 {}))]))]
+
+        ;; make sure we've ran two steps. the first one will have thrown an exception,
+        ;; but it wasn't an exception that can cause an abort.
+        (is (= 2 (count (:steps actual))))
+        (let [[step-name result] (first (:steps actual))]
+          (is (= "failure-step" step-name))
+          (is (= {:throwable ex :log-summary-fn nil}
+                 (dissoc result :start-time :end-time))))
+        (let [[step-name result] (second (:steps actual))]
+          (is (= "should-continue" step-name))
+          (is (= {:log-summary-fn nil} (dissoc result :start-time :end-time))))))))

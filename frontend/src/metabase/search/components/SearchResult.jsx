@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
@@ -11,6 +12,7 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
 
+import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
 
@@ -177,18 +179,27 @@ function InfoText({ result }) {
                 <Database.Name id={result.database_id} />{" "}
               </Link>
               {result.table_schema && (
-                <span>
-                  <Icon name="chevronright" mx="4px" size={10} />
-                  {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
-                  <Link
-                    to={Urls.browseSchema({
-                      db: { id: result.database_id },
-                      schema_name: result.table_schema,
-                    })}
-                  >
-                    {result.table_schema}
-                  </Link>
-                </span>
+                <Schema.ListLoader
+                  query={{ dbId: result.database_id }}
+                  loadingAndErrorWrapper={false}
+                >
+                  {({ list }) =>
+                    list && list.length > 1 ? (
+                      <span>
+                        <Icon name="chevronright" mx="4px" size={10} />
+                        {/* we have to do some {} manipulation here to make this look like the table object that browseSchema was written for originally */}
+                        <Link
+                          to={Urls.browseSchema({
+                            db: { id: result.database_id },
+                            schema_name: result.table_schema,
+                          })}
+                        >
+                          {result.table_schema}
+                        </Link>
+                      </span>
+                    ) : null
+                  }
+                </Schema.ListLoader>
               )}
             </span>
           )}`}
@@ -196,15 +207,18 @@ function InfoText({ result }) {
       );
     case "segment":
     case "metric":
-      return jt`${
-        result.model === "segment" ? "Segment of" : "Metric for"
-      } of ${(
-        <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
-          <Table.Loader id={result.table_id}>
-            {({ table }) => <span>{table.display_name}</span>}
-          </Table.Loader>
-        </Link>
-      )}`;
+      return (
+        <span>
+          {result.model === "segment" ? t`Segment of ` : t`Metric for `}
+          <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
+            <Table.Loader id={result.table_id} loadingAndErrorWrapper={false}>
+              {({ table }) =>
+                table ? <span>{table.display_name}</span> : null
+              }
+            </Table.Loader>
+          </Link>
+        </span>
+      );
     default:
       return jt`${capitalize(result.model)} in ${formatCollection(collection)}`;
   }

@@ -50,7 +50,8 @@
                                                                    :id field-id))]
                                                 (when (and (or (isa? (:semantic_type field) :type/PK)
                                                                (isa? (:semantic_type field) :type/FK))
-                                                           (isa? (:base_type field) :type/Integer))
+                                                           (or (isa? (:base_type field) :type/Integer)
+                                                               (isa? (:base_type field) :type/Number)))
                                                   idx)))
                                             (:fields (:query query))))]
                    (fn [metadata]

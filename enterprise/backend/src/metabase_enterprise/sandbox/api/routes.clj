@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.api.routes
   "Multi-tenant API routes."
   (:require [compojure.core :as compojure]
+            [metabase-enterprise.sandbox.api.field :as field]
             [metabase-enterprise.sandbox.api.gtap :as gtap]
             [metabase-enterprise.sandbox.api.table :as table]
             [metabase-enterprise.sandbox.api.user :as user]
@@ -20,4 +21,5 @@
    (compojure/routes
     (compojure/context "/gtap" [] (+auth gtap/routes))
     (compojure/context "/user" [] (+auth user/routes))))
+  (compojure/context "/field" [] (+auth field/routes))
   (compojure/context "/table" [] (+auth table/routes)))

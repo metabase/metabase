@@ -1,22 +1,17 @@
 // Includes migrations from integration tests:
 // https://github.com/metabase/metabase/pull/14174
 
-import {
-  signInAsAdmin,
-  restore,
-  popover,
-  USERS,
-  USER_GROUPS,
-  setupDummySMTP,
-} from "__support__/cypress";
-
+import { restore, popover, setupDummySMTP } from "__support__/cypress";
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
+const TOTAL_USERS = Object.entries(USERS).length;
+const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   const TEST_USER = {
@@ -36,7 +31,7 @@ describe("scenarios > admin > people", () => {
       cy.get(".ContentTable tbody tr")
         .as("result-rows")
         // Bobby Tables, No Collection Tableton, No Data Tableton, None Tableton, Robert Tableton
-        .should("have.length", 5);
+        .should("have.length", TOTAL_USERS);
 
       // A small sidebar selector
       cy.get(".AdminList-items").within(() => {
@@ -48,7 +43,7 @@ describe("scenarios > admin > people", () => {
       cy.get(".PageTitle").contains("Groups");
 
       // Administrators, All Users, collection, data
-      cy.get("@result-rows").should("have.length", 4);
+      cy.get("@result-rows").should("have.length", TOTAL_GROUPS);
 
       cy.get(".AdminList-items").within(() => {
         cy.findByText("Groups").should("have.class", "selected");
@@ -61,7 +56,7 @@ describe("scenarios > admin > people", () => {
       cy.get(".PageTitle").contains("All Users");
 
       // The same list as for "People"
-      cy.get("@result-rows").should("have.length", 5);
+      cy.get("@result-rows").should("have.length", TOTAL_USERS);
     });
 
     it("should load the members when navigating to the group directly", () => {
@@ -92,7 +87,7 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should disallow admin to create new users with case mutation of existing user", () => {
-      const { first_name, last_name, username: email } = normal;
+      const { first_name, last_name, email } = normal;
       cy.visit("/admin/people");
       clickButton("Add someone");
 

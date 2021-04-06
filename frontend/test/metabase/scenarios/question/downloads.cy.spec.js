@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 const xlsx = require("xlsx");
 
@@ -29,7 +29,7 @@ function testWorkbookDatetimes(workbook, download_type, sheetName) {
 describe("scenarios > question > download", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("downloads Excel and CSV files", () => {

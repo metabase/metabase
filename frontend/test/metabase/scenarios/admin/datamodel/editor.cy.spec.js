@@ -1,9 +1,4 @@
-import {
-  signInAsAdmin,
-  restore,
-  popover,
-  visitAlias,
-} from "__support__/cypress";
+import { restore, popover, visitAlias } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -15,7 +10,7 @@ const SAMPLE_DB_URL = "/admin/datamodel/database/1";
 describe.skip("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.server();
     cy.route("PUT", "/api/table/*").as("tableUpdate");
     cy.route("PUT", "/api/field/*").as("fieldUpdate");

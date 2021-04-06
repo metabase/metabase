@@ -2,7 +2,6 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [environ.core :as env]
-            [expectations :refer [expect]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
@@ -11,11 +10,9 @@
             [metabase.models :refer [Session User]]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
             [metabase.util.i18n :as i18n]
             [ring.mock.request :as mock]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
            java.util.UUID))
 
@@ -121,16 +118,16 @@
    :anti_csrf_token  test-anti-csrf-token
    :type             :full-app-embed})
 
-;; test that we can set a full-app-embedding session cookie
-(expect
-  {:body    {}
-   :status  200
-   :cookies {embedded-session-cookie
-             {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
-              :http-only true
-              :path      "/"}}
-   :headers {anti-csrf-token-header test-anti-csrf-token}}
-  (mw.session/set-session-cookie {} {} test-full-app-embed-session))
+(deftest set-full-app-embedding-session-cookie-test
+  (testing "test that we can set a full-app-embedding session cookie"
+    (is (= {:body    {}
+            :status  200
+            :cookies {embedded-session-cookie
+                      {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
+                       :http-only true
+                       :path      "/"}}
+            :headers {anti-csrf-token-header test-anti-csrf-token}}
+           (mw.session/set-session-cookie {} {} test-full-app-embed-session)))))
 
 
 ;;; ---------------------------------------- TEST wrap-session-id middleware -----------------------------------------
@@ -146,73 +143,69 @@
    identity
    (fn [e] (throw e))))
 
+(deftest no-session-id-in-request-test
+  (testing "no session-id in the request"
+    (is (= nil
+           (-> (wrapped-handler (mock/request :get "/anyurl") )
+               :metabase-session-id)))))
 
-;; no session-id in the request
-(expect
-  nil
-  (-> (wrapped-handler (mock/request :get "/anyurl") )
-      :metabase-session-id))
+(deftest header-test
+  (testing "extract session-id from header"
+    (is (= "foobar"
+           (:metabase-session-id
+            (wrapped-handler
+             (mock/header (mock/request :get "/anyurl") session-header "foobar")))))))
 
+(deftest cookie-test
+  (testing "extract session-id from cookie"
+    (is (= "cookie-session"
+           (:metabase-session-id
+            (wrapped-handler
+             (assoc (mock/request :get "/anyurl")
+                    :cookies {session-cookie {:value "cookie-session"}})))))))
 
-;; extract session-id from header
-(expect
-  "foobar"
-  (:metabase-session-id
-   (wrapped-handler
-    (mock/header (mock/request :get "/anyurl") session-header "foobar"))))
+(deftest both-header-and-cookie-test
+  (testing "if both header and cookie session-ids exist, then we expect the cookie to take precedence"
+    (is (= "cookie-session"
+           (:metabase-session-id
+            (wrapped-handler
+             (assoc (mock/header (mock/request :get "/anyurl") session-header "foobar")
+                    :cookies {session-cookie {:value "cookie-session"}})))))))
 
-
-;; extract session-id from cookie
-(expect
-  "cookie-session"
-  (:metabase-session-id
-   (wrapped-handler
-    (assoc (mock/request :get "/anyurl")
-      :cookies {session-cookie {:value "cookie-session"}}))))
-
-
-;; if both header and cookie session-ids exist, then we expect the cookie to take precedence
-(expect
-  "cookie-session"
-  (:metabase-session-id
-   (wrapped-handler
-    (assoc (mock/header (mock/request :get "/anyurl") session-header "foobar")
-           :cookies {session-cookie {:value "cookie-session"}}))))
-
-;; `wrap-session-id` should handle anti-csrf headers they way we'd expect
-(expect
-  {:anti-csrf-token     "84482ddf1bb178186ed9e1c0b1e05a2d"
-   :cookies             {embedded-session-cookie {:value "092797dd-a82a-4748-b393-697d7bb9ab65"}}
-   :metabase-session-id "092797dd-a82a-4748-b393-697d7bb9ab65"
-   :uri                 "/anyurl"}
-  (let [request (-> (mock/request :get "/anyurl")
-                    (assoc :cookies {embedded-session-cookie {:value (str test-uuid)}})
-                    (assoc-in [:headers anti-csrf-token-header] test-anti-csrf-token))]
-    (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-id :uri])))
+(deftest anti-csrf-headers-test
+  (testing "`wrap-session-id` should handle anti-csrf headers they way we'd expect"
+    (let [request (-> (mock/request :get "/anyurl")
+                      (assoc :cookies {embedded-session-cookie {:value (str test-uuid)}})
+                      (assoc-in [:headers anti-csrf-token-header] test-anti-csrf-token))]
+      (is (= {:anti-csrf-token     "84482ddf1bb178186ed9e1c0b1e05a2d"
+              :cookies             {embedded-session-cookie {:value "092797dd-a82a-4748-b393-697d7bb9ab65"}}
+              :metabase-session-id "092797dd-a82a-4748-b393-697d7bb9ab65"
+              :uri                 "/anyurl"}
+             (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-id :uri]))))))
 
 (deftest current-user-info-for-session-test
   (testing "make sure the `current-user-info-for-session` logic is working correctly"
     ;; for some reason Toucan seems to be busted with models with non-integer IDs and `with-temp` doesn't seem to work
     ;; the way we'd expect :/
     (try
-      (tt/with-temp Session [session {:id (str test-uuid), :user_id (test-users/user->id :lucky)}]
-        (is (= {:metabase-user-id (test-users/user->id :lucky), :is-superuser? false, :user-locale nil}
+      (mt/with-temp Session [session {:id (str test-uuid), :user_id (mt/user->id :lucky)}]
+        (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :user-locale nil}
                (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
   (testing "superusers should come back as `:is-superuser?`"
     (try
-      (tt/with-temp Session [session {:id (str test-uuid), :user_id (test-users/user->id :crowberto)}]
-        (is (= {:metabase-user-id (test-users/user->id :crowberto), :is-superuser? true, :user-locale nil}
+      (mt/with-temp Session [session {:id (str test-uuid), :user_id (mt/user->id :crowberto)}]
+        (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :user-locale nil}
                (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
-      (tt/with-temp Session [session {:id              (str test-uuid)
-                                      :user_id         (test-users/user->id :lucky)
+      (mt/with-temp Session [session {:id              (str test-uuid)
+                                      :user_id         (mt/user->id :lucky)
                                       :anti_csrf_token test-anti-csrf-token}]
         (is (= nil
                (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
@@ -221,18 +214,18 @@
 
     (testing "...but if we do specifiy the token, they should come back"
       (try
-        (tt/with-temp Session [session {:id              (str test-uuid)
-                                        :user_id         (test-users/user->id :lucky)
+        (mt/with-temp Session [session {:id              (str test-uuid)
+                                        :user_id         (mt/user->id :lucky)
                                         :anti_csrf_token test-anti-csrf-token}]
-          (is (= {:metabase-user-id (test-users/user->id :lucky), :is-superuser? false, :user-locale nil}
+          (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :user-locale nil}
                  (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token))))
         (finally
           (db/delete! Session :id (str test-uuid))))
 
       (testing "(unless the token is wrong)"
         (try
-          (tt/with-temp Session [session {:id              (str test-uuid)
-                                          :user_id         (test-users/user->id :lucky)
+          (mt/with-temp Session [session {:id              (str test-uuid)
+                                          :user_id         (mt/user->id :lucky)
                                           :anti_csrf_token test-anti-csrf-token}]
             (is (= nil
                    (#'mw.session/current-user-info-for-session (str test-uuid) (str/join (reverse test-anti-csrf-token))))))
@@ -241,8 +234,8 @@
 
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
     (try
-      (tt/with-temp Session [session {:id      (str test-uuid)
-                                      :user_id (test-users/user->id :lucky)}]
+      (mt/with-temp Session [session {:id      (str test-uuid)
+                                      :user_id (mt/user->id :lucky)}]
         (is (= nil
                (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token))))
       (finally
@@ -250,8 +243,8 @@
 
   (testing "shouldn't fetch expired sessions"
     (try
-      (tt/with-temp Session [session {:id      (str test-uuid)
-                                      :user_id (test-users/user->id :lucky)}]
+      (mt/with-temp Session [session {:id      (str test-uuid)
+                                      :user_id (mt/user->id :lucky)}]
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
         (db/execute! {:update Session, :set {:created_at (java.sql.Date. 0)}, :where [:= :id (str test-uuid)]})
         (is (= nil
@@ -261,7 +254,7 @@
 
   (testing "shouldn't fetch sessions for inactive users"
     (try
-      (tt/with-temp Session [session {:id (str test-uuid), :user_id (test-users/user->id :trashbird)}]
+      (mt/with-temp Session [session {:id (str test-uuid), :user_id (mt/user->id :trashbird)}]
         (is (= nil
                (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
@@ -284,21 +277,19 @@
   (-> (mock/request :get "/anyurl")
       (assoc :metabase-user-id user-id)))
 
+(deftest add-user-id-key-test
+  (testing "with valid user-id"
+    (is (= {:user-id (mt/user->id :rasta)
+            :user    {:id    (mt/user->id :rasta)
+                      :email (:email (mt/fetch-user :rasta))}}
+           (user-bound-handler
+            (request-with-user-id (mt/user->id :rasta))))))
 
-;; with valid user-id
-(expect
-  {:user-id (test-users/user->id :rasta)
-   :user    {:id    (test-users/user->id :rasta)
-             :email (:email (test-users/fetch-user :rasta))}}
-  (user-bound-handler
-   (request-with-user-id (test-users/user->id :rasta))))
-
-;; with invalid user-id (not sure how this could ever happen, but lets test it anyways)
-(expect
-  {:user-id 0
-   :user    {}}
-  (user-bound-handler
-   (request-with-user-id 0)))
+  (testing "with invalid user-id (not sure how this could ever happen, but lets test it anyways)"
+    (is (= {:user-id 0
+            :user    {}}
+           (user-bound-handler
+            (request-with-user-id 0))))))
 
 
 ;;; ----------------------------------------------------- Locale -----------------------------------------------------

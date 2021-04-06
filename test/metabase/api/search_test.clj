@@ -2,11 +2,13 @@
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
             [metabase.models :refer [Card CardFavorite Collection Dashboard DashboardCard DashboardFavorite Database
                                      Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard Segment Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
+            [metabase.search.config :as search-config]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
@@ -50,10 +52,12 @@
    {:name name}
    (apply array-map kvs)))
 
+(def ^:private test-collection (make-result "collection test collection", :model "collection", :collection {:id true, :name true}, :updated_at false))
+
 (defn- default-search-results []
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
-    (make-result "collection test collection", :model "collection", :collection {:id true, :name true}, :updated_at false)
+    test-collection
     (make-result "card test card", :model "card", :favorite false, :dataset_query "{}", :dashboardcard_count 0)
     (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
@@ -140,6 +144,22 @@
   [& args]
   (apply search-request* identity args))
 
+(deftest order-clause-test
+  (testing "it includes all columns"
+    (is (= (hsql/call
+            :case
+             [:like (hsql/call :lower :model) "%foo%"] 0
+             [:like (hsql/call :lower :name) "%foo%"] 0
+             [:like (hsql/call :lower :display_name) "%foo%"] 0
+             [:like (hsql/call :lower :description) "%foo%"] 0
+             [:like (hsql/call :lower :collection_name) "%foo%"] 0
+             [:like (hsql/call :lower :dataset_query) "%foo%"] 0
+             [:like (hsql/call :lower :table_schema) "%foo%"] 0
+             [:like (hsql/call :lower :table_name) "%foo%"] 0
+             [:like (hsql/call :lower :table_description) "%foo%"] 0
+             :else 1)
+           (api.search/order-clause "foo")))))
+
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
     (with-search-items-in-root-collection "test"
@@ -154,7 +174,12 @@
     (with-search-items-in-root-collection "test"
       (with-search-items-in-root-collection "something different"
         (is (= (default-search-results)
-               (search-request :crowberto :q "test")))))))
+               (search-request :crowberto :q "test"))))))
+  (testing "It prioritizes exact matches"
+    (with-search-items-in-root-collection "test"
+      (with-redefs [search-config/db-max-results 1]
+        (is (= [test-collection]
+               (search-request :crowberto :q "test collection")))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
@@ -179,7 +204,7 @@
                     DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
                     DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]]
       (is (= dashboard-count-results
-             (unsorted-search-request :rasta :q "dashboard-count" ))))))
+             (unsorted-search-request :rasta :q "dashboard-count"))))))
 
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "

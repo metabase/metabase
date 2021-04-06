@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";

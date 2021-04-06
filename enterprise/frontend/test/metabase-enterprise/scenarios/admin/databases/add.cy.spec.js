@@ -1,15 +1,10 @@
-import {
-  describeWithToken,
-  popover,
-  restore,
-  signInAsAdmin,
-} from "__support__/cypress";
+import { describeWithToken, popover, restore } from "__support__/cypress";
 
 describeWithToken("scenarios > admin > databases > add", () => {
   describe("EE should ship with Oracle and Vertica as options", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
       cy.server();
 
       cy.visit("/admin/databases/create");

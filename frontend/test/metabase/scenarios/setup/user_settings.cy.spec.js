@@ -1,6 +1,7 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
-import { restore, signInAsNormalUser, USERS } from "__support__/cypress";
-const { first_name, last_name, username: email } = USERS.normal;
+import { restore } from "__support__/cypress";
+import { USERS } from "__support__/cypress_data";
+const { first_name, last_name, email } = USERS.normal;
 
 const CURRENT_USER = {
   email: "normal@metabase.com",
@@ -27,15 +28,16 @@ const requestsCount = alias =>
 describe("user > settings", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
-  it("should show user details", () => {
+  it("should show user details with disabled submit button", () => {
     cy.visit("/user/edit_current");
     cy.findByText("Account settings");
     cy.findByDisplayValue(first_name);
     cy.findByDisplayValue(last_name);
     cy.findByDisplayValue(email);
+    cy.findByRole("button", { name: "Update" }).should("be.disabled");
   });
 
   it("should update the user without fetching memberships", () => {

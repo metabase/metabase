@@ -1,5 +1,21 @@
 (ns metabase-enterprise.sso.integrations.saml
-  "Implementation of the SAML backend for SSO"
+  "Implementation of the SAML backend for SSO.
+
+  The basic flow of of a SAML login is:
+
+  1. User attempts to access some `url` but is not authenticated
+
+  2. User is redirected to `GET /auth/sso`
+
+  3. Metabase issues another redirect to the identity provider URI
+
+  4. User logs into their identity provider (i.e. Auth0)
+
+  5. Identity provider POSTs to Metabase with successful auth info
+
+  6. Metabase parses/validates the SAML response
+
+  7. Metabase inits the user session, responds with a redirect to back to the original `url`"
   (:require [buddy.core.codecs :as codecs]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -12,6 +28,7 @@
             [metabase.integrations.common :as integrations.common]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec]
@@ -31,11 +48,11 @@
     (when group-names
       (integrations.common/sync-group-memberships! user (group-names->ids group-names) false))))
 
-(s/defn saml-auth-fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
+(s/defn ^:private fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Returns a Session for the given `email`. Will create the user if needed."
-  [first-name last-name email group-names user-attributes]
+  [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-configured?)
-    (throw (IllegalArgumentException. "Can't create new SAML user when SAML is not configured")))
+    (throw (IllegalArgumentException. (tru "Can't create new SAML user when SAML is not configured"))))
   (when-not email
     (throw (ex-info (str (tru "Invalid SAML configuration: could not find user email.")
                          " "
@@ -51,7 +68,7 @@
                                                        :sso_source       "saml"
                                                        :login_attributes user-attributes}))]
     (sync-groups! user group-names)
-    (session/create-session! :sso user)))
+    (session/create-session! :sso user device-info)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -92,9 +109,7 @@
                          :acs-url    (acs-url)
                          :idp-url    idp-url
                          :credential (sp-cert-keystore-details)})
-          ;; encode the redirect URL to base-64 if it's not already encoded.
-          relay-state  (cond-> redirect-url
-                         (not (u/base64-string? redirect-url)) saml/str->base64)]
+          relay-state  (saml/str->base64 redirect-url)]
       (saml/idp-redirect-response saml-request idp-url relay-state))
     (catch Throwable e
       (let [msg (trs "Error generating SAML request")]
@@ -137,7 +152,8 @@
     attrs))
 
 (defn- base64-decode [s]
-  (codecs/bytes->str (codec/base64-decode s)))
+  (when (u/base64-string? s)
+    (codecs/bytes->str (codec/base64-decode s))))
 
 (defmethod sso/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
@@ -155,6 +171,12 @@
         first-name    (get attrs (sso-settings/saml-attribute-firstname) "Unknown")
         last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
         groups        (get attrs (sso-settings/saml-attribute-group))
-        session       (saml-auth-fetch-or-create-user! first-name last-name email groups attrs)
+        session       (fetch-or-create-user!
+                       {:first-name      first-name
+                        :last-name       last-name
+                        :email           email
+                        :group-names     groups
+                        :user-attributes attrs
+                        :device-info     (request.u/device-info request)})
         response      (resp/redirect (or continue-url (public-settings/site-url)))]
     (mw.session/set-session-cookie request response session)))

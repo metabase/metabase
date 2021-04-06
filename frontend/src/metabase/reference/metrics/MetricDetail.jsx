@@ -5,6 +5,8 @@ import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
+
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -13,7 +15,6 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Detail from "metabase/reference/components/Detail";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
 import Formula from "metabase/reference/components/Formula";
-import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail";
 
 import { getQuestionUrl } from "../utils";
 
@@ -21,11 +22,9 @@ import {
   getMetric,
   getTable,
   getFields,
-  getGuide,
   getError,
   getLoading,
   getUser,
-  getIsEditing,
   getIsFormulaExpanded,
   getForeignKeys,
 } from "../selectors";
@@ -35,39 +34,28 @@ import * as actions from "metabase/reference/reference";
 
 const mapStateToProps = (state, props) => {
   const entity = getMetric(state, props) || {};
-  const guide = getGuide(state, props);
   const fields = getFields(state, props);
-
-  const initialValues = {
-    important_fields:
-      (guide &&
-        guide.metric_important_fields &&
-        guide.metric_important_fields[entity.id] &&
-        guide.metric_important_fields[entity.id].map(
-          fieldId => fields[fieldId],
-        )) ||
-      [],
-  };
 
   return {
     entity,
     table: getTable(state, props),
     metadataFields: fields,
-    guide,
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
     foreignKeys: getForeignKeys(state, props),
-    isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
-    initialValues,
   };
 };
 
 const mapDispatchToProps = {
   ...metadataActions,
-  ...actions,
+
+  // Metric page doesn't use Redux isEditing state and related callbacks
+  // The state and callbacks are received via props
+  ..._.omit(actions, "startEditing", "endEditing"),
+
   onChangeLocation: push,
 };
 
@@ -90,7 +78,6 @@ const validate = (values, props) =>
     "points_of_interest",
     "caveats",
     "how_is_this_calculated",
-    "important_fields",
   ],
   validate,
 })
@@ -100,7 +87,6 @@ export default class MetricDetail extends Component {
     entity: PropTypes.object.isRequired,
     table: PropTypes.object,
     metadataFields: PropTypes.object,
-    guide: PropTypes.object,
     user: PropTypes.object.isRequired,
     isEditing: PropTypes.bool,
     startEditing: PropTypes.func.isRequired,
@@ -131,13 +117,11 @@ export default class MetricDetail extends Component {
         points_of_interest,
         caveats,
         how_is_this_calculated,
-        important_fields,
       },
       style,
       entity,
       table,
       metadataFields,
-      guide,
       loadingError,
       loading,
       user,
@@ -157,7 +141,6 @@ export default class MetricDetail extends Component {
       async fields =>
         await actions.rUpdateMetricDetail(
           this.props.entity,
-          this.props.guide,
           fields,
           this.props,
         ),
@@ -253,38 +236,10 @@ export default class MetricDetail extends Component {
                       />
                     </li>
                   )}
-                  <li className="relative">
-                    <MetricImportantFieldsDetail
-                      fields={
-                        guide &&
-                        guide.metric_important_fields[entity.id] &&
-                        Object.values(guide.metric_important_fields[entity.id])
-                          .map(fieldId => metadataFields[fieldId])
-                          .reduce(
-                            (map, field) => ({ ...map, [field.id]: field }),
-                            {},
-                          )
-                      }
-                      table={table}
-                      allFields={metadataFields}
-                      metric={entity}
-                      onChangeLocation={onChangeLocation}
-                      isEditing={isEditing}
-                      formField={important_fields}
-                    />
-                  </li>
                   {!isEditing && (
                     <li className="relative mt4">
                       <FieldsToGroupBy
                         fields={table.fields
-                          .filter(
-                            fieldId =>
-                              !guide ||
-                              !guide.metric_important_fields[entity.id] ||
-                              !guide.metric_important_fields[
-                                entity.id
-                              ].includes(fieldId),
-                          )
                           .map(fieldId => metadataFields[fieldId])
                           .reduce(
                             (map, field) => ({ ...map, [field.id]: field }),
@@ -292,11 +247,7 @@ export default class MetricDetail extends Component {
                           )}
                         databaseId={table && table.db_id}
                         metric={entity}
-                        title={
-                          guide && guide.metric_important_fields[entity.id]
-                            ? t`Other fields you can group this metric by`
-                            : t`Fields you can group this metric by`
-                        }
+                        title={t`Fields you can group this metric by`}
                         onChangeLocation={onChangeLocation}
                       />
                     </li>

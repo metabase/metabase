@@ -1,5 +1,5 @@
 /*eslint-disable react/no-danger */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import styled from "styled-components";
 import { color, space, hover } from "styled-system";

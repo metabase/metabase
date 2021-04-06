@@ -29,6 +29,7 @@ import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
 import {
@@ -1180,9 +1181,10 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     const newCard = startNewCard("query", card.dataset_query.database);
 
     newCard.dataset_query.query["source-table"] = fk.origin.table.id;
+    const field = new FieldDimension(fk.origin.id);
     newCard.dataset_query.query.filter = [
       "and",
-      ["=", fk.origin.id, originValue],
+      ["=", field.mbql(), originValue],
     ];
 
     // run it

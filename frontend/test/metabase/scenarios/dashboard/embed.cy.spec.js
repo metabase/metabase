@@ -1,9 +1,9 @@
-import { signInAsAdmin, restore, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/cypress";
 
 describe("scenarios > dashboard > embed", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it.skip("should have the correct embed snippet", () => {
@@ -90,7 +90,10 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
       .find("textarea")
       .type("text text text");
     cy.icon("filter").click();
-    popover().within(() => cy.findByText("Other Categories").click());
+    popover().within(() => {
+      cy.findByText("Other Categories").click();
+      cy.findByText("Dropdown").click();
+    });
     cy.findByText("Save").click();
 
     // confirm text box and filter are still there

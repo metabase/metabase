@@ -1,65 +1,8 @@
 import "@testing-library/cypress/add-commands";
+import "@cypress/skip-test/support";
 import "./commands";
 
 export const version = require("../../../version.json");
-
-export const USERS = {
-  admin: {
-    first_name: "Bobby",
-    last_name: "Tables",
-    username: "admin@metabase.com",
-    password: "12341234",
-  },
-  normal: {
-    first_name: "Robert",
-    last_name: "Tableton",
-    username: "normal@metabase.com",
-    password: "12341234",
-  },
-  nodata: {
-    first_name: "No Data",
-    last_name: "Tableton",
-    username: "nodata@metabase.com",
-    password: "12341234",
-  },
-  nocollection: {
-    first_name: "No Collection",
-    last_name: "Tableton",
-    username: "nocollection@metabase.com",
-    password: "12341234",
-  },
-  none: {
-    first_name: "None",
-    last_name: "Tableton",
-    username: "none@metabase.com",
-    password: "12341234",
-  },
-};
-
-export const USER_GROUPS = {
-  ALL_USERS_GROUP: 1,
-  ADMIN_GROUP: 2,
-  COLLECTION_GROUP: 4,
-  DATA_GROUP: 5,
-};
-
-export function signIn(user = "admin") {
-  cy.log(`Logging in as ${user}`);
-  cy.request("POST", "/api/session", USERS[user]);
-}
-
-export function signOut() {
-  cy.log("Signing out");
-  cy.clearCookie("metabase.SESSION");
-}
-
-export function signInAsAdmin() {
-  signIn("admin");
-}
-
-export function signInAsNormalUser() {
-  signIn("normal");
-}
 
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);

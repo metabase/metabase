@@ -66,7 +66,9 @@
    [aleph "0.4.6" :exclusions [org.clojure/tools.logging]]            ; Async HTTP library; WebSockets
    [bigml/histogram "4.1.3"]                                          ; Histogram data structure
    [buddy/buddy-core "1.5.0"                                          ; various cryptograhpic functions
-    :exclusions [commons-codec]]
+    :exclusions [commons-codec
+                 org.bouncycastle/bcprov-jdk15on
+                 org.bouncycastle/bcpkix-jdk15on]]
    [buddy/buddy-sign "3.0.0"]                                         ; JSON Web Tokens; High-Level message signing library
    [cheshire "5.10.0"]                                                ; fast JSON encoding (used by Ring JSON middleware)
    [clj-http "3.10.3"                                                 ; HTTP client
@@ -91,15 +93,16 @@
    [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
-   [commons-codec/commons-codec "1.14"]                               ; Apache Commons -- useful codec util fns
-   [commons-io/commons-io "2.6"]                                      ; Apache Commons -- useful IO util fns
+   [commons-codec/commons-codec "1.15"]                               ; Apache Commons -- useful codec util fns
+   [commons-io/commons-io "2.8.0"]                                    ; Apache Commons -- useful IO util fns
    [commons-validator/commons-validator "1.6"                         ; Apache Commons -- useful validation util fns
     :exclusions [commons-beanutils
                  commons-digester
                  commons-logging]]
    [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
-   [dk.ative/docjure "1.13.0"]                                        ; Excel export
+   [dk.ative/docjure "1.14.0" :exclusions [org.apache.poi/poi
+                                           org.apache.poi/poi-ooxml]] ; excel export
    [environ "1.2.0"]                                                  ; easy environment management
    [hiccup "1.0.5"]                                                   ; HTML templating
    [honeysql "1.0.461" :exclusions [org.clojure/clojurescript]]       ; Transform Clojure data structures to SQL
@@ -110,14 +113,17 @@
                  org.yaml/snakeyaml]]
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [kixi/stats "0.4.4" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
-   [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
+   [me.raynes/fs "1.4.6"                                              ; Filesystem tools
+    :exclusions [org.apache.commons/commons-compress]]
    [medley "1.3.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/saml20-clj "2.0.0"]                                      ; EE SAML integration
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
+   [net.cgrand/macrovich "0.2.1"]                                     ; utils for writing macros for both Clojure & ClojureScript
    [net.redhogs.cronparser/cron-parser-core "3.4"                     ; describe Cron schedule in human-readable language
     :exclusions [org.slf4j/slf4j-api joda-time]]                      ; exclude joda time 2.3 which has outdated timezone information
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
+   [org.apache.commons/commons-compress "1.20"]                       ; compression utils
    [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
    [org.apache.logging.log4j/log4j-api "2.13.3"]                      ; apache logging framework
    [org.apache.logging.log4j/log4j-1.2-api "2.13.3"]                  ; add compatibility with log4j 1.2
@@ -125,8 +131,13 @@
    [org.apache.logging.log4j/log4j-jcl "2.13.3"]                      ; allows the commons-logging API to work with log4j 2
    [org.apache.logging.log4j/log4j-liquibase "2.13.3"]                ; liquibase logging via log4j 2
    [org.apache.logging.log4j/log4j-slf4j-impl "2.13.3"]               ; allows the slf4j API to work with log4j 2
+   [org.apache.poi/poi "5.0.0"]                                       ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
+   [org.apache.poi/poi-ooxml "5.0.0"
+    :exclusions [org.bouncycastle/bcprov-jdk15on
+                 org.bouncycastle/bcpkix-jdk15on]]
    [org.apache.sshd/sshd-core "2.4.0"]                                ; ssh tunneling and test server
-   [org.bouncycastle/bcprov-jdk15on "1.65"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+   [org.bouncycastle/bcprov-jdk15on "1.68"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+   [org.bouncycastle/bcpkix-jdk15on "1.68"]
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.eclipse.jetty/jetty-server "9.4.32.v20200930"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
@@ -140,10 +151,10 @@
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
    [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
-   [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
+   [prismatic/schema "1.1.12"]                                        ; Data schema declaration and validation library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
-   [ring/ring-core "1.8.0"]
+   [ring/ring-core "1.8.1"]
    [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
@@ -151,6 +162,7 @@
                                  org.clojure/tools.logging
                                  org.clojure/tools.namespace
                                  honeysql]]
+   [user-agent "0.1.0"]                                               ; User-Agent string parser, for Login History page & elsewhere
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
    ]
 
@@ -254,7 +266,7 @@
      :format-result metabase.junit/format-result}}
 
    :ci
-   {:jvm-opts ["-Xmx2000m"]}
+   {}
 
    :install
    {}
@@ -400,7 +412,7 @@
 
    :check-namespace-decls
    [:linters-common
-    {:plugins               [[lein-check-namespace-decls "1.0.2"]]
+    {:plugins               [[lein-check-namespace-decls "1.0.3"]]
      :check-namespace-decls {:prefix-rewriting false}}]
 
    :cloverage

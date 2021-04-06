@@ -1,14 +1,9 @@
-import {
-  restore,
-  signInAsNormalUser,
-  openOrdersTable,
-  sidebar,
-} from "__support__/cypress";
+import { restore, openOrdersTable, sidebar } from "__support__/cypress";
 
 describe("scenarios > question > trendline", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it.skip("displays trendline when there are multiple numeric outputs (for simple question) (metabase#12781)", () => {

@@ -1,11 +1,5 @@
 // Ported from `segments.e2e.spec.js`
-import {
-  restore,
-  signInAsAdmin,
-  popover,
-  modal,
-  sidebar,
-} from "__support__/cypress";
+import { restore, popover, modal, sidebar } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -14,7 +8,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > admin > datamodel > segments", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.viewport(1400, 860);
   });
 

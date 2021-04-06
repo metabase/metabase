@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import ReactDOMServer from "react-dom/server";
@@ -166,6 +167,7 @@ export default class TokenizedInput extends Component {
         className={className}
         style={{ ...style }}
         contentEditable
+        spellCheck={false}
         onKeyDown={
           this.props.tokenizedEditing
             ? this.onKeyDownTokenized

@@ -3,8 +3,6 @@
 import {
   popover,
   restore,
-  signIn,
-  signInAsAdmin,
   selectDashboardFilter,
   expectedRouteCalls,
 } from "__support__/cypress";
@@ -28,7 +26,7 @@ function saveDashboard() {
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should create new dashboard", () => {
@@ -47,25 +45,6 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Test Dash");
   });
 
-  it("should update title and description", () => {
-    cy.visit("/dashboard/1");
-    cy.icon("ellipsis").click();
-    cy.findByText("Change title and description").click();
-    cy.findByLabelText("Name")
-      .click()
-      .clear()
-      .type("Test Title");
-    cy.findByLabelText("Description")
-      .click()
-      .clear()
-      .type("Test description");
-
-    cy.findByText("Update").click();
-    cy.findByText("Test Title");
-    cy.icon("info").click();
-    cy.findByText("Test description");
-  });
-
   it("should add a filter", () => {
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();
@@ -73,7 +52,7 @@ describe("scenarios > dashboard", () => {
     // Adding location/state doesn't make much sense for this case,
     // but we're testing just that the filter is added to the dashboard
     cy.findByText("Location").click();
-    cy.findByText("State").click();
+    cy.findByText("Dropdown").click();
     cy.findByText("Select…").click();
 
     popover().within(() => {
@@ -88,7 +67,7 @@ describe("scenarios > dashboard", () => {
 
     cy.log("Assert that the selected filter is present in the dashboard");
     cy.icon("location");
-    cy.findByText("State");
+    cy.findByText("Location");
   });
 
   it("should add a question", () => {
@@ -99,23 +78,6 @@ describe("scenarios > dashboard", () => {
     saveDashboard();
 
     cy.findByText("Orders, Count");
-  });
-
-  it("should duplicate a dashboard", () => {
-    cy.visit("/dashboard/1");
-    cy.findByText("Orders in a dashboard");
-    cy.icon("ellipsis").click();
-    cy.findByText("Duplicate").click();
-    cy.findByLabelText("Name")
-      .click()
-      .clear()
-      .type("Doppleganger");
-    cy.get(".Button--primary")
-      .contains("Duplicate")
-      .click();
-
-    cy.findByText("Orders in a dashboard").should("not.exist");
-    cy.findByText("Doppleganger");
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
@@ -175,6 +137,7 @@ describe("scenarios > dashboard", () => {
     cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Other Categories").click();
+      cy.findByText("Starts with").click();
     });
     // and connect it to the card
     selectDashboardFilter(cy.get(".DashCard"), "Category");
@@ -385,7 +348,7 @@ describe("scenarios > dashboard", () => {
     cy.server();
     cy.route("POST", "/api/card/*/query").as("cardQuery");
 
-    signIn("nodata");
+    cy.signIn("nodata");
 
     clickThrough("12720_SQL");
     clickThrough("Orders");
@@ -545,35 +508,6 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  describe("revisions screen", () => {
-    it("should open and close", () => {
-      cy.visit("/dashboard/1");
-      cy.icon("ellipsis").click();
-      cy.findByText("Revision history").click();
-
-      cy.get(".Modal").within(() => {
-        cy.get(".LoadingSpinner").should("not.exist");
-      });
-
-      cy.findAllByText("Bobby Tables");
-      cy.contains(/revert/i);
-
-      cy.get(".Modal .Icon-close").click();
-      cy.findAllByText("Bobby Tables").should("not.exist");
-    });
-
-    it("should open with url", () => {
-      cy.visit("/dashboard/1/history");
-      cy.get(".Modal").within(() => {
-        cy.get(".LoadingSpinner").should("not.exist");
-        cy.findByText("Revision history");
-      });
-
-      cy.findAllByText("Bobby Tables");
-      cy.contains(/revert/i);
-    });
-  });
-
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();
@@ -598,6 +532,215 @@ describe("scenarios > dashboard", () => {
     cy.contains("Include this minute").click();
     // make sure the checkbox was checked
     cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
+  });
+
+  it.skip("user without data permissions should be able to use dashboard filter (metabase#15119)", () => {
+    cy.createQuestion({
+      name: "15119",
+      query: { "source-table": 1 },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("15119D").then(({ body: { id: DASHBOARD_ID } }) => {
+        // Add filter to the dashboard
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            {
+              name: "Category",
+              slug: "category",
+              id: "ad1c877e",
+              type: "category",
+            },
+          ],
+        });
+        // Add card to the dashboard
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          // Connect filter to the card
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 12,
+                sizeY: 9,
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: "ad1c877e",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+
+        cy.signIn("nodata");
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+        cy.get("fieldset")
+          .contains("Category")
+          .click();
+
+        cy.findByPlaceholderText("Enter some text")
+          .click()
+          .type("Gizmo", { delay: 10 });
+        cy.findByRole("button", { name: "Add filter" })
+          .should("not.be.disabled")
+          .click();
+        cy.contains("Rustic Paper Wallet");
+      });
+    });
+  });
+
+  it.skip("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
+    cy.request("GET", "/api/user/current").then(
+      ({ body: { personal_collection_id } }) => {
+        // Save new dashboard in admin's personal collection
+        cy.request("POST", "/api/dashboard", {
+          name: "15368D",
+          collection_id: personal_collection_id,
+        }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
+          const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
+          // Add click behavior to the existing "Orders in a dashboard" dashboard
+          cy.request("PUT", "/api/dashboard/1/cards", {
+            cards: [
+              {
+                id: 1,
+                card_id: 1,
+                row: 0,
+                col: 0,
+                sizeX: 12,
+                sizeY: 8,
+                series: [],
+                visualization_settings: {
+                  column_settings: {
+                    [COLUMN_REF]: {
+                      click_behavior: {
+                        type: "link",
+                        linkType: "dashboard",
+                        parameterMapping: {},
+                        targetId: NEW_DASHBOARD_ID,
+                      },
+                    },
+                  },
+                },
+                parameter_mappings: [],
+              },
+            ],
+          });
+
+          cy.server();
+          cy.route("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
+            "loadDashboard",
+          );
+        });
+      },
+    );
+    cy.signInAsNormalUser();
+    cy.visit("/dashboard/1");
+
+    cy.wait("@loadDashboard");
+    cy.findByText("Orders in a dashboard");
+    cy.contains("37.65");
+  });
+
+  ["normal", "corrupted"].forEach(test => {
+    it(`${test.toUpperCase()} version:\n filters should work even if one of them is corrupted (metabase #15279)`, () => {
+      cy.skipOn(test === "corrupted"); // Remove this line when the issue is fixed
+      cy.createQuestion({
+        name: "15279",
+        query: { "source-table": PEOPLE_ID },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.createDashboard("15279D").then(({ body: { id: DASHBOARD_ID } }) => {
+          const parameters = [
+            {
+              name: "List",
+              slug: "list",
+              id: "6fe14171",
+              type: "category",
+            },
+            {
+              name: "Search",
+              slug: "search",
+              id: "4db4913a",
+              type: "category",
+            },
+          ];
+
+          if (test === "corrupted") {
+            // This filter is corrupted because it's missing `name` and the `slug`
+            parameters.push({
+              name: "",
+              slug: "",
+              id: "af72ce9c",
+              type: "category",
+            });
+          }
+          // Add filters to the dashboard
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+            parameters,
+          });
+
+          // Add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            // Connect filters to that question
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 18,
+                  sizeY: 8,
+                  series: [],
+                  visualization_settings: {},
+                  parameter_mappings: [
+                    {
+                      parameter_id: "6fe14171",
+                      card_id: QUESTION_ID,
+                      target: ["dimension", ["field-id", PEOPLE.SOURCE]],
+                    },
+                    {
+                      parameter_id: "4db4913a",
+                      card_id: QUESTION_ID,
+                      target: ["dimension", ["field-id", PEOPLE.NAME]],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+
+          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        });
+      });
+      // Check that dropdown list works
+      cy.get("fieldset")
+        .contains("List")
+        .click();
+      popover()
+        .findByText("Organic")
+        .click();
+      cy.findByRole("button", { name: "Add filter" }).click();
+      // Check that the search works
+      cy.get("fieldset")
+        .contains("Search")
+        .click();
+      cy.findByPlaceholderText("Search by Name")
+        .click()
+        .type("Lor", { delay: 50 });
+      popover().within(() => {
+        cy.get(".LoadingSpinner").should("not.exist");
+        cy.findByText("Lora Cronin");
+      });
+    });
   });
 });
 

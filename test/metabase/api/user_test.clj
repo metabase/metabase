@@ -12,6 +12,7 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :as hydrate :refer [hydrate]]))
 
@@ -215,21 +216,21 @@
             email     (mt/random-email)]
         (mt/with-model-cleanup [User]
           (mt/with-fake-inbox
-            (= (merge user-defaults
-                      (merge
-                       user-defaults
-                       {:email            email
-                        :first_name       user-name
-                        :last_name        user-name
-                        :common_name      (str user-name " " user-name)
-                        :group_ids        [(u/the-id (group/all-users))]
-                        :login_attributes {:test "value"}}))
-               (mt/boolean-ids-and-timestamps
-                (mt/user-http-request :crowberto :post 200 "user"
-                                      {:first_name       user-name
-                                       :last_name        user-name
-                                       :email            email
-                                       :login_attributes {:test "value"}})))))))
+            (is (= (merge user-defaults
+                          (merge
+                           user-defaults
+                           {:email            email
+                            :first_name       user-name
+                            :last_name        user-name
+                            :common_name      (str user-name " " user-name)
+                            :group_ids        [(u/the-id (group/all-users))]
+                            :login_attributes {:test "value"}}))
+                   (mt/boolean-ids-and-timestamps
+                    (mt/user-http-request :crowberto :post 200 "user"
+                                          {:first_name       user-name
+                                           :last_name        user-name
+                                           :email            email
+                                           :login_attributes {:test "value"}}))))))))
 
     (testing "Check that non-superusers are denied access"
       (is (= "You don't have permissions to do that."
@@ -665,8 +666,9 @@
                (mt/user-http-request :crowberto :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
 
       (testing " Attempting to reactivate an already active user should fail"
-        (is (= {:message "Not able to reactivate an active user"}
-               (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
+        (is (schema= {:message  (s/eq "Not able to reactivate an active user")
+                      s/Keyword s/Any}
+                     (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
 
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")

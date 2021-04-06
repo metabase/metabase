@@ -4,15 +4,8 @@
             [clojure.string :as str]
             [environ.core :as env]
             [flatland.ordered.map :as ordered-map]
-            [metabuild-common.core :as u]
-            [metabuild-common.java :as java]))
-
-(defn- build-translation-resources!
-  []
-  (u/step "Build translation resources"
-    (java/check-java-8)
-    (u/sh {:dir u/project-root-directory} "./bin/i18n/build-translation-resources")
-    (u/announce "Translation resources built successfully.")))
+            [i18n.create-artifacts :as i18n]
+            [metabuild-common.core :as u]))
 
 (defn- edition-from-env-var []
   (case (env/env :mb-edition)
@@ -66,7 +59,7 @@
    :version      (fn [{:keys [version]}]
                    (version-info/generate-version-info-file! version))
    :translations (fn [_]
-                   (build-translation-resources!))
+                   (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
    :drivers      (fn [{:keys [edition]}]

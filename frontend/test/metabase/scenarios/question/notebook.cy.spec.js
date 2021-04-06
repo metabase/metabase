@@ -1,7 +1,6 @@
 import {
   createNativeQuestion,
   restore,
-  signInAsAdmin,
   openOrdersTable,
   openProductsTable,
   popover,
@@ -25,7 +24,7 @@ const {
 describe("scenarios > question > notebook", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
@@ -116,6 +115,27 @@ describe("scenarios > question > notebook", () => {
         .type("Sum Divide");
       cy.contains(/^CASE expects 2 arguments or more/i);
     });
+  });
+
+  it("should process the updated expression when pressing Enter", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1");
+    cy.findAllByRole("button", { name: "Done" }).click();
+
+    // change the corresponding custom expression
+    cy.findByText("Price is greater than 1").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.contains(/^Price is less than 5/i);
   });
 
   describe("joins", () => {
@@ -513,6 +533,56 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("How this metric is distributed across different numbers");
       // Make sure at least one card is rendered
       cy.get(".DashCard");
+    });
+
+    it.skip("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
+      cy.createQuestion({
+        name: "15446",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+              alias: "Products",
+            },
+          ],
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.visit(`/question/${QUESTION_ID}/notebook`);
+      });
+      cy.findByText("Pick a column to group by").click();
+      // In the first popover we'll choose the breakout method
+      popover().within(() => {
+        cy.findByText("User").click();
+        cy.findByPlaceholderText("Find...").type("cr");
+        cy.findByText("Created At")
+          .closest(".List-item")
+          .findByText("by month")
+          .click({ force: true });
+      });
+      // The second popover shows up and offers binning options
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("Hour of Day").scrollIntoView();
+          // This is an implicit assertion - test fails when there is more than one string when using `findByText` instead of `findAllByText`
+          cy.findByText("Minute").click();
+        });
+      // Given that the previous step passes, we should now see this in the UI
+      cy.findByText("User → Created At: Minute");
     });
   });
 

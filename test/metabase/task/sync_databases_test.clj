@@ -46,7 +46,7 @@
          (update :triggers (partial filter #(str/ends-with? (:key %) (str \. (u/get-id db-or-id)))))
          (dissoc :class)))))
 
-(defmacro ^:private with-scheduler-setup [& body]
+(defmacro with-scheduler-setup [& body]
   `(tu/with-temp-scheduler
      (#'sync-db/job-init)
      ~@body))
@@ -108,18 +108,18 @@
 (deftest schedule-changes-only-expected-test
   (is (= [sync-job
           (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
-        (with-scheduler-setup
-          (mt/with-temp Database [database {:engine :postgres}]
-            (db/update! Database (u/get-id database)
-              :cache_field_values_schedule "0 15 10 ? * MON-FRI")
-            (current-tasks-for-db database)))))
+         (with-scheduler-setup
+           (mt/with-temp Database [database {:engine :postgres}]
+             (db/update! Database (u/get-id database)
+                         :cache_field_values_schedule "0 15 10 ? * MON-FRI")
+             (current-tasks-for-db database)))))
 
   (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
           fv-job]
          (with-scheduler-setup
            (mt/with-temp Database [database {:engine :postgres}]
              (db/update! Database (u/get-id database)
-               :metadata_sync_schedule "0 15 10 ? * MON-FRI")
+                         :metadata_sync_schedule "0 15 10 ? * MON-FRI")
              (current-tasks-for-db database))))))
 
 (deftest validate-schedules-test

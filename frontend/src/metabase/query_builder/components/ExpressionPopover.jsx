@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
@@ -6,10 +7,13 @@ import Button from "metabase/components/Button";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 
+import "./ExpressionPopover.css";
+
 // TODO: combine with ExpressionWidget
 export default class ExpressionPopover extends React.Component {
   state = {
     error: null,
+    isBlank: true,
   };
 
   render() {
@@ -19,18 +23,18 @@ export default class ExpressionPopover extends React.Component {
       query,
       expression,
       onChange,
-      onBack,
       onDone,
+      onBack,
       name,
       onChangeName,
     } = this.props;
-    const { error } = this.state;
+    const { error, isBlank } = this.state;
+
+    const buttonEnabled = !error && !isBlank && (!onChangeName || name);
 
     // if onChangeName is provided then a name is required
-    const isValid = !error && (!onChangeName || name);
-
     return (
-      <div style={{ width: 498 }}>
+      <div className="ExpressionPopover">
         <div className="text-medium p1 py2 border-bottom flex align-center">
           <a className="cursor-pointer flex align-center" onClick={onBack}>
             <Icon name="chevronleft" size={18} />
@@ -51,9 +55,11 @@ export default class ExpressionPopover extends React.Component {
             }}
             onCommit={expression => {
               if (!onChangeName) {
-                onChange(expression);
-                onDone();
+                onDone(expression);
               }
+            }}
+            onBlankChange={newBlank => {
+              this.setState({ isBlank: newBlank });
             }}
           />
           {onChangeName && (
@@ -62,14 +68,19 @@ export default class ExpressionPopover extends React.Component {
               value={name}
               onChange={e => onChangeName(e.target.value)}
               onKeyPress={e => {
-                if (e.key === "Enter" && isValid) {
-                  onDone();
+                if (e.key === "Enter" && buttonEnabled) {
+                  onDone(expression);
                 }
               }}
               placeholder={t`Name (required)`}
             />
           )}
-          <Button className="full" primary disabled={!isValid} onClick={onDone}>
+          <Button
+            className="full"
+            primary
+            disabled={!buttonEnabled}
+            onClick={() => onDone(expression)}
+          >
             {t`Done`}
           </Button>
         </div>

@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
@@ -6,7 +6,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 describe("scenarios > x-rays", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should exist on homepage when person first signs in", () => {

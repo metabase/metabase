@@ -1,16 +1,10 @@
-import {
-  restore,
-  signInAsAdmin,
-  openProductsTable,
-  signInAsNormalUser,
-  popover,
-} from "__support__/cypress";
 //Replaces HomepageApp.e2e.spec.js
+import { restore, openProductsTable, popover } from "__support__/cypress";
 
 describe("metabase > scenarios > home > activity-page", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should show test startup activity ", () => {
@@ -21,7 +15,7 @@ describe("metabase > scenarios > home > activity-page", () => {
   });
 
   it("should show new activity", () => {
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
 
     // Make and a save new question
     openProductsTable();
@@ -46,7 +40,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     cy.get(".Card").should("have.length", 1);
 
     // See activity on activity page
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.visit("/activity");
 
     cy.findAllByText("joined!").should("have.length", 2);

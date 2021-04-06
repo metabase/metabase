@@ -1,10 +1,10 @@
-import { signIn, signInAsAdmin, restore, modal } from "__support__/cypress";
+import { restore, modal } from "__support__/cypress";
 
 // Drill-through support has been replaced with custom dashboard destinations
 describe.skip("drill through", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("sets drill through link for dots in a line graph", () => {
@@ -35,7 +35,7 @@ describe.skip("drill through", () => {
   });
 
   it("should allow custom drill through without data permissions", () => {
-    signIn("nodata");
+    cy.signIn("nodata");
     cy.visit("/question/3");
     cy.get(".dot:first").click({ force: true });
     cy.url().should("match", /\?count=744/);

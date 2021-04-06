@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   openOrdersTable,
   openProductsTable,
@@ -24,7 +23,7 @@ const {
 describe("scenarios > question > filter", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("dashboard filter dropdown/search (metabase#12985)", () => {
@@ -527,7 +526,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText(AGGREGATED_FILTER);
   });
 
-  it("in a simple question should display popup for custom expression options (metabase#14341)", () => {
+  it("in a simple question should display popup for custom expression options (metabase#14341) (metabase#15244)", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -544,6 +543,7 @@ describe("scenarios > question > filter", () => {
       .click()
       .type("contains(");
     cy.findByText(/Checks to see if string1 contains string2 within it./i);
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
     cy.get(".text-error").should("not.exist");
     cy.findAllByText(/Expected one of these possible Token sequences:/i).should(
       "not.exist",
@@ -881,5 +881,31 @@ describe("scenarios > question > filter", () => {
       .should("not.be.disabled")
       .click();
     cy.findByText('Expecting boolean but found "TheAnswer"');
+  });
+
+  it.skip("column filters should work for metrics (metabase#15333)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field-id", PRODUCTS.CATEGORY]],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+
+    cy.get(".cellData")
+      .contains("Count")
+      .click();
+    cy.findByText("Filter by this column").click();
+    cy.findByPlaceholderText("Enter a number").type("42");
+    cy.findByRole("button", { name: "Update filter" })
+      .should("not.be.disabled")
+      .click();
+    cy.findByText("Doohickey");
+    cy.findByText("Gizmo").should("not.exist");
   });
 });

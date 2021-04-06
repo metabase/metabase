@@ -1,9 +1,4 @@
-import {
-  restore,
-  signInAsAdmin,
-  openOrdersTable,
-  popover,
-} from "__support__/cypress";
+import { restore, openOrdersTable, popover } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
@@ -12,7 +7,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > question > null", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should display rows whose value is `null` (metabase#13571)", () => {
@@ -150,16 +145,12 @@ describe("scenarios > question > null", () => {
               });
             });
           });
-          cy.server();
-          cy.route("POST", "/api/card/*/query").as("cardQuery");
 
           cy.visit(`/dashboard/${DASHBOARD_ID}`);
-          // wait for the second cardQuery to finish
-          cy.wait("@cardQuery.2");
-
           cy.log("P0 regression in v0.37.1!");
           cy.get(".LoadingSpinner").should("not.exist");
           cy.findByText("13801_Q1");
+          cy.get(".ScalarValue").contains("0");
           cy.findByText("13801_Q2");
         });
       });

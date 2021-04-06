@@ -155,7 +155,13 @@
                      query)
         query-type (or query-type
                        (keyword (namespace ::druid.qp/query) (name (:queryType query))))
-        results    (execute* details query)
+        results    (try
+                     (execute* details query)
+                     (catch Throwable e
+                       (throw (ex-info (tru "Error executing query")
+                                       {:type  qp.error-type/db
+                                        :query query}
+                                       e))))
         result     (try (post-process query-type projections
                                       {:timezone   (resolve-timezone mbql-query)
                                        :middleware middleware}

@@ -1,11 +1,4 @@
-import {
-  signInAsAdmin,
-  restore,
-  openOrdersTable,
-  popover,
-  signIn,
-} from "__support__/cypress";
-
+import { restore, openOrdersTable, popover } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PRODUCTS } = SAMPLE_DATASET;
@@ -13,7 +6,7 @@ const { PRODUCTS } = SAMPLE_DATASET;
 describe("scenarios > question > view", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("summarize sidebar", () => {
@@ -166,7 +159,7 @@ describe("scenarios > question > view", () => {
     });
 
     it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
-      signIn("nodata");
+      cy.signIn("nodata");
       cy.visit("/question/4");
 
       // Filter by category and vendor
@@ -190,7 +183,7 @@ describe("scenarios > question > view", () => {
 
     it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
-      signIn("nodata");
+      cy.signIn("nodata");
       cy.visit("/dashboard/2");
       cy.findByText("Question").click();
 

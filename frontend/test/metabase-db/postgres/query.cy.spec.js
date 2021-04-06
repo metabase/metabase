@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   addPostgresDatabase,
   withDatabase,
@@ -12,7 +11,7 @@ const PG_DB_ID = 2;
 describe("postgres > user > query", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
   });
 

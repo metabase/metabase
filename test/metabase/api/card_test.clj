@@ -9,7 +9,7 @@
             [metabase.api.card :as card-api]
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.http-client :as http :refer :all]
+            [metabase.http-client :as http]
             [metabase.models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel
                                      PulseChannelRecipient Table ViewLog]]
             [metabase.models.permissions :as perms]
@@ -22,8 +22,7 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
@@ -269,7 +268,6 @@
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;
 (deftest create-a-card
   (testing "POST /api/card"
     (testing "Test that we can create a new Card"
@@ -325,7 +323,7 @@
               (is (schema= {:id       su/IntGreaterThanZero
                             s/Keyword s/Any}
                            (mt/user-http-request :rasta :post 200 "card"
-                                                 (merge (tt/with-temp-defaults Card)
+                                                 (merge (mt/with-temp-defaults Card)
                                                         {:dataset_query query})))))
             (let [metadata (-> (qp/process-query query)
                                :data
@@ -336,7 +334,7 @@
                 (is (schema= {:id       su/IntGreaterThanZero
                               s/Keyword s/Any}
                              (mt/user-http-request :rasta :post 200 "card"
-                                                   (merge (tt/with-temp-defaults Card)
+                                                   (merge (mt/with-temp-defaults Card)
                                                           {:dataset_query   query
                                                            :result_metadata metadata}))))))))))))
 
@@ -367,12 +365,15 @@
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [Card]
-      (is (schema= {:result_metadata (s/eq [])
-                    s/Keyword s/Any}
-                   (mt/user-http-request :rasta :post 200 "card"
-                                         (assoc (card-with-name-and-query)
-                                                :result_metadata    []
-                                                :metadata_checksum  (#'results-metadata/metadata-checksum []))))))))
+      (let [card        (card-with-name-and-query)
+            md-checksum (#'results-metadata/metadata-checksum [])]
+        (is (schema= {:id su/IntGreaterThanZero, s/Keyword s/Any}
+                     (mt/user-http-request :rasta
+                                           :post
+                                           200
+                                           "card"
+                                           (assoc card :result_metadata   []
+                                                       :metadata_checksum md-checksum))))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -549,6 +550,31 @@
             (is (nil? (some-> (db/select-one [Card :collection_id :collection_position] :name card-name)
                               (update :collection_id (partial = (u/the-id collection))))))))))))
 
+(deftest create-card-check-adhoc-query-permissions-test
+  (testing (str "Ad-hoc query perms should be required to save a Card -- otherwise people could save arbitrary "
+                "queries, then run them.")
+    ;; create a copy of the test data warehouse DB, then revoke permissions to it for All Users. Only admins should be
+    ;; able to ad-hoc query it now.
+    (mt/with-temp-copy-of-db
+      (perms/revoke-permissions! (perms-group/all-users) (mt/db))
+      (let [query        (mt/mbql-query :venues)
+            create-card! (fn [test-user expected-status-code]
+                           (mt/with-model-cleanup [Card]
+                             (mt/user-http-request test-user :post expected-status-code "card"
+                                                   (merge (mt/with-temp-defaults Card) {:dataset_query query}))))]
+        (testing "admin should be able to save a Card if All Users doesn't have ad-hoc data perms"
+          (is (some? (create-card! :crowberto 202))))
+        (testing "non-admin should get an error"
+          (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
+            (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
+                          :query          (s/eq (mt/obj->json->obj query))
+                          :required-perms [perms/ObjectPath]
+                          :actual-perms   [perms/UserPath]
+                          :trace          [s/Any]
+                          s/Keyword       s/Any}
+                         (create-card! :rasta 403)))))))))
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FETCHING A SPECIFIC CARD                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -623,19 +649,19 @@
                (set-archived! false)))))))
 
 (deftest we-shouldn-t-be-able-to-update-archived-status-if-we-don-t-have-collection--write--perms
-  (is (= "You don't have permissions to do that."
-         (mt/with-non-admin-groups-no-root-collection-perms
-           (mt/with-temp* [Collection [collection]
-                           Card       [card {:collection_id (u/the-id collection)}]]
-             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp* [Collection [collection]
+                    Card       [card {:collection_id (u/the-id collection)}]]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+      (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived true}))))))
 
-;; Can we clear the description of a Card? (#4738)
-(deftest can-we-clear-the-description-of-a-card----4738-
-  (is (nil? (mt/with-temp Card [card {:description "What a nice Card"}]
-              (with-cards-in-writeable-collection card
-                (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description nil})
-                (db/select-one-field :description Card :id (u/the-id card)))))))
+(deftest clear-description-test
+  (testing "Can we clear the description of a Card? (#4738)"
+    (mt/with-temp Card [card {:description "What a nice Card"}]
+      (with-cards-in-writeable-collection card
+        (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description nil})
+        (is (nil? (db/select-one-field :description Card :id (u/the-id card))))))))
 
 (deftest description-should-be-blankable-as-well
   (mt/with-temp Card [card {:description "What a nice Card"}]
@@ -966,6 +992,51 @@
                     "g" 3}
                    (get-name->collection-position :rasta collection-2)))))))))
 
+(deftest update-card-check-adhoc-query-permissions-test
+  (testing (str "Ad-hoc query perms should be required to update the query for a Card -- otherwise people could save "
+                "arbitrary queries, then run them.")
+    ;; create a copy of the test data warehouse DB, then revoke permissions to it for All Users. Only admins should be
+    ;; able to ad-hoc query it now.
+    (mt/with-temp-copy-of-db
+      (perms/revoke-permissions! (perms-group/all-users) (mt/db))
+      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query :venues)}]
+        (let [update-card! (fn [test-user expected-status-code request-body]
+                             (mt/user-http-request test-user :put expected-status-code (format "card/%d" card-id)
+                                                   request-body))]
+          (testing "\nadmin"
+            (testing "*should* be allowed to update query"
+              (is (schema= {:id            (s/eq card-id)
+                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query :checkins)))
+                            s/Keyword      s/Any}
+                           (update-card! :crowberto 202 {:dataset_query (mt/mbql-query :checkins)})))))
+
+          (testing "\nnon-admin"
+            (testing "should be allowed to update fields besides query"
+              (is (schema= {:id       (s/eq card-id)
+                            :name     (s/eq "Updated name")
+                            s/Keyword s/Any}
+                           (update-card! :rasta 202 {:name "Updated name"}))))
+
+            (testing "should *not* be allowed to update query"
+              (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
+                (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
+                              :query          (s/eq (mt/obj->json->obj (mt/mbql-query :users)))
+                              :required-perms [perms/ObjectPath]
+                              :actual-perms   [perms/UserPath]
+                              :trace          [s/Any]
+                              s/Keyword       s/Any}
+                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query :users)}))))
+              (testing "make sure query hasn't changed in the DB"
+                (is (= (mt/mbql-query checkins)
+                       (db/select-one-field :dataset_query Card :id card-id)))))
+
+            (testing "should be allowed to update other fields if query is passed in but hasn't changed (##11719)"
+              (is (schema= {:id            (s/eq card-id)
+                            :name          (s/eq "Another new name")
+                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query :checkins)))
+                            s/Keyword      s/Any}
+                           (update-card! :rasta 202 {:name "Another new name", :dataset_query (mt/mbql-query checkins)}))))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |
@@ -1246,8 +1317,8 @@
         (let [card (mt/user-http-request :rasta :post 200 "card"
                                          (assoc (card-with-name-and-query)
                                                 :collection_id (u/the-id collection)))]
-          (= (db/select-one-field :collection_id Card :id (u/the-id card))
-             (u/the-id collection)))))))
+          (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
+                 (u/the-id collection))))))))
 
 (deftest make-sure-we-card-creation-fails-if-we-try-to-set-a--collection-id--we-don-t-have-permissions-for
   (testing "POST /api/card"
@@ -1264,8 +1335,8 @@
     (mt/with-temp* [Card       [card]
                     Collection [collection]]
       (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:collection_id (u/the-id collection)})
-      (= (db/select-one-field :collection_id Card :id (u/the-id card))
-         (u/the-id collection)))))
+      (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
+             (u/the-id collection))))))
 
 (deftest update-card-require-parent-perms-test
   (testing "Should require perms for the parent collection to change a Card's properties"
@@ -1463,8 +1534,10 @@
 
       (testing "Cannot share an archived Card"
         (mt/with-temp Card [card {:archived true}]
-          (is (= {:message "The object has been archived.", :error_code "archived"}
-                 (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" (u/the-id card)))))))
+          (is (schema= {:message    (s/eq "The object has been archived.")
+                        :error_code (s/eq "archived")
+                        s/Keyword   s/Any}
+                       (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" (u/the-id card)))))))
 
       (testing "Cannot share a Card that doesn't exist"
         (is (= "Not found."
@@ -1475,8 +1548,10 @@
     (testing "Attempting to share a Card that's already shared should return the existing public UUID"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp Card [card (shared-card)]
-          (= (:public_uuid card)
-             (:uuid (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card))))))))))
+          (is (= (:public_uuid card)
+                 (:uuid (mt/user-http-request :crowberto :post 200 (format
+                                                                    "card/%d/public_link"
+                                                                    (u/the-id card)))))))))))
 
 (deftest unshare-card-test
   (testing "DELETE /api/card/:id/public_link"

@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin, adhocQuestionHash } from "__support__/cypress";
+import { restore, adhocQuestionHash } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 // This is really a test of the QuestionLoader component
@@ -6,7 +6,7 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 describe("scenarios > internal > question", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should load saved questions", () => {

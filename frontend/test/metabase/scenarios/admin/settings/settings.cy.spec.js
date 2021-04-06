@@ -1,5 +1,4 @@
 import {
-  signInAsAdmin,
   restore,
   openOrdersTable,
   version,
@@ -11,7 +10,7 @@ import {
 describe("scenarios > admin > settings", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   itOpenSourceOnly(
@@ -368,7 +367,7 @@ describe("scenarios > admin > settings", () => {
       );
     });
 
-    it.skip("should not offer to save email changes when there aren't any (metabase#14749)", () => {
+    it("should not offer to save email changes when there aren't any (metabase#14749)", () => {
       // Make sure some settings are already there
       setupDummySMTP();
 

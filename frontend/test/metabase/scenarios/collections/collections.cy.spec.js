@@ -1,17 +1,11 @@
 import {
   restore,
-  signInAsAdmin,
   setupLocalHostEmail,
-  signInAsNormalUser,
-  signIn,
-  signOut,
   modal,
   popover,
-  USERS,
-  USER_GROUPS,
   openOrdersTable,
 } from "__support__/cypress";
-// Ported from initial_collection.e2e.spec.js
+import { USERS, USER_GROUPS } from "__support__/cypress_data";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -39,7 +33,7 @@ describe("scenarios > collection_defaults", () => {
   describe("for admins", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     describe("new collections", () => {
@@ -120,7 +114,7 @@ describe("scenarios > collection_defaults", () => {
     describe("sidebar behavior", () => {
       beforeEach(() => {
         restore();
-        signInAsAdmin();
+        cy.signInAsAdmin();
       });
 
       it("should allow a user to expand a collection without navigating to it", () => {
@@ -138,13 +132,9 @@ describe("scenarios > collection_defaults", () => {
       describe("deeply nested collection navigation", () => {
         it("should correctly display deep nested collections", () => {
           cy.request("GET", "/api/collection").then(xhr => {
-            // "Third collection" is the last nested collection in the snapshot (data set)
-            // we need its ID to continue nesting below it
-            const THIRD_COLLECTION_ID = xhr.body.length - 1;
-
-            // sanity check and early alarm if the initial data set changes in the future
-            expect(xhr.body[THIRD_COLLECTION_ID].name).to.eq(
-              "Third collection",
+            // We need its ID to continue nesting below it
+            const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+              collection => collection.slug === "third_collection",
             );
 
             cy.log("Create two more nested collections");
@@ -168,71 +158,6 @@ describe("scenarios > collection_defaults", () => {
           // 2. Ensure we can see the entire "Fifth level with a long name" collection text
           cy.findByText("Fifth collection with a very long name");
         });
-      });
-    });
-
-    describe("managing items", () => {
-      it("should let a user move a collection item via modal", () => {
-        cy.visit("/collection/root");
-
-        // 1. Click on the ... menu
-        openEllipsisMenuFor("Orders");
-
-        // 2. Select "move this" from the popover
-        cy.findByText("Move this item").click();
-        modal().within(() => {
-          cy.findByText(`Move "Orders"?`);
-          // 3. Select a collection that has child collections and hit the right chevron to navigate there
-          cy.findByText("First collection")
-            .next() // right chevron icon
-            .click();
-          cy.findByText("Second collection").click();
-          // 4. Move that item
-          cy.findByText("Move").click();
-        });
-        // Assert that the item no longer exists in "Our collection"...
-        cy.findByText("Orders").should("not.exist");
-
-        openDropdownFor("First collection");
-        // ...and that it is indeed moved inside "Second collection"
-        cy.findByText("Second collection").click();
-        cy.findByText("Orders");
-      });
-
-      it("should allow a user to pin an item", () => {
-        cy.visit("/collection/root");
-        // Assert that we're starting from a scenario with no pins
-        cy.findByText("Pinned items").should("not.exist");
-
-        // 1. Click on the ... menu
-        openEllipsisMenuFor("Orders in a dashboard");
-
-        // 2. Select "pin this" from the popover
-        cy.findByText("Pin this item").click();
-
-        // 3. Should see "pinned items" and the item should be in that section
-        cy.findByText("Pinned items")
-          .parent()
-          .contains("Orders in a dashboard");
-        // 4. Consequently, "Everything else" should now also be visible
-        cy.findByText("Everything else");
-      });
-
-      it.skip("should let a user select all items using checkbox (metabase#14705)", () => {
-        cy.visit("/collection/root");
-        cy.findByText("Orders")
-          .closest("a")
-          .within(() => {
-            cy.icon("table").trigger("mouseover");
-            cy.findByRole("checkbox")
-              .should("be.visible")
-              .click();
-          });
-
-        cy.findByText("1 item selected").should("be.visible");
-        cy.icon("dash").click();
-        cy.icon("dash").should("not.exist");
-        cy.findByText("4 items selected");
       });
     });
 
@@ -273,7 +198,7 @@ describe("scenarios > collection_defaults", () => {
   describe("for users", () => {
     beforeEach(() => {
       restore();
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
     });
 
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
@@ -308,7 +233,7 @@ describe("scenarios > collection_defaults", () => {
   describe("Collection related issues reproductions", () => {
     beforeEach(() => {
       restore();
-      signInAsAdmin();
+      cy.signInAsAdmin();
     });
 
     describe("nested collections with revoked parent access", () => {
@@ -344,8 +269,8 @@ describe("scenarios > collection_defaults", () => {
           });
         });
 
-        signOut();
-        signIn("nocollection");
+        cy.signOut();
+        cy.signIn("nocollection");
       });
 
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
@@ -551,6 +476,24 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("Second Collection").should("not.exist");
       cy.findByText("First Collection");
     });
+
+    it.skip("should let be possible to select all items using checkbox (metabase#14705)", () => {
+      cy.visit("/collection/root");
+      selectItemUsingCheckbox("Orders");
+      cy.findByText("1 item selected").should("be.visible");
+      cy.icon("dash").click();
+      cy.icon("dash").should("not.exist");
+      cy.findByText("4 items selected");
+    });
+
+    it.skip("should be possible to select pinned item using checkbox (metabase#15338)", () => {
+      cy.visit("/collection/root");
+      openEllipsisMenuFor("Orders");
+      cy.findByText("Pin this item").click();
+      cy.findByText(/Pinned items/i);
+      selectItemUsingCheckbox("Orders");
+      cy.findByText("1 item selected");
+    });
   });
 });
 
@@ -585,4 +528,15 @@ function openEllipsisMenuFor(item) {
     .closest("a")
     .find(".Icon-ellipsis")
     .click({ force: true });
+}
+
+function selectItemUsingCheckbox(item, icon = "table") {
+  cy.findByText(item)
+    .closest("a")
+    .within(() => {
+      cy.icon(icon).trigger("mouseover");
+      cy.findByRole("checkbox")
+        .should("be.visible")
+        .click();
+    });
 }

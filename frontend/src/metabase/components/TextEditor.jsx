@@ -1,5 +1,5 @@
 /*global ace*/
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";

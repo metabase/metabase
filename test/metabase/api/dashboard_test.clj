@@ -355,8 +355,8 @@
           ;; now make an API call to move collections
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/get-id dash)) {:collection_id (u/get-id new-collection)})
           ;; Check to make sure the ID has changed in the DB
-          (= (db/select-one-field :collection_id Dashboard :id (u/get-id dash))
-             (u/get-id new-collection)))))
+          (is (= (db/select-one-field :collection_id Dashboard :id (u/get-id dash))
+                 (u/get-id new-collection))))))
 
     (testing "if we don't have the Permissions for the old collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms

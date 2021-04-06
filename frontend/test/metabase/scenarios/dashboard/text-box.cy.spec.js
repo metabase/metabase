@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 function addTextBox(string) {
   cy.icon("pencil").click();
@@ -11,7 +11,7 @@ function addTextBox(string) {
 describe("scenarios > dashboard > text-box", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("Editing", () => {

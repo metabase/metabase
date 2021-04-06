@@ -8,7 +8,7 @@
             [metabase.plugins.classloader :as classloader]
             [potemkin.types :as p.types])
   (:import java.text.MessageFormat
-           [java.util Locale MissingResourceException ResourceBundle]
+           java.util.Locale
            org.apache.commons.lang3.LocaleUtils))
 
 (p.types/defprotocol+ CoerceToLocale
@@ -66,43 +66,56 @@
     (when (seq (.getCountry a-locale))
       (locale (.getLanguage a-locale)))))
 
-(def ^:private ^:const ^String i18n-bundle-name "metabase.Messages")
+(defn- locale-edn-resource
+  "The resource URL for the edn file containing translations for `locale-or-name`. These files are built by the
+  scripts in `bin/i18n` from `.po` files from POEditor.
 
-(defn- bundle* [^Locale locale]
-  (try
-    (ResourceBundle/getBundle i18n-bundle-name locale (classloader/the-classloader))
-    (catch MissingResourceException _
-      (log/error (format "Error translating to %s: no resource bundle" locale)))))
+    (locale-edn-resources \"es\") ;-> #object[java.net.URL \"file:/home/cam/metabase/resources/metabase/es.edn\"]"
+  ^java.net.URL [locale-or-name]
+  (when-let [a-locale (locale locale-or-name)]
+    (let [locale-name (-> (normalized-locale-string (str a-locale))
+                          (str/replace #"_" "-"))
+          filename    (format "i18n/%s.edn" locale-name)]
+      (io/resource filename (classloader/the-classloader)))))
 
-(defn- bundle
-  "Get the Metabase i18n resource bundle associated with `locale`. Returns `nil` if no such bundle can be found."
-  ^ResourceBundle [locale-or-name]
-  (when-let [locale (locale locale-or-name)]
-    (bundle* locale)))
+(defn- translations* [a-locale]
+  (when-let [resource (locale-edn-resource a-locale)]
+    (edn/read-string (slurp resource))))
 
-(defn translated-format-string
-  "Find the translated version of `format-string` in the bundle for `locale-or-name`, or `nil` if none can be found.
-  Does not search 'parent' (country-only) locale bundle."
+(def ^:private ^{:arglists '([locale-or-name])} translations
+  "Fetch a map of original untranslated message format string -> translated message format string for `locale-or-name`
+  by reading the corresponding EDN resource file. Does not include translations for parent locale(s). Memoized.
+
+    (translations \"es\") ;-> {\"Username\" \"Nombre Usuario\", ...}"
+  (comp (memoize translations*) locale))
+
+(defn- translated-format-string*
+  "Find the translated version of `format-string` for `locale-or-name`, or `nil` if none can be found.
+  Does not search 'parent' (language-only) translations."
   ^String [locale-or-name format-string]
   (when (seq format-string)
     (when-let [locale (locale locale-or-name)]
-      (when-let [bundle (bundle locale)]
-        (try
-          (.getString bundle format-string)
-          ;; no translated version available
-          (catch MissingResourceException _))))))
+      (when-let [translations (translations locale)]
+        (get translations format-string)))))
+
+(defn- translated-format-string
+  "Find the translated version of `format-string` for `locale-or-name`, or `nil` if none can be found. Searches parent
+  (language-only) translations if none exist for a language + country locale."
+  ^String [locale-or-name format-string]
+  (when-let [a-locale (locale locale-or-name)]
+    (or (when (= (.getLanguage a-locale) "en")
+          format-string)
+        (translated-format-string* a-locale format-string)
+        (when-let [parent-locale (parent-locale a-locale)]
+          (log/tracef "No translated string found, trying parent locale %s" (pr-str parent-locale))
+          (translated-format-string* parent-locale format-string))
+        format-string)))
 
 (defn- message-format ^MessageFormat [locale-or-name ^String format-string]
-  (if-let [locale (locale locale-or-name)]
-    (let [^String translated (or (when (= (.getLanguage locale) "en")
-                                   format-string)
-                                 (translated-format-string locale format-string)
-                                 (when-let [parent-locale (parent-locale locale)]
-                                   (log/tracef "No translated string found, trying parent locale %s" (pr-str parent-locale))
-                                   (translated-format-string parent-locale format-string))
-                                 format-string)]
-      (MessageFormat. translated locale))
-    (MessageFormat. format-string)))
+  (or (when-let [a-locale (locale locale-or-name)]
+        (when-let [^String translated (translated-format-string a-locale format-string)]
+          (MessageFormat. translated a-locale)))
+      (MessageFormat. format-string)))
 
 (defn translate
   "Find the translated version of `format-string` for a `locale-or-name`, then format it. Translates using the resource

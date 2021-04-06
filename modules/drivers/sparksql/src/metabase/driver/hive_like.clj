@@ -89,21 +89,21 @@
 (defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year)))
 
 (defmethod sql.qp/date [:hive-like :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :hive-like
+  [driver _ expr]
+  (sql.qp/adjust-day-of-week driver
                              (hx/->integer (date-format "u"
                                                         (hx/+ (hx/->timestamp expr)
                                                               (hsql/raw "interval '1' day"))))))
 
 (defmethod sql.qp/date [:hive-like :week]
-  [_ _ expr]
+  [driver _ expr]
   (let [week-extract-fn (fn [expr]
                           (hsql/call :date_sub
                             (hx/+ (hx/->timestamp expr)
                                   (hsql/raw "interval '1' day"))
                             (date-format "u" (hx/+ (hx/->timestamp expr)
                                                    (hsql/raw "interval '1' day")))))]
-    (sql.qp/adjust-start-of-week :hive-like week-extract-fn expr)))
+    (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
 
 (defmethod sql.qp/date [:hive-like :quarter]
   [_ _ expr]

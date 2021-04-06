@@ -13,15 +13,17 @@
 
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
 
-(defn- all-schemas [^DatabaseMetaData metadata]
-  {:pre [(instance? DatabaseMetaData metadata)]}
+(defn all-schemas
+  "Get a *reducible* sequence of all string schema names for the current database from its JDBC database metadata."
+  [^DatabaseMetaData metadata]
+  {:added "0.39.0", :pre [(instance? DatabaseMetaData metadata)]}
   (common/reducible-results
    #(.getSchemas metadata)
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
 
-(defn- syncable-schemas
-  [driver metadata]
+(defmethod i/syncable-schemas :sql-jdbc
+  [driver _ metadata]
   (eduction (remove (set (i/excluded-schemas driver)))
             (all-schemas metadata)))
 
@@ -70,7 +72,8 @@
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   (common/reducible-results
    #(.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
-                (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW" "EXTERNAL TABLE"]))
+                (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
+                                    "EXTERNAL TABLE"]))
    (fn [^ResultSet rs]
      (fn []
        {:name        (.getString rs "TABLE_NAME")
@@ -93,7 +96,7 @@
                      (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema, table-name :name}]
                      (i/have-select-privilege? driver conn table-schema table-name))))
-     (syncable-schemas driver metadata))))
+     (i/syncable-schemas driver conn metadata))))
 
 (defmethod i/active-tables :sql-jdbc
   [driver connection]

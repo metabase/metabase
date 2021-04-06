@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
@@ -6,7 +6,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     setFirstWeekDayTo("monday");
   });
 
@@ -78,7 +78,7 @@ describe("scenarios > admin > permissions", () => {
 
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
-  it.skip("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
+  it("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
     cy.createNativeQuestion({
       name: "14294",
       native: {

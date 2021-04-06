@@ -37,27 +37,3 @@
             (is (nil? tz-after-update)))
           (testing "Check that the value was set again after sync"
             (is (time/time-zone-for-id (db-timezone db)))))))))
-
-(deftest bad-change-test
-  (mt/test-drivers #{:postgres}
-    (testing "Test that if timezone is changed to something that fails, timezone is unaffected."
-      ;; Setting timezone to "Austrailia/Sydney" fails on some computers, especially the CI ones. In that case it fails as
-      ;; the dates on PostgreSQL return 'AEST' for the time zone name. The Exception is logged, but the timezone column
-      ;; should be left alone and processing should continue.
-      ;;
-      ;; TODO - Recently this call has started *succeeding* for me on Java 10/11 and Postgres 9.6. I've seen it sync as both
-      ;; "Australia/Hobart" and "Australia/Sydney". Since setting the timezone no longer always fails it's no longer a good
-      ;; test. We need to think of something else here. In the meantime, I'll go ahead and consider any of the three options
-      ;; valid answers.
-      (mt/dataset test-data
-        ;; use `with-temp-vals-in-db` to make sure the test data DB timezone gets reset to whatever it was before the test
-        ;; ran if we accidentally end up setting it in the `:after` part
-        (mt/with-temp-vals-in-db Database (mt/db) {:timezone (db-timezone (mt/db))}
-          (sync-tz/sync-timezone! (mt/db))
-          (testing "before"
-            (is (= "UTC"
-                   (db-timezone (mt/db)))))
-          (testing "after"
-            (mt/with-temporary-setting-values [report-timezone "Australia/Sydney"]
-              (sync-tz/sync-timezone! (mt/db))
-              (is (contains? #{"Australia/Hobart" "Australia/Sydney" "UTC"} (db-timezone (mt/db)))))))))))

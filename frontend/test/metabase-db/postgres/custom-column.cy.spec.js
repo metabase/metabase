@@ -1,16 +1,11 @@
-import {
-  signInAsAdmin,
-  restore,
-  addPostgresDatabase,
-  popover,
-} from "__support__/cypress";
+import { restore, addPostgresDatabase, popover } from "__support__/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 
 describe("postgres > question > custom columns", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
   });
 

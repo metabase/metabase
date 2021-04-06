@@ -36,7 +36,8 @@
     :port     (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
     :user     (tx/db-test-env-var-or-throw :oracle :user)
     :password (tx/db-test-env-var-or-throw :oracle :password)
-    :sid      (tx/db-test-env-var-or-throw :oracle :sid)}))
+    :sid      (tx/db-test-env-var-or-throw :oracle :sid)
+    :ssl      (tx/db-test-env-var :oracle :ssl false)}))
 
 (defmethod tx/dbdef->connection-details :oracle [& _] @connection-details)
 

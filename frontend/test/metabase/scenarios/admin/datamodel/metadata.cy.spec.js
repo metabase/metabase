@@ -1,6 +1,5 @@
 import {
   restore,
-  signInAsAdmin,
   openOrdersTable,
   openReviewsTable,
   popover,
@@ -12,7 +11,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it("should correctly show remapped column value", () => {

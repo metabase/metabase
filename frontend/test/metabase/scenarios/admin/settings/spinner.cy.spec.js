@@ -1,9 +1,9 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > admin > spinner", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   describe("API request", () => {

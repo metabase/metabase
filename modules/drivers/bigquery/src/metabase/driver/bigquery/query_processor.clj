@@ -8,6 +8,7 @@
             [honeysql.helpers :as h]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as sql]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -352,9 +353,18 @@
 (defmethod sql.qp/date [:bigquery :quarter-of-year] [_ _ expr] (extract :quarter   expr))
 (defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (trunc   :year      expr))
 
+;; BigQuery mod is a function like mod(x, y) rather than an operator like x mod y
+(defmethod hformat/fn-handler (u/qualified-name ::mod)
+  [_ x y]
+  (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
+
 (defmethod sql.qp/date [:bigquery :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :bigquery (extract :dayofweek expr)))
+  [driver _ expr]
+  (sql.qp/adjust-day-of-week
+   driver
+   (extract :dayofweek expr)
+   (driver.common/start-of-week-offset driver)
+   (partial hsql/call (u/qualified-name ::mod))))
 
 (defmethod sql.qp/date [:bigquery :week]
   [_ _ expr]

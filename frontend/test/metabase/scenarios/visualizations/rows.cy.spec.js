@@ -1,9 +1,9 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > visualizations > rows", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   // Until we enable multi-browser support, this repro will be skipped by Cypress in CI

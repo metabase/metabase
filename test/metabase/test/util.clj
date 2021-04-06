@@ -1,16 +1,18 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [colorize.core :as colorize]
+            [environ.core :as env]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
-                                     Revision Segment Table TaskHistory User]]
+                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
+                                     PulseChannel Revision Segment Table TaskHistory User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -145,6 +147,11 @@
             :name          (random-name)
             :position      1
             :table_id      (data/id :checkins)})
+
+   LoginHistory
+   (fn [_] {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+            :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
+            :ip_address         "0:0:0:0:0:0:0:1"})
 
    Metric
    (fn [_] {:creator_id  (rasta-id)
@@ -794,3 +801,27 @@
   []
   (with-open [socket (ServerSocket. 0)]
     (.getLocalPort socket)))
+
+(defn do-with-env-keys-renamed-by
+  "Evaluates the thunk with the current core.environ/env being redefined, its keys having been renamed by the given
+  rename-fn. Prefer to use the with-env-keys-renamed-by macro version instead."
+  [rename-fn thunk]
+  (let [orig-e     env/env
+        renames-fn (fn [m k _]
+                     (let [k-str (name k)
+                           new-k (rename-fn k-str)]
+                       (if (not= k-str new-k)
+                         (assoc m k (keyword new-k))
+                         m)))
+        renames    (reduce-kv renames-fn {} orig-e)
+        new-e      (set/rename-keys orig-e renames)]
+    (testing (colorize/blue (format "\nRenaming env vars by map: %s\n" (u/pprint-to-str renames)))
+      (with-redefs [env/env new-e]
+        (thunk)))))
+
+(defmacro with-env-keys-renamed-by
+  "Evaluates body with the current core.environ/env being redefined, its keys having been renamed by the given
+  rename-fn."
+  {:arglists '([rename-fn & body])}
+  [rename-fn & body]
+  `(do-with-env-keys-renamed-by ~rename-fn (fn [] ~@body)))

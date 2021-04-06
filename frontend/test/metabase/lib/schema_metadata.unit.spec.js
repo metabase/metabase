@@ -9,6 +9,9 @@ import {
   COORDINATE,
   PRIMARY_KEY,
   foreignKeyCountsByOriginTable,
+  isEqualsOperator,
+  doesOperatorExist,
+  getOperatorByTypeAndName,
 } from "metabase/lib/schema_metadata";
 
 import { TYPE } from "metabase/lib/types";
@@ -94,6 +97,40 @@ describe("schema_metadata", () => {
           { origin: { table: { id: 456 } } },
         ]),
       ).toEqual({ 123: 3, 456: 1 });
+    });
+  });
+
+  describe("doesOperatorExist", () => {
+    it("should return a boolean indicating existence of operator with given name", () => {
+      expect(doesOperatorExist("foo")).toBe(false);
+      expect(doesOperatorExist("contains")).toBe(true);
+      expect(doesOperatorExist("between")).toBe(true);
+    });
+  });
+
+  describe("isEqualsOperator", () => {
+    it("given operator metadata object", () => {
+      it("should evaluate whether it is an equals operator", () => {
+        expect(isEqualsOperator()).toBe(false);
+        expect(isEqualsOperator({ name: "foo" })).toBe(false);
+        expect(isEqualsOperator({ name: "=" })).toBe(true);
+      });
+    });
+  });
+
+  describe("getOperatorByTypeAndName", () => {
+    it("should return undefined if operator does not exist", () => {
+      expect(getOperatorByTypeAndName("FOO", "=")).toBe(undefined);
+      expect(getOperatorByTypeAndName(NUMBER, "contains")).toBe(undefined);
+    });
+
+    it("should return a metadata object for specific operator type/name", () => {
+      expect(getOperatorByTypeAndName(NUMBER, "between")).toEqual({
+        name: "between",
+        numFields: 2,
+        validArgumentsFilters: [expect.any(Function), expect.any(Function)],
+        verboseName: "Between",
+      });
     });
   });
 });

@@ -24,17 +24,32 @@
   [request-fn url & {:as options}]
   {:pre [(fn? request-fn) (string? url)]}
   ;; this is the way the `Content-Type` header is formatted in requests made by the Druid web interface
-  (let [options               (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
-                                (:body options) (update :body json/generate-string))
-        {:keys [status body]} (request-fn url options)]
-    (when (not= status 200)
-      (throw (ex-info (tru "Druid request error [{0}]: {1}" status (pr-str body))
-                      {:type qp.error-type/db})))
+  (let [options (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
+                  (:body options) (update :body json/generate-string))]
     (try
-      (json/parse-string body keyword)
-      (catch Throwable _
-        (throw (ex-info (tru "Failed to parse Druid response body: {0}" (pr-str body))
-                        {:type qp.error-type/db}))))))
+      (let [{:keys [status body]} (request-fn url options)]
+        (when (not= status 200)
+          (throw (ex-info (tru "Druid request error [{0}]: {1}" status (pr-str body))
+                          {:type qp.error-type/db})))
+        (try
+          (json/parse-string body keyword)
+          (catch Throwable e
+            (throw (ex-info (tru "Failed to parse Druid response body: {0}" (pr-str body))
+                            {:type qp.error-type/db}
+                            e)))))
+      (catch Throwable e
+        (let [response (u/ignore-exceptions
+                         (when-let [body (:body (:object (ex-data e)))]
+                           (json/parse-string body keyword)))]
+          (throw (ex-info (or (:errorMessage response)
+                              (.getMessage e))
+                          (merge
+                           {:type            qp.error-type/db
+                            :request-url     url
+                            :request-options options}
+                           (when response
+                             {:response response}))
+                          e)))))))
 
 (def ^{:arglists '([url & {:as options}])} GET    "Execute a GET request."    (partial do-request http/get))
 (def ^{:arglists '([url & {:as options}])} POST   "Execute a POST request."   (partial do-request http/post))
@@ -51,20 +66,13 @@
       (catch InterruptedException e
         (throw e))
       (catch Throwable e
-        ;; try to extract the error
-        (let [message (or (u/ignore-exceptions
-                           (when-let [body (json/parse-string (:body (:object (ex-data e))) keyword)]
-                             (str (:error body) "\n"
-                                  (:errorMessage body) "\n"
-                                  "Error class:" (:errorClass body))))
-                          (.getMessage e))]
-          (log/error (u/format-color 'red (trs "Error running query:")
-                                     "\n" message))
-          ;; Re-throw a new exception with `message` set to the extracted message
-          (throw (ex-info message
-                          {:type  qp.error-type/driver
+        (let [e' (ex-info (.getMessage e)
+                          {:type  qp.error-type/db
                            :query query}
-                          e)))))))
+                          e)]
+          (log/error e' (trs "Error running query"))
+          ;; Re-throw a new exception with `message` set to the extracted message
+          (throw e'))))))
 
 (defn- cancel-query-with-id! [details query-id]
   (if-not query-id

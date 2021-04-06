@@ -84,7 +84,7 @@
                              (mt/run-mbql-query incidents
                                {:fields   [$id $timestamp $severity]
                                 :order-by [[:asc $id]]
-                                :limit    5} ))))))))))))))
+                                :limit    5}))))))))))))))
 
 (defn- sad-toucan-incidents-with-bucketing
   "Returns 10 sad toucan incidents grouped by `unit`"
@@ -877,11 +877,24 @@
 (defn- dataset-def-with-timestamps [interval-seconds]
   (TimestampDatasetDef. interval-seconds))
 
-(def ^:private checkins:4-per-minute (dataset-def-with-timestamps 15))
-(def ^:private checkins:4-per-hour   (dataset-def-with-timestamps (u/minutes->seconds 15)))
-(def ^:private checkins:1-per-day    (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
+(def ^:private checkins:4-per-minute
+  "Dynamically generated dataset with 30 checkins spaced 15 seconds apart, from 3 mins 45 seconds ago to 3 minutes 30
+  seconds in the future."
+  (dataset-def-with-timestamps 15))
 
-(defn- checkins-db-is-old? [max-age-seconds]
+(def ^:private checkins:4-per-hour
+  "Dynamically generated dataset with 30 checkins spaced 15 minutes apart, from 3 hours 45 minutes ago to 3 hours 30
+  minutes in the future."
+  (dataset-def-with-timestamps (u/minutes->seconds 15)))
+
+(def ^:private checkins:1-per-day
+  "Dynamically generated dataset with 30 checkins spaced 24 hours apart, from 15 days ago to 14 days in the future."
+  (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
+
+(defn- checkins-db-is-old?
+  "Determine whether we need to recreate one of the dynamically-generated datasets above, if the data has grown a little
+  stale."
+  [max-age-seconds]
   (u.date/greater-than-period-duration? (u.date/period-duration (:created_at (mt/db)) (t/zoned-date-time))
                                         (t/seconds max-age-seconds)))
 
@@ -1093,10 +1106,57 @@
                   "CHECKINS.DATE < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM')) "
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
-                  "LIMIT 1048576")
+                  "LIMIT 1048575")
              (sql.qp.test/pretty-sql
               (:query
                (qp/query->native
                 (mt/mbql-query checkins
                   {:filter   [:time-interval $date -4 :month]
                    :breakout [[:datetime-field $date :day]]})))))))))
+
+(deftest field-filter-start-of-week-test
+  (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
+    (mt/dataset checkins:1-per-day
+      (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as day "
+                                                        "FROM checkins "
+                                                        "[[WHERE {{date_range}}]] "
+                                                        "ORDER BY \"TIMESTAMP\" ASC "
+                                                        "LIMIT 1")
+                                    :template-tags {"date_range"
+                                                    {:name         "date_range"
+                                                     :display-name "Date Range"
+                                                     :type         :dimension
+                                                     :dimension    (mt/$ids $checkins.timestamp)}}
+                                    :parameters    [{:type   :date/range
+                                                     :name   "created_at"
+                                                     :target [:dimension [:template-tag "date_range"]]
+                                                     :value  "past1weeks"}]})]
+        (doseq [[first-day-of-week expected] {"sunday"    ["Sunday"]
+                                              "monday"    ["Monday"]
+                                              "tuesday"   ["Tuesday"]
+                                              "wednesday" ["Wednesday"]
+                                              "thursday"  ["Thursday"]
+                                              "friday"    ["Friday"]
+                                              "saturday"  ["Saturday"]}]
+          (mt/with-temporary-setting-values [start-of-week first-day-of-week]
+            (is (= expected
+                   (mt/first-row
+                     (qp/process-query query))))))))))
+
+(deftest day-of-week-custom-start-of-week-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "`:day-of-week` bucketing should respect the `start-of-week` Setting (#13604)"
+      (testing "filter by `:day-of-week` should work correctly (#15044)"
+        (doseq [[day [thursday-day-of-week saturday-day-of-week]] {:sunday  [5 7]
+                                                                   :monday  [4 6]
+                                                                   :tuesday [3 5]}]
+          (mt/with-temporary-setting-values [start-of-week day]
+            (is (= (sort-by
+                    first
+                    [[thursday-day-of-week 2]
+                     [saturday-day-of-week 1]])
+                   (mt/formatted-rows [int int]
+                     (mt/run-mbql-query checkins
+                       {:aggregation [[:count]]
+                        :breakout    [!day-of-week.date]
+                        :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))

@@ -22,11 +22,13 @@
          old-base-type         :base-type
          old-field-comment     :field-comment
          old-semantic-type     :semantic-type
-         old-database-position :database-position}  metabase-field
+         old-database-position :database-position
+         old-database-name     :name}  metabase-field
         {new-database-type     :database-type
          new-base-type         :base-type
          new-field-comment     :field-comment
-         new-database-position :database-position} field-metadata
+         new-database-position :database-position
+         new-database-name     :name} field-metadata
         new-database-type                          (or new-database-type "NULL")
         new-semantic-type                          (common/semantic-type field-metadata)
 
@@ -47,6 +49,10 @@
 
         new-database-position?
         (not= old-database-position new-database-position)
+
+        ;; these fields are paired by by metabase.sync.sync-metadata.fields.common/canonical-name, so if they are
+        ;; different they have the same canonical representation (lower-casing at the moment).
+        new-name? (not= old-database-name new-database-name)
 
         ;; calculate combined updates
         updates
@@ -78,7 +84,13 @@
                           (common/field-metadata-name-for-logging table metabase-field)
                           old-database-position
                           new-database-position))
-           {:database_position new-database-position}))]
+           {:database_position new-database-position})
+         (when new-name?
+           (log/info (trs "Name of {0} has changed from ''{1}'' to ''{2}''."
+                          (common/field-metadata-name-for-logging table metabase-field)
+                          old-database-name
+                          new-database-name))
+           {:name new-database-name}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
              (db/update! Field (u/get-id metabase-field) updates))

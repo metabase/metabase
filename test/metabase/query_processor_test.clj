@@ -41,11 +41,15 @@
                :when  (set/subset? features (driver.u/features driver))]
            driver))))
 
+(alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
+
 (defn normal-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid and Google Analytics) that DO NOT support
   `feature`."
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
+
+(alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
 
 (defn normal-drivers-except
   "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."

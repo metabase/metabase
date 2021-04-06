@@ -24,7 +24,7 @@ export default function FieldSet({
           {legend}
         </legend>
       )}
-      <div>{children}</div>
+      <div className="w-full">{children}</div>
     </fieldset>
   );
 }

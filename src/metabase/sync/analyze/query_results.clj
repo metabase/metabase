@@ -20,7 +20,7 @@
 (def ^:private DateTimeUnitKeywordOrString
   "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
   (s/constrained su/KeywordOrString
-                 #(mbql.preds/DatetimeFieldUnit? (keyword %))
+                 #(mbql.preds/DateTimeUnit? (keyword %))
                  "Valid field datetime unit keyword or string"))
 
 (def ^:private ResultColumnMetadata

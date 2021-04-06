@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
@@ -6,7 +6,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 describe("scenarios > admin > datamodel > metrics", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.viewport(1400, 860);
   });
 

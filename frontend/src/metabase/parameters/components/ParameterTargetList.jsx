@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import AccordionList from "metabase/components/AccordionList";

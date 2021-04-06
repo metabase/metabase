@@ -14,6 +14,7 @@
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
@@ -258,7 +259,8 @@
 
 (defmethod prepared-statement :sql-jdbc
   [driver ^Connection conn ^String sql params]
-  (let [stmt (.prepareStatement conn sql
+  (let [stmt (.prepareStatement conn
+                                sql
                                 ResultSet/TYPE_FORWARD_ONLY
                                 ResultSet/CONCUR_READ_ONLY
                                 ResultSet/CLOSE_CURSORS_AT_COMMIT)]
@@ -266,7 +268,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -288,7 +290,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -460,12 +462,18 @@
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
-   (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-               stmt (statement-or-prepared-statement driver conn sql params (context/canceled-chan context))
-               rs   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)]
+   (with-open [conn          (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
+               stmt          (statement-or-prepared-statement driver conn sql params (context/canceled-chan context))
+               ^ResultSet rs (try
+                               (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
+                               (catch Throwable e
+                                 (throw (ex-info (tru "Error executing query")
+                                                 {:sql sql, :params params, :type qp.error-type/invalid-query}
+                                                 e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |

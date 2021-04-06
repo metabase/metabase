@@ -7,14 +7,18 @@
 
 (deftest params-values-test
   (testing "Don't return `param_values` for fields to which the user only has segmented access."
-    (mt.tu/with-segmented-test-setup mt.tu/restricted-column-query
-      (mt.tu/with-user-attributes :rasta {:cat 50}
-        (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
-                        Card          [{card-id :id}      {:name "Dashboard Test Card"}]
-                        DashboardCard [{_ :id}            {:dashboard_id       dashboard-id
-                                                           :card_id            card-id
-                                                           :parameter_mappings [{:card_id      card-id
-                                                                                 :parameter_id "foo"
-                                                                                 :target       [:dimension [:field_id (mt/id :venues :name)]]}]}]]
-          (is (= nil
-                 (:param_values ((mt/user->client :rasta) :get 200 (str "dashboard/" dashboard-id))))))))))
+    (mt/with-gtaps {:gtaps      {:venues
+                                 {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+                                  :query      (mt.tu/restricted-column-query (mt/id))}}
+                    :attributes {:cat 50}}
+      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
+                      DashboardCard [{_ :id}            {:dashboard_id       dashboard-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:card_id      card-id
+                                                                               :parameter_id "foo"
+                                                                               :target       [:dimension
+                                                                                              [:field_id
+                                                                                               (mt/id :venues :name)]]}]}]]
+        (is (= nil
+               (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))))))))

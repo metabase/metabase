@@ -155,3 +155,58 @@ To add external dependency JAR files such as the Oracle or Vertica JDBC drivers 
       --name metabase metabase/metabase
 
 Note that Metabase will use this directory to extract plugins bundled with the default Metabase distribution (such as drivers for various databases such as SQLite), thus it must be readable and writable by Docker.
+
+
+### Use Docker Secrets to hide the sensitive parameters
+
+In order to keep your connection parameters hidden from plain sight, you can use Docker Secrets to put all parameters in files so Docker can read and load them in memory before the container is started.
+
+This is an example of a `docker-compose.yml` file to start a Metabase container with secrets to connect to a PostgreSQL database. Create 2 files (db_user.txt and db_password.txt) in the same directory as this `yml` and fill them with any username and a secure password:
+
+```
+version: '3.9'
+services:
+  metabase-secrets:
+    image: metabase/metabase:latest
+    container_name: metabase-secrets
+    hostname: metabase-secrets
+    volumes: 
+    - /dev/urandom:/dev/random:ro
+    ports:
+      - 3000:3000
+    environment: 
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: /run/secrets/db_user
+      MB_DB_PASS: /run/secrets/db_password
+      MB_DB_HOST: postgres-secrets
+    networks: 
+      - metanet1-secrets
+    depends_on: 
+      - postgres-secrets
+    secrets:
+      - db_password
+      - db_user
+  postgres-secrets:
+    image: postgres:latest
+    container_name: postgres-secrets
+    hostname: postgres-secrets
+    environment:
+      POSTGRES_USER: /run/secrets/db_user
+      POSTGRES_DB: metabase
+      POSTGRES_PASSWORD: /run/secrets/db_password
+    networks: 
+      - metanet1-secrets
+    secrets:
+      - db_password
+      - db_user
+networks: 
+  metanet1-secrets:
+    driver: bridge
+secrets:
+   db_password:
+     file: db_password.txt
+   db_user:
+     file: db_user.txt
+```
