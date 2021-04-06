@@ -31,6 +31,7 @@ import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
+import { normalize } from "cljs/metabase.mbql.js";
 
 import {
   getCard,
@@ -338,8 +339,17 @@ export const initializeQB = (location, params) => {
     if (params.cardId || serializedCard) {
       // existing card being loaded
       try {
-        // if we have a serialized card then unpack it and use it
-        card = serializedCard ? deserializeCardFromUrl(serializedCard) : {};
+        // if we have a serialized card then unpack and use it
+        if (serializedCard) {
+          card = deserializeCardFromUrl(serializedCard);
+
+          // if serialized query has database we normalize syntax to support older mbql
+          if (card.dataset_query.database != null) {
+            card.dataset_query = normalize(card.dataset_query);
+          }
+        } else {
+          card = {};
+        }
 
         // load the card either from `cardId` parameter or the serialized card
         if (params.cardId) {
