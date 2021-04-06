@@ -1008,14 +1008,14 @@
               (is (schema= {:id            (s/eq card-id)
                             :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query :checkins)))
                             s/Keyword      s/Any}
-                           (update-card! :crowberto 202 {:dataset_query (mt/mbql-query :checkins)})))))
+                           (update-card! :crowberto 200 {:dataset_query (mt/mbql-query :checkins)})))))
 
           (testing "\nnon-admin"
             (testing "should be allowed to update fields besides query"
               (is (schema= {:id       (s/eq card-id)
                             :name     (s/eq "Updated name")
                             s/Keyword s/Any}
-                           (update-card! :rasta 202 {:name "Updated name"}))))
+                           (update-card! :rasta 200 {:name "Updated name"}))))
 
             (testing "should *not* be allowed to update query"
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"

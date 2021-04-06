@@ -4,7 +4,8 @@
             [metabase.models :refer [Card Collection]]
             [metabase.models.permissions :as perms]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [schema.core :as s]))
 
 (deftest users-with-segmented-perms-test
   (let [card-name (mt/random-name)]
@@ -15,11 +16,12 @@
           (testing "Sanity check: shouldn't be able to save Cards for another table without perms"
             ;; make sure the `with-gtaps` macro is correctly setting up GTAPs and we don't have perms for anything we
             ;; didn't specify.
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request
-                    :rasta :post 403 "card"
-                    (assoc (card-api.test/card-with-name-and-query card-name (card-api.test/mbql-count-query (mt/db) (mt/id :users)))
-                           :collection_id     (u/the-id collection))))))
+            (is (schema= {:message (s/eq "You cannot save this Question because you do not have permissions to run its query.")
+                          s/Keyword s/Any}
+                         (mt/user-http-request
+                          :rasta :post 403 "card"
+                          (assoc (card-api.test/card-with-name-and-query card-name (card-api.test/mbql-count-query (mt/db) (mt/id :users)))
+                                 :collection_id     (u/the-id collection))))))
           (testing "Users with segmented permissions should be able to"
             (let [card (testing "save Cards"
                          (mt/user-http-request
