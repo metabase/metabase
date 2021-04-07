@@ -203,6 +203,15 @@ export default class DashCard extends Component {
                 token={dashcard.dashboard_id}
                 icon="download"
               />
+            ) : // show Download button for all Dashcards except those on Automagic dashboards
+            !dashboard.transient_name && !errors.length && !loading ? (
+              <QueryDownloadWidget
+                className="m1 text-brand-hover text-light"
+                classNameClose="hover-child"
+                card={dashcard.card}
+                result={getIn(dashcardData, [dashcard.id, dashcard.card.id])}
+                icon="download"
+              />
             ) : (
               undefined
             )
