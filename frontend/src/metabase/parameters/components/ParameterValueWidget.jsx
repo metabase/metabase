@@ -306,7 +306,7 @@ function getWidgetDefinition(metadata, parameter) {
 function ParameterTypeIcon({ parameter }) {
   return (
     <Icon
-      name={getParameterIconName(parameter.type)}
+      name={getParameterIconName(parameter)}
       className="flex-align-left mr1 flex-no-shrink"
       size={14}
     />
