@@ -585,6 +585,22 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("User → Created At: Minute");
     });
 
+    it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
+          },
+          database: 1,
+        },
+      });
+
+      cy.findByText("User ID is 1");
+      cy.findByText("37.65");
+    });
+
     it.skip("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
       cy.visit("/question/1/notebook");
       cy.findByText("Summarize").click();
