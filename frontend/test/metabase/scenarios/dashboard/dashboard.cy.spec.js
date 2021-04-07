@@ -25,6 +25,12 @@ function saveDashboard() {
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
+    cy.intercept("/api/session/properties", req => {
+      req.continue(res => {
+        res["field-filter-operators-enabled?"] = true;
+      });
+    });
+
     restore();
     cy.signInAsAdmin();
   });

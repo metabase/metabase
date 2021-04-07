@@ -109,6 +109,12 @@ function createDashboard({ dashboardName, questionId }, callback) {
 
 describe("scenarios > dashboard > chained filter", () => {
   beforeEach(() => {
+    cy.intercept("/api/session/properties", req => {
+      req.continue(res => {
+        res["field-filter-operators-enabled?"] = true;
+      });
+    });
+
     restore();
     cy.signInAsAdmin();
   });

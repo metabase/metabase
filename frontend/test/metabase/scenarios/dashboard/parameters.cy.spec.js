@@ -3,6 +3,12 @@ import { modal, popover, restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
+    cy.intercept("/api/session/properties", req => {
+      req.continue(res => {
+        res["field-filter-operators-enabled?"] = true;
+      });
+    });
+
     restore();
     cy.signInAsAdmin();
   });
