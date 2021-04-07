@@ -41,8 +41,6 @@ class Settings {
   _listeners: { [key: SettingName]: Function[] };
 
   constructor(settings: SettingsMap) {
-    console.log("settings: ");
-    console.dir(settings);
     this._settings = settings;
     this._listeners = {};
   }
@@ -133,7 +131,7 @@ class Settings {
         .local()
         .format("MMMM Do YYYY, h:mm:ss a");
     } else {
-      return "never";
+      return t`never`;
     }
   }
 
