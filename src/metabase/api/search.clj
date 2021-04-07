@@ -12,6 +12,7 @@
             [metabase.models.collection :as coll :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
+            [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.permissions :as perms]
@@ -153,6 +154,11 @@
   [model archived?]
   [:= (hsql/qualify (model->alias model) :archived) archived?])
 
+;; Databases can't be archived
+(defmethod archived-where-clause (class Database)
+  [model archived?]
+  [:= 1 1])
+
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause (class Table)
   [model archived?]
@@ -231,6 +237,10 @@
   [_ search-ctx :- SearchContext]
   (-> (base-query-for-model Collection search-ctx)
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
+
+(s/defmethod search-query-for-model (class Database)
+  [_ search-ctx :- SearchContext]
+  (base-query-for-model Database search-ctx))
 
 (s/defmethod search-query-for-model (class Dashboard)
   [_ search-ctx :- SearchContext]

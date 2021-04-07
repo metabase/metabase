@@ -118,7 +118,11 @@
   Databases causing the tests to fail."
   mt/id)
 
-(defn- search-request* [xf user-kwd & params]
+(def ^:private remove-databases
+  "Remove DBs from the results, which is useful since test databases unrelated to this suite can pollute the results"
+  (partial filter #(not= (:model %) "database")))
+
+(defn- search-request-with [xf user-kwd & params]
   (let [raw-results      (apply (partial mt/user-http-request user-kwd) :get 200 "search" params)
         keep-database-id (if (fn? *search-request-results-database-id*)
                            (*search-request-results-database-id*)
@@ -138,11 +142,11 @@
 
 (defn- search-request
   [& args]
-  (apply search-request* sorted-results args))
+  (apply search-request-with (comp sorted-results remove-databases) args))
 
 (defn- unsorted-search-request
   [& args]
-  (apply search-request* identity args))
+  (apply search-request-with identity args))
 
 (deftest order-clause-test
   (testing "it includes all columns"
@@ -331,6 +335,23 @@
 
 (defn- archived [m]
   (assoc m :archived true))
+
+(deftest database-test
+  (testing "Should search database names and descriptions"
+    (mt/with-temp* [Database       [_ {:name "aviaries"}]
+                    Database       [_ {:name "user_favorite_places" :description "Join table between users and their favorite places, which could include aviaries"}]
+                    Database       [_ {:name "users" :description "As it sounds"}]]
+      (letfn [(result [db]
+                (merge {:name nil
+                        :model "database"
+                        :description nil}
+                       db))]
+        (is (= (sorted-results
+                (map result [{:name "aviaries"}
+                             {:name "user_favorite_places"
+                              :description "Join table between users and their favorite places, which could include aviaries"}]))
+               (map #(select-keys % [:name :model :description])
+                    (search-request-with sorted-results :crowberto :q "aviaries"))))))))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
