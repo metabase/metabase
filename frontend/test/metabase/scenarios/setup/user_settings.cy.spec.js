@@ -67,6 +67,13 @@ describe("user > settings", () => {
     cy.findByText("Password").should("exist");
   });
 
+  it.skip("it should redirect to the login page when user is signed out but tries to visit `/user/edit_current` (metabase#15471)", () => {
+    cy.signOut();
+    cy.visit("/user/edit_current");
+    cy.url().should("include", "/auth/login");
+    cy.findByText("Sign in to Metabase");
+  });
+
   describe("when user is authenticated via ldap", () => {
     beforeEach(() => {
       cy.server();
