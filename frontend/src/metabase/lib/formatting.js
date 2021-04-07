@@ -153,7 +153,7 @@ export function numberFormatterForOptions(options: FormattingOptions) {
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
   // $FlowFixMe: doesn't know about Intl.NumberFormat
-  return new Intl.NumberFormat("bn", {
+  return new Intl.NumberFormat(moment.locale(), {
     style: options.number_style,
     currency: options.currency,
     currencyDisplay: options.currency_style,
