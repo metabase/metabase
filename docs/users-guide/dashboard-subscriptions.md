@@ -46,6 +46,10 @@ For Slack subscriptions, you can set up a subscription for a channel (like #gene
 
 You can specify how often Metabase sends a Slack message (hourly, daily, weekly, or monthly), and whether to send a message if the dashboard fails to return results.
 
+### Customize filter values for each dashboard subscription
+
+[Metabase Enterprise Edition](https://www.metabase.com/enterprise/) allows you to set up multiple subscriptions for the same dashboard, so you can send different emails or slack messages to different groups of people, and with different filter values applied. 
+
 ### Related reading
 
 - [Setting up email](https://www.metabase.com/docs/latest/administration-guide/02-setting-up-email.html)
