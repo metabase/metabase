@@ -3,6 +3,7 @@
 import d3 from "d3";
 import moment from "moment";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -22,6 +23,7 @@ export function getClickHoverObject(
     event,
     element,
     settings,
+    groups,
   },
 ) {
   let { cols } = series[seriesIndex].data;
@@ -89,14 +91,29 @@ export function getClickHoverObject(
       ([x]) => key === x || (moment.isMoment(key) && key.isSame(x)),
     );
 
+    const xIndex = _.findIndex(
+      groups[0][0].all(),
+      groupedRow =>
+        key === groupedRow.key ||
+        (moment.isMoment(groupedRow.key) && key.isSame(groupedRow.key)),
+    );
+
+    const groupByColumnName = {};
+    series.forEach((s, index) => {
+      const seriesGroup = groups[index];
+
+      if (seriesGroup) {
+        groupByColumnName[s.card._seriesKey] = seriesGroup[0];
+      }
+    });
+
     // try to get row from _origin but fall back to the row we already have
     const rawRow = (row && row._origin && row._origin.row) || row;
 
     // Loop over *all* of the columns and create the new array
     if (rawRow) {
       data = rawCols.map((col, i) => {
-        const isSeriesValueColumn = cols[1].field_ref === col.field_ref;
-
+        const isSeriesValueColumn = _.isEqual(cols[1].field_ref, col.field_ref);
         if (isNormalized && isSeriesValueColumn) {
           return {
             key: getColumnDisplayName(cols[1]),
@@ -109,9 +126,13 @@ export function getClickHoverObject(
           };
         }
 
+        const columnGroup = groupByColumnName[col.name];
+        const groupedRow = columnGroup ? columnGroup.all()[xIndex] : null;
+
         const value = formatNull(
-          isSeriesValueColumn ? d.data.value : rawRow[i],
+          groupedRow != null ? groupedRow.value : rawRow[i],
         );
+
         return {
           key: getColumnDisplayName(col),
           value,
@@ -200,6 +221,7 @@ export function setupTooltips(
   datas,
   chart,
   { isBrushing },
+  groups,
 ) {
   const stacked = isStacked(settings, datas);
   const normalized = isNormalized(settings, datas);
@@ -231,6 +253,7 @@ export function setupTooltips(
       event: d3.event,
       element: target,
       settings,
+      groups,
     });
   };
 
