@@ -246,25 +246,25 @@ export default class Popover extends Component {
 
         this._best = best;
       }
+      if (this.props.sizeToFit) {
+        const body = tetherOptions.element.querySelector(".PopoverBody");
+        if (this._tether.attachment.top === "top") {
+          if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
+            body.classList.add("scroll-y");
+            body.classList.add("scroll-show");
+          }
+        } else if (this._tether.attachment.top === "bottom") {
+          if (constrainToScreen(body, "top", PAGE_PADDING)) {
+            body.classList.add("scroll-y");
+            body.classList.add("scroll-show");
+          }
+        }
+      }
 
       // finally set the best options
       this._setTetherOptions(tetherOptions, this._best);
     }
 
-    if (this.props.sizeToFit) {
-      const body = tetherOptions.element.querySelector(".PopoverBody");
-      if (this._tether.attachment.top === "top") {
-        if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
-          body.classList.add("scroll-y");
-          body.classList.add("scroll-show");
-        }
-      } else if (this._tether.attachment.top === "bottom") {
-        if (constrainToScreen(body, "top", PAGE_PADDING)) {
-          body.classList.add("scroll-y");
-          body.classList.add("scroll-show");
-        }
-      }
-    }
   }
 
   _setTetherOptions(tetherOptions, o) {
