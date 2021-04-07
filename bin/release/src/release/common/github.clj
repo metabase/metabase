@@ -27,7 +27,7 @@
   []
   (some
    (fn [{:keys [title], :as milestone}]
-     (when (str/starts-with? (c/version) title)
+     (when (str/starts-with? (c/github-milestone) title)
        milestone))
    (milestones)))
 
