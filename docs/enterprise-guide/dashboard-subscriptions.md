@@ -1,7 +1,7 @@
 
 ## Customize filter values for each dashboard subscription
 
-This page covers the Enterprise Edition features for dashboard subscriptions. Our User's Guide can give you an introduction to [dashboard subscriptions](../users-guide/dashboard-subscriptions). 
+This page covers the Enterprise Edition features for dashboard subscriptions. Our User's Guide can give you an introduction to [dashboard subscriptions](../users-guide/dashboard-subscriptions.md). 
 
 Enterprise Edition lets you set up multiple subscriptions for a single dashboard, and lets you customize which filter values to apply to each subscription. That way you can send one group of people an email (or Slack message) the contents of the dashboard with one filter value applied, and set up another subscription to send the dashboard's contents with a different filter applied. You only need to maintain one dashboard, and you can set up different subscriptions to give different groups of people the info they need. 
 
