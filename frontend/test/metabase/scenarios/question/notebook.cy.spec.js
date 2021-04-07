@@ -605,6 +605,42 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
+  describe.skip("popover rendering issues (metabase#15502)", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      cy.viewport(1280, 720);
+      cy.visit("/question/new");
+      cy.findByText("Custom question").click();
+      cy.findByText("Sample Dataset").click();
+      cy.findByText("Orders").click();
+    });
+
+    it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {
+      // Initial filter popover usually renders correctly within the viewport
+      cy.findByText("Add filters to narrow your answer")
+        .as("filter")
+        .click();
+      popover().isInViewport();
+      // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
+      cy.icon("gear").click();
+      cy.get("@filter").click();
+      popover().isInViewport();
+    });
+
+    it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
+      // Initial summarize/metric popover usually renders initially without blocking the button
+      cy.findByText("Pick the metric you want to see")
+        .as("metric")
+        .click();
+      // Click outside to close this popover
+      cy.icon("gear").click();
+      // Popover invoked again blocks the button making it impossible to click the button for the third time
+      cy.get("@metric").click();
+      cy.get("@metric").click();
+    });
+  });
+
   describe("nested", () => {
     it("should create a nested question with post-aggregation filter", () => {
       openProductsTable({ mode: "notebook" });
