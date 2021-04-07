@@ -882,7 +882,7 @@ export default function lineAreaBar(
 
   applyYAxisSettings(parent, yAxisProps);
 
-  setupTooltips(props, datas, parent, brushChangeFunctions);
+  setupTooltips(props, datas, parent, brushChangeFunctions, groups);
 
   parent.render();
 

@@ -32,7 +32,7 @@ describe("getClickHoverObject", () => {
     const d = {
       data: {
         key: moment("2016-04-01T00:00:00.000Z", "YYYY-MM-DDTHH:mm:ss.SSSSZ"),
-        value: 123,
+        value: 2,
       },
     };
     const cols = [DateTimeColumn({ unit: "month" }), NumberColumn()];
@@ -57,9 +57,10 @@ describe("getClickHoverObject", () => {
     const d = {
       data: {
         key: moment("2016-04-01T00:00:00.000Z", "YYYY-MM-DDTHH:mm:ss.SSSSZ"),
-        value: 123,
+        value: 2,
       },
     };
+
     const cols = [DateTimeColumn({ unit: "month" }), NumberColumn()];
     const rows = [["2016-03", 1], ["2016-04", 2], ["2016-05", 3]];
     const otherArgs = {
@@ -153,7 +154,7 @@ describe("getClickHoverObject", () => {
   });
 
   it("should show correct tooltip for nulls", () => {
-    const d = { data: { key: "(empty)", value: "true" } };
+    const d = { data: { key: "(empty)", value: "2" } };
     const cols = [StringColumn(), NumberColumn()];
     const rows = [["foobar", 1], [null, 2], ["barfoo", 3]];
     const otherArgs = {
@@ -171,5 +172,13 @@ describe("getClickHoverObject", () => {
 function seriesAndData({ cols, rows }) {
   const series = [{ data: { cols, rows }, card: {} }];
   const datas = getDatas({ series, settings: {} });
-  return { series, datas };
+  const groups = [
+    [
+      {
+        all: () => rows,
+      },
+    ],
+  ];
+
+  return { series, datas, groups };
 }

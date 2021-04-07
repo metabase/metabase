@@ -269,7 +269,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("There was a problem with your question").should("not.exist");
   });
 
-  it.skip("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
+  it("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
     cy.createNativeQuestion({
       name: "11907",
       native: {
