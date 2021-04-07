@@ -127,7 +127,6 @@ export function seriesSetting({
           { name: t`Right`, value: "right" },
         ],
       },
-      getHidden: (single, settings, { series }) => series.length < 2,
     },
     show_series_values: {
       title: t`Show values for this series`,
