@@ -621,7 +621,7 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  describe.skip("popover rendering issues (metabase#15502)", () => {
+  describe("popover rendering issues (metabase#15502)", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
