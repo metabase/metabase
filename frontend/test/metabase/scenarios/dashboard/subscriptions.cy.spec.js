@@ -221,7 +221,10 @@ describe("scenarios > dashboard > subscriptions", () => {
           .contains("Add filter")
           .click();
 
+        cy.intercept("PUT", "/api/pulse/1").as("pulsePut");
+
         clickButton("Done");
+        cy.wait("@pulsePut");
         cy.findByText("Category is 2 selections and 1 more filter");
       });
     });
