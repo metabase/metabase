@@ -18,6 +18,7 @@ import cx from "classnames";
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
+  isFuzzyOperator,
 } from "metabase/lib/schema_metadata";
 
 type Props = {
@@ -115,7 +116,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     const savedValue = normalizeValue(this.props.value);
     const unsavedValue = normalizeValue(this.state.value);
     const isEqualsOp = isEqualsOperator(operator);
-
+    const disableSearch = isFuzzyOperator(operator);
     const defaultPlaceholder = isFocused
       ? ""
       : this.props.placeholder || t`Enter a value...`;
@@ -184,7 +185,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                   fields={fields}
                   autoFocus={index === 0}
                   multi={multi}
-                  alwaysShowOptions={numFields === 1}
+                  disableSearch={disableSearch}
                   formatOptions={
                     operator && getFilterArgumentFormatOptions(operator, index)
                   }
