@@ -211,7 +211,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           .contains("Update filter")
           .click();
 
-        cy.findAllByText("Dropdown 1")
+        cy.findAllByText("Category 1")
           .last()
           .click();
         popover()
