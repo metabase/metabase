@@ -584,6 +584,22 @@ describe("scenarios > question > notebook", () => {
       // Given that the previous step passes, we should now see this in the UI
       cy.findByText("User → Created At: Minute");
     });
+
+    it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
+          },
+          database: 1,
+        },
+      });
+
+      cy.findByText("User ID is 1");
+      cy.findByText("37.65");
+    });
   });
 
   describe("nested", () => {
