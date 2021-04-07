@@ -11,8 +11,8 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
-                                     Revision Segment Table TaskHistory User]]
+                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
+                                     PulseChannel Revision Segment Table TaskHistory User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -147,6 +147,11 @@
             :name          (random-name)
             :position      1
             :table_id      (data/id :checkins)})
+
+   LoginHistory
+   (fn [_] {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+            :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
+            :ip_address         "0:0:0:0:0:0:0:1"})
 
    Metric
    (fn [_] {:creator_id  (rasta-id)

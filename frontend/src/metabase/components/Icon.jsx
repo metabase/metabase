@@ -91,7 +91,7 @@ class BaseIcon extends Component {
           src={icon.img}
           srcSet={`
           ${icon.img}    1x,
-          ${icon.img}@2x 2x
+          ${icon.img_2x} 2x
         `}
           {...rest}
         />

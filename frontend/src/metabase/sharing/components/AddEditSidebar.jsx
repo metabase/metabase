@@ -24,6 +24,8 @@ import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
 import { conjunct } from "metabase/lib/formatting";
 
+import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+
 import {
   getDefaultParametersById,
   getParameters,
@@ -59,6 +61,7 @@ function _AddEditEmailSidebar({
   users,
   parameters,
   defaultParametersById,
+  dashboard,
 
   // form callbacks
   handleSave,
@@ -69,6 +72,7 @@ function _AddEditEmailSidebar({
   toggleSkipIfEmpty,
   setPulse,
   handleArchive,
+  setPulseParameters,
 }) {
   return (
     <Sidebar
@@ -127,11 +131,22 @@ function _AddEditEmailSidebar({
             testPulse={testPulse}
           />
         </div>
-        <DefaultParametersSection
-          className="py3 mt2 border-top"
-          parameters={parameters}
-          defaultParametersById={defaultParametersById}
-        />
+        {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
+          <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            dashboard={dashboard}
+            pulse={pulse}
+            setPulseParameters={setPulseParameters}
+            defaultParametersById={defaultParametersById}
+          />
+        ) : (
+          <DefaultParametersSection
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            defaultParametersById={defaultParametersById}
+          />
+        )}
         <div className="text-bold py3 flex justify-between align-center border-top">
           <Heading>{t`Don't send if there aren't results`}</Heading>
           <Toggle
@@ -174,6 +189,7 @@ _AddEditEmailSidebar.propTypes = {
   users: PropTypes.array,
   parameters: PropTypes.array.isRequired,
   defaultParametersById: PropTypes.object.isRequired,
+  dashboard: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,
@@ -182,6 +198,7 @@ _AddEditEmailSidebar.propTypes = {
   toggleSkipIfEmpty: PropTypes.func.isRequired,
   setPulse: PropTypes.func.isRequired,
   handleArchive: PropTypes.func.isRequired,
+  setPulseParameters: PropTypes.func.isRequired,
 };
 
 function DeleteSubscriptionAction({ pulse, handleArchive }) {
@@ -253,7 +270,7 @@ function _AddEditSlackSidebar({
   channelSpec,
   parameters,
   defaultParametersById,
-
+  dashboard,
   // form callbacks
   handleSave,
   onCancel,
@@ -261,6 +278,7 @@ function _AddEditSlackSidebar({
   onChannelScheduleChange,
   toggleSkipIfEmpty,
   handleArchive,
+  setPulseParameters,
 }) {
   return (
     <Sidebar
@@ -299,11 +317,22 @@ function _AddEditSlackSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <DefaultParametersSection
-          className="py3 mt2 border-top"
-          parameters={parameters}
-          defaultParametersById={defaultParametersById}
-        />
+        {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
+          <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            dashboard={dashboard}
+            pulse={pulse}
+            setPulseParameters={setPulseParameters}
+            defaultParametersById={defaultParametersById}
+          />
+        ) : (
+          <DefaultParametersSection
+            className="py3 mt2 border-top"
+            parameters={parameters}
+            defaultParametersById={defaultParametersById}
+          />
+        )}
         <div className="text-bold py2 flex justify-between align-center border-top">
           <Heading>{t`Don't send if there aren't results`}</Heading>
           <Toggle
@@ -330,12 +359,14 @@ _AddEditSlackSidebar.propTypes = {
   users: PropTypes.array,
   parameters: PropTypes.array.isRequired,
   defaultParametersById: PropTypes.object.isRequired,
+  dashboard: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   onChannelPropertyChange: PropTypes.func.isRequired,
   onChannelScheduleChange: PropTypes.func.isRequired,
   toggleSkipIfEmpty: PropTypes.func.isRequired,
   handleArchive: PropTypes.func.isRequired,
+  setPulseParameters: PropTypes.func.isRequired,
 };
 
 function CaveatMessage() {

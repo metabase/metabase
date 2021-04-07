@@ -154,6 +154,49 @@
            (u.date/format nil))
         "Passing `nil` should return `nil`")))
 
+(deftest format-human-readable-test
+  ;; strings are localized slightly differently on different JVMs. For places where there are multiple possible
+  ;; correct results, we'll use a set with all the possibilities below and check membership
+  (doseq [[t expected] {#t "2021-04-02T14:42:09.524392-07:00[US/Pacific]" ; ZonedDateTime
+                        {:en-US #{"April 2, 2021 2:42:09 PM PDT"
+                                  "April 2, 2021 at 2:42:09 PM PDT"}
+                         :es-MX #{"2 de abril de 2021 02:42:09 PM PDT"
+                                  "2 de abril de 2021, 14:42:09 PDT"
+                                  "2 de abril de 2021 a las 14:42:09 PDT"}}
+
+                        #t "2021-04-02T14:42:09.524392-07:00" ; OffsetDateTime
+                        {:en-US #{"April 2, 2021 2:42:09 PM (GMT-07:00)"
+                                  "April 2, 2021, 2:42:09 PM (GMT-07:00)"}
+                         :es-MX #{"2 de abril de 2021 02:42:09 PM (GMT-07:00)"
+                                  "2 de abril de 2021 14:42:09 (GMT-07:00)"}}
+
+                        #t "2021-04-02T14:42:09.524392" ; LocalDateTime
+                        {:en-US #{"April 2, 2021 2:42:09 PM"
+                                  "April 2, 2021, 2:42:09 PM"}
+                         :es-MX #{"2 de abril de 2021 02:42:09 PM"
+                                  "2 de abril de 2021 14:42:09"}}
+
+                        #t "2021-04-02" ; LocalDate
+                        {:en-US "April 2, 2021"
+                         :es-MX "2 de abril de 2021"}
+
+                        #t "14:42:09.524392-07:00" ; OffsetTime
+                        {:en-US "2:42:09 PM (GMT-07:00)"
+                         :es-MX #{"02:42:09 PM (GMT-07:00)"
+                                  "14:42:09 (GMT-07:00)"}}
+
+                        #t "14:42:09.524392" ; LocalTime
+                        {:en-US "2:42:09 PM"
+                         :es-MX #{"02:42:09 PM"
+                                  "14:42:09"}}}
+          [locale expected] expected]
+    (mt/with-user-locale locale
+      (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))
+        (let [actual (u.date/format-human-readable t)]
+          (if (set? expected)
+            (is (contains? expected actual))
+            (is (= expected actual))))))))
+
 (deftest format-sql-test
   (testing "LocalDateTime"
     (is (= "2019-11-05 19:27:00"

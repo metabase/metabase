@@ -212,10 +212,11 @@
   [template-tags]
   (into {} (for [[tag-name tag-def] template-tags]
              [(mbql.u/qualified-name tag-name)
-              (let [tag-def (normalize-tokens tag-def :ignore-path)]
-                (cond-> tag-def
-                  (:type tag-def)        (update :type maybe-normalize-token)
-                  (:widget-type tag-def) (update :widget-type maybe-normalize-token)))])))
+              (let [tag-def' (normalize-tokens (dissoc tag-def :default) :ignore-path)]
+                (cond-> tag-def'
+                  (:default tag-def)      (assoc :default (:default tag-def)) ;; don't normalize default values
+                  (:type tag-def')        (update :type maybe-normalize-token)
+                  (:widget-type tag-def') (update :widget-type maybe-normalize-token)))])))
 
 (defn- normalize-query-parameter [{:keys [type target], :as param}]
   (cond-> param

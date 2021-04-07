@@ -584,6 +584,77 @@ describe("scenarios > question > notebook", () => {
       // Given that the previous step passes, we should now see this in the UI
       cy.findByText("User → Created At: Minute");
     });
+
+    it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
+          },
+          database: 1,
+        },
+      });
+
+      cy.findByText("User ID is 1");
+      cy.findByText("37.65");
+    });
+
+    it.skip("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
+      cy.visit("/question/1/notebook");
+      cy.findByText("Summarize").click();
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText("Created At")
+        .closest(".List-item")
+        .findByText("by month")
+        .click({ force: true });
+      // First a reality check - "Minute" is the only string visible in UI and this should pass
+      cy.findAllByText("Minute")
+        .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15446) gets fixed
+        .isVisibleInPopover();
+      // The actual check that will fail until this issue gets fixed
+      cy.findAllByText("Week")
+        .first()
+        .isVisibleInPopover();
+    });
+  });
+
+  describe.skip("popover rendering issues (metabase#15502)", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      cy.viewport(1280, 720);
+      cy.visit("/question/new");
+      cy.findByText("Custom question").click();
+      cy.findByText("Sample Dataset").click();
+      cy.findByText("Orders").click();
+    });
+
+    it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {
+      // Initial filter popover usually renders correctly within the viewport
+      cy.findByText("Add filters to narrow your answer")
+        .as("filter")
+        .click();
+      popover().isInViewport();
+      // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
+      cy.icon("gear").click();
+      cy.get("@filter").click();
+      popover().isInViewport();
+    });
+
+    it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
+      // Initial summarize/metric popover usually renders initially without blocking the button
+      cy.findByText("Pick the metric you want to see")
+        .as("metric")
+        .click();
+      // Click outside to close this popover
+      cy.icon("gear").click();
+      // Popover invoked again blocks the button making it impossible to click the button for the third time
+      cy.get("@metric").click();
+      cy.get("@metric").click();
+    });
   });
 
   describe("nested", () => {

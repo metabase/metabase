@@ -61,7 +61,7 @@ describe("scenarios > dashboard > parameters", () => {
     // add a category filter
     cy.icon("filter").click();
     cy.contains("Other Categories").click();
-    cy.findByText("Starts with").click();
+    cy.findByText("Dropdown").click();
 
     // connect it to people.name and product.category
     // (this doesn't make sense to do, but it illustrates the feature)
@@ -148,6 +148,50 @@ describe("scenarios > dashboard > parameters", () => {
     // There should be 8849 orders with a rating >= 3 && <= 4
     cy.get(".DashCard").contains("8,849");
     cy.url().should("include", "between=3&between=4");
+  });
+
+  it("should not search field for results non-exact parameter string operators", () => {
+    cy.visit("/dashboard/1");
+
+    // Add a filter tied to a field that triggers a search for field values
+    cy.icon("pencil").click();
+    cy.icon("filter").click();
+    cy.findByText("Location").click();
+    cy.findByText("Starts with").click();
+
+    // Link that filter to the card
+    cy.findByText("Select…").click();
+    popover().within(() => {
+      cy.findByText("City").click();
+    });
+
+    // Add a filter with few enough values that it does not search
+    cy.icon("filter").click();
+    cy.findByText("Other Categories").click();
+    cy.findByText("Starts with").click();
+
+    // Link that filter to the card
+    cy.findByText("Select…").click();
+    popover().within(() => {
+      cy.findByText("Category").click();
+    });
+
+    cy.findByText("Save").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
+
+    cy.contains("Location starts with").click();
+    cy.findByPlaceholderText("Enter some text")
+      .click()
+      .type("Bake");
+    cy.findByText("Baker").should("not.exist");
+    cy.findByText("Add filter").click();
+
+    cy.contains("Category starts with").click();
+    cy.findByPlaceholderText("Enter some text")
+      .click()
+      .type("Widge");
+    cy.findByText("Widget").should("not.exist");
+    cy.findByText("Add filter").click();
   });
 
   it("should remove previously deleted dashboard parameter from URL (metabase#10829)", () => {

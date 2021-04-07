@@ -527,7 +527,7 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it.skip("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
+  it("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     visitQuestionAdhoc({
       name: "15460",
@@ -569,7 +569,7 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it.skip("should run with the default field filter set (metabase#15444)", () => {
+  it("should run with the default field filter set (metabase#15444)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     cy.visit("/");

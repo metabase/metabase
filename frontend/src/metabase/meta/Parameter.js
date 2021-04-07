@@ -13,7 +13,6 @@ import type {
   ParameterValue,
   ParameterValueOrArray,
   ParameterValues,
-  ParameterType,
 } from "metabase-types/types/Parameter";
 import type { FieldId } from "metabase-types/types/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -42,120 +41,126 @@ type VariableFilter = (variable: Variable) => boolean;
 export const PARAMETER_OPERATOR_TYPES = {
   number: [
     {
+      type: "number/=",
       operator: "=",
       name: t`Equal to`,
     },
     {
+      type: "number/!=",
       operator: "!=",
       name: t`Not equal to`,
     },
     {
+      type: "number/between",
       operator: "between",
       name: t`Between`,
     },
     {
+      type: "number/>=",
       operator: ">=",
       name: t`Greater than or equal to`,
     },
     {
+      type: "number/<=",
       operator: "<=",
       name: t`Less than or equal to`,
     },
-    // {
-    //   operator: "all-options",
-    //   name: t`All options`,
-    //   description: t`Contains all of the above`,
-    // },
   ],
   string: [
     {
+      type: "string/=",
       operator: "=",
       name: t`Dropdown`,
       description: t`Select one or more values from a list or search box.`,
     },
     {
+      type: "string/!=",
       operator: "!=",
       name: t`Is not`,
       description: t`Exclude one or more specific values.`,
     },
     {
+      type: "string/contains",
       operator: "contains",
       name: t`Contains`,
       description: t`Match values that contain the entered text.`,
     },
     {
+      type: "string/does-not-contain",
       operator: "does-not-contain",
       name: t`Does not contain`,
       description: t`Filter out values that contain the entered text.`,
     },
     {
+      type: "string/starts-with",
       operator: "starts-with",
       name: t`Starts with`,
       description: t`Match values that begin with the entered text.`,
     },
     {
+      type: "string/ends-with",
       operator: "ends-with",
       name: t`Ends with`,
       description: t`Match values that end with the entered text.`,
     },
-    // {
-    //   operator: "all-options",
-    //   name: t`All options`,
-    //   description: t`Users can pick from any of the above`,
-    // },
+  ],
+  date: [
+    {
+      type: "date/month-year",
+      operator: "month-year",
+      name: t`Month and Year`,
+      description: t`Like January, 2016`,
+    },
+    {
+      type: "date/quarter-year",
+      operator: "quarter-year",
+      name: t`Quarter and Year`,
+      description: t`Like Q1, 2016`,
+    },
+    {
+      type: "date/single",
+      operator: "single",
+      name: t`Single Date`,
+      description: t`Like January 31, 2016`,
+    },
+    {
+      type: "date/range",
+      operator: "range",
+      name: t`Date Range`,
+      description: t`Like December 25, 2015 - February 14, 2016`,
+    },
+    {
+      type: "date/relative",
+      operator: "relative",
+      name: t`Relative Date`,
+      description: t`Like "the last 7 days" or "this month"`,
+    },
+    {
+      type: "date/all-options",
+      operator: "all-options",
+      name: t`Date Filter`,
+      menuName: t`All Options`,
+      description: t`Contains all of the above`,
+    },
   ],
 };
 
 const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   {
-    section: "location",
-    operatorType: "string",
-    sectionName: t`Location`,
+    type: "date",
+    typeName: t`Date`,
   },
   {
-    section: "category",
-    operatorType: "string",
-    sectionName: t`Category`,
+    type: "string",
+    typeName: t`String`,
   },
   {
-    section: "number",
-    operatorType: "number",
-    sectionName: t`Number`,
+    type: "number",
+    typeName: t`Number`,
   },
 ];
 
 export const PARAMETER_OPTIONS: ParameterOption[] = [
-  {
-    type: "date/month-year",
-    name: t`Month and Year`,
-    description: t`Like January, 2016`,
-  },
-  {
-    type: "date/quarter-year",
-    name: t`Quarter and Year`,
-    description: t`Like Q1, 2016`,
-  },
-  {
-    type: "date/single",
-    name: t`Single Date`,
-    description: t`Like January 31, 2016`,
-  },
-  {
-    type: "date/range",
-    name: t`Date Range`,
-    description: t`Like December 25, 2015 - February 14, 2016`,
-  },
-  {
-    type: "date/relative",
-    name: t`Relative Date`,
-    description: t`Like "the last 7 days" or "this month"`,
-  },
-  {
-    type: "date/all-options",
-    name: t`Date Filter`,
-    menuName: t`All Options`,
-    description: t`Contains all of the above`,
-  },
   {
     type: "id",
     name: t`ID`,
@@ -165,27 +170,40 @@ export const PARAMETER_OPTIONS: ParameterOption[] = [
   ),
 ].flat();
 
-function buildOperatorSubtypeOptions({ section, operatorType, sectionName }) {
-  return PARAMETER_OPERATOR_TYPES[operatorType].map(option => ({
+function buildOperatorSubtypeOptions({ type, typeName }) {
+  return PARAMETER_OPERATOR_TYPES[type].map(option => ({
     ...option,
-    combinedName:
-      operatorType === "string" && option.operator === "="
-        ? `${sectionName}`
-        : sectionName === "Number"
-        ? `${option.name}`
-        : `${sectionName} ${option.name.toLowerCase()}`,
-    type: `${section}/${option.operator}`,
+    combinedName: getOperatorDisplayName(option, type, typeName),
   }));
 }
 
-function fieldFilterForParameter(parameter: Parameter) {
-  return fieldFilterForParameterType(parameter.type);
+export function getOperatorDisplayName(option, operatorType, sectionName) {
+  if (operatorType === "date" || operatorType === "number") {
+    return option.name;
+  } else if (operatorType === "string" && option.operator === "=") {
+    return sectionName;
+  } else {
+    return `${sectionName} ${option.name.toLowerCase()}`;
+  }
 }
 
-function fieldFilterForParameterType(
-  parameterType: ParameterType,
-): FieldPredicate {
-  const [type] = splitType(parameterType);
+// sectionId will match a type of field (category, location, number, date, id, etc.)
+// if sectionId is undefined, it is an old parameter that did have it set
+// OR it is a PARAMETER_OPTION entry. In those situations,
+// a `type` will exist like "category" or "location/city" or "string/="
+// we split on the `/` and take the first entry to get the field type
+function getParameterType(parameter) {
+  const { sectionId } = parameter;
+  return sectionId || splitType(parameter)[0];
+}
+
+function getParameterSubType(parameter) {
+  const [, subtype] = splitType(parameter);
+  return subtype;
+}
+
+function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
+  const type = getParameterType(parameter);
   switch (type) {
     case "date":
       return (field: Field) => field.isDate();
@@ -201,6 +219,8 @@ function fieldFilterForParameterType(
         field.isCountry();
     case "number":
       return (field: Field) => field.isNumber() && !field.isCoordinate();
+    case "string":
+      return (field: Field) => field.isString();
   }
 
   return (field: Field) => false;
@@ -208,7 +228,7 @@ function fieldFilterForParameterType(
 
 export function parameterOptionsForField(field: Field): ParameterOption[] {
   return PARAMETER_OPTIONS.filter(option =>
-    fieldFilterForParameterType(option.type)(field),
+    fieldFilterForParameter(option)(field),
   ).map(option => {
     return {
       ...option,
@@ -238,7 +258,8 @@ export function variableFilterForParameter(
 }
 
 function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
-  const [type, subtype] = splitType(parameter);
+  const type = getParameterType(parameter);
+  const subtype = getParameterSubType(parameter);
   const operator = getParameterOperatorName(subtype);
   if (operator !== "=") {
     return (tag: TemplateTag) => false;
@@ -255,6 +276,8 @@ function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
       return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
     case "number":
       return (tag: TemplateTag) => tag.type === "number";
+    case "string":
+      return (tag: TemplateTag) => tag.type === "text";
   }
   return (tag: TemplateTag) => false;
 }
@@ -270,7 +293,7 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
       id: tag.id,
       type:
         tag["widget-type"] ||
-        (tag.type === "date" ? "date/single" : "category"),
+        (tag.type === "date" ? "date/single" : "string/="),
       target:
         tag.type === "dimension"
           ? ["dimension", ["template-tag", tag.name]]
@@ -418,7 +441,7 @@ export function stringParameterValueToMBQL(
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
   const parameterValue: ParameterValueOrArray = parameter.value;
-  const [, subtype] = splitType(parameter);
+  const subtype = getParameterSubType(parameter);
   const operatorName = getParameterOperatorName(subtype);
 
   return [operatorName, fieldRef].concat(parameterValue);
@@ -429,7 +452,7 @@ export function numberParameterValueToMBQL(
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
   const parameterValue: ParameterValue = parameter.value;
-  const [, subtype] = splitType(parameter);
+  const subtype = getParameterSubType(parameter);
   const operatorName = getParameterOperatorName(subtype);
 
   return [operatorName, fieldRef].concat(
@@ -469,8 +492,8 @@ export function parameterToMBQLFilter(
   }
 }
 
-export function getParameterIconName(parameterType: ?ParameterType) {
-  const [type] = splitType(parameterType);
+export function getParameterIconName(parameter: ?Parameter) {
+  const type = getParameterType(parameter);
   switch (type) {
     case "date":
       return "calendar";
@@ -496,7 +519,7 @@ export function mapUIParameterToQueryParameter(type, value, target) {
       value: [].concat(value),
       target,
     };
-  } else if (fieldType === "number") {
+  } else if (fieldType === "number" || fieldType === "string") {
     return {
       type,
       value: [].concat(value),
@@ -512,9 +535,10 @@ function getParameterOperatorName(maybeOperatorName) {
 }
 
 export function deriveFieldOperatorFromParameter(parameter) {
-  const [parameterType, maybeOperatorName] = splitType(parameter);
-  const operatorType = getParameterOperatorType(parameterType);
-  const operatorName = getParameterOperatorName(maybeOperatorName);
+  const type = getParameterType(parameter);
+  const subtype = getParameterSubType(parameter);
+  const operatorType = getParameterOperatorType(type);
+  const operatorName = getParameterOperatorName(subtype);
 
   return getOperatorByTypeAndName(operatorType, operatorName);
 }
@@ -525,6 +549,7 @@ function getParameterOperatorType(parameterType) {
       return NUMBER;
     case "location":
     case "category":
+    case "string":
       return STRING;
     case "id":
       // id can technically be a FK but doesn't matter as both use default filter operators
@@ -550,4 +575,12 @@ export function collateParametersWithValues(parameters, parameterValues) {
   } else {
     return parameters;
   }
+}
+
+export function hasDefaultParameterValue(parameter) {
+  return parameter.default != null;
+}
+
+export function hasParameterValue(parameter) {
+  return parameter && parameter.value != null;
 }

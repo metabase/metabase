@@ -51,7 +51,6 @@ You can add descriptions to tables to let people know the type of data a table c
 
 ![Learn about your data in the SQL editor](./images/learn-about-your-data-sql-editor.png)
 
-
 #### Original schema
 
 If you ever want to see the original underlying schema for a given table, just click the **Show original schema** toggle in the top-right of the screen.
@@ -160,6 +159,21 @@ You can also designate a column as the table's **primary key** or **foreign key*
   - URL
 - **Other**
   - Field containing JSON
+
+### Casting to a specific data type
+
+You can manually cast text and number columns to date fields. Casting is useful if your date/timestamps are stored as text or number fields in your database, but you want Metabase to treat them like date values (so it'll do things like present calendar pickers for filters). Casting is different from changing the field type in Metabase, which only modifies semantic information to give people more context about that field, like setting a date field as a "Cancellation date." By contrast, casting changes the underlying type so that, for example, Metabase will interpret a string field as if it were a date.
+
+You can cast text in ISO8601 format and numbers representing Unix epoch to date, datetime, or time types. The exact casting options will differ depending on which kind of database you're connected to, but here are some types you can cast:
+
+- ISO8601->Date
+- ISO8601->Datetime
+- ISO8601->Time
+- UNIXMicroSeconds->DateTime
+- UNIXMilliSeconds->DateTime
+- UNIXSeconds->DateTime
+
+To cast a field to a different type, click on the gears icon next to the field you want to cast. If the field is a number or text field, you may see an option to **Cast to a specific data type**, with a default option set to "Don't cast." Select the type you want to cast to, and you're good to go. Casting doesn't affect the original data type; just how Metabase interprets that field.
 
 ### Remapping column values
 
