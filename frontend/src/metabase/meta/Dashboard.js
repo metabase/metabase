@@ -30,6 +30,29 @@ export type ParameterSection = {
   options: ParameterOption[],
 };
 
+const areFieldFilterOperatorsEnabled = () =>
+  MetabaseSettings.get("field-filter-operators-enabled?");
+
+const LOCATION_OPTIONS = areFieldFilterOperatorsEnabled()
+  ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
+      return {
+        ...option,
+        sectionId: "location",
+        combinedName: getOperatorDisplayName(option, "string", t`Location`),
+      };
+    })
+  : PARAMETER_OPTIONS.filter(option => option.type.startsWith("location"));
+
+const CATEGORY_OPTIONS = areFieldFilterOperatorsEnabled()
+  ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
+      return {
+        ...option,
+        sectionId: "category",
+        combinedName: getOperatorDisplayName(option, "string", t`Category`),
+      };
+    })
+  : PARAMETER_OPTIONS.filter(option => option.type.startsWith("category"));
+
 export const PARAMETER_SECTIONS: ParameterSection[] = [
   {
     id: "date",
@@ -47,13 +70,7 @@ export const PARAMETER_SECTIONS: ParameterSection[] = [
     id: "location",
     name: t`Location`,
     description: t`City, State, Country, ZIP code.`,
-    options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
-      return {
-        ...option,
-        sectionId: "location",
-        combinedName: getOperatorDisplayName(option, "string", t`Location`),
-      };
-    }),
+    options: LOCATION_OPTIONS,
   },
   {
     id: "id",
@@ -66,7 +83,7 @@ export const PARAMETER_SECTIONS: ParameterSection[] = [
       },
     ],
   },
-  MetabaseSettings.get("field-filter-operators-enabled?") && {
+  areFieldFilterOperatorsEnabled() && {
     id: "number",
     name: t`Number`,
     description: t`Subtotal, Age, Price, Quantity, etc.`,
@@ -82,13 +99,7 @@ export const PARAMETER_SECTIONS: ParameterSection[] = [
     id: "category",
     name: t`Other Categories`,
     description: t`Category, Type, Model, Rating, etc.`,
-    options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
-      return {
-        ...option,
-        sectionId: "category",
-        combinedName: getOperatorDisplayName(option, "string", t`Category`),
-      };
-    }),
+    options: CATEGORY_OPTIONS,
   },
 ].filter(Boolean);
 

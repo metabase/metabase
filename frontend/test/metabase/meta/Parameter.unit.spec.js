@@ -170,6 +170,7 @@ describe("metabase/meta/Parameter", () => {
       isCountry: () => false,
       isNumber: () => false,
       isString: () => false,
+      isLocation: () => false,
     };
     it("should return relevantly typed options for date field", () => {
       const dateField = {
@@ -184,14 +185,14 @@ describe("metabase/meta/Parameter", () => {
     });
 
     it("should return relevantly typed options for location field", () => {
-      const stringField = {
+      const locationField = {
         ...field,
-        isString: () => true,
+        isCity: () => true,
       };
-      const availableOptions = parameterOptionsForField(stringField);
+      const availableOptions = parameterOptionsForField(locationField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("string")),
+          availableOptions.every(option => option.type.startsWith("location")),
       ).toBe(true);
     });
   });
@@ -216,12 +217,19 @@ describe("metabase/meta/Parameter", () => {
   });
 
   describe("mapParameterTypeToFieldType (field-filter-operators-enabled? === true)", () => {
+    let fieldFilterOperatorsEnabled;
     beforeAll(() => {
+      fieldFilterOperatorsEnabled = MetabaseSettings.get(
+        "field-filter-operators-enabled?",
+      );
       MetabaseSettings.set("field-filter-operators-enabled?", true);
     });
 
     afterAll(() => {
-      MetabaseSettings.set("field-filter-operators-enabled?", false);
+      MetabaseSettings.set(
+        "field-filter-operators-enabled?",
+        fieldFilterOperatorsEnabled,
+      );
     });
 
     it("should return the proper parameter type of location/category parameters", () => {
@@ -284,6 +292,21 @@ describe("metabase/meta/Parameter", () => {
   });
 
   describe("mapParameterTypeToFieldType (field-filter-operators-enabled? === false)", () => {
+    let fieldFilterOperatorsEnabled;
+    beforeAll(() => {
+      fieldFilterOperatorsEnabled = MetabaseSettings.get(
+        "field-filter-operators-enabled?",
+      );
+      MetabaseSettings.set("field-filter-operators-enabled?", false);
+    });
+
+    afterAll(() => {
+      MetabaseSettings.set(
+        "field-filter-operators-enabled?",
+        fieldFilterOperatorsEnabled,
+      );
+    });
+
     it("return given args in a map", () => {
       expect(mapUIParameterToQueryParameter("category", "foo", "bar")).toEqual({
         type: "category",

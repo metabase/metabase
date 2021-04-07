@@ -39,6 +39,9 @@ type TemplateTagFilter = (tag: TemplateTag) => boolean;
 type FieldPredicate = (field: Field) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 
+const areFieldFilterOperatorsEnabled = () =>
+  MetabaseSettings.get("field-filter-operators-enabled?");
+
 export const PARAMETER_OPERATOR_TYPES = {
   number: [
     {
@@ -166,14 +169,12 @@ export const PARAMETER_OPTIONS: ParameterOption[] = [
     type: "id",
     name: t`ID`,
   },
-  ...(MetabaseSettings.get("field-filter-operators-enabled?")
+  ...(areFieldFilterOperatorsEnabled()
     ? OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
         buildOperatorSubtypeOptions(option),
       )
     : [
-        ...buildOperatorSubtypeOptions(
-          OPTIONS_WITH_OPERATOR_SUBTYPES.find(option => option.type === "date"),
-        ),
+        ...PARAMETER_OPERATOR_TYPES["date"],
         {
           type: "category",
           name: t`Category`,
@@ -241,7 +242,7 @@ function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
       return (field: Field) => field.isCategory();
     case "location":
       return (field: Field) => {
-        if (MetabaseSettings.get("field-filter-operators-enabled?")) {
+        if (areFieldFilterOperatorsEnabled()) {
           return field.isLocation();
         } else {
           switch (subtype) {
@@ -551,7 +552,7 @@ export function getParameterIconName(parameter: ?Parameter) {
 }
 
 export function mapUIParameterToQueryParameter(type, value, target) {
-  if (!MetabaseSettings.get("field-filter-operators-enabled?")) {
+  if (!areFieldFilterOperatorsEnabled()) {
     return { type, value, target };
   }
 
