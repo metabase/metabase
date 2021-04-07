@@ -52,7 +52,7 @@
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-configured?)
-    (throw (IllegalArgumentException. (tru "Can't create new SAML user when SAML is not configured"))))
+    (throw (IllegalArgumentException. (tru "Can't create a new SAML user when SAML is not configured"))))
   (when-not email
     (throw (ex-info (str (tru "Invalid SAML configuration: could not find user email.")
                          " "
