@@ -264,7 +264,6 @@ export default class Popover extends Component {
       // finally set the best options
       this._setTetherOptions(tetherOptions, this._best);
     }
-
   }
 
   _setTetherOptions(tetherOptions, o) {
