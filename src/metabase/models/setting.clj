@@ -650,7 +650,7 @@
       ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via
       ;; the UI.
       (or value-is-default? value-is-from-env-var?)
-      nil
+      parsed-value
 
       (= visibility :internal)
       (throw (Exception. (tru "Setting {0} is internal" k)))
