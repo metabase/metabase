@@ -307,7 +307,7 @@ export const initializeQB = (location, params) => {
     dispatch(cancelQuery());
 
     // preload metadata that's used in DataSelector
-    dispatch(Databases.actions.fetchList({ saved: true }));
+    dispatch(Databases.actions.fetchList({ saved: false }));
 
     const { currentUser } = getState();
 
