@@ -189,10 +189,6 @@ export class SemanticTypeAndTargetPicker extends Component {
         section: t`Other`,
       },
     ];
-    // if we don't have a numeric base-type then prevent the options for unix timestamp conversion (#823)
-    if (!isNumericBaseType(field)) {
-      semanticTypes = semanticTypes.filter(f => !isa(f.id, TYPE.UNIXTimestamp));
-    }
 
     const showFKTargetSelect = isFK(field.semantic_type);
 

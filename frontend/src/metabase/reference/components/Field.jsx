@@ -55,12 +55,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                   id: null,
                   name: t`No field type`,
                   section: t`Other`,
-                })
-                .filter(
-                  type =>
-                    isNumericBaseType(field) ||
-                    !isa(type && type.id, TYPE.UNIXTimestamp),
-                )}
+                })}
               optionValueFn={o => o.id}
               optionSectionFn={o => o.section}
             />
