@@ -121,7 +121,7 @@
     "eslint-loader": "4.0.2",
     "eslint-plugin-cypress": "^2.7.0",
     "eslint-plugin-import": "^2.22.0",
-    "eslint-plugin-react": "^6.10.3",
+    "eslint-plugin-react": "^7.22.0",
     "eslint-plugin-react-hooks": "^4.2.0",
     "extract-text-webpack-plugin": "^3.0.1",
     "file-loader": "^0.11.1",

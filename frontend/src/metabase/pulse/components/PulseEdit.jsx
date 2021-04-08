@@ -1,4 +1,4 @@
-/* eslint "react/prop-types": "warn" */
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Box, Flex } from "grid-styled";
 import PropTypes from "prop-types";
