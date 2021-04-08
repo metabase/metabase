@@ -8,8 +8,8 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
 import Button from "metabase/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
-import { isNumericBaseType, isCurrency } from "metabase/lib/schema_metadata";
-import { TYPE, isa, isFK } from "metabase/lib/types";
+import { isCurrency } from "metabase/lib/schema_metadata";
+import { isFK } from "metabase/lib/types";
 import currency from "metabase/lib/currency";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
@@ -181,7 +181,7 @@ export class SemanticTypeAndTargetPicker extends Component {
   render() {
     const { field, className, selectSeparator } = this.props;
 
-    let semanticTypes = [
+    const semanticTypes = [
       ...MetabaseCore.field_semantic_types,
       {
         id: null,

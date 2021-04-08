@@ -14,7 +14,7 @@
             [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs deferred-tru]]
+            [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
