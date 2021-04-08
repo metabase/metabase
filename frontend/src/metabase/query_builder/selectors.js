@@ -69,7 +69,7 @@ export const getTableForeignKeyReferences = state =>
 
 export const getDatabasesList = state =>
   Databases.selectors.getList(state, {
-    entityQuery: { saved: true },
+    entityQuery: { saved: false },
   }) || [];
 
 export const getTables = createSelector(
