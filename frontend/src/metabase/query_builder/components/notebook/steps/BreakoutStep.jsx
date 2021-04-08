@@ -6,6 +6,11 @@ import ClauseStep from "./ClauseStep";
 
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 
+const breakoutTetherOptions = {
+  attachment: "bottom left",
+  targetAttachment: "top left",
+}
+
 export default function BreakoutStep({
   color,
   query,
@@ -18,6 +23,7 @@ export default function BreakoutStep({
       color={color}
       initialAddText={t`Pick a column to group by`}
       items={query.breakouts()}
+      tetherOptions={breakoutTetherOptions}
       renderPopover={breakout => (
         <BreakoutPopover
           query={query}
