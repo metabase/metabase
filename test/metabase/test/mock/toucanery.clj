@@ -15,7 +15,8 @@
                              {:name          "ts"
                               :database-type "BIGINT"
                               :base-type     :type/BigInteger
-                              :semantic-type :type/UNIXTimestampMilliseconds}
+                              :effective-type :type/DateTime
+                              :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime}
                              {:name          "toucan"
                               :database-type "OBJECT"
                               :base-type     :type/Dictionary
@@ -112,7 +113,8 @@
                                   :display_name  "Ts"
                                   :database_type "BIGINT"
                                   :base_type     :type/BigInteger
-                                  :semantic_type :type/UNIXTimestampMilliseconds})
+                                  :effective_type :type/DateTime
+                                  :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime})
                           (merge mock-util/field-defaults
                                  {:name          "id"
                                   :display_name  "ID"
