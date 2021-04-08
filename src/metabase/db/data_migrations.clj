@@ -145,8 +145,6 @@
      "name"                   "type/Name"
      "number"                 "type/Number"
      "state"                  "type/State"
-     "timestamp_milliseconds" "type/UNIXTimestampMilliseconds"
-     "timestamp_seconds"      "type/UNIXTimestampSeconds"
      "url"                    "type/URL"
      "zip_code"               "type/ZipCode"})
 
