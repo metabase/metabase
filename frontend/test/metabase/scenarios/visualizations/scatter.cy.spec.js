@@ -37,12 +37,7 @@ describe("scenarios > visualizations > scatter", () => {
       },
     });
 
-    cy.wait("@dataset");
-
-    cy.get(".bubble")
-      .eq(13) // Random bubble
-      .trigger("mousemove");
-
+    triggerPopoverForBubble();
     popover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Count:");
@@ -68,12 +63,7 @@ describe("scenarios > visualizations > scatter", () => {
       },
     });
 
-    cy.wait("@dataset");
-
-    cy.get(".bubble")
-      .eq(13)
-      .trigger("mousemove");
-
+    triggerPopoverForBubble();
     popover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Orders count:");
@@ -81,3 +71,17 @@ describe("scenarios > visualizations > scatter", () => {
     });
   });
 });
+
+function triggerPopoverForBubble(index = 13) {
+  cy.wait("@dataset");
+  // Hack that is needed because of the flakiness caused by adding throttle to the ExplicitSize component
+  // See: https://github.com/metabase/metabase/pull/15235
+  cy.get("[class*=ViewFooter]").within(() => {
+    cy.icon("table2").click(); // Switch to the tabular view...
+    cy.icon("bubble").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
+  });
+
+  cy.get(".bubble")
+    .eq(index) // Random bubble
+    .trigger("mousemove");
+}
