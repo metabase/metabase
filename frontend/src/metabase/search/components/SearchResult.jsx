@@ -170,6 +170,8 @@ function InfoText({ result }) {
       return jt`Saved question in ${formatCollection(collection)}`;
     case "collection":
       return t`Collection`;
+    case "database":
+      return t`Database`;
     case "table":
       return (
         <span>
