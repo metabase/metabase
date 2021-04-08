@@ -164,39 +164,41 @@ const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   },
 ];
 
-export const PARAMETER_OPTIONS: ParameterOption[] = [
-  {
-    type: "id",
-    name: t`ID`,
-  },
-  ...(areFieldFilterOperatorsEnabled()
-    ? OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
-        buildOperatorSubtypeOptions(option),
-      )
-    : [
-        ...PARAMETER_OPERATOR_TYPES["date"],
-        {
-          type: "category",
-          name: t`Category`,
-        },
-        {
-          type: "location/city",
-          name: t`City`,
-        },
-        {
-          type: "location/state",
-          name: t`State`,
-        },
-        {
-          type: "location/zip_code",
-          name: t`ZIP or Postal Code`,
-        },
-        {
-          type: "location/country",
-          name: t`Country`,
-        },
-      ]),
-].flat();
+export function getParameterOptions(): ParameterOption[] {
+  return [
+    {
+      type: "id",
+      name: t`ID`,
+    },
+    ...(areFieldFilterOperatorsEnabled()
+      ? OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
+          buildOperatorSubtypeOptions(option),
+        )
+      : [
+          ...PARAMETER_OPERATOR_TYPES["date"],
+          {
+            type: "category",
+            name: t`Category`,
+          },
+          {
+            type: "location/city",
+            name: t`City`,
+          },
+          {
+            type: "location/state",
+            name: t`State`,
+          },
+          {
+            type: "location/zip_code",
+            name: t`ZIP or Postal Code`,
+          },
+          {
+            type: "location/country",
+            name: t`Country`,
+          },
+        ]),
+  ].flat();
+}
 
 function buildOperatorSubtypeOptions({ type, typeName }) {
   return PARAMETER_OPERATOR_TYPES[type].map(option => ({
@@ -269,14 +271,14 @@ function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
 }
 
 export function parameterOptionsForField(field: Field): ParameterOption[] {
-  return PARAMETER_OPTIONS.filter(option =>
-    fieldFilterForParameter(option)(field),
-  ).map(option => {
-    return {
-      ...option,
-      name: option.combinedName || option.name,
-    };
-  });
+  return getParameterOptions()
+    .filter(option => fieldFilterForParameter(option)(field))
+    .map(option => {
+      return {
+        ...option,
+        name: option.combinedName || option.name,
+      };
+    });
 }
 
 export function dimensionFilterForParameter(

@@ -1,13 +1,13 @@
-import { restore, popover, modal } from "__support__/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  mockSessionProperty,
+} from "__support__/cypress";
 
 describe("scenarios > dashboard > embed", () => {
   beforeEach(() => {
-    cy.intercept("/api/session/properties", req => {
-      req.continue(res => {
-        res["field-filter-operators-enabled?"] = true;
-      });
-    });
-
+    mockSessionProperty("field-filter-operators-enabled?", true);
     restore();
     cy.signInAsAdmin();
   });

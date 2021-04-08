@@ -1,14 +1,14 @@
-import { modal, popover, restore } from "__support__/cypress";
+import {
+  modal,
+  popover,
+  restore,
+  mockSessionProperty,
+} from "__support__/cypress";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
-    cy.intercept("/api/session/properties", req => {
-      req.continue(res => {
-        res["field-filter-operators-enabled?"] = true;
-      });
-    });
-
+    mockSessionProperty("field-filter-operators-enabled?", true);
     restore();
     cy.signInAsAdmin();
   });
