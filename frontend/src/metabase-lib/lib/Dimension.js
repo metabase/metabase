@@ -722,8 +722,19 @@ export class FieldDimension extends Dimension {
     );
   }
 
-  dimensions(): FieldDimension[] {
-    let dimensions = super.dimensions();
+  dimensions(DimensionTypes?: typeof Dimension[]): FieldDimension[] {
+    let dimensions = super.dimensions(DimensionTypes);
+
+    const joinAlias = this.joinAlias();
+    if (joinAlias) {
+      return dimensions.map(d => d.withJoinAlias(joinAlias));
+    }
+
+    const sourceField = this.getOption("source-field");
+    if (sourceField) {
+      return dimensions.map(d => d.withOption("source-field", sourceField));
+    }
+
     const field = this.field();
 
     // Add FK dimensions if this field is an FK
