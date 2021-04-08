@@ -9,7 +9,7 @@ import AggregationPopover from "metabase/query_builder/components/AggregationPop
 const aggTetherOptions = {
   attachment: "bottom left",
   targetAttachment: "top left",
-}
+};
 
 export default function AggregateStep({
   color,

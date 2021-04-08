@@ -9,7 +9,7 @@ import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 const breakoutTetherOptions = {
   attachment: "bottom left",
   targetAttachment: "top left",
-}
+};
 
 export default function BreakoutStep({
   color,
