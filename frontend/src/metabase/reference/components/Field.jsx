@@ -50,12 +50,11 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               onChange={({ target: { value } }) =>
                 formField.semantic_type.onChange(value)
               }
-              options={MetabaseCore.field_semantic_types
-                .concat({
-                  id: null,
-                  name: t`No field type`,
-                  section: t`Other`,
-                })}
+              options={MetabaseCore.field_semantic_types.concat({
+                id: null,
+                name: t`No field type`,
+                section: t`Other`,
+              })}
               optionValueFn={o => o.id}
               optionSectionFn={o => o.section}
             />
