@@ -106,6 +106,20 @@
 ;; TIMEZONE FIXME — not 100% sure this distinction is needed or makes sense.
 (derive :type/Instant :type/DateTimeWithLocalTZ)
 
+;; TODO: remove these. They shouldn't be allowed as semantic types. But migrations use them targeting version
+;; 0.20. Not clear if we should remove the tests or keep these forever
+(derive :type/UNIXTimestamp :type/Instant)
+(derive :type/UNIXTimestamp :type/Integer)
+(derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
+(derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
+(derive :type/UNIXTimestampMicroseconds :type/UNIXTimestamp)
+
+(derive :type/TemporalString :type/Text)
+(derive :type/TemporalString :type/DateTime)
+(derive :type/ISO8601DateTimeString :type/TemporalString)
+(derive :type/ISO8601DateString :type/TemporalString)
+(derive :type/ISO8601TimeString :type/TemporalString)
+
 (derive :type/CreationTimestamp :type/DateTime)
 (derive :type/CreationTime :type/Time)
 (derive :type/CreationTime :type/CreationTimestamp)
