@@ -15,7 +15,7 @@ Here we have one dashboard with two subscriptions set up: the first subscription
 
 ### Setting filter values
 
-You can set values for each filter on the dashboard. Any values you set for the subscription will override the dashboard's default filter values. If you don't set a filter value for the subscription, the dashboard will run with the default filter values applied, if any are set.
+You can set values for each filter on the dashboard. If you have any dashboard filters with default values, you can override those defaults for a given subscription, or leave them as-is.
 
 Here's the sidebar in Enterprise Edition where you can set the filter values:
 
