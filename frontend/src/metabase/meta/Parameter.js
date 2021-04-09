@@ -337,7 +337,11 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
       id: tag.id,
       type:
         tag["widget-type"] ||
-        (tag.type === "date" ? "date/single" : "string/="),
+        (tag.type === "date"
+          ? "date/single"
+          : areFieldFilterOperatorsEnabled()
+          ? "string/="
+          : "category"),
       target:
         tag.type === "dimension"
           ? ["dimension", ["template-tag", tag.name]]
