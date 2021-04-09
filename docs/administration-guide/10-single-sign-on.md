@@ -53,7 +53,7 @@ Your LDAP directory must have these three fields populated or Metabase won't be 
 
 If you have user groups in Metabase you are using to control access, it is often tedious to have to manually assign a user to a group after they're logged in via SSO. You can take advantage of the groups your LDAP directory uses by enabling Group Mappings, and specifying which LDAP group corresponds to which user group on your Metabase server.
 
-If you run into an issue, check out our [LDAP troubleshooting guide](../troubleshooting-guide/ldap)
+If you run into an issue, check out our [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md)
 
 ---
 
