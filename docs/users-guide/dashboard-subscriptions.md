@@ -56,7 +56,7 @@ To remove a subscription from a dashboard, select the subscription you'd like to
 
 ## Enterprise Edition: customize filter values for each dashboard subscription
 
-Metabase Enterprise Edition allows you to [customize filter values for each subscription](../enterprise-guide/dashboard-subscriptions.md).
+Metabase Enterprise Edition allows you to [customize filter values for each subscription](../enterprise-guide/dashboard-subscriptions.md), so you can set up subscriptions with different filter values applied for different subscribers.
 
 ### Related reading
 
