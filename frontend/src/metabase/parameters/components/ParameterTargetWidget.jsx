@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
