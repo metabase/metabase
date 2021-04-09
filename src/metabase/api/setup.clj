@@ -77,10 +77,7 @@
   ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
   ;; boolean string is specified
   (public-settings/anon-tracking-enabled (or (nil? allow-tracking?)
-                                             allow-tracking?))
-  ;; set `source-address-header` to "X-Forwarded-For" if such a header is present
-  (when (get-in request [:headers "x-forwarded-for"])
-    (public-settings/source-address-header "X-Forwarded-For")))
+                                             allow-tracking?)))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
