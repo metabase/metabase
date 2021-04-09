@@ -262,3 +262,23 @@
                                  :source-table $$checkins}]})]
           (is (= filter-clause
                  (get-in (auto-bucket query) [:query :filter]))))))))
+
+(deftest nested-queries-test
+  (testing "Datetime fields inside nested MBQL queries should get auto-bucketed the same way as at the top-level (#15352)"
+    (mt/dataset sample-dataset
+      (let [q1 (mt/mbql-query orders
+                 {:aggregation [[:count]]
+                  :filter      [:between $created_at "2020-02-01" "2020-02-29"]})]
+        (testing "original query"
+          (is (= (mt/mbql-query orders
+                   {:aggregation [[:count]]
+                    :filter      [:between !day.created_at "2020-02-01" "2020-02-29"]})
+                 (auto-bucket q1))))
+        (testing "nested query"
+          (let [q2 (mt/mbql-query nil
+                     {:source-query (:query q1)})]
+            (is (= (mt/mbql-query orders
+                     {:source-query {:source-table $$orders
+                                     :aggregation  [[:count]]
+                                     :filter       [:between !day.created_at "2020-02-01" "2020-02-29"]}})
+                   (auto-bucket q2)))))))))
