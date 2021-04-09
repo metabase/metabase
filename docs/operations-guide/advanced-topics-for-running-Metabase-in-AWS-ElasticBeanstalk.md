@@ -107,3 +107,17 @@ Once your application is working properly over HTTPS, we recommend setting an ad
 - Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
 - Under `Environment Properties` add an entry for `NGINX_FORCE_SSL` with a value of `1`.
 - Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
+
+# RAM usage monitoring
+
+Starting from release 39, Metabase installs the CloudWatch agent into the Elastic Beanstalk deployment. You can now control the RAM usage among many other metrics of your Metabase instance by sending all data about your deployment into CloudWatch. 
+
+To make this happen you need to allow your Elastic Beanstalk environment to send the metrics to Cloudwatch by following the steps in [this section of the AWS documentation](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/customize-containers-cw.html#customize-containers-cw-policy)
+
+# Automated security assessment
+
+Also, starting from release 39, Metabase installs the AWS Inspector into the Elastic Beanstalk deployment, so you can have real time assessments about your instance's security that you can integrate into other AWS products. You only need to enable inspector in AWS's console to start the automated checks on your instance.
+
+# About NGINX configs inside Elastic Beanstalk deployments
+
+In the near future we will be removing the custom NGINX configuration that was being bundled with Metabase in the previous configurations, so in the case that you were using configurations like NGINX_FORCE_SSL or custom certificates, please migrate all AWS Application Load Balancers.
