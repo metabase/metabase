@@ -1,9 +1,4 @@
-import {
-  restore,
-  popover,
-  selectDashboardFilter,
-  mockSessionProperty,
-} from "__support__/cypress";
+import { restore, popover, selectDashboardFilter } from "__support__/cypress";
 
 function filterDashboard(suggests = true) {
   cy.visit("/dashboard/1");
@@ -26,8 +21,6 @@ function filterDashboard(suggests = true) {
 
 describe("support > permissions (metabase#8472)", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     restore();
     cy.signInAsAdmin();
 
@@ -39,10 +32,6 @@ describe("support > permissions (metabase#8472)", () => {
     cy.icon("filter").click();
     popover()
       .contains("Other Categories")
-      .click();
-
-    popover()
-      .contains("Dropdown")
       .click();
 
     // Filter the first card by product category

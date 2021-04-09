@@ -33,27 +33,28 @@ export type ParameterSection = {
 const areFieldFilterOperatorsEnabled = () =>
   MetabaseSettings.get("field-filter-operators-enabled?");
 
+const LOCATION_OPTIONS = [
+  {
+    type: "location/city",
+    name: t`City`,
+  },
+  {
+    type: "location/state",
+    name: t`State`,
+  },
+  {
+    type: "location/zip_code",
+    name: t`ZIP or Postal Code`,
+  },
+  {
+    type: "location/country",
+    name: t`Country`,
+  },
+];
+const CATEGORY_OPTIONS = [{ type: "category", name: t`Category` }];
+
 export function getParameterSections(): ParameterSection[] {
   const parameterOptions = getParameterOptions();
-  const LOCATION_OPTIONS = areFieldFilterOperatorsEnabled()
-    ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
-        return {
-          ...option,
-          sectionId: "location",
-          combinedName: getOperatorDisplayName(option, "string", t`Location`),
-        };
-      })
-    : parameterOptions.filter(option => option.type.startsWith("location"));
-
-  const CATEGORY_OPTIONS = areFieldFilterOperatorsEnabled()
-    ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
-        return {
-          ...option,
-          sectionId: "category",
-          combinedName: getOperatorDisplayName(option, "string", t`Category`),
-        };
-      })
-    : parameterOptions.filter(option => option.type.startsWith("category"));
 
   return [
     {
@@ -94,6 +95,18 @@ export function getParameterSections(): ParameterSection[] {
           ...option,
           sectionId: "number",
           combinedName: getOperatorDisplayName(option, "number", t`Number`),
+        };
+      }),
+    },
+    areFieldFilterOperatorsEnabled() && {
+      id: "string",
+      name: t`String`,
+      description: t`Name, Review, Description, etc.`,
+      options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
+        return {
+          ...option,
+          sectionId: "string",
+          combinedName: getOperatorDisplayName(option, "string", t`String`),
         };
       }),
     },

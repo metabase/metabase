@@ -15,7 +15,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("pencil").click();
     cy.icon("filter").click();
     cy.findByText("Location").click();
-    cy.findByText("Dropdown").click();
+    cy.findByText("City").click();
 
     // Link that filter to the card
     cy.findByText("Select…").click();
@@ -60,7 +60,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     // add a category filter
     cy.icon("filter").click();
-    cy.contains("Other Categories").click();
+    cy.contains("String").click();
     cy.findByText("Dropdown").click();
 
     // connect it to people.name and product.category
@@ -75,7 +75,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     // confirm that typing searches both fields
-    cy.contains("Category").click();
+    cy.contains("String").click();
 
     // After typing "Ga", you should see this name
     popover()
@@ -156,7 +156,7 @@ describe("scenarios > dashboard > parameters", () => {
     // Add a filter tied to a field that triggers a search for field values
     cy.icon("pencil").click();
     cy.icon("filter").click();
-    cy.findByText("Location").click();
+    cy.findByText("String").click();
     cy.findByText("Starts with").click();
 
     // Link that filter to the card
@@ -167,8 +167,8 @@ describe("scenarios > dashboard > parameters", () => {
 
     // Add a filter with few enough values that it does not search
     cy.icon("filter").click();
-    cy.findByText("Other Categories").click();
-    cy.findByText("Starts with").click();
+    cy.findByText("String").click();
+    cy.findByText("Ends with").click();
 
     // Link that filter to the card
     cy.findByText("Select…").click();
@@ -179,17 +179,17 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Save").click();
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
-    cy.contains("Location starts with").click();
+    cy.contains("String starts with").click();
     cy.findByPlaceholderText("Enter some text")
       .click()
       .type("Bake");
     cy.findByText("Baker").should("not.exist");
     cy.findByText("Add filter").click();
 
-    cy.contains("Category starts with").click();
+    cy.contains("String ends with").click();
     cy.findByPlaceholderText("Enter some text")
       .click()
-      .type("Widge");
+      .type("dget");
     cy.findByText("Widget").should("not.exist");
     cy.findByText("Add filter").click();
   });
@@ -203,7 +203,7 @@ describe("scenarios > dashboard > parameters", () => {
     // Add filter and save dashboard
     cy.icon("pencil").click();
     cy.icon("filter").click();
-    cy.contains("Other Categories").click();
+    cy.contains("String").click();
     cy.contains("Ends with").click();
 
     // map the parameter to the Category field
@@ -215,7 +215,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     // populate the filter input
-    cy.findByText("Category ends with").click();
+    cy.findByText("String ends with").click();
     popover()
       .find("input")
       .type("zmo");
@@ -227,14 +227,14 @@ describe("scenarios > dashboard > parameters", () => {
     cy.log(
       "**URL is updated correctly with the given parameter at this point**",
     );
-    cy.url().should("include", "category_ends_with=zmo");
+    cy.url().should("include", "string_ends_with=zmo");
 
     // Remove filter name
     cy.icon("pencil").click();
     cy.get(".Dashboard")
       .find(".Icon-gear")
       .click();
-    cy.findByDisplayValue("Category ends with")
+    cy.findByDisplayValue("String ends with")
       .click()
       .clear();
     cy.findByText("Save").click();

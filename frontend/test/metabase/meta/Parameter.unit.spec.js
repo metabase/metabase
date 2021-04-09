@@ -4,10 +4,9 @@ import {
   numberParameterValueToMBQL,
   parameterOptionsForField,
   getParametersBySlug,
-  mapUIParameterToQueryParameter,
+  normalizeParameterValue,
   deriveFieldOperatorFromParameter,
 } from "metabase/meta/Parameter";
-import MetabaseSettings from "metabase/lib/settings";
 
 describe("metabase/meta/Parameter", () => {
   describe("dateParameterValueToMBQL", () => {
@@ -184,15 +183,15 @@ describe("metabase/meta/Parameter", () => {
       ).toBe(true);
     });
 
-    it("should return relevantly typed options for location field", () => {
-      const locationField = {
+    it("should return relevantly typed options for id field", () => {
+      const idField = {
         ...field,
-        isCity: () => true,
+        isID: () => true,
       };
-      const availableOptions = parameterOptionsForField(locationField);
+      const availableOptions = parameterOptionsForField(idField);
       expect(
         availableOptions.length > 0 &&
-          availableOptions.every(option => option.type.startsWith("location")),
+          availableOptions.every(option => option.type.startsWith("id")),
       ).toBe(true);
     });
   });
@@ -216,127 +215,38 @@ describe("metabase/meta/Parameter", () => {
     });
   });
 
-  describe("mapParameterTypeToFieldType (field-filter-operators-enabled? === true)", () => {
-    let fieldFilterOperatorsEnabled;
-    beforeAll(() => {
-      fieldFilterOperatorsEnabled = MetabaseSettings.get(
-        "field-filter-operators-enabled?",
-      );
-      MetabaseSettings.set("field-filter-operators-enabled?", true);
+  describe("normalizeParameterValue", () => {
+    it("should return same value for location/category parameters", () => {
+      expect(normalizeParameterValue("category", "foo")).toEqual("foo");
+      expect(normalizeParameterValue("location/city", "bar")).toEqual("bar");
     });
 
-    afterAll(() => {
-      MetabaseSettings.set(
-        "field-filter-operators-enabled?",
-        fieldFilterOperatorsEnabled,
-      );
+    it("should return same value for date parameters", () => {
+      expect(normalizeParameterValue("date/single", "foo")).toEqual("foo");
     });
 
-    it("should return the proper parameter type of location/category parameters", () => {
-      expect(mapUIParameterToQueryParameter("category", "foo", "bar")).toEqual({
-        type: "string/=",
-        value: ["foo"],
-        target: "bar",
-      });
-      expect(
-        mapUIParameterToQueryParameter("category/starts-with", ["foo"], "bar"),
-      ).toEqual({
-        type: "string/starts-with",
-        value: ["foo"],
-        target: "bar",
-      });
-      expect(
-        mapUIParameterToQueryParameter("location/city", "foo", "bar"),
-      ).toEqual({
-        type: "string/=",
-        value: ["foo"],
-        target: "bar",
-      });
-      expect(
-        mapUIParameterToQueryParameter("location/contains", ["foo"], "bar"),
-      ).toEqual({
-        type: "string/contains",
-        value: ["foo"],
-        target: "bar",
-      });
+    it("should return normalized value for string parameters", () => {
+      expect(normalizeParameterValue("string/contains", "foo")).toEqual([
+        "foo",
+      ]);
+      expect(normalizeParameterValue("string/contains")).toEqual([]);
     });
 
-    it("should return given type when not a location/category option", () => {
-      expect(mapUIParameterToQueryParameter("foo/bar", "foo", "bar")).toEqual({
-        type: "foo/bar",
-        value: "foo",
-        target: "bar",
-      });
-      expect(
-        mapUIParameterToQueryParameter("date/single", "foo", "bar"),
-      ).toEqual({
-        type: "date/single",
-        value: "foo",
-        target: "bar",
-      });
-    });
-
-    it("should wrap number values in an array", () => {
-      expect(mapUIParameterToQueryParameter("number/=", [123], "bar")).toEqual({
-        type: "number/=",
-        value: [123],
-        target: "bar",
-      });
-
-      expect(mapUIParameterToQueryParameter("number/=", 123, "bar")).toEqual({
-        type: "number/=",
-        value: [123],
-        target: "bar",
-      });
-    });
-  });
-
-  describe("mapParameterTypeToFieldType (field-filter-operators-enabled? === false)", () => {
-    let fieldFilterOperatorsEnabled;
-    beforeAll(() => {
-      fieldFilterOperatorsEnabled = MetabaseSettings.get(
-        "field-filter-operators-enabled?",
-      );
-      MetabaseSettings.set("field-filter-operators-enabled?", false);
-    });
-
-    afterAll(() => {
-      MetabaseSettings.set(
-        "field-filter-operators-enabled?",
-        fieldFilterOperatorsEnabled,
-      );
-    });
-
-    it("return given args in a map", () => {
-      expect(mapUIParameterToQueryParameter("category", "foo", "bar")).toEqual({
-        type: "category",
-        value: "foo",
-        target: "bar",
-      });
-
-      expect(
-        mapUIParameterToQueryParameter("location/city", ["foo"], "bar"),
-      ).toEqual({
-        type: "location/city",
-        value: ["foo"],
-        target: "bar",
-      });
+    it("should return normalized value for number parameters", () => {
+      expect(normalizeParameterValue("number/=", 0)).toEqual([0]);
+      expect(normalizeParameterValue("number/=", null)).toEqual([]);
     });
   });
 
   describe("deriveFieldOperatorFromParameter", () => {
     describe("when parameter is associated with an operator", () => {
       it("should return relevant operator object", () => {
-        const operator1 = deriveFieldOperatorFromParameter({
-          type: "location/city",
-        });
         const operator2 = deriveFieldOperatorFromParameter({
-          type: "category/contains",
+          type: "string/contains",
         });
         const operator3 = deriveFieldOperatorFromParameter({
           type: "number/between",
         });
-        expect(operator1.name).toEqual("=");
         expect(operator2.name).toEqual("contains");
         expect(operator3.name).toEqual("between");
       });
@@ -344,6 +254,18 @@ describe("metabase/meta/Parameter", () => {
 
     describe("when parameter is NOT associated with an operator", () => {
       it("should return undefined", () => {
+        expect(
+          deriveFieldOperatorFromParameter({
+            type: "location/city",
+          }),
+        ).toBe(undefined);
+
+        expect(
+          deriveFieldOperatorFromParameter({
+            type: "category",
+          }),
+        ).toBe(undefined);
+
         expect(deriveFieldOperatorFromParameter({ type: "date/single" })).toBe(
           undefined,
         );

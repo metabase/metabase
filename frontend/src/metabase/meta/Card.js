@@ -2,7 +2,7 @@ import {
   getTemplateTagParameters,
   getParameterTargetFieldId,
   parameterToMBQLFilter,
-  mapUIParameterToQueryParameter,
+  normalizeParameterValue,
 } from "metabase/meta/Parameter";
 
 import * as Query from "metabase/lib/query/query";
@@ -192,16 +192,21 @@ export function applyParameters(
           },
     );
 
+    const type = parameter.type;
     if (mapping) {
       // mapped target, e.x. on a dashboard
-      datasetQuery.parameters.push(
-        mapUIParameterToQueryParameter(parameter.type, value, mapping.target),
-      );
+      datasetQuery.parameters.push({
+        type,
+        value: normalizeParameterValue(type, value),
+        target: mapping.target,
+      });
     } else if (parameter.target) {
       // inline target, e.x. on a card
-      datasetQuery.parameters.push(
-        mapUIParameterToQueryParameter(parameter.type, value, parameter.target),
-      );
+      datasetQuery.parameters.push({
+        type,
+        value: normalizeParameterValue(type, value),
+        target: parameter.target,
+      });
     }
   }
 

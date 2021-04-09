@@ -92,7 +92,6 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
     cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Other Categories").click();
-      cy.findByText("Dropdown").click();
     });
     cy.findByText("Save").click();
 

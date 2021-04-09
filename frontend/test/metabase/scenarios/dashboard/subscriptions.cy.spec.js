@@ -263,10 +263,9 @@ function addParametersToDashboard() {
   // edit dashboard
   cy.icon("pencil").click();
 
-  // add Category > Dropdown "Name" filter
+  // add Category "Name" filter
   cy.icon("filter").click();
   cy.findByText("Other Categories").click();
-  cy.findByText("Dropdown").click();
 
   cy.findByText("Select…").click();
   popover().within(() => {
@@ -285,10 +284,9 @@ function addParametersToDashboard() {
     .contains("Add filter")
     .click();
 
-  // add Category > Dropdown "Category" filter
+  // add Category "Category" filter
   cy.icon("filter").click();
   cy.findByText("Other Categories").click();
-  cy.findByText("Dropdown").click();
   cy.findByText("Select…").click();
   popover().within(() => {
     cy.findByText("Category").click();
