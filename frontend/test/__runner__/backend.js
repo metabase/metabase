@@ -68,7 +68,7 @@ export const BackendResource = createSharedResource("BackendResource", {
               (process.env["MB_EDITION"] === "ee" &&
                 process.env["ENTERPRISE_TOKEN"]) ||
               undefined,
-            MB_FIELD_FILTER_OPERATORS_ENABLED?: "true",
+            "MB_FIELD_FILTER_OPERATORS_ENABLED?": "true",
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||
