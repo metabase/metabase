@@ -5,7 +5,6 @@ import {
   restore,
   selectDashboardFilter,
   expectedRouteCalls,
-  mockSessionProperty,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -26,7 +25,6 @@ function saveDashboard() {
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
     restore();
     cy.signInAsAdmin();
   });
