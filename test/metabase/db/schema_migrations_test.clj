@@ -126,17 +126,17 @@
                   :semantic_type     nil
                   :name              "iso-time"}
                  {:base_type         :type/Integer
-                  :effective_type    :type/DateTime
+                  :effective_type    :type/Instant
                   :coercion_strategy :Coercion/UNIXSeconds->DateTime
                   :semantic_type     nil
                   :name              "unix-seconds"}
                  {:base_type         :type/Integer
-                  :effective_type    :type/DateTime
+                  :effective_type    :type/Instant
                   :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
                   :semantic_type     nil
                   :name              "unix-millis"}
                  {:base_type         :type/Integer
-                  :effective_type    :type/DateTime
+                  :effective_type    :type/Instant
                   :coercion_strategy :Coercion/UNIXMicroSeconds->DateTime
                   :semantic_type     nil
                   :name              "unix-micros"}])

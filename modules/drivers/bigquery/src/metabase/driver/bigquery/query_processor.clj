@@ -147,13 +147,13 @@
     nil))
 
 (defmethod temporal-type (class Field)
-  [{base-type :base_type, database-type :database_type}]
+  [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
   (case database-type
     "TIMESTAMP" :timestamp
     "DATETIME"  :datetime
     "DATE"      :date
     "TIME"      :time
-    (base-type->temporal-type base-type)))
+    (base-type->temporal-type (or effective-type base-type))))
 
 (defmethod temporal-type :absolute-datetime
   [[_ t _]]
