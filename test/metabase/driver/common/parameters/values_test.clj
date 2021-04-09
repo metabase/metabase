@@ -72,7 +72,7 @@
                            :parent_id         nil
                            :table_id          $$sightings
                            :base_type         :type/BigInteger
-                           :effective_type    :type/DateTime
+                           :effective_type    :type/Instant
                            :coercion_strategy :Coercion/UNIXSeconds->DateTime})
                   :value {:type  :date/range
                           :value "2020-02-01~2020-02-29"}}
