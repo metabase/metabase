@@ -1,7 +1,20 @@
 import { isNumeric } from "metabase/lib/schema_metadata";
 
 export function dimensionIsNumeric({ cols, rows }, i = 0) {
-  return isNumeric(cols[i]) || typeof (rows[0] && rows[0][i]) === "number";
+  if (isNumeric(cols[i])) {
+    return true;
+  }
+
+  let hasAtLeastOneNumber = false;
+
+  const hasNumbersOrNullsOnly = rows.every(row => {
+    const isNumber = typeof row[i] === "number";
+    hasAtLeastOneNumber |= isNumber;
+
+    return isNumber || row[i] === null;
+  });
+
+  return hasNumbersOrNullsOnly && hasAtLeastOneNumber;
 }
 
 // We seem to run into float bugs if we get any more precise than this.
