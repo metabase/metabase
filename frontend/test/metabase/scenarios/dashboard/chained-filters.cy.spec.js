@@ -1,4 +1,4 @@
-import { restore, popover, mockSessionProperty } from "__support__/cypress";
+import { restore, popover } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
@@ -109,7 +109,6 @@ function createDashboard({ dashboardName, questionId }, callback) {
 
 describe("scenarios > dashboard > chained filter", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
     restore();
     cy.signInAsAdmin();
   });
