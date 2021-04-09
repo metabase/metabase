@@ -277,6 +277,15 @@ export default class Popover extends Component {
     }
     if (this._tether) {
       this._tether.setOptions(tetherOptions);
+      // tether keeps a 3-member history.
+      // it seems to mutate viewport and page settings
+      // it keeps in its history to be wrong.
+      // this creates an absolutely wild bug
+      // that appears only if you click 4 times
+      if (this._tether.history && this._tether.history.length > 0) {
+        this._tether.history[0].page.top = this.props.targetOffsetY;
+        this._tether.history[0].viewport.top = this.props.targetOffsetY;
+      }
     } else {
       this._tether = new Tether(tetherOptions);
     }

@@ -7,8 +7,15 @@ import ClauseStep from "./ClauseStep";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
 const aggTetherOptions = {
-  attachment: "bottom left",
-  targetAttachment: "top left",
+  attachment: "top left",
+  targetAttachment: "bottom left",
+  offset: "0 10px",
+  constraints: [
+    {
+      to: "scrollParent",
+      attachment: "together",
+    },
+  ],
 };
 
 export default function AggregateStep({
