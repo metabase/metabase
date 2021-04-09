@@ -116,7 +116,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     const savedValue = normalizeValue(this.props.value);
     const unsavedValue = normalizeValue(this.state.value);
     const isEqualsOp = isEqualsOperator(operator);
-    const disableSearch = isFuzzyOperator(operator);
+    const disableSearch = operator && isFuzzyOperator(operator);
     const defaultPlaceholder = isFocused
       ? ""
       : this.props.placeholder || t`Enter a value...`;
