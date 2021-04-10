@@ -3,6 +3,7 @@
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
   (:require [clojure.set :as set]
+            [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.mbql.predicates :as mbql.preds]
             [metabase.mbql.schema :as mbql.s]
@@ -86,12 +87,12 @@
   `field-id->type-info` to see if we should do so."
   ;; we only want to wrap clauses in `:breakout` and `:filter` so just make a 3-arg version of this fn that takes the
   ;; name of the clause to rewrite and call that twice
-  ([query field-id->type-info :- FieldIDOrName->TypeInfo]
-   (-> query
+  ([inner-query field-id->type-info :- FieldIDOrName->TypeInfo]
+   (-> inner-query
        (wrap-unbucketed-fields field-id->type-info :breakout)
        (wrap-unbucketed-fields field-id->type-info :filter)))
 
-  ([query field-id->type-info clause-to-rewrite]
+  ([inner-query field-id->type-info clause-to-rewrite]
    (let [datetime-but-not-time? (comp date-or-datetime-field? field-id->type-info)]
      (letfn [(wrap-fields [x]
                (mbql.u/replace x
@@ -103,10 +104,10 @@
                  ;; `:type/Time`), then go ahead and replace it
                  [:field (id-or-name :guard datetime-but-not-time?) opts]
                  [:field id-or-name (assoc opts :temporal-unit :day)]))]
-       (m/update-existing-in query [:query clause-to-rewrite] wrap-fields)))))
+       (m/update-existing inner-query clause-to-rewrite wrap-fields)))))
 
-(s/defn ^:private auto-bucket-datetimes*
-  [{{breakouts :breakout, filter-clause :filter} :query, :as query}]
+(s/defn ^:private auto-bucket-datetimes-this-level
+  [{breakouts :breakout, filter-clause :filter, :as inner-query}]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
   (if-let [unbucketed-fields (mbql.u/match (cons filter-clause breakouts)
@@ -116,9 +117,22 @@
     ;; breakouts/filters...
     (let [field-id->type-info (unbucketed-fields->field-id->type-info unbucketed-fields)]
       ;; ...and then update each breakout/filter by wrapping it if appropriate
-      (wrap-unbucketed-fields query field-id->type-info))
-    ;; otherwise if there are no unbuketed breakouts/filters return the query as-is
-    query))
+      (wrap-unbucketed-fields inner-query field-id->type-info))
+    ;; otherwise if there are no unbucketed breakouts/filters return the query as-is
+    inner-query))
+
+(defn- auto-bucket-datetimes-all-levels [{query-type :type, :as query}]
+  (if (not= query-type :query)
+    query
+    ;; walk query, looking for inner-query forms that have a `:filter` key
+    (walk/postwalk
+     (fn [form]
+       (if (and (map? form)
+                (or (seq (:filter form))
+                    (seq (:breakout form))))
+         (auto-bucket-datetimes-this-level form)
+         form))
+     query)))
 
 (defn auto-bucket-datetimes
   "Middleware that automatically adds `:temporal-unit` to breakout and filter `:field` clauses if the Field they refer
@@ -130,4 +144,4 @@
   format datetime strings."
   [qp]
   (fn [query rff context]
-    (qp (auto-bucket-datetimes* query) rff context)))
+    (qp (auto-bucket-datetimes-all-levels query) rff context)))

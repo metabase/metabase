@@ -1126,3 +1126,34 @@
                                    :aggregation  [[:sum *sum/Float]]
                                    :breakout     [*products.title]}
                     :filter       [:> *sum/Float 100]}))))))))
+
+(deftest date-range-test
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
+    (testing "Date ranges should work the same in nested queries as is regular queries (#15352)"
+      (mt/dataset sample-dataset
+        (let [q1        (mt/mbql-query orders
+                          {:aggregation [[:count]]
+                           :filter      [:between $created_at "2020-02-01" "2020-02-29"]})
+              q1-native {:query  (str "SELECT count(*) AS \"count\" "
+                                      "FROM \"PUBLIC\".\"ORDERS\" "
+                                      "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?"
+                                      " AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
+                         :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
+          (testing "original query"
+            (when (= driver/*driver* :h2)
+              (is (= q1-native
+                     (qp/query->native q1))))
+            (is (= [[543]]
+                   (mt/formatted-rows [int] (qp/process-query q1)))))
+          (testing "nested query"
+            (let [q2 (mt/mbql-query nil
+                       {:source-query (:query q1)})]
+              (when (= driver/*driver* :h2)
+                (is (= (update q1-native :query (fn [s]
+                                                  (format (str "SELECT \"source\".\"count\" AS \"count\" "
+                                                               "FROM (%s) \"source\" "
+                                                               "LIMIT 1048575")
+                                                          s)))
+                       (qp/query->native q2))))
+              (is (= [[543]]
+                     (mt/formatted-rows [int] (qp/process-query q2)))))))))))
