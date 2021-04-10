@@ -31,7 +31,7 @@ describe("scenarios > question > custom columns", () => {
     cy.icon("add_data").click();
 
     popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1");
+      _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
       _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
       cy.findByText("Done").click();
