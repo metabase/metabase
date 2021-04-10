@@ -52,7 +52,7 @@ describe("scenarios > question > custom columns", () => {
       cy.icon("add_data").click();
 
       popover().within(() => {
-        _typeUsingGet("[contenteditable='true']", customFormula);
+        _typeUsingGet("[contenteditable='true']", customFormula, 400);
         _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
         cy.findByText("Done").click();
@@ -73,8 +73,8 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("Summarize").click();
 
     popover().within(() => {
-      cy.findByText("Sum of ...").click();
-      cy.findByText("Subtotal").click();
+      cy.findByText("Sum of ...").click({ force: true });
+      cy.findByText("Subtotal").click({ force: true });
     });
 
     // TODO: There isn't a single unique parent that can be used to scope this icon within
@@ -84,12 +84,12 @@ describe("scenarios > question > custom columns", () => {
       .click();
 
     popover().within(() => {
-      cy.findByText("Sum of ...").click();
-      cy.findByText("Total").click();
+      cy.findByText("Sum of ...").click({ force: true });
+      cy.findByText("Total").click({ force: true });
     });
 
     cy.findByText("Pick a column to group by").click();
-    cy.findByText("Created At").click();
+    cy.findByText("Created At").click({ force: true });
 
     // Add custom column based on previous aggregates
     const columnName = "MegaTotal";
@@ -175,7 +175,7 @@ describe("scenarios > question > custom columns", () => {
 
     // add custom column
     cy.findByText("Custom column").click();
-    _typeUsingGet("[contenteditable='true']", "1 + 1");
+    _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
     _typeUsingPlaceholder("Something nice and descriptive", "X");
     cy.findByText("Done").click();
 

@@ -53,11 +53,11 @@ describe("scenarios > question > notebook", () => {
     // count orders by user id, filter to the one user with 46 orders
     cy.contains("Pick the metric").click();
     popover().within(() => {
-      cy.findByText("Count of rows").click();
+      cy.findByText("Count of rows").click({ force: true });
     });
     cy.contains("Pick a column to group by").click();
     popover().within(() => {
-      cy.contains("User ID").click();
+      cy.contains("User ID").click({ force: true });
     });
     cy.icon("filter").click();
     popover().within(() => {
@@ -124,7 +124,8 @@ describe("scenarios > question > notebook", () => {
     cy.get("[contenteditable='true']")
       .click()
       .clear()
-      .type("[Price] > 1");
+      .type("[Price] > 1")
+      .click();
     cy.findAllByRole("button", { name: "Done" }).click();
 
     // change the corresponding custom expression
@@ -663,19 +664,19 @@ describe("scenarios > question > notebook", () => {
 
       cy.findByText("Summarize").click();
       popover().within(() => {
-        cy.findByText("Count of rows").click();
+        cy.findByText("Count of rows").click({ force: true });
       });
 
       cy.findByText("Pick a column to group by").click();
       popover().within(() => {
-        cy.findByText("Category").click();
+        cy.findByText("Category").click({ force: true });
       });
 
       cy.findByText("Filter").click();
       popover().within(() => {
-        cy.findByText("Category").click();
-        cy.findByText("Gadget").click();
-        cy.findByText("Add filter").click();
+        cy.findByText("Category").click({ force: true });
+        cy.findByText("Gadget").click({ force: true });
+        cy.findByText("Add filter").click({ force: true });
       });
 
       cy.findByText("Visualize").click();
@@ -753,7 +754,7 @@ describe("scenarios > question > notebook", () => {
       const [expression, result] = formula;
       it(`should work on custom aggregation with ${filter}`, () => {
         cy.findByText("Summarize").click();
-        cy.findByText("Custom Expression").click();
+        cy.findByText("Custom Expression").click({ force: true });
 
         cy.get("[contenteditable='true']")
           .click()

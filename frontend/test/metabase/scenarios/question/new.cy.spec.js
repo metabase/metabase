@@ -206,9 +206,9 @@ describe("scenarios > question > new", () => {
       cy.findByText("Summarize").click();
       popover()
         .contains("Custom Expression")
-        .click();
+        .click({ force: true });
       popover().within(() => {
-        cy.get("[contentEditable=true]").type("2 * Max([Total])");
+        cy.get("[contentEditable=true]").type("2 * Max([Total])", 400);
         cy.findByPlaceholderText("Name (required)").type("twice max total");
         cy.findByText("Done").click();
       });
