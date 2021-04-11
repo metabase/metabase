@@ -16,7 +16,6 @@ To enable the Google Analytics API, see [Enable and disable APIs](https://suppor
 
 ##### Adding the API scopes
 Refer to Google's Analytics API documentation for the required [scopes](https://developers.google.com/identity/protocols/oauth2/scopes).
-Depending on your Google Analytics API version, you may need to use [Google Analytics API, v3](https://developers.google.com/identity/protocols/oauth2/scopes#analytics) scopes or [Analytics Reporting API, v4](https://developers.google.com/identity/protocols/oauth2/scopes#analyticsreporting) ones.
 
 
 ## Metabase: adding a Google Analytics Dataset
@@ -67,7 +66,7 @@ When you're done, click the **Save** button. A modal should pop up, informing yo
 
 You can click on **Explore this data** to see some automatic explorations of your data, or click **I'm good thanks** to stay in the Admin Panel.
 
-Give Metabase some time to sync with your Google Analytics dataset, then exit Admin mode, click on **Browse Data**, find your database, and start exploring your data. Once Metabase is finished syncing, you should see the names of your Properties & Apps in the data browser. 
+Give Metabase some time to sync with your Google Analytics dataset, then exit Admin mode, click on **Browse Data**, find your database, and start exploring your data. Once Metabase is finished syncing, you should see the names of your Properties & Apps in the data browser.
 
 ## Troubleshooting
 
