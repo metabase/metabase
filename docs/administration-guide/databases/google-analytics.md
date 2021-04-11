@@ -8,9 +8,7 @@ You will need to have a [Google Cloud Platform](https://cloud.google.com/) accou
 
 ## Google Cloud Platform: creating OAuth client ID
 
-Follow Google's Cloud Platform Help on [how to create an OAuth client ID](https://support.google.com/cloud/answer/6158849?hl=en) in the console. You will obtain the **Client ID** and **Client Secret** which are required later to populate Metabase's database creation form.
-
-> In order to avoid a `redirect_uri_mismatch` when requesting **Auth Codes** in later steps, ensure to set `Application Type: Desktop App`.
+To get the **Client ID** and **Client Secret**, follow Google's Cloud Platform Help on [how to create an OAuth client ID](https://support.google.com/cloud/answer/6158849?hl=en). For application type, select "Desktop App" (this avoids a `redirect_uri_mismatch` when requesting **Auth Codes**).
 
 ##### Enabling Google Analytics API
 Go to [APIs & Services](https://console.developers.google.com/apis/). The **Enable APIs and Services** button, opens the **API Library**, where you can search for **Google Analytics API** and enable it.
