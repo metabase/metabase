@@ -1,8 +1,7 @@
 (ns metabase.sync.analyze.classifiers.name-test
   (:require [clojure.test :refer :all]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.sync.analyze.classifiers.name :as classify.names]
             [toucan.util.test :as tt]))
 
@@ -21,24 +20,24 @@
       (testing "defaults to generic table"
         (is (= :entity/GenericTable (classify "foo"))))))
   (testing "When using field info"
-    (testing "doesn't infer on PK/FK special_types"
+    (testing "doesn't infer on PK/FK semantic_types"
       (tt/with-temp* [Table [{table-id :id}]
-                      Field [{field-id :id} {:table_id     table-id
-                                             :special_type :type/FK
-                                             :name         "City"
-                                             :base_type    :type/Text}]]
-        (is (nil? (-> field-id Field (classify.names/infer-and-assoc-special-type nil) :special_type)))))
+                      Field [{field-id :id} {:table_id      table-id
+                                             :semantic_type :type/FK
+                                             :name          "City"
+                                             :base_type     :type/Text}]]
+        (is (nil? (-> field-id Field (classify.names/infer-and-assoc-semantic-type nil) :semantic_type)))))
     (testing "but does infer on non-PK/FK fields"
       (tt/with-temp* [Table [{table-id :id}]
-                      Field [{field-id :id} {:table_id     table-id
-                                             :special_type :type/Category
-                                             :name         "City"
-                                             :base_type    :type/Text}]]
-        (-> field-id Field (classify.names/infer-and-assoc-special-type nil) :special_type)))))
+                      Field [{field-id :id} {:table_id      table-id
+                                             :semantic_type :type/Category
+                                             :name          "City"
+                                             :base_type     :type/Text}]]
+        (-> field-id Field (classify.names/infer-and-assoc-semantic-type nil) :semantic_type)))))
 
-(deftest infer-special-type-test
+(deftest infer-semantic-type-test
   (let [infer (fn infer [column-name & [base-type]]
-                (classify.names/infer-special-type
+                (classify.names/infer-semantic-type
                   {:name column-name, :base_type (or base-type :type/Text)}))]
     (testing "standard checks"
       ;; not exhausting but a place for edge cases in the future
@@ -50,7 +49,7 @@
       (testing "matches \"updated at\" style columns"
         (let [classify (fn [table-name table-type] (-> {:name table-name :base_type table-type}
                                                        table/map->TableInstance
-                                                       classify.names/infer-special-type))]
+                                                       classify.names/infer-semantic-type))]
           (doseq [[col-type expected] [[:type/Date :type/UpdatedDate]
                                        [:type/DateTime :type/UpdatedTimestamp]
                                        [:type/Time :type/UpdatedTime]]]

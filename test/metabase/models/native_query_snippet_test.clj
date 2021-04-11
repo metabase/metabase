@@ -1,8 +1,7 @@
 (ns metabase.models.native-query-snippet-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Collection NativeQuerySnippet]]
-             [test :as mt]]
+            [metabase.models :refer [Collection NativeQuerySnippet]]
+            [metabase.test :as mt]
             [toucan.db :as db]))
 
 (deftest disallow-updating-creator-id-test

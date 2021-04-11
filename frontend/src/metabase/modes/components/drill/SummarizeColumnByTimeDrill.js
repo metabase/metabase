@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -37,7 +35,9 @@ export default ({
     )
     .map(aggregator => ({
       name: "summarize-by-time",
-      section: "distribution",
+      buttonType: "horizontal",
+      section: "summarize",
+      icon: "line",
       title: (
         <span>
           {capitalize(aggregator.short)} {t`over time`}

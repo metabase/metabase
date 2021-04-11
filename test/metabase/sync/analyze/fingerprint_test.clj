@@ -1,19 +1,16 @@
 (ns metabase.sync.analyze.fingerprint-test
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require [clojure.test :refer :all]
-            [metabase
-             [db :as mdb]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.models
-             [field :as field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.db.util :as mdb.u]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
             [metabase.sync.analyze.fingerprint :as fingerprint]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.interface :as i]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -37,8 +34,8 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb/isa :special_type :type/PK)]
-            [:= :special_type nil]]
+            [:not (mdb.u/isa :semantic_type :type/PK)]
+            [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not= :base_type "type/Structured"]
            [:or
@@ -52,8 +49,8 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb/isa :special_type :type/PK)]
-            [:= :special_type nil]]
+            [:not (mdb.u/isa :semantic_type :type/PK)]
+            [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not= :base_type "type/Structured"]
            [:or
@@ -72,8 +69,8 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb/isa :special_type :type/PK)]
-              [:= :special_type nil]]
+              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not= :base_type "type/Structured"]
              [:or
@@ -93,8 +90,8 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb/isa :special_type :type/PK)]
-              [:= :special_type nil]]
+              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not= :base_type "type/Structured"]
              [:or
@@ -119,8 +116,8 @@
     (is (= {:where [:and
                     [:= :active true]
                     [:or
-                     [:not (mdb/isa :special_type :type/PK)]
-                     [:= :special_type nil]]
+                     [:not (mdb.u/isa :semantic_type :type/PK)]
+                     [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
                     [:not= :base_type "type/Structured"]]}
            (binding [fingerprint/*refingerprint?* true]

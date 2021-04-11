@@ -1,64 +1,15 @@
 import "@testing-library/cypress/add-commands";
+import "@cypress/skip-test/support";
+import "./commands";
 
 export const version = require("../../../version.json");
-
-export const USERS = {
-  admin: {
-    first_name: "Bobby",
-    last_name: "Tables",
-    username: "admin@metabase.com",
-    password: "12341234",
-  },
-  normal: {
-    first_name: "Robert",
-    last_name: "Tableton",
-    username: "normal@metabase.com",
-    password: "12341234",
-  },
-  nodata: {
-    first_name: "No Data",
-    last_name: "Tableton",
-    username: "nodata@metabase.com",
-    password: "12341234",
-  },
-  nocollection: {
-    first_name: "No Collection",
-    last_name: "Tableton",
-    username: "nocollection@metabase.com",
-    password: "12341234",
-  },
-  none: {
-    first_name: "None",
-    last_name: "Tableton",
-    username: "none@metabase.com",
-    password: "12341234",
-  },
-};
-
-export function signIn(user = "admin") {
-  cy.log(`**--- Logging in as ${user} ---**`);
-  cy.request("POST", "/api/session", USERS[user]);
-}
-
-export function signOut() {
-  cy.log(`**--- Signing out ---**`);
-  cy.clearCookie("metabase.SESSION");
-}
-
-export function signInAsAdmin() {
-  signIn("admin");
-}
-
-export function signInAsNormalUser() {
-  signIn("normal");
-}
 
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }
 
 export function restore(name = "default") {
-  cy.log(`**--- Restore Data Set ---**`);
+  cy.log("Restore Data Set");
   cy.request("POST", `/api/testing/restore/${name}`);
 }
 
@@ -66,17 +17,26 @@ export function restore(name = "default") {
 export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
+
 export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }
+
 export function nav() {
   return cy.get("nav");
 }
+
 export function main() {
   return cy.get("nav").next();
 }
+
 export function sidebar() {
   return cy.get(".scroll-y");
+}
+
+export function browse() {
+  // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
+  return cy.get(".Nav .Icon-table_spaced");
 }
 
 // Metabase utility functions for commonly-used patterns
@@ -87,12 +47,31 @@ export function selectDashboardFilter(selection, filterName) {
     .click({ force: true });
 }
 
-export function openOrdersTable() {
-  cy.visit("/question/new?database=1&table=2");
+export function openTable({ database = 1, table, mode = null } = {}) {
+  const url = "/question/new?";
+  const params = new URLSearchParams({ database, table });
+
+  if (mode === "notebook") {
+    params.append("mode", mode);
+  }
+
+  cy.visit(url + params.toString());
 }
 
-export function openProductsTable() {
-  cy.visit("/question/new?database=1&table=1");
+export function openProductsTable({ mode } = {}) {
+  return openTable({ table: 1, mode });
+}
+
+export function openOrdersTable({ mode } = {}) {
+  return openTable({ table: 2, mode });
+}
+
+export function openPeopleTable({ mode } = {}) {
+  return openTable({ table: 3, mode });
+}
+
+export function openReviewsTable({ mode } = {}) {
+  return openTable({ table: 4, mode });
 }
 
 export function setupLocalHostEmail() {
@@ -151,10 +130,10 @@ export function withDatabase(databaseId, f) {
     for (const table of body.tables) {
       const fields = {};
       for (const field of table.fields) {
-        fields[field.name] = field.id;
+        fields[field.name.toUpperCase()] = field.id;
       }
-      database[table.name] = fields;
-      database[table.name + "_ID"] = table.id;
+      database[table.name.toUpperCase()] = fields;
+      database[table.name.toUpperCase() + "_ID"] = table.id;
     }
     f(database);
   });
@@ -187,6 +166,10 @@ export const describeWithToken = Cypress.env("HAS_ENTERPRISE_TOKEN")
   ? describe
   : describe.skip;
 
+export const itOpenSourceOnly = Cypress.env("HAS_ENTERPRISE_TOKEN")
+  ? it.skip
+  : it;
+
 // TODO: does this really need to be a global helper function?
 export function createBasicAlert({ firstAlert, includeNormal } = {}) {
   cy.get(".Icon-bell").click();
@@ -204,4 +187,127 @@ export function createBasicAlert({ firstAlert, includeNormal } = {}) {
   }
   cy.findByText("Done").click();
   cy.findByText("Let's set up your alert").should("not.exist");
+}
+
+export function setupDummySMTP() {
+  cy.log("Set up dummy SMTP server");
+  cy.request("PUT", "/api/setting", {
+    "email-smtp-host": "smtp.foo.test",
+    "email-smtp-port": "587",
+    "email-smtp-security": "none",
+    "email-smtp-username": "nevermind",
+    "email-smtp-password": "it-is-secret-NOT",
+    "email-from-address": "nonexisting@metabase.test",
+  });
+}
+
+export function expectedRouteCalls({ route_alias, calls } = {}) {
+  const requestsCount = alias =>
+    cy.state("requests").filter(req => req.alias === alias);
+  // It is hard and unreliable to assert that something didn't happen in Cypress
+  // This solution was the only one that worked out of all others proposed in this SO topic: https://stackoverflow.com/a/59302542/8815185
+  cy.get("@" + route_alias).then(() => {
+    expect(requestsCount(route_alias)).to.have.length(calls);
+  });
+}
+
+export function remapDisplayValueToFK({ display_value, name, fk } = {}) {
+  // Both display_value and fk are expected to be field IDs
+  // You can get them from frontend/test/__support__/cypress_sample_dataset.json
+  cy.request("POST", `/api/field/${display_value}/dimension`, {
+    field_id: display_value,
+    name,
+    human_readable_field_id: fk,
+    type: "external",
+  });
+}
+
+/*****************************************
+ **            QA DATABASES             **
+ ******************************************/
+
+export function addMongoDatabase(name = "QA Mongo4") {
+  // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.0/images/sha256-3f568127248b6c6dba0b114b65dc3b3bf69bf4c804310eb57b4e3de6eda989cf
+  addQADatabase("mongo", name, 27017);
+}
+
+export function addPostgresDatabase(name = "QA Postgres12") {
+  // https://hub.docker.com/layers/metabase/qa-databases/postgres-sample-12/images/sha256-80bbef27dc52552d6dc64b52796ba356d7541e7bba172740336d7b8a64859cf8
+  addQADatabase("postgres", name, 5432);
+}
+
+export function addMySQLDatabase(name = "QA MySQL8") {
+  // https://hub.docker.com/layers/metabase/qa-databases/mysql-sample-8/images/sha256-df67db50379ec59ac3a437b5205871f85ab519ce8d2cdc526e9313354d00f9d4
+  addQADatabase("mysql", name, 3306);
+}
+
+function addQADatabase(engine, db_display_name, port) {
+  const PASS_KEY = engine === "mongo" ? "pass" : "password";
+  const AUTH_DB = engine === "mongo" ? "admin" : null;
+  const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
+
+  cy.log(`**-- Adding ${engine.toUpperCase()} DB --**`);
+  cy.request("POST", "/api/database", {
+    engine: engine,
+    name: db_display_name,
+    details: {
+      dbname: "sample",
+      host: "localhost",
+      port: port,
+      user: "metabase",
+      [PASS_KEY]: "metasample123", // NOTE: we're inconsistent in where we use `pass` vs `password` as a key
+      authdb: AUTH_DB,
+      "additional-options": OPTIONS,
+      "use-srv": false,
+      "tunnel-enabled": false,
+    },
+    auto_run_queries: true,
+    is_full_sync: true,
+    schedules: {
+      cache_field_values: {
+        schedule_day: null,
+        schedule_frame: null,
+        schedule_hour: 0,
+        schedule_type: "daily",
+      },
+      metadata_sync: {
+        schedule_day: null,
+        schedule_frame: null,
+        schedule_hour: null,
+        schedule_type: "hourly",
+      },
+    },
+  }).then(({ status }) => {
+    expect(status).to.equal(200);
+  });
+
+  // Make sure we have all the metadata because we'll need to use it in tests
+  cy.request("POST", "/api/database/2/sync_schema").then(({ status }) => {
+    expect(status).to.equal(200);
+  });
+  cy.request("POST", "/api/database/2/rescan_values").then(({ status }) => {
+    expect(status).to.equal(200);
+  });
+}
+
+export function adhocQuestionHash(question) {
+  if (question.display) {
+    // without "locking" the display, the QB will run its picking logic and override the setting
+    question = Object.assign({}, question, { displayIsLocked: true });
+  }
+  return btoa(unescape(encodeURIComponent(JSON.stringify(question))));
+}
+
+export function visitQuestionAdhoc(question) {
+  cy.visit("/question#" + adhocQuestionHash(question));
+}
+
+export function getIframeBody(selector = "iframe") {
+  return cy
+    .get(selector)
+    .its("0.contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.null")
+    .then(cy.wrap);
 }

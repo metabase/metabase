@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import { combineReducers, applyMiddleware, createStore, compose } from "redux";
 import { reducer as form } from "redux-form";
 import { routerReducer as routing, routerMiddleware } from "react-router-redux";

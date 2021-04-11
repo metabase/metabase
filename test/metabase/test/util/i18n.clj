@@ -3,27 +3,19 @@
             [metabase.util.i18n :as i18n]
             [metabase.util.i18n.impl :as impl]))
 
-(defn map-bundle
-  "Convert a Clojure map to a java `ResourceBundle`."
-  ^java.util.ListResourceBundle [m]
-  (when m
-    (let [contents (to-array-2d (seq m))]
-      (proxy [java.util.ListResourceBundle] []
-        (getContents [] contents)))))
-
 (defn do-with-mock-i18n-bundles [bundles thunk]
   (t/testing (format "\nwith mock i18n bundles %s\n" (pr-str bundles))
-    (let [locale->bundle (into {} (for [[locale m] bundles]
-                                    [(impl/locale locale) (map-bundle m)]))]
-      (with-redefs [impl/bundle* locale->bundle]
+    (let [locale->bundle (into {} (for [[locale-name bundle] bundles]
+                                    [(i18n/locale locale-name) bundle]))]
+      (with-redefs [impl/translations (comp locale->bundle i18n/locale)]
         (thunk)))))
 
 (defmacro with-mock-i18n-bundles
   "Mock the i18n resource bundles for the duration of `body`.
 
     (with-mock-i18n-bundles {\"es\"    {\"Your database has been added!\" \"¡Tu base de datos ha sido añadida!\"}
-                               \"es-MX\" {\"I''m good thanks\" \"Está bien, gracias\"}}
-      (/translate \"es-MX\" \"Your database has been added!\"))
+                             \"es-MX\" {\"I''m good thanks\" \"Está bien, gracias\"}}
+      (translate \"es-MX\" \"Your database has been added!\"))
     ;; -> \"¡Tu base de datos ha sido añadida!\""
   [bundles & body]
   `(do-with-mock-i18n-bundles ~bundles (fn [] ~@body)))

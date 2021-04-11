@@ -1,26 +1,23 @@
 import React from "react";
-import { shallow } from "enzyme";
+import { render, screen } from "@testing-library/react";
 
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
-import TokenField from "metabase/components/TokenField";
-
-global.ga = jest.fn();
 
 const TEST_USERS = [
-  { id: 1, common_name: "Barb", email: "barb_holland@hawkins.mail" }, // w
-  { id: 2, common_name: "Dustin", email: "dustin_henderson@hawkinsav.club" }, // w
-  { id: 3, common_name: "El", email: "011@energy.gov" },
-  { id: 4, common_name: "Lucas", email: "lucas.sinclair@hawkins.mail" }, // w
-  { id: 5, common_name: "Mike", email: "dm_mike@hawkins.mail" }, // w
+  { id: 1, common_name: "Barb", email: "barb_holland@hawkins.test" }, // w
+  { id: 2, common_name: "Dustin", email: "dustin_henderson@hawkinsav.test" }, // w
+  { id: 3, common_name: "El", email: "011@energy.test" },
+  { id: 4, common_name: "Lucas", email: "lucas.sinclair@hawkins.test" }, // w
+  { id: 5, common_name: "Mike", email: "dm_mike@hawkins.test" }, // w
   { id: 6, common_name: "Nancy", email: "" },
   { id: 7, common_name: "Steve", email: "" },
-  { id: 8, common_name: "Will", email: "zombieboy@upside.down" }, // w
+  { id: 8, common_name: "Will", email: "zombieboy@upside.test" }, // w
 ];
 
 describe("recipient picker", () => {
   describe("focus", () => {
     it("should be focused if there are no recipients", () => {
-      const wrapper = shallow(
+      render(
         <RecipientPicker
           recipients={[]}
           users={TEST_USERS}
@@ -28,16 +25,12 @@ describe("recipient picker", () => {
           onRecipientsChange={() => alert("why?")}
         />,
       );
-
-      expect(
-        wrapper
-          .find(TokenField)
-          .dive()
-          .state().isFocused,
-      ).toBe(true);
+      // Popover with all names should be open on focus
+      screen.getByText("Barb");
+      screen.getByText("Dustin");
     });
     it("should not be focused if there are existing recipients", () => {
-      const wrapper = shallow(
+      render(
         <RecipientPicker
           recipients={[TEST_USERS[0]]}
           users={TEST_USERS}
@@ -45,13 +38,9 @@ describe("recipient picker", () => {
           onRecipientsChange={() => alert("why?")}
         />,
       );
-
-      expect(
-        wrapper
-          .find(TokenField)
-          .dive()
-          .state().isFocused,
-      ).toBe(false);
+      // Now only the recepient name should be visible
+      screen.getByText("Barb");
+      expect(screen.queryByText("Dustin")).toBeNull();
     });
   });
 });

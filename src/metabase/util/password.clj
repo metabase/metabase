@@ -1,10 +1,8 @@
 (ns metabase.util.password
   "Utility functions for checking passwords against hashes and for making sure passwords match complexity requirements."
   (:require [cemerick.friend.credentials :as creds]
-            [metabase
-             [config :as config]
-             [util :as u]]))
-
+            [metabase.config :as config]
+            [metabase.util :as u]))
 
 (defn- count-occurrences
   "Return a map of the counts of each class of character for `password`.

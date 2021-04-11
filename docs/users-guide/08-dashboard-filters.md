@@ -17,6 +17,7 @@ You can choose from a number of filter types:
 - [Time](#time-filters)
 - [Location](#location-filters)
 - [ID](#id-filter)
+- [Number](#number-filter)
 - [Other Categories](#other-categories)
 
 The type of filter you choose will determine what the filter widget will look like, as well as which fields you’ll be able to filter your cards by:
@@ -36,22 +37,41 @@ Single Date and Date Range will provide a calendar widget, while the other optio
 
 #### Location filters
 
-There are four types of Location filters to choose from:
+There are six types of Location filters to choose from:
   
-- City
-- State
-- ZIP or Postal Code
-- Country
+- Dropdown: select one or more values from a list or search box.
+- Is not: Exclude one or more specific values.
+- Contains: match values that contain the entered text.
+- Does not contain: filter out values that contain the entered text.
+- Starts with: match values that begin with the entered text.
+- Ends with: match values that end with the entered text.
 
 #### ID filter
 
 The ID filter provides a simple input box where you can type the ID of a user, order, etc.
 
+#### Number filter
+
+Filter on number fields like price, quantity, or rating. You can choose from one of five Number filter types:
+
+- Equal to
+- Not equal to
+- Between
+- Greater than or equal to
+- Less than or equal to
+
 #### Other Categories
 
-The Other Categories filter is a flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards.
+Like the [Location filter](#location-filter), you have six different Category filters to choose from:
 
-**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](13-sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/blog/dashboard-filters/index.html).
+- Dropdown: select one or more values from a list or search box.
+- Is not: Exclude one or more specific values.
+- Contains: match values that contain the entered text.
+- Does not contain: filter out values that contain the entered text.
+- Starts with: match values that begin with the entered text.
+- Ends with: match values that end with the entered text.
+
+**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](13-sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/building-analytics/dashboards/filters.html).
 
 ### Example filter
 
@@ -118,6 +138,8 @@ To link filters, you'll need to set up this parent-child relationship. And you s
 
 Here you can limit the current filter's choices. If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter. In this case, we toggle on the state filter (the parent), to limit the choices for the city filter. When states are selected, the city filter will limit its choices to cities in those states. Click **Done**, then **Save** to save the dashboard.
 
+To learn more, check out [Linking filters in dashboards](https://www.metabase.com/learn/building-analytics/dashboards/linking-filters.html).
+
 ### Best practices
 
 Here are a few tips to get the most out of dashboard filters:
@@ -125,7 +147,6 @@ Here are a few tips to get the most out of dashboard filters:
 - **Limit filters to 3 or fewer**. Limiting filters will make it easier for your teammates to quickly understand what options are available to them when viewing your dashboard.
 - **Start with a new dashboard**. While you can add dashboard filters to an existing dashboard with a bunch of cards in it, it can be easier to start a new dashboard and think about what filters you intend to add to it. That way you can make sure that you only put cards in that dashboard that can be used with the filters. Alternatively, you could duplicate an existing dashboard, and pare down the number of cards.
 - **Link filters** so people don't have to sift through irrelevant filter options (like cities not in a filtered state).
-
 ---
 
 ## Next: Interactive dashboards

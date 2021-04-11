@@ -1,16 +1,13 @@
 (ns metabase.pulse.render.table
   (:require [hiccup.core :refer [h]]
             [medley.core :as m]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.pulse.render
-             [color :as color]
-             [style :as style]])
-  (:import jdk.nashorn.api.scripting.JSObject))
+            [metabase.pulse.render.color :as color]
+            metabase.pulse.render.common
+            [metabase.pulse.render.style :as style])
+  (:import jdk.nashorn.api.scripting.JSObject
+           metabase.pulse.render.common.NumericWrapper))
 
-;; Our 'helpful' NS declaration linter will complain that common is unused. But we need to require it so
-;; NumericWrapper exists in the first place.
-(classloader/require 'metabase.pulse.render.common)
-(import 'metabase.pulse.render.common.NumericWrapper)
+(comment metabase.pulse.render.common/keep-me)
 
 (defn- bar-th-style []
   (merge
@@ -45,6 +42,7 @@
 (defn- render-bar-component
   ([color positive? width-in-pixels]
    (render-bar-component color positive? width-in-pixels 0))
+
   ([color positive? width-in-pixels offset]
    [:div
     {:style (style/style
@@ -128,9 +126,10 @@
   background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
   display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
   create. If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([^JSObject color-selector, column-names, [header & rows :as contents]]
+  ([^JSObject color-selector column-names [header & rows :as contents]]
    (render-table color-selector 0 column-names contents))
-  ([^JSObject color-selector, normalized-zero, column-names, [header & rows]]
+
+  ([^JSObject color-selector normalized-zero column-names [header & rows]]
    [:table {:style (style/style {:max-width "100%"
                                  :white-space :nowrap
                                  :padding-bottom :8px

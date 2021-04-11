@@ -1,3 +1,4 @@
+export const KEYCODE_SPACE = 0;
 export const KEYCODE_BACKSPACE = 8;
 export const KEYCODE_TAB = 9;
 export const KEYCODE_ENTER = 13;

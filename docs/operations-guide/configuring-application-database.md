@@ -57,6 +57,50 @@ This will tell Metabase to look for its application database using the supplied 
     export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&password=<password>"
     java -jar metabase.jar
 
+
+#### Upgrading from a Metabase version pre-0.38
+
+If you’re upgrading from a previous version of Metabase, note that for Metabase 0.38 we've removed the use of the PostgreSQL `NonValidatingFactory` for SSL validation. It’s possible that you could experience a failure either at startup (if you're using a PostgreSQL application database) or when querying a PostgreSQL data warehouse. 
+
+You can resolve this failure in one of two ways:
+
+1. Configuring the PostgreSQL connection to use SSL certificate validation,
+2. Or manually enabling the `NonValidatingFactory`. WARNING: this method is insecure. We're including it here only to assist in troubleshooting, or for situations in which security is not a priority.
+
+How you configure your connection depends on whether you're using Postgres as Metabase's application database or as a data warehouse connected to Metabase:
+
+**For Postgres application databases**:
+
+To use SSL certificate validation, you'll need to use the `MB_DB_CONNECTION_URI` method to configure your database connection. Here's an example:
+
+```
+export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&password=<password>&sslmode=verify-ca&sslrootcert=<path to CA root or intermediate root certificate>"
+```
+
+If you cannot enable certificate validation, you can enable the `NonValidatingFactory` for your application database via the same environment variable as above:
+
+```
+export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&password=<password>&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"
+```
+
+**For Postgres data warehouse databases**
+
+You can do the same inside the Metabase Admin page for the connection to your Postgres database. Add the following to the end of your JDBC connection URI for your database:
+
+```
+&sslmode=verify-ca&sslrootcert=<path to CA root or intermediate root certificate>
+```
+
+If that does not work, you can enable `NonValidatingFactory` by adding the following to the end of your connection URI for your database:
+
+```
+&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory
+```
+
+For more options to further tune the SSL connection parameters, 
+see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/documentation/head/ssl-client.html).
+
+
 #### [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
 
 If you prefer to use MySQL or MariaDB we've got you covered. The minimum recommended version is MySQL 5.7.7 or MariaDB 10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using environment variables like this:

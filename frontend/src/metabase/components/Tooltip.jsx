@@ -76,30 +76,6 @@ export default class Tooltip extends Component {
         `Tooltip::componentDidMount: no DOM node for tooltip ${this.props.tooltip}`,
       );
     }
-
-    this._element = document.createElement("div");
-    this.componentDidUpdate();
-  }
-
-  componentDidUpdate() {
-    const { isEnabled, tooltip } = this.props;
-    const isOpen =
-      this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
-    if (tooltip && isEnabled && isOpen) {
-      ReactDOM.unstable_renderSubtreeIntoContainer(
-        this,
-        <TooltipPopover
-          isOpen={true}
-          target={this}
-          hasArrow
-          {...this.props}
-          children={this.props.tooltip}
-        />,
-        this._element,
-      );
-    } else {
-      ReactDOM.unmountComponentAtNode(this._element);
-    }
   }
 
   componentWillUnmount() {
@@ -114,9 +90,6 @@ export default class Tooltip extends Component {
       console.warn(
         `Tooltip::componentWillUnmount: no DOM node for tooltip ${this.props.tooltip}`,
       );
-    }
-    if (this._element) {
-      ReactDOM.unmountComponentAtNode(this._element);
     }
     clearTimeout(this.timer);
   }
@@ -144,87 +117,22 @@ export default class Tooltip extends Component {
   };
 
   render() {
-    return React.Children.only(this.props.children);
-  }
-}
-
-/**
- * Modified version of Tooltip for Jest/Enzyme tests. Instead of manipulating the document root it
- * renders the tooltip content (in TestTooltipContent) next to "children" / hover area (TestTooltipHoverArea).
- *
- * The test tooltip can only be toggled with `jestWrapper.simulate("mouseenter")` and `jestWrapper.simulate("mouseleave")`.
- */
-export class TestTooltip extends Component {
-  constructor(props, context) {
-    super(props, context);
-
-    this.state = {
-      isOpen: false,
-      isHovered: false,
-    };
-  }
-
-  static propTypes = {
-    tooltip: PropTypes.node,
-    children: PropTypes.element.isRequired,
-    isEnabled: PropTypes.bool,
-    verticalAttachments: PropTypes.array,
-    isOpen: PropTypes.bool,
-  };
-
-  static defaultProps = {
-    isEnabled: true,
-    verticalAttachments: ["top", "bottom"],
-  };
-
-  _onMouseEnter = e => {
-    this.setState({ isOpen: true, isHovered: true });
-  };
-
-  _onMouseLeave = e => {
-    this.setState({ isOpen: false, isHovered: false });
-  };
-
-  render() {
     const { isEnabled, tooltip } = this.props;
     const isOpen =
       this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
-
     return (
-      <div>
-        <TestTooltipTarget
-          onMouseEnter={this._onMouseEnter}
-          onMouseLeave={this._onMouseLeave}
-        >
-          {this.props.children}
-        </TestTooltipTarget>
-
+      <React.Fragment>
+        {React.Children.only(this.props.children)}
         {tooltip && isEnabled && isOpen && (
-          <TestTooltipContent>
-            <TooltipPopover
-              isOpen={true}
-              target={this}
-              {...this.props}
-              children={this.props.tooltip}
-            />
-            {this.props.tooltip}
-          </TestTooltipContent>
+          <TooltipPopover
+            isOpen={true}
+            target={this}
+            hasArrow
+            {...this.props}
+            children={this.props.tooltip}
+          />
         )}
-      </div>
+      </React.Fragment>
     );
   }
 }
-
-export const TestTooltipTarget = ({ children, onMouseEnter, onMouseLeave }) => (
-  <div
-    className="test-tooltip-hover-area"
-    onMouseEnter={onMouseEnter}
-    onMouseLeave={onMouseLeave}
-  >
-    {children}
-  </div>
-);
-
-export const TestTooltipContent = ({ children }) => (
-  <div className="test-tooltip-content">{children}</div>
-);

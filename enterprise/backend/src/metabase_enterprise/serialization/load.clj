@@ -4,42 +4,36 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
-            [metabase-enterprise.serialization
-             [names :refer [fully-qualified-name->context]]
-             [upsert :refer [maybe-upsert-many!]]]
-            [metabase.mbql
-             [normalize :as mbql.normalize]
-             [util :as mbql.util]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [database :as database :refer [Database]]
-             [dependency :refer [Dependency]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [field-values :refer [FieldValues]]
-             [metric :refer [Metric]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [segment :refer [Segment]]
-             [setting :as setting]
-             [table :refer [Table]]
-             [user :refer [User]]]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [trs]]]
+            [medley.core :as m]
+            [metabase-enterprise.serialization.names :refer [fully-qualified-name->context]]
+            [metabase-enterprise.serialization.upsert :refer [maybe-fixup-card-template-ids! maybe-upsert-many!]]
+            [metabase.config :as config]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.util :as mbql.util]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+            [metabase.models.database :as database :refer [Database]]
+            [metabase.models.dependency :refer [Dependency]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :refer [FieldValues]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.pulse-channel :refer [PulseChannel]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.setting :as setting]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.user :refer [User]]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
-            [yaml
-             [core :as yaml]
-             [reader :as y.reader]])
+            [yaml.core :as yaml]
+            [yaml.reader :as y.reader])
   (:import java.time.temporal.Temporal))
 
 (extend-type Temporal y.reader/YAMLReader
@@ -66,8 +60,12 @@
 (defn- mbql-fully-qualified-names->ids
   [entity]
   (mbql.util/replace (mbql.normalize/normalize-tokens entity)
+    ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     [:field-id (fully-qualified-name :guard string?)]
-    [:field-id (:field (fully-qualified-name->context fully-qualified-name))]
+    (mbql-fully-qualified-names->ids [:field fully-qualified-name nil])
+
+    [:field (fully-qualified-name :guard string?) opts]
+    [:field (:field (fully-qualified-name->context fully-qualified-name)) opts]
 
     [:metric (fully-qualified-name :guard string?)]
     [:metric (:metric (fully-qualified-name->context fully-qualified-name))]
@@ -246,24 +244,57 @@
       (str "card__" card)
       table)))
 
+(defn- fully-qualified-name->id-rec [query]
+  (cond
+    (:source-table query) (update-in query [:source-table] source-table)
+    (:source-query query) (update-in query [:source-query] fully-qualified-name->id-rec)
+    true query))
+
+(defn- source-card
+  [fully-qualified-name]
+  (try
+    (-> (fully-qualified-name->context fully-qualified-name) :card)
+    (catch Throwable e
+      (log/warn e))))
+
+(defn- resolve-native
+  [template-tags]
+  (m/map-vals #(m/update-existing % :card-id source-card) template-tags))
+
+(defn- resolve-card [card context]
+  (-> card
+      (update :table_id (comp :table fully-qualified-name->context))
+      (update :database_id (comp :database fully-qualified-name->context))
+      (update :dataset_query mbql-fully-qualified-names->ids)
+      (assoc :creator_id    @default-user
+             :collection_id (:collection context))
+      (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
+      (cond->
+          (-> card
+              :dataset_query
+              :type
+              mbql.util/normalize-token
+              (= :query)) (update-in [:dataset_query :query] fully-qualified-name->id-rec)
+          (-> card
+              :dataset_query
+              :native
+              :template-tags)
+          (m/update-existing-in [:dataset_query :native :template-tags] resolve-native))))
+
 (defmethod load "cards"
   [path context]
-  (let [paths (list-dirs path)]
-    (maybe-upsert-many! context Card
-      (for [card (slurp-many paths)]
-        (-> card
-            (update :table_id (comp :table fully-qualified-name->context))
-            (update :database_id (comp :database fully-qualified-name->context))
-            (update :dataset_query mbql-fully-qualified-names->ids)
-            (assoc :creator_id    @default-user
-                   :collection_id (:collection context))
-            (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
-            (cond->
-                (-> card
-                    :dataset_query
-                    :type
-                    qp.util/normalize-token
-                    (= :query)) (update-in [:dataset_query :query :source-table] source-table)))))
+  (let [paths (list-dirs path)
+        touched-card-ids (maybe-upsert-many!
+                          context Card
+                          (for [card (slurp-many paths)]
+                            (resolve-card card context)))]
+
+    (maybe-fixup-card-template-ids!
+     (assoc context :mode :update)
+     Card
+     (for [card (slurp-many paths)] (resolve-card card (assoc context :mode :update)))
+     touched-card-ids)
+
     ;; Nested cards
     (doseq [path paths]
       (load (str path "/cards") context))))
@@ -324,16 +355,16 @@
           (cond
             (and model dependent-on)
             {:model              (name model)
-             :model_id           (u/get-id model)
+             :model_id           (u/the-id model)
              :dependent_on_model (name dependent-on)
-             :dependent_on_id    (u/get-id dependent-on)
+             :dependent_on_id    (u/the-id dependent-on)
              :created_at         (java.util.Date.)}
 
             (nil? model)
-            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entitiy {0}" model_id))
+            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entity {0}" model_id))
 
             (nil? dependent-on)
-            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entitiy {0}" dependent_on_id))))))))
+            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entity {0}" dependent_on_id))))))))
 
 (defn compatible?
   "Is dump at path `path` compatible with the currently running version of Metabase?"

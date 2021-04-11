@@ -2,14 +2,13 @@
   (:require [cheshire.core :as json]
             [hiccup.core :refer [h]]
             [medley.core :as m]
-            [metabase.pulse.render
-             [color :as color]
-             [common :as common]
-             [datetime :as datetime]
-             [image-bundle :as image-bundle]
-             [sparkline :as sparkline]
-             [style :as style]
-             [table :as table]]
+            [metabase.pulse.render.color :as color]
+            [metabase.pulse.render.common :as common]
+            [metabase.pulse.render.datetime :as datetime]
+            [metabase.pulse.render.image-bundle :as image-bundle]
+            [metabase.pulse.render.sparkline :as sparkline]
+            [metabase.pulse.render.style :as style]
+            [metabase.pulse.render.table :as table]
             [metabase.types :as types]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
@@ -30,8 +29,8 @@
 
 (defn show-in-table?
   "Should this column be shown in a rendered table in a Pulse?"
-  [{:keys [special_type visibility_type] :as column}]
-  (and (not (isa? special_type :type/Description))
+  [{:keys [semantic_type visibility_type] :as column}]
+  (and (not (isa? semantic_type :type/Description))
        (not (contains? #{:details-only :retired :sensitive} visibility_type))))
 
 (defn- count-displayed-columns
@@ -80,15 +79,15 @@
   [remapping-lookup card cols include-bar?]
   {:row (for [maybe-remapped-col cols
               :when (show-in-table? maybe-remapped-col)
-              :let [{:keys [base_type special_type] :as col} (if (:remapped_to maybe-remapped-col)
-                                                               (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                                               maybe-remapped-col)
+              :let [{:keys [base_type semantic_type] :as col} (if (:remapped_to maybe-remapped-col)
+                                                                (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                                                maybe-remapped-col)
                     col-name (column-name card col)]
               ;; If this column is remapped from another, it's already
               ;; in the output and should be skipped
               :when (not (:remapped_from maybe-remapped-col))]
           (if (or (isa? base_type :type/Number)
-                  (isa? special_type :type/Number))
+                  (isa? semantic_type :type/Number))
             (common/->NumericWrapper col-name)
             col-name))
    :bar-width (when include-bar? 99)})

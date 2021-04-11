@@ -51,12 +51,13 @@
   (swap! build-options assoc :branch new-branch))
 
 (defn edition
-  "Either `:ce` (Community Edition) or `:ee` (Enterprise Edition)."
+  "Either `:oss` (Community Edition) or `:ee` (Enterprise Edition)."
   []
+  {:post [(#{:oss :ee} %)]}
   (build-option-or-throw :edition))
 
 (defn set-edition! [new-edition]
-  (assert (#{:ce :ee} new-edition))
+  (assert (#{:oss :ee} new-edition))
   (swap! build-options assoc :edition new-edition))
 
 (defn pre-release-version?
@@ -75,12 +76,12 @@
 
 (defn docker-image-name []
   (case (edition)
-    :ce "metabase/metabase"
+    :oss "metabase/metabase"
     :ee "metabase/metabase-enterprise"))
 
 (defn downloads-url []
   (case (edition)
-    :ce "downloads.metabase.com"
+    :oss "downloads.metabase.com"
     :ee "downloads.metabase.com/enterprise"))
 
 (defn artifact-download-url
@@ -96,12 +97,12 @@
 
 (defn website-repo []
   (case (edition)
-    :ce "metabase/metabase.github.io"
+    :oss "metabase/metabase.github.io"
     nil))
 
 (defn heroku-buildpack-repo []
   (case (edition)
-    :ce "metabase/metabase-buildpack"
+    :oss "metabase/metabase-buildpack"
     nil))
 
 (defn metabase-repo
@@ -158,8 +159,8 @@
   []
   (->> ((requiring-resolve 'release.common.github/recent-tags))
        (filter (case (edition)
-                 :ee (partial re-matches #"v1(?:\.\d+){2,}$")
-                 :ce (partial re-matches #"v0(?:\.\d+){2,}$")))))
+                 :ee  (partial re-matches #"v1(?:\.\d+){2,}$")
+                 :oss (partial re-matches #"v0(?:\.\d+){2,}$")))))
 
 (defn- most-recent-tag
   "Given a set of release `tags`, return the most recent one."
@@ -179,6 +180,7 @@
      (u/step (format "Check whether %s will be the latest version" (version))
        (let [latest-gh-tag (most-recent-tag (recent-tags-from-github))]
          (u/announce "Latest %s version from GitHub is %s" (edition) latest-gh-tag)
-         (let [latest? (version-greater-than (version) latest-gh-tag)]
+         (let [latest? (when-not (pre-release-version?)
+                         (version-greater-than (version) latest-gh-tag))]
            (u/announce "%s %s be the new latest %s version." (version) (if latest? "will" "will NOT") (edition))
            latest?))))))

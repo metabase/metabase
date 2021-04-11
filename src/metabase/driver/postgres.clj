@@ -1,32 +1,27 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [models :refer [Field]]
-             [util :as u]]
             [metabase.db.spec :as db.spec]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc
-             [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.util
-             [date-2 :as u.date]
-             [honeysql-extensions :as hx]
-             [ssh :as ssh]]
+            [metabase.models :refer [Field]]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.ssh :as ssh]
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
@@ -169,7 +164,11 @@
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :substring (hsql/raw (str (hformat/to-sql (sql.qp/->honeysql driver arg)) " FROM '" pattern "'"))))
+  (let [col-name (hformat/to-sql (sql.qp/->honeysql driver arg))]
+    (reify
+      hformat/ToSql
+      (to-sql [_]
+        (str "substring(" col-name " FROM " (hformat/to-sql pattern) ")")))))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
@@ -279,9 +278,9 @@
     :type/PostgresEnum
     (default-base-types column)))
 
-(defmethod sql-jdbc.sync/column->special-type :postgres
+(defmethod sql-jdbc.sync/column->semantic-type :postgres
   [_ database-type _]
-  ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
+  ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON semantic-type
   (case database-type
     "json"  :type/SerializedJSON
     "jsonb" :type/SerializedJSON
@@ -292,8 +291,7 @@
 (def ^:private ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
   {:ssl        true
-   :sslmode    "require"
-   :sslfactory "org.postgresql.ssl.NonValidatingFactory"})
+   :sslmode    "require"})
 
 (def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
@@ -301,19 +299,24 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
   [_ {ssl? :ssl, :as details-map}]
-  (-> details-map
-      (update :port (fn [port]
-                      (if (string? port)
-                        (Integer/parseInt port)
-                        port)))
-      ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-      (dissoc :ssl)
-      (merge (if ssl?
-               ssl-params
-               disable-ssl-params))
-      (set/rename-keys {:dbname :db})
-      db.spec/postgres
-      (sql-jdbc.common/handle-additional-options details-map)))
+  (let [props (-> details-map
+                  (update :port (fn [port]
+                                  (if (string? port)
+                                    (Integer/parseInt port)
+                                    port)))
+                  ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
+                  (dissoc :ssl))
+        ;; this happens via ->> so that the users props will override the ssl-params stuff.
+        ;; if the user has specified a sslmode, it must always take precedence over our default.
+        props (->> props
+                   (merge (if ssl?
+                            ssl-params
+                            disable-ssl-params)))
+        props (-> props
+                  (set/rename-keys {:dbname :db})
+                  db.spec/postgres
+                  (sql-jdbc.common/handle-additional-options details-map))]
+    props))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]

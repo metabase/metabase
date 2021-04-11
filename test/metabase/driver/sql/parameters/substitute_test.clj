@@ -1,19 +1,17 @@
 (ns metabase.driver.sql.parameters.substitute-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [models :refer [Field]]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.parse :as parse]
             [metabase.driver.sql.parameters.substitute :as substitute]
             [metabase.mbql.normalize :as normalize]
+            [metabase.models :refer [Field]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.parameters.native :as native]
             [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.test :as mt]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -107,7 +105,62 @@
                  (substitute query {"date" (date-field-filter-value)}))))
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from checkins" nil]
-                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))))))))
+                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)})))))))
+  (testing "new operators"
+    (testing "string operators"
+      (let [query ["select * from venues where " (param "param")]]
+        (doseq [[operator {:keys [field value expected]}]
+                (partition-all
+                 2
+                 [:string/contains         {:field    :name
+                                            :value    ["foo"]
+                                            :expected ["select * from venues where (NAME like ?)"
+                                                       ["%foo%"]]}
+                  :string/does-not-contain {:field    :name
+                                            :value    ["foo"]
+                                            :expected ["select * from venues where (NOT (NAME like ?) OR NAME IS NULL)"
+                                                       ["%foo%"]]}
+                  :string/starts-with      {:field    :name
+                                            :value    ["foo"]
+                                            :expected ["select * from venues where (NAME like ?)"
+                                                       ["foo%"]]}
+                  :string/=                {:field    :name
+                                            :value    ["foo"]
+                                            :expected ["select * from venues where NAME = ?"
+                                                       ["foo"]]}
+                  :string/=                {:field    :name
+                                            :value    ["foo" "bar" "baz"]
+                                            :expected ["select * from venues where (NAME = ? OR NAME = ? OR NAME = ?)" ["foo" "bar" "baz"]]}
+                  :string/!=               {:field    :name
+                                            :value    ["foo" "bar"]
+                                            :expected ["select * from venues where ((NAME <> ? OR NAME IS NULL) AND (NAME <> ? OR NAME IS NULL))"
+                                                       ["foo" "bar"]]}
+                  :number/=                {:field    :price
+                                            :value    [1]
+                                            :expected ["select * from venues where PRICE = 1" ()]}
+                  :number/=                {:field    :price
+                                            :value    [1 2 3]
+                                            :expected ["select * from venues where (PRICE = 1 OR PRICE = 2 OR PRICE = 3)" ()]}
+                  :number/!=               {:field    :price
+                                            :value    [1]
+                                            :expected ["select * from venues where (PRICE <> 1 OR PRICE IS NULL)" ()]}
+                  :number/!=               {:field    :price
+                                            :value    [1 2 3]
+                                            :expected [(str "select * from venues where ((PRICE <> 1 OR PRICE IS NULL) "
+                                                            "AND (PRICE <> 2 OR PRICE IS NULL) AND (PRICE <> 3 OR PRICE IS NULL))")
+                                                       ()]}
+                  :number/>=               {:field    :price
+                                            :value    [1]
+                                            :expected ["select * from venues where PRICE >= 1" ()]}
+                  :number/between          {:field    :price
+                                            :value    [1 3]
+                                            :expected ["select * from venues where PRICE BETWEEN 1 AND 3" ()]}])]
+          (testing operator
+            (is (= expected
+                   (substitute query {"param" (i/map->FieldFilter
+                                               {:field (Field (mt/id :venues field))
+                                                :value {:type  operator
+                                                        :value value}})})))))))))
 
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
@@ -477,7 +530,7 @@
     (apply assoc {:database (mt/id), :type :native} kvs)))
 
 (deftest e2e-basic-test
-  (datasets/test-drivers (sql-parameters-engines)
+  (mt/test-drivers (sql-parameters-engines)
     (is (= [29]
            (mt/first-row
              (mt/format-rows-by [int]
@@ -492,7 +545,7 @@
                                :value  "2015-04-01~2015-05-01"}])))))))
 
 (deftest e2e-no-parameter-test
-  (datasets/test-drivers (sql-parameters-engines)
+  (mt/test-drivers (sql-parameters-engines)
     (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
       (is (= [1000]
              (mt/first-row
@@ -506,7 +559,7 @@
                    :parameters []))))))))
 
 (deftest e2e-relative-dates-test
-  (datasets/test-drivers (sql-parameters-engines)
+  (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
                   "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters`, "
                   "which is fully-tested :D")
@@ -525,7 +578,7 @@
                                  :value  "thismonth"}]))))))))
 
 (deftest e2e-combine-multiple-filters-test
-  (datasets/test-drivers (sql-parameters-engines)
+  (mt/test-drivers (sql-parameters-engines)
     (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
       (is (= [4]
              (mt/first-row
@@ -545,7 +598,7 @@
                                  :value  "2015-07-01"}]))))))))
 
 (deftest e2e-parse-native-dates-test
-  (datasets/test-drivers (disj (sql-parameters-engines) :sqlite)
+  (mt/test-drivers (disj (sql-parameters-engines) :sqlite)
     (is (= [(cond
               (= driver/*driver* :presto)
               "2018-04-18"

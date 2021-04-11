@@ -1,7 +1,10 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
 
-import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
+} from "metabase/plugins";
 
 import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
@@ -120,3 +123,5 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
     },
   }),
 );
+
+PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => !user.ldap_auth);

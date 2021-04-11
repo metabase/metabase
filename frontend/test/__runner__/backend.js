@@ -22,10 +22,11 @@ export const BackendResource = createSharedResource("BackendResource", {
   create({ dbKey = DEFAULT_DB_KEY }) {
     const dbFile = getDbFile();
     const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
-    if (process.env["E2E_HOST"] && dbKey === DEFAULT_DB_KEY) {
+    const e2eHost = process.env["E2E_HOST"];
+    if (e2eHost) {
       return {
         dbKey: absoluteDbKey,
-        host: process.env["E2E_HOST"],
+        host: e2eHost,
         process: { kill: () => {} },
       };
     } else {
@@ -49,8 +50,7 @@ export const BackendResource = createSharedResource("BackendResource", {
         [
           "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
           "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-          "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
-          "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
+          // "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "-Duser.timezone=US/Pacific",
           `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,

@@ -1,5 +1,3 @@
-/* @flow */
-
 //  DEPRECATED: use `views-and-saves-by-time ` instead.
 export const viewsPerDay = () => ({
   card: {

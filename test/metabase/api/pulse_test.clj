@@ -1,23 +1,20 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [clojure.test :refer :all]
-            [metabase
-             [http-client :as http]
-             [models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient]]
-             [test :as mt]
-             [util :as u]]
-            [metabase.api
-             [card-test :as card-api-test]
-             [pulse :as pulse-api]]
+            [metabase.api.card-test :as card-api-test]
+            [metabase.api.pulse :as pulse-api]
+            [metabase.http-client :as http]
             [metabase.integrations.slack :as slack]
-            [metabase.middleware.util :as middleware.u]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as perms-group]
-             [pulse :as pulse]
-             [pulse-test :as pulse-test]]
+            [metabase.models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.models.pulse :as pulse]
+            [metabase.models.pulse-test :as pulse-test]
             [metabase.pulse.render.png :as png]
+            [metabase.server.middleware.util :as middleware.u]
+            [metabase.test :as mt]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -34,7 +31,10 @@
   (-> (select-keys card [:id :collection_id :name :description :display])
       (update :display name)
       (update :collection_id boolean)
-      (assoc :include_csv false, :include_xls false))) ; why??
+      ;; why? these fields in this last assoc are from the PulseCard model and this function takes the Card model
+      ;; because PulseCard is somewhat hidden behind the scenes
+      (assoc :include_csv false, :include_xls false, :dashboard_card_id nil, :dashboard_id nil,
+             :parameter_mappings nil)))
 
 (defn- pulse-channel-details [channel]
   (select-keys channel [:schedule_type :schedule_details :channel_type :updated_at :details :pulse_id :id :enabled
@@ -44,7 +44,7 @@
   (merge
    (select-keys
     pulse
-    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :archived :skip_if_empty])
+    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :archived :skip_if_empty :dashboard_id])
    {:creator  (user-details (db/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
@@ -96,8 +96,8 @@
   {:errors
    {:cards (str "value must be an array. Each value must satisfy one of the following requirements: "
                 "1) value must be a map with the following keys "
-                "`(collection_id, description, display, id, include_csv, include_xls, name)` "
-                "2) value must be a map with the keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}})
+                "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` "
+                "2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.")}})
 
 (deftest create-pulse-validation-test
   (doseq [[input expected-error]
@@ -116,19 +116,19 @@
            default-post-card-ref-validation-error
 
            {:name  "abc"
-            :cards [{:id 100, :include_csv false, :include_xls false}
-                    {:id 200, :include_csv false, :include_xls false}]}
+            :cards [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
+                    {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]}
            {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
 
            {:name     "abc"
-            :cards    [{:id 100, :include_csv false, :include_xls false}
-                       {:id 200, :include_csv false, :include_xls false}]
+            :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
+                       {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
             :channels "foobar"}
            {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
 
            {:name     "abc"
-            :cards    [{:id 100, :include_csv false, :include_xls false}
-                       {:id 200, :include_csv false, :include_xls false}]
+            :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
+                       {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
             :channels ["abc"]}
            {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}}]
     (testing (pr-str input)
@@ -145,7 +145,8 @@
    :created_at          true
    :skip_if_empty       false
    :updated_at          true
-   :archived            false})
+   :archived            false
+   :dashboard_id        nil})
 
 (def ^:private daily-email-channel
   {:enabled       true
@@ -157,11 +158,12 @@
 
 (deftest create-test
   (testing "POST /api/pulse"
-    (mt/with-temp* [Card [card-1]
-                    Card [card-2]]
-      (card-api-test/with-cards-in-readable-collection [card-1 card-2]
-        (mt/with-temp Collection [collection]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    (testing "legacy pulse"
+      (mt/with-temp* [Card [card-1]
+                      Card [card-2]
+                      Dashboard [{dashboard-id :id} {:name "Birdcage KPIs"}]
+                      Collection [collection]]
+        (card-api-test/with-cards-in-readable-collection [card-1 card-2]
           (mt/with-model-cleanup [Pulse]
             (is (= (merge
                     pulse-defaults
@@ -177,18 +179,63 @@
                                              :schedule_hour 12
                                              :recipients    []})]
                      :collection_id true})
-                   (-> ((mt/user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
-                                                                    :collection_id (u/get-id collection)
-                                                                    :cards         [{:id          (u/get-id card-1)
-                                                                                     :include_csv false
-                                                                                     :include_xls false}
-                                                                                    {:id          (u/get-id card-2)
-                                                                                     :include_csv false
-                                                                                     :include_xls false}]
-                                                                    :channels      [daily-email-channel]
-                                                                    :skip_if_empty false})
+                   (-> (mt/user-http-request :rasta :post 200 "pulse" {:name          "A Pulse"
+                                                                       :collection_id (u/get-id collection)
+                                                                       :cards         [{:id                (u/get-id card-1)
+                                                                                        :include_csv       false
+                                                                                        :include_xls       false
+                                                                                        :dashboard_card_id nil}
+                                                                                       {:id                (u/get-id card-2)
+                                                                                        :include_csv       false
+                                                                                        :include_xls       false
+                                                                                        :dashboard_card_id nil}]
+                                                                       :channels      [daily-email-channel]
+                                                                       :skip_if_empty false})
                        pulse-response
-                       (update :channels remove-extra-channels-fields))))))))))
+                       (update :channels remove-extra-channels-fields))))))))
+    (testing "dashboard subscriptions"
+      (mt/with-temp* [Collection [collection]
+                      Card [card-1]
+                      Card [card-2]
+                      Dashboard [{permitted-dashboard-id :id} {:name "Birdcage KPIs" :collection_id (u/the-id collection)}]
+                      Dashboard [{blocked-dashboard-id :id}   {:name "[redacted]"}]]
+        (let [payload {:name          "A Pulse"
+                       :collection_id (u/the-id collection)
+                       :cards         [{:id                (u/the-id card-1)
+                                        :include_csv       false
+                                        :include_xls       false
+                                        :dashboard_card_id nil}
+                                       {:id                (u/the-id card-2)
+                                        :include_csv       false
+                                        :include_xls       false
+                                        :dashboard_card_id nil}]
+                       :channels      [daily-email-channel]
+                       :dashboard_id  permitted-dashboard-id
+                       :skip_if_empty false}]
+          (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+            (mt/with-model-cleanup [Pulse]
+              (testing "successful creation"
+                (is (= (merge
+                        pulse-defaults
+                        {:name          "A Pulse"
+                         :creator_id    (mt/user->id :rasta)
+                         :creator       (user-details (mt/fetch-user :rasta))
+                         :cards         (for [card [card-1 card-2]]
+                                          (assoc (pulse-card-details card)
+                                                 :collection_id true))
+                         :channels      [(merge pulse-channel-defaults
+                                                {:channel_type  "email"
+                                                 :schedule_type "daily"
+                                                 :schedule_hour 12
+                                                 :recipients    []})]
+                         :collection_id true
+                         :dashboard_id permitted-dashboard-id})
+                       (-> (mt/user-http-request :rasta :post 200 "pulse" payload)
+                           pulse-response
+                           (update :channels remove-extra-channels-fields)))))
+              (testing "authorization"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 "pulse" (assoc payload :dashboard_id blocked-dashboard-id))))))))))))
 
 (deftest create-with-hybrid-pulse-card-test
   (testing "POST /api/pulse"
@@ -217,12 +264,14 @@
                        :collection_id true})
                      (-> ((mt/user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
                                                                       :collection_id (u/get-id collection)
-                                                                      :cards         [{:id          (u/get-id card-1)
-                                                                                       :include_csv false
-                                                                                       :include_xls false}
+                                                                      :cards         [{:id                (u/get-id card-1)
+                                                                                       :include_csv       false
+                                                                                       :include_xls       false
+                                                                                       :dashboard_card_id nil}
                                                                                       (-> card-2
                                                                                           (select-keys [:id :name :description :display :collection_id])
-                                                                                          (assoc :include_csv false, :include_xls false))]
+                                                                                          (assoc :include_csv false, :include_xls false, :dashboard_id nil,
+                                                                                                 :dashboard_card_id nil, :parameter_mappings nil))]
                                                                       :channels      [daily-email-channel]
                                                                       :skip_if_empty false})
                          pulse-response
@@ -243,7 +292,7 @@
                         {:name          "A Pulse"
                          :creator_id    (mt/user->id :rasta)
                          :creator       (user-details (mt/fetch-user :rasta))
-                         :cards         [(assoc (pulse-card-details card-1) :include_csv true, :include_xls true, :collection_id true)
+                         :cards         [(assoc (pulse-card-details card-1) :include_csv true, :include_xls true, :collection_id true, :dashboard_card_id nil)
                                          (assoc (pulse-card-details card-2) :collection_id true)]
                          :channels      [(merge pulse-channel-defaults
                                                 {:channel_type  "email"
@@ -253,12 +302,14 @@
                          :collection_id true})
                        (-> ((mt/user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
                                                                         :collection_id (u/get-id collection)
-                                                                        :cards         [{:id          (u/get-id card-1)
-                                                                                         :include_csv true
-                                                                                         :include_xls true}
-                                                                                        {:id          (u/get-id card-2)
-                                                                                         :include_csv false
-                                                                                         :include_xls false}]
+                                                                        :cards         [{:id                (u/get-id card-1)
+                                                                                         :include_csv       true
+                                                                                         :include_xls       true
+                                                                                         :dashboard_card_id nil}
+                                                                                        {:id                (u/get-id card-2)
+                                                                                         :include_csv       false
+                                                                                         :include_xls       false
+                                                                                         :dashboard_card_id nil}]
                                                                         :channels      [daily-email-channel]
                                                                         :skip_if_empty false})
                            pulse-response
@@ -271,9 +322,10 @@
         (letfn [(create-pulse! [expected-status-code pulse-name card collection]
                   (let [response ((mt/user->client :rasta) :post expected-status-code "pulse"
                                   {:name                pulse-name
-                                   :cards               [{:id          (u/get-id card)
-                                                          :include_csv false
-                                                          :include_xls false}]
+                                   :cards               [{:id                (u/get-id card)
+                                                          :include_csv       false
+                                                          :include_xls       false
+                                                          :dashboard_card_id nil}]
                                    :channels            [daily-email-channel]
                                    :skip_if_empty       false
                                    :collection_id       (u/get-id collection)
@@ -305,11 +357,11 @@
 
 (def ^:private default-put-card-ref-validation-error
   {:errors
-   {:cards (str "value may be nil, or if non-nil, value must be an array. "
-                "Each value must satisfy one of the following requirements: "
-                "1) value must be a map with the following keys "
-                "`(collection_id, description, display, id, include_csv, include_xls, name)` "
-                "2) value must be a map with the keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}})
+   {:cards (str   "value may be nil, or if non-nil, value must be an array. "
+                  "Each value must satisfy one of the following requirements: "
+                  "1) value must be a map with the following keys "
+                  "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` "
+                  "2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.")}})
 
 (deftest update-pulse-validation-test
   (testing "PUT /api/pulse/:id"
@@ -364,9 +416,10 @@
                    :collection_id true})
                  (-> ((mt/user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
                       {:name          "Updated Pulse"
-                       :cards         [{:id          (u/get-id card)
-                                        :include_csv false
-                                        :include_xls false}]
+                       :cards         [{:id                (u/get-id card)
+                                        :include_csv       false
+                                        :include_xls       false
+                                        :dashboard_card_id nil}]
                        :channels      [{:enabled       true
                                         :channel_type  "slack"
                                         :schedule_type "hourly"
@@ -404,9 +457,10 @@
                        :collection_id true})
                      (-> ((mt/user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
                           {:cards (concat pulse-cards
-                                          [{:id          (u/get-id card-2)
-                                            :include_csv false
-                                            :include_xls false}])})
+                                          [{:id                (u/get-id card-2)
+                                            :include_csv       false
+                                            :include_xls       false
+                                            :dashboard_card_id nil}])})
                          pulse-response
                          (update :channels remove-extra-channels-fields)))))))))))
 
@@ -545,9 +599,10 @@
                     (merge
                      {:name          "x"
                       :collection_id (u/get-id collection)
-                      :cards         [{:id          (u/get-id (get-in context [:card 1]))
-                                       :include_csv false
-                                       :include_xls false}]
+                      :cards         [{:id                (u/get-id (get-in context [:card 1]))
+                                       :include_csv       false
+                                       :include_xls       false
+                                       :dashboard_card_id nil}]
                       :channels      [daily-email-channel]
                       :skip_if_empty false}
                      (when position
@@ -703,8 +758,9 @@
                                            (u/get-id pulse-2)}])
           (is (= [(assoc (pulse-details pulse-1) :can_write false, :collection_id true)
                   (assoc (pulse-details pulse-2) :can_write false, :collection_id true)]
-                 (for [pulse ((mt/user->client :rasta) :get 200 "pulse")]
-                   (update pulse :collection_id boolean))))))
+                 (for [pulse (mt/user-http-request :rasta :get 200 "pulse")]
+                   (-> pulse
+                       (update :collection_id boolean)))))))
 
       (testing "`can_write` property should get updated correctly based on whether current user can write"
         ;; delete anything else in DB just to be sure; this step may not be necessary any more
@@ -723,7 +779,8 @@
           (is (= [(assoc (pulse-details pulse-1) :can_write false, :collection_id true)
                   (assoc (pulse-details pulse-2) :can_write false, :collection_id true)]
                  (for [pulse ((mt/user->client :rasta) :get 200 "pulse")]
-                   (update pulse :collection_id boolean)))))))
+                   (-> pulse
+                       (update :collection_id boolean))))))))
 
     (testing "by default, archived Pulses should be excluded"
       (mt/with-temp* [Pulse [not-archived-pulse {:name "Not Archived"}]
@@ -777,9 +834,10 @@
               (is (= {:ok true}
                      ((mt/user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
                                                                        :collection_id (u/get-id collection)
-                                                                       :cards         [{:id          (u/get-id card)
-                                                                                        :include_csv false
-                                                                                        :include_xls false}]
+                                                                       :cards         [{:id                (u/get-id card)
+                                                                                        :include_csv       false
+                                                                                        :include_xls       false
+                                                                                        :dashboard_card_id nil}]
                                                                        :channels      [{:enabled       true
                                                                                         :channel_type  "email"
                                                                                         :schedule_type "daily"
@@ -810,15 +868,17 @@
                                   {:name          "A Pulse"
                                    :collection_id (u/get-id collection)
                                    :skip_if_empty false
-                                   :cards         [{:id          (u/get-id card-1)
-                                                    :include_csv false
-                                                    :include_xls false}
-                                                   {:id          (u/get-id card-2)
-                                                    :include_csv false
-                                                    :include_xls false}]
+                                   :cards         [{:id                (u/get-id card-1)
+                                                    :include_csv       false
+                                                    :include_xls       false
+                                                    :dashboard_card_id nil}
+                                                   {:id                (u/get-id card-2)
+                                                    :include_csv       false
+                                                    :include_xls       false
+                                                    :dashboard_card_id nil}]
 
-                                   :channels [(assoc daily-email-channel :recipients [(mt/fetch-user :rasta)
-                                                                                      (mt/fetch-user :crowberto)])]})
+                                   :channels      [(assoc daily-email-channel :recipients [(mt/fetch-user :rasta)
+                                                                                           (mt/fetch-user :crowberto)])]})
                   ;; Retrieve the pulse via GET
                   result        ((mt/user->client :rasta) :get 200 (str "pulse/" pulse-id))
                   ;; Change our fetched copy of the pulse to only have Rasta for the recipients

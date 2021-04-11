@@ -1,24 +1,18 @@
 (ns metabase.transforms.core
   (:require [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [util :as u]]
-            [metabase.domain-entities
-             [core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
-             [specs :refer [domain-entity-specs DomainEntitySpec]]]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
-            [metabase.transforms
-             [materialize :as materialize]
-             [specs :refer [Step transform-specs TransformSpec]]]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
+            [metabase.domain-entities.specs :refer [domain-entity-specs DomainEntitySpec]]
+            [metabase.driver :as driver]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.transforms.materialize :as materialize]
+            [metabase.transforms.specs :refer [Step transform-specs TransformSpec]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -32,10 +26,13 @@
              new-bindings))
 
 (defn- mbql-reference->col-name
-  [mbql-reference]
-  (mbql.u/match-one mbql-reference
-    [:field-literal name _] name
-    [:field-id id]          (-> id Field :name)))
+  [field-clause]
+  (mbql.u/match-one field-clause
+    [:field (field-name :guard string?) _]
+    field-name
+
+    [:field (id :guard integer?) _]
+    (db/select-one-field :name Field :id id)))
 
 (s/defn ^:private infer-resulting-dimensions :- DimensionBindings
   [bindings :- Bindings, {:keys [joins name]} :- Step, query :- mbql.s/Query]
@@ -88,8 +85,8 @@
   "Serialize `entity` into a form suitable as `:source-table` value."
   [entity :- SourceEntity]
   (if (instance? (type Table) entity)
-    (u/get-id entity)
-    (str "card__" (u/get-id entity))))
+    (u/the-id entity)
+    (str "card__" (u/the-id entity))))
 
 (defn- maybe-add-joins
   [bindings {context-source :source joins :joins} query]
@@ -196,6 +193,6 @@
 (defn candidates
   "Return a list of candidate transforms for a given table."
   [table]
-  (filter (comp (partial some (comp #{(u/get-id table)} u/get-id))
+  (filter (comp (partial some (comp #{(u/the-id table)} u/the-id))
                 (partial tables-matching-requirements (tableset (:db_id table) (:schema table))))
           @transform-specs))

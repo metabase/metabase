@@ -2,15 +2,13 @@
   "Logic responsible for doing deep 'analysis' of the data inside a database.
    This is significantly more expensive than the basic sync-metadata step, and involves things
    like running MBQL queries and fetching values to do things like determine Table row counts
-   and infer field special types."
+   and infer field semantic types."
   (:require [clojure.tools.logging :as log]
             [metabase.models.field :refer [Field]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.sync.analyze
-             [classify :as classify]
-             [fingerprint :as fingerprint]]
+            [metabase.sync.analyze.classify :as classify]
+            [metabase.sync.analyze.fingerprint :as fingerprint]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]
@@ -40,7 +38,7 @@
 ;; 3.  CLASSIFICATION
 ;;
 ;;     All Fields that have the latest fingerprint version but a `nil` `last_analyzed` time need to be re-classified.
-;;     Classification takes place for these Fields and special types and the like are updated as needed.
+;;     Classification takes place for these Fields and semantic types and the like are updated as needed.
 ;;
 ;; 4.  MARKING FIELDS AS RECENTLY ANALYZED
 ;;
@@ -113,9 +111,9 @@
                                classify-tables-summary)])
 
 (s/defn analyze-db!
-  "Perform in-depth analysis on the data for all Tables in a given DATABASE.
-   This is dependent on what each database driver supports, but includes things like cardinality testing and table row
-   counting. This also updates the `:last_analyzed` value for each affected Field."
+  "Perform in-depth analysis on the data for all Tables in a given `database`. This is dependent on what each database
+  driver supports, but includes things like cardinality testing and table row counting. This also updates the
+  `:last_analyzed` value for each affected Field."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
@@ -124,8 +122,8 @@
           (update-fields-last-analyzed-for-db! database tables))))))
 
 (s/defn refingerprint-db!
-  "Refingerprint a subset of tables in a given DATABASE.
-  This will re-fingerprint tables up to a threshold amount of `fingerprint/max-refingerprint-field-count`."
+  "Refingerprint a subset of tables in a given `database`. This will re-fingerprint tables up to a threshold amount of
+  `fingerprint/max-refingerprint-field-count`."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)

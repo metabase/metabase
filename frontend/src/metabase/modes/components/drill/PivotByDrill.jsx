@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { jt } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
@@ -45,6 +43,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
     {
       name: "pivot-by-" + name.toLowerCase(),
       section: "breakout",
+      buttonType: "token",
       title: clicked ? (
         name
       ) : (
@@ -54,7 +53,6 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
           )}`}
         </span>
       ),
-      icon: icon,
       // eslint-disable-next-line react/display-name
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <BreakoutPopover

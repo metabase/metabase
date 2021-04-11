@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
@@ -57,7 +58,7 @@ export default class SettingsEditorApp extends Component {
     updateSetting: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.initializeSettings();
   }
 

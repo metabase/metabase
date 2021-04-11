@@ -83,6 +83,25 @@
   fill: currentColor;
 }
 
+.Dashboard.Dashboard--night .bg-light {
+  background-color: var(--color-bg-black);
+}
+
+.Dashboard.Dashboard--night .bg-medium {
+  background-color: #596269;
+}
+
+.Dashboard.Dashboard--night .text-dark {
+  color: var(--color-bg-light);
+}
+
+.Dashboard.Dashboard--night .border-top,
+.Dashboard.Dashboard--night .border-left,
+.Dashboard.Dashboard--night .border-bottom,
+.Dashboard.Dashboard--night .border-right {
+  border-color: var(--color-bg-dark);
+}
+
 /* Night mode transition */
 .Dashboard.Dashboard--fullscreen,
 .Dashboard.Dashboard--fullscreen .DashCard .Card {
@@ -116,20 +135,6 @@
 .Dash--editing .DashCard .Card {
   pointer-events: none;
   transition: border 0.3s, background-color 0.3s;
-}
-
-@keyframes fade-out-yellow {
-  from {
-    background-color: var(--color-bg-white);
-  }
-  to {
-    background-color: var(--color-bg-white);
-  }
-}
-
-.Dash--editing .DashCard .Card.Card--recent {
-  animation-duration: 30s;
-  animation-name: fade-out-yellow;
 }
 
 .Dash--editing .DashCard:hover .Card .Card-heading {

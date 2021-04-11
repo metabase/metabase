@@ -9,7 +9,7 @@
       (let [version (u/read-line-with-prompt "What version are we building (e.g. 0.36.0)?")
             branch  current-branch
             edition (case (first version)
-                      \0 :ce
+                      \0 :oss
                       \1 :ee)]
         (if-not (u/yes-or-no-prompt (format "Building %s version %s from branch %s. Is this correct?"
                                             (pr-str edition) (pr-str version) (pr-str branch)))

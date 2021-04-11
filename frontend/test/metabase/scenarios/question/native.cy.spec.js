@@ -1,14 +1,20 @@
 import {
-  signInAsNormalUser,
   restore,
   popover,
   modal,
-  withSampleDataset,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { USER_GROUPS } from "__support__/cypress_data";
+
+const { ORDERS, PRODUCTS } = SAMPLE_DATASET;
+const { COLLECTION_GROUP } = USER_GROUPS;
 
 describe("scenarios > question > native", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
 
   it("lets you create and run a SQL question", () => {
     cy.visit("/question/new");
@@ -158,36 +164,25 @@ describe("scenarios > question > native", () => {
   });
 
   it("can load a question with a date filter (from issue metabase#12228)", () => {
-    withSampleDataset(({ ORDERS }) => {
-      cy.request("POST", "/api/card", {
-        name: "Test Question",
-        dataset_query: {
-          type: "native",
-          native: {
-            query: "select count(*) from orders where {{created_at}}",
-            "template-tags": {
-              created_at: {
-                id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-                name: "created_at",
-                "display-name": "Created at",
-                type: "dimension",
-                dimension: ["field-id", ORDERS.CREATED_AT],
-                "widget-type": "date/month-year",
-              },
-            },
+    cy.createNativeQuestion({
+      name: "Test Question",
+      native: {
+        query: "select count(*) from orders where {{created_at}}",
+        "template-tags": {
+          created_at: {
+            id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+            name: "created_at",
+            "display-name": "Created at",
+            type: "dimension",
+            dimension: ["field", ORDERS.CREATED_AT, null],
+            "widget-type": "date/month-year",
           },
-          database: 1,
         },
-        display: "scalar",
-        description: null,
-        visualization_settings: {},
-        collection_id: null,
-        result_metadata: null,
-        metadata_checksum: null,
-      }).then(response => {
-        cy.visit(`/question/${response.body.id}?created_at=2020-01`);
-        cy.contains("580");
-      });
+      },
+      display: "scalar",
+    }).then(response => {
+      cy.visit(`/question/${response.body.id}?created_at=2020-01`);
+      cy.contains("580");
     });
   });
 
@@ -197,7 +192,7 @@ describe("scenarios > question > native", () => {
     cy.get(".ace_content").type("select * from people where false");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("No results!");
-    cy.get(".Icon-contract").click();
+    cy.icon("contract").click();
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -245,7 +240,7 @@ describe("scenarios > question > native", () => {
       // We can ask variations of that question "on the fly"
       cy.findByText(QUESTION).click();
 
-      cy.log("**Apply a filter**");
+      cy.log("Apply a filter");
       cy.findAllByText("Filter")
         .first()
         .click();
@@ -274,6 +269,303 @@ describe("scenarios > question > native", () => {
         .click();
       cy.findByText("Done").click();
       cy.get(".ScalarValue").contains("1");
+    });
+  });
+
+  it.skip("should not make the question dirty when there are no changes (metabase#14302)", () => {
+    cy.createNativeQuestion({
+      name: "14302",
+      native: {
+        query:
+          'SELECT "CATEGORY", COUNT(*)\nFROM "PRODUCTS"\nWHERE "PRICE" > {{PRICE}}\nGROUP BY "CATEGORY"',
+        "template-tags": {
+          PRICE: {
+            id: "39b51ccd-47a7-9df6-a1c5-371918352c79",
+            name: "PRICE",
+            "display-name": "Price",
+            type: "number",
+            default: "10",
+            required: true,
+          },
+        },
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+      cy.findByText("14302");
+      cy.log("Reported on v0.37.5 - Regression since v0.37.0");
+      cy.findByText("Save").should("not.exist");
+    });
+  });
+
+  it.skip("should correctly display a revision state after a restore (metabase#12581)", () => {
+    const ORIGINAL_QUERY = "SELECT * FROM ORDERS WHERE {{filter}} LIMIT 2";
+
+    // Start with the original version of the question made with API
+    cy.createNativeQuestion({
+      name: "12581",
+      native: {
+        query: ORIGINAL_QUERY,
+        "template-tags": {
+          filter: {
+            id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
+            name: "filter",
+            "display-name": "Filter",
+            type: "dimension",
+            dimension: ["field", ORDERS.CREATED_AT, null],
+            "widget-type": "date/month-year",
+            default: null,
+          },
+        },
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+    cy.findByText(/Open Editor/i).click();
+    cy.findByText(/Open Editor/i).should("not.exist");
+    // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
+    // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
+    cy.get(".ace_content")
+      .click()
+      .type("{selectall}{backspace}", { delay: 50 });
+    cy.get(".ace_content")
+      .click()
+      .type("{selectall}{backspace}SELECT * FROM ORDERS");
+    cy.findByText("Save").click();
+    modal().within(() => {
+      cy.findByText("Save").click();
+    });
+
+    cy.reload();
+    cy.icon("pencil").click();
+    cy.findByText(/View revision history/i).click();
+    cy.findByText(/Revert/i).click(); // Revert to the first revision
+    cy.findByText(/Open Editor/i).click();
+
+    cy.log("Reported failing on v0.35.3");
+    cy.findByText(ORIGINAL_QUERY);
+    // Filter dropdown field
+    cy.get("fieldset").contains("Filter");
+  });
+
+  it("should reorder template tags by drag and drop (metabase#9357)", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+
+    // Write a query with parameter firstparameter,nextparameter,lastparameter.
+    cy.get(".ace_content").type(
+      "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
+      {
+        parseSpecialCharSequences: false,
+        delay: 0,
+      },
+    );
+
+    // Drag the firstparameter to last position
+    cy.get("fieldset .Icon-empty")
+      .first()
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 5, 5, { force: true })
+      .trigger("mousemove", 430, 0, { force: true })
+      .trigger("mouseup", 430, 0, { force: true });
+
+    // Ensure they're in the right order
+    cy.findAllByText("Variable name")
+      .parent()
+      .as("variableField");
+
+    cy.get("@variableField")
+      .first()
+      .findByText("nextparameter");
+
+    cy.get("@variableField")
+      .last()
+      .findByText("firstparameter");
+  });
+
+  ["nodata+nosql", "nosql"].forEach(test => {
+    it.skip(`${test.toUpperCase()} version:\n should be able to view SQL question when accessing via dashboard with filters connected to modified card without SQL permissions (metabase#15163)`, () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.signInAsAdmin();
+      cy.createNativeQuestion({
+        name: "15163",
+        native: {
+          query: 'SELECT COUNT(*) FROM "PRODUCTS" WHERE {{cat}}',
+          "template-tags": {
+            cat: {
+              id: "dd7f3e66-b659-7d1c-87b3-ab627317581c",
+              name: "cat",
+              "display-name": "Cat",
+              type: "dimension",
+              dimension: ["field-id", PRODUCTS.CATEGORY],
+              "widget-type": "category",
+              default: null,
+            },
+          },
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.createDashboard("15163D").then(({ body: { id: DASHBOARD_ID } }) => {
+          // Add filter to the dashboard
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+            parameters: [
+              {
+                name: "Category",
+                slug: "category",
+                id: "fd723065",
+                type: "category",
+              },
+            ],
+          });
+
+          // Add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            // Connect filter to that question
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 10,
+                  sizeY: 8,
+                  series: [],
+                  visualization_settings: {
+                    "card.title": "New Title",
+                  },
+                  parameter_mappings: [
+                    {
+                      parameter_id: "fd723065",
+                      card_id: QUESTION_ID,
+                      target: ["dimension", ["template-tag", "cat"]],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+
+          if (test === "nosql") {
+            cy.updatePermissionsGraph({
+              [COLLECTION_GROUP]: { "1": { schemas: "all", native: "none" } },
+            });
+          }
+
+          cy.signIn("nodata");
+
+          // Visit dashboard and set the filter through URL
+          cy.visit(`/dashboard/${DASHBOARD_ID}?category=Gizmo`);
+          cy.findByText("New Title").click();
+          cy.wait("@dataset", { timeout: 5000 }).then(xhr => {
+            expect(xhr.response.body.error).not.to.exist;
+          });
+          cy.get(".ace_content").should("not.exist");
+          cy.findByText("Showing 1 row");
+        });
+      });
+    });
+  });
+
+  it.skip("field id should update when database source is changed (metabase#14145)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+    cy.signInAsAdmin();
+    // Add another H2 sample dataset DB
+    cy.request("POST", "/api/database", {
+      engine: "h2",
+      name: "Sample2",
+      details: {
+        db:
+          "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+      },
+      auto_run_queries: true,
+      is_full_sync: true,
+      schedules: {},
+    });
+
+    cy.createNativeQuestion({
+      name: "14145",
+      native: {
+        query: "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}",
+        "template-tags": {
+          FILTER: {
+            id: "774521fb-e03f-3df1-f2ae-e952c97035e3",
+            name: "FILTER",
+            "display-name": "Filter",
+            type: "dimension",
+            dimension: ["field-id", PRODUCTS.CATEGORY],
+            "widget-type": "category",
+            default: null,
+          },
+        },
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+    });
+    // Change the source from "Sample Dataset" to the other database
+    cy.findByText(/Open Editor/i).click();
+    cy.get(".GuiBuilder-data")
+      .as("source")
+      .contains("Sample Dataset")
+      .click();
+    cy.findByText("Sample2").click();
+    // First assert on the UI
+    cy.icon("variable").click();
+    cy.findByText(/Field to map to/)
+      .siblings("a")
+      .contains("Category");
+    // Rerun the query and assert on the dimension (field-id) that didn't change
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").then(xhr => {
+      const { dimension } = xhr.response.body.json_query.native[
+        "template-tags"
+      ].FILTER;
+      expect(dimension).not.to.contain(PRODUCTS.CATEGORY);
+    });
+  });
+
+  it.skip("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    visitQuestionAdhoc({
+      name: "15460",
+      dataset_query: {
+        database: 1,
+        native: {
+          query:
+            "select p.created_at, products.category\nfrom products\nleft join products p on p.id=products.id\nwhere {{category}}\n",
+          "template-tags": {
+            category: {
+              id: "d98c3875-e0f1-9270-d36a-5b729eef938e",
+              name: "category",
+              "display-name": "Category",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "category/=",
+              default: null,
+            },
+          },
+        },
+        type: "native",
+      },
+    });
+
+    // Set the filter value
+    cy.get("fieldset")
+      .contains("Category")
+      .click();
+    popover()
+      .findByText("Doohickey")
+      .click();
+    cy.findByRole("button", { name: "Add filter" }).click();
+    // Rerun the query
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").wait("@dataset");
+    cy.get(".Visualization").within(() => {
+      cy.findAllByText("Doohickey");
+      cy.findAllByText("Gizmo").should("not.exist");
     });
   });
 });

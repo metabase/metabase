@@ -4,40 +4,34 @@
             [clojure.core.async :as a]
             [compojure.core :refer [GET]]
             [medley.core :as m]
-            [metabase
-             [db :as mdb]
-             [query-processor :as qp]
-             [util :as u]]
-            [metabase.api
-             [card :as card-api]
-             [common :as api]
-             [dashboard :as dashboard-api]
-             [dataset :as dataset-api]
-             [field :as field-api]]
+            [metabase.api.card :as card-api]
+            [metabase.api.common :as api]
+            [metabase.api.dashboard :as dashboard-api]
+            [metabase.api.dataset :as dataset-api]
+            [metabase.api.field :as field-api]
             [metabase.async.util :as async.u]
-            [metabase.mbql
-             [normalize :as normalize]
-             [util :as mbql.u]]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [params :as params]]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [streaming :as qp.streaming]]
+            [metabase.db.util :as mdb.u]
+            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.card :as card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.params :as params]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.util
-             [embed :as embed]
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.query-processor.pivot :as qp.pivot]
+            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.util :as u]
+            [metabase.util.embed :as embed]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -70,7 +64,8 @@
   (api/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-(defmulti ^:private transform-results
+(defmulti transform-results
+  "Transform results to be suitable for a public endpoint"
   {:arglists '([results])}
   :status)
 
@@ -95,14 +90,18 @@
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
 
-(defn- public-reducedf [orig-reducedf]
+(defn public-reducedf
+  "Reducer function for public data"
+  [orig-reducedf]
   (fn [metadata final-metadata context]
     (orig-reducedf metadata (transform-results final-metadata) context)))
 
-(s/defn run-query-for-card-with-id-async
+(defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
-  [card-id export-format parameters & options]
+  [card-id export-format parameters & {:keys [qp-runner]
+                                       :or   {qp-runner qp/process-query-and-save-execution!}
+                                       :as   options}]
   {:pre [(integer? card-id)]}
   ;; run this query with full superuser perms
   ;;
@@ -110,18 +109,18 @@
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (apply card-api/run-query-for-card-async card-id export-format
-           :parameters parameters
-           :context    :public-question
-           :run        (fn [query info]
-                         (qp.streaming/streaming-response [{:keys [reducedf], :as context} export-format]
-                           (let [context  (assoc context :reducedf (public-reducedf reducedf))
-                                 in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                                            (qp/process-query-and-save-execution! query info context))
-                                 out-chan (a/promise-chan (map transform-results))]
-                             (async.u/promise-pipe in-chan out-chan)
-                             out-chan)))
-           options)))
+    (m/mapply card-api/run-query-for-card-async card-id export-format
+              :parameters parameters
+              :context    :public-question
+              :run        (fn [query info]
+                            (qp.streaming/streaming-response [{:keys [reducedf], :as context} export-format]
+                              (let [context  (assoc context :reducedf (public-reducedf reducedf))
+                                    in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                                               (qp-runner query info context))
+                                    out-chan (a/promise-chan (map transform-results))]
+                                (async.u/promise-pipe in-chan out-chan)
+                                out-chan)))
+              options)))
 
 (s/defn ^:private run-query-for-card-with-public-uuid-async
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
@@ -179,7 +178,7 @@
   "Get a sequence of all the `:parameter_mappings` for all the DashCards in this `dashboard-or-id`."
   [dashboard-or-id]
   (for [params (db/select-field :parameter_mappings DashboardCard
-                 :dashboard_id (u/get-id dashboard-or-id))
+                 :dashboard_id (u/the-id dashboard-or-id))
         param  params
         :when  (:parameter_id param)]
     param))
@@ -268,9 +267,10 @@
   "Return the results of running a query with `parameters` for Card with `card-id` belonging to Dashboard with
   `dashboard-id`. Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
   [dashboard-id card-id export-format parameters
-   & {:keys [context constraints]
+   & {:keys [context constraints qp-runner]
       :or   {context     :public-dashboard
-             constraints constraints/default-query-constraints}}]
+             constraints constraints/default-query-constraints
+             qp-runner   qp/process-query-and-save-execution!}}]
   (check-card-is-in-dashboard card-id dashboard-id)
   (let [params (resolve-params dashboard-id (if (string? parameters)
                                               (json/parse-string parameters keyword)
@@ -279,7 +279,8 @@
      card-id export-format params
      :dashboard-id dashboard-id
      :context      context
-     :constraints  constraints)))
+     :constraints  constraints
+     :qp-runner    qp-runner)))
 
 (api/defendpoint ^:streaming GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
@@ -318,7 +319,7 @@
 (defn- query->referenced-field-ids
   "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (mbql.u/match (:query query) [:field-id id] id))
+  (mbql.u/match (:query query) [:field id _] id))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template
@@ -352,8 +353,8 @@
        (db/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :special_type (mdb/isa :type/PK))]
-         (db/exists? Field :id search-field-id, :table_id table-id, :special_type (mdb/isa :type/Name))))))
+       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :semantic_type (mdb.u/isa :type/PK))]
+         (db/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.u/isa :type/Name))))))
 
 
 (defn- check-field-is-referenced-by-dashboard
@@ -477,13 +478,31 @@
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (dashboard-api/chain-filter dashboard param-key query-params))))
 
-(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:prefix"
-  "Fetch filter values for dashboard parameter `param-key`, with specified `prefix`."
-  [uuid param-key prefix :as {:keys [query-params]}]
+(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
+  "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
+  [uuid param-key query :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (dashboard-api/chain-filter dashboard param-key query-params prefix))))
+      (dashboard-api/chain-filter dashboard param-key query-params query))))
 
+;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
+
+(api/defendpoint ^:streaming GET "/pivot/card/:uuid/query"
+  "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
+   credentials. Public sharing must be enabled."
+  [uuid parameters]
+  {parameters (s/maybe su/JSONString)}
+  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
+
+(api/defendpoint ^:streaming GET "/pivot/dashboard/:uuid/card/:card-id"
+  "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
+   sharing must be enabled."
+  [uuid card-id parameters]
+  {parameters (s/maybe su/JSONString)}
+  (api/check-public-sharing-enabled)
+
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+    (public-dashcard-results-async dashboard-id card-id :api parameters :qp-runner qp.pivot/run-pivot-query)))
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 

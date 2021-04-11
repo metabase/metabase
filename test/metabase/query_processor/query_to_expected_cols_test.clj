@@ -1,9 +1,8 @@
 (ns metabase.query-processor.query-to-expected-cols-test
   "Tests for `metabase.query-processor/query->expected-cols`."
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]))
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]))
 
 (deftest deduplicate-column-names-test
   (testing "`qp/query->expected-cols` should return deduplicated column names"

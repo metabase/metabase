@@ -1,17 +1,16 @@
 (ns metabase.driver.common.parameters.values-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :refer [Card Collection NativeQuerySnippet]]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.values :as values]
-            [metabase.models
-             [field :refer [map->FieldInstance]]
-             [permissions :as perms]
-             [permissions-group :as group]])
+            [metabase.models :refer [Card Collection NativeQuerySnippet]]
+            [metabase.models.field :refer [map->FieldInstance]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.util :as u]
+            [metabase.query-processor.middleware.permissions :as qp.perms])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest variable-value-test
@@ -30,134 +29,165 @@
            (#'values/value-for-tag
             {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil)))))
 
+(defn- extra-field-info
+  "Add extra field information like coercion_strategy, semantic_type, and effective_type."
+  [{:keys [base_type] :as field}]
+  (merge {:coercion_strategy nil, :effective_type base_type, :semantic_type nil}
+         field))
+
+(defn value-for-tag
+  "Call the private function and de-recordize the field"
+  [field-info info]
+  (mt/derecordize (#'values/value-for-tag field-info info)))
+
+(defn parse-tag
+  [field-info info]
+  (mt/derecordize (#'values/parse-tag field-info info)))
+
 (deftest field-filter-test
   (testing "specified"
     (testing "date range for a normal :type/Temporal field"
-      (is (= {:field (map->FieldInstance
-                      {:name         "DATE"
-                       :parent_id    nil
-                       :table_id     (mt/id :checkins)
-                       :base_type    :type/Date
-                       :special_type nil})
+      (is (= {:field (extra-field-info
+                      {:name          "DATE"
+                       :parent_id     nil
+                       :table_id      (mt/id :checkins)
+                       :base_type     :type/Date
+                       :semantic_type nil})
               :value {:type  :date/range
                       :value "2015-04-01~2015-05-01"}}
-             (into {} (#'values/value-for-tag
-                       {:name         "checkin_date"
-                        :display-name "Checkin Date"
-                        :type         :dimension
-                        :dimension    [:field-id (mt/id :checkins :date)]}
-                       [{:type   :date/range
-                         :target [:dimension [:template-tag "checkin_date"]]
-                         :value  "2015-04-01~2015-05-01"}])))))
+             (value-for-tag
+              {:name         "checkin_date"
+               :display-name "Checkin Date"
+               :type         :dimension
+               :dimension    [:field-id (mt/id :checkins :date)]}
+              [{:type   :date/range
+                :target [:dimension [:template-tag "checkin_date"]]
+                :value  "2015-04-01~2015-05-01"}]))))
 
     (testing "date range for a UNIX timestamp field should work just like a :type/Temporal field (#11934)"
       (mt/dataset tupac-sightings
         (mt/$ids sightings
-          (is (= {:field (map->FieldInstance
-                          {:name         "TIMESTAMP"
-                           :parent_id    nil
-                           :table_id     $$sightings
-                           :base_type    :type/BigInteger
-                           :special_type :type/UNIXTimestampSeconds})
+          (is (= {:field (extra-field-info
+                          {:name              "TIMESTAMP"
+                           :parent_id         nil
+                           :table_id          $$sightings
+                           :base_type         :type/BigInteger
+                           :effective_type    :type/DateTime
+                           :coercion_strategy :Coercion/UNIXSeconds->DateTime})
                   :value {:type  :date/range
                           :value "2020-02-01~2020-02-29"}}
-                 (into {} (#'values/value-for-tag
-                           {:name         "timestamp"
-                            :display-name "Sighting Timestamp"
-                            :type         :dimension
-                            :dimension    $timestamp
-                            :widget-type  :date/range}
-                           [{:type   :date/range
-                             :target [:dimension [:template-tag "timestamp"]]
-                             :value  "2020-02-01~2020-02-29"}]))))))))
+                 (value-for-tag
+                   {:name         "timestamp"
+                    :display-name "Sighting Timestamp"
+                    :type         :dimension
+                    :dimension    $timestamp
+                    :widget-type  :date/range}
+                   [{:type   :date/range
+                     :target [:dimension [:template-tag "timestamp"]]
+                     :value  "2020-02-01~2020-02-29"}])))))))
 
   (testing "unspecified"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value i/no-value}
-           (into {} (#'values/value-for-tag
-                     {:name         "checkin_date"
-                      :display-name "Checkin Date"
-                      :type         :dimension
-                      :dimension    [:field-id (mt/id :checkins :date)]}
-                     nil)))))
+           (value-for-tag
+             {:name         "checkin_date"
+              :display-name "Checkin Date"
+              :type         :dimension
+              :dimension    [:field-id (mt/id :checkins :date)]}
+             nil))))
 
   (testing "id requiring casting"
-    (is (= {:field (map->FieldInstance
-                    {:name         "ID"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/BigInteger
-                     :special_type :type/PK})
+    (is (= {:field (extra-field-info
+                    {:name          "ID"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/BigInteger
+                     :semantic_type :type/PK})
             :value {:type  :id
                     :value 5}}
-           (into {} (#'values/value-for-tag
-                     {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (mt/id :checkins :id)]}
-                     [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}])))))
+           (value-for-tag
+             {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (mt/id :checkins :id)]}
+             [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}]))))
 
   (testing "required but unspecified"
     (is (thrown? Exception
-                 (into {} (#'values/value-for-tag
-                           {:name      "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
-                            :dimension ["field-id" (mt/id :checkins :date)]}
-                           nil)))))
+                 (value-for-tag
+                   {:name      "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
+                    :dimension [:field (mt/id :checkins :date) nil]}
+                   nil))))
 
   (testing "required and default specified"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value {:type  :dimension
                     :value "2015-04-01~2015-05-01"}}
-           (into {} (#'values/value-for-tag
-                     {:name         "checkin_date"
-                      :display-name "Checkin Date"
-                      :type         :dimension
-                      :required     true
-                      :default      "2015-04-01~2015-05-01",
-                      :dimension    [:field-id (mt/id :checkins :date)]}
-                     nil)))))
+           (value-for-tag
+             {:name         "checkin_date"
+              :display-name "Checkin Date"
+              :type         :dimension
+              :required     true
+              :default      "2015-04-01~2015-05-01",
+              :dimension    [:field-id (mt/id :checkins :date)]}
+             nil))))
 
 
   (testing "multiple values for the same tag should return a vector with multiple params instead of a single param"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value [{:type  :date/range
                      :value "2015-01-01~2016-09-01"}
                     {:type  :date/single
                      :value "2015-07-01"}]}
-           (into {} (#'values/value-for-tag
-                     {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (mt/id :checkins :date)]}
-                     [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value "2015-01-01~2016-09-01"}
-                      {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}])))))
+           (value-for-tag
+             {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (mt/id :checkins :date)]}
+             [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value "2015-01-01~2016-09-01"}
+              {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}]))))
 
   (testing "Make sure defaults values get picked up for field filter clauses"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value {:type  :date/all-options
                     :value "past5days"}}
-           (into {} (#'values/parse-tag
-                     {:name         "checkin_date"
-                      :display-name "Checkin Date"
-                      :type         :dimension
-                      :dimension    [:field-id (mt/id :checkins :date)]
-                      :default      "past5days"
-                      :widget-type  :date/all-options}
-                     nil))))))
+           (parse-tag
+             {:name         "checkin_date"
+              :display-name "Checkin Date"
+              :type         :dimension
+              :dimension    [:field-id (mt/id :checkins :date)]
+              :default      "past5days"
+              :widget-type  :date/all-options}
+             nil))))
+  (testing "Make sure nil values result in no value"
+    (is (= {:field (extra-field-info
+                    {:name           "DATE"
+                     :parent_id      nil
+                     :table_id       (mt/id :checkins)
+                     :base_type      :type/Date
+                     :effective_type :type/Date})
+            :value i/no-value}
+           (parse-tag
+             {:name         "checkin_date"
+              :display-name "Checkin Date"
+              :type         :dimension
+              :dimension    [:field-id (mt/id :checkins :date)]
+              :widget-type  :date/all-options}
+                     nil)))))
 
 (deftest field-filter-errors-test
   (testing "error conditions for field filter (:dimension) parameters"
@@ -200,7 +230,7 @@
                                 "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                 "FROM \"PUBLIC\".\"VENUES\" "
                                 "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
-                                "LIMIT 1048576")]
+                                "LIMIT 1048575")]
           (mt/with-temp Card [card {:dataset_query mbql-query}]
             (is (= (i/->ReferencedCardQuery (:id card) expected-sql)
                    (#'values/value-for-tag
@@ -254,10 +284,10 @@
       (mt/with-temp-copy-of-db
         (perms/revoke-permissions! (group/all-users) (mt/id))
         (mt/with-temp* [Collection [collection]
-                        Card       [{card-1-id :id, :as card-1} {:collection_id (u/get-id collection)
+                        Card       [{card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
                                                                  :dataset_query (mt/mbql-query venues
                                                                                   {:order-by [[:asc $id]], :limit 2})}]
-                        Card       [card-2 {:collection_id (u/get-id collection)
+                        Card       [card-2 {:collection_id (u/the-id collection)
                                             :dataset_query (mt/native-query
                                                              {:query         "SELECT * FROM {{card}}"
                                                               :template-tags {"card" {:name         "card"
@@ -266,12 +296,11 @@
                                                                                       :card-id      card-1-id}}})}]]
           (perms/grant-collection-read-permissions! (group/all-users) collection)
           (mt/with-test-user :rasta
-            (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
-                    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
-                   (mt/rows
-                     (qp/process-userland-query (assoc (:dataset_query card-2)
-                                                       :info {:executed-by (mt/user->id :rasta)
-                                                              :card-id     (u/get-id card-2)})))))))))))
+            (binding [qp.perms/*card-id* (u/the-id card-2)]
+              (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                     (mt/rows
+                       (qp/process-query (:dataset_query card-2))))))))))))
 
 (deftest card-query-errors-test
   (testing "error conditions for :card parameters"
@@ -324,3 +353,31 @@
       (is (thrown?
            clojure.lang.ExceptionInfo
            (values/query->params-map query))))))
+
+(deftest dont-be-too-strict-test
+  (testing "values-for-tag should allow unknown keys (used only by FE) (#13868)"
+    (testing "\nUnknown key 'filteringParameters'"
+      (testing "in tag"
+        (is (= "2"
+               (#'values/value-for-tag
+                {:name                "id"
+                 :display-name        "ID"
+                 :type                :text
+                 :required            true
+                 :default             "100"
+                 :filteringParameters "222b245f"}
+                [{:type   :category
+                  :target [:variable [:template-tag "id"]]
+                  :value  "2"}]))))
+      (testing "in params"
+        (is (= "2"
+               (#'values/value-for-tag
+                {:name         "id"
+                 :display-name "ID"
+                 :type         :text
+                 :required     true
+                 :default      "100"}
+                [{:type                :category
+                  :target              [:variable [:template-tag "id"]]
+                  :value               "2"
+                  :filteringParameters "222b245f"}])))))))

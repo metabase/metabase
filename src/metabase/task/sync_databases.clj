@@ -1,24 +1,21 @@
 (ns metabase.task.sync-databases
   "Scheduled tasks for syncing metadata/analyzing and caching FieldValues for connected Databases."
   (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite
-             [conversion :as qc]
-             [jobs :as jobs]
-             [triggers :as triggers]]
+            [clojurewerkz.quartzite.conversion :as qc]
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
-            [metabase
-             [task :as task]
-             [util :as u]]
             [metabase.models.database :as database :refer [Database]]
-            [metabase.sync
-             [analyze :as analyze]
-             [field-values :as field-values]
-             [sync-metadata :as sync-metadata]]
-            [metabase.util
-             [cron :as cron-util]
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.sync.analyze :as analyze]
+            [metabase.sync.field-values :as field-values]
+            [metabase.sync.schedules :as sync.schedules]
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.task :as task]
+            [metabase.util :as u]
+            [metabase.util.cron :as cron-util]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.database.DatabaseInstance
@@ -39,7 +36,7 @@
 ;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
 
 (def ^:private analyze-duration-threshold-for-refingerprinting
-  "If the `analyze-db!` step is shorter than this number of MINUTES, then we may refingerprint fields."
+  "If the `analyze-db!` step is shorter than this number of `minutes`, then we may refingerprint fields."
   5)
 
 (defn- should-refingerprint-fields?
@@ -202,20 +199,41 @@
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
-(s/defn ^:private schedule-tasks-for-db!
-  "Schedule a new Quartz job for `database` and `task-info`."
+(s/defn ^:private check-and-schedule-tasks-for-db!
+  "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- DatabaseInstance]
-  (let [sync-trigger (trigger database sync-analyze-task-info)
-        fv-trigger   (trigger database field-values-task-info)]
-    ;; unschedule any tasks that might already be scheduled
-    (unschedule-tasks-for-db! database)
-    (log/debug
-     (u/format-color 'green "Scheduling sync/analyze and field-values task for database %d: trigger: %s and trigger: %s"
-                     (u/get-id database) (.getName (.getKey sync-trigger))
-                     (u/get-id database) (.getName (.getKey fv-trigger))))
-    ;; now (re)schedule all the tasks
-    (task/add-trigger! sync-trigger)
-    (task/add-trigger! fv-trigger)))
+  (let [sync-job (task/job-info (job-key sync-analyze-task-info))
+        fv-job   (task/job-info (job-key field-values-task-info))
+
+        sync-trigger (trigger database sync-analyze-task-info)
+        fv-trigger   (trigger database field-values-task-info)
+
+        existing-sync-trigger (some (fn [trigger] (when (= (:key trigger) (.. sync-trigger getKey getName))
+                                                    trigger))
+                                    (:triggers sync-job))
+        existing-fv-trigger   (some (fn [trigger] (when (= (:key trigger) (.. fv-trigger getKey getName))
+                                                    trigger))
+                                    (:triggers fv-job))]
+
+    (doseq [{:keys [existing-trigger existing-schedule ti trigger description]}
+            [{:existing-trigger  existing-sync-trigger
+              :existing-schedule (:metadata_sync_schedule database)
+              :ti                sync-analyze-task-info
+              :trigger           sync-trigger
+              :description       "sync/analyze"}
+             {:existing-trigger  existing-fv-trigger
+              :existing-schedule (:cache_field_values_schedule database)
+              :ti                field-values-task-info
+              :trigger           fv-trigger
+              :description       "field-values"}]]
+      (when (or (not existing-trigger)
+                (not= (:schedule existing-trigger) existing-schedule))
+        (delete-task! database ti)
+        (log/info
+         (u/format-color 'green "Scheduling %s for database %d: trigger: %s"
+                         description (u/get-id database) (.. ^org.quartz.Trigger trigger getKey getName)))
+        ;; now (re)schedule the task
+        (task/add-trigger! trigger)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -229,12 +247,37 @@
   (task/add-job! sync-analyze-job)
   (task/add-job! field-values-job))
 
+(defn randomized-schedules
+  "Updated default schedules for the sync task when given the original default schedules.
+  The defaults used to be all at the same time leading to poor resource management. If the user has not indicated they
+  want to control the scheduling, returns appropriate randomized schedules for the sync tasks."
+  [{:keys [details cache_field_values_schedule metadata_sync_schedule] :as _database}]
+  (when-not (:let-user-control-scheduling details)
+    (let [random-defaults (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
+          old-default-keys (cond-> []
+                             (contains? sync.schedules/default-cache-field-values-schedule-cron-strings cache_field_values_schedule)
+                             (conj :cache_field_values_schedule)
+
+                             (contains? sync.schedules/default-metadata-sync-schedule-cron-strings metadata_sync_schedule)
+                             (conj :metadata_sync_schedule))]
+      (not-empty (select-keys random-defaults old-default-keys)))))
+
+(defn maybe-update-db-schedules
+  "Update schedules when managed by metabase to spread the syncs out in time.
+  When not let-user-control-scheduling metabase is in control of the sync times. These used to all be scheduled at
+  every hour at 50 minutes or on the hour. This can cause a large load on the databaes or CPU and this attempts to
+  spread them out in time."
+  [database]
+  (if-let [randomized-schedules (randomized-schedules database)]
+    (u/prog1 (merge database randomized-schedules)
+      (db/update! Database (u/the-id database) randomized-schedules))
+    database))
+
 (defmethod task/init! ::SyncDatabases
   [_]
   (job-init)
   (doseq [database (db/select Database)]
     (try
-      ;; TODO -- shouldn't all the triggers be scheduled already?
-      (schedule-tasks-for-db! database)
+      (check-and-schedule-tasks-for-db! (maybe-update-db-schedules database))
       (catch Throwable e
         (log/error e (trs "Failed to schedule tasks for Database {0}" (:id database)))))))

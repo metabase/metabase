@@ -1,4 +1,3 @@
-/* @flow */
 import _ from "underscore";
 import { t } from "ttag";
 import { createSelector } from "reselect";

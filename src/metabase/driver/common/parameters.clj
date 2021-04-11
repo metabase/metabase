@@ -109,7 +109,8 @@
    (s/optional-key :slug)    su/NonBlankString
    (s/optional-key :name)    su/NonBlankString
    (s/optional-key :default) s/Any
-   (s/optional-key :id)      s/Any}) ; used internally by the frontend
+   ;; various other keys are used internally by the frontend
+   s/Keyword                 s/Any})
 
 ;; Sequence of multiple values for generating a SQL IN() clause. vales
 ;; `values` are a sequence of `[SingleValue]`

@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment-timezone";
@@ -54,7 +53,7 @@ import type {
 import type { ClickObject } from "metabase-types/types/Visualization";
 
 // a one or two character string specifying the decimal and grouping separator characters
-export type NumberSeparators = ".," | ", " | ",." | ".";
+export type NumberSeparators = ".," | ", " | ",." | "." | ".’";
 
 // single character string specifying date separators
 export type DateSeparator = "/" | "-" | ".";
@@ -77,6 +76,7 @@ export type FormattingOptions = {
   prefix?: string,
   suffix?: string,
   scale?: number,
+  negativeInParentheses?: boolean,
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
   scale?: number,
   number_separators?: NumberSeparators,
@@ -104,7 +104,7 @@ export type FormattingOptions = {
   markdown_template?: string,
 };
 
-type FormattedString = string | React$Element<any>;
+type FormattedString = string | React.Element;
 
 export const FK_SYMBOL = "→";
 
@@ -171,6 +171,15 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
     number = options.scale * number;
+  }
+
+  if (number < 0 && options.negativeInParentheses) {
+    return (
+      "(" +
+      // $FlowFixMe coerce into string
+      formatNumber(-number, { ...options, negativeInParentheses: false }) +
+      ")"
+    );
   }
 
   if (options.compact) {
@@ -537,7 +546,7 @@ export function formatTime(value: Value) {
 }
 
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
-const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
+const EMAIL_ALLOW_LIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
 export function formatEmail(
   value: Value,
@@ -549,7 +558,7 @@ export function formatEmail(
     jsx &&
     rich &&
     (view_as === "email_link" || view_as === "auto") &&
-    EMAIL_WHITELIST_REGEX.test(email)
+    EMAIL_ALLOW_LIST_REGEX.test(email)
   ) {
     return (
       <ExternalLink href={"mailto:" + email}>{link_text || email}</ExternalLink>
@@ -628,7 +637,7 @@ export function formatImage(
   }
 }
 
-// fallback for formatting a string without a column special_type
+// fallback for formatting a string without a column semantic_type
 function formatStringFallback(value: Value, options: FormattingOptions = {}) {
   if (options.view_as !== null) {
     value = formatUrl(value, options);
@@ -732,6 +741,18 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     return null;
   } else if (
     options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.jsx
+  ) {
+    // Style this like a link if we're in a jsx context.
+    // It's not actually a link since we handle the click differently for dashboard and question targets.
+    return (
+      <div className="link link--wrappable">
+        {formatValueRaw(value, { ...options, jsx: false })}
+      </div>
+    );
+  } else if (
+    options.click_behavior &&
     options.click_behavior.linkTextTemplate
   ) {
     return renderLinkTextForClick(
@@ -757,7 +778,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   ) {
     return formatDateTime(value, options);
   } else if (typeof value === "string") {
-    if (column && column.special_type != null) {
+    if (column && column.semantic_type != null) {
       return value;
     } else {
       return formatStringFallback(value, options);

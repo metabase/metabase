@@ -1,24 +1,20 @@
 (ns metabase.task.follow-up-emails
   "Tasks which follow up with Metabase users."
   (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite
-             [jobs :as jobs]
-             [triggers :as triggers]]
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
-            [metabase
-             [email :as email]
-             [public-settings :as public-settings]
-             [task :as task]]
+            [metabase.email :as email]
             [metabase.email.messages :as messages]
-            [metabase.models
-             [activity :refer [Activity]]
-             [setting :as setting]
-             [user :as user :refer [User]]
-             [view-log :refer [ViewLog]]]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [trs]]]
+            [metabase.models.activity :refer [Activity]]
+            [metabase.models.setting :as setting]
+            [metabase.models.user :as user :refer [User]]
+            [metabase.models.view-log :refer [ViewLog]]
+            [metabase.public-settings :as public-settings]
+            [metabase.task :as task]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [trs]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.time.temporal.Temporal))

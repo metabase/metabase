@@ -1,10 +1,9 @@
 (ns metabase.api.query-description-test
   (:require [clojure.test :refer :all]
             [metabase.api.query-description :as sut]
-            [metabase.models
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]
-             [table :refer [Table]]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util.i18n :as ui18n :refer [deferred-tru]]
@@ -94,8 +93,8 @@
              (sut/generate-query-description (Table (mt/id :venues))
                                              {:aggregation [[:aggregation-options
                                                              [:sum [:*
-                                                                    [:field-id (mt/id :venues :latitude)]
-                                                                    [:field-id (mt/id :venues :longitude)]]]
+                                                                    [:field (mt/id :venues :latitude) nil]
+                                                                    [:field (mt/id :venues :longitude) nil]]]
                                                              {:display-name "Nonsensical named metric"}]]}))))
 
     (testing "with unnamed complex aggregation"
@@ -104,8 +103,8 @@
                              :arg  ["Latitude" "*" "Longitude"]}]}
              (sut/generate-query-description (Table (mt/id :venues))
                                              {:aggregation [[:sum [:*
-                                                                   [:field-id (mt/id :venues :latitude)]
-                                                                   [:field-id (mt/id :venues :longitude)]]]]}))))
+                                                                   [:field (mt/id :venues :latitude) nil]
+                                                                   [:field (mt/id :venues :longitude) nil]]]]}))))
 
     (testing "with unnamed complex aggregation with multiple arguments"
       (is (= {:table       "Venues"
@@ -113,6 +112,6 @@
                              :arg  ["Latitude" "+" "Longitude" "+" "ID"]}]}
              (sut/generate-query-description (Table (mt/id :venues))
                                              {:aggregation [[:sum [:+
-                                                                   [:field-id (mt/id :venues :latitude)]
-                                                                   [:field-id (mt/id :venues :longitude)]
-                                                                   [:field-id (mt/id :venues :id)]]]]}))))))
+                                                                   [:field (mt/id :venues :latitude) nil]
+                                                                   [:field (mt/id :venues :longitude) nil]
+                                                                   [:field (mt/id :venues :id) nil]]]]}))))))

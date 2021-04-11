@@ -1,14 +1,29 @@
 import {
-  signInAsAdmin,
   restore,
   openOrdersTable,
   version,
   popover,
+  itOpenSourceOnly,
+  setupDummySMTP,
 } from "__support__/cypress";
 
 describe("scenarios > admin > settings", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  itOpenSourceOnly(
+    "should prompt admin to migrate to the hosted instance",
+    () => {
+      cy.visit("/admin/settings/setup");
+      cy.findByText("Have your server maintained for you.");
+      cy.findByText("Migrate to Metabase Cloud.");
+      cy.findAllByRole("link", { name: "Learn more" })
+        .should("have.attr", "href")
+        .and("include", "/migrate/");
+    },
+  );
 
   it("should surface an error when validation for any field fails (metabase#4506)", () => {
     const BASE_URL = Cypress.config().baseUrl;
@@ -25,19 +40,17 @@ describe("scenarios > admin > settings", () => {
       .type("foo", { delay: 100 })
       .blur();
 
-    cy.wait("@url")
-      .wait("@url") // cy.wait("@url.2") doesn't work for some reason
-      .should(xhr => {
-        expect(xhr.status).to.eq(500);
-        // Switching to regex match for assertions - the test was flaky because of the "typing" issue
-        // i.e. it sometimes doesn't type the whole string "foo", but only "oo".
-        // We only care that the `cause` is starting with "Invalid site URL"
-        expect(xhr.response.body.cause).to.match(/^Invalid site URL/);
-      });
+    cy.wait("@url").should(xhr => {
+      expect(xhr.status).to.eq(500);
+      // Switching to regex match for assertions - the test was flaky because of the "typing" issue
+      // i.e. it sometimes doesn't type the whole string "foo", but only "oo".
+      // We only care that the `cause` is starting with "Invalid site URL"
+      expect(xhr.response.body.cause).to.match(/^Invalid site URL/);
+    });
 
     // NOTE: This test is not concerned with HOW we style the error message - only that there is one.
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
-    cy.log("**Making sure we display an error message in UI**");
+    cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
     cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
   });
@@ -176,6 +189,23 @@ describe("scenarios > admin > settings", () => {
     cy.contains(/^February 11, 2019, 9:40 PM$/);
   });
 
+  it("should search for and select a new timezone", () => {
+    cy.server();
+    cy.route("PUT", "**/report-timezone").as("reportTimezone");
+
+    cy.visit("/admin/settings/localization");
+    cy.contains("Report Timezone")
+      .closest("li")
+      .find(".AdminSelect")
+      .click();
+
+    cy.findByPlaceholderText("Find...").type("Centr");
+    cy.findByText("US/Central").click({ force: true });
+
+    cy.wait("@reportTimezone");
+    cy.contains("US/Central");
+  });
+
   if (version.edition !== "enterprise") {
     describe(" > embedding settings", () => {
       it("should validate a premium embedding token has a valid format", () => {
@@ -267,6 +297,34 @@ describe("scenarios > admin > settings", () => {
     });
   }
 
+  it("'General' admin settings should handle setup via `MB_SITE_ULR` environment variable (metabase#14900)", () => {
+    cy.server();
+    // 1. Get the array of ALL available settings
+    cy.request("GET", "/api/setting").then(({ body }) => {
+      // 2. Create a stubbed version of that array by passing modified "site-url" settings
+      const STUBBED_BODY = body.map(setting => {
+        if (setting.key === "site-url") {
+          const STUBBED_SITE_URL = Object.assign({}, setting, {
+            is_env_setting: true,
+            value: null,
+          });
+
+          return STUBBED_SITE_URL;
+        }
+        return setting;
+      });
+
+      // 3. Stub the whole response
+      cy.route("GET", "/api/setting", STUBBED_BODY).as("appSettings");
+    });
+    cy.visit("/admin/settings/general");
+
+    cy.wait("@appSettings");
+    cy.findByText("We're a little lost...").should("not.exist");
+    cy.findByText(/Site name/i);
+    cy.findByText(/Site URL/i);
+  });
+
   describe(" > email settings", () => {
     it("should be able to save email settings", () => {
       cy.visit("/admin/settings/email");
@@ -284,10 +342,20 @@ describe("scenarios > admin > settings", () => {
       cy.findByText("Changes saved!");
     });
     it("should show an error if test email fails", () => {
+      // Reuse Email setup without relying on the previous test
+      cy.request("PUT", "/api/setting", {
+        "email-from-address": "admin@metabase.com",
+        "email-smtp-host": "localhost",
+        "email-smtp-password": null,
+        "email-smtp-port": "1234",
+        "email-smtp-security": "none",
+        "email-smtp-username": null,
+      });
       cy.visit("/admin/settings/email");
       cy.findByText("Send test email").click();
       cy.findByText("Sorry, something went wrong. Please try again.");
     });
+
     it("should be able to clear email settings", () => {
       cy.visit("/admin/settings/email");
       cy.findByText("Clear").click();
@@ -297,6 +365,16 @@ describe("scenarios > admin > settings", () => {
         "have.value",
         "",
       );
+    });
+
+    it("should not offer to save email changes when there aren't any (metabase#14749)", () => {
+      // Make sure some settings are already there
+      setupDummySMTP();
+
+      cy.visit("/admin/settings/email");
+      cy.findByText("Send test email").scrollIntoView();
+      // Needed to scroll the page down first to be able to use findByRole() - it fails otherwise
+      cy.findByRole("button", { name: "Save changes" }).should("be.disabled");
     });
   });
 

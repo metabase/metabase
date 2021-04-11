@@ -1,10 +1,12 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import sys from "system-components";
 
 import Icon from "metabase/components/Icon";
 import cx from "classnames";
 import _ from "underscore";
+import styled from "styled-components";
+import { color, space } from "styled-system";
 
 const BUTTON_VARIANTS = [
   "small",
@@ -93,13 +95,10 @@ BaseButton.propTypes = {
   borderless: PropTypes.bool,
 };
 
-const Button = sys(
-  {
-    is: BaseButton,
-  },
-  "space",
-  "color",
-);
+const Button = styled(BaseButton)`
+  ${color};
+  ${space};
+`;
 
 Button.displayName = "Button";
 

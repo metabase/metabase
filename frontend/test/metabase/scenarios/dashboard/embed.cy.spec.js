@@ -1,12 +1,14 @@
-import { signInAsAdmin, restore, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/cypress";
 
 describe("scenarios > dashboard > embed", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
-  it("should have the correct embed snippet", () => {
+  it.skip("should have the correct embed snippet", () => {
     cy.visit("/dashboard/1");
-    cy.get(".Icon-share").click();
+    cy.icon("share").click();
     cy.contains(/Embed this .* in an application/).click();
     cy.contains("Code").click();
 
@@ -54,7 +56,7 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
   it("should update the name and description", () => {
     cy.visit("/dashboard/1");
     // click pencil icon to edit
-    cy.get(".Icon-ellipsis").click();
+    cy.icon("ellipsis").click();
     // update title
     popover().within(() =>
       cy.findByText("Change title and description").click(),
@@ -80,15 +82,18 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
   it("should let you add a parameter to a dashboard with a text box", () => {
     cy.visit("/dashboard/1");
     // click pencil icon to edit
-    cy.get(".Icon-pencil").click();
+    cy.icon("pencil").click();
     // add text box with text
-    cy.get(".Icon-string").click();
+    cy.icon("string").click();
     cy.get(".DashCard")
       .last()
       .find("textarea")
       .type("text text text");
-    cy.get(".Icon-filter").click();
-    popover().within(() => cy.findByText("Other Categories").click());
+    cy.icon("filter").click();
+    popover().within(() => {
+      cy.findByText("Other Categories").click();
+      cy.findByText("Dropdown").click();
+    });
     cy.findByText("Save").click();
 
     // confirm text box and filter are still there

@@ -1,13 +1,56 @@
-import {
-  restore,
-  signInAsNormalUser,
-  popover,
-  modal,
-} from "__support__/cypress";
+import { restore, popover, modal, openOrdersTable } from "__support__/cypress";
 
 describe("scenarios > question > saved", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("Total").click();
+    // Save the question
+    cy.findByText("Save").click();
+    modal().within(() => {
+      cy.findByText("Save").click();
+    });
+    cy.findByText("Not now").click();
+    cy.findByText("Save").should("not.exist");
+
+    // Add a filter in order to be able to save question again
+    cy.findByText("Filter").click();
+    cy.findByText(/^Total$/).click();
+    cy.findByText("Equal to").click();
+    cy.findByText("Greater than").click();
+    cy.findByPlaceholderText("Enter a number").type("60");
+    cy.findByText("Add filter").click();
+
+    // Save question - opens "Save question" modal
+    cy.findByText("Save").click();
+
+    modal().within(() => {
+      cy.findByText("Save question");
+      cy.findByRole("button", { name: /save/i }).as("saveButton");
+      cy.get("@saveButton").should("not.be.disabled");
+
+      cy.log(
+        "**When there is no question name, it shouldn't be possible to save**",
+      );
+      cy.findByText("Save as new question").click();
+      cy.findByLabelText("Name").should("be.empty");
+      cy.findByLabelText("Description").should("be.empty");
+      cy.get("@saveButton").should("be.disabled");
+
+      cy.log(
+        "**It should `always` be possible to overwrite the original question**",
+      );
+      cy.findByText(/^Replace original question,/).click();
+      cy.get("@saveButton").should("not.be.disabled");
+    });
+  });
 
   it("view and filter saved question", () => {
     cy.visit("/question/1");
@@ -15,7 +58,7 @@ describe("scenarios > question > saved", () => {
 
     // filter to only orders with quantity=100
     cy.findByText("Quantity").click();
-    popover().within(() => cy.findByText("Filter").click());
+    popover().within(() => cy.findByText("Filter by this column").click());
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
       cy.findByText("Update filter").click();
@@ -36,5 +79,23 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Showing first 2,000 rows"); // query updated
     cy.findByText("Started from").should("not.exist");
     cy.findByText("Quantity is equal to 100").should("not.exist");
+  });
+
+  it("should duplicate a saved question", () => {
+    cy.server();
+    cy.route("POST", "/api/card").as("cardCreate");
+    cy.route("POST", "/api/card/1/query").as("query");
+
+    cy.visit("/question/1");
+    cy.wait("@query");
+
+    cy.get(".Icon-pencil").click();
+    cy.findByText("Duplicate this question").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
   });
 });

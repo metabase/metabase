@@ -1,12 +1,10 @@
 (ns metabase.api.native-query-snippet-test
   "Tests for /api/native-query-snippet endpoints."
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [models :refer [Collection]]
-             [test :as mt]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.models :refer [Collection]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.test :as mt]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]

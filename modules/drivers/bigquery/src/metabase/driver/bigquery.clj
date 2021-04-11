@@ -1,29 +1,25 @@
 (ns metabase.driver.bigquery
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
-            [metabase.driver.bigquery
-             [common :as bigquery.common]
-             [params :as bigquery.params]
-             [query-processor :as bigquery.qp]]
+            [metabase.driver :as driver]
+            [metabase.driver.bigquery.common :as bigquery.common]
+            [metabase.driver.bigquery.params :as bigquery.params]
+            [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.google :as google]
-            [metabase.query-processor
-             [error-type :as error-type]
-             [store :as qp.store]
-             [timezone :as qp.timezone]
-             [util :as qputil]]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model GetQueryResultsResponse QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
-            TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model GetQueryResultsResponse QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
            java.util.Collections))
 
 (driver/register! :bigquery, :parent #{:google :sql})
@@ -152,16 +148,16 @@
   "Callback to execute when a new page is retrieved, used for testing"
   nil)
 
-(defprotocol GetJobComplete
+(defprotocol ^:private GetJobComplete
   "A Clojure protocol for the .getJobComplete method on disparate Google BigQuery results"
-  (get-job-complete [this] "Call .getJobComplete on a BigQuery API response"))
+  (^:private job-complete? [this] "Call .getJobComplete on a BigQuery API response"))
 
 (extend-protocol GetJobComplete
   com.google.api.services.bigquery.model.QueryResponse
-  (get-job-complete [this] (.getJobComplete ^QueryResponse this))
+  (job-complete? [this] (.getJobComplete ^QueryResponse this))
 
   com.google.api.services.bigquery.model.GetQueryResultsResponse
-  (get-job-complete [this] (.getJobComplete ^GetQueryResultsResponse this)))
+  (job-complete? [this] (.getJobComplete ^GetQueryResultsResponse this)))
 
 (defn do-with-finished-response
   "Impl for `with-finished-response`."
@@ -171,7 +167,7 @@
   ;; wait a few seconds for the job to finish.
   (loop [remaining-timeout (double query-timeout-seconds)]
     (cond
-      (get-job-complete response)
+      (job-complete? response)
       (f response)
 
       (pos? remaining-timeout)
@@ -210,19 +206,24 @@
 
   ([^Bigquery client ^String project-id ^String sql parameters]
    {:pre [client (seq project-id) (seq sql)]}
-   (let [request (doto (QueryRequest.)
-                   (.setTimeoutMs (* query-timeout-seconds 1000))
-                   ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                   (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
-                   (.setQuery sql)
-                   (bigquery.params/set-parameters! parameters))
-         query-response ^QueryResponse (google/execute (.query (.jobs client) project-id request))
-         job-ref (.getJobReference query-response)
-         location (.getLocation job-ref)
-         job-id (.getJobId job-ref)
-         proj-id (.getProjectId job-ref)]
-     (with-finished-response [_ query-response]
-       (get-query-results client proj-id job-id location nil)))))
+   (try
+     (let [request        (doto (QueryRequest.)
+                            (.setTimeoutMs (* query-timeout-seconds 1000))
+                            ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+                            (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
+                            (.setQuery sql)
+                            (bigquery.params/set-parameters! parameters))
+           query-response ^QueryResponse (google/execute (.query (.jobs client) project-id request))
+           job-ref        (.getJobReference query-response)
+           location       (.getLocation job-ref)
+           job-id         (.getJobId job-ref)
+           proj-id        (.getProjectId job-ref)]
+       (with-finished-response [_ query-response]
+         (get-query-results client proj-id job-id location nil)))
+     (catch Throwable e
+       (throw (ex-info (tru "Error executing query")
+                       {:type error-type/invalid-query, :sql sql, :parameters parameters}
+                       e))))))
 
 (defn- post-process-native
   "Parse results of a BigQuery query. `respond` is the same function passed to
@@ -277,8 +278,9 @@
     (try
       (thunk)
       (catch Throwable e
-        (when-not (error-type/client-error? (:type (u/all-ex-data e)))
-          (thunk))))))
+        (if-not (error-type/client-error? (:type (u/all-ex-data e)))
+          (thunk)
+          (throw e))))))
 
 (defn- effective-query-timezone-id [database]
   (if (get-in database [:details :use-jvm-timezone])
@@ -291,7 +293,9 @@
   (let [database (qp.store/database)]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
-      (let [sql (str "-- " (qputil/query->remark :bigquery outer-query) "\n" sql)]
+      (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
+                  (str "-- " (qputil/query->remark :bigquery outer-query) "\n" sql)
+                  sql)]
         (process-native* respond database sql params)))))
 
 

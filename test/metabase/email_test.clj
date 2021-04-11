@@ -1,17 +1,13 @@
 (ns metabase.email-test
   "Various helper functions for testing email functionality."
-  ;; TODO - Move to something like `metabase.test.util.email`?
   (:require [clojure.java.io :as io]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [email :as email]
-             [util :refer [prog1]]]
+            [metabase.email :as email]
             [metabase.test.data.users :as user]
             [metabase.test.util :as tu]
-            [postal
-             [core :as postal]
-             [message :as message]])
+            [metabase.util :refer [prog1]]
+            [postal.message :as message])
   (:import java.io.File
            javax.activation.MimeType))
 
@@ -220,7 +216,7 @@
               ;; =C3=82\"; filename*1=\"=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
               ;;           ^-- this is the problem
               ;; Acceptable string (again, ignore the linebreak):
-              ;; Content-Disposition: attachment;	filename= "=?UTF-8?Q?this-is-quite-long-and-ha?=
+              ;; Content-Disposition: attachment; filename= "=?UTF-8?Q?this-is-quite-long-and-ha?=
               ;; =?UTF-8?Q?s-non-=C3=82=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
 
               (is (re-find

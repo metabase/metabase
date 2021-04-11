@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -39,6 +37,7 @@ export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
 import Question from "metabase-lib/lib/Question";
+import Query from "metabase-lib/lib/queries/Query";
 import Mode from "metabase-lib/lib/Mode";
 import type {
   Card as CardObject,
@@ -88,6 +87,9 @@ type Props = {
   onChangeCardAndRun: OnChangeCardAndRun,
   onChangeLocation: (url: string) => void,
 
+  // for checking renderability
+  query: Query,
+
   mode?: Mode,
 
   // used for showing content in place of visualization, e.x. dashcard filter mapping
@@ -111,7 +113,7 @@ type Props = {
 type State = {
   series: ?Series,
   visualization: ?(React.Component<void, VisualizationSettings, void> & {
-    checkRenderable: (any, any) => void,
+    checkRenderable: (any, any, any) => void,
     noHeader: boolean,
   }),
   computedSettings: VisualizationSettings,
@@ -159,11 +161,11 @@ export default class Visualization extends React.PureComponent {
     },
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.transform(this.props);
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
       !Utils.equals(newProps.settings, this.props.settings)
@@ -416,7 +418,7 @@ export default class Visualization extends React.PureComponent {
       } else {
         try {
           if (visualization.checkRenderable) {
-            visualization.checkRenderable(series, settings);
+            visualization.checkRenderable(series, settings, this.props.query);
           }
         } catch (e) {
           error = e.message || t`Could not display this chart with this data.`;

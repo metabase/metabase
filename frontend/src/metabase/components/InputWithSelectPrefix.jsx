@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 
 import Select, { Option } from "./Select";
@@ -18,37 +16,42 @@ type State = {
   rest: string,
 };
 
+function splitValue({
+  value,
+  prefixes,
+  defaultPrefix,
+  caseInsensitivePrefix = false,
+}) {
+  if (value == null) {
+    return ["", ""];
+  }
+
+  const prefix = prefixes.find(
+    caseInsensitivePrefix
+      ? p => value.toLowerCase().startsWith(p.toLowerCase())
+      : p => value.startsWith(p),
+  );
+
+  return prefix ? [prefix, value.slice(prefix.length)] : [defaultPrefix, value];
+}
+
 export default class InputWithSelectPrefix extends Component {
   props: Props;
   state: State;
 
   constructor(props: Props) {
     super(props);
-    this.state = { prefix: "", rest: "" };
-  }
 
-  componentDidMount() {
-    this.setPrefixAndRestFromValue();
+    const [prefix, rest] = splitValue(props);
+    this.state = { prefix, rest };
   }
 
   setPrefixAndRestFromValue() {
-    const {
-      value,
-      prefixes,
-      defaultPrefix,
-      caseInsensitivePrefix = false,
-    } = this.props;
+    const { value } = this.props;
+
     if (value) {
-      const prefix = prefixes.find(
-        caseInsensitivePrefix
-          ? p => value.toLowerCase().startsWith(p.toLowerCase())
-          : p => value.startsWith(p),
-      );
-      this.setState(
-        prefix
-          ? { prefix, rest: value.slice(prefix.length) }
-          : { prefix: defaultPrefix, rest: value },
-      );
+      const [prefix, rest] = splitValue(this.props);
+      this.setState({ prefix, rest });
     }
   }
 

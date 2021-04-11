@@ -4,29 +4,20 @@
             [clojure.string :as str]
             [environ.core :as env]
             [flatland.ordered.map :as ordered-map]
-            [metabuild-common
-             [core :as u]
-             [java :as java]]))
-
-(defn- build-translation-resources!
-  []
-  (u/step "Build translation resources"
-    (java/check-java-8)
-    (u/sh {:dir u/project-root-directory} "./bin/i18n/build-translation-resources")
-    (u/announce "Translation resources built successfully.")))
+            [i18n.create-artifacts :as i18n]
+            [metabuild-common.core :as u]))
 
 (defn- edition-from-env-var []
-  ;; MB_EDITION is either oss/ee, but the Clojure build scripts currently use :ce/:ee
   (case (env/env :mb-edition)
-    "oss" :ce
+    "oss" :oss
     "ee"  :ee
-    nil   :ce))
+    nil   :oss))
 
 (defn- build-frontend! [edition]
-  {:pre [(#{:ce :ee} edition)]}
+  {:pre [(#{:oss :ee} edition)]}
   (let [mb-edition (case edition
                      :ee "ee"
-                     :ce "oss")]
+                     :oss "oss")]
     (u/step (format "Build frontend with MB_EDITION=%s" mb-edition)
       (u/step "Run 'yarn' to download javascript dependencies"
         (if (env/env :ci)
@@ -34,6 +25,15 @@
             (u/announce "CI run: enforce the lockfile")
             (u/sh {:dir u/project-root-directory} "yarn" "--frozen-lockfile"))
           (u/sh {:dir u/project-root-directory} "yarn")))
+      ;; TODO -- I don't know why it doesn't work if we try to combine the two steps below by calling `yarn build`,
+      ;; which does the same thing.
+      (u/step "Build frontend (ClojureScript)"
+        (u/sh {:dir u/project-root-directory
+               :env {"PATH"       (env/env :path)
+                     "HOME"       (env/env :user-home)
+                     "NODE_ENV"   "production"
+                     "MB_EDITION" mb-edition}}
+              "./node_modules/.bin/shadow-cljs" "release" "app"))
       (u/step "Run 'webpack' with NODE_ENV=production to assemble and minify frontend assets"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
@@ -46,28 +46,24 @@
 (def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
 
 (defn- build-uberjar! [edition]
-  {:pre [(#{:ce :ee} edition)]}
-  ;; clojure scripts currently use :ee vs :ce but everything else uses :ee vs :oss
-  (let [profile (case edition
-                  :ee "ee"
-                  :ce "oss")]
-    (u/delete-file-if-exists! uberjar-filename)
-    (u/step (format "Build uberjar with profile %s" profile)
-      (u/sh {:dir u/project-root-directory} "lein" "clean")
-      (u/sh {:dir u/project-root-directory} "lein" "with-profile" (str \+ profile) "uberjar")
-      (u/assert-file-exists uberjar-filename)
-      (u/announce "Uberjar built successfully."))))
+  {:pre [(#{:oss :ee} edition)]}
+  (u/delete-file-if-exists! uberjar-filename)
+  (u/step (format "Build uberjar with profile %s" edition)
+    (u/sh {:dir u/project-root-directory} "lein" "clean")
+    (u/sh {:dir u/project-root-directory} "lein" "with-profile" (str \+ (name edition)) "uberjar")
+    (u/assert-file-exists uberjar-filename)
+    (u/announce "Uberjar built successfully.")))
 
 (def all-steps
   (ordered-map/ordered-map
    :version      (fn [{:keys [version]}]
                    (version-info/generate-version-info-file! version))
    :translations (fn [_]
-                   (build-translation-resources!))
+                   (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
-   :drivers      (fn [_]
-                   (build-drivers/build-drivers!))
+   :drivers      (fn [{:keys [edition]}]
+                   (build-drivers/build-drivers! edition))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 
@@ -77,11 +73,11 @@
 
   ([{:keys [version edition steps]
      :or   {version (version-info/current-snapshot-version)
-            edition :ce
+            edition :oss
             steps   (keys all-steps)}}]
    (u/step (format "Running build steps for %s version %s: %s"
                    (case edition
-                     :ce "Community (OSS) Edition"
+                     :oss "Community (OSS) Edition"
                      :ee "Enterprise Edition")
                    version
                    (str/join ", " (map name steps)))

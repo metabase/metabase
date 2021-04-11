@@ -2,10 +2,9 @@
   "Common test extension functionality for all SQL drivers."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]]
+            [metabase.driver :as driver]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx])
   (:import metabase.test.data.interface.FieldDefinition))

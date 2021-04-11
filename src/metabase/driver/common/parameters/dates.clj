@@ -3,12 +3,12 @@
   (:require [java-time :as t]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.params :as params]
             [metabase.query-processor.error-type :as error-type]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import java.time.temporal.Temporal))
 
@@ -38,12 +38,27 @@
 
 (defn- comparison-range
   ([t unit]
-   (comparison-range t t unit))
+   (comparison-range t t unit :day))
 
   ([start end unit]
+   (comparison-range start end unit :day))
+
+  ([start end unit resolution]
    (merge
-    (u.date/comparison-range start unit :>= {:resolution :day})
-    (u.date/comparison-range end   unit :<= {:resolution :day, :end :inclusive}))))
+    (u.date/comparison-range start unit :>= {:resolution resolution})
+    (u.date/comparison-range end   unit :<= {:resolution resolution, :end :inclusive}))))
+
+(defn- second-range
+  [start end]
+  (comparison-range start end :second :second))
+
+(defn- minute-range
+  [start end]
+  (comparison-range start end :minute :minute))
+
+(defn- hour-range
+  [start end]
+  (comparison-range start end :hour :hour))
 
 (defn- week-range [start end]
   (comparison-range start end :week))
@@ -65,15 +80,27 @@
      :end   (.atEndOfQuarter year-quarter)}))
 
 (def ^:private operations-by-date-unit
-  {"day"   {:unit-range day-range
-            :to-period  t/days}
-   "week"  {:unit-range week-range
-            :to-period  t/weeks}
-   "month" {:unit-range month-range
-            :to-period  t/months}
-   "year"  {:unit-range year-range
-            :to-period  t/years}})
+  {"second" {:unit-range second-range
+             :to-period  t/seconds}
+   "minute" {:unit-range minute-range
+             :to-period  t/minutes}
+   "hour"   {:unit-range hour-range
+             :to-period  t/hours}
+   "day"    {:unit-range day-range
+             :to-period  t/days}
+   "week"   {:unit-range week-range
+             :to-period  t/weeks}
+   "month"  {:unit-range month-range
+             :to-period  t/months}
+   "year"   {:unit-range year-range
+             :to-period  t/years}})
 
+(defn- maybe-reduce-resolution [unit dt]
+  (if
+    (contains? #{"second" "minute" "hour"} unit)
+    dt
+    ; for units that are a day or longer, convert back to LocalDate
+    (t/local-date dt)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DATE STRING DECODERS                                              |
@@ -111,93 +138,100 @@
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
     :range  (fn [_ dt]
-              {:start dt,
-               :end   dt})
-    :filter (fn [_ field] [:= [:datetime-field field :day] [:relative-datetime :current]])}
+              (let [dt-res (t/local-date dt)]
+                {:start dt-res,
+                 :end   dt-res}))
+    :filter (fn [_ field-clause]
+              [:= (mbql.u/with-temporal-unit field-clause :day) [:relative-datetime :current]])}
 
    {:parser #(= % "yesterday")
     :range  (fn [_ dt]
-              {:start (t/minus dt (t/days 1))
-               :end   (t/minus dt (t/days 1))})
-    :filter (fn [_ field] [:= [:datetime-field field :day] [:relative-datetime -1 :day]])}
+              (let [dt-res (t/local-date dt)]
+                {:start (t/minus dt-res (t/days 1))
+                 :end   (t/minus dt-res (t/days 1))}))
+    :filter (fn [_ field-clause]
+              [:= (mbql.u/with-temporal-unit field-clause :day) [:relative-datetime -1 :day]])}
 
    ;; adding a tilde (~) at the end of a past<n><unit> filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
    ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true})
-   {:parser (regex->parser #"past([0-9]+)(day|week|month|year)s(~?)", [:int-value :unit :include-current?])
+   {:parser (regex->parser #"past([0-9]+)(second|minute|hour|day|week|month|year)s(~?)", [:int-value :unit :include-current?])
     :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
-              (unit-range (t/minus dt (to-period int-value))
-                          (t/minus dt (to-period (if (seq include-current?) 0 1)))))
-    :filter (fn [{:keys [unit int-value include-current?]} field]
-              [:time-interval field (- int-value) (keyword unit) {:include-current (boolean (seq include-current?))}])}
+              (let [dt-res (maybe-reduce-resolution unit dt)]
+                (unit-range (t/minus dt-res (to-period int-value))
+                            (t/minus dt-res (to-period (if (seq include-current?) 0 1))))))
+    :filter (fn [{:keys [unit int-value include-current?]} field-clause]
+              [:time-interval field-clause (- int-value) (keyword unit) {:include-current (boolean (seq include-current?))}])}
 
-   {:parser (regex->parser #"next([0-9]+)(day|week|month|year)s(~?)" [:int-value :unit :include-current?])
+   {:parser (regex->parser #"next([0-9]+)(second|minute|hour|day|week|month|year)s(~?)" [:int-value :unit :include-current?])
     :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
-              (unit-range (t/plus dt (to-period (if (seq include-current?) 0 1)))
-                          (t/plus dt (to-period int-value))))
-    :filter (fn [{:keys [unit int-value]} field]
-              [:time-interval field int-value (keyword unit)])}
+              (let [dt-res (maybe-reduce-resolution unit dt)]
+                (unit-range (t/plus dt-res (to-period (if (seq include-current?) 0 1)))
+                            (t/plus dt-res (to-period int-value)))))
+    :filter (fn [{:keys [unit int-value]} field-clause]
+              [:time-interval field-clause int-value (keyword unit)])}
 
-   {:parser (regex->parser #"last(day|week|month|year)" [:unit])
-    :range  (fn [{:keys [unit-range to-period]} dt]
-              (let [last-unit (t/minus dt (to-period 1))]
+   {:parser (regex->parser #"last(second|minute|hour|day|week|month|year)" [:unit])
+    :range  (fn [{:keys [unit unit-range to-period]} dt]
+              (let [last-unit (t/minus (maybe-reduce-resolution unit dt) (to-period 1))]
                 (unit-range last-unit last-unit)))
-    :filter (fn [{:keys [unit]} field]
-              [:time-interval field :last (keyword unit)])}
+    :filter (fn [{:keys [unit]} field-clause]
+              [:time-interval field-clause :last (keyword unit)])}
 
-   {:parser (regex->parser #"this(day|week|month|year)" [:unit])
-    :range  (fn [{:keys [unit-range]} dt]
-              (unit-range dt dt))
-    :filter (fn [{:keys [unit]} field]
-              [:time-interval field :current (keyword unit)])}])
+   {:parser (regex->parser #"this(second|minute|hour|day|week|month|year)" [:unit])
+    :range  (fn [{:keys [unit unit-range]} dt]
+              (let [dt-adj (maybe-reduce-resolution unit dt)]
+                (unit-range dt-adj dt-adj)))
+    :filter (fn [{:keys [unit]} field-clause]
+              [:time-interval field-clause :current (keyword unit)])}])
 
 (defn- ->iso-8601-date [t]
   (t/format :iso-local-date t))
 
 ;; TODO - using `range->filter` so much below seems silly. Why can't we just bucket the field and use `:=` clauses?
 (defn- range->filter
-  [{:keys [start end]} field]
-  [:between [:datetime-field field :day] (->iso-8601-date start) (->iso-8601-date end)])
+  [{:keys [start end]} field-clause]
+  [:between (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date start) (->iso-8601-date end)])
 
 (def ^:private absolute-date-string-decoders
   ;; year and month
   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
     :range  (fn [{:keys [date]} _]
               (month-range date date))
-    :filter (fn [{:keys [date]} field-id-clause]
-              (range->filter (month-range date date) field-id-clause))}
+    :filter (fn [{:keys [date]} field-clause]
+              (range->filter (month-range date date) field-clause))}
    ;; quarter year
    {:parser (regex->parser #"(Q[1-4]{1})-([0-9]{4})" [:quarter :year])
     :range  (fn [{:keys [quarter year]} _]
               (quarter-range quarter (Integer/parseInt year)))
-    :filter (fn [{:keys [quarter year]} field-id-clause]
+    :filter (fn [{:keys [quarter year]} field-clause]
               (range->filter (quarter-range quarter (Integer/parseInt year))
-                             field-id-clause))}
+                             field-clause))}
    ;; single day
    {:parser (regex->parser #"([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
               {:start date, :end date})
-    :filter (fn [{:keys [date]} field-id-clause]
+    :filter (fn [{:keys [date]} field-clause]
               (let [iso8601date (->iso-8601-date date)]
-                [:= [:datetime-field field-id-clause :day] iso8601date]))}
+                [:= (mbql.u/with-temporal-unit field-clause :day) iso8601date]))}
    ;; day range
    {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
               {:start date-1, :end date-2})
-    :filter (fn [{:keys [date-1 date-2]} field-id-clause]
-              [:between [:datetime-field field-id-clause :day] (->iso-8601-date date-1) (->iso-8601-date date-2)])}
+    :filter (fn [{:keys [date-1 date-2]} field-clause]
+              [:between (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date-1) (->iso-8601-date date-2)])}
    ;; before day
    {:parser (regex->parser #"~([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
               {:end date})
-    :filter (fn [{:keys [date]} field-id-clause]
-              [:< [:datetime-field field-id-clause :day] (->iso-8601-date date)])}
+    :filter (fn [{:keys [date]} field-clause]
+              [:< (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
    ;; after day
    {:parser (regex->parser #"([0-9-T:]+)~" [:date])
     :range  (fn [{:keys [date]} _]
               {:start date})
-    :filter (fn [{:keys [date]} field-id-clause]
-              [:> [:datetime-field field-id-clause :day] (->iso-8601-date date)])}])
+    :filter (fn [{:keys [date]} field-clause]
+              [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}])
 
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
@@ -261,10 +295,10 @@
   ([date-string  :- s/Str, {:keys [inclusive-start? inclusive-end?]
                             :or   {inclusive-start? true, inclusive-end? true}}]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
-         today   (t/local-date)]
+         now (t/local-date-time)]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
      ;; days depending on the user timezone
-     (or (->> (execute-decoders relative-date-string-decoders :range today date-string)
+     (or (->> (execute-decoders relative-date-string-decoders :range now date-string)
               (adjust-inclusive-range-if-needed options)
               (m/map-vals u.date/format))
          ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
@@ -280,5 +314,5 @@
 (s/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    returns a corresponding MBQL filter clause for a given field reference."
-  [date-string :- s/Str, field :- (s/cond-pre su/IntGreaterThanZero mbql.s/Field)]
+  [date-string :- s/Str field :- (s/cond-pre su/IntGreaterThanZero mbql.s/Field)]
   (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string))

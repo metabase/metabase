@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import dc from "dc";
 import moment from "moment";
 

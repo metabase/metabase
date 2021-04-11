@@ -3,10 +3,9 @@
   (:require [build :as build]
             [metabuild-common.core :as u]
             [release.common :as c]
-            [release.common
-             [hash :as hash]
-             [http :as common.http]
-             [upload :as upload]]))
+            [release.common.hash :as hash]
+            [release.common.http :as common.http]
+            [release.common.upload :as upload]))
 
 (defn build-uberjar! []
   (u/step "Run bin/build to build uberjar"
@@ -19,8 +18,7 @@
 (defn- validate-uberjar []
   (u/step "Validate uberjar(s) on downloads.metabase.com"
     (doseq [url   [(c/artifact-download-url "metabase.jar")
-                   (when (and (= (c/edition) :ee)
-                              (c/latest-version?))
+                   (when (c/latest-version?)
                      (c/artifact-download-url "latest" "metabase.jar"))]
             :when url]
       (u/step (format "Validate %s" url)
@@ -38,11 +36,9 @@
   (u/step "Upload uberjar and validate"
     (u/step (format "Upload uberjar to %s" (c/artifact-download-url "metabase.jar"))
       (upload/upload-artifact! c/uberjar-path "metabase.jar"))
+    ;; TODO -- would be a lot faster to copy to copy s3 -> s3 instead of uploading twice
     (let [latest-download-url (c/artifact-download-url "latest" "metabase.jar")]
       (cond
-        (not= (c/edition) :ee)
-        (u/announce "Not EE build -- not uploading %s" latest-download-url)
-
         (c/pre-release-version?)
         (u/announce "Pre release version -- not uploading %s" latest-download-url)
 

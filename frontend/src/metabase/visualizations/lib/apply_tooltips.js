@@ -2,6 +2,7 @@
 
 import d3 from "d3";
 import moment from "moment";
+import { getIn } from "icepick";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -23,7 +24,7 @@ export function getClickHoverObject(
     settings,
   },
 ) {
-  let { cols } = series[0].data;
+  let { cols } = series[seriesIndex].data;
   const { card } = series[seriesIndex];
 
   const isMultiseries = series.length > 1;
@@ -31,14 +32,14 @@ export function getClickHoverObject(
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
 
-  // always format the second column as the series name?
   function getColumnDisplayName(col) {
+    const title = getIn(settings, ["series_settings", col.name, "title"]);
     // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
-    if (col === cols[1] && !isBreakoutMultiseries && seriesTitle) {
-      return seriesTitle;
-    } else {
-      return getFriendlyName(col);
+    if (!isBreakoutMultiseries && title) {
+      return title;
     }
+
+    return getFriendlyName(col);
   }
 
   let data = [];
@@ -111,8 +112,8 @@ export function getClickHoverObject(
           col: col,
         };
       });
+      dimensions = rawCols.map((column, i) => ({ column, value: rawRow[i] }));
     }
-    dimensions = rawCols.map((column, i) => ({ column, value: rawRow[i] }));
   } else if (isBreakoutMultiseries) {
     // an area doesn't have any data, but might have a breakout series to show
     const { _breakoutValue: value, _breakoutColumn: column } = card;

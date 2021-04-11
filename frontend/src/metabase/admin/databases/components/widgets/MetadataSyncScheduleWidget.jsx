@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
@@ -20,6 +21,7 @@ export default function MetadataSyncScheduleWidget({ field }) {
       scheduleOptions={["hourly", "daily"]}
       onScheduleChange={field.onChange}
       textBeforeInterval={t`Scan`}
+      minutesOnHourPicker={true}
     />
   );
 }

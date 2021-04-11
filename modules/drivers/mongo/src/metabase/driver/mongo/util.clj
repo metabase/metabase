@@ -2,17 +2,14 @@
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.driver.util :as driver.u]
             [metabase.models.database :refer [Database]]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [ssh :as ssh]]
-            [monger
-             [core :as mg]
-             [credentials :as mcred]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.ssh :as ssh]
+            [monger.core :as mg]
+            [monger.credentials :as mcred]
             [toucan.db :as db])
   (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 

@@ -1,25 +1,19 @@
 (ns metabase.driver.sqlite
   (:require [clojure.string :as str]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
-            [metabase.driver
-             [common :as driver.common]
-             [sql :as sql]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.driver.common :as driver.common]
+            [metabase.driver.sql :as sql]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.parameters.substitution :as params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util
-             [date-2 :as u.date]
-             [honeysql-extensions :as hx]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
   (:import [java.sql Connection ResultSet Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -98,6 +92,7 @@
 
 (def ^:private ->date     (partial hsql/call :date))
 (def ^:private ->datetime (partial hsql/call :datetime))
+(def ^:private ->time     (partial hsql/call :time))
 
 (defn- strftime [format-str expr]
   (hsql/call :strftime (hx/literal format-str) expr))
@@ -219,6 +214,18 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
+
+(defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (->datetime expr))
+
+(defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->Date]
+  [_driver _semantic_type expr]
+  (->date expr))
+
+(defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->Time]
+  [_driver _semantic_type expr]
+  (->time expr))
 
 ;; SQLite doesn't like Temporal values getting passed in as prepared statement args, so we need to convert them to
 ;; date literal strings instead to get things to work
@@ -361,4 +368,4 @@
         (t/local-date t))
       (catch Throwable _
         (when-let [s (.getString rs i)]
-          (u.date/parse s (qp.timezone/results-timezone-id)))))))
+          (u.date/parse s))))))

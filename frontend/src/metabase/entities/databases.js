@@ -1,9 +1,9 @@
-/* @flow weak */
-
 import { normalize } from "normalizr";
 import _ from "underscore";
 
 import { createEntity } from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls";
+import { color } from "metabase/lib/colors";
 import { fetchData, createThunkAction } from "metabase/lib/redux";
 
 import { MetabaseApi } from "metabase/services";
@@ -61,6 +61,13 @@ const Databases = createEntity({
     ),
 
     fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
+  },
+
+  objectSelectors: {
+    getName: db => db && db.name,
+    getUrl: db => db && Urls.browseDatabase(db),
+    getIcon: db => "database",
+    getColor: db => color("database"),
   },
 
   selectors: {

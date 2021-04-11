@@ -1,5 +1,3 @@
-/* @flow */
-
 import { getDefaultDrills } from "../drill";
 
 import type { QueryMode } from "metabase-types/types/Visualization";

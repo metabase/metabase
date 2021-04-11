@@ -1,4 +1,3 @@
-/* @flow */
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
@@ -30,8 +29,8 @@ type Value = any;
 type Option = any;
 
 export type LayoutRendererProps = {
-  valuesList: React$Element<any>,
-  optionsList: ?React$Element<any>,
+  valuesList: React.Element,
+  optionsList: ?React.Element,
   isFocused: boolean,
   isAllSelected: boolean,
   onClose: () => void,
@@ -57,7 +56,7 @@ type Props = {
   filterOption: (option: Option, searchValue: string) => boolean,
 
   onInputChange?: string => string,
-  onInputKeyDown?: (event: SyntheticKeyboardEvent) => void,
+  onInputKeyDown?: event => void,
   onFocus?: () => void,
   onBlur?: () => void,
 
@@ -67,9 +66,9 @@ type Props = {
   // or returns null to indicate an invalid value
   parseFreeformValue: (value: string) => ?Value,
 
-  valueRenderer: (value: Value) => React$Element<any>,
-  optionRenderer: (option: Option) => React$Element<any>,
-  layoutRenderer: (props: LayoutRendererProps) => React$Element<any>,
+  valueRenderer: (value: Value) => React.Element,
+  optionRenderer: (option: Option) => React.Element,
+  layoutRenderer: (props: LayoutRendererProps) => React.Element,
 
   style?: any,
   className?: string,
@@ -126,11 +125,11 @@ export default class TokenField extends Component {
     optionsStyle: {},
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateFilteredValues(this.props);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     this._updateFilteredValues((nextProps: Props));
   }
 
@@ -229,7 +228,7 @@ export default class TokenField extends Component {
     });
   };
 
-  onInputChange = ({ target: { value } }: SyntheticInputEvent) => {
+  onInputChange = ({ target: { value } }) => {
     const {
       updateOnInputChange,
       onInputChange,
@@ -261,7 +260,7 @@ export default class TokenField extends Component {
   };
 
   // capture events on the input to allow for convenient keyboard shortcuts
-  onInputKeyDown = (event: SyntheticKeyboardEvent) => {
+  onInputKeyDown = event => {
     if (this.props.onInputKeyDown) {
       this.props.onInputKeyDown(event);
     }
@@ -342,7 +341,7 @@ export default class TokenField extends Component {
     this.setState({ isFocused: false });
   };
 
-  onInputPaste = (e: SyntheticClipboardEvent) => {
+  onInputPaste = e => {
     if (this.props.parseFreeformValue) {
       e.preventDefault();
       const string = e.clipboardData.getData("Text");
@@ -358,7 +357,7 @@ export default class TokenField extends Component {
     }
   };
 
-  onMouseDownCapture = (e: SyntheticMouseEvent) => {
+  onMouseDownCapture = e => {
     const input = findDOMNode(this.refs.input);
     input.focus();
     // prevents clicks from blurring input while still allowing text selection:
@@ -371,7 +370,7 @@ export default class TokenField extends Component {
     this.setState({ isFocused: false });
   };
 
-  addSelectedOption(e: SyntheticKeyboardEvent) {
+  addSelectedOption(e) {
     const { multi } = this.props;
     const { filteredOptions, selectedOptionValue } = this.state;
     const input = findDOMNode(this.refs.input);
@@ -542,7 +541,8 @@ export default class TokenField extends Component {
         {value.map((v, index) => (
           <li
             key={index}
-            className={cx("flex align-center mr1 mb1 p1 rounded bg-medium")}
+            className={cx("flex align-center mr1 mb1 px1 rounded bg-medium")}
+            style={{ paddingTop: "12px", paddingBottom: "12px" }}
           >
             <span
               style={{ ...defaultStyleValue, ...valueStyle }}
@@ -552,14 +552,14 @@ export default class TokenField extends Component {
             </span>
             {multi && (
               <a
-                className="text-medium text-default-hover px1"
+                className="text-medium flex align-center text-error-hover px1"
                 onClick={e => {
                   e.preventDefault();
                   this.removeValue(v);
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
-                <Icon name="close" size={12} />
+                <Icon name="close" className="flex align-center" size={12} />
               </a>
             )}
           </li>

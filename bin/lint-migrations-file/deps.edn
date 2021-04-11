@@ -1,0 +1,11 @@
+{:paths ["src"]
+
+ :deps
+ {io.forward/yaml      {:mvn/version "1.0.9"}  ; don't upgrade to 1.0.10 -- doesn't work on Java 8 (!)
+  org.flatland/ordered {:mvn/version "1.5.9"}} ; used by io.forward/yaml -- need the newer version
+
+ :aliases
+ {:test {:extra-paths ["test"]
+         :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
+                                                  :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}}
+         :main-opts   ["-m" "cognitect.test-runner"]}}}

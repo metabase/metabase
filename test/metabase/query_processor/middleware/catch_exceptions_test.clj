@@ -1,15 +1,12 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as group]]
-            [metabase.query-processor
-             [context :as context]
-             [error-type :as error-type]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util.log :as tu.log]
@@ -143,7 +140,7 @@
       (perms/grant-native-readwrite-permissions! (group/all-users) (data/id))
       ;; this is not actually a valid query
       (is (schema= {:native       (s/eq {:query  (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') "
-                                                      "AS \"ID\" FROM \"PUBLIC\".\"VENUES\" LIMIT 1048576")
+                                                      "AS \"ID\" FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
                                          :params nil})
                     :preprocessed (s/pred map?)
                     s/Any         s/Any}

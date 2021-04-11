@@ -19,6 +19,9 @@ export const TEST_PULSE = "TEST_PULSE";
 export const FETCH_PULSE_FORM_INPUT = "FETCH_PULSE_FORM_INPUT";
 export const FETCH_PULSE_CARD_PREVIEW = "FETCH_PULSE_CARD_PREVIEW";
 
+export const FETCH_PULSE_LIST_BY_DASHBOARD_ID =
+  "FETCH_PULSE_LIST_BY_DASHBOARD_ID";
+
 export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(
   id,
   initialCollectionId = null,
@@ -90,6 +93,15 @@ export const fetchPulseCardPreview = createThunkAction(
   function(id) {
     return async function(dispatch, getState) {
       return await PulseApi.preview_card({ id: id });
+    };
+  },
+);
+
+export const fetchPulsesByDashboardId = createThunkAction(
+  FETCH_PULSE_LIST_BY_DASHBOARD_ID,
+  function(dashboard_id) {
+    return async function(dispatch, getState) {
+      return await PulseApi.list({ dashboard_id: dashboard_id });
     };
   },
 );

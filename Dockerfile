@@ -1,58 +1,80 @@
 ###################
-# STAGE 1: builder
+# STAGE 1.1: builder frontend
 ###################
 
-# Build currently doesn't work on > Java 11 (i18n utils are busted) so build on 8 until we fix this
-FROM adoptopenjdk/openjdk8:alpine as builder
+FROM node:12.20.1-alpine as frontend
 
 WORKDIR /app/source
 
-ENV FC_LANG en-US
-ENV LC_CTYPE en_US.UTF-8
+ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
+
+# frontend dependencies
+COPY yarn.lock package.json .yarnrc ./
+RUN yarn install --frozen-lockfile
+
+###################
+# STAGE 1.2: builder backend
+###################
+
+FROM adoptopenjdk/openjdk11:alpine as backend
+
+WORKDIR /app/source
+
+ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # bash:    various shell scripts
-# wget:    installing lein (TODO -- is this actually needed? We don't use wget directly)
+# curl:    needed by script that installs Clojure CLI
+
+RUN apk add --no-cache curl bash
+
+# lein:    backend dependencies and building
+RUN curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -o /usr/local/bin/lein && \
+  chmod +x /usr/local/bin/lein && \
+  /usr/local/bin/lein upgrade
+
+# backend dependencies
+COPY project.clj .
+RUN lein deps
+
+###################
+# STAGE 1.3: main builder
+###################
+
+FROM adoptopenjdk/openjdk11:alpine as builder
+
+ARG MB_EDITION=oss
+
+WORKDIR /app/source
+
+ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
+
+# bash:    various shell scripts
 # curl:    needed by script that installs Clojure CLI
 # git:     ./bin/version
 # yarn:    frontend building
-# make:    backend building (TODO -- huh? We don't use Make to build the backend)
-# gettext: translations
 # java-cacerts: installs updated cacerts to /etc/ssl/certs/java/cacerts
 
-RUN apk add --update coreutils bash yarn git wget curl make gettext java-cacerts
+RUN apk add --no-cache coreutils bash yarn git curl java-cacerts
 
 # lein:    backend dependencies and building
-ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
-RUN chmod 744 /usr/local/bin/lein
-RUN lein upgrade
+RUN curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -o /usr/local/bin/lein && \
+  chmod +x /usr/local/bin/lein && \
+  /usr/local/bin/lein upgrade
 
 # Clojure CLI (needed for some build scripts)
-ADD https://download.clojure.org/install/linux-install-1.10.1.708.sh /tmp/linux-install-1.10.1.708.sh
-RUN chmod +x /tmp/linux-install-1.10.1.708.sh
-RUN /tmp/linux-install-1.10.1.708.sh
+RUN curl https://download.clojure.org/install/linux-install-1.10.1.708.sh -o /tmp/linux-install-1.10.1.708.sh && \
+  chmod +x /tmp/linux-install-1.10.1.708.sh && \
+  sh /tmp/linux-install-1.10.1.708.sh
 
-# install dependencies before adding the rest of the source to maximize caching
-
-# backend dependencies
-ADD project.clj .
-RUN lein deps
-
-# frontend dependencies
-ADD yarn.lock package.json .yarnrc ./
-RUN yarn
+COPY --from=frontend /app/source/. .
+COPY --from=backend /app/source/. .
+COPY --from=backend /root/. /root/
 
 # add the rest of the source
-ADD . .
+COPY . .
 
 # build the app
-RUN INTERACTIVE=false bin/build
-
-# import AWS RDS cert into /etc/ssl/certs/java/cacerts
-ADD https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem .
-RUN keytool -noprompt -import -trustcacerts -alias aws-rds \
-  -file rds-combined-ca-bundle.pem \
-  -keystore /etc/ssl/certs/java/cacerts \
-  -keypass changeit -storepass changeit
+RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build
 
 # ###################
 # # STAGE 2: runner
@@ -62,11 +84,17 @@ FROM adoptopenjdk/openjdk11:alpine-jre as runner
 
 WORKDIR /app
 
-ENV FC_LANG en-US
-ENV LC_CTYPE en_US.UTF-8
+ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add --update bash ttf-dejavu fontconfig
+RUN apk -U upgrade &&  \
+    apk add --update --no-cache bash ttf-dejavu fontconfig curl java-cacerts && \
+    mkdir -p /app/certs && \
+    curl https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem -o /app/certs/rds-combined-ca-bundle.pem  && \
+    /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias aws-rds -file /app/certs/rds-combined-ca-bundle.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
+    curl https://cacerts.digicert.com/DigiCertGlobalRootG2.crt.pem -o /app/certs/DigiCertGlobalRootG2.crt.pem  && \
+    /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias azure-cert -file /app/certs/DigiCertGlobalRootG2.crt.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
+    mkdir -p /plugins && chmod a+rwx /plugins
 
 # add fixed cacerts
 COPY --from=builder /etc/ssl/certs/java/cacerts /opt/java/openjdk/lib/security/cacerts
@@ -75,10 +103,6 @@ COPY --from=builder /etc/ssl/certs/java/cacerts /opt/java/openjdk/lib/security/c
 RUN mkdir -p bin target/uberjar
 COPY --from=builder /app/source/target/uberjar/metabase.jar /app/target/uberjar/
 COPY --from=builder /app/source/bin/start /app/bin/
-
-# create the plugins directory, with writable permissions
-RUN mkdir -p /plugins
-RUN chmod a+rwx /plugins
 
 # expose our default runtime port
 EXPOSE 3000

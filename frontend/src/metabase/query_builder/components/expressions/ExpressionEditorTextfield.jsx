@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -24,6 +25,7 @@ import {
   KEYCODE_DOWN,
 } from "metabase/lib/keyboard";
 
+import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -61,14 +63,14 @@ const HelpText = ({ helpText, width }) =>
             <p className="mt1 text-bold">{description}</p>
           </div>
         ))}
-        <a
+        <ExternalLink
           className="link text-bold block my1"
           target="_blank"
           href={MetabaseSettings.docsUrl("users-guide/expressions")}
         >
           <Icon name="reference" size={12} className="mr1" />
           {t`Learn more`}
-        </a>
+        </ExternalLink>
       </div>
     </Popover>
   ) : null;
@@ -108,6 +110,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
+    onBlankChange: PropTypes.func,
   };
 
   static defaultProps = {
@@ -123,11 +126,11 @@ export default class ExpressionEditorTextfield extends React.Component {
     };
   }
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     // we only refresh our state if we had no previous state OR if our expression changed
     if (!this.state || !_.isEqual(this.props.expression, newProps.expression)) {
       const parserOptions = this._getParserOptions(newProps);
@@ -235,6 +238,8 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   onInputBlur = () => {
     this.clearSuggestions();
+    const { compileError } = this.state;
+    this.setState({ displayCompileError: compileError });
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (this.state.expression) {
@@ -297,6 +302,9 @@ export default class ExpressionEditorTextfield extends React.Component {
         };
 
     const isValid = expression !== undefined;
+    if (this.props.onBlankChange) {
+      this.props.onBlankChange(source.length === 0);
+    }
     // don't show suggestions if
     // * there's a selection
     // * we're at the end of a valid expression, unless the user has typed another space
@@ -308,15 +316,31 @@ export default class ExpressionEditorTextfield extends React.Component {
       expression,
       syntaxTree,
       compileError,
+      displayCompileError: null,
       suggestions: showSuggestions ? suggestions : [],
       helpText,
       highlightedSuggestionIndex: 0,
     });
+
+    if (!source || source.length <= 0) {
+      const { suggestions } = this._processSource({
+        source,
+        targetOffset,
+        ...this._getParserOptions(),
+      });
+      this.setState({ suggestions });
+    }
   }
 
   render() {
     const { placeholder } = this.props;
-    const { compileError, source, suggestions, syntaxTree } = this.state;
+    const {
+      compileError,
+      displayCompileError,
+      source,
+      suggestions,
+      syntaxTree,
+    } = this.state;
 
     const inputClassName = cx("input text-bold text-monospace", {
       "text-dark": source,
@@ -342,7 +366,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           className={cx(inputClassName, {
             "border-error": compileError,
           })}
-          style={{ ...inputStyle, paddingLeft: 26 }}
+          style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
           placeholder={placeholder}
           value={source}
           syntaxTree={syntaxTree}
@@ -354,7 +378,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           onClick={this.onInputClick}
           autoFocus
         />
-        <Errors compileError={compileError} />
+        <Errors compileError={displayCompileError} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
         <ExpressionEditorSuggestions
           suggestions={suggestions}

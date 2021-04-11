@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/cypress";
 
 function typeField(label, value) {
   cy.findByLabelText(label)
@@ -15,10 +15,9 @@ function toggleFieldWithDisplayName(displayName) {
 }
 
 describe("scenarios > admin > databases > add", () => {
-  before(restore);
-
   beforeEach(() => {
-    signInAsAdmin();
+    restore();
+    cy.signInAsAdmin();
     cy.server();
   });
 
@@ -32,31 +31,64 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
+    // Instead of bloating our test suite with a separate repro, this line will do
+    cy.log(
+      "**Repro for [metabase#14334](https://github.com/metabase/metabase/issues/14334)**",
+    );
+    cy.findByLabelText(
+      "Automatically run queries when doing simple filtering and summarizing",
+    ).should("have.attr", "aria-checked", "true");
+
     typeField("Name", "Test db name");
+    typeField("Host", "localhost");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.findByText("Save")
+    cy.findByRole("button", { name: "Save" })
       .should("not.be.disabled")
       .click();
 
     cy.wait("@createDatabase");
-
     cy.url().should("match", /\/admin\/databases\?created=42$/);
   });
 
+  it("should trim fields needed to connect to the database", () => {
+    cy.route("POST", "/api/database", { id: 42 }).as("createDatabase");
+
+    cy.visit("/admin/databases/create");
+
+    typeField("Name", "Test db name");
+    typeField("Host", "localhost  \n  ");
+    typeField("Database name", " test_postgres_db");
+    typeField("Username", "   uberadmin   ");
+
+    cy.findByText("Save").click();
+
+    cy.wait("@createDatabase").then(({ request }) => {
+      expect(request.body.details.host).to.equal("localhost");
+      expect(request.body.details.dbname).to.equal("test_postgres_db");
+      expect(request.body.details.user).to.equal("uberadmin");
+    });
+  });
+
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
+    cy.route("POST", "/api/database").as("createDatabase");
+
     cy.visit("/admin/databases/create");
 
     typeField("Name", "Test db name");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.findByText("Save").should("not.be.disabled");
+    cy.findByRole("button", { name: "Save" })
+      .should("not.be.disabled")
+      .click();
+
+    cy.wait("@createDatabase");
 
     toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
 
-    cy.findByText("Next")
+    cy.findByRole("button", { name: "Next" })
       .should("not.be.disabled")
       .click();
 
@@ -75,17 +107,17 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.findByText("Save").should("not.be.disabled");
+    cy.findByRole("button", { name: "Save" }).should("not.be.disabled");
 
     toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
 
-    cy.findByText("Next")
+    cy.findByRole("button", { name: "Next" })
       .should("not.be.disabled")
       .click();
 
     cy.findByText("Never, I'll do this manually if I need to").click();
 
-    cy.findByText("Save").click();
+    cy.findByRole("button", { name: "Save" }).click();
 
     cy.wait("@createDatabase").then(({ request }) => {
       expect(request.body.engine).to.equal("postgres");
@@ -94,8 +126,7 @@ describe("scenarios > admin > databases > add", () => {
     });
 
     cy.url().should("match", /\/admin\/databases\?created=42$/);
-
-    cy.findByText("Your database has been added!").should("exist");
+    cy.findByText("Your database has been added!");
   });
 
   it("should show error correctly on server error", () => {
@@ -113,10 +144,9 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.findByText("Save").click();
+    cy.findByRole("button", { name: "Save" }).click();
 
     cy.wait("@createDatabase");
-
     cy.findByText("DATABASE CONNECTION ERROR").should("exist");
   });
 
@@ -160,7 +190,7 @@ describe("scenarios > admin > databases > add", () => {
       }).as("createDatabase");
 
       // submit form and check that the file's body is included
-      cy.contains("Save").click();
+      cy.findByRole("button", { name: "Save" }).click();
       cy.wait("@createDatabase").should(xhr => {
         expect(xhr.request.body.details["service-account-json"]).to.equal(
           '{"foo": 123}',
@@ -190,8 +220,30 @@ describe("scenarios > admin > databases > add", () => {
       cy.visit("/admin/databases/123");
 
       cy.contains("Connect to a Service Account instead");
-
       cy.contains("generate a Client ID and Client Secret for your project");
+    });
+  });
+
+  describe("Google Analytics ", () => {
+    it("should generate well-formed external auth URLs", () => {
+      cy.visit("/admin/databases/create");
+      cy.contains("Database type")
+        .parents(".Form-field")
+        .find(".AdminSelect")
+        .click();
+      popover()
+        .contains("Google Analytics")
+        .click({ force: true });
+
+      typeField("Client ID", "   999  ");
+
+      cy.findByText("get an auth code", { exact: false })
+        .findByRole("link")
+        .then(el => {
+          expect(el.attr("href")).to.equal(
+            "https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=999",
+          );
+        });
     });
   });
 });

@@ -38,6 +38,7 @@ class VisualizationError extends Component {
 
   render() {
     const { card, duration, error, className } = this.props;
+    console.log("error", error);
 
     if (error && typeof error.status === "number") {
       // Assume if the request took more than 15 seconds it was due to a timeout

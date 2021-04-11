@@ -27,7 +27,7 @@
 
 (defn- delete-metabase-core-install! []
   (u/step "Delete local installation of metabase-core"
-    (u/delete-file! metabase-core-install-path)))
+    (u/delete-file-if-exists! metabase-core-install-path)))
 
 (defn- install-metabase-core! []
   (u/step "Install metabase-core locally if needed"
@@ -57,12 +57,12 @@
 
 (defn- delete-metabase-uberjar! []
   (u/step "Delete exist metabase uberjar"
-    (u/delete-file! (u/filename u/project-root-directory "target"))))
+    (u/delete-file-if-exists! (u/filename u/project-root-directory "target"))))
 
 (defn- build-metabase-uberjar! []
   (u/step "Build Metabase uberjar if needed"
     (if (uberjar-checksum-matches?)
-      (u/announce "Update-to-date uberjar already built")
+      (u/announce "Update-to-date Metabase uberjar already built")
       (do
         (delete-metabase-uberjar!)
         (u/sh {:dir u/project-root-directory} "lein" "clean")

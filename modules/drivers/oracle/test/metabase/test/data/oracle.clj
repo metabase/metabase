@@ -1,19 +1,15 @@
 (ns metabase.test.data.oracle
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [honeysql.format :as hformat]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]
-             [sql-jdbc :as sql-jdbc.tx]]
-            [metabase.test.data.sql-jdbc
-             [execute :as execute]
-             [load-data :as load-data]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+            [metabase.test.data.sql-jdbc.execute :as execute]
+            [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]))
 
@@ -40,7 +36,8 @@
     :port     (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
     :user     (tx/db-test-env-var-or-throw :oracle :user)
     :password (tx/db-test-env-var-or-throw :oracle :password)
-    :sid      (tx/db-test-env-var-or-throw :oracle :sid)}))
+    :sid      (tx/db-test-env-var-or-throw :oracle :sid)
+    :ssl      (tx/db-test-env-var :oracle :ssl false)}))
 
 (defmethod tx/dbdef->connection-details :oracle [& _] @connection-details)
 
@@ -97,7 +94,7 @@
 
 (defmethod load-data/load-data! :oracle
   [driver dbdef tabledef]
-  (load-data/load-data-add-ids! driver dbdef tabledef))
+  (load-data/load-data-add-ids-chunked! driver dbdef tabledef))
 
 (defmethod tx/has-questionable-timezone-support? :oracle [_] true)
 
@@ -146,7 +143,7 @@
    (non-session-schemas)))
 
 
-;;; Clear out the sesion schema before and after tests run
+;;; Clear out the session schema before and after tests run
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (defn- execute! [format-string & args]
   (let [sql (apply format format-string args)]

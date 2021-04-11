@@ -2,23 +2,19 @@
   (:require [clj-http.client :as http]
             [clojure.core.async :as a]
             [clojure.test :refer :all]
-            [expectations :refer [expect]]
+            [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver
-             [presto :as presto]
-             [util :as driver.u]]
+            [metabase.driver :as driver]
+            [metabase.driver.presto :as presto]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
+            [metabase.driver.util :as driver.u]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 
@@ -129,22 +125,23 @@
                      (constantly conj)))))))
 
 
-;;; APPLY-PAGE
-(expect
-  {:select ["name" "id"]
-   :from   [{:select   [[:default.categories.name "name"]
-                        [:default.categories.id "id"]
-                        [{:s "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)"} :__rownum__]]
-             :from     [:default.categories]
-             :order-by [[:default.categories.id :asc]]}]
-   :where  [:> :__rownum__ 5]
-   :limit  5}
-  (sql.qp/apply-top-level-clause :presto :page
-    {:select   [[:default.categories.name "name"] [:default.categories.id "id"]]
-     :from     [:default.categories]
-     :order-by [[:default.categories.id :asc]]}
-    {:page {:page  2
-            :items 5}}))
+(deftest page-test
+  (testing ":page clause"
+    (is (= {:select ["name" "id"]
+            :from   [{:select   [[:default.categories.name "name"]
+                                 [:default.categories.id "id"]
+                                 [(hsql/raw "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)")
+                                  :__rownum__]]
+                      :from     [:default.categories]
+                      :order-by [[:default.categories.id :asc]]}]
+            :where  [:> :__rownum__ 5]
+            :limit  5}
+           (sql.qp/apply-top-level-clause :presto :page
+                                          {:select   [[:default.categories.name "name"] [:default.categories.id "id"]]
+                                           :from     [:default.categories]
+                                           :order-by [[:default.categories.id :asc]]}
+                                          {:page {:page  2
+                                                  :items 5}})))))
 
 (deftest test-connect-via-tunnel
   (testing "connection fails as expected"

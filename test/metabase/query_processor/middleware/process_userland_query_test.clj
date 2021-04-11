@@ -1,11 +1,10 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
   (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
-            [metabase.query-processor
-             [context :as context]
-             [error-type :as error-type]
-             [util :as qputil]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
+            [metabase.query-processor.util :as qputil]
             [metabase.test :as mt]))
 
 (defn- do-with-query-execution [query run]

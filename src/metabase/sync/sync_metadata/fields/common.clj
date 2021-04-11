@@ -1,12 +1,10 @@
 (ns metabase.sync.sync-metadata.fields.common
   "Schemas and functions shared by different `metabase.sync.sync-metadata.fields.*` namespaces."
   (:require [clojure.string :as str]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def ParentID
@@ -41,11 +39,11 @@
   [field]
   (str/lower-case (:name field)))
 
-(s/defn special-type :- (s/maybe su/FieldType)
-  "Determine a the appropriate `special-type` for a Field with `field-metadata`."
+(s/defn semantic-type :- (s/maybe su/FieldType)
+  "Determine a the appropriate `semantic-type` for a Field with `field-metadata`."
   [field-metadata :- (s/maybe i/TableMetadataField)]
   (and field-metadata
-       (or (:special-type field-metadata)
+       (or (:semantic-type field-metadata)
            (when (:pk? field-metadata) :type/PK))))
 
 (s/defn matching-field-metadata :- (s/maybe TableMetadataFieldWithOptionalID)

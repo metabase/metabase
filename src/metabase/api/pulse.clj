@@ -3,40 +3,40 @@
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [hiccup.core :refer [html]]
-            [metabase
-             [email :as email]
-             [events :as events]
-             [pulse :as p]
-             [query-processor :as qp]
-             [util :as u]]
             [metabase.api.common :as api]
+            [metabase.email :as email]
+            [metabase.events :as events]
             [metabase.integrations.slack :as slack]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection]
-             [interface :as mi]
-             [pulse :as pulse :refer [Pulse]]
-             [pulse-channel :refer [channel-types PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.interface :as mi]
+            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.pulse-channel :refer [channel-types PulseChannel]]
+            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.pulse :as p]
             [metabase.pulse.render :as render]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]
-             [urls :as urls]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
+            [metabase.util.urls :as urls]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import java.io.ByteArrayInputStream))
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
 
 (api/defendpoint GET "/"
   "Fetch all Pulses"
-  [archived]
-  {archived (s/maybe su/BooleanString)}
-  (as-> (pulse/retrieve-pulses {:archived? (Boolean/parseBoolean archived)}) <>
+  [archived dashboard_id]
+  {archived     (s/maybe su/BooleanString)
+   dashboard_id (s/maybe su/IntGreaterThanZero)}
+  (as-> (pulse/retrieve-pulses {:archived?    (Boolean/parseBoolean archived)
+                                :dashboard-id dashboard_id}) <>
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
@@ -44,28 +44,33 @@
   "Users can only create a pulse for `cards` they have access to."
   [cards]
   (doseq [card cards
-          :let [card-id (u/get-id card)]]
+          :let [card-id (u/the-id card)]]
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 
 (api/defendpoint POST "/"
   "Create a new `Pulse`."
-  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position]} :body}]
+  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id]} :body}]
   {name                su/NonBlankString
    cards               (su/non-empty [pulse/CoercibleToCardRef])
    channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
    collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+   collection_position (s/maybe su/IntGreaterThanZero)
+   dashboard_id        (s/maybe su/IntGreaterThanZero)}
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, make sure we have write permissions for that collection
   (collection/check-write-perms-for-collection collection_id)
+  ;; prohibit sending dashboard subs for unauthorized dashboards
+  (when dashboard_id
+    (api/write-check Dashboard dashboard_id))
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
                     :skip_if_empty       skip_if_empty
                     :collection_id       collection_id
-                    :collection_position collection_position}]
+                    :collection_position collection_position
+                    :dashboard_id        dashboard_id}]
     (db/transaction
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
       ;; check that and fix it if needed
@@ -84,12 +89,12 @@
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived], :as pulse-updates} :body}]
-  {name          (s/maybe su/NonBlankString)
-   cards         (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
-   channels      (s/maybe (su/non-empty [su/Map]))
-   skip_if_empty (s/maybe s/Bool)
-   collection_id (s/maybe su/IntGreaterThanZero)
-   archived      (s/maybe s/Bool)}
+  {name           (s/maybe su/NonBlankString)
+   cards          (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
+   channels       (s/maybe (su/non-empty [su/Map]))
+   skip_if_empty  (s/maybe s/Bool)
+   collection_id  (s/maybe su/IntGreaterThanZero)
+   archived       (s/maybe s/Bool)}
   ;; do various perms checks
   (let [pulse-before-update (api/write-check Pulse id)]
     (check-card-read-permissions cards)
@@ -147,10 +152,12 @@
 (defn- pulse-card-query-results
   {:arglists '([card])}
   [{query :dataset_query, card-id :id}]
-  (qp/process-query-and-save-execution! (assoc query :async? false)
-    {:executed-by api/*current-user-id*
-     :context     :pulse
-     :card-id     card-id}))
+  (binding [qp.perms/*card-id* card-id]
+    (qp/process-query-and-save-execution!
+     (assoc query :async? false)
+     {:executed-by api/*current-user-id*
+      :context     :pulse
+      :card-id     card-id})))
 
 (api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
@@ -193,13 +200,14 @@
 
 (api/defendpoint POST "/test"
   "Test send an unsaved pulse."
-  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position] :as body} :body}]
+  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
   {name                su/NonBlankString
    cards               (su/non-empty [pulse/CoercibleToCardRef])
    channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
    collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+   collection_position (s/maybe su/IntGreaterThanZero)
+   dashboard_id        (s/maybe su/IntGreaterThanZero)}
   (check-card-read-permissions cards)
   (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})

@@ -6,6 +6,7 @@ import { t, jt } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import InputBlurChange from "metabase/components/InputBlurChange";
+import ExternalLink from "metabase/components/ExternalLink";
 
 export default class SettingsSingleSignOnForm extends Component {
   constructor(props, context) {
@@ -23,7 +24,7 @@ export default class SettingsSingleSignOnForm extends Component {
     updateSetting: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { elements } = this.props;
     const clientID = _.findWhere(elements, { key: "google-auth-client-id" });
     const domain = _.findWhere(elements, {
@@ -121,13 +122,12 @@ export default class SettingsSingleSignOnForm extends Component {
           </p>
           <p className="text-medium">
             {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
-              <a
-                className="link"
+              <ExternalLink
                 href="https://developers.google.com/identity/sign-in/web/devconsole-project"
                 target="_blank"
               >
-                here
-              </a>
+                {t`here`}
+              </ExternalLink>
             )}.`}
           </p>
           <p className="text-medium">

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import Parameters from "metabase/parameters/components/Parameters";

@@ -31,7 +31,7 @@ For table Metadata, you can:
 
 #### Table visibility
 
-You can set tables to be **Queryable** or **Hidden**. Setting table visibility can be especially useful if you have a lot of tables in your database but your users will only be interested in a subset of those tables. Table visibility can help keep your Metabase instance tidy by hiding unnecessary tables out of the user interface. 
+You can set tables to be **Queryable** or **Hidden**. Setting table visibility can be especially useful if you have a lot of tables in your database but your users will only be interested in a subset of those tables. Table visibility can help keep your Metabase instance tidy by hiding unnecessary tables out of the user interface.
 
 Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](05-setting-permissions.md) for controlling access to data.
 
@@ -60,7 +60,7 @@ If you ever want to see the original underlying schema for a given table, just c
 
 Metabase automatically attempts to classify your columns and assign them a type, but you can also edit the metadata yourself. If Metabase misclassified any columns, you can correct those inaccurate classifications here.
 
-For each column, you can edit its: 
+For each column, you can edit its:
 
 - Name
 - Description
@@ -71,7 +71,7 @@ For each column, you can edit its:
 
 A note about **columns** and **fields**, as these terms can be used interchangeably:
 
-- A **field** is an element for storing data (e.g., the `PRODUCT_ID` field stores identification codes for products). 
+- A **field** is an element for storing data (e.g., the `PRODUCT_ID` field stores identification codes for products).
 
 - A **column** is a list of values, and most often a list of values from a single field (e.g., the `PRODUCT_ID` column stores values from the `PRODUCT_ID` field). A column can also, however, be a list of values from multiple fields. For example, a column might contain values from an expression that computes the difference of values from two different fields: a `TOTAL_WITH_DISCOUNT` column, for example, could take values from the `DISCOUNT` field and subtract them from values in the `SUBTOTAL` field, and list the difference.
 
@@ -87,7 +87,7 @@ You can include a human-readable summary of a column, its source, and use cases.
 
 #### Column visibility
 
-By default, users can see every column in a table, but you can select other visibility options: 
+By default, users can see every column in a table, but you can select other visibility options:
 
 - **Only in Detail Views**. Sets the visibility to display only when viewing a single **column** record. Useful if you have really long data in certain **columns**, like descriptions or biographies. By default, any column with an average length of longer than 50 characters is assigned this setting.
 
@@ -103,7 +103,7 @@ You can also designate a column as the table's **primary key** or **foreign key*
 
 **Types** include (organized by category):
 
-- **Special types**
+- **Semantic types**
   - **Entity Key**  The field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
   - **Entity Name**. Different from the entity key, the Entity name represents what each row in the table *is*. For example, in a Users table, the User column might be the entity name.
   - **Foreign Key**. The column in this table that (usually) refers to the primary key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
@@ -122,7 +122,7 @@ You can also designate a column as the table's **primary key** or **foreign key*
   - State
   - Zip Code
 - **Financial**
-  - Discount 
+  - Discount
   - Gross margin
   - Income
   - Price

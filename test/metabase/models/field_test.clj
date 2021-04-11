@@ -1,13 +1,15 @@
 (ns metabase.models.field-test
   "Tests for specific behavior related to the Field model."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.sync.analyze.classifiers.name :as name]))
 
-
-;;; infer-field-special-type
-(expect :type/PK       (#'name/special-type-for-name-and-base-type "id"      :type/Integer))
-;; other pattern matches based on type/regex (remember, base_type matters in matching!)
-(expect :type/Score    (#'name/special-type-for-name-and-base-type "rating"  :type/Integer))
-(expect nil            (#'name/special-type-for-name-and-base-type "rating"  :type/Boolean))
-(expect :type/Country  (#'name/special-type-for-name-and-base-type "country" :type/Text))
-(expect nil            (#'name/special-type-for-name-and-base-type "country" :type/Integer))
+(deftest semantic-type-for-name-and-base-type-test
+  (doseq [[input expected] {["id"      :type/Integer] :type/PK
+                            ;; other pattern matches based on type/regex (remember, base_type matters in matching!)
+                            ["rating"  :type/Integer] :type/Score
+                            ["rating"  :type/Boolean] nil
+                            ["country" :type/Text]    :type/Country
+                            ["country" :type/Integer] nil}]
+    (testing (pr-str (cons 'semantic-type-for-name-and-base-type input))
+      (is (= expected
+             (apply #'name/semantic-type-for-name-and-base-type input))))))

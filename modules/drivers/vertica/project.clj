@@ -7,7 +7,15 @@
   {:provided
    {:dependencies
     [[org.clojure/clojure "1.10.1"]
-     [metabase-core "1.0.0-SNAPSHOT"]]}
+     [metabase-core "1.0.0-SNAPSHOT"]
+     [com.vertica.jdbc/vertica-jdbc "10.0.1-0"]]}
+
+   :ee
+   {:dependencies
+    [[com.vertica.jdbc/vertica-jdbc "10.0.1-0"]]
+
+    :resource-paths
+    ^:replace ["resources-ee"]}
 
    :uberjar
    {:auto-clean    true

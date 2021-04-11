@@ -1,13 +1,14 @@
 (ns metabase.query-processor.async
   "Mostly legacy namespace that these days is reduced to a single util function, `result-metadata-for-query-async`. TODO
   -- Consider whether there's a place to put this to consolidate things."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.core.async :as a]
+            [clojure.tools.logging :as log]
             [metabase.api.common :as api]
             [metabase.query-processor :as qp]
-            [metabase.query-processor
-             [context :as context]
-             [interface :as qpi]
-             [util :as qputil]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
@@ -41,6 +42,12 @@
    results."
   [query]
   (binding [qpi/*disable-qp-logging* true]
+    ;; for MBQL queries we can infer the columns just by preprocessing the query.
+    (if-let [inferred-columns (not-empty (u/ignore-exceptions (qp/query->expected-cols query)))]
+      (let [chan (a/promise-chan)]
+        (a/>!! chan inferred-columns)
+        (a/close! chan)))
+    ;; for *native* queries we actually have to run it.
     (let [query (query-for-result-metadata query)]
       (qp/process-query-async query {:reducedf async-result-metadata-reducedf
                                      :raisef   async-result-metdata-raisef}))))

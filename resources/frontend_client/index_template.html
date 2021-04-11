@@ -36,7 +36,7 @@
       {{{localizationJSON}}}
     </script>
 
-    <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.middleware.security -->
+    <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.server.middleware.security -->
     <script type="text/javascript">{{{bootstrapJS}}}</script>
   </head>
 
@@ -49,7 +49,7 @@
     {{/enableGoogleAuth}}
 
     <!-- Google Analytics -->
-    <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.middleware.security -->
+    <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.server.middleware.security -->
     {{#enableAnonTracking}}
       <script type="text/javascript">{{{googleAnalyticsJS}}}</script>
     {{/enableAnonTracking}}

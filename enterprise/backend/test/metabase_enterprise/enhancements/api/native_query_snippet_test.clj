@@ -1,14 +1,12 @@
 (ns metabase-enterprise.enhancements.api.native-query-snippet-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Collection NativeQuerySnippet]]
-             [test :as mt]
-             [util :as u]]
-            [metabase.models
-             [collection :as collection]
-             [permissions :as perms]
-             [permissions-group :as group]]
+            [metabase.models :refer [Collection NativeQuerySnippet]]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
             [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))

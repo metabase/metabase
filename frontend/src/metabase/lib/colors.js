@@ -1,5 +1,3 @@
-// @flow
-
 import d3 from "d3";
 import Color from "color";
 import { Harmonizer } from "color-harmony";
@@ -29,9 +27,9 @@ const colors = {
   success: "#84BB4C",
   error: "#ED6E6E",
   warning: "#F9CF48",
-  "text-dark": "#2E353B",
-  "text-medium": "#74838f",
-  "text-light": "#C7CFD4",
+  "text-dark": "#4C5773",
+  "text-medium": "#949AAB",
+  "text-light": "#B8BBC3",
   "text-white": "#FFFFFF",
   "bg-black": "#2E353B",
   "bg-dark": "#93A1AB",
@@ -120,7 +118,7 @@ function syncDeprecatedColorFamilies() {
   normal.orange = colors["accent5"];
   normal.teal = colors["accent6"];
   normal.indigo = colors["accent7"];
-  normal.gray = colors["text-medium"];
+  normal.gray = colors["text-dark"];
   normal.grey1 = colors["text-light"];
   normal.grey2 = colors["text-medium"];
   normal.grey3 = colors["text-dark"];

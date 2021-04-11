@@ -1,9 +1,10 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
 
 import CheckBox from "metabase/components/CheckBox";
 
-const OFFSET = 4;
+const OFFSET = 3;
 
 const StackedCheckBox = ({ className, ...props }) => (
   <div className={cx(className, "relative")} style={{ transform: "scale(1)" }}>

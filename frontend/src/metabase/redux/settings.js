@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import MetabaseSettings from "metabase/lib/settings";
 
 import {

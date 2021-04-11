@@ -1,5 +1,5 @@
 (ns metabase.pulse.render.color-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
             [metabase.pulse.render.color :as color]))
 
 (def ^:private red "#ff0000")
@@ -26,23 +26,23 @@
   `(with-redefs [color/js-engine (delay (#'color/make-js-engine-with-script ~script))]
      ~@body))
 
-;; The test script above should return red on even rows, green on odd rows
-(expect
-  [red green red green]
-  (with-test-js-engine test-script
-    (let [color-selector (color/make-color-selector {:cols [{:name "test"}]
-                                               :rows [[1] [2] [3] [4]]}
-                                              {"even" red, "odd" green})]
-      (for [row-index (range 0 4)]
-        (color/get-background-color color-selector "any value" "any column" row-index)))))
+(deftest color-test
+  (testing "The test script above should return red on even rows, green on odd rows"
+    (with-test-js-engine test-script
+      (let [color-selector (color/make-color-selector {:cols [{:name "test"}]
+                                                       :rows [[1] [2] [3] [4]]}
+                                                      {"even" red, "odd" green})]
+        (is (= [red green red green]
+               (for [row-index (range 0 4)]
+                 (color/get-background-color color-selector "any value" "any column" row-index))))))))
 
-;; Same test as above, but make sure we convert any keywords as keywords don't get converted to strings automatically
-;; when passed to a nashorn function
-(expect
-  [red green red green]
-  (with-test-js-engine test-script
-    (let [color-selector (color/make-color-selector {:cols [{:name "test"}]
-                                               :rows [[1] [2] [3] [4]]}
-                                              {:even red, :odd  green})]
-      (for [row-index (range 0 4)]
-        (color/get-background-color color-selector "any value" "any column" row-index)))))
+(deftest convert-keywords-test
+  (testing (str "Same test as above, but make sure we convert any keywords as keywords don't get converted to "
+                "strings automatically when passed to a nashorn function")
+    (with-test-js-engine test-script
+      (let [color-selector (color/make-color-selector {:cols [{:name "test"}]
+                                                       :rows [[1] [2] [3] [4]]}
+                                                      {:even red, :odd  green})]
+        (is (= [red green red green]
+               (for [row-index (range 0 4)]
+                 (color/get-background-color color-selector "any value" "any column" row-index))))))))

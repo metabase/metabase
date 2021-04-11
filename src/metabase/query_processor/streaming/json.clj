@@ -3,9 +3,8 @@
   response with all the metadata for `:api`."
   (:require [cheshire.core :as json]
             [java-time :as t]
-            [metabase.query-processor.streaming
-             [common :as common]
-             [interface :as i]]
+            [metabase.query-processor.streaming.common :as common]
+            [metabase.query-processor.streaming.interface :as i]
             [metabase.util.date-2 :as u.date])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets))
@@ -23,6 +22,8 @@
         col-names (volatile! nil)]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
+        ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
+        ;; probably going to be parsed programatically
         (vreset! col-names (mapv (some-fn :display_name :name) cols))
         (.write writer "[\n"))
 

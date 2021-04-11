@@ -1,22 +1,25 @@
 import {
-  signInAsAdmin,
   restore,
-  withSampleDataset,
   withDatabase,
   visitAlias,
   popover,
 } from "__support__/cypress";
 
-describe("scenarios > admin > datamodel > field", () => {
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+
+// [quarantine] - intermittently failing, possibly due to a "flickering" element (re-rendering)
+describe.skip("scenarios > admin > datamodel > field", () => {
   beforeEach(() => {
-    signInAsAdmin();
-    withSampleDataset(({ ORDERS, ORDERS_ID }) => {
-      ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
-        cy.wrap(
-          `/admin/datamodel/database/1/table/${ORDERS_ID}/${ORDERS[name]}/general`,
-        ).as(`ORDERS_${name}_URL`);
-      });
+    cy.signInAsAdmin();
+
+    ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
+      cy.wrap(
+        `/admin/datamodel/database/1/table/${ORDERS_ID}/${ORDERS[name]}/general`,
+      ).as(`ORDERS_${name}_URL`);
     });
+
     cy.server();
     cy.route("PUT", "/api/field/*").as("fieldUpdate");
     cy.route("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
@@ -73,21 +76,21 @@ describe("scenarios > admin > datamodel > field", () => {
   describe("Field Type", () => {
     before(restore);
 
-    it("lets you change the type to 'No special type'", () => {
+    it("lets you change the type to 'No semantic type'", () => {
       visitAlias("@ORDERS_PRODUCT_ID_URL");
 
       cy.contains("Foreign Key").click();
-      cy.contains("No special type").click({ force: true });
+      cy.contains("No semantic type").click({ force: true });
       cy.wait("@fieldUpdate");
 
       cy.reload();
-      cy.contains("No special type");
+      cy.contains("No semantic type");
     });
 
     it("lets you change the type to 'Number'", () => {
       visitAlias("@ORDERS_PRODUCT_ID_URL");
 
-      cy.contains("No special type").click();
+      cy.contains("No semantic type").click();
       cy.contains("Number").click({ force: true });
       cy.wait("@fieldUpdate");
 
@@ -147,7 +150,7 @@ describe("scenarios > admin > datamodel > field", () => {
     // [quarantined]: flake, blocking 3rd party PR
     it.skip("allows 'Custom mapping' null values", () => {
       restore("withSqlite");
-      signInAsAdmin();
+      cy.signInAsAdmin();
       const dbId = 2;
       withDatabase(
         dbId,

@@ -1,15 +1,12 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
-
-import StaticParameterWidget from "./ParameterWidget";
-import Icon from "metabase/components/Icon";
-
-import { getMetadata } from "metabase/selectors/metadata";
-
 import querystring from "querystring";
-import cx from "classnames";
+
+import ParametersList from "metabase/parameters/components/ParametersList";
+import { collateParametersWithValues } from "metabase/meta/Parameter";
+import { getMetadata } from "metabase/selectors/metadata";
+import Dimension from "metabase-lib/lib/Dimension";
 
 import type { QueryParams } from "metabase-types/types";
 import type {
@@ -18,9 +15,7 @@ import type {
   ParameterValues,
   ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
-
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
-import Dimension from "metabase-lib/lib/Dimension";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
@@ -60,11 +55,15 @@ export default class Parameters extends Component {
 
   defaultProps = {
     syncQueryString: false,
-    vertical: false,
-    commitImmediately: false,
   };
 
-  componentWillMount() {
+  constructor(props) {
+    super(props);
+
+    this.setParameterValuesFromQueryParamOrDefault();
+  }
+
+  setParameterValuesFromQueryParamOrDefault() {
     // sync parameters from URL query string
     const { parameters, setParameterValue, query, metadata } = this.props;
     if (setParameterValue) {
@@ -82,7 +81,7 @@ export default class Parameters extends Component {
             // widget, we should start with an array to match.
             value = [value];
           }
-          // field IDs can be either ["field-id", <id>] or ["field-literal", <name>, <type>]
+          // field IDs can be either ["field", <integer-id>, <options>] or ["field", <string-name>, <options>]
           const fieldIds = parameter.field_ids || [];
           const fields = fieldIds.map(
             id =>
@@ -97,10 +96,15 @@ export default class Parameters extends Component {
   }
 
   componentDidUpdate() {
+    const { parameters, parameterValues } = this.props;
+
     if (this.props.syncQueryString) {
       // sync parameters to URL query string
       const queryParams = {};
-      for (const parameter of this._parametersWithValues()) {
+      for (const parameter of collateParametersWithValues(
+        parameters,
+        parameterValues,
+      )) {
         if (parameter.value) {
           queryParams[parameter.slug] = parameter.value;
         }
@@ -119,142 +123,55 @@ export default class Parameters extends Component {
     }
   }
 
-  _parametersWithValues() {
-    const { parameters, parameterValues } = this.props;
-    if (parameterValues) {
-      return parameters.map(p => ({
-        ...p,
-        value: parameterValues[p.id],
-      }));
-    } else {
-      return parameters;
-    }
-  }
-
-  handleSortStart = () => {
-    document.body.classList.add("grabbing");
-  };
-
-  handleSortEnd = ({
-    oldIndex,
-    newIndex,
-  }: {
-    oldIndex: number,
-    newIndex: number,
-  }) => {
-    document.body.classList.remove("grabbing");
-    const { parameters, setParameterIndex } = this.props;
-    if (setParameterIndex) {
-      setParameterIndex(parameters[oldIndex].id, newIndex);
-    }
-  };
-
   render() {
     const {
       className,
+
+      parameters,
+      dashboard,
       editingParameter,
-      setEditingParameter,
-      isEditing,
+      parameterValues,
+
       isFullscreen,
       isNightMode,
       hideParameters,
+      isEditing,
       isQB,
+      vertical,
+      commitImmediately,
+
       setParameterName,
       setParameterValue,
       setParameterDefaultValue,
       setParameterIndex,
       removeParameter,
-      vertical,
-      commitImmediately,
+      setEditingParameter,
     } = this.props;
 
-    const hiddenParameters = new Set((hideParameters || "").split(","));
-
-    const parameters = this._parametersWithValues();
-
-    let ParameterWidget;
-    let ParameterWidgetList;
-    if (isEditing) {
-      ParameterWidget = SortableParameterWidget;
-      ParameterWidgetList = SortableParameterWidgetList;
-    } else {
-      ParameterWidget = StaticParameterWidget;
-      ParameterWidgetList = StaticParameterWidgetList;
-    }
-
     return (
-      <ParameterWidgetList
-        className={cx(
-          className,
-          "flex align-end flex-wrap",
-          vertical ? "flex-column" : "flex-row",
-          { mt1: isQB },
-        )}
-        axis="x"
-        distance={9}
-        onSortStart={this.handleSortStart}
-        onSortEnd={this.handleSortEnd}
-      >
-        {parameters
-          .filter(p => !hiddenParameters.has(p.slug))
-          .map((parameter, index) => (
-            <ParameterWidget
-              key={parameter.id}
-              className={cx({ mb2: vertical })}
-              isEditing={isEditing}
-              isFullscreen={isFullscreen}
-              isNightMode={isNightMode}
-              parameter={parameter}
-              parameters={parameters}
-              dashboard={this.props.dashboard}
-              editingParameter={editingParameter}
-              setEditingParameter={setEditingParameter}
-              index={index}
-              setName={
-                setParameterName &&
-                (name => setParameterName(parameter.id, name))
-              }
-              setValue={
-                setParameterValue &&
-                (value => setParameterValue(parameter.id, value))
-              }
-              setDefaultValue={
-                setParameterDefaultValue &&
-                (value => setParameterDefaultValue(parameter.id, value))
-              }
-              remove={removeParameter && (() => removeParameter(parameter.id))}
-              commitImmediately={commitImmediately}
-              dragHandle={
-                isEditing && setParameterIndex ? (
-                  <SortableParameterHandle />
-                ) : null
-              }
-            />
-          ))}
-      </ParameterWidgetList>
+      <ParametersList
+        className={className}
+        parameters={parameters}
+        dashboard={dashboard}
+        editingParameter={editingParameter}
+        parameterValues={parameterValues}
+        isFullscreen={isFullscreen}
+        isNightMode={isNightMode}
+        hideParameters={hideParameters}
+        isEditing={isEditing}
+        isQB={isQB}
+        vertical={vertical}
+        commitImmediately={commitImmediately}
+        setParameterName={setParameterName}
+        setParameterValue={setParameterValue}
+        setParameterDefaultValue={setParameterDefaultValue}
+        setParameterIndex={setParameterIndex}
+        removeParameter={removeParameter}
+        setEditingParameter={setEditingParameter}
+      />
     );
   }
 }
-import {
-  SortableContainer,
-  SortableElement,
-  SortableHandle,
-} from "react-sortable-hoc";
-
-const StaticParameterWidgetList = ({ children, ...props }) => {
-  return <div {...props}>{children}</div>;
-};
-
-const SortableParameterHandle = SortableHandle(() => (
-  <div className="flex layout-centered cursor-grab text-inherit">
-    <Icon name="grabber2" size={12} />
-  </div>
-));
-
-const SortableParameterWidget = SortableElement(StaticParameterWidget);
-const SortableParameterWidgetList = SortableContainer(
-  StaticParameterWidgetList,
-);
 
 export function parseQueryParam(
   value: ParameterValueOrArray,

@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
@@ -33,7 +31,7 @@ const TICK_PERIOD = 1; // seconds
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?
  */
-export default (ComposedComponent: ReactClass<any>) =>
+export default (ComposedComponent: React.Class) =>
   connect(
     null,
     { replace },
@@ -59,7 +57,7 @@ export default (ComposedComponent: ReactClass<any>) =>
       _refreshElapsed: ?number;
       _refreshElapsedHook: ?Function;
 
-      componentWillMount() {
+      UNSAFE_componentWillMount() {
         if (screenfull.enabled) {
           document.addEventListener(
             screenfull.raw.fullscreenchange,

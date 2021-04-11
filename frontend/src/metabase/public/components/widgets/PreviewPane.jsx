@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import cx from "classnames";
@@ -11,7 +12,7 @@ export default class PreviewPane extends Component {
     };
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (nextProps.previewUrl !== this.props.previewUrl) {
       this.setState({ loading: true });
     }

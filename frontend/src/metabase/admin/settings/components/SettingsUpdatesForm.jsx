@@ -1,8 +1,15 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
+import { Flex, Box } from "grid-styled";
 import MetabaseSettings from "metabase/lib/settings";
 import SettingsSetting from "./SettingsSetting";
+
+import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
+import Icon from "metabase/components/Icon";
+import Text from "metabase/components/type/Text";
+import ExternalLink from "metabase/components/ExternalLink";
 
 export default class SettingsUpdatesForm extends Component {
   static propTypes = {
@@ -13,10 +20,15 @@ export default class SettingsUpdatesForm extends Component {
     if (MetabaseSettings.versionIsLatest()) {
       const currentVersion = MetabaseSettings.currentVersion();
       return (
-        <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
-          {jt`You're running Metabase ${formatVersion(
-            currentVersion,
-          )} which is the latest and greatest!`}
+        <div>
+          <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
+            {jt`You're running Metabase ${formatVersion(
+              currentVersion,
+            )} which is the latest and greatest!`}
+          </div>
+          {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
+            <HostingCTA />
+          )}
         </div>
       );
     } else if (MetabaseSettings.newVersionAvailable()) {
@@ -30,8 +42,8 @@ export default class SettingsUpdatesForm extends Component {
               {jt`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
               {jt`You're running ${formatVersion(currentVersion)}`}
             </span>
-            <a
-              data-metabase-event={
+            <ExternalLink
+              dataMetabaseEvent={
                 "Updates Settings; Update link clicked; " + latestVersion
               }
               className="Button Button--white Button--medium borderless"
@@ -39,17 +51,22 @@ export default class SettingsUpdatesForm extends Component {
               target="_blank"
             >
               {t`Update`}
-            </a>
+            </ExternalLink>
           </div>
 
-          <div className="text-medium">
-            <h3 className="py3 text-uppercase">{t`What's Changed:`}</h3>
+          <div
+            className="text-medium bordered rounded p2 mt2 overflow-y-scroll"
+            style={{ height: 330 }}
+          >
+            <h3 className="pb3 text-uppercase">{t`What's Changed:`}</h3>
 
             <Version version={versionInfo.latest} />
 
             {versionInfo.older &&
               versionInfo.older.map(version => <Version version={version} />)}
           </div>
+
+          {!MetabaseSettings.isHosted() && <HostingCTA />}
         </div>
       );
     } else {
@@ -104,6 +121,33 @@ function Version({ version }) {
           ))}
       </ul>
     </div>
+  );
+}
+
+function HostingCTA() {
+  return (
+    <Flex
+      justifyContent="space-between"
+      alignItems="center"
+      className="rounded bg-light mt4 text-brand py2 px1"
+    >
+      <Flex>
+        <Flex
+          className="circular bg-medium align-center justify-center ml1 mr2"
+          h={32}
+          w={52}
+        >
+          <Icon name="cloud" size={24} />
+        </Flex>
+        <div>
+          <Text className="text-brand mb0">{t`Want to have upgrades taken care of for you?`}</Text>
+          <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
+        </div>
+      </Flex>
+      <Box className="pr1">
+        <HostingInfoLink text={t`Learn more`} />
+      </Box>
+    </Flex>
   );
 }
 

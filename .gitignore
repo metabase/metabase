@@ -49,6 +49,7 @@
 /resources/frontend_client/embed.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
+/resources/i18n/*.edn
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
 /resources/version.properties
@@ -73,3 +74,11 @@ target/checksum.txt
 xcshareddata
 xcuserdata
 dev/src/dev/nocommit/
+*~
+**/cypress_sample_dataset.json
+/frontend/src/cljs
+.shadow-cljs
+
+# lsp: ignore all but the config file
+.lsp/*
+!.lsp/config.edn

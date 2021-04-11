@@ -75,6 +75,7 @@ export default {
   },
   user: {
     fields: [...DETAILS_FORM_FIELDS(), LOCALE_FIELD],
+    disablePristineSubmit: true,
   },
   setup: () => ({
     fields: [

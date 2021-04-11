@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
@@ -195,13 +193,15 @@ export default class PieChart extends Component {
   };
 
   componentDidUpdate() {
-    const groupElement = ReactDOM.findDOMNode(this.refs.group);
-    const detailElement = ReactDOM.findDOMNode(this.refs.detail);
-    if (groupElement.getBoundingClientRect().width < 120) {
-      detailElement.classList.add("hide");
-    } else {
-      detailElement.classList.remove("hide");
-    }
+    requestAnimationFrame(() => {
+      const groupElement = ReactDOM.findDOMNode(this.refs.group);
+      const detailElement = ReactDOM.findDOMNode(this.refs.detail);
+      if (groupElement.getBoundingClientRect().width < 120) {
+        detailElement.classList.add("hide");
+      } else {
+        detailElement.classList.remove("hide");
+      }
+    });
   }
 
   render() {
@@ -288,6 +288,7 @@ export default class PieChart extends Component {
     const formatPercent = percent =>
       formatValue(percent, {
         column: cols[metricIndex],
+        number_separators: settings.column(cols[metricIndex]).number_separators,
         jsx: true,
         majorWidth: 0,
         number_style: "percent",
@@ -421,6 +422,7 @@ export default class PieChart extends Component {
         <div className={styles.ChartAndDetail}>
           <div ref="detail" className={styles.Detail}>
             <div
+              data-testid="detail-value"
               className={cx(
                 styles.Value,
                 "fullscreen-normal-text fullscreen-night-text",
@@ -439,6 +441,7 @@ export default class PieChart extends Component {
               <g ref="group" transform={`translate(50,50)`}>
                 {pie(slices).map((slice, index) => (
                   <path
+                    data-testid="slice"
                     key={index}
                     d={arc(slice)}
                     fill={slices[index].color}

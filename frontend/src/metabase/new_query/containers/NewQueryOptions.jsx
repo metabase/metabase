@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
@@ -22,6 +23,16 @@ import {
 
 import Database from "metabase/entities/databases";
 
+import type { NestedObjectKey } from "metabase/visualizations/lib/settings/nested";
+
+type Props = {
+  hasDataAccess: Boolean,
+  hasNativeWrite: Boolean,
+  prefetchTables: any,
+  prefetchDatabases: any,
+  initialKey?: NestedObjectKey,
+};
+
 const mapStateToProps = state => ({
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
@@ -43,7 +54,7 @@ const PAGE_PADDING = [1, 4];
 export default class NewQueryOptions extends Component {
   props: Props;
 
-  componentWillMount(props) {
+  UNSAFE_componentWillMount(props) {
     this.props.prefetchTables();
     this.props.prefetchDatabases();
     const { location, push } = this.props;

@@ -16,7 +16,7 @@ export default class TextDiff extends Component {
     } = this.props;
     return (
       <div>
-        "
+        &quot;
         {before != null && after != null ? (
           diffWords(before, after).map((section, index) => (
             <span>
@@ -36,7 +36,7 @@ export default class TextDiff extends Component {
         ) : (
           <strong>{after}</strong>
         )}
-        "
+        &quot;
       </div>
     );
   }

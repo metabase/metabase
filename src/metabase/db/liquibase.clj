@@ -1,4 +1,5 @@
 (ns metabase.db.liquibase
+  "High-level Clojure wrapper around relevant parts of the Liquibase API."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]

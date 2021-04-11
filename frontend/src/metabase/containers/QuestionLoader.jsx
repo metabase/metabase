@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 
@@ -19,7 +17,7 @@ type Props = {
   questionObject?: any, // FIXME: minimal card
   questionId?: ?number,
   questionHash?: ?string,
-  children?: (props: ChildProps) => React$Element<any>,
+  children?: (props: ChildProps) => React.Element,
 };
 
 /*
@@ -71,7 +69,7 @@ const QuestionLoader = ({
       children={children}
     />
   ) : // if there's a questionHash it means we're in ad-hoc land
-  questionHash != null ? (
+  questionHash != null && questionHash !== "" ? (
     <AdHocQuestionLoader questionHash={questionHash} children={children} />
   ) : // otherwise if there's a non-null questionId it means we're in saved land
   questionId != null ? (

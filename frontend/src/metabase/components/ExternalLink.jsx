@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { getUrlTarget } from "metabase/lib/dom";
@@ -6,12 +7,14 @@ const ExternalLink = ({
   href,
   target = getUrlTarget(href),
   className,
+  dataMetabaseEvent,
   children,
   ...props
 }) => (
   <a
     href={href}
     className={className || "link"}
+    data-metabase-event={dataMetabaseEvent}
     target={target}
     // prevent malicious pages from navigating us away
     rel="noopener noreferrer"

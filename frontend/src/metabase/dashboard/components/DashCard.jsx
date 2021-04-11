@@ -1,9 +1,11 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
@@ -95,10 +97,10 @@ export default class DashCard extends Component {
 
     const mainCard = {
       ...dashcard.card,
-      visualization_settings: {
-        ...dashcard.card.visualization_settings,
-        ...dashcard.visualization_settings,
-      },
+      visualization_settings: mergeSettings(
+        dashcard.card.visualization_settings,
+        dashcard.visualization_settings,
+      ),
     };
     const cards = [mainCard].concat(dashcard.series || []);
     const dashboardId = dashcard.dashboard_id;
@@ -147,7 +149,6 @@ export default class DashCard extends Component {
         className={cx(
           "Card bordered rounded flex flex-column hover-parent hover--visibility",
           {
-            "Card--recent": dashcard.isAdded,
             "Card--slow": isSlow === "usually-slow",
           },
         )}

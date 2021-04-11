@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { withRouter } from "react-router";
@@ -41,7 +42,7 @@ export default class PermissionsApp extends Component {
       confirmed: false,
     };
   }
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.initialize(this.props.load, this.props.save);
     this.props.router.setRouteLeaveHook(this.props.route, this.routerWillLeave);
   }

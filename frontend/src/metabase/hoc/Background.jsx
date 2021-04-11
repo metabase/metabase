@@ -1,10 +1,11 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 export const withBackground = className => ComposedComponent => {
   return class extends Component {
     static displayName = "BackgroundApplicator";
 
-    componentWillMount() {
+    UNSAFE_componentWillMount() {
       document.body.classList.add(className);
     }
 
@@ -29,7 +30,7 @@ export const withLogoBackground = ComposedComponent => {
     class extends Component {
       static displayName = "BackgroundApplicator";
 
-      componentWillMount() {
+      UNSAFE_componentWillMount() {
         document.body.classList.add(this.props.bgClassName);
       }
 

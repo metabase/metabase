@@ -94,6 +94,6 @@ Now go forth and start letting your data get to know each other!
 
 ---
 
-## Next: Getting reports with Pulses
+## Next: Dashboard subscriptions
 
-Pulses let you send out a group of saved questions on a schedule via email or Slack. [Get started with Pulses](10-pulses.md).
+Set up a dashboard to send updates via email or Slack with [dashboard subscriptions](dashboard-subscriptions.md).

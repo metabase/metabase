@@ -26,7 +26,7 @@
    :updated_at         true
    :active             true
    :parent_id          false
-   :special_type       nil
+   :semantic_type      nil
    :id                 true
    :last_analyzed      true
    :position           0

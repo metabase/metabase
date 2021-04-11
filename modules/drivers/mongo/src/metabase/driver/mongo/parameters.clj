@@ -1,22 +1,22 @@
 (ns metabase.driver.mongo.parameters
-  (:require [clojure
-             [string :as str]
-             [walk :as walk]]
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [java-time :as t]
             [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters
-             [dates :as date-params]
-             [parse :as parse]
-             [values :as values]]
+            [metabase.driver.common.parameters.dates :as date-params]
+            [metabase.driver.common.parameters.operators :as ops]
+            [metabase.driver.common.parameters.parse :as parse]
+            [metabase.driver.common.parameters.values :as values]
             [metabase.driver.mongo.query-processor :as mongo.qp]
-            [metabase.query-processor
-             [error-type :as error-type]
-             [store :as qp.store]]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]])
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]])
   (:import java.time.temporal.Temporal
            [metabase.driver.common.parameters CommaSeparatedNumbers Date]))
 
@@ -28,7 +28,7 @@
      t)))
 
 (defn- param-value->str
-  [{special-type :special_type, :as field} x]
+  [{coercion :coercion_strategy, :as field} x]
   (cond
     ;; sequences get converted to `$in`
     (sequential? x)
@@ -40,11 +40,11 @@
     (param-value->str field (u.date/parse (:s x)))
 
     (and (instance? Temporal x)
-         (isa? special-type :type/UNIXTimestampSeconds))
+         (isa? coercion :Coercion/UNIXSeconds->DateTime))
     (long (/ (t/to-millis-from-epoch (->utc-instant x)) 1000))
 
     (and (instance? Temporal x)
-         (isa? special-type :type/UNIXTimestampMilliseconds))
+         (isa? coercion :Coercion/UNIXMilliSeconds->DateTime))
     (t/to-millis-from-epoch (->utc-instant x))
 
     ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
@@ -59,14 +59,18 @@
     :else
     (pr-str x)))
 
-(defn- field->name [field]
+(defn- field->name
+  ([field] (field->name field true))
   ;; store parent Field(s) if needed, since `mongo.qp/field->name` attempts to look them up using the QP store
-  (letfn [(store-parent-field! [{parent-id :parent_id}]
-            (when parent-id
-              (qp.store/fetch-and-store-fields! #{parent-id})
-              (store-parent-field! (qp.store/field parent-id))))]
-    (store-parent-field! field))
-  (pr-str (mongo.qp/field->name field ".")))
+  ([field pr?]
+   (letfn [(store-parent-field! [{parent-id :parent_id}]
+             (when parent-id
+               (qp.store/fetch-and-store-fields! #{parent-id})
+               (store-parent-field! (qp.store/field parent-id))))]
+     (store-parent-field! field))
+   ;; for native parameters we serialize and don't need the extra pr
+   (cond-> (mongo.qp/field->name field ".")
+     pr? pr-str)))
 
 (defn- substitute-one-field-filter-date-range [{field :field, {param-type :type, value :value} :value}]
   (let [{:keys [start end]} (date-params/date-string->range value {:inclusive-end? false})
@@ -112,6 +116,22 @@
       (params/FieldFilter? v)
       (let [no-value? (= (:value v) params/no-value)]
         (cond
+          (ops/operator? (get-in v [:value :type]))
+          (let [param (:value v)
+                compiled-clause (-> (assoc param
+                                           :target
+                                           [:template-tag
+                                            [:field (field->name (:field v) false)
+                                             {:base-type (get-in v [:field :base_type])}]])
+                                    ops/to-clause
+                                    ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
+                                    ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
+                                    ;; desugars to [:or [:= 'field 1] ...].
+                                    mbql.u/desugar-filter-clause
+                                    wrap-value-literals/wrap-value-literals-in-mbql
+                                    mongo.qp/compile-filter
+                                    json/generate-string)]
+            [(conj acc compiled-clause) missing])
           ;; no-value field filters inside optional clauses are ignored and omitted entirely
           (and no-value? in-optional?) [acc (conj missing k)]
           ;; otherwise replace it with a {} which is the $match equivalent of 1 = 1, i.e. always true

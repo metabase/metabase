@@ -27,6 +27,14 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti syncable-schemas
+  "Return a reducible sequence of string names of schemas that should be synced for the given database. Schemas for
+  which the current DB user has no `SELECT` permissions should be filtered out. The default implementation will fetch
+  a sequence of all schema names from the JDBC database metadata and filter out any schemas in `excluded-schemas`."
+  {:added "0.39.0", :arglists '([driver ^java.sql.Connection connection ^java.sql.DatabaseMetaData metadata])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 (defmulti database-type->base-type
   "Given a native DB column type (as a keyword), return the corresponding `Field` `base-type`, which should derive from
   `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex
@@ -35,9 +43,9 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti column->special-type
-  "Attempt to determine the special-type of a field given the column name and native type. For example, the Postgres
-  driver can mark Postgres JSON type columns as `:type/SerializedJSON` special type.
+(defmulti column->semantic-type
+  "Attempt to determine the semantic-type of a field given the column name and native type. For example, the Postgres
+  driver can mark Postgres JSON type columns as `:type/SerializedJSON` semantic type.
 
   `database-type` and `column-name` will be strings."
   {:arglists '([driver database-type column-name])}
@@ -54,3 +62,18 @@
   {:arglists '([driver schema table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defmulti db-default-timezone
+  "JDBC-specific version of of `metabase.driver/db-default-timezone` that takes a `clojure.java.jdbc` connection spec
+  rather than a set of DB details. If an implementation of this method is provided, it will be used automatically in
+  the default `:sql-jdbc` implementation of `metabase.driver/db-default-timezone`.
+
+  This exists so we can reuse this code with the application database without having to create a new Connection pool
+  for the application DB."
+  {:arglists '([driver jdbc-spec])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod db-default-timezone :sql-jdbc
+  [_ _]
+  nil)

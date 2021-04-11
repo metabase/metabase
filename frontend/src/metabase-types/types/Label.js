@@ -1,5 +1,3 @@
-/* @flow */
-
 export type LabelId = number;
 
 export type Label = {

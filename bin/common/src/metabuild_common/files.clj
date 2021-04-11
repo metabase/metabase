@@ -1,12 +1,12 @@
 (ns metabuild-common.files
   (:require [clojure.string :as str]
             [environ.core :as env]
-            [metabuild-common
-             [output :as out]
-             [shell :as sh]
-             [steps :as steps]])
+            [metabuild-common.misc :as misc]
+            [metabuild-common.output :as out]
+            [metabuild-common.shell :as sh]
+            [metabuild-common.steps :as steps])
   (:import java.io.File
-           [java.nio.file Files FileVisitOption Path Paths]
+           [java.nio.file Files FileSystems FileVisitOption Path Paths]
            java.util.function.BiPredicate
            org.apache.commons.io.FileUtils))
 
@@ -120,3 +120,13 @@
     (delete-file-if-exists! dest-path)
     (sh/sh {:quiet? true} "wget" "--quiet" "--no-cache" "--output-document" dest-path url)
     (assert-file-exists dest-path)))
+
+(defn nio-path
+  "Convert a String `path` to a `java.nio.file.Path`, for use with NIO methods."
+  ^Path [^String path]
+  (.getPath (FileSystems/getDefault) path (misc/varargs String)))
+
+(defn file-size
+  "Get the size, in bytes, of the file at `path`."
+  ^Long [^String path]
+  (Files/size (nio-path path)))

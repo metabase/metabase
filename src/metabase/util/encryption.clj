@@ -1,11 +1,10 @@
 (ns metabase.util.encryption
   "Utility functions for encrypting and decrypting strings using AES256 CBC + HMAC SHA512 and the
   `MB_ENCRYPTION_SECRET_KEY` env var."
-  (:require [buddy.core
-             [codecs :as codecs]
-             [crypto :as crypto]
-             [kdf :as kdf]
-             [nonce :as nonce]]
+  (:require [buddy.core.codecs :as codecs]
+            [buddy.core.crypto :as crypto]
+            [buddy.core.kdf :as kdf]
+            [buddy.core.nonce :as nonce]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :as env]
@@ -21,14 +20,19 @@
                               :iterations 100000}) ; 100,000 iterations takes about ~160ms on my laptop
                  64))
 
+(defn validate-and-hash-secret-key
+  "Check the minimum length of the key and hash it for internal usage."
+  [^String secret-key]
+  (when-let [secret-key secret-key]
+    (when (seq secret-key)
+      (assert (>= (count secret-key) 16)
+              (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
+      (secret-key->hash secret-key))))
+
 ;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
 ;; so you have to do `^{:tag 'bytes}` instead
 (defonce ^:private ^{:tag 'bytes} default-secret-key
-  (when-let [secret-key (env/env :mb-encryption-secret-key)]
-    (when (seq secret-key)
-      (assert (>= (count secret-key) 16)
-        (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
-      (secret-key->hash secret-key))))
+  (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
 
 ;; log a nice message letting people know whether DB details encryption is enabled
 (when-not *compile-files*
@@ -79,7 +83,7 @@
 (def ^:private ^:const aes256-tag-length 32)
 (def ^:private ^:const aes256-block-size 16)
 
-(defn- possibly-encrypted-string?
+(defn possibly-encrypted-string?
   "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64
   encoded string of the correct length. The correct length is determined by the cipher's type tag and the cipher's
   block size (AES+CBC). To compute this, we need the number of bytes in the input, subtract the bytes used by the

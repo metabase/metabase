@@ -7,20 +7,17 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [events :as events]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [table :refer [Table]]
-             [task-history :refer [TaskHistory]]]
+            [metabase.events :as events]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.task-history :refer [TaskHistory]]
             [metabase.query-processor.interface :as qpi]
             [metabase.sync.interface :as i]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
@@ -58,16 +55,16 @@
   {:style/indent 2}
   [operation database-or-id f]
   (fn []
-    (when-not (contains? (@operation->db-ids operation) (u/get-id database-or-id))
+    (when-not (contains? (@operation->db-ids operation) (u/the-id database-or-id))
       (try
         ;; mark this database as currently syncing so we can prevent duplicate sync attempts (#2337)
-        (swap! operation->db-ids update operation #(conj (or % #{}) (u/get-id database-or-id)))
+        (swap! operation->db-ids update operation #(conj (or % #{}) (u/the-id database-or-id)))
         (log/debug "Sync operations in flight:" (m/filter-vals seq @operation->db-ids))
         ;; do our work
         (f)
         ;; always take the ID out of the set when we are through
         (finally
-          (swap! operation->db-ids update operation #(disj % (u/get-id database-or-id))))))))
+          (swap! operation->db-ids update operation #(disj % (u/the-id database-or-id))))))))
 
 
 (defn- with-sync-events
@@ -84,11 +81,11 @@
    (fn []
      (let [start-time    (System/nanoTime)
            tracking-hash (str (java.util.UUID/randomUUID))]
-       (events/publish-event! begin-event-name {:database_id (u/get-id database-or-id), :custom_id tracking-hash})
+       (events/publish-event! begin-event-name {:database_id (u/the-id database-or-id), :custom_id tracking-hash})
        (let [return        (f)
              total-time-ms (int (/ (- (System/nanoTime) start-time)
                                    1000000.0))]
-         (events/publish-event! end-event-name {:database_id  (u/get-id database-or-id)
+         (events/publish-event! end-event-name {:database_id  (u/the-id database-or-id)
                                                 :custom_id    tracking-hash
                                                 :running_time total-time-ms})
          return)))))
@@ -138,6 +135,11 @@
     (driver/sync-in-context (driver.u/database->driver database) database
       f)))
 
+(def ^:private exception-classes-not-to-retry
+  ;;TODO: future, expand this to `driver` level, where the drivers themselves can add to the
+  ;; list of exception classes (like, driver-specific exceptions)
+  [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException
+   com.mchange.v2.resourcepool.CannotAcquireResourceException])
 
 (defn do-with-error-handling
   "Internal implementation of `with-error-handling`; use that instead of calling this directly."
@@ -147,13 +149,16 @@
   ([message f]
    (try
      (f)
-     (catch Throwable e
-       (log/error e message)
-       e))))
+     (catch Throwable t
+       (log/warn t message)
+       t))))
 
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
-  `message` to help provide information about what failed for the log message."
+  `message` to help provide information about what failed for the log message.
+
+  The exception classes in `exception-classes-not-to-retry` are a list of classes tested against exceptions thrown.
+  If there is a match found, the sync is aborted as that error is not considered recoverable for this sync run."
   {:style/indent 1}
   [message & body]
   `(do-with-error-handling ~message (fn [] ~@body)))
@@ -243,9 +248,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn db->sync-tables
-  "Return all the Tables that should go through the sync processes for DATABASE-OR-ID."
+  "Return all the Tables that should go through the sync processes for `database-or-id`."
   [database-or-id]
-  (db/select Table, :db_id (u/get-id database-or-id), :active true, :visibility_type nil))
+  (db/select Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
 
 
 ;; The `name-for-logging` function is used all over the sync code to make sure we have easy access to consistently
@@ -253,8 +258,8 @@
 
 (defprotocol ^:private NameForLogging
   (name-for-logging [this]
-    "Return an appropriate string for logging an object in sync logging messages.
-     Should be something like \"postgres Database 'test-data'\""))
+    "Return an appropriate string for logging an object in sync logging messages. Should be something like \"postgres
+  Database 'test-data'\""))
 
 (extend-protocol NameForLogging
   i/DatabaseInstance
@@ -342,7 +347,11 @@
         results    (with-start-and-finish-debug-logging (trs "step ''{0}'' for {1}"
                                                              step-name
                                                              (name-for-logging database))
-                     #(sync-fn database))
+                     (fn [& args]
+                       (try
+                         (apply sync-fn database args)
+                         (catch Throwable t
+                           {:throwable t}))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                  :start-time start-time
@@ -401,7 +410,7 @@
    database  :- i/DatabaseInstance
    {:keys [start-time end-time]} :- SyncOperationOrStepRunMetadata]
   {:task       task-name
-   :db_id      (u/get-id database)
+   :db_id      (u/the-id database)
    :started_at start-time
    :ended_at   end-time
    :duration   (.toMillis (t/duration start-time end-time))})
@@ -427,7 +436,21 @@
    database :- i/DatabaseInstance
    sync-steps :- [StepDefinition]]
   (let [start-time    (t/zoned-date-time)
-        step-metadata (mapv #(run-step-with-metadata database %) sync-steps)
+        step-metadata (loop [[step-defn & rest-defns] sync-steps
+                             result                   []]
+                        (let [[step-name r] (run-step-with-metadata database step-defn)
+                              new-result    (conj result [step-name r])]
+                          (if (contains? r :throwable)
+                            (let [caught-exception  (:throwable r)
+                                  exception-classes (u/full-exception-chain caught-exception)
+                                  abandon?          (some true? (for [ex      exception-classes
+                                                                      test-ex exception-classes-not-to-retry]
+                                                        (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
+                              (cond abandon? new-result
+                                    (not (seq rest-defns)) new-result
+                                    :else (recur rest-defns new-result)))
+                            (cond (not (seq rest-defns)) new-result
+                                  :else (recur rest-defns new-result)))))
         end-time      (t/zoned-date-time)
         sync-metadata {:start-time start-time
                        :end-time   end-time

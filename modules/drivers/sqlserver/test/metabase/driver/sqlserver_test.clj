@@ -1,49 +1,38 @@
 (ns metabase.driver.sqlserver-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [colorize.core :as colorize]
             [honeysql.core :as hsql]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
+            [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor
-             [test-util :as qp.test-util]
-             [timezone :as qp.timezone]]
-            [metabase.test
-             [data :as data]
-             [util :as tu :refer [obj->json->obj]]]
-            [metabase.test.data
-             [datasets :as datasets]
-             [interface :as tx]]))
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.test :as mt]))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
-;; Make sure something long doesn't come back as some weird type like `ClobImpl`
-(def ^:private a-gene
+(defn- a-gene
   "Really long string representing a gene like \"GGAGCACCTCCACAAGTGCAGGCTATCCTGTCGAGTAAGGCCT...\""
+  []
   (apply str (repeatedly 1000 (partial rand-nth [\A \G \C \T]))))
 
-(tx/defdataset ^:private genetic-data
+(mt/defdataset ^:private genetic-data
   [["genetic-data"
-    [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}}]
-    [[a-gene]]]])
+    [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}, :effective-type :type/Text}]
+    [[(a-gene)]]]])
 
-(datasets/expect-with-driver :sqlserver
-  [[1 a-gene]]
-  (-> (data/dataset metabase.driver.sqlserver-test/genetic-data (data/run-mbql-query genetic-data))
-      :data
-      :rows
-      obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
+(deftest clobs-should-come-back-as-text-test
+  (mt/test-driver :sqlserver
+    (testing "Make sure something long doesn't come back as some weird type like `ClobImpl`"
+      (is (= [[1 (-> genetic-data :table-definitions first :rows ffirst)]]
+             (-> (mt/dataset genetic-data (mt/run-mbql-query genetic-data))
+                 mt/rows
+                 mt/obj->json->obj)))))) ; convert to JSON + back so the Clob gets stringified
 
 (deftest connection-spec-test
   (testing "Test that additional connection string options work (#5296)"
@@ -69,87 +58,86 @@
                ;; `<version>`
                (update :applicationName #(str/replace % #"\s.*$" " <version>")))))))
 
-(datasets/expect-with-driver :sqlserver
-  "UTC"
-  (tu/db-timezone-id))
+(deftest add-max-results-limit-test
+  (mt/test-driver :sqlserver
+    (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
+                  "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
+      (is (= {:query (str "SELECT TOP 1048575 \"source\".\"name\" AS \"name\" "
+                          "FROM ("
+                          "SELECT TOP 1048575 "
+                          "\"dbo\".\"venues\".\"name\" AS \"name\" "
+                          "FROM \"dbo\".\"venues\" "
+                          "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
+                          " ) \"source\" ") ; not sure why this generates an extra space before the closing paren, but it does
+              :params nil}
+             (qp/query->native
+              (mt/mbql-query venues
+                {:source-query {:source-table $$venues
+                                :fields       [$name]
+                                :order-by     [[:asc $id]]}})))))))
 
-;; SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their equivalent of
-;; LIMIT). Make sure we add a max-results LIMIT to the nested query
-(datasets/expect-with-driver :sqlserver
-  {:query  (str
-            "SELECT TOP 1048576 \"source\".\"name\" AS \"name\" "
-            "FROM ("
-            "SELECT TOP 1048576 "
-            "\"dbo\".\"venues\".\"name\" AS \"name\" "
-            "FROM \"dbo\".\"venues\" "
-            "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-            " ) \"source\" ") ; not sure why this generates an extra space before the closing paren, but it does
-   :params nil}
-  (qp/query->native
-   (data/mbql-query venues
-     {:source-query {:source-table $$venues
-                     :fields       [$name]
-                     :order-by     [[:asc $id]]}})))
+(deftest preserve-existing-top-clauses
+  (mt/test-driver :sqlserver
+    (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
+                  "clauses that may have been set in the query")
+      (is (= {:query  (str "SELECT TOP 10 \"source\".\"name\" AS \"name\" "
+                           "FROM ("
+                           "SELECT TOP 20 "
+                           "\"dbo\".\"venues\".\"name\" AS \"name\" "
+                           "FROM \"dbo\".\"venues\" "
+                           "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
+                           " ) \"source\" ")
+              :params nil}
+             (qp/query->native
+              (mt/mbql-query venues
+                {:source-query {:source-table $$venues
+                                :fields       [$name]
+                                :order-by     [[:asc $id]]
+                                :limit        20}
+                 :limit        10})))))))
 
-;; make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP clauses that may have
-;; been set in the query
-(datasets/expect-with-driver :sqlserver
-  {:query (str "SELECT TOP 10 \"source\".\"name\" AS \"name\" "
-               "FROM ("
-               "SELECT TOP 20 "
-               "\"dbo\".\"venues\".\"name\" AS \"name\" "
-               "FROM \"dbo\".\"venues\" "
-               "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-               " ) \"source\" ")
-   :params nil}
-  (qp/query->native
-   (data/mbql-query venues
-     {:source-query {:source-table $$venues
-                     :fields       [$name]
-                     :order-by     [[:asc $id]]
-                     :limit        20}
-      :limit        10})))
+(deftest dont-add-top-clauses-for-top-level-test
+  (mt/test-driver :sqlserver
+    (testing (str "We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because "
+                  "of the max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL"))
+    ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
+    ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
+    (let [preprocessed (-> (mt/mbql-query venues
+                             {:source-query {:source-table $$venues
+                                             :fields       [$name]
+                                             :order-by     [[:asc $id]]}
+                              :order-by     [[:asc $id]]})
+                           qp/query->preprocessed
+                           (m/dissoc-in [:query :limit]))]
+      (mt/with-everything-store
+        (is (= {:query  (str "SELECT \"source\".\"name\" AS \"name\" "
+                             "FROM ("
+                             "SELECT TOP 1048575 "
+                             "\"dbo\".\"venues\".\"name\" AS \"name\" "
+                             "FROM \"dbo\".\"venues\" "
+                             "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
+                             " ) \"source\" "
+                             "ORDER BY \"source\".\"id\" ASC")
+                :params nil}
+               (driver/mbql->native :sqlserver preprocessed)))))))
 
-;; We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because of the
-;; max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL
-(datasets/expect-with-driver :sqlserver
-  {:query (str "SELECT \"source\".\"name\" AS \"name\" "
-               "FROM ("
-               "SELECT TOP 1048576 "
-               "\"dbo\".\"venues\".\"name\" AS \"name\" "
-               "FROM \"dbo\".\"venues\" "
-               "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-               " ) \"source\" "
-               "ORDER BY \"source\".\"id\" ASC")
-   :params nil}
-  ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
-  ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
-  (let [preprocessed (-> (data/mbql-query venues
-                           {:source-query {:source-table $$venues
-                                           :fields       [$name]
-                                           :order-by     [[:asc $id]]}
-                            :order-by     [[:asc $id]]})
-                         qp/query->preprocessed
-                         (m/dissoc-in [:query :limit]))]
-    (qp.test-util/with-everything-store
-      (driver/mbql->native :sqlserver preprocessed))))
-
-;; ok, generating all that SQL above is nice, but let's make sure our queries actually work!
-(datasets/expect-with-driver :sqlserver
-  [["Red Medicine"]
-   ["Stout Burgers & Beers"]
-   ["The Apple Pan"]]
-  (qp.test/rows
-    (qp/process-query
-     (data/mbql-query venues
-       {:source-query {:source-table $$venues
-                       :fields       [$name]
-                       :order-by     [[:asc $id]]
-                       :limit        5}
-        :limit        3}))))
+(deftest max-results-should-actually-work-test
+  (mt/test-driver :sqlserver
+    (testing "ok, generating all that SQL above is nice, but let's make sure our queries actually work!"
+      (is (= [["Red Medicine"]
+              ["Stout Burgers & Beers"]
+              ["The Apple Pan"]]
+             (mt/rows
+               (qp/process-query
+                (mt/mbql-query venues
+                  {:source-query {:source-table $$venues
+                                  :fields       [$name]
+                                  :order-by     [[:asc $id]]
+                                  :limit        5}
+                   :limit        3}))))))))
 
 (deftest locale-bucketing-test
-  (datasets/test-driver :sqlserver
+  (mt/test-driver :sqlserver
     (testing (str "Make sure datetime bucketing functions work properly with languages that format dates like "
                   "yyyy-dd-MM instead of yyyy-MM-dd (i.e. not American English) (#9057)")
       ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal
@@ -168,7 +156,7 @@
                                              :from   [:temp]}
                                  :quoting :ansi, :allow-dashed-names? true)]
             (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
-                        rs   (sql-jdbc.execute/execute-query! :sqlserver stmt)]
+                        rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
               (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
                 (is (= [#t "2019-02-01"]
                        (row-thunk))))))
@@ -177,7 +165,7 @@
             (.rollback conn)))))))
 
 (deftest unprepare-test
-  (datasets/test-driver :sqlserver
+  (mt/test-driver :sqlserver
     (let [date (t/local-date 2019 11 5)
           time (t/local-time 19 27)]
       ;; various types should come out the same as they went in (1 value per tuple) or something functionally
@@ -198,8 +186,72 @@
             (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
               (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) nil)
                           stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
-                          rs   (sql-jdbc.execute/execute-query! :sqlserver stmt)]
+                          rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
                 (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
                   (is (= [expected]
                          (row-thunk))
                       (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))
+
+(defn- pretty-sql [s]
+  (str/replace s #"\"" ""))
+
+(deftest optimal-filter-clauses-test
+  (mt/test-driver :sqlserver
+    (testing "Should use efficient functions like year() for date bucketing (#9934)"
+      (letfn [(query-with-bucketing [unit]
+                (mt/mbql-query checkins
+                  {:aggregation [[:count]]
+                   :breakout    [[:field $date {:temporal-unit unit}]]}))]
+        (doseq [[unit {:keys [expected-sql expected-rows]}]
+                {"year"
+                 {:expected-sql
+                  (str "SELECT DateFromParts(year(dbo.checkins.date), 1, 1) AS date,"
+                       " count(*) AS count "
+                       "FROM dbo.checkins "
+                       "GROUP BY year(dbo.checkins.date) "
+                       "ORDER BY year(dbo.checkins.date) ASC")
+
+                  :expected-rows
+                  [["2013-01-01T00:00:00Z" 235]
+                   ["2014-01-01T00:00:00Z" 498]
+                   ["2015-01-01T00:00:00Z" 267]]}
+
+                 "month"
+                 {:expected-sql
+                  (str "SELECT DateFromParts(year(dbo.checkins.date), month(dbo.checkins.date), 1) AS date,"
+                       " count(*) AS count "
+                       "FROM dbo.checkins "
+                       "GROUP BY year(dbo.checkins.date), month(dbo.checkins.date) "
+                       "ORDER BY year(dbo.checkins.date) ASC, month(dbo.checkins.date) ASC")
+
+                  :expected-rows
+                  [["2013-01-01T00:00:00Z" 8]
+                   ["2013-02-01T00:00:00Z" 11]
+                   ["2013-03-01T00:00:00Z" 21]
+                   ["2013-04-01T00:00:00Z" 26]
+                   ["2013-05-01T00:00:00Z" 23]]}
+
+                 "day"
+                 {:expected-sql
+                  (str "SELECT DateFromParts(year(dbo.checkins.date), month(dbo.checkins.date), day(dbo.checkins.date)) AS date,"
+                       " count(*) AS count "
+                       "FROM dbo.checkins "
+                       "GROUP BY year(dbo.checkins.date), month(dbo.checkins.date), day(dbo.checkins.date) "
+                       "ORDER BY year(dbo.checkins.date) ASC, month(dbo.checkins.date) ASC, day(dbo.checkins.date) ASC")
+
+                  :expected-rows
+                  [["2013-01-03T00:00:00Z" 1]
+                   ["2013-01-10T00:00:00Z" 1]
+                   ["2013-01-19T00:00:00Z" 1]
+                   ["2013-01-22T00:00:00Z" 1]
+                   ["2013-01-23T00:00:00Z" 1]]}}]
+          (testing (format "\nUnit = %s\n" unit)
+            (testing "Should generate the correct SQL query"
+              (is (= expected-sql
+                     (pretty-sql (:query (qp/query->native (query-with-bucketing unit)))))))
+            (testing "Should still return correct results"
+              (is (= expected-rows
+                     (take 5 (mt/rows
+                               (mt/run-mbql-query checkins
+                                 {:aggregation [[:count]]
+                                  :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))

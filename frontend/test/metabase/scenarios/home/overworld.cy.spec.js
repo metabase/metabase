@@ -1,16 +1,12 @@
-import {
-  signInAsAdmin,
-  signInAsNormalUser,
-  restore,
-} from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > home > overworld", () => {
-  before(restore);
+  beforeEach(restore);
 
   describe("content management", () => {
     describe("as admin", () => {
       beforeEach(() => {
-        signInAsAdmin();
+        cy.signInAsAdmin();
         cy.request("PUT", "api/setting/show-homepage-data", { value: true });
         cy.request("PUT", "api/setting/show-homepage-xrays", { value: true });
       });
@@ -43,7 +39,7 @@ describe("scenarios > home > overworld", () => {
       });
     });
     describe("as regular folk", () => {
-      beforeEach(signInAsNormalUser);
+      beforeEach(cy.signInAsNormalUser);
       it("should not be possible for them to see the controls", () => {
         cy.visit("/");
         cy.contains("Our data")

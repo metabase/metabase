@@ -1,17 +1,30 @@
 import {
   createNativeQuestion,
   restore,
-  signInAsAdmin,
   openOrdersTable,
+  openProductsTable,
   popover,
   modal,
-  withSampleDataset,
+  visitQuestionAdhoc,
 } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATASET;
 
 describe("scenarios > question > notebook", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
   });
 
   it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
@@ -23,7 +36,7 @@ describe("scenarios > question > notebook", () => {
       .click();
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
-    cy.get(".Icon-notebook").click();
+    cy.icon("notebook").click();
     cy.findByText("Visualize").click();
 
     // there were no changes to the question, so we shouldn't have the option to "Save"
@@ -46,15 +59,83 @@ describe("scenarios > question > notebook", () => {
     popover().within(() => {
       cy.contains("User ID").click();
     });
-    cy.get(".Icon-filter").click();
+    cy.icon("filter").click();
     popover().within(() => {
-      cy.get(".Icon-int").click();
+      cy.icon("int").click();
       cy.get("input").type("46");
       cy.contains("Add filter").click();
     });
     cy.contains("Visualize").click();
     cy.contains("2372"); // user's id in the table
     cy.contains("Showing 1 row"); // ensure only one user was returned
+  });
+
+  it.skip("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["between", ["field", ORDERS.ID, null], 96, 97],
+        },
+        type: "query",
+      },
+      display: "table",
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("ID 96 97").click();
+    cy.get("[contenteditable='true']").contains("between([ID], 96, 97)");
+  });
+
+  it("should show the correct number of function arguments in a custom expression", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("contains([Category])", { delay: 50 });
+    cy.findAllByRole("button", { name: "Done" })
+      .should("not.be.disabled")
+      .click();
+    cy.contains(/^Function contains expects 2 arguments/i);
+  });
+
+  it("should show the correct number of CASE arguments in a custom expression", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']").type("CASE([Price]>0)");
+      cy.findByPlaceholderText("Something nice and descriptive")
+        .click()
+        .type("Sum Divide");
+      cy.contains(/^CASE expects 2 arguments or more/i);
+    });
+  });
+
+  it("should process the updated expression when pressing Enter", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1");
+    cy.findAllByRole("button", { name: "Done" }).click();
+
+    // change the corresponding custom expression
+    cy.findByText("Price is greater than 1").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.contains(/^Price is less than 5/i);
   });
 
   describe("joins", () => {
@@ -66,7 +147,7 @@ describe("scenarios > question > notebook", () => {
       cy.contains("Orders").click();
 
       // join to Reviews on orders.product_id = reviews.product_id
-      cy.get(".Icon-join_left_outer").click();
+      cy.icon("join_left_outer").click();
       popover()
         .contains("Reviews")
         .click();
@@ -94,20 +175,20 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should allow post-join filters (metabase#12221)", () => {
-      cy.log("start a custom question with Orders");
+      cy.log("Start a custom question with Orders");
       cy.visit("/question/new");
       cy.contains("Custom question").click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
 
-      cy.log("join to People table using default settings");
-      cy.get(".Icon-join_left_outer ").click();
+      cy.log("Join to People table using default settings");
+      cy.icon("join_left_outer ").click();
       cy.contains("People").click();
       cy.contains("Orders + People");
       cy.contains("Visualize").click();
       cy.contains("Showing first 2,000");
 
-      cy.log("attempt to filter on the joined table");
+      cy.log("Attempt to filter on the joined table");
       cy.contains("Filter").click();
       cy.contains("Email").click();
       cy.contains("People – Email");
@@ -129,7 +210,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("question a").click();
 
       // join to question b
-      cy.get(".Icon-join_left_outer").click();
+      cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Sample Dataset").click();
         cy.findByText("Saved Questions").click();
@@ -191,7 +272,7 @@ describe("scenarios > question > notebook", () => {
     it("should show correct column title with foreign keys (metabase#11452)", () => {
       // (Orders join Reviews on Product ID)
       openOrdersTable();
-      cy.get(".Icon-notebook").click();
+      cy.icon("notebook").click();
       cy.findByText("Join data").click();
       cy.findByText("Reviews").click();
       cy.findByText("Product ID").click();
@@ -199,7 +280,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Product ID").click();
       });
 
-      cy.log("**It shouldn't use FK for a column title**");
+      cy.log("It shouldn't use FK for a column title");
       cy.findByText("Summarize").click();
       cy.findByText("Pick a column to group by").click();
 
@@ -210,7 +291,7 @@ describe("scenarios > question > notebook", () => {
       //      the actual svg icon with the class `.Icon-join_left_outer`
       //    h3.List-section-title with the text content we're actually testing
       popover().within(() => {
-        cy.get(".Icon-join_left_outer")
+        cy.icon("join_left_outer")
           .parent()
           .next()
           // NOTE from Flamber's warning:
@@ -221,183 +302,243 @@ describe("scenarios > question > notebook", () => {
     });
 
     it.skip("should join saved questions that themselves contain joins (metabase#12928)", () => {
-      withSampleDataset(({ ORDERS, PRODUCTS, PEOPLE, REVIEWS }) => {
-        // Save Question 1
-        cy.request("POST", "/api/card", {
-          name: "12928_Q1",
-          dataset_query: {
-            database: 1,
-            query: {
-              "source-table": 2,
-              aggregation: [["count"]],
-              breakout: [
-                ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
-                ["joined-field", "People - User", ["field-id", PEOPLE.SOURCE]],
+      // Save Question 1
+      cy.createQuestion({
+        name: "12928_Q1",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+            ["field", PEOPLE.SOURCE, { "join-alias": "People - User" }],
+          ],
+          joins: [
+            {
+              alias: "Products",
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
               ],
-              joins: [
-                {
-                  alias: "Products",
-                  condition: [
-                    "=",
-                    ["field-id", ORDERS.PRODUCT_ID],
-                    ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-                  ],
-                  fields: "all",
-                  "source-table": 1,
-                },
-                {
-                  alias: "People - User",
-                  condition: [
-                    "=",
-                    ["field-id", ORDERS.USER_ID],
-                    ["joined-field", "People - User", ["field-id", PEOPLE.ID]],
-                  ],
-                  fields: "all",
-                  "source-table": 3,
-                },
-              ],
+              fields: "all",
+              "source-table": PRODUCTS_ID,
             },
-            type: "query",
-          },
-          display: "table",
-          visualization_settings: {},
-        });
-
-        // Save Question 2
-        cy.request("POST", "/api/card", {
-          name: "12928_Q2",
-          dataset_query: {
-            database: 1,
-            query: {
-              "source-table": 4,
-              aggregation: [["avg", ["field-id", REVIEWS.RATING]]],
-              breakout: [
-                ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
+            {
+              alias: "People - User",
+              condition: [
+                "=",
+                ["field", ORDERS.USER_ID, null],
+                ["field", PEOPLE.ID, { "join-alias": "People - User" }],
               ],
-              joins: [
-                {
-                  alias: "Products",
-                  condition: [
-                    "=",
-                    ["field-id", REVIEWS.PRODUCT_ID],
-                    ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-                  ],
-                  fields: "all",
-                  "source-table": 1,
-                },
-              ],
+              fields: "all",
+              "source-table": PEOPLE_ID,
             },
-            type: "query",
-          },
-          display: "table",
-          visualization_settings: {},
-        });
+          ],
+        },
+      });
 
-        // Join two previously saved questions
-        cy.visit("/");
-        cy.findByText("Ask a question").click();
-        cy.findByText("Custom question").click();
+      // Save Question 2
+      cy.createQuestion({
+        name: "12928_Q2",
+        query: {
+          "source-table": REVIEWS_ID,
+          aggregation: [["avg", ["field", REVIEWS.RATING, null]]],
+          breakout: [
+            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+          ],
+          joins: [
+            {
+              alias: "Products",
+              condition: [
+                "=",
+                ["field", REVIEWS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+            },
+          ],
+        },
+      });
+
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      // Join two previously saved questions
+      cy.visit("/");
+      cy.findByText("Ask a question").click();
+      cy.findByText("Custom question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("12928_Q1").click();
+      cy.icon("join_left_outer").click();
+      popover().within(() => {
+        cy.findByText("Sample Dataset").click();
         cy.findByText("Saved Questions").click();
-        cy.findByText("12928_Q1").click();
-        cy.get(".Icon-join_left_outer").click();
-        popover().within(() => {
-          cy.findByText("Sample Dataset").click();
-          cy.findByText("Saved Questions").click();
-        });
-        cy.findByText("12928_Q2").click();
-        cy.contains(/Products? → Category/).click();
-        popover()
-          .contains(/Products? → Category/)
-          .click();
-        cy.findByText("Visualize").click();
+      });
+      cy.findByText("12928_Q2").click();
+      cy.contains(/Products? → Category/).click();
+      popover()
+        .contains(/Products? → Category/)
+        .click();
+      cy.findByText("Visualize").click();
 
-        cy.log(
-          "**Reported failing in v1.35.4.1 and `master` on July, 16 2020**",
-        );
-        cy.findByText("12928_Q1 + 12928_Q2");
-        // TODO: Add a positive assertion once this issue is fixed
-        cy.findByText("There was a problem with your question").should(
-          "not.exist",
-        );
+      cy.findByText("12928_Q1 + 12928_Q2");
+      cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2020");
+      // TODO: Add a positive assertion once this issue is fixed
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
       });
     });
 
     it.skip("should join saved question with sorted metric (metabase#13744)", () => {
       cy.server();
       // create first question based on repro steps in #13744
-      withSampleDataset(({ PRODUCTS }) => {
-        cy.request("POST", "/api/card", {
-          name: "13744",
-          dataset_query: {
-            database: 1,
-            query: {
-              "source-table": 1,
-              aggregation: [["count"]],
-              breakout: [["field-id", PRODUCTS.CATEGORY]],
-              "order-by": [["asc", ["aggregation", 0]]],
-            },
-            type: "query",
-          },
-          display: "table",
-          visualization_settings: {},
-        }).then(({ body: { id: questionId } }) => {
-          const ALIAS = `Question ${questionId}`;
+      cy.createQuestion({
+        name: "13744",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+          "order-by": [["asc", ["aggregation", 0]]],
+        },
+      }).then(({ body: { id: questionId } }) => {
+        const ALIAS = `Question ${questionId}`;
 
-          // create new question and join it with a previous one
-          cy.request("POST", "/api/card", {
-            name: "13744_joined",
-            dataset_query: {
-              database: 1,
-              query: {
-                joins: [
-                  {
-                    alias: ALIAS,
-                    fields: "all",
-                    condition: [
-                      "=",
-                      ["field-id", PRODUCTS.CATEGORY],
-                      [
-                        "joined-field",
-                        ALIAS,
-                        ["field-literal", "CATEGORY", "type/Text"],
-                      ],
-                    ],
-                    "source-table": `card__${questionId}`,
-                  },
+        // create new question and join it with a previous one
+        cy.createQuestion({
+          name: "13744_joined",
+          query: {
+            joins: [
+              {
+                alias: ALIAS,
+                fields: "all",
+                condition: [
+                  "=",
+                  ["field", PRODUCTS.CATEGORY, null],
+                  [
+                    "field",
+                    "CATEGORY",
+                    { "base-type": "type/Text", "join-alias": ALIAS },
+                  ],
                 ],
-                "source-table": 1,
+                "source-table": `card__${questionId}`,
               },
-              type: "query",
-            },
-            display: "table",
-            visualization_settings: {},
-          }).then(({ body: { id: joinedQuestionId } }) => {
-            // listen on the final card query which means the data for this question loaded
-            cy.route("POST", `/api/card/${joinedQuestionId}/query`).as(
-              "cardQuery",
-            );
+            ],
+            "source-table": PRODUCTS_ID,
+          },
+        }).then(({ body: { id: joinedQuestionId } }) => {
+          // listen on the final card query which means the data for this question loaded
+          cy.route("POST", `/api/card/${joinedQuestionId}/query`).as(
+            "cardQuery",
+          );
 
-            // Assert phase begins here
-            cy.visit(`/question/${joinedQuestionId}`);
-            cy.findByText("13744_joined");
+          // Assert phase begins here
+          cy.visit(`/question/${joinedQuestionId}`);
+          cy.findByText("13744_joined");
 
-            cy.log("**Reported failing on v0.34.3 - v0.37.0.2**");
-            cy.log("**Reported error log: 'No aggregation at index: 0'**");
-            // assert directly on XHR instead of relying on UI
-            cy.wait("@cardQuery").then(xhr => {
-              expect(xhr.response.body.error).not.to.exist;
-            });
-            cy.findAllByText("Gizmo");
+          cy.log("Reported failing on v0.34.3 - v0.37.0.2");
+          cy.log("Reported error log: 'No aggregation at index: 0'");
+          // assert directly on XHR instead of relying on UI
+          cy.wait("@cardQuery").then(xhr => {
+            expect(xhr.response.body.error).not.to.exist;
           });
+          cy.findAllByText("Gizmo");
         });
       });
+    });
+
+    it.skip("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
+      cy.createQuestion({
+        name: "14649_min",
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "aggregation-options",
+                ["sum", ["field", ORDERS.SUBTOTAL, null]],
+                { "display-name": "Revenue" },
+              ],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          aggregation: [
+            ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
+          ],
+        },
+
+        display: "scalar",
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.server();
+        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+        cy.visit(`/question/${QUESTION_ID}`);
+        cy.wait("@cardQuery").then(xhr => {
+          expect(xhr.response.body.error).to.not.exist;
+        });
+
+        cy.findByText("49.54");
+      });
+    });
+
+    it.skip("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+      cy.route("GET", "/api/automagic-dashboards/adhoc/").as("xray");
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": REVIEWS_ID,
+            joins: [
+              {
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field", REVIEWS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ],
+                alias: "Products",
+              },
+            ],
+            aggregation: [
+              ["sum", ["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
+            ],
+            breakout: [
+              ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+          database: 1,
+        },
+        display: "line",
+      });
+
+      cy.wait("@dataset");
+      cy.get(".dot")
+        .eq(2)
+        .click({ force: true });
+      cy.findByText("X-ray").click();
+
+      cy.wait("@xray").then(xhr => {
+        expect(xhr.response.body.cause).not.to.exist;
+        expect(xhr.status).not.to.eq(500);
+      });
+      // Main title
+      cy.contains(/^A closer look at/);
+      // Metric title
+      cy.findByText("How this metric is distributed across different numbers");
+      // Make sure at least one card is rendered
+      cy.get(".DashCard");
     });
   });
 
   describe("nested", () => {
     it("should create a nested question with post-aggregation filter", () => {
-      // start a custom question with orders
-      cy.visit("/question/new?database=1&table=1&mode=notebook");
+      openProductsTable({ mode: "notebook" });
 
       cy.findByText("Summarize").click();
       popover().within(() => {
@@ -429,7 +570,7 @@ describe("scenarios > question > notebook", () => {
 
       cy.findByText("Not now").click();
 
-      cy.get(".Icon-notebook").click();
+      cy.icon("notebook").click();
 
       cy.reload();
 
@@ -438,14 +579,13 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  // TODO: add positive assertions to all 4 tests when we figure out implementation details
-  describe.skip("arithmetic (metabase#13175)", () => {
+  describe("arithmetic (metabase#13175)", () => {
     beforeEach(() => {
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
     });
 
     it("should work on custom column with `case`", () => {
-      cy.get(".Icon-add_data").click();
+      cy.icon("add_data").click();
       cy.get("[contenteditable='true']")
         .click()
         .clear()
@@ -454,9 +594,14 @@ describe("scenarios > question > notebook", () => {
         .click()
         .type("Example", { delay: 100 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
-        .should("not.be.disabled");
+      cy.findAllByRole("button", { name: "Done" })
+        .should("not.be.disabled")
+        .click();
+
+      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.contains("Example");
+      cy.contains("Big");
+      cy.contains("Small");
     });
 
     it("should work on custom filter", () => {
@@ -466,22 +611,25 @@ describe("scenarios > question > notebook", () => {
       cy.get("[contenteditable='true']")
         .click()
         .clear()
-        .type("[Subtotal] - Tax > 20", { delay: 50 });
+        .type("[Subtotal] - Tax > 140", { delay: 50 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
+      cy.contains(/^redundant input/i).should("not.exist");
+
+      cy.findAllByRole("button", { name: "Done" })
         .should("not.be.disabled")
         .click();
 
-      cy.contains(/^redundant input/i).should("not.exist");
+      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.contains("Showing 97 rows");
     });
 
     const CASES = {
-      CountIf: "CountIf(([Subtotal] + [Tax]) > 10)",
-      SumIf: "SumIf([Subtotal], ([Subtotal] + [Tax] > 20))",
+      CountIf: ["CountIf(([Subtotal] + [Tax]) > 10)", "18,760"],
+      SumIf: ["SumIf([Subtotal], ([Subtotal] + [Tax] > 20))", "1,447,850.28"],
     };
 
     Object.entries(CASES).forEach(([filter, formula]) => {
+      const [expression, result] = formula;
       it(`should work on custom aggregation with ${filter}`, () => {
         cy.findByText("Summarize").click();
         cy.findByText("Custom Expression").click();
@@ -489,14 +637,22 @@ describe("scenarios > question > notebook", () => {
         cy.get("[contenteditable='true']")
           .click()
           .clear()
-          .type(formula, { delay: 50 });
+          .type(expression, { delay: 50 });
 
         cy.findByPlaceholderText("Name (required)")
           .click()
-          .type("Ex", { delay: 100 });
+          .type(filter, { delay: 100 });
 
         cy.contains(/^expected closing parenthesis/i).should("not.exist");
         cy.contains(/^redundant input/i).should("not.exist");
+
+        cy.findAllByRole("button", { name: "Done" })
+          .should("not.be.disabled")
+          .click();
+
+        cy.findAllByRole("button", { name: "Visualize" }).click();
+        cy.contains(filter);
+        cy.contains(result);
       });
     });
   });
@@ -506,78 +662,54 @@ describe("scenarios > question > notebook", () => {
 function joinTwoSavedQuestions(ALIAS = "Joined Question") {
   cy.server();
 
-  withSampleDataset(({ ORDERS, PRODUCTS }) => {
-    cy.log("**-- Prepare Question 1 --**");
-    cy.request("POST", "/api/card", {
-      name: "Q1",
-      dataset_query: {
-        database: 1,
-        query: {
-          aggregation: ["sum", ["field-id", ORDERS.TOTAL]],
-          breakout: [["field-id", ORDERS.PRODUCT_ID]],
-          "source-table": 2,
-        },
-        type: "query",
+  cy.createQuestion({
+    name: "Q1",
+    query: {
+      aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
+      breakout: [["field", ORDERS.PRODUCT_ID, null]],
+      "source-table": ORDERS_ID,
+    },
+  }).then(({ body: { id: Q1_ID } }) => {
+    cy.createQuestion({
+      name: "Q2",
+      query: {
+        aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
+        breakout: [["field", PRODUCTS.ID, null]],
+        "source-table": PRODUCTS_ID,
       },
-      display: "table",
-      visualization_settings: {},
-    }).then(({ body: { id: Q1_ID } }) => {
-      cy.log("**-- Prepare Question 2 --**");
-      cy.request("POST", "/api/card", {
-        name: "Q2",
-        dataset_query: {
-          database: 1,
-          query: {
-            aggregation: ["sum", ["field-id", PRODUCTS.RATING]],
-            breakout: [["field-id", PRODUCTS.ID]],
-            "source-table": 1,
-          },
-          type: "query",
-        },
-        display: "table",
-        visualization_settings: {},
-      }).then(({ body: { id: Q2_ID } }) => {
-        cy.log(
-          "**-- Create Question 3 based on 2 previously saved questions --**",
-        );
-        cy.request("POST", "/api/card", {
-          name: "Q3",
-          dataset_query: {
-            database: 1,
-            query: {
-              joins: [
-                {
-                  alias: ALIAS,
-                  condition: [
-                    "=",
-                    ["field-literal", "PRODUCT_ID", "type/Integer"],
-                    [
-                      "joined-field",
-                      ALIAS,
-                      ["field-literal", "ID", "type/BigInteger"],
-                    ],
-                  ],
-                  fields: "all",
-                  "source-table": `card__${Q2_ID}`,
-                },
+    }).then(({ body: { id: Q2_ID } }) => {
+      cy.log("Create Question 3 based on 2 previously saved questions");
+      cy.createQuestion({
+        name: "Q3",
+        query: {
+          joins: [
+            {
+              alias: ALIAS,
+              condition: [
+                "=",
+                ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+                [
+                  "field",
+                  "ID",
+                  { "base-type": "type/BigInteger", "join-alias": ALIAS },
+                ],
               ],
-              "source-table": `card__${Q1_ID}`,
+              fields: "all",
+              "source-table": `card__${Q2_ID}`,
             },
-            type: "query",
-          },
-          display: "table",
-          visualization_settings: {},
-        }).then(({ body: { id: Q3_ID } }) => {
-          cy.route("POST", `/api/card/${Q3_ID}/query`).as("cardQuery");
-          cy.visit(`/question/${Q3_ID}`);
+          ],
+          "source-table": `card__${Q1_ID}`,
+        },
+      }).then(({ body: { id: Q3_ID } }) => {
+        cy.route("POST", `/api/card/${Q3_ID}/query`).as("cardQuery");
+        cy.visit(`/question/${Q3_ID}`);
 
-          cy.wait("@cardQuery");
+        cy.wait("@cardQuery");
 
-          cy.log("**Reported in v0.36.0**");
-          cy.get(".Icon-notebook").click();
-          cy.url().should("contain", "/notebook");
-          cy.findByText("Visualize").should("exist");
-        });
+        cy.log("Reported in v0.36.0");
+        cy.icon("notebook").click();
+        cy.url().should("contain", "/notebook");
+        cy.findByText("Visualize").should("exist");
       });
     });
   });

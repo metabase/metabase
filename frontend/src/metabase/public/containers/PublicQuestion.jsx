@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -26,6 +25,7 @@ import {
   EmbedApi,
   setPublicQuestionEndpoints,
   setEmbedQuestionEndpoints,
+  maybeUsePivotEndpoint,
 } from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
@@ -81,8 +81,7 @@ export default class PublicQuestion extends Component {
     };
   }
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       setErrorPage,
       params: { uuid, token },
@@ -156,14 +155,14 @@ export default class PublicQuestion extends Component {
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await EmbedApi.cardQuery({
+        newResult = await maybeUsePivotEndpoint(EmbedApi.cardQuery, card)({
           token,
           ...getParametersBySlug(parameters, parameterValues),
         });
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(card, parameters, parameterValues);
-        newResult = await PublicApi.cardQuery({
+        newResult = await maybeUsePivotEndpoint(PublicApi.cardQuery, card)({
           uuid,
           parameters: JSON.stringify(datasetQuery.parameters),
         });

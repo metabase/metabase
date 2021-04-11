@@ -1,15 +1,12 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
-            [metabase.driver.sql-jdbc.sync
-             [describe-table :as describe-table]
-             [interface :as i]]
-            [metabase.models.table :refer [Table]]))
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.sync.describe-table :as describe-table]
+            [metabase.driver.sql-jdbc.sync.interface :as i]
+            [metabase.models.table :refer [Table]]
+            [metabase.test :as mt]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
@@ -61,13 +58,13 @@
                                          base-type)}))
                     set)))))))
 
-(deftest calculated-special-type-test
+(deftest calculated-semantic-type-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
-    (with-redefs [i/column->special-type (fn [_ _ column-name]
+    (with-redefs [i/column->semantic-type (fn [_ _ column-name]
                                            (when (= (str/lower-case column-name) "longitude")
                                              :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
              (->> (describe-table/describe-table (or driver/*driver* :h2) (mt/id) (Table (mt/id :venues)))
                   :fields
-                  (filter :special-type)
-                  (map (juxt (comp str/lower-case :name) :special-type))))))))
+                  (filter :semantic-type)
+                  (map (juxt (comp str/lower-case :name) :semantic-type))))))))

@@ -1,11 +1,10 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]]))
+            [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]))
 
 (deftest and-test
   (mt/test-drivers (mt/normal-drivers)
@@ -401,12 +400,13 @@
 
 (deftest etc-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing "make sure that filtering with dates truncating to minutes works (#4632)"
-      (is (= 107
-             (count-with-filter-clause checkins [:between
-                                                 [:datetime-field $date :minute]
-                                                 "2015-01-01T12:30:00"
-                                                 "2015-05-31"]))))
+    (mt/dataset office-checkins
+      (testing "make sure that filtering with timestamps truncating to minutes works (#4632)"
+        (is (= 4
+               (count-with-filter-clause checkins [:between
+                                                   [:datetime-field $timestamp :minute]
+                                                   "2019-01-01T12:30:00"
+                                                   "2019-01-14"])))))
     (testing "make sure that filtering with dates bucketing by weeks works (#4956)"
       (is (= 7
              (count-with-filter-clause checkins [:= [:datetime-field $date :week] "2015-06-21T07:00:00.000000000-00:00"]))))))

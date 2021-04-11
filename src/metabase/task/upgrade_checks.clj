@@ -3,14 +3,12 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite
-             [jobs :as jobs]
-             [triggers :as triggers]]
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [metabase
-             [config :as config]
-             [public-settings :as public-settings]
-             [task :as task]]
+            [clojurewerkz.quartzite.triggers :as triggers]
+            [metabase.config :as config]
+            [metabase.public-settings :as public-settings]
+            [metabase.task :as task]
             [metabase.util.i18n :refer [trs]]))
 
 (defn- get-version-info []

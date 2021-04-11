@@ -29,7 +29,7 @@ describe("Parameters", () => {
     it("should not parse date/numeric fields", () => {
       const dateField = new Field({
         ...ORDERS.QUANTITY, // some numeric field
-        special_type: "type/UNIXTimestampSeconds", // make it a date
+        semantic_type: "type/UNIXTimestampSeconds", // make it a date
       });
       const result = parseQueryParam("past30days", [dateField]);
       expect(result).toBe("past30days");

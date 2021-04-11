@@ -1,28 +1,24 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require [cheshire.core :as json]
-            [clojure
-             [test :refer :all]
-             [walk :as walk]]
+            [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase
-             [http-client :as http]
-             [models :refer [Card Database Field FieldValues Table]]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
-            [metabase.middleware.util :as middleware.u]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as perms-group]
-             [table :as table]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.http-client :as http]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models :refer [Card Database Field FieldValues Table]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.models.table :as table]
+            [metabase.server.middleware.util :as middleware.u]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.mock.util :as mutil]
+            [metabase.test.util :as tu]
             [metabase.timeseries-query-processor-test.util :as tqpt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 ;; ## /api/org/* AUTHENTICATION Tests
@@ -103,7 +99,7 @@
                 :display_name "Venues"
                 :id           (mt/id :venues)
                 :entity_type  "entity/GenericTable"}}
-             (->> ((mt/user->client :rasta) :get 200 "table")
+             (->> (mt/user-http-request :rasta :get 200 "table")
                   (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
                   (map #(select-keys % [:name :display_name :id :entity_type]))
                   set))))))
@@ -119,20 +115,21 @@
              :pk_field     (table/pk-field-id (Table (mt/id :venues)))
              :id           (mt/id :venues)
              :db_id        (mt/id)})
-           ((mt/user->client :rasta) :get 200 (format "table/%d" (mt/id :venues)))))
+           (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
 
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [{table-id :id}    {:db_id database-id}]]
         (perms/revoke-permissions! (perms-group/all-users) database-id)
         (is (= "You don't have permissions to do that."
-               ((mt/user->client :rasta) :get 403 (str "table/" table-id))))))))
+               (mt/user-http-request :rasta :get 403 (str "table/" table-id))))))))
 
 (defn- default-dimension-options []
-  (->> #'table-api/dimension-options-for-response
-       var-get
-       (m/map-vals #(update % :name str))
-       walk/keywordize-keys))
+  (as-> @#'table-api/dimension-options-for-response options
+       (m/map-vals #(update % :name str) options)
+       (walk/keywordize-keys options)
+       ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
+       (mbql.u/replace options :field (mt/obj->json->obj &match))))
 
 (defn- query-metadata-defaults []
   (-> (table-defaults)
@@ -149,21 +146,23 @@
                :display_name "Users"
                :entity_type  "entity/UserTable"
                :fields       [(assoc (field-details (Field (mt/id :users :id)))
-                                     :special_type     "type/PK"
+                                     :semantic_type     "type/PK"
                                      :table_id         (mt/id :users)
                                      :name             "ID"
                                      :display_name     "ID"
                                      :database_type    "BIGINT"
                                      :base_type        "type/BigInteger"
+                                     :effective_type   "type/BigInteger"
                                      :visibility_type  "normal"
                                      :has_field_values "none")
                               (assoc (field-details (Field (mt/id :users :name)))
-                                     :special_type             "type/Name"
+                                     :semantic_type             "type/Name"
                                      :table_id                 (mt/id :users)
                                      :name                     "NAME"
                                      :display_name             "Name"
                                      :database_type            "VARCHAR"
                                      :base_type                "type/Text"
+                                     :effective_type           "type/Text"
                                      :visibility_type          "normal"
                                      :dimension_options        []
                                      :default_dimension_option nil
@@ -176,6 +175,7 @@
                                      :display_name             "Last Login"
                                      :database_type            "TIMESTAMP"
                                      :base_type                "type/DateTime"
+                                     :effective_type           "type/DateTime"
                                      :visibility_type          "normal"
                                      :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                                      :default_dimension_option (var-get #'table-api/date-default-index)
@@ -183,18 +183,19 @@
                                      :position                 2
                                      :database_position        2)
                               (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
-                                     :special_type     "type/Category"
+                                     :semantic_type     "type/Category"
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"
                                      :display_name     "Password"
                                      :database_type    "VARCHAR"
                                      :base_type        "type/Text"
+                                     :effective_type   "type/Text"
                                      :visibility_type  "sensitive"
                                      :has_field_values "list"
                                      :position          3
                                      :database_position 3)]
                :id           (mt/id :users)})
-             ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
+             (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
           "Make sure that getting the User table *does* include info about the password field, but not actual values themselves"))))
 
 (deftest sensitive-fields-not-included-test
@@ -209,19 +210,21 @@
                :entity_type  "entity/UserTable"
                :fields       [(assoc (field-details (Field (mt/id :users :id)))
                                      :table_id         (mt/id :users)
-                                     :special_type     "type/PK"
+                                     :semantic_type     "type/PK"
                                      :name             "ID"
                                      :display_name     "ID"
                                      :database_type    "BIGINT"
                                      :base_type        "type/BigInteger"
+                                     :effective_type   "type/BigInteger"
                                      :has_field_values "none")
                               (assoc (field-details (Field (mt/id :users :name)))
                                      :table_id         (mt/id :users)
-                                     :special_type     "type/Name"
+                                     :semantic_type     "type/Name"
                                      :name             "NAME"
                                      :display_name     "Name"
                                      :database_type    "VARCHAR"
                                      :base_type        "type/Text"
+                                     :effective_type   "type/Text"
                                      :has_field_values "list"
                                      :position          1
                                      :database_position 1)
@@ -231,13 +234,14 @@
                                      :display_name             "Last Login"
                                      :database_type            "TIMESTAMP"
                                      :base_type                "type/DateTime"
+                                     :effective_type           "type/DateTime"
                                      :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                                      :default_dimension_option (var-get #'table-api/date-default-index)
                                      :has_field_values         "none"
                                      :position                 2
                                      :database_position        2)]
                :id           (mt/id :users)})
-             ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :users))))
+             (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
           "Make sure that getting the User table does *not* include password info"))))
 
 (deftest fk-target-permissions-test
@@ -246,39 +250,39 @@
                   "`:target`(#3867)")
       ;; create a temp DB with two tables; table-2 has an FK to table-1
       (mt/with-temp* [Database [db]
-                      Table    [table-1    {:db_id (u/get-id db)}]
-                      Table    [table-2    {:db_id (u/get-id db)}]
-                      Field    [table-1-id {:table_id (u/get-id table-1), :name "id", :base_type :type/Integer, :special_type :type/PK}]
-                      Field    [table-2-id {:table_id (u/get-id table-2), :name "id", :base_type :type/Integer, :special_type :type/PK}]
-                      Field    [table-2-fk {:table_id (u/get-id table-2), :name "fk", :base_type :type/Integer, :special_type :type/FK, :fk_target_field_id (u/get-id table-1-id)}]]
+                      Table    [table-1    {:db_id (u/the-id db)}]
+                      Table    [table-2    {:db_id (u/the-id db)}]
+                      Field    [table-1-id {:table_id (u/the-id table-1), :name "id", :base_type :type/Integer, :semantic_type :type/PK}]
+                      Field    [table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}]
+                      Field    [table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]]
         ;; grant permissions only to table-2
-        (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
-        (perms/grant-permissions! (perms-group/all-users) (u/get-id db) (:schema table-2) (u/get-id table-2))
+        (perms/revoke-permissions! (perms-group/all-users) (u/the-id db))
+        (perms/grant-permissions! (perms-group/all-users) (u/the-id db) (:schema table-2) (u/the-id table-2))
         ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
         (is (= #{{:name "id", :target false}
                  {:name "fk", :target false}}
-               (set (for [field (:fields ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (u/get-id table-2))))]
+               (set (for [field (:fields (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table-2))))]
                       (-> (select-keys field [:name :target])
                           (update :target boolean))))))))))
 
 (deftest update-table-test
   (testing "PUT /api/table/:id"
     (mt/with-temp Table [table]
-      ((mt/user->client :crowberto) :put 200 (format "table/%d" (u/get-id table))
-       {:display_name    "Userz"
-        :visibility_type "hidden"
-        :description     "What a nice table!"})
+      (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                            {:display_name    "Userz"
+                             :visibility_type "hidden"
+                             :description     "What a nice table!"})
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (assoc-in [:db :details] (:details (mt/db))))
-              (db/select-one [Table :id :schema :name :created_at] :id (u/get-id table))
+              (db/select-one [Table :id :schema :name :created_at] :id (u/the-id table))
               {:description     "What a nice table!"
                :entity_type     nil
                :visibility_type "hidden"
                :display_name    "Userz"
                :pk_field        (table/pk-field-id table)})
-             (dissoc ((mt/user->client :crowberto) :get 200 (format "table/%d" (u/get-id table)))
+             (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))))
 
 ;; see how many times sync-table! gets called when we call the PUT endpoint. It should happen when you switch from
@@ -292,10 +296,10 @@
               test-fun             (fn [state]
                                      (with-redefs [sync/sync-table! (fn [& args] (swap! called inc)
                                                                       (apply original-sync-table! args))]
-                                       ((mt/user->client :crowberto) :put 200 (format "table/%d" (:id table))
-                                        {:display_name    "Userz"
-                                         :visibility_type state
-                                         :description     "What a nice table!"})))]
+                                       (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                                             {:display_name    "Userz"
+                                                              :visibility_type state
+                                                              :description     "What a nice table!"})))]
           (test-fun "hidden")
           (test-fun nil)                ; <- should get synced
           (is (= 1
@@ -326,7 +330,8 @@
                                             :display_name  "User ID"
                                             :database_type "INTEGER"
                                             :base_type     "type/Integer"
-                                            :special_type  "type/FK"
+                                            :effective_type "type/Integer"
+                                            :semantic_type  "type/FK"
                                             :database_position 2
                                             :position          2
                                             :table         (merge
@@ -343,8 +348,9 @@
                                             :name          "ID"
                                             :display_name  "ID"
                                             :base_type     "type/BigInteger"
+                                            :effective_type "type/BigInteger"
                                             :database_type "BIGINT"
-                                            :special_type  "type/PK"
+                                            :semantic_type  "type/PK"
                                             :table         (merge
                                                             (dissoc (table-defaults) :db :segments :field_values :metrics)
                                                             (db/select-one [Table :id :created_at :updated_at]
@@ -353,11 +359,11 @@
                                                              :name         "USERS"
                                                              :display_name "Users"
                                                              :entity_type  "entity/UserTable"})))}]
-               ((mt/user->client :rasta) :get 200 (format "table/%d/fks" (mt/id :users)))))))
+               (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :users)))))))
 
     (testing "should just return nothing for 'virtual' tables"
       (is (= []
-             ((mt/user->client :crowberto) :get 200 "table/card__1000/fks"))))))
+             (mt/user-http-request :crowberto :get 200 "table/card__1000/fks"))))))
 
 (deftest basic-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
@@ -370,34 +376,36 @@
              :fields       [(merge
                              (field-details (Field (mt/id :categories :id)))
                              {:table_id         (mt/id :categories)
-                              :special_type     "type/PK"
+                              :semantic_type     "type/PK"
                               :name             "ID"
                               :display_name     "ID"
                               :database_type    "BIGINT"
                               :base_type        "type/BigInteger"
+                              :effective_type   "type/BigInteger"
                               :has_field_values "none"})
                             (merge
                              (field-details (Field (mt/id :categories :name)))
                              {:table_id                 (mt/id :categories)
-                              :special_type             "type/Name"
+                              :semantic_type             "type/Name"
                               :name                     "NAME"
                               :display_name             "Name"
                               :database_type            "VARCHAR"
                               :base_type                "type/Text"
+                              :effective_type           "type/Text"
                               :dimension_options        []
                               :default_dimension_option nil
                               :has_field_values         "list"
                               :database_position        1
                               :position                 1})]
              :id           (mt/id :categories)})
-           ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
+           (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
-  (assoc field :id ["field-literal" field-name base-type]))
+  (assoc field :id ["field" field-name {:base-type base-type}]))
 
 (defn- default-card-field-for-venues [table-id]
   {:table_id                 table-id
-   :special_type             nil
+   :semantic_type             nil
    :default_dimension_option nil
    :dimension_options        []})
 
@@ -421,9 +429,9 @@
                                                 :type     :native
                                                 :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
         ;; run the Card which will populate its result_metadata column
-        ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
         ;; Now fetch the metadata for this "table"
-        (is (= (let [card-virtual-table-id (str "card__" (u/get-id card))]
+        (is (= (let [card-virtual-table-id (str "card__" (u/the-id card))]
                  {:display_name      "Go Dubs!"
                   :schema            "Everything else"
                   :db_id             (:database_id card)
@@ -435,29 +443,33 @@
                                           [{:name         "NAME"
                                             :display_name "NAME"
                                             :base_type    "type/Text"
-                                            :special_type "type/Name"
-                                            :fingerprint  (:name mutil/venue-fingerprints)}
+                                            :semantic_type "type/Name"
+                                            :fingerprint  (:name mutil/venue-fingerprints)
+                                            :field_ref    ["field" "NAME" {:base-type "type/Text"}]}
                                            {:name         "ID"
                                             :display_name "ID"
                                             :base_type    "type/BigInteger"
-                                            :special_type nil
-                                            :fingerprint  (:id mutil/venue-fingerprints)}
+                                            :semantic_type nil
+                                            :fingerprint  (:id mutil/venue-fingerprints)
+                                            :field_ref    ["field" "ID" {:base-type "type/BigInteger"}]}
                                            (with-numeric-dimension-options
                                              {:name         "PRICE"
                                               :display_name "PRICE"
                                               :base_type    "type/Integer"
-                                              :special_type nil
-                                              :fingerprint  (:price mutil/venue-fingerprints)})
+                                              :semantic_type nil
+                                              :fingerprint  (:price mutil/venue-fingerprints)
+                                              :field_ref    ["field" "PRICE" {:base-type "type/Integer"}]})
                                            (with-coordinate-dimension-options
                                              {:name         "LATITUDE"
                                               :display_name "LATITUDE"
                                               :base_type    "type/Float"
-                                              :special_type "type/Latitude"
-                                              :fingerprint  (:latitude mutil/venue-fingerprints)})])})
+                                              :semantic_type "type/Latitude"
+                                              :fingerprint  (:latitude mutil/venue-fingerprints)
+                                              :field_ref    ["field" "LATITUDE" {:base-type "type/Float"}]})])})
                (->> card
-                    u/get-id
+                    u/the-id
                     (format "table/card__%d/query_metadata")
-                    ((mt/user->client :crowberto) :get 200)
+                    (mt/user-http-request :crowberto :get 200)
                     (tu/round-fingerprint-cols [:fields])
                     (mt/round-all-decimals 2))))))))
 
@@ -469,11 +481,11 @@
                                 :dataset_query {:database (mt/id)
                                                 :type     :native
                                                 :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
-        (let [card-virtual-table-id (str "card__" (u/get-id card))]
+        (let [card-virtual-table-id (str "card__" (u/the-id card))]
           ;; run the Card which will populate its result_metadata column
-          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
           ;; Now fetch the metadata for this "table" via the API
-          (let [[name-metadata last-login-metadata] (db/select-one-field :result_metadata Card :id (u/get-id card))]
+          (let [[name-metadata last-login-metadata] (db/select-one-field :result_metadata Card :id (u/the-id card))]
             (is (= {:display_name      "Users"
                     :schema            "Everything else"
                     :db_id             (:database_id card)
@@ -484,22 +496,24 @@
                                          :display_name             "NAME"
                                          :base_type                "type/Text"
                                          :table_id                 card-virtual-table-id
-                                         :id                       ["field-literal" "NAME" "type/Text"]
-                                         :special_type             "type/Name"
+                                         :id                       ["field" "NAME" {:base-type "type/Text"}]
+                                         :semantic_type            "type/Name"
                                          :default_dimension_option nil
                                          :dimension_options        []
-                                         :fingerprint              (:fingerprint name-metadata)}
+                                         :fingerprint              (:fingerprint name-metadata)
+                                         :field_ref                ["field" "NAME" {:base-type "type/Text"}]}
                                         {:name                     "LAST_LOGIN"
                                          :display_name             "LAST_LOGIN"
                                          :base_type                "type/DateTime"
                                          :table_id                 card-virtual-table-id
-                                         :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
-                                         :special_type             nil
+                                         :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
+                                         :semantic_type            nil
                                          :default_dimension_option (var-get #'table-api/date-default-index)
                                          :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                                         :fingerprint              (:fingerprint last-login-metadata)}]}
-                   ((mt/user->client :crowberto) :get 200
-                    (format "table/card__%d/query_metadata" (u/get-id card)))))))))))
+                                         :fingerprint              (:fingerprint last-login-metadata)
+                                         :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
+                   (mt/user-http-request :crowberto :get 200
+                                         (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
 
 (defn- narrow-fields [category-names api-response]
   (for [field (:fields api-response)
@@ -511,52 +525,52 @@
                                 (dissoc dim :id :created_at :updated_at)
                                 dim))))))
 
-(defn- category-id-special-type
-  "Field values will only be returned when the field's special type is set to type/Category. This function will change
+(defn- category-id-semantic-type
+  "Field values will only be returned when the field's semantic type is set to type/Category. This function will change
   that for `category_id`, then invoke `f` and roll it back afterwards"
-  [special-type f]
-  (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:special_type special-type}
+  [semantic-type f]
+  (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:semantic_type semantic-type}
     (f)))
 
 (deftest query-metadata-remappings-test
   (testing "GET /api/table/:id/query_metadata"
-    (data/with-venue-category-remapping "Foo"
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (testing "Ensure internal remapped dimensions and human_readable_values are returned"
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name "Foo", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
+                 :dimensions {:name "Category ID", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
                  :dimensions []}]
-               (category-id-special-type
+               (category-id-semantic-type
                 :type/Category
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
-                                 ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
+                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
 
       (testing "Ensure internal remapped dimensions and human_readable_values are returned when type is enum"
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name "Foo", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
+                 :dimensions {:name "Category ID", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
                  :dimensions []}]
-               (category-id-special-type
+               (category-id-semantic-type
                 :type/Enum
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
-                                 ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))
+                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))
 
-    (data/with-venue-category-fk-remapping "Foo"
+    (mt/with-column-remappings [venues.category_id categories.name]
       (testing "Ensure FK remappings are returned"
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
                  :name       "CATEGORY_ID"
-                 :dimensions {:name                    "Foo"
+                 :dimensions {:name                    "Category ID"
                               :field_id                (mt/id :venues :category_id)
                               :human_readable_field_id (mt/id :categories :name)
                               :type                    "external"}}
@@ -564,11 +578,11 @@
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
                  :dimensions []}]
-               (category-id-special-type
+               (category-id-semantic-type
                 :type/Category
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
-                                 ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
+                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
 
 (deftest dimension-options-sort-test
   (testing "Ensure dimensions options are sorted numerically, but returned as strings"
@@ -591,21 +605,30 @@
   [response field-name]
   (set
    (for [dim-index (dimension-options-for-field response field-name)
-         :let [{[_ _ strategy _] :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
-     strategy)))
+         :let [{clause :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
+     clause)))
 
 (deftest numeric-binning-options-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "binning options for numeric fields"
       (testing "Lat/Long fields should use bin-width rather than num-bins"
-        (let [response ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
-          (is (= #{nil "bin-width" "default"}
+        (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
+          (is (= #{nil
+                   ["field" nil {:binning {:strategy "bin-width", :bin-width 10.0}}]
+                   ["field" nil {:binning {:strategy "bin-width", :bin-width 0.1}}]
+                   ["field" nil {:binning {:strategy "bin-width", :bin-width 1.0}}]
+                   ["field" nil {:binning {:strategy "bin-width", :bin-width 20.0}}]
+                   ["field" nil {:binning {:strategy "default"}}]}
                  (extract-dimension-options response "latitude")))))
 
-      (testing "Number columns without a special type should use \"num-bins\""
-        (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:special_type nil}
-          (let [response ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
-            (is (= #{nil "num-bins" "default"}
+      (testing "Number columns without a semantic type should use \"num-bins\""
+        (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:semantic_type nil}
+          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
+            (is (= #{nil
+                     ["field" nil {:binning {:strategy "num-bins", :num-bins 50}}]
+                     ["field" nil {:binning {:strategy "default"}}]
+                     ["field" nil {:binning {:strategy "num-bins", :num-bins 100}}]
+                     ["field" nil {:binning {:strategy "num-bins", :num-bins 10}}]}
                    (extract-dimension-options response "price"))))))
 
       (testing "Numeric fields without min/max values should not have binning options"
@@ -615,7 +638,7 @@
                                    (assoc-in [:type :type/Number :min] nil))]
           (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint temp-fingerprint}
             (is (= []
-                   (-> ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :categories)))
+                   (-> (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))
                        (get-in [:fields])
                        first
                        :dimension_options)))))))))
@@ -626,26 +649,26 @@
       (testing "should show up whether the backend supports binning of numeric values or not"
         (mt/test-drivers #{:druid}
           (tqpt/with-flattened-dbdef
-            (let [response ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
+            (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
               (is (= @#'table-api/datetime-dimension-indexes
                      (dimension-options-for-field response "timestamp")))))))
 
       (testing "dates"
         (mt/test-drivers (mt/normal-drivers)
-          (let [response ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
+          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
             (is (= @#'table-api/datetime-dimension-indexes
                    (dimension-options-for-field response "date"))))))
 
       (testing "unix timestamps"
         (mt/dataset sad-toucan-incidents
-          (let [response ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :incidents)))]
+          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :incidents)))]
             (is (= @#'table-api/datetime-dimension-indexes
                    (dimension-options-for-field response "timestamp"))))))
 
       (testing "time columns"
         (mt/test-drivers (mt/normal-drivers-except #{:sparksql :mongo :oracle :redshift})
           (mt/dataset test-data-with-time
-            (let [response ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
+            (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
               (is (= []
                      (dimension-options-for-field response "last_login_time"))))))))))
 
@@ -658,18 +681,19 @@
                                                   :type    :query
                                                   :query    {:source-query {:source-table (mt/id :venues)}}}}]
           (letfn [(dimension-options []
-                    (let [response ((mt/user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
+                    (let [response (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))]
                       (map #(dimension-options-for-field response %) ["latitude" "longitude"])))]
-            (testing "Nested queries missing a fingerprint should not show binning-options"
-              ;; By default result_metadata will be nil (and no fingerprint). Just asking for query_metadata after the
-              ;; card was created but before it was ran should not allow binning
-              (is (= [nil nil]
-                     (dimension-options))))
+            (testing "Nested queries missing a fingerprint/results metadata should not show binning-options"
+              (mt/with-temp-vals-in-db Card (:id card) {:result_metadata nil}
+                ;; By default result_metadata will be nil (and no fingerprint). Just asking for query_metadata after the
+                ;; card was created but before it was ran should not allow binning
+                (is (= [nil nil]
+                       (dimension-options)))))
 
             (testing "Nested queries with a fingerprint should have dimension options for binning"
               ;; run the Card which will populate its result_metadata column
-              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
-              (let [response ((mt/user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
+              (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
+              (let [response (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))]
                 (is (= (repeat 2 (var-get #'table-api/coordinate-dimension-indexes))
                        (dimension-options)))))))))))
 
@@ -677,58 +701,58 @@
   (testing "GET /api/table/:id/related"
     (testing "related/recommended entities"
       (is (= #{:metrics :segments :linked-from :linking-to :tables}
-             (-> ((mt/user->client :crowberto) :get 200 (format "table/%s/related" (mt/id :venues))) keys set))))))
+             (-> (mt/user-http-request :crowberto :get 200 (format "table/%s/related" (mt/id :venues))) keys set))))))
 
 (deftest discard-values-test
   (testing "POST /api/table/:id/discard_values"
     (mt/with-temp* [Table       [table        {}]
-                    Field       [field        {:table_id (u/get-id table)}]
-                    FieldValues [field-values {:field_id (u/get-id field), :values ["A" "B" "C"]}]]
-      (let [url (format "table/%d/discard_values" (u/get-id table))]
+                    Field       [field        {:table_id (u/the-id table)}]
+                    FieldValues [field-values {:field_id (u/the-id field), :values ["A" "B" "C"]}]]
+      (let [url (format "table/%d/discard_values" (u/the-id table))]
         (testing "Non-admin toucans should not be allowed to discard values"
           (is (= "You don't have permissions to do that."
-                 ((mt/user->client :rasta) :post 403 url)))
+                 (mt/user-http-request :rasta :post 403 url)))
           (testing "FieldValues should still exist"
-            (is (db/exists? FieldValues :id (u/get-id field-values)))))
+            (is (db/exists? FieldValues :id (u/the-id field-values)))))
 
         (testing "Admins should be able to successfuly delete them"
           (is (= {:status "success"}
-                 ((mt/user->client :crowberto) :post 200 url)))
+                 (mt/user-http-request :crowberto :post 200 url)))
           (testing "FieldValues should be gone"
-            (is (not (db/exists? FieldValues :id (u/get-id field-values))))))))
+            (is (not (db/exists? FieldValues :id (u/the-id field-values))))))))
 
     (testing "For tables that don't exist, we should return a 404."
       (is (= "Not found."
-             ((mt/user->client :crowberto) :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
+             (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
 
 (deftest field-ordering-test
   (let [original-field-order (db/select-one-field :field_order Table :id (mt/id :venues))]
     (try
       (testing "Cane we set alphabetical field ordering?"
         (is (= ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
-               (->> ((mt/user->client :crowberto) :put 200 (format "table/%s" (mt/id :venues))
-                     {:field_order :alphabetical})
+               (->> (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
+                                          {:field_order :alphabetical})
                     :fields
                     (map :name)))))
       (testing "Cane we set smart field ordering?"
         (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
-               (->> ((mt/user->client :crowberto) :put 200 (format "table/%s" (mt/id :venues))
-                     {:field_order :smart})
+               (->> (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
+                                          {:field_order :smart})
                     :fields
                     (map :name)))))
       (testing "Cane we set database field ordering?"
         (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
-               (->> ((mt/user->client :crowberto) :put 200 (format "table/%s" (mt/id :venues))
-                     {:field_order :database})
+               (->> (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
+                                          {:field_order :database})
                     :fields
                     (map :name)))))
       (testing "Cane we set custom field ordering?"
         (let [custom-field-order [(mt/id :venues :price) (mt/id :venues :longitude) (mt/id :venues :id)
                                   (mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :latitude)]]
-           ((mt/user->client :crowberto) :put 200 (format "table/%s/fields/order" (mt/id :venues))
-            {:request-options {:body (json/encode custom-field-order)}})
+          (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
+                                {:request-options {:body (json/encode custom-field-order)}})
           (is (= custom-field-order
                  (->> (table/fields (Table (mt/id :venues)))
-                      (map u/get-id))))))
-      (finally ((mt/user->client :crowberto) :put 200 (format "table/%s" (mt/id :venues))
-                {:field_order original-field-order})))))
+                      (map u/the-id))))))
+      (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
+                                     {:field_order original-field-order})))))

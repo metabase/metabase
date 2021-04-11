@@ -1,5 +1,4 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import _ from "underscore";
 import { t } from "ttag";
@@ -9,7 +8,7 @@ import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 
-import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 
 // import type { Section } from "metabase/components/AccordionList";
 export type AccordionListItem = {};
@@ -65,10 +64,10 @@ export default class DimensionList extends Component {
     sections: [],
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateSections(this.props.sections);
   }
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.sections !== nextProps.sections) {
       this._updateSections(nextProps.sections);
     }
@@ -192,7 +191,8 @@ export default class DimensionList extends Component {
     const shouldExcludeBinning =
       !enableSubDimensions &&
       !useOriginalDimension &&
-      dimension instanceof BinnedDimension;
+      dimension instanceof FieldDimension &&
+      dimension.binningStrategy();
 
     if (shouldExcludeBinning) {
       // If we don't let user choose the sub-dimension, we don't want to treat the field
@@ -238,7 +238,7 @@ export default class DimensionList extends Component {
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
         renderItemExtra={this.renderItemExtra}
-        getItemClassName={() => "hover-parent hover--visibility"}
+        getItemClassName={() => "hover-parent hover--display"}
       />
     );
   }

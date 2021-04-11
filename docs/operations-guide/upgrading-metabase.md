@@ -24,7 +24,7 @@ If you are using the Metabase macOS app, you will be notified when there is a ne
 
 ![Autoupdate Confirmation Dialog](images/AutoupdateScreenshot.png)
 
-#### [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.html#deploying-new-versions-of-metabase)
+#### [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.html#deploying-new-versions-of-metabase-on-elastic-beanstalk)
 
 Step-by-step instructions on how to upgrade Metabase running on Elastic Beanstalk using RDS.
 

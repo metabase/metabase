@@ -25,7 +25,9 @@ export function channelIsValid(channel, channelSpec) {
       return false;
   }
   if (channelSpec.recipients) {
-    if (!channel.recipients) {
+    // default from formInput is an empty array, not a null array
+    // check for both
+    if (!channel.recipients || channel.recipients.length < 1) {
       return false;
     }
   }
@@ -44,15 +46,25 @@ export function channelIsValid(channel, channelSpec) {
   return true;
 }
 
+function pulseChannelsAreValid(pulse, channelSpecs) {
+  return (
+    pulse.channels.filter(c =>
+      channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
+    ).length > 0 || false
+  );
+}
+
 export function pulseIsValid(pulse, channelSpecs) {
   return (
     (pulse.name &&
       pulse.cards.length > 0 &&
-      pulse.channels.filter(c =>
-        channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
-      ).length > 0) ||
+      pulseChannelsAreValid(pulse, channelSpecs)) ||
     false
   );
+}
+
+export function dashboardPulseIsValid(pulse, channelSpecs) {
+  return pulseChannelsAreValid(pulse, channelSpecs);
 }
 
 export function emailIsEnabled(pulse) {
@@ -73,7 +85,7 @@ export function cleanPulse(pulse, channelSpecs) {
 
 export function getDefaultChannel(channelSpecs) {
   // email is the first choice
-  if (channelSpecs.email.configured) {
+  if (channelSpecs.email && channelSpecs.email.configured) {
     return channelSpecs.email;
   }
   // otherwise just pick the first configured

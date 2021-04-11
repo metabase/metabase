@@ -1,13 +1,15 @@
 (ns metabase.util.infer-spaces-test
-  (:require [expectations :refer :all]
-            [metabase.util.infer-spaces :refer :all]))
+  (:require [clojure.test :refer :all]
+            [metabase.util.infer-spaces :as infer-spaces]))
 
-(expect ["user"] (infer-spaces "user"))
-(expect ["users"] (infer-spaces "users"))
-(expect ["orders"] (infer-spaces "orders"))
-(expect ["products"] (infer-spaces "products"))
-(expect ["events"] (infer-spaces "events"))
-
-(expect ["checkins"] (infer-spaces "checkins"))
-
-(expect ["dashboard" "card" "subscription"] (infer-spaces "dashboardcardsubscription"))
+(deftest infer-spaces-test
+  (doseq [[input expected] {"user"                      ["user"]
+                            "users"                     ["users"]
+                            "orders"                    ["orders"]
+                            "products"                  ["products"]
+                            "events"                    ["events"]
+                            "checkins"                  ["checkins"]
+                            "dashboardcardsubscription" ["dashboard" "card" "subscription"]}]
+    (testing (pr-str (list 'infer-spaces input))
+      (is (= expected
+             (infer-spaces/infer-spaces input))))))

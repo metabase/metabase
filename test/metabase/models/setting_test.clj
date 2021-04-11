@@ -1,16 +1,13 @@
 (ns metabase.models.setting-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :refer :all]]
-            [metabase.util
-             [encryption-test :as encryption-test]
-             [i18n :as i18n :refer [deferred-tru]]]
+            [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :refer :all]
+            [metabase.util :as u]
+            [metabase.util.encryption-test :as encryption-test]
+            [metabase.util.i18n :as i18n :refer [deferred-tru]]
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -516,3 +513,31 @@
     ;; ok, make sure the setting was set
     (is (= "Banana Beak"
            (toucan-name)))))
+
+
+(deftest duplicated-setting-name
+  (testing "can re-register a setting in the same ns (redefining or reloading ns)"
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public)))
+  (testing "if attempt to register in a different ns throws an error"
+    (let [current-ns (ns-name *ns*)]
+      (try
+        (ns nested-setting-test
+          (:require [metabase.models.setting :refer [defsetting]]
+                    [metabase.util.i18n :as i18n :refer [deferred-tru]]))
+        (defsetting foo (deferred-tru "A testing setting") :visibility :public)
+        (catch Exception e
+          (is (= {:existing-setting
+                  {:description (deferred-tru "A testing setting"),
+                   :cache? true,
+                   :default nil,
+                   :name :foo,
+                   :type :string,
+                   :sensitive? false,
+                   :tag 'java.lang.String,
+                   :namespace current-ns
+                   :visibility :public}}
+                 (ex-data e)))
+          (is (= (str "Setting :foo already registered in " current-ns)
+                 (ex-message e))))
+        (finally (in-ns current-ns))))))

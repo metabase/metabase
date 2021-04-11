@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { ISO8601Time } from ".";
 import type { TableId } from "./Table";
 import type { Value } from "./Dataset";
@@ -7,7 +5,7 @@ import type { Value } from "./Dataset";
 export type FieldId = number;
 
 export type BaseType = string;
-export type SpecialType = string;
+export type SemanticType = string;
 
 export type FieldVisibilityType =
   | "details-only"
@@ -22,7 +20,8 @@ export type Field = {
   display_name: string,
   description: string,
   base_type: BaseType,
-  special_type: SpecialType,
+  effective_type?: BaseType,
+  semantic_type: SemanticType,
   active: boolean,
   visibility_type: FieldVisibilityType,
   preview_display: boolean,

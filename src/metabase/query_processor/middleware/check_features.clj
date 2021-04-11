@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.check-features
-  (:require [metabase
-             [driver :as driver]
-             [util :as u]]
+  (:require [metabase.driver :as driver]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
 ;; `assert-driver-supports` doesn't run check when `*driver*` is unbound (e.g., when used in the REPL)
@@ -23,9 +22,7 @@
     :stddev
     :standard-deviation-aggregations
 
-    ;; `:fk->` is normally replaced by `:joined-field` already but the middleware that does the replacement won't run
-    ;; if the driver doesn't support foreign keys, meaning the clauses can leak thru
-    #{:joined-field :fk->}
+    [:field _ (_ :guard (some-fn :source-field :join-alias))]
     :foreign-keys))
 
 (defn- check-features* [{query-type :type, :as query}]

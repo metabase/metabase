@@ -2,14 +2,14 @@
   (:require [cheshire.core :as json]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.streaming.common :as common]
             [metabase.query-processor.streaming.interface :as i]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]])
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
-           [java.time LocalDate LocalDateTime OffsetDateTime ZonedDateTime]
-           java.util.Date
-           [org.apache.poi.ss.usermodel Cell CellType Workbook]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           [org.apache.poi.ss.usermodel BuiltinFormats Cell CellType DateUtil Workbook]
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
 (defmethod i/stream-options :xlsx
@@ -20,69 +20,91 @@
    :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.xlsx\""
                                                              (u.date/format (t/zoned-date-time)))}})
 
-;; docjure has an open issue about its formatting issues: https://github.com/mjul/docjure/issues/75
-;; since this hasn't been addressed at the library level, we have to do some workarounds
-
-;; this method is private in the docjure library, but we need to able to call it from here
-;; also, the version in Docjure doesn't keep track of created cell styles, which is bad
-;; these need to be memoized per Workbook
-
 (def ^:dynamic *cell-styles*
   "Holds the CellStyle values used within a spreadsheet so that they can be reused. Excel has a limit
    of 64,000 cell styles in a single workbook."
   nil)
 
-(defn- create-or-get-date-format [^Workbook workbook ^String format-string]
-  (when-not (contains? @*cell-styles* format-string)
-    (let [new-val (let [format-helper (.getCreationHelper workbook)
-                        date-style (.createCellStyle workbook)]
-                    (assoc
-                     @*cell-styles*
-                     format-string
-                     (doto date-style
-                       (.setDataFormat (.. format-helper createDataFormat (getFormat format-string))))))]
-      (swap! *cell-styles* (constantly new-val))))
-  (get @*cell-styles* format-string))
+;; Since we can only have a limited number of styles we'll enumerate the possible styles we'll want to use. Then we'll
+;; create a bunch of delays for them that will create them if needed and bind this to `*cell-styles*`; we'll use them
+;; as needed in various `set-cell!` method impls.
 
-;; the docjure library does not handle the difference between a date and date+time column
-;; as a result, we'll add overrides that can do it
-(intern 'dk.ative.docjure.spreadsheet 'create-date-format create-or-get-date-format)
+(def ^:private ^{:arglists '(^String [style-name])} cell-style->format-string
+  "Predefined cell format strings. These are used to get the corresponding predefined cell format number using
+  `BuiltinFormats/getBuiltinFormat`. See `(BuiltinFormats/getAll)` for all predefined formats"
+  {:date     "m/d/yy"
+   :datetime "m/d/yy h:mm"
+   :time     "h:mm:ss"})
 
-(def ^:const date-format
-  "Standard date format for :type/Date objects"
-  "m/d/yy")
+(defn- cell-format
+  "Fetch the predefined cell format integer associated with `style-name`."
+  ^Integer [style-name]
+  (or (some-> style-name cell-style->format-string BuiltinFormats/getBuiltinFormat)
+      (throw (ex-info (tru "Invalid cell format")
+                      {:type          qp.error-type/qp
+                       :style-name    style-name
+                       :known-formats cell-style->format-string
+                       :all-formats   (BuiltinFormats/getAll)}))))
 
-(def ^:const datetime-format
-  "Standard date/time format for any of the :type/Date variants with a Time"
-  "m/d/yy HH:MM:ss")
+(defn- cell-style-delays
+  "Create a map of style name -> delay. This is bound to `*cell-styles*` by `streaming-results-writer`. Dereffing the
+  delay will create the style and add it to the workbook if needed."
+  [^Workbook workbook]
+  (into {} (for [style-name (keys cell-style->format-string)]
+             [style-name (delay
+                           (doto (.createCellStyle workbook)
+                             (.setDataFormat (cell-format style-name))))])))
 
-(defn- set-cell! [^Cell cell format-string date]
-  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
-  (.setCellValue cell ^Date date)
-  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) format-string)))
+(defn- cell-style
+  "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`."
+  ^org.apache.poi.ss.usermodel.CellStyle [style-name]
+  (some-> style-name *cell-styles* deref))
 
-(defmethod spreadsheet/set-cell! LocalDate [^Cell cell val]
-  ;; this truncates the time to midnight UTC on the given date
-  (set-cell! cell date-format (t/java-date (t/zoned-date-time val (t/local-time 00 00) (t/zone-id)))))
+;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell
+;; styles applied that dictate how to format them
 
-(defmethod spreadsheet/set-cell! LocalDateTime [^Cell cell val]
-  (set-cell! cell datetime-format (t/java-date (t/zoned-date-time val (t/zone-id)))))
+(defmethod spreadsheet/set-cell! LocalDate
+  [^Cell cell ^LocalDate t]
+  (.setCellValue cell t)
+  (.setCellType cell CellType/NUMERIC)
+  (.setCellStyle cell (cell-style :date)))
 
-(defmethod spreadsheet/set-cell! ZonedDateTime [^Cell cell val]
-  (set-cell! cell datetime-format (t/java-date val)))
+(defmethod spreadsheet/set-cell! LocalDateTime
+  [^Cell cell ^LocalDateTime t]
+  (.setCellValue cell t)
+  (.setCellType cell CellType/NUMERIC)
+  (.setCellStyle cell (cell-style :datetime)))
 
-(defmethod spreadsheet/set-cell! OffsetDateTime [^Cell cell val]
-  (set-cell! cell datetime-format (t/java-date val)))
+(defmethod spreadsheet/set-cell! LocalTime
+  [^Cell cell t]
+  ;; there's no `.setCellValue` for a `LocalTime` -- but all the built-in impls for `LocalDate` and `LocalDateTime` do
+  ;; anyway is convert the date(time) to an Excel datetime floating-point number and then set that.
+  ;;
+  ;; `DateUtil/convertTime` will convert a *time* string to an Excel number; after that we can set the numeric value
+  ;; directly.
+  ;;
+  ;; See https://poi.apache.org/apidocs/4.1/org/apache/poi/ss/usermodel/DateUtil.html#convertTime-java.lang.String-
+  (.setCellValue cell (DateUtil/convertTime (u.date/format "HH:mm:ss" t)))
+  (.setCellType cell CellType/NUMERIC)
+  (.setCellStyle cell (cell-style :time)))
 
-;; overrides the default implementation from docjure, so that a plain Date object
-;; carries its time too
-(defmethod spreadsheet/set-cell! Date [^Cell cell val]
-  (set-cell! cell datetime-format val))
+(defmethod spreadsheet/set-cell! OffsetTime
+  [cell t]
+  (spreadsheet/set-cell! cell (t/local-time (common/in-result-time-zone t))))
+
+(defmethod spreadsheet/set-cell! OffsetDateTime
+  [cell t]
+  (spreadsheet/set-cell! cell (t/local-date-time (common/in-result-time-zone t))))
+
+(defmethod spreadsheet/set-cell! ZonedDateTime
+  [cell t]
+  (spreadsheet/set-cell! cell (t/offset-date-time t)))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
-;; `metabase.middleware`.
-(defmethod spreadsheet/set-cell! Object [^Cell cell, value]
+;; `metabase.server.middleware`.
+(defmethod spreadsheet/set-cell! Object
+  [^Cell cell value]
   (when (= (.getCellType cell) CellType/FORMULA)
     (.setCellType cell CellType/STRING))
   ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
@@ -92,11 +114,10 @@
                                (json/parse-string keyword)
                                :v))))
 
-;; TODO -- this is obviously not streaming! SAD!
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
   (let [workbook    (SXSSFWorkbook.)
-        cell-styles (atom {})
+        cell-styles (cell-style-delays workbook)
         sheet       (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]

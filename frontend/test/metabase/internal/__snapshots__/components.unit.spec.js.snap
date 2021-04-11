@@ -2,7 +2,7 @@
 
 exports[`Button should render "" correctly 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH flex-no-shrink"
+  className="Button Button-ygn2tx-0 biecp flex-no-shrink"
 >
   <div
     className="flex layout-centered"
@@ -19,7 +19,7 @@ exports[`Button should render "" correctly 1`] = `
 
 exports[`Button should render "primary" correctly 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH flex-no-shrink Button--primary"
+  className="Button Button-ygn2tx-0 biecp flex-no-shrink Button--primary"
 >
   <div
     className="flex layout-centered"
@@ -36,7 +36,7 @@ exports[`Button should render "primary" correctly 1`] = `
 
 exports[`Button should render "with an icon" correctly 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH flex-no-shrink"
+  className="Button Button-ygn2tx-0 biecp flex-no-shrink"
 >
   <div
     className="flex layout-centered"
@@ -66,13 +66,13 @@ exports[`Button should render "with an icon" correctly 1`] = `
 
 exports[`ButtonBar should render "default" correctly 1`] = `
 <div
-  className="sc-htpNat jncdfk"
+  className="sc-bwzfXH jruoDg"
 >
   <div
-    className="mr-auto sc-htpNat cZLspC"
+    className="mr-auto sc-bwzfXH dtAxiM"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
+      className="Button Button-ygn2tx-0 biecp flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -87,20 +87,20 @@ exports[`ButtonBar should render "default" correctly 1`] = `
     </button>
   </div>
   <div
-    className="ml-auto sc-htpNat cISmVk"
+    className="ml-auto sc-bwzfXH bSPfTz"
   />
 </div>
 `;
 
 exports[`ButtonBar should render "left and right" correctly 1`] = `
 <div
-  className="sc-htpNat jncdfk"
+  className="sc-bwzfXH jruoDg"
 >
   <div
-    className="mr-auto sc-htpNat cZLspC"
+    className="mr-auto sc-bwzfXH dtAxiM"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
+      className="Button Button-ygn2tx-0 biecp flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -115,10 +115,10 @@ exports[`ButtonBar should render "left and right" correctly 1`] = `
     </button>
   </div>
   <div
-    className="ml-auto sc-htpNat cISmVk"
+    className="ml-auto sc-bwzfXH bSPfTz"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
+      className="Button Button-ygn2tx-0 biecp flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -137,13 +137,13 @@ exports[`ButtonBar should render "left and right" correctly 1`] = `
 
 exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
 <div
-  className="sc-htpNat jncdfk"
+  className="sc-bwzfXH jruoDg"
 >
   <div
-    className="flex-full flex-basis-none sc-htpNat cZLspC"
+    className="flex-full flex-basis-none sc-bwzfXH dtAxiM"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
+      className="Button Button-ygn2tx-0 biecp flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -158,10 +158,10 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
     </button>
   </div>
   <div
-    className="sc-htpNat jncdfk"
+    className="sc-bwzfXH jruoDg"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
+      className="Button Button-ygn2tx-0 biecp flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -176,10 +176,10 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
     </button>
   </div>
   <div
-    className="flex-full flex-basis-none sc-htpNat cISmVk"
+    className="flex-full flex-basis-none sc-bwzfXH bSPfTz"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
+      className="Button Button-ygn2tx-0 biecp flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -198,7 +198,7 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
 
 exports[`Card should render "dark" correctly 1`] = `
 <div
-  className="Card-fqt8sg-0 chzUCZ"
+  className="Card-fqt8sg-0 bnAjGM"
 >
   <div
     className="p4"
@@ -210,7 +210,7 @@ exports[`Card should render "dark" correctly 1`] = `
 
 exports[`Card should render "hoverable" correctly 1`] = `
 <div
-  className="Card-fqt8sg-0 kBvxHu"
+  className="Card-fqt8sg-0 fDXUKg"
 >
   <div
     className="p4"
@@ -222,7 +222,7 @@ exports[`Card should render "hoverable" correctly 1`] = `
 
 exports[`Card should render "normal" correctly 1`] = `
 <div
-  className="Card-fqt8sg-0 eNUvwM"
+  className="Card-fqt8sg-0 kYEIzT"
 >
   <div
     className="p4"
@@ -234,24 +234,31 @@ exports[`Card should render "normal" correctly 1`] = `
 
 exports[`CheckBox should render "Default - Off" correctly 1`] = `
 <div
+  aria-checked={undefined}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "white",
-      "border": "2px solid #C7CFD4",
+      "border": "2px solid #B8BBC3",
       "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
   }
+  tabIndex="0"
 />
 `;
 
 exports[`CheckBox should render "Green" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#88BF4D",
@@ -261,6 +268,7 @@ exports[`CheckBox should render "Green" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -285,8 +293,11 @@ exports[`CheckBox should render "Green" correctly 1`] = `
 
 exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#509EE3",
@@ -296,6 +307,7 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -320,8 +332,11 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 
 exports[`CheckBox should render "Purple" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#A989C5",
@@ -331,6 +346,7 @@ exports[`CheckBox should render "Purple" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -355,8 +371,11 @@ exports[`CheckBox should render "Purple" correctly 1`] = `
 
 exports[`CheckBox should render "Red" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#EF8C8C",
@@ -366,6 +385,7 @@ exports[`CheckBox should render "Red" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -390,8 +410,11 @@ exports[`CheckBox should render "Red" correctly 1`] = `
 
 exports[`CheckBox should render "Yellow" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#F9D45C",
@@ -401,6 +424,7 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -420,6 +444,78 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
       d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
     />
   </svg>
+</div>
+`;
+
+exports[`ColorPicker should render "" correctly 1`] = `
+<div
+  className="inline-block"
+>
+  <a
+    className="no-decoration"
+    id={undefined}
+    onClick={[Function]}
+    style={undefined}
+  >
+    <div
+      className="bordered rounded flex align-center"
+      style={
+        Object {
+          "padding": 8,
+        }
+      }
+    >
+      <div
+        style={
+          Object {
+            "backgroundColor": undefined,
+            "borderRadius": 4,
+            "height": 32,
+            "width": 32,
+          }
+        }
+      />
+    </div>
+    <span
+      className="hide"
+    />
+  </a>
+</div>
+`;
+
+exports[`ColorPicker should render "with value" correctly 1`] = `
+<div
+  className="inline-block"
+>
+  <a
+    className="no-decoration"
+    id={undefined}
+    onClick={[Function]}
+    style={undefined}
+  >
+    <div
+      className="bordered rounded flex align-center"
+      style={
+        Object {
+          "padding": 8,
+        }
+      }
+    >
+      <div
+        style={
+          Object {
+            "backgroundColor": "#509ee3",
+            "borderRadius": 4,
+            "height": 32,
+            "width": 32,
+          }
+        }
+      />
+    </div>
+    <span
+      className="hide"
+    />
+  </a>
 </div>
 `;
 
@@ -447,7 +543,7 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
           width={18}
         >
           <path
-            d="M26.87 12.988L19.8 5.917l4.033-4.034a2 2 0 0 1 2.829 0l4.243 4.243a2 2 0 0 1 0 2.828l-4.034 4.034zm-1.414 1.414L10.65 29.21a3 3 0 0 1-1.468.807l-7.246 1.617a1 1 0 0 1-1.179-1.254l1.99-6.882a3 3 0 0 1 .761-1.288L18.385 7.331l7.071 7.071z"
+            d="M21.187 4.359L24.71.835c1.363-1.362 3.912-1.022 5.694.76 1.783 1.783 2.123 4.332.761 5.695l-3.523 3.523-6.455-6.454zM19.425 6.12L1.455 24.091C.091 25.453-.47 30.625.452 31.547c.922.922 6.094.361 7.456-1.001l17.97-17.971-6.454-6.455z"
           />
         </svg>
       </div>
@@ -519,7 +615,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
           width={18}
         >
           <path
-            d="M26.87 12.988L19.8 5.917l4.033-4.034a2 2 0 0 1 2.829 0l4.243 4.243a2 2 0 0 1 0 2.828l-4.034 4.034zm-1.414 1.414L10.65 29.21a3 3 0 0 1-1.468.807l-7.246 1.617a1 1 0 0 1-1.179-1.254l1.99-6.882a3 3 0 0 1 .761-1.288L18.385 7.331l7.071 7.071z"
+            d="M21.187 4.359L24.71.835c1.363-1.362 3.912-1.022 5.694.76 1.783 1.783 2.123 4.332.761 5.695l-3.523 3.523-6.455-6.454zM19.425 6.12L1.455 24.091C.091 25.453-.47 30.625.452 31.547c.922.922 6.094.361 7.456-1.001l17.97-17.971-6.454-6.455z"
           />
         </svg>
       </div>
@@ -538,14 +634,13 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
           aria-label="share icon"
           className="Icon Icon-share Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
-          fillRule="evenodd"
           height={18}
           role="img"
-          viewBox="0 0 32 41"
+          viewBox="0 0 32 32"
           width={18}
         >
           <path
-            d="M13.714 8.96H9.143L16 0l6.857 8.96h-4.571v19.16h-4.572V8.96zM4.571 32.52a4 4 0 0 0 4 4H23.43a4 4 0 0 0 4-4V20.36a4 4 0 0 0-4-4h-.572v-4.48H28a4 4 0 0 1 4 4V37a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V15.88a4 4 0 0 1 4-4h5.143v4.48H8.57a4 4 0 0 0-4 4v12.16z"
+            d="M29.5 22.725c-1.46 0-2.5-1.183-2.5-2.643V9L5 31.226c-1.032 1.032-2.968 1.032-4 0S-.258 28.52.774 27.488L23 5H12c-1.46 0-2.725-1.04-2.725-2.5S10.54 0 12 0h16.5c2 0 3.5 1.5 3.5 4v16.082c0 1.46-1.04 2.643-2.5 2.643z"
           />
         </svg>
       </div>
@@ -600,14 +695,13 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
           aria-label="share icon"
           className="Icon Icon-share Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
-          fillRule="evenodd"
           height={18}
           role="img"
-          viewBox="0 0 32 41"
+          viewBox="0 0 32 32"
           width={18}
         >
           <path
-            d="M13.714 8.96H9.143L16 0l6.857 8.96h-4.571v19.16h-4.572V8.96zM4.571 32.52a4 4 0 0 0 4 4H23.43a4 4 0 0 0 4-4V20.36a4 4 0 0 0-4-4h-.572v-4.48H28a4 4 0 0 1 4 4V37a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V15.88a4 4 0 0 1 4-4h5.143v4.48H8.57a4 4 0 0 0-4 4v12.16z"
+            d="M29.5 22.725c-1.46 0-2.5-1.183-2.5-2.643V9L5 31.226c-1.032 1.032-2.968 1.032-4 0S-.258 28.52.774 27.488L23 5H12c-1.46 0-2.725-1.04-2.725-2.5S10.54 0 12 0h16.5c2 0 3.5 1.5 3.5 4v16.082c0 1.46-1.04 2.643-2.5 2.643z"
           />
         </svg>
       </div>
@@ -679,7 +773,7 @@ exports[`ModalContent should render "default" correctly 1`] = `
           className="ml2"
         >
           <button
-            className="Button sc-bdVaJa bDWFJH flex-no-shrink Button--danger"
+            className="Button Button-ygn2tx-0 biecp flex-no-shrink Button--danger"
           >
             <div
               className="flex layout-centered"
@@ -699,21 +793,13 @@ exports[`ModalContent should render "default" correctly 1`] = `
 </div>
 `;
 
-exports[`PageHeading should render "normal" correctly 1`] = `
-<h1
-  className="PageHeading-sc-5mtbjo-0 bnzsQf"
->
-  Hello World
-</h1>
-`;
-
 exports[`Position should render "Absolute" correctly 1`] = `
 <div
-  className="yz785l-0-Position-kiwZOl ewxBZI sc-bwzfXH kLwrie"
+  className="yz785l-0-Position-kiwZOl ewxBZI sc-bdVaJa bTKLQy"
 >
   Some content
   <div
-    className="yz785l-0-Position-kiwZOl bzliMT sc-bwzfXH gZPQmB"
+    className="yz785l-0-Position-kiwZOl bzliMT sc-bdVaJa itORHd"
   >
     Some content positioned absolutely to its parent
   </div>
@@ -722,7 +808,7 @@ exports[`Position should render "Absolute" correctly 1`] = `
 
 exports[`Position should render "Relative" correctly 1`] = `
 <div
-  className="yz785l-0-Position-kiwZOl ewxBZI sc-bwzfXH ihgQcP"
+  className="yz785l-0-Position-kiwZOl ewxBZI sc-bdVaJa iHZvIS"
 >
   Some content relative to its parent
 </div>
@@ -1214,8 +1300,11 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
   }
 >
   <div
+    aria-checked={true}
     className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "#A989C5",
@@ -1225,6 +1314,7 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
         "width": 16,
       }
     }
+    tabIndex="0"
   >
     <svg
       aria-label="check icon"
@@ -1246,20 +1336,24 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
     </svg>
   </div>
   <div
+    aria-checked={true}
     className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "#A989C5",
         "border": "2px solid #A989C5",
         "borderRadius": 4,
         "height": 16,
-        "left": 4,
-        "top": -4,
+        "left": 3,
+        "top": -3,
         "width": 16,
         "zIndex": -1,
       }
     }
+    tabIndex="0"
   />
 </div>
 `;
@@ -1274,8 +1368,11 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
   }
 >
   <div
+    aria-checked={true}
     className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "#509EE3",
@@ -1285,6 +1382,7 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
         "width": 16,
       }
     }
+    tabIndex="0"
   >
     <svg
       aria-label="check icon"
@@ -1306,20 +1404,24 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
     </svg>
   </div>
   <div
+    aria-checked={true}
     className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "#509EE3",
         "border": "2px solid #509EE3",
         "borderRadius": 4,
         "height": 16,
-        "left": 4,
-        "top": -4,
+        "left": 3,
+        "top": -3,
         "width": 16,
         "zIndex": -1,
       }
     }
+    tabIndex="0"
   />
 </div>
 `;
@@ -1334,33 +1436,41 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
   }
 >
   <div
+    aria-checked={undefined}
     className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "white",
-        "border": "2px solid #C7CFD4",
+        "border": "2px solid #B8BBC3",
         "borderRadius": 4,
         "height": 16,
         "width": 16,
       }
     }
+    tabIndex="0"
   />
   <div
+    aria-checked={undefined}
     className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "white",
-        "border": "2px solid #C7CFD4",
+        "border": "2px solid #B8BBC3",
         "borderRadius": 4,
         "height": 16,
-        "left": 4,
-        "top": -4,
+        "left": 3,
+        "top": -3,
         "width": 16,
         "zIndex": -1,
       }
     }
+    tabIndex="0"
   />
 </div>
 `;
@@ -1591,7 +1701,7 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
 
 exports[`UserAvatar should render "" correctly 1`] = `
 <div
-  className="UserAvatar-sc-1vvsbyl-1 dGmEol UserAvatar__Avatar-sc-1vvsbyl-0 bmsXls sc-htpNat hnUQrH"
+  className="UserAvatar-sc-1vvsbyl-1 dGmEol UserAvatar__Avatar-sc-1vvsbyl-0 bmsXls sc-bwzfXH isShpR"
 >
   ?
 </div>

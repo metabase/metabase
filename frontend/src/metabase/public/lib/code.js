@@ -1,5 +1,3 @@
-/* @flow */
-
 import { optionsToHashParams } from "./embed";
 
 export type CodeSampleOption = {

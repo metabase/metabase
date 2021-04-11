@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Tooltip from "metabase/components/Tooltip";
@@ -26,11 +27,11 @@ export default class PulseCardPreview extends Component {
     trackPulseEvent: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.fetchPulseCardPreview(this.props.card.id);
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // if we can't render this card as a pulse, set include_csv = true
     const unrenderablePulseCard =
       nextProps.cardPreview && nextProps.cardPreview.pulse_card_type == null;
@@ -147,7 +148,7 @@ export default class PulseCardPreview extends Component {
 
 // implements the same layout as in metabase/pulse/render.clj
 const RenderedPulseCardPreview = ({ href, children }) => (
-  <a
+  <ExternalLink
     href={href}
     style={{
       fontFamily: 'Lato, "Helvetica Neue", Helvetica, Arial, sans-serif',
@@ -159,7 +160,7 @@ const RenderedPulseCardPreview = ({ href, children }) => (
     target="_blank"
   >
     {children}
-  </a>
+  </ExternalLink>
 );
 
 RenderedPulseCardPreview.propTypes = {

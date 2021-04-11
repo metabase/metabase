@@ -1,8 +1,13 @@
-import { restore, signInAsAdmin } from "../../../__support__/cypress";
+import { restore } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > x-rays", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
   it("should exist on homepage when person first signs in", () => {
     cy.visit("/");
@@ -21,5 +26,53 @@ describe("scenarios > x-rays", () => {
     cy.findByText("Overview");
     cy.findByText("Per state");
     cy.get(".Card").should("have.length", 11);
+  });
+
+  it.skip("should work on questions with explicit joins (metabase#13112)", () => {
+    const PRODUCTS_ALIAS = "Products";
+
+    cy.createQuestion({
+      name: "13112",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
+            ],
+            alias: PRODUCTS_ALIAS,
+          },
+        ],
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
+        ],
+      },
+      display: "line",
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.server();
+      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.wait("@cardQuery");
+      cy.get(".dot")
+        .eq(23) // Random dot
+        .click({ force: true });
+      cy.findByText("X-ray").click();
+
+      // x-rays take long time even locally - that can timeout in CI so we have to extend it
+      cy.wait("@dataset", { timeout: 30000 });
+      cy.findByText(
+        "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
+      );
+      cy.icon("warning").should("not.exist");
+    });
   });
 });

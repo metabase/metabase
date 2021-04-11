@@ -1,6 +1,5 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-
-import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 
@@ -9,15 +8,12 @@ const ChartSettingsWidget = ({
   description,
   hidden,
   disabled,
-  set,
   widget: Widget,
   value,
   onChange,
   props,
   // disables X padding for certain widgets so divider line extends to edge
   noPadding,
-  // disable reset button
-  noReset,
   // NOTE: pass along special props to support:
   // * adding additional fields
   // * substituting widgets
@@ -32,20 +28,7 @@ const ChartSettingsWidget = ({
         disable: disabled,
       })}
     >
-      {title && (
-        <h4 className="mb1 flex align-center">
-          {title}
-          <Icon
-            size={12}
-            className={cx("ml1 text-light text-medium-hover cursor-pointer", {
-              hidden: !set || noReset,
-            })}
-            name="refresh"
-            tooltip="Reset to default"
-            onClick={() => onChange(undefined)}
-          />
-        </h4>
-      )}
+      {title && <h4 className="mb1 flex align-center">{title}</h4>}
       {description && <div className="mb1">{description}</div>}
       {Widget && (
         <Widget

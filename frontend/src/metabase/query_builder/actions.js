@@ -1,4 +1,3 @@
-/*@flow weak*/
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 declare var ace: any;
@@ -30,6 +29,7 @@ import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
 import {
@@ -39,6 +39,7 @@ import {
   getOriginalCard,
   getIsEditing,
   getTransformedSeries,
+  getRawSeries,
   getResultsMetadata,
   getFirstQueryResult,
   getIsPreviewing,
@@ -833,6 +834,48 @@ export const updateQuestion = (
       run = false;
     }
 
+    // <PIVOT LOGIC>
+    // We have special logic when going to, coming from, or updating a pivot table.
+    const isPivot = newQuestion.display() === "pivot";
+    const wasPivot = oldQuestion.display() === "pivot";
+    const queryHasBreakouts =
+      isPivot &&
+      newQuestion.isStructured() &&
+      newQuestion.query().breakouts().length > 0;
+
+    // we can only pivot queries with breakouts
+    if (isPivot && queryHasBreakouts) {
+      // compute the pivot setting now so we can query the appropriate data
+      const series = assocIn(
+        getRawSeries(getState()),
+        [0, "card"],
+        newQuestion.card(),
+      );
+      const key = "pivot_table.column_split";
+      const setting = getQuestionWithDefaultVisualizationSettings(
+        newQuestion,
+        series,
+      ).setting(key);
+      newQuestion = newQuestion.updateSettings({ [key]: setting });
+    }
+
+    if (
+      // switching to pivot
+      (isPivot && !wasPivot && queryHasBreakouts) ||
+      // switching away from pivot
+      (!isPivot && wasPivot) ||
+      // updating the pivot rows/cols
+      (isPivot &&
+        queryHasBreakouts &&
+        !_.isEqual(
+          newQuestion.setting("pivot_table.column_split"),
+          oldQuestion.setting("pivot_table.column_split"),
+        ))
+    ) {
+      run = true; // force a run when switching to/from pivot or updating it's setting
+    }
+    // </PIVOT LOGIC>
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
@@ -1129,7 +1172,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     // extract the value we will use to filter our new query
     let originValue;
     for (let i = 0; i < queryResult.data.cols.length; i++) {
-      if (isPK(queryResult.data.cols[i].special_type)) {
+      if (isPK(queryResult.data.cols[i].semantic_type)) {
         originValue = queryResult.data.rows[0][i];
       }
     }
@@ -1138,9 +1181,10 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     const newCard = startNewCard("query", card.dataset_query.database);
 
     newCard.dataset_query.query["source-table"] = fk.origin.table.id;
+    const field = new FieldDimension(fk.origin.id);
     newCard.dataset_query.query.filter = [
       "and",
-      ["=", fk.origin.id, originValue],
+      ["=", field.mbql(), originValue],
     ];
 
     // run it
@@ -1165,7 +1209,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
       function getObjectDetailIdValue(data) {
         for (let i = 0; i < data.cols.length; i++) {
           const coldef = data.cols[i];
-          if (isPK(coldef.special_type)) {
+          if (isPK(coldef.semantic_type)) {
             return data.rows[0][i];
           }
         }
@@ -1252,7 +1296,7 @@ export const viewNextObjectDetail = () => {
     const question = getQuestion(getState());
     const filter = question.query().filters()[0];
 
-    const newFilter = ["=", filter[1], filter[2] + 1];
+    const newFilter = ["=", filter[1], parseInt(filter[2]) + 1];
 
     dispatch.action(VIEW_NEXT_OBJECT_DETAIL);
 
@@ -1281,7 +1325,7 @@ export const viewPreviousObjectDetail = () => {
       return false;
     }
 
-    const newFilter = ["=", filter[1], filter[2] - 1];
+    const newFilter = ["=", filter[1], parseInt(filter[2]) - 1];
 
     dispatch.action(VIEW_PREVIOUS_OBJECT_DETAIL);
 

@@ -1,36 +1,32 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
-            [metabase
-             [driver :as driver]
-             [email :as email]
-             [events :as events]
-             [public-settings :as public-settings]
-             [setup :as setup]
-             [util :as u]]
-            [metabase.api
-             [common :as api]
-             [database :as database-api :refer [DBEngineString]]]
+            [metabase.api.common :as api]
+            [metabase.api.database :as database-api :refer [DBEngineString]]
+            [metabase.driver :as driver]
+            [metabase.email :as email]
+            [metabase.events :as events]
             [metabase.integrations.slack :as slack]
-            [metabase.middleware.session :as mw.session]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
-             [metric :refer [Metric]]
-             [pulse :refer [Pulse]]
-             [segment :refer [Segment]]
-             [session :refer [Session]]
-             [table :refer [Table]]
-             [user :as user :refer [User]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.session :refer [Session]]
             [metabase.models.setting.cache :as setting.cache]
-            [metabase.util
-             [i18n :as i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.user :as user :refer [User]]
+            [metabase.public-settings :as public-settings]
+            [metabase.server.middleware.session :as mw.session]
+            [metabase.setup :as setup]
+            [metabase.sync.schedules :as sync.schedules]
+            [metabase.util :as u]
+            [metabase.util.i18n :as i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as t.models]])
+            [toucan.db :as db]
+            [toucan.models :as t.models])
   (:import java.util.UUID))
 
 (def ^:private SetupToken
@@ -46,7 +42,7 @@
                                :last_name    last-name
                                :password     (str (UUID/randomUUID))
                                :is_superuser true)
-        user-id    (u/get-id new-user)]
+        user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
@@ -70,7 +66,7 @@
        {:name name, :engine driver, :details details}
        (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
        (when schedules
-         (database-api/schedule-map->cron-strings schedules))))))
+         (sync.schedules/schedule-map->cron-strings schedules))))))
 
 (defn- setup-set-settings! [request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
@@ -104,7 +100,7 @@
    email            su/Email
    password         su/ComplexPassword
    allow_tracking   (s/maybe (s/cond-pre s/Bool su/BooleanString))
-   schedules        (s/maybe database-api/ExpandedSchedulesMap)
+   schedules        (s/maybe sync.schedules/ExpandedSchedulesMap)
    auto_run_queries (s/maybe s/Bool)}
   (letfn [(create! []
             (try

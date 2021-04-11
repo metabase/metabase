@@ -11,7 +11,7 @@ const EXPRESSION_OPERATORS = new Map([
   ["pow", (x, y) => `Math.pow(${x}, ${y})`],
   ["exp", x => `Math.pow(Math.E, ${x})`],
 ]);
-// whitelist of allowed expressions
+// list of allowed expressions
 const EXPRESSION_IDENTIFIERS = new Set(["x"]);
 
 function compileNode(node) {

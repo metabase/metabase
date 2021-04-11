@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -43,7 +44,7 @@ export default class RevisionHistory extends Component {
             />
             <div className="wrapper py4" style={{ maxWidth: 950 }}>
               <h2 className="mb4">
-                {t`Revision History for`} "{object.name}"
+                {t`Revision History for`} &quot;{object.name}&quot;
               </h2>
               <ol>
                 {revisions.map(revision => (

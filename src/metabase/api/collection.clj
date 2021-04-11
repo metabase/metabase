@@ -6,26 +6,23 @@
   `?namespace=snippet`)."
   (:require [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
-            [metabase.api
-             [card :as card-api]
-             [common :as api]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [interface :as mi]
-             [native-query-snippet :refer [NativeQuerySnippet]]
-             [permissions :as perms]
-             [pulse :as pulse :refer [Pulse]]]
-            [metabase.models.collection
-             [graph :as collection.graph]
-             [root :as collection.root]]
+            [metabase.api.card :as card-api]
+            [metabase.api.common :as api]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.collection.graph :as collection.graph]
+            [metabase.models.collection.root :as collection.root]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.interface :as mi]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (declare root-collection)
 
@@ -40,10 +37,13 @@
    namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (as-> (db/select Collection
-            :archived archived?
-            :namespace namespace
-            {:order-by [[:%lower.name :asc]]}) collections
-      (filter mi/can-read? collections)
+            {:where    [:and
+                        [:= :archived archived?]
+                        [:= :namespace namespace]
+                        (collection/visible-collection-ids->honeysql-filter-clause
+                         :id
+                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+             :order-by [[:%lower.name :asc]]}) collections
       ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
@@ -52,6 +52,24 @@
       ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       (for [collection collections]
         (dissoc collection ::collection.root/is-root?)))))
+
+(api/defendpoint GET "/tree"
+  "Similar to `GET /`, but returns Collections in a tree structure, e.g.
+
+    [{:name     \"A\"
+      :children [{:name \"B\"}
+                 {:name     \"C\"
+                  :children [{:name     \"D\"
+                              :children [{:name \"E\"}]}
+                             {:name     \"F\"
+                              :children [{:name \"G\"}]}]}]}
+     {:name \"H\"}]"
+  []
+  (collection/collections->tree
+   (db/select Collection
+     {:where (collection/visible-collection-ids->honeysql-filter-clause
+              :id
+              (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))})))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -92,11 +110,18 @@
 
 (defmethod fetch-collection-children :pulse
   [_ collection {:keys [archived?]}]
-  (db/select [Pulse :id :name :collection_position]
-    :collection_id   (:id collection)
-    :archived        (boolean archived?)
-    ;; exclude Alerts
-    :alert_condition nil))
+  (db/query
+   {:select    [:p.id :p.name :p.collection_position]
+    :modifiers [:distinct]
+    :from      [[Pulse :p]]
+    :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
+    :where     [:and
+                [:= :p.collection_id      (:id collection)]
+                [:= :p.archived           (boolean archived?)]
+                 ;; exclude alerts
+                [:= :p.alert_condition    nil]
+                 ;; exclude dashboard subscriptions
+                [:= :pc.dashboard_card_id nil]]}))
 
 (defmethod fetch-collection-children :snippet
   [_ collection {:keys [archived?]}]

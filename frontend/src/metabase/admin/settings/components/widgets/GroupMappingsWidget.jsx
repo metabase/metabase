@@ -1,5 +1,3 @@
-// @flow
-
 import React from "react";
 
 import { ModalFooter } from "metabase/components/ModalContent";

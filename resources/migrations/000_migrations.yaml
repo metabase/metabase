@@ -1,10 +1,8 @@
 databaseChangeLog:
-# The quoting strategy decides when things like column names should be quoted.
-# This is in place to deal with Liquibase not knowing about all of the new
-# reserved words in MySQL 8+. Using a column name that is a reserved word
-# causes a failure. Quoting all objects breaks H2 support though as it will
-# quote table names but not quote that same table name in a foreign key reference
-# which will cause a failure when trying to initially setup the database.
+  # The quoting strategy decides when things like column names should be quoted. This is in place to deal with
+  # Liquibase not knowing about all of the new reserved words in MySQL 8+. Using a column name that is a reserved word
+  # causes a failure. Quoting all objects breaks H2 support though as it will quote table names but not quote that
+  # same table name in a foreign key reference which will cause a failure when trying to initially setup the database.
   - property:
       name: quote_strategy
       value: QUOTE_ALL_OBJECTS
@@ -1555,6 +1553,9 @@ databaseChangeLog:
   - changeSet:
       id: 12
       author: agilliland
+      validCheckSum:
+        - 8:bedbea570e5dfc694b4cf5a8f6a4f445
+        - 8:e862a199cba5b4ce0cba713110f66cfb
       changes:
         - addColumn:
             tableName: report_card
@@ -1568,6 +1569,9 @@ databaseChangeLog:
                     foreignKeyName: fk_report_card_ref_database_id
                     deferrable: false
                     initiallyDeferred: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: table_id
                   type: int
@@ -1577,6 +1581,9 @@ databaseChangeLog:
                     foreignKeyName: fk_report_card_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: query_type
                   type: varchar(16)
@@ -3366,6 +3373,9 @@ databaseChangeLog:
   - changeSet:
       id: 49
       author: camsaul
+      validCheckSum:
+        - 8:56dcab086b21de1df002561efeac8bb6
+        - 8:4508e7d5f6d4da3c4a2de3bf5e3c5851
       changes:
         ######################################## Card public_uuid & indices ########################################
         - addColumn:
@@ -3377,6 +3387,9 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Card.'
                   constraints:
                     unique: true
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -3400,6 +3413,9 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Dashboard.'
                   constraints:
                     unique: true
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -3421,6 +3437,9 @@ databaseChangeLog:
   - changeSet:
       id: 50
       author: camsaul
+      validCheckSum:
+        - 8:388da4c48984aad647709514e4ba9204
+        - 8:98a6ab6428ea7a589507464e34ade58a
       changes:
         ######################################## new Card columns ########################################
         - addColumn:
@@ -3433,6 +3452,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: embedding_params
                   type: text
@@ -3448,6 +3470,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: embedding_params
                   type: text
@@ -3634,6 +3659,9 @@ databaseChangeLog:
   - changeSet:
       id: 55
       author: camsaul
+      validCheckSum:
+        - 8:87c4becde5fe208ba2c356128df86fba
+        - 8:11bbd199bfa57b908ea3b1a470197de9
       changes:
         - addColumn:
             tableName: report_dashboard
@@ -3645,6 +3673,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: position
                   type: integer
@@ -3807,6 +3838,9 @@ databaseChangeLog:
   - changeSet:
       id: 60
       author: camsaul
+      validCheckSum:
+        - 8:4f997b2cd3309882e900493892381f38
+        - 8:2141162a1c99a5dd95e5a67c5595e6d7
       comment: 'Added 0.26.0'
       changes:
         - addColumn:
@@ -3819,6 +3853,9 @@ databaseChangeLog:
                   defaultValue: '0 50 * * * ? *' # run at the end of every hour
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: metabase_database
+            columns:
               - column:
                   name: cache_field_values_schedule
                   type: varchar(254)
@@ -3978,22 +4015,31 @@ databaseChangeLog:
                   constraints:
                     nullable: false
   - changeSet:
-    - id: 68
-    - author: sbelak
-    - comment: 'Added 0.27.0'
-    - changes:
-      - addColumn:
+      id: 68
+      author: sbelak
+      comment: 'Added 0.27.0'
+      validCheckSum:
+        - 8:ca201aeb20c1719a46c6bcc3fc95c81d
+        - 8:b4ac06d133dfbdc6567d992c7e18c6ec
+      changes:
+        - addColumn:
             tableName: computation_job
             columns:
               - column:
                   name: context
                   type: text
+        - addColumn:
+            tableName: computation_job
+            columns:
               - column:
                   name: ended_at
                   type: DATETIME
   - changeSet:
       id: 69
       author: senior
+      validCheckSum:
+        - 8:97b7768436b9e8d695bae984020d754c
+        - 8:eadbe00e97eb53df4b3df60462f593f6
       comment: 'Added 0.27.0'
       remarks: 'Add columns to the pulse table for alerts'
       changes:
@@ -4004,10 +4050,16 @@ databaseChangeLog:
                   name: alert_condition
                   type: varchar(254)
                   remarks: 'Condition (i.e. "rows" or "goal") used as a guard for alerts'
+        - addColumn:
+            tableName: pulse
+            columns:
               - column:
                   name: alert_first_only
                   type: boolean
                   remarks: 'True if the alert should be disabled after the first notification'
+        - addColumn:
+            tableName: pulse
+            columns:
               - column:
                   name: alert_above_goal
                   type: boolean
@@ -4050,6 +4102,9 @@ databaseChangeLog:
   - changeSet:
       id: 72
       author: senior
+      validCheckSum:
+        - 8:ed16046dfa04c139f48e9068eb4faee4
+        - 8:4dc6debdf779ab9273cf2158a84bb154
       comment: 'Added 0.28.0'
       changes:
         - addColumn:
@@ -4062,6 +4117,9 @@ databaseChangeLog:
                   remarks: 'True if a CSV of the data should be included for this pulse card'
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: pulse_card
+            columns:
               - column:
                   name: include_xls
                   type: boolean
@@ -4103,9 +4161,10 @@ databaseChangeLog:
         - addColumn:
             tableName: report_card
             columns:
-              name: read_permissions
-              type: text
-              remarks: 'Permissions required to view this Card and run its query.'
+              - column:
+                  name: read_permissions
+                  type: text
+                  remarks: 'Permissions required to view this Card and run its query.'
   - changeSet:
       id: 76
       author: senior
@@ -4114,9 +4173,10 @@ databaseChangeLog:
         - addColumn:
             tableName: metabase_table
             columns:
-              name: fields_hash
-              type: text
-              remarks: 'Computed hash of all of the fields associated to this table'
+              - column:
+                  name: fields_hash
+                  type: text
+                  remarks: 'Computed hash of all of the fields associated to this table'
   - changeSet:
       id: 77
       author: senior
@@ -4125,9 +4185,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: login_attributes
-              type: text
-              remarks: 'JSON serialized map with attributes used for row level permissions'
+              - column:
+                  name: login_attributes
+                  type: text
+                  remarks: 'JSON serialized map with attributes used for row level permissions'
   - changeSet:
       id: 78
       author: camsaul
@@ -4201,12 +4262,13 @@ databaseChangeLog:
         - addColumn:
             tableName: report_dashboard
             columns:
-              name: collection_id
-              type: int
-              remarks: 'Optional ID of Collection this Dashboard belongs to.'
-              constraints:
-                references: collection(id)
-                foreignKeyName: fk_dashboard_collection_id
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'Optional ID of Collection this Dashboard belongs to.'
+                  constraints:
+                    references: collection(id)
+                    foreignKeyName: fk_dashboard_collection_id
               # TODO - if someone deletes a collection, what should happen to the Dashboards that are in it? Should they
               # get deleted as well? Or should collection_id be cleared, effectively putting them in the so-called
               # "root" collection?
@@ -4219,12 +4281,13 @@ databaseChangeLog:
         - addColumn:
             tableName: pulse
             columns:
-              name: collection_id
-              type: int
-              remarks: 'Options ID of Collection this Pulse belongs to.'
-              constraints:
-                references: collection(id)
-                foreignKeyName: fk_pulse_collection_id
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'Options ID of Collection this Pulse belongs to.'
+                  constraints:
+                    references: collection(id)
+                    foreignKeyName: fk_pulse_collection_id
         - createIndex:
             tableName: pulse
             indexName: idx_pulse_collection_id
@@ -4238,12 +4301,13 @@ databaseChangeLog:
         - addColumn:
             tableName: collection
             columns:
-              name: location
-              type: varchar(254)
-              remarks: 'Directory-structure path of ancestor Collections. e.g. "/1/2/" means our Parent is Collection 2, and their parent is Collection 1.'
-              constraints:
-                nullable: false
-              defaultValue: "/"
+              - column:
+                  name: location
+                  type: varchar(254)
+                  remarks: 'Directory-structure path of ancestor Collections. e.g. "/1/2/" means our Parent is Collection 2, and their parent is Collection 1.'
+                  constraints:
+                    nullable: false
+                  defaultValue: "/"
         - createIndex:
             tableName: collection
             indexName: idx_collection_location
@@ -4258,21 +4322,24 @@ databaseChangeLog:
         - addColumn:
             tableName: report_dashboard
             columns:
-              name: collection_position
-              type: smallint
-              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
         - addColumn:
             tableName: report_card
             columns:
-              name: collection_position
-              type: smallint
-              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
         - addColumn:
             tableName: pulse
             columns:
-              name: collection_position
-              type: smallint
-              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
   - changeSet:
       id: 82
       author: senior
@@ -4281,9 +4348,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: updated_at
-              type: datetime
-              remarks: 'When was this User last updated?'
+              - column:
+                  name: updated_at
+                  type: datetime
+                  remarks: 'When was this User last updated?'
         - sql:
             sql: update core_user set updated_at=date_joined
 # Remove the GTAP card_id constraint. When not included, will default to querying against the GTAP table_id.
@@ -4326,10 +4394,11 @@ databaseChangeLog:
         - addColumn:
             tableName: pulse
             columns:
-              name: archived
-              type: boolean
-              remarks: 'Has this pulse been archived?'
-              defaultValueBoolean: false
+              - column:
+                  name: archived
+                  type: boolean
+                  remarks: 'Has this pulse been archived?'
+                  defaultValueBoolean: false
         # Before this change, metrics/segments had opposite logic, rather than marking something as archived
         # it was marked as active. Since the column is now an archived column, flip the boolean value
         #
@@ -4346,15 +4415,16 @@ databaseChangeLog:
         - addColumn:
             tableName: collection
             columns:
-              name: personal_owner_id
-              type: int
-              remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
-              constraints:
-                references: core_user(id)
-                foreignKeyName: fk_collection_personal_owner_id
-                unique: true
-                uniqueConstraintName: unique_collection_personal_owner_id
-                deleteCascade: true
+              - column:
+                  name: personal_owner_id
+                  type: int
+                  remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
+                  constraints:
+                    references: core_user(id)
+                    foreignKeyName: fk_collection_personal_owner_id
+                    unique: true
+                    uniqueConstraintName: unique_collection_personal_owner_id
+                    deleteCascade: true
         # Needed so we can efficiently look up the Collection belonging to a User, and so we can efficiently enforce the
         # unique constraint
         - createIndex:
@@ -4374,9 +4444,10 @@ databaseChangeLog:
         - addColumn:
             tableName: collection
             columns:
-              name: _slug
-              type: varchar(254)
-              remarks: 'Sluggified version of the Collection name. Used only for display purposes in URL; not unique or indexed.'
+              - column:
+                  name: _slug
+                  type: varchar(254)
+                  remarks: 'Sluggified version of the Collection name. Used only for display purposes in URL; not unique or indexed.'
         # I don't know of an easy way to copy existing values of slug to _slug with Liquibase as we create the column so
         # just have to do it this way instead
         - sql:
@@ -4429,12 +4500,13 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: saml_auth
-              type: boolean
-              defaultValueBoolean: false
-              constraints:
-                nullable: false
-              remarks: 'Boolean to indicate if this user is authenticated via SAML'
+              - column:
+                  name: saml_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+                  remarks: 'Boolean to indicate if this user is authenticated via SAML'
 
 # The Quartz Task Scheduler can use a DB to 'cluster' tasks and make sure they are only ran by a single instance where
 # using a multi-instance Metabase setup.
@@ -5101,9 +5173,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: sso_source
-              type: varchar(254)
-              remarks: 'String to indicate the SSO backend the user is from'
+              - column:
+                  name: sso_source
+                  type: varchar(254)
+                  remarks: 'String to indicate the SSO backend the user is from'
         - sql:
             sql: update core_user set sso_source='saml' where saml_auth=true
         - dropColumn:
@@ -5138,9 +5211,10 @@ databaseChangeLog:
         - addColumn:
             tableName: query_execution
             columns:
-              name: database_id
-              type: integer
-              remarks: 'ID of the database this query was ran against.'
+              - column:
+                  name: database_id
+                  type: integer
+                  remarks: 'ID of the database this query was ran against.'
 
 # Start recording the actual query dictionary that's been executed
 
@@ -5152,9 +5226,10 @@ databaseChangeLog:
         - addColumn:
             tableName: query
             columns:
-              name: query
-              type: text
-              remarks: 'The actual "query dictionary" for this query.'
+              - column:
+                  name: query
+                  type: text
+                  remarks: 'The actual "query dictionary" for this query.'
 
 # Create the TaskHistory table, intended to provide debugging info on our background/quartz processes
   - changeSet:
@@ -5253,9 +5328,10 @@ databaseChangeLog:
         - addColumn:
             tableName: metabase_field
             columns:
-              name: settings
-              type: text
-              remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
+              - column:
+                  name: settings
+                  type: text
+                  remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
 #
 # Change MySQL/Maria's blob type to LONGBLOB to more closely match what H2 and PostgreSQL support for size limits
 #
@@ -5400,12 +5476,13 @@ databaseChangeLog:
         - addColumn:
             tableName: metabase_database
             columns:
-              name: auto_run_queries
-              remarks: 'Whether to automatically run queries when doing simple filtering and summarizing in the Query Builder.'
-              type: boolean
-              constraints:
-                nullable: false
-              defaultValueBoolean: true
+              - column:
+                  name: auto_run_queries
+                  remarks: 'Whether to automatically run queries when doing simple filtering and summarizing in the Query Builder.'
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  defaultValueBoolean: true
 
 
   # To fix EE full-app embedding without compromising security. Full-app embed sessions cannot have `SameSite` attributes in their cookies.
@@ -5417,9 +5494,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_session
             columns:
-              name: anti_csrf_token
-              type: text
-              remarks: 'Anti-CSRF token for full-app embed sessions.'
+              - column:
+                  name: anti_csrf_token
+                  type: text
+                  remarks: 'Anti-CSRF token for full-app embed sessions.'
 
 #
 # Change `metabase_field.database_type` to `text` to accomodate more exotic field types (enums in Clickhouse, rows in Presto, ...)
@@ -6349,9 +6427,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: locale
-              remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
-              type: varchar(5)
+              - column:
+                  name: locale
+                  remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
+                  type: varchar(5)
 
 # Add Field `database_position` to keep the order in which fields are ordered in the DB, `custom_position` for custom
 # position; and Table `field_order` setting.
@@ -6373,6 +6452,9 @@ databaseChangeLog:
                   defaultValueNumeric: 0
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: metabase_field
+            columns:
               - column:
                   name: custom_position
                   type: int
@@ -7753,7 +7835,10 @@ databaseChangeLog:
   - changeSet:
       id: 275
       author: dpsutton
-      comment: 'Add refingerprint to Database'
+      comment: 'Added 0.38.0 refingerprint to Database'
+      validCheckSum:
+        - 8:b976d49f4eb84664649119f5f63465dd
+        - 8:447d9e294f59dd1058940defec7e0f40
       changes:
         - addColumn:
             tableName: metabase_database
@@ -7761,5 +7846,394 @@ databaseChangeLog:
               - column:
                   name: refingerprint
                   type: boolean
+                  remarks: 'Whether or not to enable periodic refingerprinting for this Database.'
                   constraints:
                     nullable: true
+  - changeSet:
+      id: 276
+      author: robroland
+      comment: Added 0.38.0 - Dashboard subscriptions
+      validCheckSum:
+        - 8:dfe9b8333b600c739306caa85d95ad55
+        - 8:59dd1fb0732c7a9b78bce896c0cff3c0
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+            - column:
+                name: dashboard_card_id
+                type: int
+                remarks: 'If this Pulse is a Dashboard subscription, the ID of the DashboardCard that corresponds to this PulseCard.'
+                constraints:
+                  nullable: true
+                  references: report_dashboardcard(id)
+                  foreignKeyName: fk_pulse_card_ref_pulse_card_id
+                  deferrable: false
+                  initiallyDeferred: false
+
+  - changeSet:
+      id: 277
+      author: tsmacdonald
+      comment: Added 0.38.0 - Dashboard subscriptions
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_card
+            constraintName: fk_pulse_card_ref_pulse_card_id
+
+  - changeSet:
+      id: 278
+      author: tsmacdonald
+      comment: Added 0.38.0 - Dashboard subscrptions
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_card
+            baseColumnNames: dashboard_card_id
+            referencedTableName: report_dashboardcard
+            referencedColumnNames: id
+            constraintName: fk_pulse_card_ref_pulse_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 279
+      author: camsaul
+      comment: Added 0.38.0 - Dashboard subscriptions
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: 'ID of the Dashboard if this Pulse is a Dashboard Subscription.'
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: 280
+      author: camsaul
+      comment: Added 0.38.0 - Dashboard subscriptions
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_pulse_ref_dashboard_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 281
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - rename special_type
+      changes:
+        - renameColumn:
+            tableName: metabase_field
+            oldColumnName: special_type
+            newColumnName: semantic_type
+            columnDataType: varchar(255)
+
+  # Change the TaskHistory timestamp columns to higher-resolution columns: on MySQL, they previously only had *second*
+  # resolution, which caused annoying test failures and made it hard to correctly sort tasks that happened in quick
+  # succession.
+  #
+  # We have to give these columns default values as well, or MySQL is going to be very fussy about having two
+  # NOT NULL timestamp columns without default values at the same time.
+  #
+  # This is done in raw SQL because AFAIK there's no way in Liquibase to change a column type and give it a default
+  # value in a single statement, which we have to do to make MySQL happy.
+  - changeSet:
+      id: 282
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN started_at timestamp with time zone DEFAULT current_timestamp NOT NULL;
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN started_at TYPE timestamp with time zone,
+              ALTER COLUMN started_at SET DEFAULT current_timestamp;
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE task_history
+              MODIFY started_at timestamp(6) DEFAULT current_timestamp(6) NOT NULL;
+
+  - changeSet:
+      id: 283
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN ended_at timestamp with time zone DEFAULT current_timestamp NOT NULL;
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN ended_at TYPE timestamp with time zone,
+              ALTER COLUMN ended_at SET DEFAULT current_timestamp;
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE task_history
+              MODIFY ended_at timestamp(6) DEFAULT current_timestamp(6) NOT NULL;
+  - changeSet:
+      id: 284
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - add effective type
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: effective_type
+                  type: varchar(255)
+                  remarks: 'The effective type of the field after any coercions.'
+  - changeSet:
+      id: 285
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - add coercion column
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: coercion_strategy
+                  type: varchar(255)
+                  remarks: 'A strategy to coerce the base_type into the effective_type.'
+  - changeSet:
+      id: 286
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - set effective_type default
+      changes:
+        - sql:
+            sql: UPDATE metabase_field set effective_type = base_type
+  - changeSet:
+      id: 287
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - migrate ISO8601 strings
+      validCheckSum:
+        - 8:ed47b08ec425a34cf66bd1e96c7b2446
+        - 8:0679eedae767a8648383aac2f923e413
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET effective_type    = (CASE semantic_type
+                                         WHEN 'type/ISO8601DateTimeString' THEN 'type/DateTime'
+                                         WHEN 'type/ISO8601TimeString'     THEN 'type/Time'
+                                         WHEN 'type/ISO8601DateString'     THEN 'type/Date'
+                                       END),
+                  coercion_strategy = (CASE semantic_type
+                                        WHEN 'type/ISO8601DateTimeString' THEN 'Coercion/ISO8601->DateTime'
+                                        WHEN 'type/ISO8601TimeString'     THEN 'Coercion/ISO8601->Time'
+                                        WHEN 'type/ISO8601DateString'     THEN 'Coercion/ISO8601->Date'
+                                       END)
+              WHERE semantic_type IN ('type/ISO8601DateTimeString',
+                                      'type/ISO8601TimeString',
+                                      'type/ISO8601DateString');
+  - changeSet:
+      id: 288
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - migrate unix timestamps
+      validCheckSum:
+        - 8:4fa37c8edede4a10c39bf5aca13bd1b5
+        - 8:96af0fae84744857640d029cf4cd4bb6
+      changes:
+        - sql:
+              sql: >-
+                UPDATE metabase_field
+                set effective_type    = 'type/DateTime',
+                    coercion_strategy = (case semantic_type
+                                          WHEN 'type/UNIXTimestampSeconds'      THEN 'Coercion/UNIXSeconds->DateTime'
+                                          WHEN 'type/UNIXTimestampMilliSeconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                          WHEN 'type/UNIXTimestampMicroSeconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
+                                         END)
+                WHERE semantic_type IN ('type/UNIXTimestampSeconds',
+                                        'type/UNIXTimestampMilliSeconds',
+                                        'type/UNIXTimestampMicroSeconds');
+
+  - changeSet:
+      id: 289
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - migrate unix timestamps (corrects typo- seconds was migrated correctly, not millis and micros)
+      changes:
+        - sql:
+              sql: >-
+                UPDATE metabase_field
+                set effective_type    = 'type/DateTime',
+                    coercion_strategy = (case semantic_type
+                                          WHEN 'type/UNIXTimestampMilliseconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                          WHEN 'type/UNIXTimestampMicroseconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
+                                         END)
+                WHERE semantic_type IN ('type/UNIXTimestampMilliseconds',
+                                        'type/UNIXTimestampMicroseconds')
+
+  - changeSet:
+      id: 290
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - Clobber semantic_type where there was a coercion
+      changes:
+        - sql:
+              sql: UPDATE metabase_field set semantic_type = null where coercion_strategy is not null
+
+# 291-297 create the new login history Table
+
+  - changeSet:
+      id: 291
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createTable:
+            tableName: login_history
+            remarks: "Keeps track of various logins for different users and additional info such as location and device"
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  remarks: "When this login occurred."
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: "ID of the User that logged in."
+                  constraints:
+                    foreignKeyName: fk_login_history_user_id
+                    references: core_user(id)
+                    nullable: false
+                    deleteCascade: true
+              # FK constraint is created later, because we can't create it inline with ON DELETE SET NULL
+              - column:
+                  name: session_id
+                  type: varchar(254)
+                  remarks: "ID of the Session created by this login if one is currently active. NULL if Session is no longer active."
+              - column:
+                  name: device_id
+                  type: char(36)
+                  remarks: "Cookie-based unique identifier for the device/browser the user logged in from."
+                  constraints:
+                    nullable: false
+              - column:
+                  name: device_description
+                  type: text
+                  remarks: "Description of the device that login happened from, for example a user-agent string, but this might be something different if we support alternative auth mechanisms in the future."
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ip_address
+                  type: text
+                  remarks: "IP address of the device that login happened from, so we can geocode it and determine approximate location."
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 292
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: 293
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: login_history
+            baseColumnNames: session_id
+            referencedTableName: core_session
+            referencedColumnNames: id
+            constraintName: fk_login_history_session_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: 294
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_session_id
+            columns:
+              - column:
+                  name: session_id
+
+  # index on login history timestamp -- so admin can see *all* recent logins, or we can delete login history after a certain age
+  - changeSet:
+      id: 295
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_timestamp
+            columns:
+              - column:
+                  name: timestamp
+
+  # index on login history user_id + device_id -- so we can easily see if this is the first time a device is used
+  - changeSet:
+      id: 296
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: session_id
+              - column:
+                  name: device_id
+
+  # index on login history user_id + timestamp -- so we can easily see recent logins for a user
+  - changeSet:
+      id: 297
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_timestamp
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: timestamp
+
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
+########################################################################################################################
+#
+# ADVICE:
+#
+# 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
+#    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
+#    this check but it's nicer to know now instead of waiting for CI.
+#
+# 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
+#    migration so someone else doesn't steal your ID number
+#
+# PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
+#
+########################################################################################################################

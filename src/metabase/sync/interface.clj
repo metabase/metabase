@@ -1,10 +1,9 @@
 (ns metabase.sync.interface
   "Schemas and constants used by the sync code."
   (:require [clj-time.core :as time]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -22,15 +21,19 @@
 
 (def TableMetadataField
   "Schema for a given Field as provided in `describe-table`."
-  {:name                           su/NonBlankString
-   :database-type                  (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
-   :base-type                      su/FieldType
-   :database-position              su/IntGreaterThanOrEqualToZero
-   (s/optional-key :special-type)  (s/maybe su/FieldType)
-   (s/optional-key :field-comment) (s/maybe su/NonBlankString)
-   (s/optional-key :pk?)           s/Bool
-   (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataField)}
-   (s/optional-key :custom)        {s/Any s/Any}})
+  {:name                               su/NonBlankString
+   :database-type                      (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
+   :base-type                          su/FieldType
+   :database-position                  su/IntGreaterThanOrEqualToZero
+   (s/optional-key :semantic-type)     (s/maybe su/FieldType)
+   (s/optional-key :effective-type)    (s/maybe su/FieldType)
+   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
+   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)
+   (s/optional-key :pk?)               s/Bool
+   (s/optional-key :nested-fields)     #{(s/recursive #'TableMetadataField)}
+   (s/optional-key :custom)            {s/Any s/Any}
+   ;; for future backwards compatability, when adding things
+   s/Keyword                           s/Any})
 
 (def TableMetadata
   "Schema for the expected output of `describe-table`."

@@ -1,10 +1,9 @@
 (ns metabase.cmd.reset-password-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.cmd.reset-password :as reset-password]
-            [metabase.models.user :refer [User]]))
+            [metabase.models.user :refer [User]]
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (deftest reset-password-test
   (testing "set reset token throws exception on unknown email"
