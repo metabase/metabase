@@ -43,8 +43,7 @@ Paste the **Client ID** and **Client Secret** you created when following the [st
 
 #### Auth Code
 
-Once you provided **Client ID** and **Client Secret** with valid scopes, a **Click here to get an auth code** link will appear over the **Auth Code** text box.
-Authorize the connection with your Google Login Credentials to see the Auth Code. Copy the code and paste it in the text box.
+Once you've provided **Client ID** and **Client Secret** with valid scopes, a **Click here to get an auth code** link will appear over the **Auth Code** text box. Authorize the connection with your Google Login Credentials to see the Auth Code, then copy and paste the code here.
 
 #### Automatically run queries when doing simple filtering and summarizing.
 
