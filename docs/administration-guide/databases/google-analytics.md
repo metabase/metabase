@@ -57,6 +57,8 @@ _Default: Disabled_
 
 By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
 
+See [database sync and analysis documentation](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#database-sync-and-analysis) for more details about these configuration items.
+
 ### Save your database configuration
 
 When you're done, click the **Save** button. A modal should pop up, informing you that your database has been added.
