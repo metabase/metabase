@@ -67,7 +67,7 @@ When you're done, click the **Save** button. A modal should pop up, informing yo
 
 You can click on **Explore this data** to see some automatic explorations of your data, or click **I'm good thanks** to stay in the Admin Panel.
 
-Give Metabase some time to sync with your Google Analytics dataset, then exit Admin mode, click on **Browse Data**, find your database, and start exploring your data.
+Give Metabase some time to sync with your Google Analytics dataset, then exit Admin mode, click on **Browse Data**, find your database, and start exploring your data. Once Metabase is finished syncing, you should see the names of your Properties & Apps in the data browser. 
 
 ## Troubleshooting
 
