@@ -19,9 +19,9 @@ Refer to Google's Analytics API documentation for the required [scopes](https://
 Depending on your Google Analytics API version, you may need to use [Google Analytics API, v3](https://developers.google.com/identity/protocols/oauth2/scopes#analytics) scopes or [Analytics Reporting API, v4](https://developers.google.com/identity/protocols/oauth2/scopes#analyticsreporting) ones.
 
 
-## Metabase: Adding a Google Analytics Dataset
+## Metabase: adding a Google Analytics Dataset
 
-Once you have created an **OAuth client ID** and obtained your **Account id** for your Google Analytics dataset, head over to your Metabase instance, click on the **settings** cog, and select **Admin** to bring up Admin mode. In the **Databases** section, click on the **Add database** button in the upper right.
+In your Metabase, click on the **settings** cog, and select **Admin** to bring up the Admin panel. In the **Databases** section, click on the **Add database** button in the upper right.
 
 On the **ADD DATABASE** page, select **Google Analytics** from the **Database type** dropdown. Metabase will present you with the relevant configuration settings to fill out:
 
