@@ -10,9 +10,9 @@
 
 (defsetting field-filter-operators-enabled?
   (deferred-tru "Enable the new field-filter operators")
-  :type :boolean
+  :type       :boolean
   :visibility :public
-  :setter :none)
+  :setter     :none)
 
 (defn throw-if-field-filter-operators-not-enabled
   "Feature flag check for new field filter operations. Assumed already has been checked that `ops/operator?` is
