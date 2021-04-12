@@ -16,7 +16,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("filter").click();
 
     cy.findByText("Number").should("not.exist");
-    cy.findByText("String").should("not.exist");
+    cy.findByText("Text or Category").should("not.exist");
 
     cy.findByText("Location").click();
     cy.findByText("Contains").should("not.exist");
