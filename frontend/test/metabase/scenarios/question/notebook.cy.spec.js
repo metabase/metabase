@@ -619,6 +619,42 @@ describe("scenarios > question > notebook", () => {
         .first()
         .isVisibleInPopover();
     });
+
+    it.skip("should add numeric filter on joined table (metabase#15570)", () => {
+      cy.createQuestion({
+        name: "15570",
+        query: {
+          "source-table": PRODUCTS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": ORDERS_ID,
+              condition: [
+                "=",
+                ["field", PRODUCTS.ID, null],
+                ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
+              ],
+              alias: "Orders",
+            },
+          ],
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.visit(`/question/${QUESTION_ID}/notebook`);
+      });
+      cy.findByText("Filter").click();
+      popover().within(() => {
+        cy.findByText(/Orders/i).click();
+        cy.findByText("Discount").click();
+      });
+      cy.get(".AdminSelect")
+        .contains("Equal to")
+        .click();
+      cy.findByText("Greater than").click();
+      cy.findByPlaceholderText("Enter a number").type(0);
+      cy.findByRole("button", { name: "Add filter" })
+        .should("not.be.disabled")
+        .click();
+    });
   });
 
   describe.skip("popover rendering issues (metabase#15502)", () => {
