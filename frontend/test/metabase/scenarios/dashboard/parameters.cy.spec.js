@@ -162,7 +162,7 @@ describe("scenarios > dashboard > parameters", () => {
     // Link that filter to the card
     cy.findByText("Select…").click();
     popover().within(() => {
-      cy.findByText("City").click();
+      cy.findByText("Name").click();
     });
 
     // Add a filter with few enough values that it does not search
@@ -182,8 +182,8 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("Text starts with").click();
     cy.findByPlaceholderText("Enter some text")
       .click()
-      .type("Bake");
-    cy.findByText("Baker").should("not.exist");
+      .type("Corbin");
+    cy.findByText("Corbin Mertz").should("not.exist");
     cy.findByText("Add filter").click();
 
     cy.contains("Text ends with").click();

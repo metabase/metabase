@@ -123,7 +123,7 @@ describe("scenarios > dashboard > chained filter", () => {
       // add a state filter
       cy.icon("filter").click();
       popover().within(() => {
-        cy.findByText("Text or Category").click();
+        cy.findByText("Location").click();
         cy.findByText("Dropdown").click();
       });
 
@@ -160,14 +160,14 @@ describe("scenarios > dashboard > chained filter", () => {
         .parent()
         .within(() => {
           // turn on the toggle
-          cy.findByText("Text")
+          cy.findByText("Location")
             .parent()
             .within(() => {
               cy.get("a").click();
             });
 
           // open up the list of linked columns
-          cy.findByText("Text").click();
+          cy.findByText("Location").click();
           // It's hard to assert on the "table.column" pairs.
           // We just assert that the headers are there to know that something appeared.
           cy.findByText("Filtering column");

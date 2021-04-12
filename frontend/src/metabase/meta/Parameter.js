@@ -245,8 +245,8 @@ function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
     case "string":
       return (field: Field) => {
         return subtype === "=" || subtype === "!="
-          ? field.isCategory()
-          : field.isString();
+          ? field.isCategory() && !field.isLocation()
+          : field.isString() && !field.isLocation();
       };
   }
 
