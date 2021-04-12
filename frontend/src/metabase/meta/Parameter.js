@@ -232,7 +232,12 @@ function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
           case "country":
             return field.isCountry();
           default:
-            return false;
+            return (
+              field.isCity() ||
+              field.isState() ||
+              field.isZipCode() ||
+              field.isCountry()
+            );
         }
       };
     case "number":

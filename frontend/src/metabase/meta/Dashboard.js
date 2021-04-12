@@ -73,8 +73,21 @@ export function getParameterSections(): ParameterSection[] {
       id: "location",
       name: t`Location`,
       description: t`City, State, Country, ZIP code.`,
-      options: LOCATION_OPTIONS,
+      options: areFieldFilterOperatorsEnabled()
+        ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
+            return {
+              ...option,
+              sectionId: "location",
+              combinedName: getOperatorDisplayName(
+                option,
+                "string",
+                t`Location`,
+              ),
+            };
+          })
+        : LOCATION_OPTIONS,
     },
+
     {
       id: "id",
       name: t`ID`,
@@ -98,24 +111,25 @@ export function getParameterSections(): ParameterSection[] {
         };
       }),
     },
-    areFieldFilterOperatorsEnabled() && {
-      id: "string",
-      name: t`Text or Category`,
-      description: t`Name, Review, Description, etc.`,
-      options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
-        return {
-          ...option,
-          sectionId: "string",
-          combinedName: getOperatorDisplayName(option, "string", t`Text`),
-        };
-      }),
-    },
-    !areFieldFilterOperatorsEnabled() && {
-      id: "category",
-      name: t`Other Categories`,
-      description: t`Category, Type, Model, Rating, etc.`,
-      options: CATEGORY_OPTIONS,
-    },
+    areFieldFilterOperatorsEnabled()
+      ? {
+          id: "string",
+          name: t`Text or Category`,
+          description: t`Name, Review, Description, etc.`,
+          options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
+            return {
+              ...option,
+              sectionId: "string",
+              combinedName: getOperatorDisplayName(option, "string", t`Text`),
+            };
+          }),
+        }
+      : {
+          id: "category",
+          name: t`Other Categories`,
+          description: t`Category, Type, Model, Rating, etc.`,
+          options: CATEGORY_OPTIONS,
+        },
   ].filter(Boolean);
 }
 
