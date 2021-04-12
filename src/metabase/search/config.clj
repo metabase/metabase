@@ -2,7 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [honeysql.core :as hsql]
-            [metabase.models :refer [Card Collection Dashboard Metric Pulse Segment Table]]
+            [metabase.models :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
             [metabase.models.setting :refer [defsetting]]
             [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -39,7 +39,7 @@
 (def searchable-models
   "Models that can be searched. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
-  [Dashboard Metric Segment Card Collection Table Pulse])
+  [Dashboard Metric Segment Card Collection Table Pulse Database])
 
 (defn model-name->class
   "Given a model name as a string, return its Class."
@@ -72,6 +72,11 @@
    :description])
 
 (defmethod searchable-columns-for-model (class Dashboard)
+  [_]
+  [:name
+   :description])
+
+(defmethod searchable-columns-for-model (class Database)
   [_]
   [:name
    :description])
@@ -117,6 +122,10 @@
 (defmethod columns-for-model (class Dashboard)
   [_]
   (conj default-columns :collection_id :collection_position [:collection.name :collection_name] favorite-col))
+
+(defmethod columns-for-model (class Database)
+  [_]
+  [:id :name :description :updated_at])
 
 (defmethod columns-for-model (class Pulse)
   [_]

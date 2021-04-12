@@ -27,7 +27,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
   it("should allow brush date filter", () => {
     cy.createQuestion({
-      name: "Orders by Product → Created At (month) and Product → Category",
+      name: "Brush Date Filter",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
@@ -51,13 +51,15 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
 
       // drag across to filter
-      cy.get(".dc-chart svg")
+      cy.get(".Visualization")
         .trigger("mousedown", 100, 200)
-        .trigger("mousemove", 200, 200)
-        .trigger("mouseup", 200, 200);
+        .trigger("mousemove", 210, 200)
+        .trigger("mouseup", 210, 200);
 
       // new filter applied
-      cy.contains("Created At between May, 2016 July, 2016");
+      // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
+      //       It is enough that we assert that the filter exists and that it starts with May, 2016
+      cy.contains(/^Created At between May, 2016/);
       // more granular axis labels
       cy.contains("June, 2016");
       // confirm that product category is still broken out
