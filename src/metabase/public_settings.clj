@@ -289,8 +289,9 @@
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
-  :getter (fn [] (some-> (setting/get-string :source-address-header)
-                         u/lower-case-en)))
+  :default "X-Forwarded-For"
+  :getter  (fn [] (some-> (setting/get-string :source-address-header)
+                          u/lower-case-en)))
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it

@@ -84,6 +84,10 @@
   [{:keys [headers remote-addr]}]
   (some-> (or (some->> (public-settings/source-address-header) (get headers))
               remote-addr)
+          ;; first IP (if there are multiple) is the actual client -- see
+          ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
+          (str/split #"\s*,\s*")
+          first
           ;; strip out non-ip-address characters like square brackets which we get sometimes
           (str/replace #"[^0-9a-fA-F.:]" "")))
 

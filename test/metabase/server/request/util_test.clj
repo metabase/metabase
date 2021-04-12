@@ -2,7 +2,9 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.reader.edn :as edn]
             [java-time :as t]
-            [metabase.server.request.util :as request.u]))
+            [metabase.server.request.util :as request.u]
+            [metabase.test :as mt]
+            [ring.mock.request :as ring.mock]))
 
 (deftest https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
@@ -49,6 +51,28 @@
 
     nil
     nil))
+
+(deftest ip-address-test
+  (let [request (ring.mock/request :get "api/session")]
+    (testing "request with no forwarding"
+      (is (= "127.0.0.1"
+             (request.u/ip-address request))))
+    (testing "request with forwarding"
+      (let [mock-request (-> (ring.mock/request :get "api/session")
+                             (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
+        (is (= "5.6.7.8"
+               (request.u/ip-address mock-request))))
+      (testing "multiple IP addresses"
+        (let [mock-request (-> (ring.mock/request :get "api/session")
+                               (ring.mock/header "X-Forwarded-For" "1.2.3.4, 5.6.7.8"))]
+          (is (= "1.2.3.4"
+                 (request.u/ip-address mock-request)))))
+      (testing "different header than default X-Forwarded-For"
+        (mt/with-temporary-setting-values [source-address-header "X-ProxyUser-Ip"]
+          (let [mock-request (-> (ring.mock/request :get "api/session")
+                                 (ring.mock/header "x-proxyuser-ip" "1.2.3.4"))]
+            (is (= "1.2.3.4"
+                   (request.u/ip-address mock-request)))))))))
 
 (deftest geocode-ip-addresses-test
   (are [ip-addresses expected] (= expected (request.u/geocode-ip-addresses ip-addresses))
