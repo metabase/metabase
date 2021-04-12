@@ -6,20 +6,20 @@
 
 (deftest to-clause-test
   (testing "number operations"
-    (is (= (ops/to-clause {:type :number/=
+    (is (= [:= [:field 26 {:source-field 5}] 3]
+           (ops/to-clause {:type :number/=
                            :target [:dimension
                                     [:field
                                      26
                                      {:source-field 5}]]
-                           :value [3]})
-           [:= [:field 26 {:source-field 5}] 3]))
-    (is (= (ops/to-clause {:type :number/between
+                           :value [3]})))
+    (is (= [:between [:field 26 {:source-field 5}] 3 9]
+           (ops/to-clause {:type :number/between
                            :target [:dimension
                                     [:field
                                      26
                                      {:source-field 5}]]
-                           :value [3 9]})
-           [:between [:field 26 {:source-field 5}] 3 9]))
+                           :value [3 9]})))
     (testing "equality is variadic"
       (is (= [:= [:field 26 {:source-field 5}] 3 4 5]
              (ops/to-clause {:type :number/=
@@ -29,20 +29,20 @@
                                        {:source-field 5}]]
                              :value [3 4 5]})))))
   (testing "string operations"
-    (is (= (ops/to-clause {:type :string/starts-with
+    (is (= [:starts-with [:field 26 {:source-field 5}] "foo"]
+           (ops/to-clause {:type :string/starts-with
                            :target [:dimension
                                     [:field
                                      26
                                      {:source-field 5}]]
-                           :value ["foo"]})
-           [:starts-with [:field 26 {:source-field 5}] "foo"]))
-    (is (= (ops/to-clause {:type :string/does-not-contain
+                           :value ["foo"]})))
+    (is (= [:does-not-contain [:field 26 {:source-field 5}] "foo"]
+           (ops/to-clause {:type :string/does-not-contain
                            :target [:dimension
                                     [:field
                                      26
                                      {:source-field 5}]]
-                           :value ["foo"]})
-           [:does-not-contain [:field 26 {:source-field 5}] "foo"])))
+                           :value ["foo"]}))))
   (testing "arity errors"
     (letfn [(f [op values]
               (try
