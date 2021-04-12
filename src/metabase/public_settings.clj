@@ -46,6 +46,12 @@
   :type    :json
   :default {})
 
+(defsetting version-info-last-checked
+  (deferred-tru "Indicates when Metabase last checked for new versions.")
+  :visibility :public
+  :type       :timestamp
+  :default    nil)
+
 (defsetting site-name
   (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")
@@ -89,7 +95,7 @@
                 (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
             (let [new-value (some-> new-value normalize-site-url)
-                  https?    (some-> new-value (str/starts-with?  "https:" ))]
+                  https?    (some-> new-value (str/starts-with?  "https:"))]
               ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
               (when-not https?
                 (redirect-all-requests-to-https false))
