@@ -4,7 +4,7 @@
             [java-time :as t]
             [metabase.search.config :as search-config]
             [schema.core :as s])
-    (:import java.util.PriorityQueue))
+  (:import java.util.PriorityQueue))
 
 ;;; Utility functions
 
