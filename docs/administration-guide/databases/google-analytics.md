@@ -11,7 +11,9 @@ You will need to have a [Google Cloud Platform](https://cloud.google.com/) accou
 To get the **Client ID** and **Client Secret**, follow Google's Cloud Platform Help on [how to create an OAuth client ID](https://support.google.com/cloud/answer/6158849?hl=en). For application type, select "Desktop App" (this avoids a `redirect_uri_mismatch` when requesting **Auth Codes**).
 
 ### Enabling Google Analytics API
-To enable the Google Analytics API, see [Enable and disable APIs](https://support.google.com/googleapi/answer/6158841?hl=en).
+To enable the Google Analytics API, go to this page in the Google Cloud Platform console: https://console.cloud.google.com/apis/api/analytics.googleapis.com/overview. Double check that the previously created project is selected and click on "Enable".
+
+For further documentation please refer to [Enable and disable APIs](https://support.google.com/googleapi/answer/6158841?hl=en).
 
 
 ##### Adding the API scopes
