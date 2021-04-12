@@ -238,7 +238,11 @@ function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
     case "number":
       return (field: Field) => field.isNumber() && !field.isCoordinate();
     case "string":
-      return (field: Field) => field.isString();
+      return (field: Field) => {
+        return subtype === "=" || subtype === "!="
+          ? field.isCategory()
+          : field.isString();
+      };
   }
 
   return (field: Field) => false;

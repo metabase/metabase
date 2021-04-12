@@ -100,17 +100,17 @@ export function getParameterSections(): ParameterSection[] {
     },
     areFieldFilterOperatorsEnabled() && {
       id: "string",
-      name: t`String`,
+      name: t`Text or Category`,
       description: t`Name, Review, Description, etc.`,
       options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
         return {
           ...option,
           sectionId: "string",
-          combinedName: getOperatorDisplayName(option, "string", t`String`),
+          combinedName: getOperatorDisplayName(option, "string", t`Text`),
         };
       }),
     },
-    {
+    !areFieldFilterOperatorsEnabled() && {
       id: "category",
       name: t`Other Categories`,
       description: t`Category, Type, Model, Rating, etc.`,
