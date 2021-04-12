@@ -101,13 +101,15 @@
 ;; normalized to UTC, it is a DateTimeWithLocalTZ
 ;;
 ;; `Instant` if differentiated from other `DateTimeWithLocalTZ` columns in the same way `java.time.Instant` is
-;; different from `java.time.OffsetDateTime`
-;;
-;; TIMEZONE FIXME — not 100% sure this distinction is needed or makes sense.
+;; different from `java.time.OffsetDateTime`;
 (derive :type/Instant :type/DateTimeWithLocalTZ)
+
 
 ;; TODO: remove these. They shouldn't be allowed as semantic types. But migrations use them targeting version
 ;; 0.20. Not clear if we should remove the tests or keep these forever
+
+;; TODO -- shouldn't we have a `:type/LocalDateTime` as well?
+
 (derive :type/UNIXTimestamp :type/Instant)
 (derive :type/UNIXTimestamp :type/Integer)
 (derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
@@ -253,9 +255,9 @@
   ;; that's an intentional mapping or not. But it does mean that lots of extra columns will be offered a conversion
   ;; (think Price being offerred to be interpreted as a date)
   (let [numeric-types [:type/BigInteger :type/Integer :type/Decimal]]
-    (reduce #(assoc %1 %2 {:Coercion/UNIXMicroSeconds->DateTime :type/DateTime
-                           :Coercion/UNIXMilliSeconds->DateTime :type/DateTime
-                           :Coercion/UNIXSeconds->DateTime      :type/DateTime})
+    (reduce #(assoc %1 %2 {:Coercion/UNIXMicroSeconds->DateTime :type/Instant
+                           :Coercion/UNIXMilliSeconds->DateTime :type/Instant
+                           :Coercion/UNIXSeconds->DateTime      :type/Instant})
             {:type/Text   {:Coercion/ISO8601->Date     :type/Date
                            :Coercion/ISO8601->DateTime :type/DateTime
                            :Coercion/ISO8601->Time     :type/Time}}
@@ -270,12 +272,12 @@
   "The effective type resulting from a coercion."
   [coercion]
   ;;todo: unify this with the coercions map above
-  (get {:Coercion/ISO8601->Date :type/Date
-        :Coercion/ISO8601->DateTime :type/DateTime
-        :Coercion/ISO8601->Time :type/Time
-        :Coercion/UNIXMicroSeconds->DateTime :type/DateTime
-        :Coercion/UNIXMilliSeconds->DateTime :type/DateTime
-        :Coercion/UNIXSeconds->DateTime :type/DateTime}
+  (get {:Coercion/ISO8601->Date              :type/Date
+        :Coercion/ISO8601->DateTime          :type/DateTime
+        :Coercion/ISO8601->Time              :type/Time
+        :Coercion/UNIXMicroSeconds->DateTime :type/Instant
+        :Coercion/UNIXMilliSeconds->DateTime :type/Instant
+        :Coercion/UNIXSeconds->DateTime      :type/Instant}
        (keyword coercion)))
 
 (defn ^:export coercions-for-type

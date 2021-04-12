@@ -535,7 +535,7 @@ describe("scenarios > question > notebook", () => {
       cy.get(".DashCard");
     });
 
-    it.skip("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
+    it("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
       cy.createQuestion({
         name: "15446",
         query: {
@@ -577,7 +577,7 @@ describe("scenarios > question > notebook", () => {
       popover()
         .last()
         .within(() => {
-          cy.findByText("Hour of Day").scrollIntoView();
+          cy.findByText("Hour of day").scrollIntoView();
           // This is an implicit assertion - test fails when there is more than one string when using `findByText` instead of `findAllByText`
           cy.findByText("Minute").click();
         });

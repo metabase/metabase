@@ -185,7 +185,7 @@
                 :fk         :categories}
                {:field-name        "timestamp"
                 :base-type         :type/BigInteger
-                :effective-type    :type/DateTime
+                :effective-type    :type/Instant
                 :coercion-strategy :Coercion/UNIXSeconds->DateTime}]
   [[23 14 927183600]
    [65 13 978854400]
