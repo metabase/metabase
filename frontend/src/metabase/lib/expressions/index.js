@@ -110,7 +110,7 @@ function quoteString(string, character) {
   } else if (character === "'") {
     return swapQuotes(JSON.stringify(swapQuotes(string)));
   } else if (character === "[") {
-    const escapedString = string.replace(/\[/g, '\\\[').replace(/\]/g, '\\\]')
+    const escapedString = string.replace(/\[/g, "\\[").replace(/\]/g, "\\]");
     return `[${escapedString}]`;
   } else if (character === "") {
     // unquoted
