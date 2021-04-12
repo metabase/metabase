@@ -77,6 +77,8 @@
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
+                                 ;; Snowplow server
+                                 "https://sp.metabase.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  (when config/is-dev?

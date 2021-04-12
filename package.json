@@ -10,6 +10,7 @@
     "yarn": ">=1.12.3"
   },
   "dependencies": {
+    "@snowplow/browser-tracker": "^3.0.0",
     "ace-builds": "^1.4.7",
     "chevrotain": "^6.5.0",
     "classlist-polyfill": "^1.2.0",

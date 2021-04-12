@@ -1,13 +1,33 @@
 /*global ga*/
+import {
+  newTracker as newSnowplowTracker,
+  trackStructEvent as trackSnowplowStructEvent,
+  trackPageView as trackSnowplowPageView,
+} from "@snowplow/browser-tracker";
 
 import MetabaseSettings from "metabase/lib/settings";
 
 import { DEBUG } from "metabase/lib/debug";
 
-// Simple module for in-app analytics.  Currently sends data to GA but could be extended to anything else.
+newSnowplowTracker("sp1", "sp.metabase.com", {
+  appId: "metabase",
+  plugins: [],
+  platform: "web",
+  post: true,
+  forceSecureTracker: true,
+  contexts: {
+    webPage: true,
+    performanceTiming: true,
+  },
+});
+
+// Simple module for in-app analytics.  Sends data to GA and Snowplow.
 const MetabaseAnalytics = {
   // track a pageview (a.k.a. route change)
   trackPageView: function(url: string) {
+    if (!MetabaseSettings.get("anon-tracking-enabled")) {
+      return;
+    }
     if (url) {
       // scrub query builder urls to remove serialized json queries from path
       url = url.lastIndexOf("/q/", 0) === 0 ? "/q/" : url;
@@ -20,6 +40,7 @@ const MetabaseAnalytics = {
         ga("set", "page", url);
         ga("send", "pageview", url);
       }
+      trackSnowplowPageView();
     }
   },
 
@@ -30,6 +51,9 @@ const MetabaseAnalytics = {
     label?: ?(string | number | boolean),
     value?: ?number,
   ) {
+    if (!MetabaseSettings.get("anon-tracking-enabled")) {
+      return;
+    }
     const { tag } = MetabaseSettings.get("version") || {};
 
     // category & action are required, rest are optional
@@ -38,6 +62,7 @@ const MetabaseAnalytics = {
       ga("set", "dimension1", tag);
       ga("send", "event", category, action, label, value);
     }
+    trackSnowplowStructEvent({ category, action, label, value });
     if (DEBUG) {
       console.log("trackEvent", { category, action, label, value });
     }
