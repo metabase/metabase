@@ -208,15 +208,15 @@ describeWithToken("formatting > sandboxes", () => {
         // Collapse "Order/s/" in order to bring "User" into view (trick to get around virtualization - credits: @flamber)
         cy.get(".List-section-header")
           .contains(/Orders?/)
-          .click({ force: true });
+          .click();
 
         cy.get(".List-section-header")
           .contains("User")
-          .click({ force: true });
+          .click();
 
         cy.get(".List-item")
           .contains("ID")
-          .click({ force: true });
+          .click();
       });
 
       cy.findByText("Visualize").click();
@@ -775,7 +775,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Saved Questions").click();
       cy.findByText("14766_joined").click();
       cy.findByText("Pick the metric you want to see").click();
-      cy.findByText("Count of rows").click({ force: true });
+      cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
       cy.findByText(/Products? → ID/).click();
       cy.findByText("Visualize").click();

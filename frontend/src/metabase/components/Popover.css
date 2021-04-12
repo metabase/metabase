@@ -1,6 +1,5 @@
 /* afaik popover needs a positioning context to be able to calculate the transform */
 .PopoverContainer {
-  pointer-events: none;
   position: absolute;
   z-index: 4;
 }

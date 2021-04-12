@@ -76,11 +76,11 @@ describe("scenarios > visualizations > waterfall", () => {
   it("should work with time-series data", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Summarize").click();
-    cy.findByText("Count of rows").click({ force: true });
+    cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.findByText("Created At").click({ force: true });
+    cy.findByText("Created At").click();
     cy.findByText("Filter").click();
-    cy.findByText("Created At").click({ force: true });
+    cy.findByText("Created At").click();
     cy.get("input[placeholder='30']")
       .clear()
       .type("12")
@@ -98,9 +98,9 @@ describe("scenarios > visualizations > waterfall", () => {
   it("should hide the Total label if there is no space", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Summarize").click();
-    cy.findByText("Count of rows").click({ force: true });
+    cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.findByText("Created At").click({ force: true });
+    cy.findByText("Created At").click();
 
     cy.findByText("Visualize").click();
     cy.contains("Visualization").click();
