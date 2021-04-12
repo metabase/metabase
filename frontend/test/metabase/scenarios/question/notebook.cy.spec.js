@@ -656,7 +656,7 @@ describe("scenarios > question > notebook", () => {
         .click();
     });
 
-    it.skip("should not render duplicated values in date binning popover (metabase#15574)", () => {
+    it("should not render duplicated values in date binning popover (metabase#15574)", () => {
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       cy.findByText("Pick a column to group by").click();
