@@ -612,7 +612,7 @@ describe("scenarios > question > notebook", () => {
         .click({ force: true });
       // First a reality check - "Minute" is the only string visible in UI and this should pass
       cy.findAllByText("Minute")
-        .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15446) gets fixed
+        .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15570) gets fixed
         .isVisibleInPopover();
       // The actual check that will fail until this issue gets fixed
       cy.findAllByText("Week")
@@ -654,6 +654,18 @@ describe("scenarios > question > notebook", () => {
       cy.findByRole("button", { name: "Add filter" })
         .should("not.be.disabled")
         .click();
+    });
+
+    it.skip("should not render duplicated values in date binning popover (metabase#15574)", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Summarize").click();
+      cy.findByText("Pick a column to group by").click();
+      popover()
+        .findByText("Created At")
+        .closest(".List-item")
+        .findByText("by month")
+        .click({ force: true });
+      cy.findByText("Minute");
     });
   });
 
