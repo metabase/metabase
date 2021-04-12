@@ -1,3 +1,4 @@
+import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
@@ -12,7 +13,7 @@ import type {
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
-  PARAMETER_OPTIONS,
+  getParameterOptions,
   PARAMETER_OPERATOR_TYPES,
   getOperatorDisplayName,
 } from "metabase/meta/Parameter";
@@ -29,67 +30,81 @@ export type ParameterSection = {
   options: ParameterOption[],
 };
 
-export const PARAMETER_SECTIONS: ParameterSection[] = [
-  {
-    id: "date",
-    name: t`Time`,
-    description: t`Date range, relative date, time of day, etc.`,
-    options: PARAMETER_OPERATOR_TYPES["date"].map(option => {
-      return {
-        ...option,
-        sectionId: "date",
-        combinedName: getOperatorDisplayName(option, "date", t`Date`),
-      };
-    }),
-  },
-  {
-    id: "location",
-    name: t`Location`,
-    description: t`City, State, Country, ZIP code.`,
-    options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
-      return {
-        ...option,
-        sectionId: "location",
-        combinedName: getOperatorDisplayName(option, "string", t`Location`),
-      };
-    }),
-  },
-  {
-    id: "id",
-    name: t`ID`,
-    description: t`User ID, product ID, event ID, etc.`,
-    options: [
-      {
-        ..._.findWhere(PARAMETER_OPTIONS, { type: "id" }),
-        sectionId: "id",
-      },
-    ],
-  },
-  {
-    id: "number",
-    name: t`Number`,
-    description: t`Subtotal, Age, Price, Quantity, etc.`,
-    options: PARAMETER_OPERATOR_TYPES["number"].map(option => {
-      return {
-        ...option,
-        sectionId: "number",
-        combinedName: getOperatorDisplayName(option, "number", t`Number`),
-      };
-    }),
-  },
-  {
-    id: "category",
-    name: t`Other Categories`,
-    description: t`Category, Type, Model, Rating, etc.`,
-    options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
-      return {
-        ...option,
-        sectionId: "category",
-        combinedName: getOperatorDisplayName(option, "string", t`Category`),
-      };
-    }),
-  },
-];
+const areFieldFilterOperatorsEnabled = () =>
+  MetabaseSettings.get("field-filter-operators-enabled?");
+
+export function getParameterSections(): ParameterSection[] {
+  const parameterOptions = getParameterOptions();
+  const LOCATION_OPTIONS = areFieldFilterOperatorsEnabled()
+    ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
+        return {
+          ...option,
+          sectionId: "location",
+          combinedName: getOperatorDisplayName(option, "string", t`Location`),
+        };
+      })
+    : parameterOptions.filter(option => option.type.startsWith("location"));
+
+  const CATEGORY_OPTIONS = areFieldFilterOperatorsEnabled()
+    ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
+        return {
+          ...option,
+          sectionId: "category",
+          combinedName: getOperatorDisplayName(option, "string", t`Category`),
+        };
+      })
+    : parameterOptions.filter(option => option.type.startsWith("category"));
+
+  return [
+    {
+      id: "date",
+      name: t`Time`,
+      description: t`Date range, relative date, time of day, etc.`,
+      options: PARAMETER_OPERATOR_TYPES["date"].map(option => {
+        return {
+          ...option,
+          sectionId: "date",
+          combinedName: getOperatorDisplayName(option, "date", t`Date`),
+        };
+      }),
+    },
+    {
+      id: "location",
+      name: t`Location`,
+      description: t`City, State, Country, ZIP code.`,
+      options: LOCATION_OPTIONS,
+    },
+    {
+      id: "id",
+      name: t`ID`,
+      description: t`User ID, product ID, event ID, etc.`,
+      options: [
+        {
+          ..._.findWhere(parameterOptions, { type: "id" }),
+          sectionId: "id",
+        },
+      ],
+    },
+    areFieldFilterOperatorsEnabled() && {
+      id: "number",
+      name: t`Number`,
+      description: t`Subtotal, Age, Price, Quantity, etc.`,
+      options: PARAMETER_OPERATOR_TYPES["number"].map(option => {
+        return {
+          ...option,
+          sectionId: "number",
+          combinedName: getOperatorDisplayName(option, "number", t`Number`),
+        };
+      }),
+    },
+    {
+      id: "category",
+      name: t`Other Categories`,
+      description: t`Category, Type, Model, Rating, etc.`,
+      options: CATEGORY_OPTIONS,
+    },
+  ].filter(Boolean);
+}
 
 export function getParameterMappingOptions(
   metadata: Metadata,

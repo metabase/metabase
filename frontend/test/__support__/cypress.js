@@ -315,3 +315,16 @@ export function getIframeBody(selector = "iframe") {
     .should("not.be.null")
     .then(cy.wrap);
 }
+
+export function mockSessionProperty(propertyOrObject, value) {
+  cy.intercept("GET", "/api/session/properties", req => {
+    req.reply(res => {
+      if (typeof propertyOrObject === "object") {
+        Object.assign(res.body, propertyOrObject);
+      }
+      {
+        res.body[propertyOrObject] = value;
+      }
+    });
+  });
+}

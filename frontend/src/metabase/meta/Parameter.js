@@ -1,3 +1,4 @@
+import MetabaseSettings from "metabase/lib/settings";
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type {
   TemplateTag,
@@ -37,6 +38,9 @@ type DimensionFilter = (dimension: Dimension) => boolean;
 type TemplateTagFilter = (tag: TemplateTag) => boolean;
 type FieldPredicate = (field: Field) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
+
+const areFieldFilterOperatorsEnabled = () =>
+  MetabaseSettings.get("field-filter-operators-enabled?");
 
 export const PARAMETER_OPERATOR_TYPES = {
   number: [
@@ -160,15 +164,41 @@ const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   },
 ];
 
-export const PARAMETER_OPTIONS: ParameterOption[] = [
-  {
-    type: "id",
-    name: t`ID`,
-  },
-  ...OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
-    buildOperatorSubtypeOptions(option),
-  ),
-].flat();
+export function getParameterOptions(): ParameterOption[] {
+  return [
+    {
+      type: "id",
+      name: t`ID`,
+    },
+    ...(areFieldFilterOperatorsEnabled()
+      ? OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
+          buildOperatorSubtypeOptions(option),
+        )
+      : [
+          ...PARAMETER_OPERATOR_TYPES["date"],
+          {
+            type: "category",
+            name: t`Category`,
+          },
+          {
+            type: "location/city",
+            name: t`City`,
+          },
+          {
+            type: "location/state",
+            name: t`State`,
+          },
+          {
+            type: "location/zip_code",
+            name: t`ZIP or Postal Code`,
+          },
+          {
+            type: "location/country",
+            name: t`Country`,
+          },
+        ]),
+  ].flat();
+}
 
 function buildOperatorSubtypeOptions({ type, typeName }) {
   return PARAMETER_OPERATOR_TYPES[type].map(option => ({
@@ -204,6 +234,7 @@ function getParameterSubType(parameter) {
 
 function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
   const type = getParameterType(parameter);
+  const subtype = getParameterSubType(parameter);
   switch (type) {
     case "date":
       return (field: Field) => field.isDate();
@@ -212,11 +243,24 @@ function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
     case "category":
       return (field: Field) => field.isCategory();
     case "location":
-      return (field: Field) =>
-        field.isCity() ||
-        field.isState() ||
-        field.isZipCode() ||
-        field.isCountry();
+      return (field: Field) => {
+        if (areFieldFilterOperatorsEnabled()) {
+          return field.isLocation();
+        } else {
+          switch (subtype) {
+            case "city":
+              return field.isCity();
+            case "state":
+              return field.isState();
+            case "zip_code":
+              return field.isZipCode();
+            case "country":
+              return field.isCountry();
+            default:
+              return false;
+          }
+        }
+      };
     case "number":
       return (field: Field) => field.isNumber() && !field.isCoordinate();
     case "string":
@@ -227,14 +271,14 @@ function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
 }
 
 export function parameterOptionsForField(field: Field): ParameterOption[] {
-  return PARAMETER_OPTIONS.filter(option =>
-    fieldFilterForParameter(option)(field),
-  ).map(option => {
-    return {
-      ...option,
-      name: option.combinedName || option.name,
-    };
-  });
+  return getParameterOptions()
+    .filter(option => fieldFilterForParameter(option)(field))
+    .map(option => {
+      return {
+        ...option,
+        name: option.combinedName || option.name,
+      };
+    });
 }
 
 export function dimensionFilterForParameter(
@@ -293,7 +337,11 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
       id: tag.id,
       type:
         tag["widget-type"] ||
-        (tag.type === "date" ? "date/single" : "string/="),
+        (tag.type === "date"
+          ? "date/single"
+          : areFieldFilterOperatorsEnabled()
+          ? "string/="
+          : "category"),
       target:
         tag.type === "dimension"
           ? ["dimension", ["template-tag", tag.name]]
@@ -510,6 +558,10 @@ export function getParameterIconName(parameter: ?Parameter) {
 }
 
 export function mapUIParameterToQueryParameter(type, value, target) {
+  if (!areFieldFilterOperatorsEnabled()) {
+    return { type, value, target };
+  }
+
   const [fieldType, maybeOperatorName] = splitType(type);
   const operatorName = getParameterOperatorName(maybeOperatorName);
 
