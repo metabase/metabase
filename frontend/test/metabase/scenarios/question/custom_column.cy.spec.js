@@ -31,7 +31,7 @@ describe("scenarios > question > custom columns", () => {
     cy.icon("add_data").click();
 
     popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1");
+      _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
       _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
       cy.findByText("Done").click();
@@ -52,7 +52,7 @@ describe("scenarios > question > custom columns", () => {
       cy.icon("add_data").click();
 
       popover().within(() => {
-        _typeUsingGet("[contenteditable='true']", customFormula);
+        _typeUsingGet("[contenteditable='true']", customFormula, 400);
         _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
         cy.findByText("Done").click();
@@ -122,7 +122,7 @@ describe("scenarios > question > custom columns", () => {
     // Add custom column that will be used later in summarize (group by)
     cy.findByText("Custom column").click();
     popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1");
+      _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
       _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
       cy.findByText("Done").click();
