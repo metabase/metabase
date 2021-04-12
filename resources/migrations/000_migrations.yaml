@@ -8038,6 +8038,10 @@ databaseChangeLog:
               WHERE semantic_type IN ('type/ISO8601DateTimeString',
                                       'type/ISO8601TimeString',
                                       'type/ISO8601DateString');
+  ## This includes values 'timestamp_milliseconds' and 'timestamp_seconds'. These are old "special_types" that were
+  ## migrated in a data migration for version 0.20. But these migrations occur after all liquibase migrations so
+  ## it would be possible for another type/UNIXTimestampSeconds to pop up after this migration that supposedly
+  ## got rid of them all
   - changeSet:
       id: 288
       author: dpsutton
@@ -8053,12 +8057,16 @@ databaseChangeLog:
                 set effective_type    = 'type/Instant',
                     coercion_strategy = (case semantic_type
                                           WHEN 'type/UNIXTimestampSeconds'      THEN 'Coercion/UNIXSeconds->DateTime'
+                                          WHEN 'timestamp_seconds'              THEN 'Coercion/UNIXSeconds->DateTime'
                                           WHEN 'type/UNIXTimestampMilliSeconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                          WHEN 'timestamp_milliseconds'         THEN 'Coercion/UNIXMilliSeconds->DateTime'
                                           WHEN 'type/UNIXTimestampMicroSeconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
                                          END)
                 WHERE semantic_type IN ('type/UNIXTimestampSeconds',
                                         'type/UNIXTimestampMilliSeconds',
-                                        'type/UNIXTimestampMicroSeconds');
+                                        'type/UNIXTimestampMicroSeconds',
+                                        'timestamp_seconds',
+                                        'timestamp_milliseconds');
 
   - changeSet:
       id: 289

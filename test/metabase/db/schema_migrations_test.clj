@@ -81,6 +81,11 @@
               :table_id      1
               :database_type "VARCHAR"}
              {:base_type     :type/Text
+              :semantic_type "timestamp_milliseconds"
+              :name          "iso-datetime-v0.20"
+              :table_id      1
+              :database_type "VARCHAR"}
+             {:base_type     :type/Text
               :semantic_type :type/ISO8601DateString
               :name          "iso-date"
               :table_id      1
@@ -117,6 +122,11 @@
                     :coercion_strategy :Coercion/ISO8601->DateTime
                     :semantic_type     nil
                     :name              "iso-datetime"}
+                   {:base_type         :type/Text
+                    :effective_type    :type/Instant
+                    :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                    :semantic_type     nil
+                    :name              "iso-datetime-v0.20"}
                    {:base_type         :type/Text
                     :effective_type    :type/Date
                     :coercion_strategy :Coercion/ISO8601->Date
