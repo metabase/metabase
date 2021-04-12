@@ -12,12 +12,16 @@
             [metabase.query-processor.error-type :as qp.error-type]
             [schema.core :as s]))
 
+(def ^:private nonary {:boolean/is-null  :is-null
+                       :boolean/not-null :not-null})
+
 (def ^:private unary {:string/starts-with      :starts-with
                       :string/ends-with        :ends-with
                       :string/contains         :contains
                       :string/does-not-contain :does-not-contain
                       :number/>=               :>=
-                      :number/<=               :<=})
+                      :number/<=               :<=
+                      :boolean/=               :=})
 
 (def ^:private binary {:number/between :between})
 
@@ -26,7 +30,7 @@
                          :number/=  :=
                          :number/!= :!=})
 
-(def ^:private all-ops (into #{} (mapcat keys [unary binary variadic])))
+(def ^:private all-ops (into #{} (mapcat keys [nonary unary binary variadic])))
 
 (s/defn operator? :- s/Bool
   "Returns whether param-type is an \"operator\" type."
@@ -43,7 +47,8 @@
                                :param-value param-value
                                :field-id    (second field)
                                :type        qp.error-type/invalid-parameter}))))]
-    (cond (contains? unary param-type)    (maybe-arity-error 1)
+    (cond (contains? nonary param-type)   (maybe-arity-error 0)
+          (contains? unary param-type)    (maybe-arity-error 1)
           (contains? binary param-type)   (maybe-arity-error 2)
           (contains? variadic param-type) (when-not (seq param-value)
                                             (throw (ex-info (format "No values provided for operator: %s" param-type)
@@ -68,6 +73,9 @@
 
           (contains? unary param-type)
           [(unary param-type) field' a]
+
+          (contains? nonary param-type)
+          [(nonary param-type) field']
 
           (contains? variadic param-type)
           (into [(variadic param-type) field'] param-value)

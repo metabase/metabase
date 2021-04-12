@@ -107,7 +107,9 @@
           (is (= ["select * from checkins" nil]
                  (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)})))))))
   (testing "new operators"
-    (testing "string operators"
+    (mt/with-temp Field [boolean-field {:table_id (mt/id :venues)
+                                        :base_type :type/Boolean
+                                        :name "BOOLEAN_FIELD"}]
       (let [query ["select * from venues where " (param "param")]]
         (doseq [[operator {:keys [field value expected]}]
                 (partition-all
@@ -160,7 +162,16 @@
                                             :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" >= 1" ()]}
                   :number/between          {:field    :price
                                             :value    [1 3]
-                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 1 AND 3" ()]}])]
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 1 AND 3" ()]}
+                  :boolean/=               {:field    :boolean_field
+                                            :value    [true]
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"BOOLEAN_FIELD\" = TRUE" ()]}
+                  :boolean/is-null         {:field    :boolean_field
+                                            :value    []
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"BOOLEAN_FIELD\" IS NULL" ()]}
+                  :boolean/not-null        {:field    :boolean_field
+                                            :value    []
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"BOOLEAN_FIELD\" IS NOT NULL" ()]}])]
           (testing operator
             (is (= expected
                    (substitute query {"param" (i/map->FieldFilter
