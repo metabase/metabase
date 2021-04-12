@@ -27,6 +27,7 @@
                               (mbql.match/match-one 1)
                               (mbql.match/replace 1)
                               (mbql.match/replace-in 2)
+                              (impl/test-migrations 2)
                               (l/matche '(1 (:defn)))
                               (l/matcha '(1 (:defn)))
                               (p/defprotocol+ '(1 (:defn)))
