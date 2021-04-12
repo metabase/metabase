@@ -6,9 +6,9 @@ If you
 
 To continue setting up your Auth0 connection, we’ll need to log in to your Auth0 account in a new window or tab.
 
-Configure Auth0
+## Configure Auth0
 
-After you log in to your Auth0 account, navigate to “Applications” and select “Create Application”
+After you log in to your Auth0 account, navigate to **Applications** and select **Create Application*
 
 ![Auth0 Applications Page](images/saml-auth0/auth0createapp.png)
 
@@ -43,28 +43,22 @@ Scroll to the bottom of the page and click “Save Changes”
 
 Next we need to activate the SAML2 Web App Addon.  Scroll back to the top of the settings page and select “Addons” from the navigation menu.
 
-![Auth0 Application Addons](images/saml-auth0/.png)
 
 In the “Addons” section, select the “SAML 2 Web App” to load the settings popup.
 
 ![Auth0 Application Addons](images/saml-auth0/auth0saml2addon.png)
 
 
-If you’ve entered multiple Callback URLs, you may be confused to see only one of the callback URLs listed on this page.  The field “Application Callback URL” on this page is just an example, it only shows the first of the Callback URLs entered.  The other Callback URLs you have entered are still saved and valid, they simply don’t show up on this page.
+If we've entered multiple Callback URLs, we'll only see one of the callback URLs listed on this page. The other Callback URLs we've entered are still saved and valid, this field simply shows a URL as an example.
 
-In the “Settings” section on this page, you can see the mappings for the SAML protocol.  Metabase specifically needs the User’s email, first name, and last name.  Auth0 refers to these attributes as “email”, “given_name”, and “family_name”.  Copy the URL for the “email” attribute to your clipboard. Your metabase instance should already have the correct variables mapped, but you can double check by comparing the values in Auth0’s addon settings and Metabase’s Auth0 SAML Attributes.
+In the Settings section on this page,  we can see the mappings for the SAML protocol.  Metabase needs the User’s email, first name, and last name.  Auth0 refers to these attributes as “email”, “given_name”, and “family_name”.  We'll copy the URL for the “email” attribute to our clipboard. Our Metabase should already have the correct variables mapped, but we can double check by comparing the values in Auth0’s addon settings and Metabase’s Auth0 SAML Attributes.
 
 
-“email”
-http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress
-“given_name”
-http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
-“family_name”
-http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
-
+- **email**: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress
+- **given_name**: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
+- **family_name**: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
 
 ![Auth0 SAML Mappings](images/saml-auth0/auth0samlmappings.png)
-
 
 ## Mapping Auth0 Fields to Metabase
 Next, in the Auth0 Addon: SAML2 Web App popup, click on the **Usage** tab. 
@@ -84,7 +78,6 @@ We'll return to our Auth0 tab, to download the Auth0 certificate. Once your cert
 
 Scroll down to the bottom of the Metabase SAML settings and click **Save changes**. Next, we'll return to our Auth0 app popup, and, under the Settings tab, scroll down to the bottom and click **Enable**. 
 You should now be able to log in to your Metabase instance with your Auth0 users!
-
 
 
 
