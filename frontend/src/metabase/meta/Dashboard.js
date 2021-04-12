@@ -91,7 +91,7 @@ export function getParameterSections(): ParameterSection[] {
     {
       id: "id",
       name: t`ID`,
-      description: t`User ID, product ID, event ID, etc.`,
+      description: t`User ID, Product ID, Event ID, etc.`,
       options: [
         {
           ..._.findWhere(parameterOptions, { type: "id" }),
@@ -115,7 +115,7 @@ export function getParameterSections(): ParameterSection[] {
       ? {
           id: "string",
           name: t`Text or Category`,
-          description: t`Name, Review, Description, etc.`,
+          description: t`Name, Rating, Description, etc.`,
           options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
             return {
               ...option,
