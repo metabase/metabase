@@ -211,7 +211,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           .contains("Update filter")
           .click();
 
-        cy.findAllByText("Category 1")
+        cy.findAllByText("Text 1")
           .last()
           .click();
         popover()
@@ -225,7 +225,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         clickButton("Done");
         cy.wait("@pulsePut");
-        cy.findByText("Category is 2 selections and 1 more filter");
+        cy.findByText("Text is 2 selections and 1 more filter");
       });
     });
   });
