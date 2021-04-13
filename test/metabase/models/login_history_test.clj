@@ -2,10 +2,11 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [environ.core :as env]
-            [metabase.db :as mdb]
+            [java-time :as t]
             [metabase.models :refer [LoginHistory User]]
             [metabase.models.login-history :as login-history]
             [metabase.models.setting.cache :as setting.cache]
+            [metabase.server.request.util :as request.u]
             [metabase.test :as mt]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -34,51 +35,61 @@
                  (#'login-history/first-login-ever? history-1))))))))))
 
 (deftest send-email-on-first-login-from-new-device-test
-  (mt/with-temp User [{user-id :id, email :email, first-name :first_name}]
-    (let [device (str (java.util.UUID/randomUUID))]
-      (testing "send email on first login from *new* device (but not first login ever)"
-        (mt/with-fake-inbox
-          (mt/with-temp* [LoginHistory [_ {:user_id user-id, :device_id (str (java.util.UUID/randomUUID))}]
-                          LoginHistory [_ {:user_id user-id, :device_id device, :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]]
-            (is (schema= {(s/eq email)
-                          [{:from    su/Email
-                            :to      (s/eq [email])
-                            :subject (s/eq (format "We've Noticed a New Metabase Login, %s" first-name))
-                            :body    [(s/one {:type    (s/eq "text/html; charset=utf-8")
-                                              :content s/Str}
-                                             "HTML body")]}]}
-                         @mt/inbox))
-            (let [message (-> @mt/inbox (get email) first :body first :content)]
-              (testing (format "\nMessage = %s" (pr-str message))
-                (is (string? message))
-                (when (string? message)
-                  (is (str/includes? message "We've noticed a new login on your Metabase account."))
-                  (is (str/includes? message "We noticed a login on your Metabase account from a new device."))
-                  (is (str/includes? message "Browser (Chrome/Windows) - Unknown location"))
-                  (if (= (mdb/db-type) :h2)
-                    (str/includes? message "April 2 3:52 PM (GMT-07:00)")
-                    (str/includes? message "April 2 10:52 PM (GMT)")))))
+  (testing "User should get an email the first time they log in from a new device (#14313, #15603)"
+    (mt/with-temp User [{user-id :id, email :email, first-name :first_name}]
+      (let [device (str (java.util.UUID/randomUUID))]
+        (testing "send email on first login from *new* device (but not first login ever)"
+          (mt/with-fake-inbox
+            ;; mock out the IP address geocoding function so we can make sure it handles timezones like PST correctly
+            ;; (#15603)
+            (with-redefs [request.u/geocode-ip-addresses (fn [ip-addresses]
+                                                           (into {} (for [ip-address ip-addresses]
+                                                                      [ip-address
+                                                                       {:description "San Francisco, California, United States"
+                                                                        :timezone    (t/zone-id "America/Los_Angeles")}])))]
+              (mt/with-temp* [LoginHistory [_ {:user_id   user-id
+                                               :device_id (str (java.util.UUID/randomUUID))}]
+                              LoginHistory [_ {:user_id   user-id
+                                               :device_id device
+                                               :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]]
 
-            (testing "don't send email on subsequent login from same device"
-              (mt/reset-inbox!)
-              (mt/with-temp LoginHistory [_ {:user_id user-id, :device_id device}]
-                (is (= {}
-                       @mt/inbox)))))))))
+                (is (schema= {(s/eq email)
+                              [{:from    su/Email
+                                :to      (s/eq [email])
+                                :subject (s/eq (format "We've Noticed a New Metabase Login, %s" first-name))
+                                :body    [(s/one {:type    (s/eq "text/html; charset=utf-8")
+                                                  :content s/Str}
+                                                 "HTML body")]}]}
+                             @mt/inbox))
+                (let [message (-> @mt/inbox (get email) first :body first :content)]
+                  (testing (format "\nMessage = %s" (pr-str message))
+                    (is (string? message))
+                    (when (string? message)
+                      (doseq [expected-str ["We've noticed a new login on your Metabase account."
+                                            "We noticed a login on your Metabase account from a new device."
+                                            "Browser (Chrome/Windows) - San Francisco, California, United States"
+                                            "April 2, 2021 3:52:00 PM (Pacific Daylight Time)"]]
+                        (is (str/includes? message expected-str))))))
+
+                (testing "don't send email on subsequent login from same device"
+                  (mt/reset-inbox!)
+                  (mt/with-temp LoginHistory [_ {:user_id user-id, :device_id device}]
+                    (is (= {}
+                           @mt/inbox)))))))))))
 
   (testing "don't send email if the setting is disabled by setting MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE=FALSE"
     (mt/with-temp User [{user-id :id, email :email, first-name :first_name}]
-      (testing "send email on first login from new device"
-        (try
-          (mt/with-fake-inbox
-            ;; can't use `mt/with-temporary-setting-values` here because it's a read-only setting
-            (with-redefs [env/env (assoc env/env :mb-send-email-on-first-login-from-new-device "FALSE")]
-              ;; flush the Setting cache so it picks up the env var value for the `send-email-on-first-login-from-new-device` setting
-              (setting.cache/restore-cache!)
-              (mt/with-temp* [LoginHistory [_ {:user_id user-id, :device_id (str (java.util.UUID/randomUUID))}]
-                              LoginHistory [_ {:user_id user-id, :device_id (str (java.util.UUID/randomUUID))}]]
-                (is (= {}
-                       @mt/inbox)))))
-          (finally
-            ;; flush the cache again so the original value of `send-email-on-first-login-from-new-device` gets
-            ;; restored
-            (setting.cache/restore-cache!)))))))
+      (try
+        (mt/with-fake-inbox
+          ;; can't use `mt/with-temporary-setting-values` here because it's a read-only setting
+          (with-redefs [env/env (assoc env/env :mb-send-email-on-first-login-from-new-device "FALSE")]
+            ;; flush the Setting cache so it picks up the env var value for the `send-email-on-first-login-from-new-device` setting
+            (setting.cache/restore-cache!)
+            (mt/with-temp* [LoginHistory [_ {:user_id user-id, :device_id (str (java.util.UUID/randomUUID))}]
+                            LoginHistory [_ {:user_id user-id, :device_id (str (java.util.UUID/randomUUID))}]]
+              (is (= {}
+                     @mt/inbox)))))
+        (finally
+          ;; flush the cache again so the original value of `send-email-on-first-login-from-new-device` gets
+          ;; restored
+          (setting.cache/restore-cache!))))))

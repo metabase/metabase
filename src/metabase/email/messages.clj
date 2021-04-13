@@ -189,10 +189,8 @@
   login history infomation as returned by `metabase.models.login-history/human-friendly-infos`."
   [{user-id :user_id, :keys [timestamp timezone], :as login-history}]
   (let [user-info    (db/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
-        timestamp    (cond-> timestamp
-                       timezone (u.date/with-time-zone-same-instant (t/zone-id timezone))
-                       true     (u.date/format-human-readable (or (:locale user-info)
-                                                                  (i18n/site-locale))))
+        user-locale  (or (:locale user-info) (i18n/site-locale))
+        timestamp    (u.date/format-human-readable timestamp user-locale)
         context      (merge (common-context)
                             {:first-name (:first-name user-info)
                              :device     (:device_description login-history)
