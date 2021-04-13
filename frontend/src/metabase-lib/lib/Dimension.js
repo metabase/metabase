@@ -655,7 +655,7 @@ export class FieldDimension extends Dimension {
   // no idea what this does or if it's even used anywhere.
   foreign(dimension: Dimension): FieldDimension {
     if (isFieldDimension(dimension)) {
-      return dimension.withOptions({ "source-field": this._fieldIdOrName });
+      return dimension.withSourceField(this._fieldIdOrName);
     }
   }
   columnName() {
@@ -681,7 +681,7 @@ export class FieldDimension extends Dimension {
 
     // honestly, I have no idea why we do something totally random if we have a FK source field compared to everything
     // else, but that's how the tests are written
-    if (this.getOption("source-field")) {
+    if (this.sourceField()) {
       return this.displayName();
     }
     return "Default";
@@ -730,9 +730,9 @@ export class FieldDimension extends Dimension {
       return dimensions.map(d => d.withJoinAlias(joinAlias));
     }
 
-    const sourceField = this.getOption("source-field");
+    const sourceField = this.sourceField();
     if (sourceField) {
-      return dimensions.map(d => d.withOption("source-field", sourceField));
+      return dimensions.map(d => d.withSourceField(sourceField));
     }
 
     const field = this.field();
@@ -768,10 +768,23 @@ export class FieldDimension extends Dimension {
       return this.withTemporalUnit(field.getDefaultDateTimeUnit());
     }
 
-    const dimension = super.defaultDimension(dimensionTypes);
-    const joinAlias = this.joinAlias();
+    let dimension = super.defaultDimension(dimensionTypes);
 
-    return joinAlias ? dimension.withJoinAlias(joinAlias) : dimension;
+    if (!dimension) {
+      return null;
+    }
+
+    const sourceField = this.sourceField();
+    if (sourceField) {
+      dimension = dimension.withSourceField(sourceField);
+    }
+
+    const joinAlias = this.joinAlias();
+    if (joinAlias) {
+      dimension = dimension.withJoinAlias(joinAlias);
+    }
+
+    return dimension;
   }
 
   _dimensionForOption(option): FieldDimension {
@@ -858,8 +871,8 @@ export class FieldDimension extends Dimension {
 
   column(extra = {}) {
     const more = {};
-    if (typeof this.getOption("source-field") === "number") {
-      more.fk_field_id = this.getOption("source-field");
+    if (typeof this.sourceField() === "number") {
+      more.fk_field_id = this.sourceField();
     }
     if (this.temporalUnit()) {
       more.unit = this.temporalUnit();
@@ -876,7 +889,7 @@ export class FieldDimension extends Dimension {
    * For `:field` clauses with an FK source field, returns a new Dimension for the source field.
    */
   fk() {
-    const sourceFieldIdOrName = this.getOption("source-field");
+    const sourceFieldIdOrName = this.sourceField();
     if (!sourceFieldIdOrName) {
       return null;
     }
@@ -909,6 +922,14 @@ export class FieldDimension extends Dimension {
    */
   isTemporalTruncation(): boolean {
     return this.temporalUnit() && !this.isTemporalExtraction();
+  }
+
+  sourceField() {
+    return this.getOption("source-field");
+  }
+
+  withSourceField(sourceField) {
+    return this.withOptions({ "source-field": sourceField });
   }
 
   /**
