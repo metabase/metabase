@@ -18,6 +18,34 @@ describe("scenarios > question > new", () => {
     cy.signInAsAdmin();
   });
 
+  it.skip("data selector popover should not be too small (metabase#15591)", () => {
+    // Add 10 more databases
+    for (let i = 0; i < 10; i++) {
+      cy.request("POST", "/api/database", {
+        engine: "h2",
+        name: "Sample" + i,
+        details: {
+          db:
+            "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+        },
+        auto_run_queries: false,
+        is_full_sync: false,
+        schedules: {},
+      });
+    }
+
+    // First test UI for Simple question
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Pick your data");
+    cy.findByText("Sample3").isVisibleInPopover();
+
+    // Then move to the Custom question UI
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample3").isVisibleInPopover();
+  });
+
   describe("browse data", () => {
     it("should load orders table and summarize", () => {
       cy.visit("/");
