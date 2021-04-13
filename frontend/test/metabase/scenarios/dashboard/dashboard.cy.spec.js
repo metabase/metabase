@@ -742,6 +742,35 @@ describe("scenarios > dashboard", () => {
       });
     });
   });
+
+  it.skip("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
+    // Make this dashboard card extremely tall so that it spans outside of visible viewport
+    cy.request("PUT", "/api/dashboard/1/cards", {
+      cards: [
+        {
+          id: 1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          sizeX: 12,
+          sizeY: 20,
+          series: [],
+          visualization_settings: {},
+          parameter_mappings: [],
+        },
+      ],
+    });
+
+    cy.visit("/dashboard/1");
+    cy.contains("37.65");
+    assertScrollBarExists();
+    cy.icon("share").click();
+    cy.findByText("Sharing and embedding").click();
+    // Fullscreen modal opens - close it now
+    cy.icon("close").click();
+    cy.get(".Modal--full").should("not.exist");
+    assertScrollBarExists();
+  });
 });
 
 function checkOptionsForFilter(filter) {
@@ -756,4 +785,13 @@ function checkOptionsForFilter(filter) {
 
   // Get rid of the open popover to be able to select another filter
   cy.findByText("Pick one or more filters to update").click();
+}
+
+function assertScrollBarExists() {
+  cy.get("body").then($body => {
+    const bodyWidth = $body[0].getBoundingClientRect().width;
+    cy.window()
+      .its("innerWidth")
+      .should("be.gt", bodyWidth);
+  });
 }
